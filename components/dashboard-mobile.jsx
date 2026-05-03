@@ -1,0 +1,330 @@
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD MOBILE — Version dédiée mobile (<768px)
+// Priorité : pointage rapide, message consultant, KPIs compacts
+// ═══════════════════════════════════════════════════════════════
+
+const DashboardMobile = ({ user, etablissement }) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const etabId = etablissement?.id || 'etab-1';
+  const isConsultant = user.role === 'consultant';
+
+  const [shifts, setShifts] = React.useState([]);
+  const [pertes, setPertes] = React.useState([]);
+  const [inventaires, setInventaires] = React.useState([]);
+  const [message, setMessage] = React.useState({ message: '', updatedBy: null, updatedAt: null });
+  const [editingMessage, setEditingMessage] = React.useState(false);
+  const [messageDraft, setMessageDraft] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [pointageError, setPointageError] = React.useState('');
+
+  React.useEffect(() => {
+    if (!window.SB) {
+      setShifts(DEMO_DATA.planning.filter(s => (s.etablissementId || 'etab-1') === etabId));
+      setPertes(DEMO_DATA.pertes.filter(p => (p.etablissementId || 'etab-1') === etabId));
+      setInventaires(DEMO_DATA.inventaires.filter(i => (i.etablissementId || 'etab-1') === etabId));
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    const unsubs = [];
+    (async () => {
+      try {
+        const [shiftRows, pertesRows, invRows, msgRow] = await Promise.all([
+          window.SB.db.listShifts(etabId),
+          window.SB.db.listPertes(etabId),
+          window.SB.db.listInventaires(etabId),
+          window.SB.db.getConsultantMessage(etabId),
+        ]);
+        if (!mounted) return;
+        setShifts((shiftRows || []).map(r => window.SB.db.mapShiftFromDB(r)));
+        setPertes(pertesRows || []);
+        setInventaires(invRows || []);
+        if (msgRow) { setMessage(msgRow); setMessageDraft(msgRow.message); }
+      } catch (err) { console.error('[DashboardMobile]', err); }
+      finally { if (mounted) setLoading(false); }
+    })();
+    unsubs.push(window.SB.realtime.subscribe('shifts', async () => {
+      try { const rows = await window.SB.db.listShifts(etabId); if (mounted) setShifts((rows || []).map(r => window.SB.db.mapShiftFromDB(r))); } catch (e) {}
+    }));
+    unsubs.push(window.SB.realtime.subscribe('pertes', async () => {
+      try { const rows = await window.SB.db.listPertes(etabId); if (mounted) setPertes(rows || []); } catch (e) {}
+    }));
+    unsubs.push(window.SB.realtime.subscribe('consultant_messages', async () => {
+      try { const m = await window.SB.db.getConsultantMessage(etabId); if (mounted && m) { setMessage(m); if (!editingMessage) setMessageDraft(m.message); } } catch (e) {}
+    }));
+    return () => { mounted = false; unsubs.forEach(u => u && u()); };
+  }, [etabId]);
+
+  const todayShifts = shifts.filter(s => s.date === today);
+  const myTodayShifts = todayShifts.filter(s => s.userId === user.id);
+  const activePointages = todayShifts.filter(s => s.pointageDebut && !s.pointageFin);
+  const manquants = todayShifts.filter(s => !s.pointageDebut);
+  const pertesNonVal = pertes.filter(p => !p.valide);
+  const inv = inventaires[0];
+
+  const dateLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const pointerArrivee = async (shift) => {
+    setPointageError('');
+    if (!window.SB) { setPointageError('Supabase non configuré'); return; }
+    try { await window.SB.db.pointerArrivee(shift.id); }
+    catch (err) { setPointageError('Erreur : ' + err.message); }
+  };
+  const pointerDepart = async (shift) => {
+    setPointageError('');
+    if (!window.SB) { setPointageError('Supabase non configuré'); return; }
+    try { await window.SB.db.pointerDepart(shift.id); }
+    catch (err) { setPointageError('Erreur : ' + err.message); }
+  };
+
+  const saveMessage = async () => {
+    if (!window.SB || !isConsultant) return;
+    try { await window.SB.db.setConsultantMessage(etabId, messageDraft, user.id); setEditingMessage(false); }
+    catch (err) { window.notify('Erreur : ' + err.message, 'error'); }
+  };
+  const cancelEdit = () => { setMessageDraft(message.message); setEditingMessage(false); };
+
+  const getUserName = (uid) => {
+    const u = DEMO_DATA.utilisateurs.find(u => u.id === uid);
+    return u ? `${u.prenom} ${u.nom}` : 'Inconnu';
+  };
+
+  const isNowInRange = (debut, fin) => {
+    const [dh, dm] = (debut || '00:00').split(':').map(Number);
+    const [fh, fm] = (fin || '23:59').split(':').map(Number);
+    const n = new Date();
+    const nm = n.getHours() * 60 + n.getMinutes();
+    return nm >= (dh * 60 + dm - 30) && nm <= (fh * 60 + fm + 30);
+  };
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
+  }
+
+  return (
+    <div style={dm.root}>
+      {/* Greeting compact */}
+      <div style={dm.greeting}>
+        <div style={dm.greetingTitle}>Bonjour, {user.prenom} 👋</div>
+        <div style={dm.greetingSub}>{dateLabel}</div>
+      </div>
+
+      {/* ═══ POINTAGE PRIORITAIRE — toujours visible ═══ */}
+      <div style={dm.pointageBloc}>
+        <div style={dm.pointageHead}>⏱ MES HORAIRES AUJOURD'HUI</div>
+        {pointageError && <div style={dm.errorBanner}>{pointageError}</div>}
+        {(myTodayShifts || []).length === 0 ? (
+          <div style={dm.noShiftCard}>
+            <div style={{ fontSize: 32, opacity: 0.4, marginBottom: 6 }}>📅</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Pas de shift programmé</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Profitez de votre journée !</div>
+            <button style={{ ...dm.bigBtn, background: '#d1d5db', cursor: 'not-allowed', marginTop: 10 }} disabled>
+              ⏱ Aucun pointage
+            </button>
+          </div>
+        ) : myTodayShifts.map(shift => {
+            const enPoste = shift.pointageDebut && !shift.pointageFin;
+            const termine = shift.pointageDebut && shift.pointageFin;
+            const pasCommence = !shift.pointageDebut;
+            const inRange = isNowInRange(shift.debut, shift.fin);
+            const label = shift.typeShift === 'midi' ? '☀ Midi' : shift.typeShift === 'soir' ? '🌙 Soir' : 'Service';
+            const cardBg = enPoste ? '#dcfce7' : termine ? '#f3f4f6' : '#fef3c7';
+            const cardBorder = enPoste ? '#16a34a' : termine ? '#9ca3af' : '#f59e0b';
+
+            return (
+              <div key={shift.id} style={{ ...dm.pointageCard, background: cardBg, borderColor: cardBorder }}>
+                <div style={dm.pointageInfo}>
+                  <div style={dm.pointageLabel}>{label}</div>
+                  <div style={dm.pointageTime}>{shift.debut} → {shift.fin}</div>
+                </div>
+
+                {pasCommence && (
+                  <>
+                    <div style={dm.pointageStatus}>En attente d'arrivée</div>
+                    <button
+                      style={{ ...dm.bigBtn, background: inRange ? '#16a34a' : '#d1d5db' }}
+                      onClick={() => inRange && pointerArrivee(shift)}
+                      disabled={!inRange}
+                    >
+                      ⏱ POINTER MON ARRIVÉE
+                    </button>
+                    {!inRange && <div style={dm.rangeHint}>Disponible dès 30 min avant</div>}
+                  </>
+                )}
+
+                {enPoste && (
+                  <>
+                    <div style={{ ...dm.pointageStatus, color: '#15803d', fontWeight: 700 }}>✓ En poste depuis {shift.pointageDebut}</div>
+                    <button style={{ ...dm.bigBtn, background: '#dc2626' }} onClick={() => pointerDepart(shift)}>
+                      ⏱ POINTER MON DÉPART
+                    </button>
+                  </>
+                )}
+
+                {termine && (
+                  <div style={{ ...dm.pointageStatus, color: '#6b7280' }}>
+                    ✓ Journée terminée<br/>
+                    <span style={{ fontSize: 12 }}>{shift.pointageDebut} → {shift.pointageFin}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+      </div>
+
+      {/* Message consultant compact */}
+      <div style={dm.messageBloc}>
+        <div style={dm.messageHead}>
+          <span>💬 Message du consultant</span>
+          {isConsultant && !editingMessage && (
+            <button style={dm.editMsgBtn} onClick={() => setEditingMessage(true)}>
+              {message.message ? '✎' : '+'}
+            </button>
+          )}
+        </div>
+        {editingMessage ? (
+          <div>
+            <textarea style={dm.textarea} value={messageDraft} onChange={e => setMessageDraft(e.target.value)}
+              placeholder="Message pour l'équipe…" autoFocus rows={3} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button style={{ ...dm.smallBtn, flex: 1, background: 'var(--bg)', color: 'var(--text)' }} onClick={cancelEdit}>Annuler</button>
+              <button style={{ ...dm.smallBtn, flex: 1, background: 'var(--accent)', color: '#fff' }} onClick={saveMessage}>Publier</button>
+            </div>
+          </div>
+        ) : message.message ? (
+          <div>
+            <div style={dm.messageBody}>{message.message}</div>
+            <div style={dm.messageSig}>— Jérémy Samper</div>
+          </div>
+        ) : (
+          <div style={dm.messageEmpty}>Aucun message.</div>
+        )}
+      </div>
+
+      {/* KPIs en grille 2×2 compacte */}
+      <div style={dm.kpiGrid}>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid #16a34a' }}>
+          <div style={dm.kpiLbl}>En poste</div>
+          <div style={{ ...dm.kpiVal, color: '#15803d' }}>{activePointages.length}</div>
+        </div>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid #f59e0b' }}>
+          <div style={dm.kpiLbl}>Shifts jour</div>
+          <div style={{ ...dm.kpiVal, color: '#92400e' }}>{(todayShifts || []).length}</div>
+        </div>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid #dc2626' }}>
+          <div style={dm.kpiLbl}>Pertes</div>
+          <div style={{ ...dm.kpiVal, color: '#991b1b' }}>{(pertesNonVal || []).length}</div>
+        </div>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid var(--accent)' }}>
+          <div style={dm.kpiLbl}>Stock CHF</div>
+          <div style={dm.kpiVal}>{Math.round(inv?.valeurTotale || 0).toLocaleString('fr-CH')}</div>
+        </div>
+      </div>
+
+      {/* Planning du jour en liste simple */}
+      <div style={dm.section}>
+        <div style={dm.sectionTitle}>📅 Aujourd'hui · {(todayShifts || []).length} shift{(todayShifts || []).length > 1 ? 's' : ''}</div>
+        {(todayShifts || []).length === 0 ? (
+          <div style={dm.emptyHint}>Aucun shift programmé.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {(todayShifts || []).sort((a, b) => (a.debut || '').localeCompare(b.debut || '')).map(shift => {
+              const enPoste = shift.pointageDebut && !shift.pointageFin;
+              const termine = shift.pointageDebut && shift.pointageFin;
+              const statut = enPoste ? { c: '#15803d', b: '#dcfce7', t: 'En poste' }
+                          : termine ? { c: '#6b7280', b: '#f3f4f6', t: 'Terminé' }
+                          : { c: '#92400e', b: '#fef3c7', t: 'À venir' };
+              const typeLabel = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : '';
+              return (
+                <div key={shift.id} style={dm.shiftRow}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={dm.shiftName}>{getUserName(shift.userId)}</div>
+                    <div style={dm.shiftTime}>
+                      {typeLabel && <span style={{ marginRight: 4 }}>{typeLabel}</span>}
+                      {shift.debut}–{shift.fin}
+                      {shift.poste && <span style={{ color: 'var(--text2)', fontWeight: 400 }}> · {shift.poste}</span>}
+                    </div>
+                  </div>
+                  <div style={{ ...dm.shiftBadge, background: statut.b, color: statut.c }}>{statut.t}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Alertes */}
+      {(manquants.length > 0 || (pertesNonVal || []).length > 0) && (
+        <div style={dm.section}>
+          <div style={dm.sectionTitle}>⚠ Alertes</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {manquants.slice(0, 2).map(s => (
+              <div key={s.id} style={dm.alertRow}>
+                <span style={{ color: '#92400e', fontWeight: 700, fontSize: 12 }}>Pointage manquant</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)' }}>{getUserName(s.userId)} · {s.debut}</span>
+              </div>
+            ))}
+            {pertesNonVal.slice(0, 2).map(p => (
+              <div key={p.id} style={dm.alertRow}>
+                <span style={{ color: '#991b1b', fontWeight: 700, fontSize: 12 }}>Perte à valider</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)' }}>{p.produit} · {((p.quantite || 0) * (p.valeurUnit || 0)).toFixed(0)} CHF</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const dm = {
+  root: { display: 'flex', flexDirection: 'column', gap: 14 },
+
+  greeting: { padding: '4px 2px' },
+  greetingTitle: { fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
+  greetingSub: { fontSize: 12, color: 'var(--text2)', marginTop: 2, textTransform: 'capitalize' },
+
+  // Pointage — bloc en haut, priorité absolue
+  pointageBloc: { background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '1px solid #86efac', borderRadius: 12, padding: 14 },
+  pointageHead: { fontSize: 11, fontWeight: 700, color: '#15803d', letterSpacing: 0.5, marginBottom: 10 },
+  errorBanner: { background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
+  pointageCard: { background: 'var(--surface)', border: '2px solid', borderRadius: 10, padding: 14, marginBottom: 8 },
+  noShiftCard: { background: 'var(--surface)', border: '2px dashed #d1d5db', borderRadius: 10, padding: '18px 14px', textAlign: 'center' },
+  pointageInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
+  pointageLabel: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
+  pointageTime: { fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
+  pointageStatus: { fontSize: 12, color: 'var(--text2)', marginBottom: 10, textAlign: 'center' },
+  bigBtn: { display: 'block', width: '100%', padding: '14px 16px', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)', letterSpacing: 0.3, minHeight: 48 },
+  rangeHint: { fontSize: 10, color: 'var(--text2)', marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
+
+  // Message consultant
+  messageBloc: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 },
+  messageHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+  editMsgBtn: { width: 28, height: 28, border: '1px solid var(--accent)', background: 'none', color: 'var(--accent)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 700 },
+  textarea: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'vertical' },
+  smallBtn: { padding: '10px 14px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer', minHeight: 40 },
+  messageBody: { fontSize: 13, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', fontStyle: 'italic' },
+  messageSig: { fontSize: 10, color: 'var(--text2)', marginTop: 6, fontWeight: 600 },
+  messageEmpty: { fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' },
+
+  // KPIs 2×2 — toutes les cases ont la même hauteur, contenu centré
+  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 },
+  kpi: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 76, boxSizing: 'border-box' },
+  kpiLbl: { fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600, lineHeight: 1.3 },
+  kpiVal: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 6, color: 'var(--text)', lineHeight: 1 },
+
+  // Sections
+  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 10 },
+
+  shiftRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg)', borderRadius: 6 },
+  shiftName: { fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  shiftTime: { fontSize: 11, color: 'var(--text2)', fontWeight: 600, marginTop: 2 },
+  shiftBadge: { fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' },
+
+  alertRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 8px', background: 'var(--bg)', borderRadius: 4 },
+
+  emptyHint: { padding: 12, textAlign: 'center', color: 'var(--text2)', fontSize: 12, fontStyle: 'italic' },
+};
+
+Object.assign(window, { DashboardMobile });

@@ -1,0 +1,60 @@
+// Style de cellule CCNT (hors objet pls car utilisé dans table HTML native)
+const ccntCell = {
+  border: '1px solid #000',
+  padding: '3px 5px',
+  fontSize: 9,
+  verticalAlign: 'middle',
+};
+
+const pls = {
+  root: { display: 'flex', flexDirection: 'column', gap: 14 },
+  tabs: { display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' },
+  tab: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
+  actionsBar: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+  addBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  exportBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { padding: '8px 14px', background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
+  pointBtn: { padding: '10px 16px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 },
+  datePicker: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontFamily: 'var(--font)', fontSize: 13 },
+  smallBtn: { padding: '7px 10px', border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
+  smallBtnActive: { background: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--accent)' },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 },
+  grid: { display: 'grid', gap: 0 },
+  empColHeader: { height: 48, borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
+  dayHeader: { height: 48, borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 },
+  empCol: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', left: 0, zIndex: 1 },
+  empAvatar: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 },
+  empName: { fontSize: 12, fontWeight: 600 },
+  dayCell: { minHeight: 72, padding: 6, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
+  shiftCell: { borderRadius: 8, padding: '8px 6px', position: 'relative', border: '1px solid rgba(0,0,0,0.04)' },
+  emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  addHint: { fontSize: 18, color: 'var(--text2)' },
+  ptTable: { display: 'flex', flexDirection: 'column' },
+  ptHead: { display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr', padding: '8px 16px', background: 'var(--bg)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)' },
+  ptRow: { display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr', padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer' },
+  ptEmp: { display: 'flex', alignItems: 'center', gap: 10 },
+  ptAvatar: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 10 },
+  ptName: { fontSize: 13, fontWeight: 600 },
+  ptCell: { fontSize: 13 },
+  statusBadge: { display: 'inline-block', padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 600 },
+
+  // Mobile
+  mobilePlanList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  mobileTitle: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', padding: '4px 0' },
+  mobileDayBlock: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' },
+  mobileDayHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' },
+  mobileDayAdd: { width: 26, height: 26, borderRadius: 6, background: 'var(--accent)', color: '#fff', border: 'none', fontSize: 15, cursor: 'pointer', fontFamily: 'var(--font)' },
+  mobileShiftCard: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
+  mobileBadge: { fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap' },
+
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
+  modal: { background: 'var(--surface)', borderRadius: 14, width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
+  modalTitle: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' },
+  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
+  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  fieldInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+};
+
+export { ccntCell, pls };

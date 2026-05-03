@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Samper Consulting — Gestion culinaire</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+<link rel="alternate icon" href="/favicon.ico"/>
+<link rel="apple-touch-icon" href="/favicon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --font: 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'DM Serif Display', Georgia, serif;
+
+  /* Palette */
+  --bg:        oklch(96.5% 0.008 75);
+  --surface:   oklch(99.2% 0.004 75);
+  --border:    oklch(88%   0.010 75);
+  --text:      oklch(18%   0.012 55);
+  --text2:     oklch(48%   0.010 55);
+
+  /* Accent ambre bronze */
+  --accent:       oklch(54% 0.13 55);
+  --accent-light: oklch(95% 0.04 75);
+
+  /* Navigation */
+  --nav:  oklch(14% 0.012 55);
+}
+
+html, body, #root { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+/* Input focus */
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent) !important; box-shadow: 0 0 0 3px oklch(54% 0.13 55 / 0.12); }
+
+/* Row hover */
+[style*="tableRow"]:hover, [style*="planItem"]:hover, [style*="recetteRow"]:hover { background: var(--bg) !important; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}
+
+/* ─── OPTIMISATIONS MOBILES ─── */
+@media (max-width: 768px) {
+  /* Tap targets minimum 44×44 (Apple HIG) */
+  button:not(.mini), a.button, [role="button"]:not(.mini) {
+    min-height: 40px;
+  }
+  /* Inputs plus larges en mobile pour une meilleure ergonomie */
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="date"], input[type="time"],
+  textarea, select {
+    font-size: 16px !important; /* évite zoom auto iOS Safari */
+    min-height: 40px;
+  }
+  /* Tableaux scrollables horizontalement sur mobile */
+  table {
+    font-size: 13px;
+  }
+  /* Cartes plus serrées en mobile */
+  body {
+    -webkit-tap-highlight-color: rgba(0,0,0,0.05);
+  }
+  /* Modales pleine largeur en mobile */
+  [role="dialog"], .modal {
+    margin: 8px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+}
+
+/* Suppression du highlight tap par défaut sur tous les éléments interactifs */
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+</style>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Configuration Supabase (à personnaliser) -->
+<script src="components/config.js"></script>
+<script src="components/supabase.js"></script>
+
+<!-- Data -->
+<script src="components/data.js"></script>
+
+<script src="components/pdf-utils.js"></script>
+
+<!-- Components (load order matters) -->
+<script type="text/babel" src="components/auth.jsx"></script>
+<script type="text/babel" src="components/toast.jsx"></script>
+<script type="text/babel" src="components/layout.jsx"></script>
+<script type="text/babel" src="components/dashboard.jsx"></script>
+<script type="text/babel" src="components/dashboard-mobile.jsx"></script>
+<script type="text/babel" src="components/planning.jsx"></script>
+<script type="text/babel" src="components/recettes.jsx"></script>
+<script type="text/babel" src="components/inventaire.jsx"></script>
+<script type="text/babel" src="components/consultant-tools.jsx"></script>
+<script type="text/babel" src="components/pertes.jsx"></script>
+<script type="text/babel" src="components/haccp.jsx"></script>
+<script type="text/babel" src="components/fiches_salle.jsx"></script>
+<script type="text/babel" src="components/parametres.jsx"></script>
+<script type="text/babel" src="components/roles.jsx"></script>
+<script type="text/babel" src="components/documents.jsx"></script>
+<script type="text/babel" src="components/factures.jsx"></script>
+<script type="text/babel" src="components/catalogue.jsx"></script>
+<script type="text/babel" src="components/sop-templates.js"></script>
+<script type="text/babel" src="components/sop.jsx"></script>
+<script type="text/babel" src="components/kit-cuisinier.jsx"></script>
+
+<!-- Main App -->
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentHue": 55,
+  "navDark": true,
+  "fontSerif": "DM Serif Display",
+  "density": "normal"
+}/*EDITMODE-END*/;
+
+// Composant utilitaire : redirige vers Outils consultant en pré-sélectionnant le bon onglet.
+// Utilisé pour les anciennes routes /factures, /roles, /parametres après l'absorption admin.
+// useEffect avec [] = exécuté une seule fois au mount → pas de boucle de re-render.
+// On lit window.setPage (mis à jour par App à chaque render — référence toujours fraîche).
+const RedirectToConsultantTools = ({ fromPage }) => {
+  React.useEffect(() => {
+    const targetTab = fromPage === 'parametres' ? 'etablissements' : fromPage;
+    try { localStorage.setItem('sc_consultant_tools_tab', targetTab); } catch(e) {}
+    if (window.setPage) window.setPage('consultant_tools');
+  }, []);
+  return (
+    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>
+      Redirection vers Outils consultant…
+    </div>
+  );
+};
+
+const App = () => {
+  const [user, setUser] = React.useState(null);
+  const [booting, setBooting] = React.useState(true);
+  const [page, setPage] = React.useState(() => localStorage.getItem('sc_page') || 'dashboard');
+  const [etablissement, setEtablissement] = React.useState(null);
+  const [isMobile, setIsMobile] = React.useState(typeof window !== 'undefined' && window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
+  // Tweaks (panneau edit mode uniquement)
+  const [tweaks, setTweaks] = React.useState(TWEAK_DEFAULTS);
+  const [tweakVisible, setTweakVisible] = React.useState(false);
+
+  // ── Boot : hydrate depuis Supabase + vérifie session existante
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // 1. Hydrater les listes (etablissements, profiles, permissions) depuis Supabase
+        if (window.hydrateFromSupabase) await window.hydrateFromSupabase();
+
+        // 2. Vérifier si une session Supabase est active (user déjà connecté)
+        if (window.SB) {
+          const session = await window.SB.auth.getSession();
+          if (session?.user && mounted) {
+            const profile = await window.SB.db.getProfile(session.user.id);
+            if (profile && profile.actif !== false) {
+              const u = mapProfileToUser(profile);
+              setUser(u);
+              // Hydrater le cache user_settings AVANT de lire les préférences (1 seule requête).
+              // Tous les modules bénéficient ensuite de lectures synchrones via getUserSettingSync.
+              try {
+                if (window.SB.db.loadAllUserSettings) {
+                  await window.SB.db.loadAllUserSettings();
+                }
+              } catch(e) { console.warn('[boot] loadAllUserSettings failed', e); }
+              // Choix de l'établissement par défaut : préférence cache > legacy localStorage > 1er accessible
+              let preferredEtabId = null;
+              if (window.SB.db.getUserSettingSync) {
+                preferredEtabId = window.SB.db.getUserSettingSync('current_etab_id');
+              }
+              if (!preferredEtabId) {
+                try {
+                  const raw = localStorage.getItem('sc_current_etab');
+                  if (raw) preferredEtabId = JSON.parse(raw);
+                } catch(e) {}
+              }
+              const accessibleEtabs = DEMO_DATA.etablissements.filter(e => u.etablissementIds.includes(e.id));
+              const etab = accessibleEtabs.find(e => e.id === preferredEtabId) || accessibleEtabs[0];
+              setEtablissement(etab);
+            }
+          }
+
+          // 3. Écouter les changements d'auth (logout depuis un autre onglet, expiration de session, etc.)
+          window.SB.auth.onAuthChange((event, session) => {
+            if (event === 'SIGNED_OUT') {
+              // Vider le cache user_settings pour ne pas leak vers un éventuel re-login d'un autre user
+              try { window.SB.db.clearUserSettingsCache && window.SB.db.clearUserSettingsCache(); } catch(e) {}
+              setUser(null);
+              setEtablissement(null);
+            }
+          });
+
+          // 4. Realtime : si les tables profiles/etablissements/permissions changent, re-hydrater
+          window.SB.realtime.subscribe('profiles', () => window.hydrateFromSupabase && window.hydrateFromSupabase());
+          window.SB.realtime.subscribe('etablissements', () => window.hydrateFromSupabase && window.hydrateFromSupabase());
+          window.SB.realtime.subscribe('permissions', () => window.hydrateFromSupabase && window.hydrateFromSupabase());
+        }
+      } catch (err) {
+        console.error('[App boot]', err);
+      } finally {
+        if (mounted) setBooting(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Tweaks edit mode (legacy)
+  React.useEffect(() => {
+    window.addEventListener('message', e => {
+      if (e.data?.type === '__activate_edit_mode') setTweakVisible(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweakVisible(false);
+    });
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+  }, []);
+
+  const applyTweak = (k, v) => {
+    const next = { ...tweaks, [k]: v };
+    setTweaks(next);
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*');
+    if (k === 'accentHue') document.documentElement.style.setProperty('--accent', `oklch(54% 0.13 ${v})`);
+    if (k === 'density') document.documentElement.style.setProperty('--density', v === 'compact' ? '0.85' : '1');
+  };
+
+  function mapProfileToUser(p) {
+    return {
+      id: p.id, email: p.email, prenom: p.prenom, nom: p.nom,
+      avatar: p.avatar || ((p.prenom?.[0] || '') + (p.nom?.[0] || '')).toUpperCase(),
+      role: p.role, poste: p.poste,
+      etablissementIds: p.etablissement_ids || [],
+      actif: p.actif,
+    };
+  }
+
+  const handleLogin = async (profile) => {
+    const u = mapProfileToUser(profile);
+    setUser(u);
+    // Hydrater le cache user_settings après login frais
+    let preferredEtabId = null;
+    if (window.SB) {
+      try {
+        if (window.SB.db.loadAllUserSettings) {
+          await window.SB.db.loadAllUserSettings();
+        }
+        if (window.SB.db.getUserSettingSync) {
+          preferredEtabId = window.SB.db.getUserSettingSync('current_etab_id');
+        }
+      } catch(e) { console.warn('[handleLogin] loadAllUserSettings failed', e); }
+    }
+    const accessibleEtabs = DEMO_DATA.etablissements.filter(e => u.etablissementIds.includes(e.id));
+    const etab = accessibleEtabs.find(e => e.id === preferredEtabId) || accessibleEtabs[0];
+    setEtablissement(etab);
+    setPage('dashboard');
+  };
+
+  const handleLogout = async () => {
+    try { if (window.SB) await window.SB.auth.signOut(); } catch (e) { console.error(e); }
+    // Vider le cache user_settings au logout (sécurité multi-user sur même device)
+    try { window.SB?.db?.clearUserSettingsCache && window.SB.db.clearUserSettingsCache(); } catch(e) {}
+    setUser(null);
+    setEtablissement(null);
+    localStorage.removeItem('sc_page');
+  };
+
+  const handleSetPage = (p) => {
+    setPage(p);
+    localStorage.setItem('sc_page', p);
+  };
+
+  // Exposer setPage au global pour la navigation cross-modules (ex: Kit cuisinier → SOP)
+  // useEffect sans dépendances pour éviter toute boucle de re-render.
+  // window.setPage utilisera la dernière version de setPage qui est stable (référence React).
+  React.useEffect(() => {
+    window.setPage = (p) => {
+      setPage(p);
+      try { localStorage.setItem('sc_page', p); } catch(e) {}
+    };
+    return () => { try { delete window.setPage; } catch(e) {} };
+  }, []);
+
+  const renderPage = () => {
+    const perms = user ? (DEMO_DATA.permissions[user.role] || {}) : {};
+    const wrap = (name, el) => <SafeModule name={name}>{el}</SafeModule>;
+    switch(page) {
+      case 'dashboard':    return wrap('Tableau de bord', (isMobile && typeof DashboardMobile !== 'undefined') ? <DashboardMobile user={user} etablissement={etablissement}/> : <Dashboard user={user} etablissement={etablissement}/>);
+      case 'planning':     return wrap('Planning', perms.planning ? <Planning user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'pointage':     return wrap('Pointage', perms.planning ? <Planning user={user} etablissement={etablissement} initialTab="pointage"/> : <AccessDenied/>);
+      case 'cartes':       return wrap('Cartes & Recettes', perms.recettes ? <Recettes user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'inventaire':   return wrap('Inventaire', perms.inventaire ? <Inventaire user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'pertes':       return wrap('Pertes', perms.pertes ? <Pertes user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'haccp':        return wrap('HACCP', perms.haccp ? <HACCP user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'fiches_salle': return wrap('Fiches salle', (perms.fiches_salle && typeof FichesSalle !== 'undefined') ? <FichesSalle user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'parametres':
+      case 'roles':
+      case 'factures':
+        // Ces 3 modules sont désormais intégrés dans Outils consultant.
+        // On redirige les anciens liens directs (bookmark, ancien menu en cache)
+        // vers Outils consultant en pré-sélectionnant le bon onglet.
+        if (user.role === 'consultant') {
+          return wrap('Redirection…', <RedirectToConsultantTools fromPage={page}/>);
+        }
+        return wrap('Accès refusé', <AccessDenied/>);
+      case 'consultant_tools': return wrap('Outils consultant', perms.consultant_tools ? <ConsultantTools user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'documents':    return wrap('Documents', (typeof Documents !== 'undefined') ? <Documents user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'catalogue':    return wrap('Catalogue', (typeof Catalogue !== 'undefined') ? <Catalogue user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'sop':          return wrap('SOPs & Checklists', (typeof SOP !== 'undefined') ? <SOP user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      case 'kit_cuisinier':return wrap('Kit cuisinier', (typeof KitCuisinier !== 'undefined') ? <KitCuisinier user={user} etablissement={etablissement}/> : <AccessDenied/>);
+      default:             return wrap('Tableau de bord', (isMobile && typeof DashboardMobile !== 'undefined') ? <DashboardMobile user={user} etablissement={etablissement}/> : <Dashboard user={user} etablissement={etablissement}/>);
+    }
+  };
+
+  // ── Splash boot
+  if (booting) {
+    return (
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16,background:'var(--bg)'}}>
+        <div style={{width:48,height:48,borderRadius:10,background:'var(--accent)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:16,fontFamily:'var(--font-serif)'}}>SC</div>
+        <div style={{fontSize:13,color:'var(--text2)'}}>Chargement…</div>
+      </div>
+    );
+  }
+
+  if (!user) return <Auth onLogin={handleLogin}/>;
+
+  return (
+    <>
+      <Layout
+        user={user}
+        currentPage={page}
+        setPage={handleSetPage}
+        onLogout={handleLogout}
+        etablissement={etablissement}
+        setEtablissement={setEtablissement}
+      >
+        {renderPage()}
+      </Layout>
+
+      {/* Tweaks panel (edit mode only) */}
+      {tweakVisible && (
+        <div style={{position:'fixed',bottom:24,right:24,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'18px',width:240,boxShadow:'0 8px 32px rgba(0,0,0,0.15)',zIndex:9999}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:14,color:'var(--text)',fontFamily:'var(--font-serif)'}}>Tweaks</div>
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}}>Couleur d'accent</div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {[[55,'Ambre'],[30,'Terracotta'],[200,'Ardoise'],[160,'Sauge'],[280,'Prune']].map(([h,l]) => (
+                  <button key={h} title={l} onClick={() => applyTweak('accentHue',h)}
+                    style={{width:22,height:22,borderRadius:5,border: tweaks.accentHue===h ? '2px solid var(--text)' : '1px solid transparent',background:`oklch(54% 0.13 ${h})`,cursor:'pointer'}}/>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}}>Densité</div>
+              <div style={{display:'flex',gap:6}}>
+                {['normal','compact'].map(d => (
+                  <button key={d} onClick={() => applyTweak('density',d)}
+                    style={{flex:1,padding:'5px',border:`1px solid ${tweaks.density===d?'var(--accent)':'var(--border)'}`,borderRadius:6,background:tweaks.density===d?'var(--accent-light)':'var(--surface)',color:tweaks.density===d?'var(--accent)':'var(--text2)',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>
+                    {d === 'normal' ? 'Normal' : 'Compact'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const AccessDenied = () => (
+  <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'50vh',gap:12}}>
+    <div style={{fontSize:40}}>🔐</div>
+    <div style={{fontSize:18,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'}}>Accès restreint</div>
+    <div style={{fontSize:14,color:'var(--text2)'}}>Vous n'avez pas les droits nécessaires pour accéder à ce module.</div>
+  </div>
+);
+
+// ─── ErrorBoundary global : attrape TOUT crash React et affiche un message lisible
+// au lieu d'un white screen. Chaque module est wrappé individuellement pour
+// qu'une erreur dans Planning ne fasse pas crasher le Dashboard.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, info: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error, info);
+    this.setState({ info });
+  }
+  render() {
+    if (this.state.hasError) {
+      const { error, info } = this.state;
+      const isModule = !!this.props.moduleName;
+      return (
+        <div style={{
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          minHeight: isModule ? 200 : '100vh', gap:16, padding:32,
+          background: isModule ? 'var(--surface)' : 'var(--bg)',
+          border: isModule ? '1px solid #fca5a5' : 'none',
+          borderRadius: isModule ? 12 : 0,
+        }}>
+          <div style={{fontSize: isModule ? 32 : 48}}>⚠️</div>
+          <div style={{fontSize: isModule ? 16 : 22, fontWeight:700, color:'var(--text)', fontFamily:'var(--font-serif)', textAlign:'center'}}>
+            {isModule ? `Erreur dans "${this.props.moduleName}"` : 'Une erreur est survenue'}
+          </div>
+          <div style={{fontSize:13, color:'var(--text2)', textAlign:'center', maxWidth:480}}>
+            {isModule
+              ? 'Ce module a rencontré un problème. Les autres restent accessibles.'
+              : 'L\'application a rencontré une erreur inattendue.'}
+          </div>
+          {error && (
+            <div style={{fontSize:11, color:'#dc2626', background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:8, padding:'10px 14px', maxWidth:560, fontFamily:'monospace', wordBreak:'break-word'}}>
+              {error.message || String(error)}
+            </div>
+          )}
+          <div style={{display:'flex', gap:10}}>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null, info: null })}
+              style={{padding:'8px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontWeight:600, fontFamily:'var(--font)'}}
+            >
+              Réessayer
+            </button>
+            {!isModule && (
+              <button
+                onClick={() => window.location.reload()}
+                style={{padding:'8px 18px', background:'var(--surface)', color:'var(--text)', border:'1px solid var(--border)', borderRadius:8, cursor:'pointer', fontWeight:600, fontFamily:'var(--font)'}}
+              >
+                Recharger la page
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Helper : wrapper module avec ErrorBoundary
+const SafeModule = ({ name, children }) => (
+  <ErrorBoundary moduleName={name}>{children}</ErrorBoundary>
+);
+
+// Exposer au global pour que les sous-modules (ex: ConsultantTools) puissent isoler leurs onglets
+window.SafeModule = SafeModule;
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <ErrorBoundary>
+    <App/>
+    {window.ToastContainer ? <window.ToastContainer/> : null}
+  </ErrorBoundary>
+);
+</script>
+</body>
+</html>

@@ -1,0 +1,699 @@
+// ─────────────────────────────────────────────────────
+// LAYOUT — Sidebar + Header + Mobile + Logo uploadable
+// ─────────────────────────────────────────────────────
+
+// Planning et Pointage fusionnés — un seul item de nav
+// Factures, Rôles & Accès, Établissements sont intégrés dans Outils consultant (consultant uniquement)
+const NAV_ITEMS = [
+  { id:'dashboard',        label:'Tableau de bord',     icon:'◈', permKey:'dashboard' },
+  { id:'planning',         label:'Planning & Pointage', icon:'▦', permKey:'planning' },
+  { id:'cartes',           label:'Cartes & Recettes',   icon:'◉', permKey:'recettes' },
+  { id:'inventaire',       label:'Inventaire',          icon:'▣', permKey:'inventaire' },
+  { id:'pertes',           label:'Pertes',              icon:'◬', permKey:'pertes' },
+  { id:'haccp',            label:'HACCP',               icon:'⊕', permKey:'haccp' },
+  { id:'sop',              label:'SOPs & Checklists',   icon:'☑', permKey:'sop' },
+  { id:'kit_cuisinier',    label:'Kit cuisinier',       icon:'🍳', permKey:'kit_cuisinier' },
+  { id:'fiches_salle',     label:'Fiches salle',        icon:'◫', permKey:'fiches_salle' },
+  { id:'documents',        label:'Documents',           icon:'▤', permKey:'documents' },
+  { id:'catalogue',        label:'Catalogue produits',  icon:'🛒', permKey:'catalogue' },
+  { id:'consultant_tools', label:'Outils consultant',   icon:'✦', permKey:'consultant_tools' },
+];
+
+const useIsMobile = () => {
+  const [mobile, setMobile] = React.useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  React.useEffect(() => {
+    const handler = () => setMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return mobile;
+};
+
+const Layout = ({ user, currentPage, setPage, onLogout, children, etablissement, setEtablissement }) => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = React.useState(!isMobile);
+  const [notifOpen, setNotifOpen] = React.useState(false);
+  const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
+  const [showMore, setShowMore] = React.useState(false);
+  const [logoHover, setLogoHover] = React.useState(false);
+
+  // Logo applicatif = logo de l'établissement courant (stocké dans etablissements.logo_url DB).
+  // Migration douce : si rien en DB et qu'il y a une valeur localStorage, on la pousse en DB.
+  const appLogo = etablissement?.logo_url || null;
+  const fileInputRef = React.useRef(null);
+
+  // ─── Migration douce localStorage → DB pour le logo (one-shot par établissement) ───
+  // Si le user a déjà un logo dans localStorage mais que l'établissement n'en a pas en DB,
+  // on pousse le logo localStorage vers la DB une seule fois, puis on nettoie localStorage.
+  React.useEffect(() => {
+    if (!window.SB || !etablissement?.id) return;
+    if (etablissement.logo_url) return; // déjà en DB, rien à faire
+    const localLogo = (() => { try { return JSON.parse(localStorage.getItem('sc_app_logo') || 'null'); } catch { return null; } })();
+    if (!localLogo) return;
+    // On pousse en DB et on nettoie le localStorage
+    (async () => {
+      try {
+        await window.SB.db.updateEtablissementLogo(etablissement.id, localLogo);
+        try { localStorage.removeItem('sc_app_logo'); } catch(e) {}
+        console.log('[Migration] sc_app_logo localStorage → etablissements.logo_url DB (etab=' + etablissement.id + ')');
+      } catch (err) {
+        console.warn('[Migration logo] échec, on garde localStorage', err);
+      }
+    })();
+  }, [etablissement?.id, etablissement?.logo_url]);
+
+  // Permissions dynamiques (relues à chaque render depuis DEMO_DATA, hydraté depuis localStorage)
+  const perms = DEMO_DATA.permissions[user.role] || {};
+  const roleInfo = DEMO_DATA.roles[user.role];
+
+  // Établissements accessibles à l'utilisateur — en state live synchronisé avec Supabase
+  const [etabsAll, setEtabsAll] = React.useState(() => DEMO_DATA.etablissements || []);
+  React.useEffect(() => {
+    if (!window.SB) return;
+    let mounted = true;
+    let unsub = null;
+
+    const reload = async () => {
+      try {
+        const rows = await window.SB.db.listEtablissements();
+        if (!mounted) return;
+        const mapped = (rows || []).map(r => ({
+          id: r.id, nom: r.nom, type: r.type, adresse: r.adresse, tel: r.tel,
+          email: r.email, couleur: r.couleur, actif: r.actif, notes: r.notes,
+          ccntHeuresSemaine: r.ccnt_heures_semaine,
+          logo_url: r.logo_url, // utilisé pour le logo applicatif et les PDF de facture
+        }));
+        setEtabsAll(mapped);
+        DEMO_DATA.etablissements = mapped;
+      } catch (err) { console.error('[Layout etabs]', err); }
+    };
+
+    reload();
+    unsub = window.SB.realtime.subscribe('etablissements', reload);
+    return () => { mounted = false; unsub && unsub(); };
+  }, []);
+
+  const etabs = etabsAll.filter(e => user.etablissementIds?.includes(e.id));
+
+  // Persister l'établissement courant en DB (user_settings.current_etab_id) pour que
+  // l'utilisateur retrouve son établissement à la connexion depuis n'importe quel device.
+  // On garde aussi un mirror localStorage (legacy) pour pdf-utils qui est synchrone.
+  React.useEffect(() => {
+    if (!etablissement?.id) return;
+    // 1. Mirror localStorage (legacy, lu par pdf-utils _getCurrentEtablissement de manière synchrone)
+    try { scWrite('sc_current_etab', etablissement.id); } catch(e) {}
+    // 2. Source de vérité : DB (user_settings)
+    if (window.SB?.db?.setUserSetting) {
+      window.SB.db.setUserSetting('current_etab_id', etablissement.id).catch(err => {
+        console.warn('[Layout] save current_etab_id failed', err);
+      });
+    }
+  }, [etablissement?.id]);
+
+  // Nav filtrée : on cache TOUT module dont la permission est explicitement false.
+  // Si la permission n'existe pas (undefined) → on suit la valeur par défaut du rôle dans DEMO_DATA.
+  // Si la valeur par défaut est aussi absente → on affiche par défaut (nouveau module ajouté côté code).
+  const visibleNav = NAV_ITEMS.filter(item => {
+    const permVal = perms[item.permKey];
+    if (permVal === false) return false;
+    if (permVal === true) return true;
+    // permVal undefined : fallback sur les défauts du rôle
+    const defaultPerms = (DEMO_DATA.permissions && DEMO_DATA.permissions[user.role]) || {};
+    if (defaultPerms[item.permKey] === false) return false;
+    return true;
+  });
+
+  // ═══ ALERTES DYNAMIQUES : Pointages manquants + HACCP en retard ═══
+  const alertes = React.useMemo(() => {
+    const result = [];
+    const today = new Date().toISOString().slice(0, 10);
+    const etabId = etablissement?.id || 'etab-1';
+
+    // 1. Pointages manquants : shifts d'aujourd'hui où l'employé devait être là mais n'a pas pointé l'arrivée
+    try {
+      const planning = scRead('sc_planning', DEMO_DATA.planning);
+      const now = new Date();
+      const nowTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const todayShifts = planning.filter(s => s.date === today && (s.etablissementId || 'etab-1') === etabId);
+      todayShifts.forEach(shift => {
+        if (!shift.pointageDebut && shift.debut && shift.debut <= nowTime) {
+          const emp = DEMO_DATA.utilisateurs.find(u => u.id === shift.userId);
+          if (emp) {
+            result.push({
+              txt: `Pointage manquant — ${emp.prenom} ${emp.nom} (${shift.debut})`,
+              type: 'warn',
+              category: 'pointage',
+            });
+          }
+        }
+      });
+    } catch (e) { /* silencieux */ }
+
+    // 2. Relevés HACCP en retard : tâches/contrôles non effectués à date
+    try {
+      const releves = scRead('sc_haccp_releves', []);
+      const controls = scRead('sc_haccp_controls', []);
+      // Compter les contrôles de ce jour non effectués
+      const todayControls = (Array.isArray(controls) ? controls : []).filter(c => c.date === today && (c.etablissementId || 'etab-1') === etabId && !c.effectue);
+      todayControls.forEach(c => {
+        result.push({
+          txt: `HACCP en retard — ${c.nom || c.type || 'contrôle'} (aujourd'hui)`,
+          type: 'warn',
+          category: 'haccp',
+        });
+      });
+      // Relevés de température hors plage sur les 2 derniers jours
+      const d2 = new Date(); d2.setDate(d2.getDate() - 2);
+      const d2str = d2.toISOString().slice(0, 10);
+      const relevesRecent = (Array.isArray(releves) ? releves : []).filter(r => r.date >= d2str && (r.etablissementId || 'etab-1') === etabId);
+      relevesRecent.forEach(r => {
+        if (r.horsPlage || r.alerte) {
+          result.push({
+            txt: `⚠ HACCP — ${r.zone || r.equipement || 'relevé'} hors plage (${r.valeur || '?'}°C le ${r.date})`,
+            type: 'warn',
+            category: 'haccp',
+          });
+        }
+      });
+    } catch (e) { /* silencieux */ }
+
+    return result.slice(0, 10); // max 10 alertes affichées
+  }, [currentPage, etablissement]);
+
+  React.useEffect(() => { if (isMobile) setSidebarOpen(false); }, [currentPage, isMobile]);
+
+  const handleSetPage = (p) => { setPage(p); if (isMobile) setSidebarOpen(false); };
+
+  const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
+
+  // ── Logo upload (consultant uniquement)
+  const canEditLogo = user.role === 'consultant';
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      window.notify('Veuillez sélectionner une image (PNG, JPG, SVG).', 'warning');
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      window.notify('Image trop lourde (max 500 Ko). Merci d\'en choisir une plus petite.', 'warning');
+      return;
+    }
+    if (!etablissement?.id) {
+      window.notify('Aucun établissement sélectionné.', 'warning');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      const dataUrl = ev.target.result;
+      // 1. On met à jour la DB (synchronisé multi-device)
+      if (window.SB) {
+        try {
+          await window.SB.db.updateEtablissementLogo(etablissement.id, dataUrl);
+          window.notify('✓ Logo mis à jour pour ' + etablissement.nom, 'success');
+        } catch (err) {
+          window.notify('Erreur enregistrement logo : ' + err.message, 'error');
+          return;
+        }
+      }
+      // 2. Petit delay puis le realtime de etablissements va rafraîchir l'UI naturellement.
+      // Pas besoin de setState manuel : le subscribe sur 'etablissements' va déclencher la mise à jour.
+      setLogoMenuOpen(false);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleLogoRemove = async () => {
+    if (!etablissement?.id) return;
+    if (!window.confirm('Revenir au logo par défaut "SC" pour ' + etablissement.nom + ' ?')) return;
+    if (window.SB) {
+      try {
+        await window.SB.db.updateEtablissementLogo(etablissement.id, null);
+      } catch (err) {
+        window.notify('Erreur suppression logo : ' + err.message, 'error');
+        return;
+      }
+    }
+    try { localStorage.removeItem('sc_app_logo'); } catch(e) {} // nettoyage legacy
+    setLogoMenuOpen(false);
+  };
+
+  // LogoMark et LogoMenu : fonctions de rendu (pas des composants React)
+  // afin d'éviter le problème des composants définis à l'intérieur d'autres composants
+  const renderLogoMark = (size = 34, fontSize = 12) => (
+    <div style={{
+      width: size, height: size, borderRadius: 8,
+      background: appLogo ? 'transparent' : 'var(--accent)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 700, fontSize, color: '#fff',
+      fontFamily: 'var(--font-serif)', letterSpacing: 1, flexShrink: 0,
+      overflow: 'hidden', position: 'relative',
+      cursor: canEditLogo ? 'pointer' : 'default',
+      border: canEditLogo && logoHover ? '2px dashed var(--accent)' : '2px solid transparent',
+      transition: 'border 0.15s',
+    }}
+    onMouseEnter={() => canEditLogo && setLogoHover(true)}
+    onMouseLeave={() => setLogoHover(false)}
+    onClick={canEditLogo ? (e) => { e.stopPropagation(); setLogoMenuOpen(!logoMenuOpen); } : undefined}
+    title={canEditLogo ? 'Cliquer pour changer le logo' : ''}>
+      {appLogo
+        ? <img src={appLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : 'SC'}
+      {canEditLogo && logoHover && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: size > 30 ? 14 : 10, color: '#fff',
+        }}>
+          ✎
+        </div>
+      )}
+    </div>
+  );
+
+  const renderLogoMenu = () => (
+    logoMenuOpen && canEditLogo && (
+      <div style={ls.logoMenu} onClick={e => e.stopPropagation()}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleLogoUpload}
+        />
+        <button style={ls.logoMenuBtn} onClick={() => fileInputRef.current?.click()}>
+          📁 Changer le logo
+        </button>
+        {appLogo && (
+          <button style={{ ...ls.logoMenuBtn, color: '#dc2626' }} onClick={handleLogoRemove}>
+            🗑 Retirer le logo
+          </button>
+        )}
+        <div style={{ fontSize: 10, color: 'var(--text2)', padding: '8px 12px 4px', borderTop: '1px solid var(--border)' }}>
+          Max 500 Ko. PNG, JPG ou SVG.
+        </div>
+      </div>
+    )
+  );
+
+  // ════════════════════════════════
+  // MOBILE BOTTOM NAV
+  // ════════════════════════════════
+  if (isMobile) {
+    // ═══════════════════════════════════════════════════════════════
+    // MOBILE v2 — Hamburger qui ouvre un drawer latéral gauche
+    // ═══════════════════════════════════════════════════════════════
+    return (
+      <div style={mls.root}>
+        {/* ─── Header fixe en haut ─── */}
+        <header style={mls.topbar}>
+          {/* Bouton hamburger */}
+          <button style={mls.hamburger} onClick={() => setSidebarOpen(true)} aria-label="Menu">
+            <span style={mls.hamLine} />
+            <span style={mls.hamLine} />
+            <span style={mls.hamLine} />
+          </button>
+
+          {/* Titre central */}
+          <div style={mls.title}>{currentItem?.label || 'Tableau de bord'}</div>
+
+          {/* Cloche notifications à droite */}
+          <div style={{ position: 'relative' }}>
+            <button style={mls.bellBtn} onClick={() => setNotifOpen(!notifOpen)}>
+              <span style={{ fontSize: 20 }}>🔔</span>
+              {alertes.length > 0 && <div style={mls.notifDot}>{alertes.length}</div>}
+            </button>
+            {notifOpen && (
+              <div style={mls.notifPanel}>
+                <div style={mls.notifHeader}>Alertes ({alertes.length})</div>
+                {alertes.length === 0 && <div style={{ ...mls.notifItem, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid #16a34a' }}>✓ Aucune alerte — tout est à jour</div>}
+                {alertes.map((a, i) => (
+                  <div key={i} style={{ ...mls.notifItem, borderLeft: `3px solid ${a.type === 'warn' ? '#f59e0b' : '#3b82f6'}` }}>{a.txt}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* ─── Overlay sombre (visible seulement quand le drawer est ouvert) ─── */}
+        {sidebarOpen && <div style={mls.overlay} onClick={() => setSidebarOpen(false)} />}
+
+        {/* ─── Drawer latéral gauche ─── */}
+        <aside style={{ ...mls.drawer, transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+          {/* Header drawer : logo + nom consulting + fermeture */}
+          <div style={mls.drawerHead}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ position: 'relative' }}>
+                {renderLogoMark(36, 13)}
+                {renderLogoMenu()}
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Samper</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)' }}>Consulting</div>
+              </div>
+            </div>
+            <button style={mls.closeDrawer} onClick={() => setSidebarOpen(false)} aria-label="Fermer">✕</button>
+          </div>
+
+          {/* Carte utilisateur */}
+          <div style={mls.userCard}>
+            <div style={{ ...mls.drawerAvatar, background: roleInfo.couleur }}>{user.avatar}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.prenom} {user.nom}</div>
+              <div style={{ fontSize: 11, color: roleInfo.couleur, fontWeight: 600 }}>{roleInfo.label}</div>
+            </div>
+          </div>
+
+          {/* Switch établissement — visible si l'utilisateur a accès à 2+ établissements */}
+          {etabs.length > 1 && (
+            <div style={mls.etabSwitcher}>
+              <div style={mls.etabSwitcherLabel}>Établissement</div>
+              {etabs.map(et => {
+                const active = etablissement?.id === et.id;
+                return (
+                  <button
+                    key={et.id}
+                    style={{ ...mls.etabOption, ...(active ? mls.etabOptionActive : {}) }}
+                    onClick={() => { setEtablissement(et); setSidebarOpen(false); }}
+                  >
+                    <span style={{ ...mls.etabDot, background: et.couleur || 'var(--accent)' }} />
+                    <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{et.nom}</span>
+                    {active && <span style={{ color: 'var(--accent)', fontSize: 14 }}>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Si un seul établissement, juste afficher son nom */}
+          {etabs.length === 1 && etablissement && (
+            <div style={mls.etabSingle}>
+              <span style={{ ...mls.etabDot, background: etablissement.couleur || 'var(--accent)' }} />
+              <span>{etablissement.nom}</span>
+            </div>
+          )}
+
+          {/* Liste des modules */}
+          <nav style={mls.drawerNav}>
+            {visibleNav.map(item => {
+              const active = currentPage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  style={{ ...mls.drawerItem, ...(active ? mls.drawerItemActive : {}) }}
+                  onClick={() => handleSetPage(item.id)}
+                >
+                  
+                  <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+                  {active && <span style={{ color: 'var(--accent)', fontSize: 16 }}>●</span>}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Bouton déconnexion en bas */}
+          <div style={mls.drawerFooter}>
+            <button style={mls.logoutBtn} onClick={onLogout}>
+              Se déconnecter
+            </button>
+          </div>
+        </aside>
+
+        {/* ─── Contenu principal ─── */}
+        <main style={mls.content} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════
+  // DESKTOP
+  // ════════════════════════════════
+  return (
+    <div style={ls.root} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+      <aside style={{ ...ls.sidebar, width: sidebarOpen ? 234 : 58 }}>
+        <div style={ls.sidebarTop}>
+          <div style={ls.logoWrap}>
+            <div style={{ position: 'relative' }}>
+              {renderLogoMark(34, 12)}
+              {renderLogoMenu()}
+            </div>
+            {sidebarOpen && (
+              <div style={ls.logoText}>
+                <div style={ls.logoName}>Samper Consulting</div>
+                <div style={ls.logoSub}>Gestion culinaire</div>
+              </div>
+            )}
+          </div>
+          <button style={ls.toggleBtn} onClick={() => setSidebarOpen(!sidebarOpen)}>
+            {sidebarOpen ? '◂' : '▸'}
+          </button>
+        </div>
+
+        {sidebarOpen && etabs.length > 0 && (
+          <div style={ls.etabWrap}>
+            <div style={ls.etabLabel}>Établissement</div>
+            <select style={ls.etabSelect} value={etablissement?.id || etabs[0].id} onChange={e => setEtablissement(etabs.find(et => et.id === e.target.value))}>
+              {etabs.map(et => <option key={et.id} value={et.id} style={{ background: '#1a1a1a', color: '#fff' }}>{et.nom}</option>)}
+            </select>
+          </div>
+        )}
+
+        <nav style={ls.nav}>
+          {visibleNav.map(item => {
+            const active = currentPage === item.id;
+            return (
+              <button key={item.id}
+                style={{ ...ls.navItem, ...(active ? ls.navActive : {}), justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+                onClick={() => handleSetPage(item.id)} title={!sidebarOpen ? item.label : ''}>
+                
+                {sidebarOpen && <span style={ls.navLabel}>{item.label}</span>}
+                {active && <div style={ls.navActiveLine} />}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div style={{ ...ls.userArea, padding: sidebarOpen ? '14px 16px' : '14px 0', justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
+          <div style={{ ...ls.avatar, background: roleInfo.couleur }}>{user.avatar}</div>
+          {sidebarOpen && (
+            <div style={ls.userInfo}>
+              <div style={ls.userName}>{user.prenom} {user.nom}</div>
+              <div style={{ ...ls.userRole, color: roleInfo.couleur }}>{roleInfo.label}</div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <div style={ls.main}>
+        <header style={ls.topbar}>
+          <div style={ls.topbarLeft}>
+            <div style={ls.pageTitle}>{currentItem?.label || 'Tableau de bord'}</div>
+            {etablissement && <div style={ls.etabBadge}>{etablissement.nom}</div>}
+          </div>
+          <div style={ls.topbarRight}>
+            <div style={{ position: 'relative' }}>
+              <button style={ls.iconBtn} onClick={(e) => { e.stopPropagation(); setNotifOpen(!notifOpen); }}>
+                <span>🔔</span>
+                {alertes.length > 0 && <div style={ls.notifDot}>{alertes.length}</div>}
+              </button>
+              {notifOpen && (
+                <div style={ls.notifPanel}>
+                  <div style={ls.notifHeader}>Alertes ({alertes.length})</div>
+                  {alertes.length === 0 && <div style={{ ...ls.notifItem, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid #16a34a' }}>✓ Aucune alerte — tout est à jour</div>}
+                  {alertes.map((a, i) => (
+                    <div key={i} style={{ ...ls.notifItem, borderLeft: `3px solid ${a.type === 'warn' ? '#f59e0b' : '#3b82f6'}` }}>{a.txt}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={ls.topbarDivider} />
+            <button style={ls.logoutBtn} onClick={onLogout}>Déconnexion</button>
+          </div>
+        </header>
+
+        <main style={ls.content}>{children}</main>
+      </div>
+    </div>
+  );
+};
+
+const ls = {
+  // Desktop
+  root: { display: 'flex', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)', overflow: 'hidden' },
+  sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'visible', borderRight: '1px solid rgba(255,255,255,0.05)', transition: 'width .18s' },
+  sidebarTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  logoWrap: { display: 'flex', alignItems: 'center', gap: 10, overflow: 'visible' },
+  logoText: { overflow: 'hidden' },
+  logoName: { color: '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1.2, whiteSpace: 'nowrap' },
+  logoSub: { color: 'rgba(255,255,255,0.4)', fontSize: 10, whiteSpace: 'nowrap' },
+  logoMenu: { position: 'absolute', top: '100%', left: 0, marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.12)', width: 200, zIndex: 300, overflow: 'hidden' },
+  logoMenuBtn: { width: '100%', display: 'block', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  toggleBtn: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: 14, padding: 4, flexShrink: 0 },
+  etabWrap: { padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  etabLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 10, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 },
+  etabSelect: { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.95)', borderRadius: 6, padding: '7px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'rgba(255,255,255,0.6)\'%3e%3cpath d=\'M7 10l5 5 5-5z\'/%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '16px', paddingRight: 26 },
+  nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '12px 8px', overflowY: 'auto' },
+  navItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 8, border: 'none', background: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left' },
+  navActive: { background: 'rgba(255,255,255,0.1)', color: '#fff' },
+  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--accent)', borderRadius: 2 },
+  navIcon: { fontSize: 14, flexShrink: 0, width: 18, textAlign: 'center' },
+  navLabel: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  userArea: { display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, boxSizing: 'border-box' },
+  avatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
+  userInfo: { overflow: 'hidden' },
+  userName: { color: '#fff', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  userRole: { fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' },
+  main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 },
+  topbarLeft: { display: 'flex', alignItems: 'center', gap: 12 },
+  pageTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
+  etabBadge: { background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20 },
+  topbarRight: { display: 'flex', alignItems: 'center', gap: 12 },
+  iconBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, position: 'relative', padding: 4 },
+  notifDot: { position: 'absolute', top: 0, right: 0, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  notifPanel: { position: 'absolute', right: 0, top: 40, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 200 },
+  notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
+  topbarDivider: { width: 1, height: 20, background: 'var(--border)' },
+  logoutBtn: { background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
+  content: { flex: 1, overflowY: 'auto', padding: '24px' },
+
+  // Mobile
+  mobileRoot: { display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)' },
+  mobileTopbar: { height: 54, background: 'var(--nav)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', flexShrink: 0, gap: 10 },
+  mobileTitle: { flex: 1, color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-serif)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  mobileEtabSelect: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)', borderRadius: 5, padding: '4px 6px', fontSize: 11, maxWidth: 100, fontFamily: 'var(--font)' },
+  mobileContent: { flex: 1, overflowY: 'auto', padding: '12px', WebkitOverflowScrolling: 'touch' },
+  mobileNav: { display: 'flex', background: 'var(--surface)', borderTop: '1px solid var(--border)', flexShrink: 0, position: 'relative', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
+  mobileNavBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 4px 10px', background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', gap: 2, minHeight: 58 },
+  mobileNavActive: { color: 'var(--accent)' },
+  mobileAvatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
+  moreDrawer: { position: 'absolute', bottom: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px 12px 0 0', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', padding: '8px 0', maxHeight: '70vh', overflowY: 'auto' },
+  moreItem: { display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px', background: 'none', border: 'none', width: '100%', cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)', transition: 'background .1s' },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// MOBILE LAYOUT STYLES (v2 — hamburger + drawer)
+// ═══════════════════════════════════════════════════════════════
+const mls = {
+  root: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'var(--font)' },
+
+  // Header fixe haut
+  topbar: {
+    position: 'sticky', top: 0, zIndex: 50,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '10px 14px',
+    background: 'var(--surface)',
+    borderBottom: '1px solid var(--border)',
+    minHeight: 56,
+  },
+  hamburger: {
+    width: 40, height: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+    background: 'none', border: 'none', cursor: 'pointer', padding: 8,
+  },
+  hamLine: { width: 22, height: 2, background: 'var(--text)', borderRadius: 2, transition: 'all 0.15s' },
+  title: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', textAlign: 'center', flex: 1, paddingLeft: 8, paddingRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  bellBtn: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 },
+  notifDot: { position: 'absolute', top: 6, right: 6, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
+  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.15)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
+  notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
+
+  // Overlay sombre quand drawer ouvert
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90, animation: 'fadeIn 0.2s' },
+
+  // Drawer latéral gauche
+  drawer: {
+    position: 'fixed', top: 0, left: 0, bottom: 0, width: '80%', maxWidth: 320,
+    background: 'var(--surface)',
+    zIndex: 100,
+    display: 'flex', flexDirection: 'column',
+    transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: '4px 0 24px rgba(0,0,0,0.12)',
+  },
+  drawerHead: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '16px 18px',
+    borderBottom: '1px solid var(--border)',
+  },
+  closeDrawer: {
+    width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
+    cursor: 'pointer', fontSize: 16, color: 'var(--text2)',
+  },
+  userCard: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '14px 18px', borderBottom: '1px solid var(--border)',
+    background: 'var(--bg)',
+  },
+  drawerAvatar: {
+    width: 42, height: 42, borderRadius: 10,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0,
+  },
+  drawerNav: {
+    flex: 1, overflowY: 'auto', padding: '12px 10px',
+    display: 'flex', flexDirection: 'column', gap: 2,
+  },
+  etabSwitcher: {
+    padding: '12px 14px',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--bg)',
+  },
+  etabSwitcherLabel: {
+    fontSize: 10, fontWeight: 700, color: 'var(--text2)',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  etabOption: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    width: '100%', padding: '10px 12px',
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 8, marginBottom: 6,
+    cursor: 'pointer', fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 600, color: 'var(--text)',
+    minHeight: 40,
+  },
+  etabOptionActive: {
+    borderColor: 'var(--accent)', background: 'var(--accent-light)',
+    color: 'var(--accent)',
+  },
+  etabDot: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },
+  etabSingle: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '10px 14px',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--bg)',
+    fontSize: 12, fontWeight: 600, color: 'var(--text2)',
+  },
+  drawerItem: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '13px 14px', borderRadius: 8,
+    background: 'none', border: 'none', width: '100%',
+    cursor: 'pointer', fontFamily: 'var(--font)',
+    fontSize: 14, fontWeight: 600, color: 'var(--text)',
+    textAlign: 'left',
+  },
+  drawerItemActive: {
+    background: 'var(--accent-light)', color: 'var(--accent)',
+  },
+  drawerIcon: { fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 },
+  drawerFooter: {
+    padding: '12px 14px',
+    borderTop: '1px solid var(--border)',
+  },
+  logoutBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
+    padding: '11px 14px', background: 'var(--bg)', border: '1px solid var(--border)',
+    borderRadius: 8, color: 'var(--text2)', cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+  },
+
+  content: { flex: 1, padding: '16px 14px', overflowY: 'auto' },
+};
+
+Object.assign(window, { Layout });
