@@ -1497,6 +1497,5 @@ export function installLegacySupabase() {
   // ─────────────────────────────────────────
   const legacySupabase = { client, auth, db, realtime };
   setLegacySB(legacySupabase);
-  console.log('[Supabase] Client initialisé ✓');
   return legacySupabase;
 }

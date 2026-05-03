@@ -1,11 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getBrowserWindow, readLegacyGlobal } from '../legacy/legacyApi.js';
 
-const fallbackConfig = {
-  url: 'https://ppmtoiqgajwcdkbnrcll.supabase.co',
-  anonKey: 'sb_publishable_Vp4K1VX34PBe4lID0qFS1w_JD2sc5Ov'
-};
-
 function readLegacyConfig() {
   return readLegacyGlobal('SUPABASE_CONFIG') || {};
 }
@@ -22,9 +17,9 @@ export function getSupabaseConfig() {
   const legacy = readLegacyConfig();
 
   return {
-    url: env.url || legacy.url || fallbackConfig.url,
-    anonKey: env.anonKey || legacy.anonKey || fallbackConfig.anonKey,
-    source: env.url && env.anonKey ? 'env' : legacy.url && legacy.anonKey ? 'legacy' : 'fallback'
+    url: env.url || legacy.url || null,
+    anonKey: env.anonKey || legacy.anonKey || null,
+    source: env.url && env.anonKey ? 'env' : legacy.url && legacy.anonKey ? 'legacy' : 'missing'
   };
 }
 
@@ -39,7 +34,15 @@ export function getSupabaseConfigState() {
 
 const config = getSupabaseConfig();
 
-export const supabase = createClient(config.url, config.anonKey, {
+if (!config.url || !config.anonKey) {
+  console.error(
+    '[Supabase] Configuration manquante. Définissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY ' +
+    'dans votre fichier .env (développement) ou dans les variables d\'environnement Vercel (production). ' +
+    'Voir .env.example pour le format attendu.'
+  );
+}
+
+export const supabase = createClient(config.url ?? '', config.anonKey ?? '', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

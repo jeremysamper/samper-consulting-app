@@ -443,7 +443,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       if (/fromage/.test(fullLine)) { categorie = 'Fromages'; catFound = true; break; }
       if (/\bplat\b|\bchaud\b/.test(fullLine)) { categorie = 'Plats'; catFound = true; break; }
     }
-    console.log('[parseFicheUnique] Catégorie détectée:', categorie, catFound ? '(trouvée)' : '(défaut)');
 
     // Trouver nom : "Produit :" > "Plat :" > fallback
     let nom = '';
@@ -587,13 +586,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             (foundMarkers.includes('produit') || foundMarkers.includes('plat') || foundMarkers.includes('header'))) {
           isFicheUnique = true;
         }
-        console.log('[import] Marqueurs détectés:', foundMarkers, '→ isFicheUnique:', isFicheUnique);
-
         if (isFicheUnique) {
           // ═══ FORMAT FICHE UNIQUE ═══
-          console.log('[import] Format fiche unique détecté');
           const recette = parseFicheUnique(firstRows);
-          console.log('[import] Recette parsée:', recette);
           if (!recette) { notifyLegacy('Impossible de parser cette fiche. Vérifiez le format.', 'error'); return; }
           if (!recette.ingredients || recette.ingredients.length === 0) {
             console.warn('[import] ⚠ Aucun ingrédient détecté. Lignes reçues:', firstRows);
@@ -615,8 +610,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         }
 
         if (!hasMultiFormat) {
-          console.log('[import] Format non reconnu. Premières lignes :', firstRows.slice(0, 5));
-          alertLegacy('Format non reconnu.\n\nFormats acceptés :\n• Template multi-recettes (feuilles "Recettes" + "Ingrédients" + "Étapes")\n• Fiche unique commençant par "Fiche recette"\n\nVérifiez la console (F12) pour voir le contenu détecté.');
+          alertLegacy('Format non reconnu.\n\nFormats acceptés :\n• Template multi-recettes (feuilles "Recettes" + "Ingrédients" + "Étapes")\n• Fiche unique commençant par "Fiche recette"');
           return;
         }
 
