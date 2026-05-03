@@ -10,12 +10,6 @@ import { readText, writeText } from '../utils/storage.js';
 // ═══════════════════════════════════════════════════════════════
 
 export function installLegacySupabase() {
-  const cfg = getSupabaseConfig();
-  if (!cfg.url || cfg.url.includes('VOTRE-PROJET')) {
-    console.warn('[Supabase] Config manquante. Renseignez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.');
-    setLegacySB(null);
-    return;
-  }
   const client = supabase;
 
   // Cache mémoire des user_settings de l'utilisateur courant (Map<key, value>).

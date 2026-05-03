@@ -1,11 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getBrowserWindow, readLegacyGlobal } from '../legacy/legacyApi.js';
 
-const fallbackConfig = {
-  url: 'https://ppmtoiqgajwcdkbnrcll.supabase.co',
-  anonKey: 'sb_publishable_Vp4K1VX34PBe4lID0qFS1w_JD2sc5Ov'
-};
-
 function readLegacyConfig() {
   return readLegacyGlobal('SUPABASE_CONFIG') || {};
 }
@@ -21,29 +16,29 @@ export function getSupabaseConfig() {
   const env = readEnvConfig();
   const legacy = readLegacyConfig();
 
-  return {
-    url: env.url || legacy.url || fallbackConfig.url,
-    anonKey: env.anonKey || legacy.anonKey || fallbackConfig.anonKey,
-    source: env.url && env.anonKey ? 'env' : legacy.url && legacy.anonKey ? 'legacy' : 'fallback'
-  };
+  const url = env.url || legacy.url || '';
+  const anonKey = env.anonKey || legacy.anonKey || '';
+  const source = env.url && env.anonKey ? 'env' : legacy.url && legacy.anonKey ? 'legacy' : 'missing';
+
+  return { url, anonKey, source };
 }
 
 export function getSupabaseConfigState() {
   const config = getSupabaseConfig();
 
   return {
-    ready: Boolean(config.url && config.anonKey),
+    ready: config.source !== 'missing',
     source: config.source
   };
 }
 
 const config = getSupabaseConfig();
 
-if (config.source === 'fallback') {
-  console.warn(
-    '[Supabase] Aucune variable d\'environnement VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY détectée. ' +
-    'Le client pointe vers le projet de développement par défaut. ' +
-    'Créez un fichier .env (voir .env.example) pour utiliser votre propre instance.'
+if (config.source === 'missing') {
+  throw new Error(
+    '[Supabase] Configuration manquante.\n' +
+    'VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont requis.\n' +
+    'Copiez .env.example en .env et renseignez vos valeurs.'
   );
 }
 
