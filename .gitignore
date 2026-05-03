@@ -46,6 +46,9 @@ preview.*.log
 vite.config.js.timestamp-*
 probe-*.txt
 
+# === OUTILS DE DÉVELOPPEMENT ===
+.claude/
+
 # === ÉDITEURS / OS ===
 .DS_Store
 Thumbs.db

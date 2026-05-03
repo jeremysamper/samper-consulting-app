@@ -39,6 +39,14 @@ export function getSupabaseConfigState() {
 
 const config = getSupabaseConfig();
 
+if (config.source === 'fallback') {
+  console.warn(
+    '[Supabase] Aucune variable d\'environnement VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY détectée. ' +
+    'Le client pointe vers le projet de développement par défaut. ' +
+    'Créez un fichier .env (voir .env.example) pour utiliser votre propre instance.'
+  );
+}
+
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
     persistSession: true,

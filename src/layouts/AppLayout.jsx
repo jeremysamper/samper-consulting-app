@@ -50,8 +50,7 @@ export default function AppLayout({
     (async () => {
       try {
         await legacySB.db.updateEtablissementLogo(etablissement.id, localLogo);
-        removeStorageKeys(['sc_app_logo'])
-        console.log('[Migration] sc_app_logo localStorage → etablissements.logo_url DB (etab=' + etablissement.id + ')');
+        removeStorageKeys(['sc_app_logo']);
       } catch (err) {
         console.warn('[Migration logo] échec, on garde localStorage', err);
       }
