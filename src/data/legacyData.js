@@ -375,7 +375,6 @@ export async function hydrateFromSupabase() {
     if (perms && Object.keys(perms).length) {
       DEMO_DATA.permissions = { ...DEMO_DATA.permissions, ...perms };
     }
-    console.log('[Data] Hydraté depuis Supabase ✓', { etabs: etabs?.length, users: profiles?.length });
     return true;
   } catch (err) {
     console.error('[Data] Erreur hydratation Supabase:', err);

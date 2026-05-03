@@ -163,7 +163,6 @@ const Parametres = ({ user }) => {
           notifyLegacy("Échec silencieux de la sauvegarde (vérifiez les permissions RLS sur Supabase).", 'error');
           return;
         }
-        console.log('[Parametres] Établissement sauvegardé:', saved.id, saved.nom);
         // Force un reload local pour ne pas attendre le realtime
         try {
           const rows = await legacySB.db.listEtablissements();
