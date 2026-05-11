@@ -96,29 +96,29 @@ const Planning = ({ user, etablissement, initialTab }) => {
       } finally {
         if (mounted) setLoading(false);
       }
-
-      // Realtime : écouter les changements sur shifts
-      unsubscribe = legacySB.realtime.subscribe('shifts', (payload) => {
-        const row = payload.new || payload.old;
-        if (!row || row.etablissement_id !== etabId) return; // pas notre établissement
-
-        setPlanning(prev => {
-          if (payload.eventType === 'INSERT') {
-            const mapped = legacySB.db.mapShiftFromDB(payload.new);
-            if (prev.find(s => s.id === mapped.id)) return prev; // déjà présent (créé par nous)
-            return [...prev, mapped];
-          }
-          if (payload.eventType === 'UPDATE') {
-            const mapped = legacySB.db.mapShiftFromDB(payload.new);
-            return prev.map(s => s.id === mapped.id ? mapped : s);
-          }
-          if (payload.eventType === 'DELETE') {
-            return prev.filter(s => s.id !== payload.old.id);
-          }
-          return prev;
-        });
-      });
     })();
+
+    // Realtime en dehors du IIFE async : garantit le cleanup même si le chargement initial échoue
+    unsubscribe = legacySB.realtime.subscribe('shifts', (payload) => {
+      const row = payload.new || payload.old;
+      if (!row || row.etablissement_id !== etabId) return; // pas notre établissement
+
+      setPlanning(prev => {
+        if (payload.eventType === 'INSERT') {
+          const mapped = legacySB.db.mapShiftFromDB(payload.new);
+          if (prev.find(s => s.id === mapped.id)) return prev; // déjà présent (créé par nous)
+          return [...prev, mapped];
+        }
+        if (payload.eventType === 'UPDATE') {
+          const mapped = legacySB.db.mapShiftFromDB(payload.new);
+          return prev.map(s => s.id === mapped.id ? mapped : s);
+        }
+        if (payload.eventType === 'DELETE') {
+          return prev.filter(s => s.id !== payload.old.id);
+        }
+        return prev;
+      });
+    });
 
     return () => {
       mounted = false;

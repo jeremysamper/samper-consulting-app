@@ -24,6 +24,8 @@ const Dashboard = ({ user, etablissement, setPage }) => {
   const [sopExecutions, setSopExecutions] = React.useState([]);
   const [message, setMessage] = React.useState({ message: '', updatedBy: null, updatedAt: null });
   const [editingMessage, setEditingMessage] = React.useState(false);
+  // Ref pour éviter une stale closure dans le callback realtime
+  const editingMessageRef = React.useRef(false);
   const [messageDraft, setMessageDraft] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [pointageError, setPointageError] = React.useState('');
@@ -81,7 +83,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
     unsubs.push(legacySB.realtime.subscribe('consultant_messages', async () => {
       try {
         const m = await legacySB.db.getConsultantMessage(etabId);
-        if (mounted && m) { setMessage(m); if (!editingMessage) setMessageDraft(m.message); }
+        if (mounted && m) { setMessage(m); if (!editingMessageRef.current) setMessageDraft(m.message); }
       } catch (e) {}
     }));
 
@@ -140,12 +142,14 @@ const Dashboard = ({ user, etablissement, setPage }) => {
     if (!legacySB || !isConsultant) return;
     try {
       await legacySB.db.setConsultantMessage(etabId, messageDraft, user.id);
+      editingMessageRef.current = false;
       setEditingMessage(false);
     } catch (err) { notifyLegacy('Erreur sauvegarde message : ' + err.message, 'error'); }
   };
 
   const cancelEdit = () => {
     setMessageDraft(message.message);
+    editingMessageRef.current = false;
     setEditingMessage(false);
   };
 
@@ -263,7 +267,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         <div style={ds.messageHeader}>
           <div style={ds.messageTitle}><span style={{ fontSize: 18, marginRight: 6 }}>💬</span>Message du consultant</div>
           {isConsultant && !editingMessage && (
-            <button style={ds.editMessageBtn} onClick={() => setEditingMessage(true)}>
+            <button style={ds.editMessageBtn} onClick={() => { editingMessageRef.current = true; setEditingMessage(true); }}>
               {message.message ? '✎ Modifier' : '+ Écrire un message'}
             </button>
           )}

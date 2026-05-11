@@ -111,7 +111,7 @@ export default function AppLayout({
   // Nav filtrée : on cache TOUT module dont la permission est explicitement false.
   // Si la permission n'existe pas (undefined) → on suit la valeur par défaut du rôle dans DEMO_DATA.
   // Si la valeur par défaut est aussi absente → on affiche par défaut (nouveau module ajouté côté code).
-  const visibleNav = NAV_ITEMS.filter(item => {
+  const visibleNav = React.useMemo(() => NAV_ITEMS.filter(item => {
     const permVal = perms[item.permKey];
     if (permVal === false) return false;
     if (permVal === true) return true;
@@ -119,8 +119,8 @@ export default function AppLayout({
     const defaultPerms = (DEMO_DATA.permissions && DEMO_DATA.permissions[user.role]) || {};
     if (defaultPerms[item.permKey] === false) return false;
     return true;
-  });
-  const groupedNav = visibleNav.reduce((groups, item) => {
+  }), [perms, user.role]);
+  const groupedNav = React.useMemo(() => visibleNav.reduce((groups, item) => {
     const groupName = item.group || 'Modules';
     const group = groups.find((entry) => entry.label === groupName);
     if (group) {
@@ -129,7 +129,7 @@ export default function AppLayout({
       groups.push({ label: groupName, items: [item] });
     }
     return groups;
-  }, []);
+  }, []), [visibleNav]);
   // ═══ ALERTES DYNAMIQUES : Pointages manquants + HACCP en retard ═══
   const alertes = React.useMemo(() => {
     const result = [];

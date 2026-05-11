@@ -72,6 +72,13 @@ export default defineConfig({
     rollupOptions: {
       input: {
         app: 'vite-index.html'
+      },
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-xlsx': ['xlsx'],
+        }
       }
     }
   },
