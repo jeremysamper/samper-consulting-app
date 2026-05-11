@@ -427,7 +427,6 @@ export default function AppLayout({
                       style={{ ...mls.drawerItem, ...(active ? mls.drawerItemActive : {}) }}
                       onClick={() => handleSetPage(item.id)}
                     >
-                      <span style={mls.drawerIcon}>{item.icon || '•'}</span>
                       <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
                       {active && <span style={{ color: 'var(--accent)', fontSize: 16 }}>●</span>}
                     </button>

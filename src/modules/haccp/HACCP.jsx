@@ -6,6 +6,7 @@ import { CTRL_TYPES, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIA
 import { CtrlForm, ZoneForm } from './ZoneForms.jsx';
 import ZoneTile from './ZoneTile.jsx';
 import { hcfg, hs } from './HACCP.styles.js';
+import { isReleveConforme, parseHaccpNumber } from './HACCP.utils.js';
 import { dbService } from '../../services/dbService.js';
 
 
@@ -131,13 +132,8 @@ const HACCP = ({ user, etablissement }) => {
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
-  const isConforme = (zone, valeur) => {
-    const v = parseFloat(valeur);
-    if (isNaN(v)) return null;
-    if (zone.min !== null && zone.min !== undefined && zone.min !== '' && v < parseFloat(zone.min)) return false;
-    if (zone.max !== null && zone.max !== undefined && zone.max !== '' && v > parseFloat(zone.max)) return false;
-    return true;
-  };
+  // Conformité centralisée dans HACCP.utils.js (gère virgules FR, minus Unicode, auto-swap min/max)
+  const isConforme = isReleveConforme;
 
   const activeZones = zones.filter(z=>z.actif);
   const activeTpls  = ctrlTpls.filter(t=>t.actif);
@@ -163,7 +159,7 @@ const HACCP = ({ user, etablissement }) => {
       zoneId: formRel.zoneId,
       date: formRel.date,
       heure: formRel.heure,
-      valeur: parseFloat(formRel.valeur),
+      valeur: parseHaccpNumber(formRel.valeur),
       operateur: user.id,
       conforme,
       commentaire: formRel.commentaire || '',
@@ -267,14 +263,15 @@ const HACCP = ({ user, etablissement }) => {
   // ─── Saisie inline directement sur la tuile (states définis plus haut) ───
 
   const submitInlineReleve = async (zone, valeur) => {
-    if (!valeur || isNaN(parseFloat(valeur))) return;
+    const parsed = parseHaccpNumber(valeur);
+    if (Number.isNaN(parsed)) return;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     const heure = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     const conforme = isConforme(zone, valeur);
     const newReleve = {
       etablissementId: etabId, zoneId: zone.id,
-      date: today, heure, valeur: parseFloat(valeur),
+      date: today, heure, valeur: parsed,
       operateur: user.id, conforme, commentaire: '',
     };
     if (legacySB) {
@@ -295,7 +292,7 @@ const HACCP = ({ user, etablissement }) => {
   // l'opérateur, mais N appels Supabase séparés.
   const saveQuickReleves = async () => {
     const entries = Object.entries(quickReleves).filter(([_, v]) =>
-      v !== '' && v != null && !isNaN(parseFloat(v))
+      v !== '' && v != null && !Number.isNaN(parseHaccpNumber(v))
     );
     if (entries.length === 0) {
       notifyLegacy('Aucune valeur saisie', 'warning');
@@ -313,8 +310,8 @@ const HACCP = ({ user, etablissement }) => {
     for (const [zoneId, raw] of entries) {
       const zone = zones.find(z => z.id === zoneId);
       if (!zone) continue;
-      const valeur = parseFloat(raw);
-      const conforme = isConforme(zone, valeur);
+      const valeur = parseHaccpNumber(raw);
+      const conforme = isConforme(zone, raw);
       if (!conforme) nbAnomalies++;
       const newReleve = {
         etablissementId: etabId,
