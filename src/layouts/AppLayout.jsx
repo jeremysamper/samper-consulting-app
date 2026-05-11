@@ -495,7 +495,7 @@ export default function AppLayout({
                   <button key={item.id}
                     style={{ ...ls.navItem, ...(active ? ls.navActive : {}), justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
                     onClick={() => handleSetPage(item.id)} title={!sidebarOpen ? item.label : ''}>
-                    <span style={{ ...ls.navIcon, opacity: active ? 1 : 0.72 }}>{item.icon || '•'}</span>
+                    {!sidebarOpen && <span style={{ ...ls.navIcon, opacity: active ? 1 : 0.72 }}>{item.icon || '•'}</span>}
                     {sidebarOpen && <span style={ls.navLabel}>{item.label}</span>}
                     {active && sidebarOpen && <div style={ls.navActiveLine} />}
                   </button>
