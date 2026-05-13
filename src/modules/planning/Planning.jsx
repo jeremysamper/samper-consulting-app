@@ -807,7 +807,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 return (
                   <div key={shift.id} style={pls.mobileShiftCard} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
-                    <div style={{ ...pls.empAvatar, background: role?.couleur || '#888' }}>{emp?.avatar || '?'}</div>
+                    <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp?.avatar || '?'}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{emp?.prenom} {emp?.nom}</div>
                       <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -815,7 +815,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         {shift.debut}–{shift.fin} · {shift.poste}
                       </div>
                     </div>
-                    <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageDebut ? '#e0f2fe' : '#fef9c3', color: enPoste ? 'var(--success-text)' : shift.pointageDebut ? '#0369a1' : 'var(--warning-text)' }}>
+                    <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageDebut ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageDebut ? 'var(--info-text)' : 'var(--warning-text)' }}>
                       {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : 'Non pointé'}
                     </div>
                   </div>
@@ -843,12 +843,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
           return (
             <div key={shift.id} style={{ ...pls.mobileShiftCard, flexDirection: 'column', alignItems: 'stretch' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ ...pls.empAvatar, background: role?.couleur || '#888' }}>{emp?.avatar || '?'}</div>
+                <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp?.avatar || '?'}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{emp?.prenom} {emp?.nom}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste} · prévu {shift.debut}–{shift.fin}</div>
                 </div>
-                <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? '#e0f2fe' : '#fef9c3', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? '#0369a1' : 'var(--warning-text)' }}>
+                <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
                   {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
                 </div>
               </div>
@@ -895,7 +895,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateDay}>📋 Dupliquer journée</button>}
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>📅 Dupliquer semaine</button>}
         <div style={{ flex: 1 }} />
-        {canExport && <button style={{...pls.exportBtn, background:'#f5f5dc', borderColor:'#d4c8a0', color:'#6b5b2e'}} onClick={openCCNTModal}>📋 Relevé CCNT</button>}
+        {canExport && <button style={{...pls.exportBtn, background:'var(--accent-light)', borderColor:'var(--accent-bd)', color:'var(--accent)'}} onClick={openCCNTModal}>📋 Relevé CCNT</button>}
         {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>🖨 Imprimer</button>}
         <button style={pls.exportBtn} onClick={() => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>⬇ PDF</button>
       </div>
@@ -921,7 +921,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   // < 80% = sous-emploi (gris), 80-100% = OK (bleu accent), >100% = heures supp (orange)
                   const weekRatio = heuresContractSem > 0 ? totalHours / heuresContractSem : 0;
                   const weekColor = weekRatio === 0 ? 'var(--text2)'
-                                  : weekRatio < 0.8 ? '#64748b'
+                                  : weekRatio < 0.8 ? 'var(--text2)'
                                   : weekRatio <= 1.0 ? 'var(--accent)'
                                   : 'var(--warning-strong)';
                   return (
@@ -975,7 +975,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <span style={pls.ptCell}>{shift.pointageDebut || '—'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '—')}</span>
                     <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '—'}</span>
-                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? '#e0f2fe' : '#fef9c3', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? '#0369a1' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
+                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                   </div>
                 );
               })}
@@ -1057,10 +1057,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       }}
                       style={{
                         flex: 1, padding: '10px 8px', borderRadius: 8, fontSize: 12,
-                        background: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-bg)' : t.id === 'soir' ? '#e0e7ff' : 'var(--success-bg)') : 'var(--surface)',
+                        background: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-bg)' : t.id === 'soir' ? 'var(--info-bg)' : 'var(--success-bg)') : 'var(--surface)',
                         border: '1px solid',
-                        borderColor: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? '#fde047' : t.id === 'soir' ? '#a5b4fc' : 'var(--success-bd)') : 'var(--border)',
-                        color: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-text)' : t.id === 'soir' ? '#3730a3' : 'var(--success-text)') : 'var(--text2)',
+                        borderColor: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-bd)' : t.id === 'soir' ? 'var(--info-bd)' : 'var(--success-bd)') : 'var(--border)',
+                        color: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-text)' : t.id === 'soir' ? 'var(--info-text)' : 'var(--success-text)') : 'var(--text2)',
                         fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
                       }}>
                       {t.icon && <span style={{marginRight:4}}>{t.icon}</span>}{t.label}
@@ -1359,7 +1359,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <button style={pls.closeBtn} onClick={() => setShowCCNTModal(false)}>✕</button>
             </div>
             <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ background: '#fef9c3', border: '1px solid #fde047', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: '#713f12', lineHeight: 1.5 }}>
+              <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--warning-text)', lineHeight: 1.5 }}>
                 Document conforme aux <strong>articles 15 &amp; 21 CCNT</strong> hôtellerie-restauration suisse. À signer <strong>chaque mois</strong> par le collaborateur et l'employeur, à conserver <strong>5 ans</strong>.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -1678,7 +1678,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </div>
 
                 {/* Avertissement */}
-                <div style={{ background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 6, padding: 10, fontSize: 11, color: 'var(--warning-text)' }}>
+                <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: 10, fontSize: 11, color: 'var(--warning-text)' }}>
                   ⚠ Si un employé a déjà un horaire à une date sélectionnée, il sera <strong>remplacé</strong> par celui-ci.
                 </div>
 

@@ -27,7 +27,7 @@ const pls = {
   empAvatar: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 },
   empName: { fontSize: 12, fontWeight: 600 },
   dayCell: { minHeight: 72, padding: 6, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
-  shiftCell: { borderRadius: 8, padding: '8px 6px', position: 'relative', border: '1px solid rgba(0,0,0,0.04)' },
+  shiftCell: { borderRadius: 8, padding: '8px 6px', position: 'relative', border: '1px solid var(--border)' },
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   addHint: { fontSize: 18, color: 'var(--text2)' },
   ptTable: { display: 'flex', flexDirection: 'column' },
