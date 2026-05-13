@@ -386,10 +386,10 @@ const HACCP = ({ user, etablissement }) => {
       {activeTab==='tableau' && (
         <div style={{display:'flex',flexDirection:'column',gap:16}} id="haccp-dashboard-print">
           <div style={hs.kpiRow}>
-            <div style={hs.kpiCard}><div style={hs.kpiLbl}>Taux de conformité</div><div style={{...hs.kpiVal,color:tauxConf>=95?'#15803d':tauxConf>=80?'#d97706':'#dc2626'}}>{tauxConf}%</div></div>
+            <div style={hs.kpiCard}><div style={hs.kpiLbl}>Taux de conformité</div><div style={{...hs.kpiVal,color:tauxConf>=95?'var(--success-text)':tauxConf>=80?'var(--warning-strong)':'var(--danger-strong)'}}>{tauxConf}%</div></div>
             <div style={hs.kpiCard}><div style={hs.kpiLbl}>Zones actives</div><div style={hs.kpiVal}>{activeZones.length}</div></div>
             <div style={hs.kpiCard}><div style={hs.kpiLbl}>Relevés total</div><div style={hs.kpiVal}>{releves.length}</div></div>
-            <div style={hs.kpiCard}><div style={hs.kpiLbl}>Anomalies</div><div style={{...hs.kpiVal,color:(anomalies || []).length>0?'#dc2626':'#15803d'}}>{(anomalies || []).length}</div></div>
+            <div style={hs.kpiCard}><div style={hs.kpiLbl}>Anomalies</div><div style={{...hs.kpiVal,color:(anomalies || []).length>0?'var(--danger-strong)':'var(--success-text)'}}>{(anomalies || []).length}</div></div>
             <div style={hs.kpiCard}><div style={hs.kpiLbl}>Contrôles aujourd'hui</div><div style={hs.kpiVal}>{todayControls.length}</div></div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
@@ -425,9 +425,9 @@ const HACCP = ({ user, etablissement }) => {
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{zone?.nom}</div>
                       <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure} · {op?.prenom} {op?.nom}</div>
-                      {a.commentaire&&<div style={{fontSize:12,color:'#dc2626',marginTop:2}}>{a.commentaire}</div>}
+                      {a.commentaire&&<div style={{fontSize:12,color:'var(--danger-strong)',marginTop:2}}>{a.commentaire}</div>}
                     </div>
-                    <div style={{fontSize:20,fontWeight:700,color:'#dc2626',fontFamily:'var(--font-serif)'}}>{a.valeur}{zone?.unite}</div>
+                    <div style={{fontSize:20,fontWeight:700,color:'var(--danger-strong)',fontFamily:'var(--font-serif)'}}>{a.valeur}{zone?.unite}</div>
                   </div>
                 );
               })}
@@ -451,10 +451,10 @@ const HACCP = ({ user, etablissement }) => {
                 <div key={r.id} style={hs.relRow}>
                   <span style={{fontSize:13,fontWeight:600}}>{zone?.icone} {zone?.nom}</span>
                   <span style={hs.cell}>{r.heure}</span>
-                  <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'#15803d':'#dc2626',fontSize:15,fontFamily:'var(--font-serif)'}}>{r.valeur}{zone?.unite}</span>
+                  <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-serif)'}}>{r.valeur}{zone?.unite}</span>
                   <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
-                  <span><span style={{...hs.confBadge,background:r.conforme?'#dcfce7':'#fee2e2',color:r.conforme?'#15803d':'#dc2626'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
-                  <span style={{...hs.cell,flex:2,color:r.commentaire?'#dc2626':'var(--text2)',fontSize:12}}>{r.commentaire||'—'}</span>
+                  <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
+                  <span style={{...hs.cell,flex:2,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'—'}</span>
                   {(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
                 </div>
               );
@@ -472,17 +472,17 @@ const HACCP = ({ user, etablissement }) => {
               {(activeTpls || []).map(tpl=>{
                 const done=todayControls.find(c=>c.templateId===tpl.id);
                 return(
-                  <div key={tpl.id} style={{...hs.ctrlRow,background:done?(done.statut==='conforme'?'#f0fdf4':'#fef2f2'):'var(--bg)',border:`1px solid ${done?(done.statut==='conforme'?'#bbf7d0':'#fca5a5'):'var(--border)'}`}}>
-                    <div style={{...hs.ctrlCheck,background:done?(done.statut==='conforme'?'#15803d':'#dc2626'):'var(--border)'}}>{done?(done.statut==='conforme'?'✓':'✕'):''}</div>
+                  <div key={tpl.id} style={{...hs.ctrlRow,background:done?(done.statut==='conforme'?'var(--success-bg-soft)':'var(--danger-bg-soft)'):'var(--bg)',border:`1px solid ${done?(done.statut==='conforme'?'var(--success-bd)':'var(--danger-bd)'):'var(--border)'}`}}>
+                    <div style={{...hs.ctrlCheck,background:done?(done.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--border)'}}>{done?(done.statut==='conforme'?'✓':'✕'):''}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{tpl.label}</div>
                       <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>{tpl.frequence} · {CTRL_TYPES.find(t=>t.id===tpl.type)?.label}</div>
                       {tpl.description&&<div style={{fontSize:11,color:'var(--text2)',marginTop:2,fontStyle:'italic'}}>{tpl.description}</div>}
-                      {done?.notes&&<div style={{fontSize:11,color:done.statut==='conforme'?'var(--text2)':'#dc2626',marginTop:3,fontStyle:'italic'}}>{done.notes}</div>}
+                      {done?.notes&&<div style={{fontSize:11,color:done.statut==='conforme'?'var(--text2)':'var(--danger-strong)',marginTop:3,fontStyle:'italic'}}>{done.notes}</div>}
                     </div>
                     {done?(
                       <div style={{textAlign:'right'}}>
-                        <div style={{...hs.confBadge,background:done.statut==='conforme'?'#dcfce7':'#fee2e2',color:done.statut==='conforme'?'#15803d':'#dc2626'}}>{done.statut==='conforme'?'Conforme':'Non conforme'}</div>
+                        <div style={{...hs.confBadge,background:done.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:done.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{done.statut==='conforme'?'Conforme':'Non conforme'}</div>
                         <div style={{fontSize:10,color:'var(--text2)',marginTop:3}}>{done.heure}</div>
                       </div>
                     ):(
@@ -505,7 +505,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={hs.cell}>{c.date}</span>
                   <span style={hs.cell}>{c.heure}</span>
                   <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
-                  <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'#dcfce7':'#fee2e2',color:c.statut==='conforme'?'#15803d':'#dc2626'}}>{c.statut==='conforme'?'✓ Conforme':'✕ Non conforme'}</span></span>
+                  <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'✓ Conforme':'✕ Non conforme'}</span></span>
                   <span style={{...hs.cell,flex:2,fontSize:12,color:'var(--text2)'}}>{c.notes||'—'}</span>
                   {(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
                 </div>
@@ -622,7 +622,7 @@ const HACCP = ({ user, etablissement }) => {
                   {formRel.valeur!==''&&(()=>{
                     const zone=zones.find(z=>z.id===formRel.zoneId);
                     const ok=isConforme(zone,formRel.valeur);
-                    return<div style={{marginTop:8,padding:'8px 12px',borderRadius:8,background:ok?'#dcfce7':'#fee2e2',color:ok?'#15803d':'#dc2626',fontSize:13,fontWeight:600,textAlign:'center'}}>
+                    return<div style={{marginTop:8,padding:'8px 12px',borderRadius:8,background:ok?'var(--success-bg)':'var(--danger-bg)',color:ok?'var(--success-text)':'var(--danger-strong)',fontSize:13,fontWeight:600,textAlign:'center'}}>
                       {ok?`✓ Conforme — plage autorisée : [${zone.min??'—'} ; ${zone.max??'+∞'}]${zone.unite}`:`✕ Hors plage — [${zone.min??'—'} ; ${zone.max??'+∞'}]${zone.unite}`}
                     </div>;
                   })()}
@@ -659,7 +659,7 @@ const HACCP = ({ user, etablissement }) => {
                   <label style={hs.fLabel}>Résultat</label>
                   <div style={{display:'flex',gap:8}}>
                     {['conforme','non-conforme'].map(s=>(
-                      <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,padding:'10px',border:`2px solid ${formCtrl.statut===s?(s==='conforme'?'#15803d':'#dc2626'):'var(--border)'}`,borderRadius:8,background:formCtrl.statut===s?(s==='conforme'?'#dcfce7':'#fee2e2'):'var(--surface)',color:formCtrl.statut===s?(s==='conforme'?'#15803d':'#dc2626'):'var(--text2)',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'}}>
+                      <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,padding:'10px',border:`2px solid ${formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--border)'}`,borderRadius:8,background:formCtrl.statut===s?(s==='conforme'?'var(--success-bg)':'var(--danger-bg)'):'var(--surface)',color:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--text2)',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'}}>
                         {s==='conforme'?'✓ Conforme':'✕ Non conforme'}
                       </button>
                     ))}
@@ -704,11 +704,11 @@ const HACCP = ({ user, etablissement }) => {
                   <div key={zone.id} style={{
                     ...hs.qrZoneRow,
                     background: !hasVal ? 'var(--bg)'
-                              : conf ? '#f0fdf4'
-                              : '#fef2f2',
+                              : conf ? 'var(--success-bg-soft)'
+                              : 'var(--danger-bg-soft)',
                     borderColor: !hasVal ? 'var(--border)'
-                               : conf ? '#86efac'
-                               : '#fca5a5',
+                               : conf ? 'var(--success-bd)'
+                               : 'var(--danger-bd)',
                   }}>
                     <span style={{ fontSize: 22 }}>{zone.icone}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -730,8 +730,8 @@ const HACCP = ({ user, etablissement }) => {
                     <span style={{
                       fontSize: 11, fontWeight: 700, minWidth: 28, textAlign: 'center',
                       color: !hasVal ? 'var(--text2)'
-                           : conf ? '#15803d'
-                           : '#dc2626',
+                           : conf ? 'var(--success-text)'
+                           : 'var(--danger-strong)',
                     }}>
                       {!hasVal ? '—' : conf ? '✓' : '⚠'}
                     </span>

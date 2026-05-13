@@ -333,7 +333,7 @@ const Documents = ({ user, etablissement }) => {
                 <div style={doc_s.itemActions} className="no-print">
                   <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); setMoving(f); }} title="Déplacer">↗</button>
                   <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); startRename(f); }} title="Renommer">✎</button>
-                  <button style={{ ...doc_s.miniBtn, color: '#dc2626' }} onClick={(e) => { e.stopPropagation(); deleteDoc(f); }} title="Supprimer">🗑</button>
+                  <button style={{ ...doc_s.miniBtn, color: 'var(--danger-strong)' }} onClick={(e) => { e.stopPropagation(); deleteDoc(f); }} title="Supprimer">🗑</button>
                 </div>
               )}
             </div>
@@ -366,7 +366,7 @@ const Documents = ({ user, etablissement }) => {
                 <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); downloadFile(f); }} title="Télécharger">⬇</button>
                 {canWrite && <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); setMoving(f); }} title="Déplacer">↗</button>}
                 {canWrite && <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); startRename(f); }} title="Renommer">✎</button>}
-                {canWrite && <button style={{ ...doc_s.miniBtn, color: '#dc2626' }} onClick={(e) => { e.stopPropagation(); deleteDoc(f); }} title="Supprimer">🗑</button>}
+                {canWrite && <button style={{ ...doc_s.miniBtn, color: 'var(--danger-strong)' }} onClick={(e) => { e.stopPropagation(); deleteDoc(f); }} title="Supprimer">🗑</button>}
               </div>
             </div>
           ))}

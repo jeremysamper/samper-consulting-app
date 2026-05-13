@@ -29,6 +29,37 @@
   --r-lg: 14px;
   --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --sh: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  /* ─── Tokens sémantiques de statut (light mode) ─────────────────────────
+     bg = fond pâle pour badges/cards d'alerte
+     text = couleur du texte/icône (contraste WCAG AA garanti sur bg)
+     bd = bordure assortie
+     strong = couleur saturée pour valeurs (ex: "✗ Non conforme")
+     ───────────────────────────────────────────────────────────────────── */
+  --success-bg: #dcfce7;
+  --success-bg-soft: #f0fdf4;
+  --success-text: #15803d;
+  --success-bd: #86efac;
+  --success-strong: #16a34a;
+
+  --danger-bg: #fee2e2;
+  --danger-bg-soft: #fef2f2;
+  --danger-text: #991b1b;
+  --danger-bd: #fca5a5;
+  --danger-strong: #dc2626;
+
+  --warning-bg: #fef3c7;
+  --warning-bg-soft: #fffbeb;
+  --warning-text: #92400e;
+  --warning-bd: #fcd34d;
+  --warning-strong: #f59e0b;
+
+  --info-bg: #dbeafe;
+  --info-bg-soft: #eff6ff;
+  --info-text: #1e40af;
+  --info-bd: #93c5fd;
+  --info-strong: #3b82f6;
+
   color-scheme: light;
 }
 
@@ -52,6 +83,35 @@ html[data-theme="dark"] {
   --nav-border: rgba(255, 255, 255, 0.05);
   --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.28);
   --sh: 0 4px 16px rgba(0, 0, 0, 0.38);
+
+  /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
+     Fonds nettement plus sombres (saturation faible, luminosité ~22-26%)
+     Texte plus clair pour contraste WCAG AA sur le bg sombre
+     ──────────────────────────────────────────────────────────────────── */
+  --success-bg: oklch(28% 0.06 150);
+  --success-bg-soft: oklch(22% 0.04 150);
+  --success-text: oklch(82% 0.14 150);
+  --success-bd: oklch(40% 0.10 150);
+  --success-strong: oklch(72% 0.16 150);
+
+  --danger-bg: oklch(28% 0.08 25);
+  --danger-bg-soft: oklch(22% 0.05 25);
+  --danger-text: oklch(82% 0.14 25);
+  --danger-bd: oklch(40% 0.12 25);
+  --danger-strong: oklch(72% 0.18 25);
+
+  --warning-bg: oklch(28% 0.06 75);
+  --warning-bg-soft: oklch(22% 0.04 75);
+  --warning-text: oklch(85% 0.12 80);
+  --warning-bd: oklch(45% 0.12 75);
+  --warning-strong: oklch(78% 0.16 75);
+
+  --info-bg: oklch(28% 0.06 250);
+  --info-bg-soft: oklch(22% 0.04 250);
+  --info-text: oklch(82% 0.10 250);
+  --info-bd: oklch(45% 0.10 250);
+  --info-strong: oklch(72% 0.14 250);
+
   color-scheme: dark;
 }
 
@@ -434,21 +494,21 @@ h1 {
 }
 
 .form-alert.error {
-  border: 1px solid #fca5a5;
-  background: #fef2f2;
-  color: #991b1b;
+  border: 1px solid var(--danger-bd);
+  background: var(--danger-bg-soft);
+  color: var(--danger-text);
 }
 
 .form-alert.info {
-  border: 1px solid #93c5fd;
-  background: #eff6ff;
-  color: #1e40af;
+  border: 1px solid var(--info-bd);
+  background: var(--info-bg-soft);
+  color: var(--info-text);
 }
 
 .form-alert.warning {
-  border: 1px solid #fcd34d;
-  background: #fffbeb;
-  color: #92400e;
+  border: 1px solid var(--warning-bd);
+  background: var(--warning-bg-soft);
+  color: var(--warning-text);
 }
 
 .app-shell {

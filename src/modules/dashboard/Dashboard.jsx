@@ -213,8 +213,8 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
               const cardStyle = {
                 ...ds.myShiftCard,
-                background: enPoste ? '#dcfce7' : termine ? '#f3f4f6' : pasCommence ? '#fef3c7' : 'var(--surface)',
-                borderColor: enPoste ? '#16a34a' : termine ? '#9ca3af' : pasCommence ? '#f59e0b' : 'var(--border)',
+                background: enPoste ? 'var(--success-bg)' : termine ? '#f3f4f6' : pasCommence ? 'var(--warning-bg)' : 'var(--surface)',
+                borderColor: enPoste ? 'var(--success-strong)' : termine ? '#9ca3af' : pasCommence ? 'var(--warning-strong)' : 'var(--border)',
               };
 
               return (
@@ -228,7 +228,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
                     <div>
                       <div style={ds.statusText}>En attente d'arrivée</div>
                       <button
-                        style={{ ...ds.bigActionBtn, background: inRange ? '#16a34a' : '#d1d5db', cursor: inRange ? 'pointer' : 'not-allowed' }}
+                        style={{ ...ds.bigActionBtn, background: inRange ? 'var(--success-strong)' : '#d1d5db', cursor: inRange ? 'pointer' : 'not-allowed' }}
                         onClick={() => inRange && pointerArrivee(shift)}
                         disabled={!inRange}
                         title={inRange ? '' : 'Disponible dans la fenêtre de ±30 min autour du shift'}
@@ -241,8 +241,8 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
                   {enPoste && (
                     <div>
-                      <div style={{ ...ds.statusText, color: '#15803d', fontWeight: 700 }}>✓ En poste depuis {shift.pointageDebut}</div>
-                      <button style={{ ...ds.bigActionBtn, background: '#dc2626' }} onClick={() => pointerDepart(shift)}>
+                      <div style={{ ...ds.statusText, color: 'var(--success-text)', fontWeight: 700 }}>✓ En poste depuis {shift.pointageDebut}</div>
+                      <button style={{ ...ds.bigActionBtn, background: 'var(--danger-strong)' }} onClick={() => pointerDepart(shift)}>
                         ⏱ Pointer mon départ
                       </button>
                     </div>
@@ -308,30 +308,30 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         <KpiCard
           label="Equipe en poste"
           value={(activePointages || []).length}
-          color="#15803d"
+          color="var(--success-text)"
           sub={(activePointages || []).length > 0 ? (activePointages || []).map(s => getUserName(s.userId)).join(', ') : 'Personne en poste'}
-          chart={<MiniBars data={weekShiftLoad} labels={['L', 'M', 'M', 'J', 'V', 'S', 'D']} color="#15803d" />}
+          chart={<MiniBars data={weekShiftLoad} labels={['L', 'M', 'M', 'J', 'V', 'S', 'D']} color="var(--success-text)" />}
         />
         <KpiCard
           label="Heures planifiees"
           value={`${plannedHours}h`}
-          color="#92400e"
+          color="var(--warning-text)"
           sub={`${(todayShifts || []).length} shift${(todayShifts || []).length > 1 ? 's' : ''} aujourd'hui, ${(manquants || []).length} en attente`}
-          chart={<ProgressLine value={todayShifts.length ? activePointages.length / todayShifts.length : 0} color="#f59e0b" />}
+          chart={<ProgressLine value={todayShifts.length ? activePointages.length / todayShifts.length : 0} color="var(--warning-strong)" />}
         />
         <KpiCard
           label="Pertes du mois"
           value={`CHF ${pertesTotal.toLocaleString('fr-CH', { maximumFractionDigits: 0 })}`}
-          color={(pertesNonVal || []).length ? '#991b1b' : '#15803d'}
+          color={(pertesNonVal || []).length ? 'var(--danger-text)' : 'var(--success-text)'}
           sub={`${(pertesNonVal || []).length} perte${(pertesNonVal || []).length > 1 ? 's' : ''} a valider`}
-          chart={<ProgressLine value={pertesNonVal.length ? 0.78 : 0.22} color={(pertesNonVal || []).length ? '#dc2626' : '#16a34a'} />}
+          chart={<ProgressLine value={pertesNonVal.length ? 0.78 : 0.22} color={(pertesNonVal || []).length ? 'var(--danger-strong)' : 'var(--success-strong)'} />}
         />
         <KpiCard
           label="SOP / HACCP"
           value={`${sopDoneToday}/${Math.max(activeSops.length, sopDoneToday) || 0}`}
-          color={haccpAlerts.length ? '#991b1b' : 'var(--accent)'}
+          color={haccpAlerts.length ? 'var(--danger-text)' : 'var(--accent)'}
           sub={`${haccpAlerts.length} alerte${haccpAlerts.length > 1 ? 's' : ''} HACCP, stock CHF ${stockValue.toLocaleString('fr-CH', { maximumFractionDigits: 0 })}`}
-          chart={<ProgressLine value={activeSops.length ? sopDoneToday / activeSops.length : 0} color={haccpAlerts.length ? '#dc2626' : 'var(--accent)'} />}
+          chart={<ProgressLine value={activeSops.length ? sopDoneToday / activeSops.length : 0} color={haccpAlerts.length ? 'var(--danger-strong)' : 'var(--accent)'} />}
         />
       </div>
 
@@ -385,19 +385,19 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
       {/* KPIs */}
       <div style={ds.kpiGrid}>
-        <div style={{ ...ds.kpiCard, borderLeft: '3px solid #16a34a' }}>
+        <div style={{ ...ds.kpiCard, borderLeft: '3px solid var(--success-strong)' }}>
           <div style={ds.kpiLabel}>En poste maintenant</div>
-          <div style={{ ...ds.kpiValue, color: '#15803d' }}>{(activePointages || []).length}</div>
+          <div style={{ ...ds.kpiValue, color: 'var(--success-text)' }}>{(activePointages || []).length}</div>
           <div style={ds.kpiSub}>{(activePointages || []).length > 0 ? (activePointages || []).map(s => getUserName(s.userId)).join(', ') : 'Personne'}</div>
         </div>
-        <div style={{ ...ds.kpiCard, borderLeft: '3px solid #f59e0b' }}>
+        <div style={{ ...ds.kpiCard, borderLeft: '3px solid var(--warning-strong)' }}>
           <div style={ds.kpiLabel}>Shifts aujourd'hui</div>
-          <div style={{ ...ds.kpiValue, color: '#92400e' }}>{(todayShifts || []).length}</div>
+          <div style={{ ...ds.kpiValue, color: 'var(--warning-text)' }}>{(todayShifts || []).length}</div>
           <div style={ds.kpiSub}>{(manquants || []).length} en attente</div>
         </div>
-        <div style={{ ...ds.kpiCard, borderLeft: '3px solid #dc2626' }}>
+        <div style={{ ...ds.kpiCard, borderLeft: '3px solid var(--danger-strong)' }}>
           <div style={ds.kpiLabel}>Pertes à valider</div>
-          <div style={{ ...ds.kpiValue, color: '#991b1b' }}>{(pertesNonVal || []).length}</div>
+          <div style={{ ...ds.kpiValue, color: 'var(--danger-text)' }}>{(pertesNonVal || []).length}</div>
           <div style={ds.kpiSub}>{pertesTotal.toFixed(2)} CHF au total</div>
         </div>
         <div style={{ ...ds.kpiCard, borderLeft: '3px solid var(--accent)' }}>
@@ -420,9 +420,9 @@ const Dashboard = ({ user, etablissement, setPage }) => {
             {(todayShifts || []).sort((a, b) => (a.debut || '').localeCompare(b.debut || '')).map(shift => {
               const enPoste = shift.pointageDebut && !shift.pointageFin;
               const termine = shift.pointageDebut && shift.pointageFin;
-              const statut = enPoste ? { label: '✓ En poste', color: '#15803d', bg: '#dcfce7' }
+              const statut = enPoste ? { label: '✓ En poste', color: 'var(--success-text)', bg: 'var(--success-bg)' }
                           : termine ? { label: 'Terminé', color: '#6b7280', bg: '#f3f4f6' }
-                          : { label: 'À venir', color: '#92400e', bg: '#fef3c7' };
+                          : { label: 'À venir', color: 'var(--warning-text)', bg: 'var(--warning-bg)' };
               const typeLabel = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : '';
               return (
                 <div key={shift.id} style={ds.shiftCard}>
@@ -457,13 +457,13 @@ const Dashboard = ({ user, etablissement, setPage }) => {
           <div style={ds.alertList}>
             {(manquants || []).slice(0, 3).map(s => (
               <div key={s.id} style={ds.alertItem}>
-                <span style={{ color: '#92400e', fontWeight: 700 }}>Pointage manquant</span>
+                <span style={{ color: 'var(--warning-text)', fontWeight: 700 }}>Pointage manquant</span>
                 <span style={{ color: 'var(--text2)' }}> — {getUserName(s.userId)} devait commencer à {s.debut}</span>
               </div>
             ))}
             {(pertesNonVal || []).slice(0, 3).map(p => (
               <div key={p.id} style={ds.alertItem}>
-                <span style={{ color: '#991b1b', fontWeight: 700 }}>Perte à valider</span>
+                <span style={{ color: 'var(--danger-text)', fontWeight: 700 }}>Perte à valider</span>
                 <span style={{ color: 'var(--text2)' }}> — {p.produit} ({p.quantite} {p.unite}, {((p.quantite || 0) * (p.valeurUnit || 0)).toFixed(2)} CHF)</span>
               </div>
             ))}
@@ -503,9 +503,9 @@ function getWeekShiftLoad(shifts) {
 }
 
 function getToneColor(tone) {
-  if (tone === 'danger') return '#dc2626';
-  if (tone === 'warn') return '#f59e0b';
-  if (tone === 'ok') return '#16a34a';
+  if (tone === 'danger') return 'var(--danger-strong)';
+  if (tone === 'warn') return 'var(--warning-strong)';
+  if (tone === 'ok') return 'var(--success-strong)';
   return 'var(--accent)';
 }
 
@@ -629,9 +629,9 @@ const ds = {
   headerRight: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
   etabBadge: { padding: '6px 14px', background: 'var(--accent-light)', color: 'var(--accent)', borderRadius: 20, fontSize: 12, fontWeight: 600 },
 
-  pointageSection: { background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '1px solid #86efac', borderRadius: 12, padding: 18 },
-  pointageSectionTitle: { fontSize: 13, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 12 },
-  errorBanner: { background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
+  pointageSection: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 12, padding: 18 },
+  pointageSectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--success-text)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 12 },
+  errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
   myShiftsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 },
   noShiftCard: { background: 'var(--surface)', border: '2px dashed #d1d5db', borderRadius: 10, padding: '22px 18px', textAlign: 'center' },
   myShiftCard: { background: 'var(--surface)', border: '2px solid var(--border)', borderRadius: 10, padding: 16, transition: 'border 0.15s' },

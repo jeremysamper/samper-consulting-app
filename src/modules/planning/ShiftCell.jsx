@@ -14,8 +14,8 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openNewShift, setSele
       {(ordered || []).map(shift => {
         const heures = calcHeures(shift.debut, shift.fin, shift.pause);
         const enPoste = shift.pointageDebut && !shift.pointageFin;
-        const bg = enPoste ? '#dcfce7' : shift.pointageDebut ? '#e0f2fe' : shift.typeShift === 'midi' ? '#fef3c7' : shift.typeShift === 'soir' ? '#e0e7ff' : '#f8fafc';
-        const fg = enPoste ? '#15803d' : shift.pointageDebut ? '#0369a1' : 'var(--text)';
+        const bg = enPoste ? 'var(--success-bg)' : shift.pointageDebut ? '#e0f2fe' : shift.typeShift === 'midi' ? 'var(--warning-bg)' : shift.typeShift === 'soir' ? '#e0e7ff' : '#f8fafc';
+        const fg = enPoste ? 'var(--success-text)' : shift.pointageDebut ? '#0369a1' : 'var(--text)';
         const label = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : null;
         return (
           <div key={shift.id} style={{ ...pls.shiftCell, background: bg, cursor: 'pointer', padding: '3px 6px' }} onClick={(e) => { e.stopPropagation(); setSelectedShift(shift); setShowDetailModal(true); }}>

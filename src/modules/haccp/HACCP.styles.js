@@ -19,9 +19,9 @@ export const hs = {
   zoneCible:{fontSize:10,color:'var(--text2)',marginTop:3},
   zoneVal:{textAlign:'right',flexShrink:0},
   confBadge:{display:'inline-block',padding:'2px 8px',borderRadius:10,fontSize:10,fontWeight:600},
-  anomCard:{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:10,overflow:'hidden'},
-  anomHeader:{padding:'12px 16px',fontWeight:700,fontSize:13,color:'#dc2626',borderBottom:'1px solid #fca5a5'},
-  anomRow:{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 16px',borderBottom:'1px solid #fca5a5'},
+  anomCard:{background:'var(--danger-bg-soft)',border:'1px solid var(--danger-bd)',borderRadius:10,overflow:'hidden'},
+  anomHeader:{padding:'12px 16px',fontWeight:700,fontSize:13,color:'var(--danger-strong)',borderBottom:'1px solid var(--danger-bd)'},
+  anomRow:{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 16px',borderBottom:'1px solid var(--danger-bd)'},
   anomIcon:{fontSize:20,flexShrink:0,marginTop:2},
   tableCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
   tableCardHeader:{padding:'13px 18px',borderBottom:'1px solid var(--border)',fontSize:13,fontWeight:700,color:'var(--text)',background:'var(--bg)'},
@@ -55,10 +55,10 @@ export const hcfg = {
   toggle:{width:40,height:22,borderRadius:11,position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0},
   toggleThumb:{position:'absolute',top:2,width:18,height:18,borderRadius:9,background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'},
   editBtn:{padding:'5px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'5px 12px',background:'none',border:'1px solid #fca5a5',borderRadius:7,fontSize:12,fontWeight:600,color:'#dc2626',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{padding:'5px 12px',background:'none',border:'1px solid var(--danger-bd)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
 
   // ─── Bouton "Tout conforme" + modale de saisie groupée ───
-  quickBtn: { padding:'8px 14px', background:'#15803d', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  quickBtn: { padding:'8px 14px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
   qrOverlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:12 },
   qrModal: { background:'var(--surface)', borderRadius:12, width:560, maxWidth:'94vw', maxHeight:'92vh', display:'flex', flexDirection:'column', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' },
   qrHeader: { padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 },
@@ -69,6 +69,6 @@ export const hcfg = {
   qrZoneRow: { display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'1px solid', borderRadius:8, transition:'background .15s, border-color .15s' },
   qrInput: { width:80, padding:'8px 10px', border:'1px solid var(--border)', borderRadius:7, fontSize:13, color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', outline:'none', textAlign:'right' },
   qrFooter: { padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' },
-  qrPrimaryBtn: { padding:'9px 16px', background:'#15803d', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
+  qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
   qrGhostBtn: { padding:'8px 14px', background:'none', color:'var(--text)', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', fontFamily:'var(--font)', fontSize:13 },
 };

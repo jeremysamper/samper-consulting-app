@@ -730,7 +730,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         {shift.debut}–{shift.fin} · {shift.poste}
                       </div>
                     </div>
-                    <div style={{ ...pls.mobileBadge, background: enPoste ? '#dcfce7' : shift.pointageDebut ? '#e0f2fe' : '#fef9c3', color: enPoste ? '#15803d' : shift.pointageDebut ? '#0369a1' : '#92400e' }}>
+                    <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageDebut ? '#e0f2fe' : '#fef9c3', color: enPoste ? 'var(--success-text)' : shift.pointageDebut ? '#0369a1' : 'var(--warning-text)' }}>
                       {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : 'Non pointé'}
                     </div>
                   </div>
@@ -763,7 +763,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{emp?.prenom} {emp?.nom}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste} · prévu {shift.debut}–{shift.fin}</div>
                 </div>
-                <div style={{ ...pls.mobileBadge, background: enPoste ? '#dcfce7' : shift.pointageFin ? '#e0f2fe' : '#fef9c3', color: enPoste ? '#15803d' : shift.pointageFin ? '#0369a1' : '#92400e' }}>
+                <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? '#e0f2fe' : '#fef9c3', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? '#0369a1' : 'var(--warning-text)' }}>
                   {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
                 </div>
               </div>
@@ -838,7 +838,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   const weekColor = weekRatio === 0 ? 'var(--text2)'
                                   : weekRatio < 0.8 ? '#64748b'
                                   : weekRatio <= 1.0 ? 'var(--accent)'
-                                  : '#d97706';
+                                  : 'var(--warning-strong)';
                   return (
                     <React.Fragment key={emp.id}>
                       <div style={pls.empCol}>
@@ -889,8 +889,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <span style={pls.ptCell}>{shift.debut}–{shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev}h prévues</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '—'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '—')}</span>
-                    <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? '#16a34a' : '#dc2626', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '—'}</span>
-                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? '#dcfce7' : shift.pointageFin ? '#e0f2fe' : '#fef9c3', color: enPoste ? '#15803d' : shift.pointageFin ? '#0369a1' : '#92400e' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
+                    <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '—'}</span>
+                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? '#e0f2fe' : '#fef9c3', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? '#0369a1' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                   </div>
                 );
               })}
@@ -928,7 +928,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <>
                   <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                     <button style={{ ...pls.addBtn, flex: 1 }} onClick={() => openEditShift(selectedShift)}>Modifier</button>
-                    <button style={{ ...pls.exportBtn, color: '#dc2626', borderColor: '#fca5a5', flex: 1 }} onClick={() => deleteShift(selectedShift.id)}>Supprimer</button>
+                    <button style={{ ...pls.exportBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)', flex: 1 }} onClick={() => deleteShift(selectedShift.id)}>Supprimer</button>
                   </div>
                   <button
                     style={{ ...pls.exportBtn, marginTop: 6 }}
@@ -972,10 +972,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       }}
                       style={{
                         flex: 1, padding: '10px 8px', borderRadius: 8, fontSize: 12,
-                        background: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? '#fef3c7' : t.id === 'soir' ? '#e0e7ff' : '#dcfce7') : 'var(--surface)',
+                        background: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-bg)' : t.id === 'soir' ? '#e0e7ff' : 'var(--success-bg)') : 'var(--surface)',
                         border: '1px solid',
-                        borderColor: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? '#fde047' : t.id === 'soir' ? '#a5b4fc' : '#86efac') : 'var(--border)',
-                        color: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? '#92400e' : t.id === 'soir' ? '#3730a3' : '#15803d') : 'var(--text2)',
+                        borderColor: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? '#fde047' : t.id === 'soir' ? '#a5b4fc' : 'var(--success-bd)') : 'var(--border)',
+                        color: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-text)' : t.id === 'soir' ? '#3730a3' : 'var(--success-text)') : 'var(--text2)',
                         fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
                       }}>
                       {t.icon && <span style={{marginRight:4}}>{t.icon}</span>}{t.label}
@@ -1388,7 +1388,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </div>
 
                 {/* Avertissement */}
-                <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, padding: 10, fontSize: 11, color: '#92400e' }}>
+                <div style={{ background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 6, padding: 10, fontSize: 11, color: 'var(--warning-text)' }}>
                   ⚠ Si un employé a déjà un horaire à une date sélectionnée, il sera <strong>remplacé</strong> par celui-ci.
                 </div>
 

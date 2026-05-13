@@ -71,7 +71,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
   const inv = inventaires[0];
   const canNavigate = typeof setPage === 'function';
   const quickActions = [
-    { id: 'pointage', label: myTodayShifts.length ? 'Pointer' : 'Planning', sub: myTodayShifts.length ? 'Arrivee / depart' : 'Voir mes horaires', page: 'planning', tone: '#16a34a' },
+    { id: 'pointage', label: myTodayShifts.length ? 'Pointer' : 'Planning', sub: myTodayShifts.length ? 'Arrivee / depart' : 'Voir mes horaires', page: 'planning', tone: 'var(--success-strong)' },
     { id: 'haccp', label: 'HACCP', sub: 'Controle rapide', page: 'haccp', tone: '#92702A' },
     { id: 'sop', label: 'SOPs', sub: 'Procedures du jour', page: 'sop', tone: '#1a5276' },
     { id: 'assistant', label: 'Assistant', sub: 'FAQ metier', page: 'faq', tone: '#6c3483' },
@@ -147,8 +147,8 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
             const pasCommence = !shift.pointageDebut;
             const inRange = isNowInRange(shift.debut, shift.fin);
             const label = shift.typeShift === 'midi' ? '☀ Midi' : shift.typeShift === 'soir' ? '🌙 Soir' : 'Service';
-            const cardBg = enPoste ? '#dcfce7' : termine ? '#f3f4f6' : '#fef3c7';
-            const cardBorder = enPoste ? '#16a34a' : termine ? '#9ca3af' : '#f59e0b';
+            const cardBg = enPoste ? 'var(--success-bg)' : termine ? '#f3f4f6' : 'var(--warning-bg)';
+            const cardBorder = enPoste ? 'var(--success-strong)' : termine ? '#9ca3af' : 'var(--warning-strong)';
 
             return (
               <div key={shift.id} style={{ ...dm.pointageCard, background: cardBg, borderColor: cardBorder }}>
@@ -161,7 +161,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
                   <>
                     <div style={dm.pointageStatus}>En attente d'arrivée</div>
                     <button
-                      style={{ ...dm.bigBtn, background: inRange ? '#16a34a' : '#d1d5db' }}
+                      style={{ ...dm.bigBtn, background: inRange ? 'var(--success-strong)' : '#d1d5db' }}
                       onClick={() => inRange && pointerArrivee(shift)}
                       disabled={!inRange}
                     >
@@ -173,8 +173,8 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
 
                 {enPoste && (
                   <>
-                    <div style={{ ...dm.pointageStatus, color: '#15803d', fontWeight: 700 }}>✓ En poste depuis {shift.pointageDebut}</div>
-                    <button style={{ ...dm.bigBtn, background: '#dc2626' }} onClick={() => pointerDepart(shift)}>
+                    <div style={{ ...dm.pointageStatus, color: 'var(--success-text)', fontWeight: 700 }}>✓ En poste depuis {shift.pointageDebut}</div>
+                    <button style={{ ...dm.bigBtn, background: 'var(--danger-strong)' }} onClick={() => pointerDepart(shift)}>
                       ⏱ POINTER MON DÉPART
                     </button>
                   </>
@@ -222,17 +222,17 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
 
       {/* KPIs en grille 2×2 compacte */}
       <div style={dm.kpiGrid}>
-        <div style={{ ...dm.kpi, borderLeft: '3px solid #16a34a' }}>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid var(--success-strong)' }}>
           <div style={dm.kpiLbl}>En poste</div>
-          <div style={{ ...dm.kpiVal, color: '#15803d' }}>{activePointages.length}</div>
+          <div style={{ ...dm.kpiVal, color: 'var(--success-text)' }}>{activePointages.length}</div>
         </div>
-        <div style={{ ...dm.kpi, borderLeft: '3px solid #f59e0b' }}>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid var(--warning-strong)' }}>
           <div style={dm.kpiLbl}>Shifts jour</div>
-          <div style={{ ...dm.kpiVal, color: '#92400e' }}>{(todayShifts || []).length}</div>
+          <div style={{ ...dm.kpiVal, color: 'var(--warning-text)' }}>{(todayShifts || []).length}</div>
         </div>
-        <div style={{ ...dm.kpi, borderLeft: '3px solid #dc2626' }}>
+        <div style={{ ...dm.kpi, borderLeft: '3px solid var(--danger-strong)' }}>
           <div style={dm.kpiLbl}>Pertes</div>
-          <div style={{ ...dm.kpiVal, color: '#991b1b' }}>{(pertesNonVal || []).length}</div>
+          <div style={{ ...dm.kpiVal, color: 'var(--danger-text)' }}>{(pertesNonVal || []).length}</div>
         </div>
         <div style={{ ...dm.kpi, borderLeft: '3px solid var(--accent)' }}>
           <div style={dm.kpiLbl}>Stock CHF</div>
@@ -276,9 +276,9 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
             {(todayShifts || []).sort((a, b) => (a.debut || '').localeCompare(b.debut || '')).map(shift => {
               const enPoste = shift.pointageDebut && !shift.pointageFin;
               const termine = shift.pointageDebut && shift.pointageFin;
-              const statut = enPoste ? { c: '#15803d', b: '#dcfce7', t: 'En poste' }
+              const statut = enPoste ? { c: 'var(--success-text)', b: 'var(--success-bg)', t: 'En poste' }
                           : termine ? { c: '#6b7280', b: '#f3f4f6', t: 'Terminé' }
-                          : { c: '#92400e', b: '#fef3c7', t: 'À venir' };
+                          : { c: 'var(--warning-text)', b: 'var(--warning-bg)', t: 'À venir' };
               const typeLabel = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : '';
               return (
                 <div key={shift.id} style={dm.shiftRow}>
@@ -305,13 +305,13 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {manquants.slice(0, 2).map(s => (
               <div key={s.id} style={dm.alertRow}>
-                <span style={{ color: '#92400e', fontWeight: 700, fontSize: 12 }}>Pointage manquant</span>
+                <span style={{ color: 'var(--warning-text)', fontWeight: 700, fontSize: 12 }}>Pointage manquant</span>
                 <span style={{ fontSize: 11, color: 'var(--text2)' }}>{getUserName(s.userId)} · {s.debut}</span>
               </div>
             ))}
             {pertesNonVal.slice(0, 2).map(p => (
               <div key={p.id} style={dm.alertRow}>
-                <span style={{ color: '#991b1b', fontWeight: 700, fontSize: 12 }}>Perte à valider</span>
+                <span style={{ color: 'var(--danger-text)', fontWeight: 700, fontSize: 12 }}>Perte à valider</span>
                 <span style={{ fontSize: 11, color: 'var(--text2)' }}>{p.produit} · {((p.quantite || 0) * (p.valeurUnit || 0)).toFixed(0)} CHF</span>
               </div>
             ))}
@@ -330,9 +330,9 @@ const dm = {
   greetingSub: { fontSize: 12, color: 'var(--text2)', marginTop: 2, textTransform: 'capitalize' },
 
   // Pointage — bloc en haut, priorité absolue
-  pointageBloc: { background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '1px solid #86efac', borderRadius: 12, padding: 14 },
-  pointageHead: { fontSize: 11, fontWeight: 700, color: '#15803d', letterSpacing: 0.5, marginBottom: 10 },
-  errorBanner: { background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
+  pointageBloc: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 12, padding: 14 },
+  pointageHead: { fontSize: 11, fontWeight: 700, color: 'var(--success-text)', letterSpacing: 0.5, marginBottom: 10 },
+  errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
   pointageCard: { background: 'var(--surface)', border: '2px solid', borderRadius: 10, padding: 14, marginBottom: 8 },
   noShiftCard: { background: 'var(--surface)', border: '2px dashed #d1d5db', borderRadius: 10, padding: '18px 14px', textAlign: 'center' },
   pointageInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },

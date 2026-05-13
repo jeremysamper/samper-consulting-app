@@ -15,7 +15,7 @@ const pls = {
   addBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   exportBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
   ghostBtn: { padding: '8px 14px', background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
-  pointBtn: { padding: '10px 16px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 },
+  pointBtn: { padding: '10px 16px', background: 'var(--success-text)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 },
   datePicker: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontFamily: 'var(--font)', fontSize: 13 },
   smallBtn: { padding: '7px 10px', border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
   smallBtnActive: { background: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--accent)' },

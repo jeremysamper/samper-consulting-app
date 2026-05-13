@@ -28,11 +28,11 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
   if (trend) {
     if (trend.direction === 'up') {
       trendIcon = '↗';
-      trendColor = zone.type === 'froid' ? '#dc2626' : '#d97706';
+      trendColor = zone.type === 'froid' ? 'var(--danger-strong)' : 'var(--warning-strong)';
       trendLabel = `+${trend.delta.toFixed(1)}${zone.unite} vs sem. dernière`;
     } else if (trend.direction === 'down') {
       trendIcon = '↘';
-      trendColor = zone.type === 'chaud' ? '#dc2626' : '#16a34a';
+      trendColor = zone.type === 'chaud' ? 'var(--danger-strong)' : 'var(--success-strong)';
       trendLabel = `${trend.delta.toFixed(1)}${zone.unite} vs sem. dernière`;
     } else {
       trendIcon = '→';
@@ -41,9 +41,9 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
     }
   }
 
-  const bg = conforme===null ? 'var(--surface)' : conforme ? '#f0fdf4' : '#fef2f2';
-  const bc = conforme===null ? 'var(--border)'  : conforme ? '#86efac' : '#fca5a5';
-  const vc = conforme===null ? 'var(--text2)'   : conforme ? '#15803d' : '#dc2626';
+  const bg = conforme===null ? 'var(--surface)' : conforme ? 'var(--success-bg-soft)' : 'var(--danger-bg-soft)';
+  const bc = conforme===null ? 'var(--border)'  : conforme ? 'var(--success-bd)' : 'var(--danger-bd)';
+  const vc = conforme===null ? 'var(--text2)'   : conforme ? 'var(--success-text)' : 'var(--danger-strong)';
 
   return (
     <div style={{ ...hs.zoneTile, background: bg, border: `2px solid ${bc}`, flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden' }}>
@@ -66,7 +66,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
                 >{trendIcon}</span>
               )}
             </div>
-            <div style={{ fontSize: 10, color: delaiAlert ? '#dc2626' : 'var(--text2)', fontWeight: delaiAlert ? 700 : 400 }}>
+            <div style={{ fontSize: 10, color: delaiAlert ? 'var(--danger-strong)' : 'var(--text2)', fontWeight: delaiAlert ? 700 : 400 }}>
               {delaiAlert ? '⚠ ' : ''}{delaiLabel}
             </div>
           </div>
@@ -80,11 +80,11 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
             <div>
               {last && (
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10,
-                  background: conforme ? '#dcfce7' : '#fee2e2', color: conforme ? '#15803d' : '#dc2626' }}>
+                  background: conforme ? 'var(--success-bg)' : 'var(--danger-bg)', color: conforme ? 'var(--success-text)' : 'var(--danger-strong)' }}>
                   {conforme ? '✓ Conforme' : '✕ Non conforme'}
                 </span>
               )}
-              {delaiAlert && <div style={{ fontSize: 10, color: '#dc2626', marginTop: 4, fontWeight: 600 }}>⚠ Relevé en retard !</div>}
+              {delaiAlert && <div style={{ fontSize: 10, color: 'var(--danger-strong)', marginTop: 4, fontWeight: 600 }}>⚠ Relevé en retard !</div>}
             </div>
             {canWrite && (
               <button
@@ -107,7 +107,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
               }}
             />
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)' }}>{zone.unite}</span>
-            <button style={{ padding: '8px 12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+            <button style={{ padding: '8px 12px', background: 'var(--success-strong)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               onClick={() => submitInlineReleve(zone, inlineTempInput)}>✓</button>
             <button style={{ padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}
               onClick={() => setInlineReleve(null)}>✕</button>

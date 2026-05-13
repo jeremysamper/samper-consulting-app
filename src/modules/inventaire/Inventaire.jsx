@@ -476,7 +476,7 @@ const Inventaire = ({ user, etablissement }) => {
           <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
             {(inventaires || []).map(i => <option key={i.id} value={i.id}>Inventaire {i.date} — {i.statut}</option>)}
           </select>
-          <span style={{...invs.badge, background: inv.statut==='validé' ? '#dcfce7' : '#fef9c3', color: inv.statut==='validé' ? '#15803d' : '#92400e'}}>{inv.statut === 'validé' ? '✓ Validé' : '⏳ En cours'}</span>
+          <span style={{...invs.badge, background: inv.statut==='validé' ? 'var(--success-bg)' : '#fef9c3', color: inv.statut==='validé' ? 'var(--success-text)' : 'var(--warning-text)'}}>{inv.statut === 'validé' ? '✓ Validé' : '⏳ En cours'}</span>
         </div>
         <div style={invs.headerRight}>
           {canManage && <button style={invs.addBtn} onClick={() => setShowNew(true)}>+ Nouvel inventaire</button>}
@@ -508,7 +508,7 @@ const Inventaire = ({ user, etablissement }) => {
               </div>
               <div style={{
                 ...invs.kpiVal,
-                color: deltaValeur > 0 ? '#16a34a' : deltaValeur < 0 ? '#dc2626' : 'var(--text2)',
+                color: deltaValeur > 0 ? 'var(--success-strong)' : deltaValeur < 0 ? 'var(--danger-strong)' : 'var(--text2)',
               }}>
                 {deltaValeur > 0 ? '+' : ''}CHF {deltaValeur.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 {deltaPct != null && (
@@ -519,10 +519,10 @@ const Inventaire = ({ user, etablissement }) => {
               </div>
             </div>
           )}
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts défavorables</div><div style={{...invs.kpiVal, color:'#dc2626'}}>−CHF {totEcart.toFixed(2)}</div></div>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Lignes conformes</div><div style={{...invs.kpiVal, color:'#15803d'}}>{totNul} / {(inv.lignes || []).length}</div></div>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts négatifs</div><div style={{...invs.kpiVal, color:'#dc2626'}}>{totNegatif} lignes</div></div>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts positifs</div><div style={{...invs.kpiVal, color:'#16a34a'}}>{totPositif} lignes</div></div>
+          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts défavorables</div><div style={{...invs.kpiVal, color:'var(--danger-strong)'}}>−CHF {totEcart.toFixed(2)}</div></div>
+          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Lignes conformes</div><div style={{...invs.kpiVal, color:'var(--success-text)'}}>{totNul} / {(inv.lignes || []).length}</div></div>
+          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts négatifs</div><div style={{...invs.kpiVal, color:'var(--danger-strong)'}}>{totNegatif} lignes</div></div>
+          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts positifs</div><div style={{...invs.kpiVal, color:'var(--success-strong)'}}>{totPositif} lignes</div></div>
         </div>
 
         <div style={invs.filters} className="no-print">
@@ -543,13 +543,13 @@ const Inventaire = ({ user, etablissement }) => {
             <span>Produit</span><span>Catégorie</span><span style={{textAlign:'right'}}>Stock théorique</span><span style={{textAlign:'right'}}>Stock réel</span><span style={{textAlign:'right'}}>Écart</span><span style={{textAlign:'right'}}>Valeur (CHF)</span><span style={{textAlign:'right'}}>Écart valeur</span>{canManage && <span className="no-print"/>}
           </div>
           {(filtered || []).map(l => {
-            const ecartColor = l.ecart < 0 ? '#dc2626' : l.ecart > 0 ? '#16a34a' : 'var(--text2)';
+            const ecartColor = l.ecart < 0 ? 'var(--danger-strong)' : l.ecart > 0 ? 'var(--success-strong)' : 'var(--text2)';
             // Badge type (sec/positif/négatif) si ligne importée via format Samper
             const typeBadge = l.type ? (
               <span style={{
                 display: 'inline-block', fontSize: 9, fontWeight: 700, marginLeft: 6, padding: '2px 6px', borderRadius: 4, verticalAlign: 'middle',
-                background: l.type === 'sec' ? '#f3e8d6' : l.type === 'positif' ? '#dcfce7' : '#fee2e2',
-                color: l.type === 'sec' ? '#92702a' : l.type === 'positif' ? '#15803d' : '#991b1b',
+                background: l.type === 'sec' ? '#f3e8d6' : l.type === 'positif' ? 'var(--success-bg)' : 'var(--danger-bg)',
+                color: l.type === 'sec' ? '#92702a' : l.type === 'positif' ? 'var(--success-text)' : 'var(--danger-text)',
                 textTransform: 'uppercase', letterSpacing: 0.5,
               }}>{l.type}</span>
             ) : null;
@@ -756,7 +756,7 @@ const invs = {
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',padding:'5px 12px',borderRadius:12,fontSize:12,fontWeight:600},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn: {padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid #fca5a5',color:'#dc2626',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   filters: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}, catTabs: {display:'flex',gap:4,flexWrap:'wrap'}, catBtn: {padding:'5px 14px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}, catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'}, search: {padding:'7px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',width:200},
   tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:600,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:600,color:'var(--text)'}, catTag: {fontSize:10,fontWeight:600,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
