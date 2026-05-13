@@ -327,11 +327,73 @@ const Planning = ({ user, etablissement, initialTab }) => {
     }
   };
 
+  // ─── Correction manuelle du pointage (manager seulement) ───
+  // Permet de saisir les heures à la main quand un employé a oublié de pointer.
+  // Contrairement au pointage RPC (heure générée côté serveur), c'est ici une action
+  // de manager qui écrit directement les champs pointage_debut / pointage_fin.
+  const openPointageEdit = (shift) => {
+    setPointageEditForm({
+      debut: shift.pointageDebut || '',
+      fin: shift.pointageFin || '',
+    });
+    setPointageEditMode(true);
+  };
+
+  const cancelPointageEdit = () => {
+    setPointageEditMode(false);
+    setPointageEditForm({ debut: '', fin: '' });
+  };
+
+  const savePointageEdit = async () => {
+    if (!selectedShift) return;
+    const newDebut = pointageEditForm.debut?.trim() || null;
+    const newFin = pointageEditForm.fin?.trim() || null;
+    // Validation : fin doit être après debut quand les deux sont renseignés
+    if (newDebut && newFin && newFin < newDebut) {
+      alertLegacy('Le pointage de départ doit être après l\'arrivée.');
+      return;
+    }
+    // Validation : pas de fin sans début
+    if (newFin && !newDebut) {
+      alertLegacy('Renseigne d\'abord l\'heure d\'arrivée.');
+      return;
+    }
+    setPointageEditSaving(true);
+    try {
+      if (legacySB) {
+        const row = await legacySB.db.updateShift(selectedShift.id, {
+          pointageDebut: newDebut,
+          pointageFin: newFin,
+        });
+        const mapped = legacySB.db.mapShiftFromDB(row);
+        setPlanning(prev => prev.map(s => s.id === selectedShift.id ? mapped : s));
+        setSelectedShift(mapped);
+      } else {
+        setPlanning(prev => prev.map(s => s.id === selectedShift.id ? { ...s, pointageDebut: newDebut, pointageFin: newFin } : s));
+        setSelectedShift(prev => prev ? { ...prev, pointageDebut: newDebut, pointageFin: newFin } : prev);
+      }
+      setPointageEditMode(false);
+      notifyLegacy('✓ Pointage corrigé manuellement', 'success');
+    } catch (err) {
+      notifyLegacy('Erreur : ' + err.message, 'error');
+    } finally {
+      setPointageEditSaving(false);
+    }
+  };
+
   // ═══════════════ DUPLICATION ═══════════════
 
   // State pour la modale de duplication (journée OU semaine)
   const [duplicateMode, setDuplicateMode] = React.useState(null); // null | 'day' | 'week'
   const [duplicateSource, setDuplicateSource] = React.useState({ userId: '', sourceDate: '', targetDate: '' });
+
+  // ─── État pour la correction manuelle du pointage ───
+  // Le pointage normal passe par RPC Supabase (heures générées côté serveur,
+  // anti-fraude). Cette correction est réservée aux managers et permet de
+  // saisir/effacer manuellement les heures quand un employé a oublié de pointer.
+  const [pointageEditMode, setPointageEditMode] = React.useState(false);
+  const [pointageEditForm, setPointageEditForm] = React.useState({ debut: '', fin: '' });
+  const [pointageEditSaving, setPointageEditSaving] = React.useState(false);
 
   // ─── État pour la duplication "journée vers plusieurs employés" ───
   // Étend la duplication d'un jour pour cibler N employés sur 1 date OU une plage de dates
@@ -986,9 +1048,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
       {/* Modale détail */}
       {showDetailModal && selectedShift && (
-        <div style={pls.overlay} onClick={() => setShowDetailModal(false)}>
+        <div style={pls.overlay} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>
           <div style={pls.modal} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button style={pls.closeBtn} onClick={() => setShowDetailModal(false)}>✕</button></div>
+            <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button style={pls.closeBtn} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>✕</button></div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
                 const emp = demoData.utilisateurs.find(u => u.id === selectedShift.userId);
@@ -998,14 +1060,46 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div><strong>Horaire :</strong> {selectedShift.debut}–{selectedShift.fin}</div>
               <div><strong>Poste :</strong> {selectedShift.poste || '—'}</div>
               <div><strong>Pause :</strong> {selectedShift.pause} min</div>
-              <div><strong>Arrivée :</strong> {selectedShift.pointageDebut || '—'}</div>
-              <div><strong>Départ :</strong> {selectedShift.pointageFin || '—'}</div>
+              {!pointageEditMode ? (
+                <>
+                  <div><strong>Arrivée :</strong> {selectedShift.pointageDebut || '—'}</div>
+                  <div><strong>Départ :</strong> {selectedShift.pointageFin || '—'}</div>
 
-              {canPointShift(selectedShift) && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                  {!selectedShift.pointageDebut && <button style={pls.pointBtn} onClick={() => pointerArrivee(selectedShift)}>⏱ Pointer arrivée</button>}
-                  {selectedShift.pointageDebut && !selectedShift.pointageFin && <button style={pls.pointBtn} onClick={() => pointerDepart(selectedShift)}>⏱ Pointer départ</button>}
-                  {(selectedShift.pointageDebut || selectedShift.pointageFin) && canWrite && <button style={pls.ghostBtn} onClick={() => resetPointage(selectedShift)}>Réinit. pointage</button>}
+                  {canPointShift(selectedShift) && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                      {!selectedShift.pointageDebut && <button style={pls.pointBtn} onClick={() => pointerArrivee(selectedShift)}>⏱ Pointer arrivée</button>}
+                      {selectedShift.pointageDebut && !selectedShift.pointageFin && <button style={pls.pointBtn} onClick={() => pointerDepart(selectedShift)}>⏱ Pointer départ</button>}
+                      {(selectedShift.pointageDebut || selectedShift.pointageFin) && canWrite && <button style={pls.ghostBtn} onClick={() => resetPointage(selectedShift)}>Réinit.</button>}
+                      {canWrite && <button style={pls.ghostBtn} onClick={() => openPointageEdit(selectedShift)} title="Modifier manuellement les heures (oubli de pointage)">✎ Corriger manuellement</button>}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                    ✎ Correction manuelle du pointage
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 120px' }}>
+                      <label style={pls.fieldLabel}>Arrivée (HH:MM)</label>
+                      <input type="time" style={pls.fieldInput} value={pointageEditForm.debut}
+                        onChange={e => setPointageEditForm(prev => ({ ...prev, debut: e.target.value }))} />
+                    </div>
+                    <div style={{ flex: '1 1 120px' }}>
+                      <label style={pls.fieldLabel}>Départ (HH:MM)</label>
+                      <input type="time" style={pls.fieldInput} value={pointageEditForm.fin}
+                        onChange={e => setPointageEditForm(prev => ({ ...prev, fin: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                    💡 Action manager : utilise ce mode quand un employé a oublié de pointer. Laisse vide pour effacer une heure. Le pointage normal (RPC sécurisé côté serveur) reste prioritaire.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button style={pls.exportBtn} onClick={cancelPointageEdit} disabled={pointageEditSaving}>Annuler</button>
+                    <button style={{ ...pls.addBtn, opacity: pointageEditSaving ? 0.5 : 1 }} onClick={savePointageEdit} disabled={pointageEditSaving}>
+                      {pointageEditSaving ? '⏳ Enregistrement…' : 'Enregistrer la correction'}
+                    </button>
+                  </div>
                 </div>
               )}
 
