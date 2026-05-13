@@ -333,6 +333,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [duplicateMode, setDuplicateMode] = React.useState(null); // null | 'day' | 'week'
   const [duplicateSource, setDuplicateSource] = React.useState({ userId: '', sourceDate: '', targetDate: '' });
 
+  // ─── État pour la duplication "journée vers plusieurs employés" ───
+  // Étend la duplication d'un jour pour cibler N employés sur 1 date OU une plage de dates
+  // filtrée par jours de semaine (lun/mer/ven uniquement par ex.).
+  const [dupTargetUserIds, setDupTargetUserIds] = React.useState(new Set());
+  const [dupUseRange, setDupUseRange] = React.useState(false);
+  const [dupRangeEnd, setDupRangeEnd] = React.useState('');
+  // Indices ISO : 0=lundi, 1=mardi, ..., 6=dimanche. Tous cochés par défaut.
+  const [dupRangeWeekdays, setDupRangeWeekdays] = React.useState(new Set([0, 1, 2, 3, 4, 5, 6]));
+  const [dupConflictMode, setDupConflictMode] = React.useState('replace'); // 'replace' | 'skip' | 'add'
+  const [dupSaving, setDupSaving] = React.useState(false);
+
   // State pour la démultiplication d'un horaire vers plusieurs jours × employés
   // Ouverte depuis la modale de détail d'un shift via le bouton "Démultiplier".
   // sourceShift = shift original, targetDates = Set de dates, targetUserIds = Set d'ids users
@@ -344,13 +355,50 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
-  const openDuplicateDay = () => {
+  const openDuplicateDay = (presetUserId, presetSourceDate) => {
     setDuplicateMode('day');
+    const defaultUid = presetUserId || employees[0]?.id || '';
+    const defaultSrc = presetSourceDate || todayStr;
+    // Date cible par défaut = lendemain (plus pratique que "aujourd'hui = aujourd'hui")
+    const tomorrow = new Date(defaultSrc + 'T12:00:00');
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const defaultTgt = tomorrow.toISOString().slice(0, 10);
     setDuplicateSource({
-      userId: employees[0]?.id || '',
-      sourceDate: todayStr,
-      targetDate: todayStr,
+      userId: defaultUid,
+      sourceDate: defaultSrc,
+      targetDate: defaultTgt,
     });
+    // Pré-coche l'employé source (décochable si on veut seulement vers d'autres)
+    setDupTargetUserIds(new Set(defaultUid ? [defaultUid] : []));
+    setDupUseRange(false);
+    setDupRangeEnd(defaultTgt);
+    setDupRangeWeekdays(new Set([0, 1, 2, 3, 4, 5, 6]));
+    setDupConflictMode('replace');
+  };
+
+  // ─── Helpers de duplication multi-employés ───
+  // Construit la liste des dates cibles selon le mode (single date OR range filtrée par jours de semaine).
+  // Indice weekday : 0=lundi, 1=mardi, ..., 6=dimanche (ordre ISO européen).
+  const buildDupTargetDates = () => {
+    if (!dupUseRange) {
+      return duplicateSource.targetDate ? [duplicateSource.targetDate] : [];
+    }
+    if (!duplicateSource.targetDate || !dupRangeEnd) return [];
+    const start = new Date(duplicateSource.targetDate + 'T12:00:00');
+    const end = new Date(dupRangeEnd + 'T12:00:00');
+    if (end < start) return [];
+    const dates = [];
+    const cursor = new Date(start);
+    // Garde-fou : max 366 jours
+    for (let i = 0; i < 366 && cursor <= end; i++) {
+      const jsDay = cursor.getDay(); // 0=dim, 1=lun, ..., 6=sam
+      const isoDay = jsDay === 0 ? 6 : jsDay - 1; // 0=lun, ..., 6=dim
+      if (dupRangeWeekdays.has(isoDay)) {
+        dates.push(cursor.toISOString().slice(0, 10));
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
   };
 
   const openDuplicateWeek = () => {
@@ -365,60 +413,97 @@ const Planning = ({ user, etablissement, initialTab }) => {
     });
   };
 
-  // Duplique tous les shifts d'un employé à une date donnée vers une autre date
+  // Duplique tous les shifts d'un employé à une date source vers N employés sur 1 date OU une plage.
+  // Conflits gérés selon dupConflictMode : 'replace' / 'skip' / 'add'.
   const doDuplicateDay = async () => {
-    const { userId, sourceDate, targetDate } = duplicateSource;
-    if (!userId || !sourceDate || !targetDate) { alertLegacy('Remplissez tous les champs.'); return; }
-    if (sourceDate === targetDate) { alertLegacy('La date cible doit être différente.'); return; }
+    const { userId, sourceDate } = duplicateSource;
+    if (!userId) { alertLegacy('Sélectionne un employé source.'); return; }
+    if (!sourceDate) { alertLegacy('Sélectionne la date source.'); return; }
+    if (dupTargetUserIds.size === 0) { alertLegacy('Sélectionne au moins un employé cible.'); return; }
+
+    const targetDates = buildDupTargetDates();
+    if (targetDates.length === 0) { alertLegacy('Aucune date cible valide (vérifie la plage et les jours sélectionnés).'); return; }
 
     const shiftsToCopy = planningEtab.filter(s => s.userId === userId && s.date === sourceDate);
     if (shiftsToCopy.length === 0) {
-      alertLegacy('Aucun horaire à dupliquer pour cet employé à cette date.');
+      alertLegacy('Aucun horaire à dupliquer pour cet employé à la date source.');
       return;
     }
 
-    // Vérifier les conflits (shifts existants à la date cible)
-    const existing = planningEtab.filter(s => s.userId === userId && s.date === targetDate);
-    if (existing.length > 0) {
-      if (!confirmLegacy(`L'employé a déjà ${existing.length} horaire(s) au ${new Date(targetDate + 'T12:00:00').toLocaleDateString('fr-CH')}. Les remplacer ?`)) return;
-      // Supprimer les existants
-      if (legacySB) {
-        try {
-          for (const s of existing) await legacySB.db.deleteShift(s.id);
-        } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
-      }
-    }
-
-    // Créer les nouveaux shifts
+    setDupSaving(true);
+    let created = 0, replaced = 0, skipped = 0;
     const newShifts = [];
-    for (const src of shiftsToCopy) {
-      const copy = {
-        id: 's' + Date.now() + Math.floor(Math.random() * 1000),
-        etablissementId: etabId,
-        userId: src.userId,
-        date: targetDate,
-        debut: src.debut,
-        fin: src.fin,
-        pause: src.pause,
-        poste: src.poste,
-        typeShift: src.typeShift,
-        statut: 'confirmé',
-        pointageDebut: null,
-        pointageFin: null,
-        note: src.note,
-      };
-      if (legacySB) {
-        try {
-          const saved = await legacySB.db.createShift(copy);
-          newShifts.push(legacySB.db.mapShiftFromDB(saved));
-        } catch (err) { notifyLegacy('Erreur création : ' + err.message, 'error'); return; }
-      } else {
-        newShifts.push(copy);
+    const idsToRemove = new Set();
+
+    try {
+      for (const targetUid of dupTargetUserIds) {
+        for (const targetDate of targetDates) {
+          // Skip la cellule source elle-même (même user + même date)
+          if (targetUid === userId && targetDate === sourceDate) continue;
+
+          const existing = planningEtab.filter(s => s.userId === targetUid && s.date === targetDate);
+          if (existing.length > 0) {
+            if (dupConflictMode === 'skip') {
+              skipped += existing.length;
+              continue;
+            }
+            if (dupConflictMode === 'replace') {
+              for (const ex of existing) {
+                if (legacySB) {
+                  try { await legacySB.db.deleteShift(ex.id); } catch (err) { console.error('[dup delete]', err); }
+                }
+                idsToRemove.add(ex.id);
+                replaced++;
+              }
+            }
+            // 'add' : ne supprime rien, on ajoute en plus
+          }
+
+          for (const src of shiftsToCopy) {
+            const copy = {
+              id: 's' + Date.now() + Math.floor(Math.random() * 10000) + '-' + created,
+              etablissementId: etabId,
+              userId: targetUid,
+              date: targetDate,
+              debut: src.debut,
+              fin: src.fin,
+              pause: src.pause,
+              poste: src.poste,
+              typeShift: src.typeShift,
+              statut: 'confirmé',
+              pointageDebut: null,
+              pointageFin: null,
+              note: src.note,
+            };
+            if (legacySB) {
+              try {
+                const saved = await legacySB.db.createShift(copy);
+                newShifts.push(legacySB.db.mapShiftFromDB(saved));
+                created++;
+              } catch (err) {
+                console.error('[dup create]', err);
+                notifyLegacy('Erreur création : ' + err.message, 'error');
+              }
+            } else {
+              newShifts.push(copy);
+              created++;
+            }
+          }
+        }
       }
+
+      setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...newShifts]);
+
+      const empCount = dupTargetUserIds.size;
+      const dayCount = targetDates.length;
+      let msg = `✓ ${created} horaire${created > 1 ? 's' : ''} créé${created > 1 ? 's' : ''} vers ${empCount} employé${empCount > 1 ? 's' : ''} sur ${dayCount} jour${dayCount > 1 ? 's' : ''}`;
+      if (replaced > 0) msg += ` (${replaced} remplacé${replaced > 1 ? 's' : ''})`;
+      if (skipped > 0) msg += ` — ${skipped} ignoré${skipped > 1 ? 's' : ''}`;
+      notifyLegacy(msg, 'success');
+      setDuplicateMode(null);
+    } finally {
+      setDupSaving(false);
     }
-    setPlanning(prev => [...prev.filter(s => !existing.find(e => e.id === s.id)), ...newShifts]);
-    setDuplicateMode(null);
-    alertLegacy(`✓ ${newShifts.length} horaire${newShifts.length > 1 ? 's' : ''} dupliqué${newShifts.length > 1 ? 's' : ''}.`);
   };
 
   // Duplique TOUTE la semaine (tous les employés) vers une autre semaine
@@ -1005,60 +1090,265 @@ const Planning = ({ user, etablissement, initialTab }) => {
         </div>
       )}
 
-      {/* ═════════ MODALE DUPLIQUER (jour ou semaine) ═════════ */}
-      {duplicateMode && (
+      {/* ═════════ MODALE DUPLIQUER ═════════ */}
+      {/* Mode 'day' = duplication multi-employés × multi-dates ; mode 'week' = semaine complète vers semaine */}
+      {duplicateMode === 'week' && (
         <div style={pls.overlay} onClick={() => setDuplicateMode(null)}>
           <div style={{ ...pls.modal, width: 480 }} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>
-                {duplicateMode === 'day' ? 'Dupliquer la journée d\'un employé' : 'Dupliquer une semaine complète'}
-              </div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Dupliquer une semaine complète</div>
               <button style={pls.closeBtn} onClick={() => setDuplicateMode(null)}>✕</button>
             </div>
             <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {duplicateMode === 'day' && (
-                <div>
-                  <label style={pls.fieldLabel}>Employé</label>
-                  <select style={pls.fieldInput} value={duplicateSource.userId}
-                    onChange={e => setDuplicateSource({ ...duplicateSource, userId: e.target.value })}>
-                    <option value="">— Sélectionner —</option>
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={pls.fieldLabel}>{duplicateMode === 'day' ? 'Date source' : 'Lundi de la semaine source'}</label>
+                  <label style={pls.fieldLabel}>Lundi de la semaine source</label>
                   <input type="date" style={pls.fieldInput} value={duplicateSource.sourceDate}
                     onChange={e => setDuplicateSource({ ...duplicateSource, sourceDate: e.target.value })} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={pls.fieldLabel}>{duplicateMode === 'day' ? 'Date cible' : 'Lundi de la semaine cible'}</label>
+                  <label style={pls.fieldLabel}>Lundi de la semaine cible</label>
                   <input type="date" style={pls.fieldInput} value={duplicateSource.targetDate}
                     onChange={e => setDuplicateSource({ ...duplicateSource, targetDate: e.target.value })} />
                 </div>
               </div>
-
               <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: 10, borderRadius: 6, lineHeight: 1.5 }}>
-                {duplicateMode === 'day'
-                  ? '💡 Tous les horaires (midi + soir le cas échéant) de l\'employé à la date source seront copiés vers la date cible. Les pointages ne sont pas copiés.'
-                  : '💡 Tous les horaires de tous les employés de la semaine source (7 jours à partir du lundi choisi) seront copiés vers la semaine cible. Les pointages ne sont pas copiés.'}
+                💡 Tous les horaires de tous les employés de la semaine source (7 jours à partir du lundi choisi) seront copiés vers la semaine cible. Les pointages ne sont pas copiés.
               </div>
-
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
                 <button style={pls.exportBtn} onClick={() => setDuplicateMode(null)}>Annuler</button>
-                <button style={pls.addBtn} onClick={duplicateMode === 'day' ? doDuplicateDay : doDuplicateWeek}>
-                  Dupliquer
-                </button>
+                <button style={pls.addBtn} onClick={doDuplicateWeek}>Dupliquer</button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* ═════════ MODALE DUPLIQUER JOURNÉE — Multi-employés × Multi-dates ═════════ */}
+      {duplicateMode === 'day' && (() => {
+        const srcEmp = employees.find(e => e.id === duplicateSource.userId);
+        const srcShiftsCount = duplicateSource.userId && duplicateSource.sourceDate
+          ? planningEtab.filter(s => s.userId === duplicateSource.userId && s.date === duplicateSource.sourceDate).length
+          : 0;
+        const targetDates = buildDupTargetDates();
+        // Conflits par paire (userId × date) pour affichage
+        const conflicts = [];
+        dupTargetUserIds.forEach(uid => {
+          targetDates.forEach(date => {
+            if (uid === duplicateSource.userId && date === duplicateSource.sourceDate) return;
+            const ex = planningEtab.filter(s => s.userId === uid && s.date === date);
+            if (ex.length > 0) {
+              const emp = employees.find(e => e.id === uid);
+              conflicts.push({ uid, date, count: ex.length, empName: emp ? `${emp.prenom} ${emp.nom}` : uid });
+            }
+          });
+        });
+        const allUsersSelected = employees.length > 0 && employees.every(e => dupTargetUserIds.has(e.id));
+        const toggleUser = (uid) => {
+          setDupTargetUserIds(prev => {
+            const next = new Set(prev);
+            if (next.has(uid)) next.delete(uid); else next.add(uid);
+            return next;
+          });
+        };
+        const toggleWeekday = (idx) => {
+          setDupRangeWeekdays(prev => {
+            const next = new Set(prev);
+            if (next.has(idx)) next.delete(idx); else next.add(idx);
+            return next;
+          });
+        };
+        // Compteur final = (couples (user, date) - exclusion source) × shifts source
+        const pairCount = Array.from(dupTargetUserIds).reduce((acc, uid) => {
+          return acc + targetDates.filter(d => !(uid === duplicateSource.userId && d === duplicateSource.sourceDate)).length;
+        }, 0);
+        const totalToCreate = pairCount * srcShiftsCount;
+        const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+        return (
+          <div style={pls.overlay} onClick={() => !dupSaving && setDuplicateMode(null)}>
+            <div style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div style={pls.modalHeader}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📋 Dupliquer une journée vers plusieurs employés</div>
+                <button style={pls.closeBtn} onClick={() => !dupSaving && setDuplicateMode(null)}>✕</button>
+              </div>
+              <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* ── Source ── */}
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Journée source</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label style={pls.fieldLabel}>Employé source</label>
+                      <select style={pls.fieldInput} value={duplicateSource.userId}
+                        onChange={e => {
+                          const newUid = e.target.value;
+                          setDuplicateSource(prev => ({ ...prev, userId: newUid }));
+                          // Si l'ancien userId était pré-coché, on le déplace vers le nouveau
+                          setDupTargetUserIds(prev => {
+                            const next = new Set(prev);
+                            if (duplicateSource.userId) next.delete(duplicateSource.userId);
+                            if (newUid) next.add(newUid);
+                            return next;
+                          });
+                        }}>
+                        <option value="">— Sélectionner —</option>
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: '1 1 150px' }}>
+                      <label style={pls.fieldLabel}>Date source</label>
+                      <input type="date" style={pls.fieldInput} value={duplicateSource.sourceDate}
+                        onChange={e => setDuplicateSource(prev => ({ ...prev, sourceDate: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: srcShiftsCount > 0 ? 'var(--text)' : 'var(--text2)' }}>
+                    {srcEmp && srcShiftsCount > 0
+                      ? <>📌 <strong>{srcShiftsCount}</strong> horaire{srcShiftsCount > 1 ? 's' : ''} trouvé{srcShiftsCount > 1 ? 's' : ''} pour {srcEmp.prenom} {srcEmp.nom} à cette date.</>
+                      : <span style={{ fontStyle: 'italic' }}>Aucun horaire à dupliquer pour ce couple employé/date.</span>}
+                  </div>
+                </div>
+
+                {/* ── Date(s) cible(s) ── */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={pls.fieldLabel}>Date(s) cible(s) ({targetDates.length} jour{targetDates.length > 1 ? 's' : ''})</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text2)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={dupUseRange} onChange={e => setDupUseRange(e.target.checked)} />
+                      Plage de dates
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 150px' }}>
+                      <label style={{ ...pls.fieldLabel, fontSize: 10 }}>{dupUseRange ? 'Du' : 'Date'}</label>
+                      <input type="date" style={pls.fieldInput} value={duplicateSource.targetDate}
+                        onChange={e => setDuplicateSource(prev => ({ ...prev, targetDate: e.target.value }))} />
+                    </div>
+                    {dupUseRange && (
+                      <div style={{ flex: '1 1 150px' }}>
+                        <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Au</label>
+                        <input type="date" style={pls.fieldInput} value={dupRangeEnd}
+                          onChange={e => setDupRangeEnd(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                  {dupUseRange && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Jours concernés dans la plage :</div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {WEEKDAY_LABELS.map((lbl, idx) => {
+                          const checked = dupRangeWeekdays.has(idx);
+                          return (
+                            <button key={lbl} type="button"
+                              onClick={() => toggleWeekday(idx)}
+                              style={{
+                                padding: '5px 10px', fontSize: 11, fontWeight: 700,
+                                border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                                background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                                color: checked ? 'var(--accent)' : 'var(--text2)',
+                                borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)',
+                              }}>
+                              {lbl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Employés cibles ── */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={pls.fieldLabel}>Employés cibles ({dupTargetUserIds.size} sélectionné{dupTargetUserIds.size > 1 ? 's' : ''})</label>
+                    <button type="button" style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
+                      onClick={() => {
+                        if (allUsersSelected) setDupTargetUserIds(new Set());
+                        else setDupTargetUserIds(new Set(employees.map(e => e.id)));
+                      }}>
+                      {allUsersSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                    {employees.map(emp => {
+                      const role = demoData.roles[emp.role];
+                      const isSrc = emp.id === duplicateSource.userId;
+                      const checked = dupTargetUserIds.has(emp.id);
+                      // Conflit pour cet employé sur au moins une date cible ?
+                      const hasConflict = conflicts.some(c => c.uid === emp.id);
+                      return (
+                        <label key={emp.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
+                            border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                            borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                            background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                          }}>
+                          <input type="checkbox" checked={checked} onChange={() => toggleUser(emp.id)} />
+                          <div style={{ ...pls.empAvatar, background: role?.couleur, width: 22, height: 22, fontSize: 9 }}>{emp.avatar}</div>
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {emp.prenom} {emp.nom}
+                            <span style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
+                          </span>
+                          {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)' }}>(src)</span>}
+                          {checked && hasConflict && <span title="Conflit détecté sur au moins une date cible" style={{ fontSize: 11, color: 'var(--warning-text)' }}>⚠</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Gestion des conflits ── */}
+                {conflicts.length > 0 && (
+                  <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
+                      ⚠ {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} détecté{conflicts.length > 1 ? 's' : ''}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text2)', maxHeight: 80, overflowY: 'auto', marginBottom: 10, lineHeight: 1.5 }}>
+                      {conflicts.slice(0, 8).map((c, i) => (
+                        <div key={i}>• <strong>{c.empName}</strong> a déjà {c.count} horaire(s) le {new Date(c.date + 'T12:00:00').toLocaleDateString('fr-CH')}</div>
+                      ))}
+                      {conflicts.length > 8 && <div>… et {conflicts.length - 8} autres</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>
+                      {[
+                        { v: 'replace', label: 'Écraser', desc: 'Remplace les horaires existants' },
+                        { v: 'skip', label: 'Ignorer', desc: 'Ne touche pas aux employés en conflit' },
+                        { v: 'add', label: 'Ajouter en plus', desc: 'Crée en plus des existants' },
+                      ].map(opt => (
+                        <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                          <input type="radio" name="dupConflictMode" value={opt.v}
+                            checked={dupConflictMode === opt.v}
+                            onChange={() => setDupConflictMode(opt.v)} />
+                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 11 }}>— {opt.desc}</span></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Footer ── */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                  <span style={{ flex: 1, fontSize: 12, color: totalToCreate > 0 ? 'var(--text)' : 'var(--text2)' }}>
+                    {totalToCreate > 0
+                      ? <><strong>{totalToCreate}</strong> horaire{totalToCreate > 1 ? 's' : ''} vers <strong>{dupTargetUserIds.size}</strong> employé{dupTargetUserIds.size > 1 ? 's' : ''} sur <strong>{targetDates.length}</strong> jour{targetDates.length > 1 ? 's' : ''}</>
+                      : 'Configuration incomplète'}
+                  </span>
+                  <button style={pls.exportBtn} onClick={() => setDuplicateMode(null)} disabled={dupSaving}>Annuler</button>
+                  <button
+                    style={{ ...pls.addBtn, opacity: totalToCreate === 0 || dupSaving ? 0.5 : 1 }}
+                    onClick={doDuplicateDay}
+                    disabled={totalToCreate === 0 || dupSaving}>
+                    {dupSaving ? '⏳ Création…' : `Dupliquer (${totalToCreate})`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═════════ MODALE RELEVÉ CCNT ═════════ */}
       {showCCNTModal && (
