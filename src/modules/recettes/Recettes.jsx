@@ -166,12 +166,285 @@ const smStyle = {
   ghostBtn: { padding: '8px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer' },
 };
 
+// ─── DuplicateRecetteModal : modale de duplication vers plusieurs établissements ───
+// Composant module-level (PAS imbriqué) pour éviter les remounts et stale closures.
+const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
+  const legacySB = dbService.getBridge();
+  const [accessibleEtabs, setAccessibleEtabs] = React.useState([]);
+  const [existingByEtab, setExistingByEtab] = React.useState({}); // { etabId: existingRecetteRow|null }
+  const [loading, setLoading] = React.useState(true);
+  const [selectedEtabIds, setSelectedEtabIds] = React.useState(new Set());
+  const [conflictMode, setConflictMode] = React.useState('rename'); // 'rename' | 'overwrite' | 'skip'
+  const [opts, setOpts] = React.useState({
+    ingredients: true,
+    etapes: true,
+    photos: true,
+    prix: false,        // désactivé par défaut (prix fournisseurs varient par étab)
+    allergenes: true,
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  // Charger les établissements accessibles au user au mount
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!legacySB) { setLoading(false); return; }
+        const all = await legacySB.db.listEtablissements();
+        if (!mounted) return;
+        // Filtre : exclure l'établissement source + ne garder que ceux où le user a accès
+        const isConsultant = user?.role === 'consultant';
+        const allowedIds = user?.etablissementIds || [];
+        const list = (all || []).filter(e => {
+          if (e.id === sourceEtab?.id) return false;
+          if (isConsultant) return true;
+          return allowedIds.includes(e.id);
+        });
+        setAccessibleEtabs(list);
+
+        // Pour chaque étab, détecter si une recette du même nom existe
+        const existing = {};
+        await Promise.all(list.map(async (e) => {
+          try {
+            const recs = await legacySB.db.listRecettes(e.id);
+            const found = (recs || []).find(r => (r.nom || '').trim().toLowerCase() === (recette.nom || '').trim().toLowerCase());
+            existing[e.id] = found || null;
+          } catch (err) {
+            existing[e.id] = null;
+          }
+        }));
+        if (mounted) setExistingByEtab(existing);
+      } catch (err) {
+        console.error('[DuplicateRecette] load etabs', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [sourceEtab?.id, recette?.nom, legacySB, user]);
+
+  const toggleEtab = (id) => {
+    setSelectedEtabIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allSelected = accessibleEtabs.length > 0 && accessibleEtabs.every(e => selectedEtabIds.has(e.id));
+
+  const handleDuplicate = async () => {
+    if (selectedEtabIds.size === 0) { notifyLegacy('Sélectionne au moins un établissement.', 'warning'); return; }
+    if (!legacySB) { notifyLegacy('Base de données indisponible.', 'error'); return; }
+
+    setSaving(true);
+    const successes = [];
+    const failures = [];
+
+    // Construit le payload à copier selon les options. Les champs non cochés sont vidés/zéroés.
+    const buildPayload = (targetEtabId, overrideId, overrideNom) => ({
+      // Si overwrite : on garde l'id existant pour upsert ; sinon nouvel id
+      id: overrideId || ('rec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)),
+      etablissementId: targetEtabId,
+      nom: overrideNom || recette.nom,
+      categorie: recette.categorie,
+      portions: recette.portions,
+      // Prix : si opts.prix désactivé, on remet à 0 pour forcer une revue par l'établissement
+      prixVente: opts.prix ? (recette.prixVente || 0) : 0,
+      tempsPreparation: recette.tempsPreparation || 0,
+      tempsCuisson: recette.tempsCuisson || 0,
+      tempsTotal: recette.tempsTotal || 0,
+      statut: 'brouillon', // une copie commence en brouillon pour validation côté étab cible
+      version: 1,
+      allergenesIds: opts.allergenes ? (recette.allergenesIds || []) : [],
+      notesConsultant: recette.notesConsultant || '',
+      dressage: recette.dressage || '',
+      conservation: recette.conservation || '',
+      // Ingrédients : si opts.prix désactivé, on remet prixUnit à 0 sur chaque ingrédient
+      ingredients: opts.ingredients
+        ? (recette.ingredients || []).map(i => ({ ...i, prixUnit: opts.prix ? (i.prixUnit || 0) : 0 }))
+        : [],
+      etapes: opts.etapes ? (recette.etapes || []) : [],
+      modifiePar: user?.id || null,
+      photoUrl: opts.photos ? (recette.photoUrl || null) : null,
+    });
+
+    for (const etabId of selectedEtabIds) {
+      const targetEtab = accessibleEtabs.find(e => e.id === etabId);
+      const existing = existingByEtab[etabId];
+      try {
+        if (existing && conflictMode === 'skip') {
+          failures.push({ etabId, etabNom: targetEtab?.nom, reason: 'ignoré (recette déjà présente)' });
+          continue;
+        }
+        let payload;
+        if (existing && conflictMode === 'overwrite') {
+          payload = buildPayload(etabId, existing.id, existing.nom);
+        } else if (existing && conflictMode === 'rename') {
+          payload = buildPayload(etabId, null, `${recette.nom} (copie)`);
+        } else {
+          payload = buildPayload(etabId, null, null);
+        }
+        const saved = await legacySB.db.upsertRecette(payload);
+        successes.push({ etabId, etabNom: targetEtab?.nom, recetteId: saved?.id });
+      } catch (err) {
+        console.error('[DuplicateRecette] target', etabId, err);
+        failures.push({ etabId, etabNom: targetEtab?.nom, reason: err?.message || 'erreur DB' });
+      }
+    }
+
+    setSaving(false);
+
+    if (successes.length > 0) {
+      const list = successes.map(s => s.etabNom).filter(Boolean).join(', ');
+      notifyLegacy(`✓ "${recette.nom}" dupliquée vers ${successes.length} établissement${successes.length > 1 ? 's' : ''} : ${list}`, 'success');
+    }
+    if (failures.length > 0) {
+      const list = failures.map(f => `${f.etabNom} (${f.reason})`).join(' · ');
+      notifyLegacy(`⚠ ${failures.length} duplication(s) non effectuée(s) : ${list}`, 'warning');
+    }
+    if (successes.length > 0) onClose();
+  };
+
+  return (
+    <div style={smStyle.overlay} onClick={() => !saving && onClose()}>
+      <div style={{ ...smStyle.modal, maxWidth: 640, width: '94vw' }} onClick={e => e.stopPropagation()}>
+        <div style={smStyle.header}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🔀 Dupliquer la recette vers…</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>« {recette.nom} »</div>
+          </div>
+          <button style={smStyle.closeBtn} onClick={() => !saving && onClose()}>✕</button>
+        </div>
+
+        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {loading && <div style={{ textAlign: 'center', color: 'var(--text2)', padding: 20 }}>Chargement des établissements…</div>}
+
+          {!loading && accessibleEtabs.length === 0 && (
+            <div style={{ padding: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text2)' }}>
+              Aucun autre établissement accessible pour cette duplication.
+            </div>
+          )}
+
+          {!loading && accessibleEtabs.length > 0 && (
+            <>
+              {/* ── Sélection établissements cibles ── */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                    Établissements cibles ({selectedEtabIds.size} sélectionné{selectedEtabIds.size > 1 ? 's' : ''})
+                  </label>
+                  <button type="button"
+                    style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' }}
+                    onClick={() => {
+                      if (allSelected) setSelectedEtabIds(new Set());
+                      else setSelectedEtabIds(new Set(accessibleEtabs.map(e => e.id)));
+                    }}>
+                    {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                  {accessibleEtabs.map(e => {
+                    const checked = selectedEtabIds.has(e.id);
+                    const hasExisting = !!existingByEtab[e.id];
+                    return (
+                      <label key={e.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                          border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                          borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                          background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                        }}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleEtab(e.id)} />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.couleur || 'var(--accent)', flexShrink: 0 }} />
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.nom}</span>
+                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 10, color: 'var(--warning-text)', fontWeight: 700 }}>⚠ déjà présente</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Options de copie ── */}
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Que copier ?</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, fontSize: 12 }}>
+                  {[
+                    { key: 'ingredients', label: 'Ingrédients' },
+                    { key: 'etapes', label: 'Étapes de préparation' },
+                    { key: 'photos', label: 'Photo' },
+                    { key: 'prix', label: 'Food cost / prix', warn: 'Les prix varient par établissement' },
+                    { key: 'allergenes', label: 'Allergènes & HACCP' },
+                  ].map(o => (
+                    <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!!opts[o.key]}
+                        onChange={e => setOpts(prev => ({ ...prev, [o.key]: e.target.checked }))} />
+                      <span>
+                        {o.label}
+                        {o.warn && <span style={{ fontSize: 10, color: 'var(--text3)', display: 'block', lineHeight: 1.2 }}>{o.warn}</span>}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Gestion des doublons (si conflit détecté parmi les sélectionnés) ── */}
+              {Array.from(selectedEtabIds).some(id => existingByEtab[id]) && (
+                <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
+                    ⚠ Cette recette existe déjà dans certains établissements sélectionnés
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text)' }}>
+                    {[
+                      { v: 'rename', label: 'Créer en doublon avec suffixe « (copie) »' },
+                      { v: 'overwrite', label: 'Écraser la recette existante' },
+                      { v: 'skip', label: 'Ignorer cet établissement' },
+                    ].map(opt => (
+                      <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input type="radio" name="dupRecConflictMode" value={opt.v}
+                          checked={conflictMode === opt.v}
+                          onChange={() => setConflictMode(opt.v)} />
+                        <span>{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Footer ── */}
+          <div style={smStyle.footer}>
+            <span style={{ flex: 1, fontSize: 12, color: selectedEtabIds.size > 0 ? 'var(--text)' : 'var(--text2)' }}>
+              {selectedEtabIds.size > 0
+                ? <>Dupliquer vers <strong>{selectedEtabIds.size}</strong> établissement{selectedEtabIds.size > 1 ? 's' : ''}</>
+                : 'Sélectionne au moins un établissement'}
+            </span>
+            <button style={smStyle.ghostBtn} onClick={() => !saving && onClose()} disabled={saving}>Annuler</button>
+            <button
+              style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
+              onClick={handleDuplicate}
+              disabled={selectedEtabIds.size === 0 || saving}>
+              {saving ? '⏳ Duplication…' : `🔀 Dupliquer (${selectedEtabIds.size})`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── RecetteDetail : composant global (extrait hors de Recettes) ───
 const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   const [portions, setPortions] = React.useState(recette.portions);
   const [showCalc, setShowCalc] = React.useState(false);
+  const [showDuplicate, setShowDuplicate] = React.useState(false);
   const ratio = portions / (recette.portions || 1);
   const coutAdj = (recette.ingredients || []).reduce((s,i) => s + (i.quantite||0) * ratio * (i.prixUnit||0), 0);
+
+  // Qui peut dupliquer ? consultant + patron + responsable cuisine
+  // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
+  const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
 
   const printRecipe = () => {
     if (!pdfUtils?.printElement) {
@@ -192,14 +465,25 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   return (
     <div style={rs.detailRoot}>
       {showCalc && <ScalingModal recette={recette} onClose={() => setShowCalc(false)}/>}
+      {showDuplicate && (
+        <DuplicateRecetteModal
+          recette={recette}
+          user={user}
+          sourceEtab={etablissement}
+          onClose={() => setShowDuplicate(false)}
+        />
+      )}
       <div style={{display:'flex',gap:8,marginBottom:16, flexWrap: 'wrap'}} className='no-print'>
         <button style={rs.backBtn} onClick={onBack}>← Retour</button>
         <button
-          style={{ ...rs.printBtn, background: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}
+          style={{ ...rs.printBtn, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}
           onClick={() => setShowCalc(true)}
         >⚖ Calculer</button>
         <button style={rs.printBtn} onClick={printRecipe}>🖨 Imprimer</button>
         <button style={rs.printBtn} onClick={exportRecipePdf}>⬇ Export PDF</button>
+        {canDuplicate && (
+          <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>🔀 Dupliquer vers…</button>
+        )}
       </div>
       <div id='fiche-recette-print'>
       <div style={rs.detailHeader}>
