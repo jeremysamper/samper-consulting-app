@@ -451,7 +451,9 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.printElement('fiche-recette-print', 'Fiche recette - ' + recette.nom, { etablissement });
+    // noHeader : on retire la bannière Samper Consulting du PDF/print
+    // pour laisser uniquement la fiche recette propre.
+    pdfUtils.printElement('fiche-recette-print', 'Fiche recette - ' + recette.nom, { etablissement, noHeader: true });
   };
 
   const exportRecipePdf = () => {
@@ -459,7 +461,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.exportElementToPdf('fiche-recette-print', 'fiche-recette.pdf', { etablissement, title: 'Fiche recette - ' + recette.nom });
+    pdfUtils.exportElementToPdf('fiche-recette-print', 'fiche-recette.pdf', { etablissement, title: 'Fiche recette - ' + recette.nom, noHeader: true });
   };
 
   return (
@@ -487,7 +489,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       </div>
       <div id='fiche-recette-print'>
       <div style={rs.detailHeader}>
-        <div style={rs.backGhost}>← Retour</div>
+        <div style={rs.backGhost} className='no-print'>← Retour</div>
         {recette.photoUrl && (
           <img src={recette.photoUrl} alt={recette.nom}
             style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}

@@ -248,9 +248,15 @@ export const pdfUtils = {
     if (!printWindow) { notifyLegacy('Impossible d’ouvrir la fenêtre d’impression.', 'error'); return; }
     const clone = this._prepareClone(element);
 
-    const headerHTML = noBrand
-      ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:16pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:10pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' — ' + etab.adresse : ''}</div>` : ''}<div style="font-size:9pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
-      : this._getHeaderHTML(title, etab);
+    // noHeader = aucun en-tête du tout (le contenu cloné parle de lui-même)
+    // noBrand = un mini-header sobre avec juste titre + date, sans logo Samper
+    // par défaut = full header avec brand Samper + meta
+    let headerHTML = '';
+    if (!noHeader) {
+      headerHTML = noBrand
+        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:16pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:10pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' — ' + etab.adresse : ''}</div>` : ''}<div style="font-size:9pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        : this._getHeaderHTML(title, etab);
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
