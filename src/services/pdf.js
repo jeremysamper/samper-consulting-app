@@ -10,6 +10,57 @@ import { readJson } from '../utils/storage.js';
 
 export const pdfUtils = {
 
+  // ─── Override CSS variables en HEX pour le rendu PDF / print ────────────
+  // html2canvas v1.4 ne supporte PAS oklch() et plante avec
+  // "Attempting to parse an unsupported color function oklch".
+  // En redéfinissant les CSS variables au niveau du container (.pdf-render-root),
+  // toutes les `var(--text)`, `var(--bg)` etc. utilisées dans les inline styles
+  // se résolvent en hex au moment où html2canvas lit les computed styles.
+  // Pareil pour la fenêtre d'impression qui n'hérite pas des vars du document parent.
+  _getThemeVarOverrides() {
+    return `
+      .pdf-render-root, .pdf-render-root * {
+        --bg: #fbf8f3;
+        --bg2: #f5efe4;
+        --surface: #ffffff;
+        --surface2: #faf5ec;
+        --border: #d4c5a8;
+        --border2: #c8b994;
+        --text: #2c2620;
+        --text2: #6b5d4a;
+        --text3: #8a7d6a;
+        --accent: #92702A;
+        --accent2: #b8985e;
+        --accent-light: #f5efe4;
+        --accent-bd: #d4c5a8;
+        --nav: #2c2620;
+        --nav-text: rgba(255,255,255,0.7);
+        --nav-active: rgba(255,255,255,0.11);
+        --nav-border: rgba(255,255,255,0.06);
+        --success-bg: #dcfce7;
+        --success-bg-soft: #f0fdf4;
+        --success-text: #15803d;
+        --success-bd: #86efac;
+        --success-strong: #16a34a;
+        --danger-bg: #fee2e2;
+        --danger-bg-soft: #fef2f2;
+        --danger-text: #991b1b;
+        --danger-bd: #fca5a5;
+        --danger-strong: #dc2626;
+        --warning-bg: #fef3c7;
+        --warning-bg-soft: #fffbeb;
+        --warning-text: #92400e;
+        --warning-bd: #fcd34d;
+        --warning-strong: #f59e0b;
+        --info-bg: #dbeafe;
+        --info-bg-soft: #eff6ff;
+        --info-text: #1e40af;
+        --info-bd: #93c5fd;
+        --info-strong: #3b82f6;
+      }
+    `;
+  },
+
   _getPrintStyles(orientation = 'portrait') {
     const isLandscape = orientation === 'landscape';
     // ─── Palette Samper — DA sobre et éditoriale ───
@@ -17,6 +68,7 @@ export const pdfUtils = {
     // beige doré (#b8985e) pour les filets et accents.
     // Titres en italique serif éditorial (Georgia en fallback web-safe).
     return `
+      ${this._getThemeVarOverrides()}
       @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 18mm; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body {
@@ -88,30 +140,18 @@ export const pdfUtils = {
       .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(184,152,94,0.12); color: #8a6b2f; border: 0.5px solid #d4c5a8; }
       .section { margin-bottom: 20px; page-break-inside: avoid; }
 
-      /* ─── Overrides agressifs pour le contenu cloné ────────────────────
-         Les composants React utilisent souvent des couleurs inline hardcodées
-         (#dcfce7, #15803d, #fff, etc.) qui restent dans le clone DOM.
-         html2canvas et la print-window n'ont pas accès aux CSS variables
-         du runtime, donc on force ici un fallback cohérent avec la DA Samper.
-         Les éléments avec une classe .badge / .pdf-meta-etab gardent leur
-         couleur explicite (déjà définie ci-dessus avec leur priorité). */
-      .pdf-content, .pdf-content * {
-        color: #2c2620;
+      /* ─── Sublimer les cartes / sections existantes du DOM cloné ────
+         Les composants React utilisent inline background: var(--surface)
+         qui se résout maintenant en #ffffff via _getThemeVarOverrides.
+         On donne un look "carte" subtil à tout div qui a un background
+         ou un border inline, pour rendre la structure visible en print. */
+      .pdf-content > div { margin-bottom: 12px; }
+      .pdf-content div[style*="border"][style*="radius"] {
+        border-color: #d4c5a8 !important;
+        background: rgba(255,255,255,0.6) !important;
       }
-      .pdf-content [style*="background"] {
-        background-image: none !important;
-      }
-      /* Strip les fonds de cartes/badges colorés qui ne rendent rien en print */
-      .pdf-content [style*="background:#"], .pdf-content [style*="background: #"],
-      .pdf-content [style*="background-color:"] {
-        background: transparent !important;
-      }
-      /* Conserver les couleurs sémantiques utiles pour les badges status */
-      .pdf-content [style*="background: #dcfce7"], .pdf-content [style*="background:#dcfce7"] { background: rgba(184,152,94,0.08) !important; color: #2c2620 !important; }
-      .pdf-content [style*="background: #fee2e2"], .pdf-content [style*="background:#fee2e2"] { background: rgba(220,38,38,0.08) !important; color: #991b1b !important; }
-      .pdf-content [style*="background: #fef3c7"], .pdf-content [style*="background:#fef3c7"] { background: rgba(245,158,11,0.10) !important; color: #92400e !important; }
       /* Liens et accents : conserver l'or Samper */
-      .pdf-content a, .pdf-content [class*="accent"] { color: #92702A; }
+      .pdf-content a { color: #92702A; text-decoration: none; }
       ul, ol { margin: 4px 0 12px 20px; padding: 0; }
       li { margin-bottom: 4px; font-size: 10pt; }
       .no-print, button, .pls-tabs, [class*="no-print"] { display: none !important; }
@@ -186,35 +226,10 @@ export const pdfUtils = {
       span.style.cssText = 'font-weight: 600;';
       el.replaceWith(span);
     });
-    // ─── Nettoyage des inline styles couleurs ─────────────────────────────
-    // Bug observé : les composants utilisent style={{ color: 'var(--text)' }}
-    // qui résout en oklch() au runtime. html2canvas v1.4 plante silencieusement
-    // sur oklch et le bouton "imprimer" affiche les styles inline héritage qui
-    // écrasent notre CSS print. On strip les color/background-color/border-color
-    // dans le clone pour laisser le CSS print prendre le dessus.
-    // On garde par contre tout ce qui est layout (display, gap, padding, etc.).
-    this._stripColorInlines(clone);
+    // Pas de strip des inline styles : les var() utilisées dans le DOM cloné
+    // se résoudront via _getThemeVarOverrides() qui redéfinit ces vars en HEX
+    // au niveau du container .pdf-render-root.
     return clone;
-  },
-
-  _stripColorInlines(root) {
-    if (!root || !root.querySelectorAll) return;
-    const COLOR_PROPS = ['color', 'background', 'backgroundColor', 'backgroundImage', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'boxShadow', 'outlineColor', 'fill', 'stroke'];
-    const walk = (el) => {
-      if (el.nodeType !== 1) return; // ELEMENT_NODE
-      if (el.style) {
-        // Strip uniquement les propriétés qui contiennent var() ou oklch — les valeurs hex hardcodées
-        // restent intactes (et seront overridées par notre CSS !important).
-        COLOR_PROPS.forEach(prop => {
-          const val = el.style[prop];
-          if (val && (/var\(/.test(val) || /oklch\(/i.test(val))) {
-            el.style[prop] = '';
-          }
-        });
-      }
-    };
-    walk(root);
-    root.querySelectorAll('*').forEach(walk);
   },
 
   // ── IMPRESSION DIRECTE
@@ -245,7 +260,7 @@ export const pdfUtils = {
         <title>${title}</title>
         <style>${this._getPrintStyles(orientation)}</style>
       </head>
-      <body>
+      <body class="pdf-render-root">
         ${headerHTML}
         <div class="pdf-content">${clone.innerHTML}</div>
       </body>
@@ -268,6 +283,7 @@ export const pdfUtils = {
     const fitOnePage = !!options.fitOnePage;
 
     const container = document.createElement('div');
+    container.className = 'pdf-render-root';
     container.style.cssText = `
       position: fixed; left: -9999px; top: 0;
       width: ${orientation === 'landscape' ? '1120px' : '794px'};
@@ -297,27 +313,6 @@ export const pdfUtils = {
         useCORS: true,
         backgroundColor: '#fbf8f3',
         logging: false,
-        // onclone : dernière chance pour neutraliser les couleurs problématiques
-        // (var(--*), oklch()) sur le DOM cloné par html2canvas en interne.
-        onclone: (clonedDoc) => {
-          try {
-            clonedDoc.querySelectorAll('*').forEach(el => {
-              if (!el.style) return;
-              const inline = el.getAttribute('style');
-              if (inline && (/var\(/.test(inline) || /oklch\(/i.test(inline))) {
-                // Strip color, background-color, border-color qui contiennent var() ou oklch()
-                ['color', 'background', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'boxShadow', 'fill', 'stroke'].forEach(prop => {
-                  const v = el.style[prop];
-                  if (v && (/var\(/.test(v) || /oklch\(/i.test(v))) {
-                    el.style[prop] = '';
-                  }
-                });
-              }
-            });
-          } catch (e) {
-            console.warn('[pdf onclone normalize] échec non bloquant', e);
-          }
-        },
       });
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
@@ -395,6 +390,7 @@ export const pdfUtils = {
     const fitOnePage = !!options.fitOnePage;
 
     const container = document.createElement('div');
+    container.className = 'pdf-render-root';
     container.style.cssText = `
       position: fixed; left: -9999px; top: 0;
       width: ${orientation === 'landscape' ? '1120px' : '794px'};
@@ -424,25 +420,6 @@ export const pdfUtils = {
         useCORS: true,
         backgroundColor: '#fbf8f3',
         logging: false,
-        onclone: (clonedDoc) => {
-          // Même normalisation oklch/var() que exportElementToPdf
-          try {
-            clonedDoc.querySelectorAll('*').forEach(el => {
-              if (!el.style) return;
-              const inline = el.getAttribute('style');
-              if (inline && (/var\(/.test(inline) || /oklch\(/i.test(inline))) {
-                ['color', 'background', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'boxShadow', 'fill', 'stroke'].forEach(prop => {
-                  const v = el.style[prop];
-                  if (v && (/var\(/.test(v) || /oklch\(/i.test(v))) {
-                    el.style[prop] = '';
-                  }
-                });
-              }
-            });
-          } catch (e) {
-            console.warn('[pdf blob onclone normalize] échec non bloquant', e);
-          }
-        },
       });
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
