@@ -160,16 +160,60 @@ export default function App() {
   );
 }
 
-function BootScreen({ title = 'Chargement de la session' }) {
+function BootScreen({ title = '' }) {
+  // Loader minimaliste : spinner Samper or sur fond crème, sans le panel "migration"
+  // qui faisait trop "page d'erreur". Animation @keyframes spin déjà dans app.css.
   return (
-    <main className="migration-page">
-      <section className="migration-panel compact-panel">
-        <p className="eyebrow">Samper Consulting</p>
-        <h1>{title}</h1>
-      </section>
+    <main style={bootScreenStyles.root}>
+      <div style={bootScreenStyles.center}>
+        <div style={bootScreenStyles.spinner} aria-label="Chargement">
+          <div style={bootScreenStyles.spinnerInner} />
+        </div>
+        <div style={bootScreenStyles.brand}>Samper Consulting</div>
+        {title && <div style={bootScreenStyles.subtitle}>{title}</div>}
+      </div>
     </main>
   );
 }
+
+const bootScreenStyles = {
+  root: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'var(--bg)',
+    fontFamily: 'var(--font)',
+  },
+  center: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 18,
+  },
+  spinner: {
+    width: 44,
+    height: 44,
+    borderRadius: '50%',
+    border: '3px solid var(--accent-light)',
+    borderTopColor: 'var(--accent)',
+    animation: 'spin 0.9s linear infinite',
+  },
+  spinnerInner: { display: 'none' }, // placeholder pour compat future
+  brand: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: 'var(--text)',
+    fontFamily: 'var(--font-serif)',
+    letterSpacing: 0.4,
+  },
+  subtitle: {
+    fontSize: 11,
+    color: 'var(--text2)',
+    fontStyle: 'italic',
+    marginTop: -8,
+  },
+};
 
 function LegacyLoadError({ error }) {
   return (

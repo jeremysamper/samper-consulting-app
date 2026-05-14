@@ -87,6 +87,31 @@ export const pdfUtils = {
       .kpi-value { font-family: Georgia, serif; font-size: 15pt; font-weight: 600; color: #2c2620; }
       .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(184,152,94,0.12); color: #8a6b2f; border: 0.5px solid #d4c5a8; }
       .section { margin-bottom: 20px; page-break-inside: avoid; }
+
+      /* ─── Overrides agressifs pour le contenu cloné ────────────────────
+         Les composants React utilisent souvent des couleurs inline hardcodées
+         (#dcfce7, #15803d, #fff, etc.) qui restent dans le clone DOM.
+         html2canvas et la print-window n'ont pas accès aux CSS variables
+         du runtime, donc on force ici un fallback cohérent avec la DA Samper.
+         Les éléments avec une classe .badge / .pdf-meta-etab gardent leur
+         couleur explicite (déjà définie ci-dessus avec leur priorité). */
+      .pdf-content, .pdf-content * {
+        color: #2c2620;
+      }
+      .pdf-content [style*="background"] {
+        background-image: none !important;
+      }
+      /* Strip les fonds de cartes/badges colorés qui ne rendent rien en print */
+      .pdf-content [style*="background:#"], .pdf-content [style*="background: #"],
+      .pdf-content [style*="background-color:"] {
+        background: transparent !important;
+      }
+      /* Conserver les couleurs sémantiques utiles pour les badges status */
+      .pdf-content [style*="background: #dcfce7"], .pdf-content [style*="background:#dcfce7"] { background: rgba(184,152,94,0.08) !important; color: #2c2620 !important; }
+      .pdf-content [style*="background: #fee2e2"], .pdf-content [style*="background:#fee2e2"] { background: rgba(220,38,38,0.08) !important; color: #991b1b !important; }
+      .pdf-content [style*="background: #fef3c7"], .pdf-content [style*="background:#fef3c7"] { background: rgba(245,158,11,0.10) !important; color: #92400e !important; }
+      /* Liens et accents : conserver l'or Samper */
+      .pdf-content a, .pdf-content [class*="accent"] { color: #92702A; }
       ul, ol { margin: 4px 0 12px 20px; padding: 0; }
       li { margin-bottom: 4px; font-size: 10pt; }
       .no-print, button, .pls-tabs, [class*="no-print"] { display: none !important; }
@@ -161,7 +186,35 @@ export const pdfUtils = {
       span.style.cssText = 'font-weight: 600;';
       el.replaceWith(span);
     });
+    // ─── Nettoyage des inline styles couleurs ─────────────────────────────
+    // Bug observé : les composants utilisent style={{ color: 'var(--text)' }}
+    // qui résout en oklch() au runtime. html2canvas v1.4 plante silencieusement
+    // sur oklch et le bouton "imprimer" affiche les styles inline héritage qui
+    // écrasent notre CSS print. On strip les color/background-color/border-color
+    // dans le clone pour laisser le CSS print prendre le dessus.
+    // On garde par contre tout ce qui est layout (display, gap, padding, etc.).
+    this._stripColorInlines(clone);
     return clone;
+  },
+
+  _stripColorInlines(root) {
+    if (!root || !root.querySelectorAll) return;
+    const COLOR_PROPS = ['color', 'background', 'backgroundColor', 'backgroundImage', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'boxShadow', 'outlineColor', 'fill', 'stroke'];
+    const walk = (el) => {
+      if (el.nodeType !== 1) return; // ELEMENT_NODE
+      if (el.style) {
+        // Strip uniquement les propriétés qui contiennent var() ou oklch — les valeurs hex hardcodées
+        // restent intactes (et seront overridées par notre CSS !important).
+        COLOR_PROPS.forEach(prop => {
+          const val = el.style[prop];
+          if (val && (/var\(/.test(val) || /oklch\(/i.test(val))) {
+            el.style[prop] = '';
+          }
+        });
+      }
+    };
+    walk(root);
+    root.querySelectorAll('*').forEach(walk);
   },
 
   // ── IMPRESSION DIRECTE
@@ -240,8 +293,37 @@ export const pdfUtils = {
 
     try {
       const canvas = await html2canvas(container, {
-        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#fbf8f3',
+        logging: false,
+        // onclone : dernière chance pour neutraliser les couleurs problématiques
+        // (var(--*), oklch()) sur le DOM cloné par html2canvas en interne.
+        onclone: (clonedDoc) => {
+          try {
+            clonedDoc.querySelectorAll('*').forEach(el => {
+              if (!el.style) return;
+              const inline = el.getAttribute('style');
+              if (inline && (/var\(/.test(inline) || /oklch\(/i.test(inline))) {
+                // Strip color, background-color, border-color qui contiennent var() ou oklch()
+                ['color', 'background', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'boxShadow', 'fill', 'stroke'].forEach(prop => {
+                  const v = el.style[prop];
+                  if (v && (/var\(/.test(v) || /oklch\(/i.test(v))) {
+                    el.style[prop] = '';
+                  }
+                });
+              }
+            });
+          } catch (e) {
+            console.warn('[pdf onclone normalize] échec non bloquant', e);
+          }
+        },
       });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Le rendu HTML→Canvas a produit une image vide. Vérifie que la zone à exporter contient du contenu visible.');
+      }
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
       const pageWidth = orientation === 'landscape' ? 297 : 210;
@@ -251,21 +333,17 @@ export const pdfUtils = {
       let imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       if (fitOnePage) {
-        // Mode "une seule page" : on scale-down l'image pour qu'elle rentre intégralement.
-        const availableHeight = pageHeight - margin * 2 - 8; // -8 pour le pied de page
+        const availableHeight = pageHeight - margin * 2 - 8;
         if (imgHeight > availableHeight) {
-          // Réduire proportionnellement la largeur pour que la hauteur rentre
           const scale = availableHeight / imgHeight;
           const finalWidth = imgWidth * scale;
           const finalHeight = availableHeight;
-          // Centrer horizontalement
           const xOffset = margin + (imgWidth - finalWidth) / 2;
           pdf.addImage(imgData, 'PNG', xOffset, margin, finalWidth, finalHeight);
         } else {
           pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
         }
       } else {
-        // Mode normal : multi-pages si nécessaire
         let heightLeft = imgHeight;
         let position = margin;
         pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
@@ -284,7 +362,7 @@ export const pdfUtils = {
         for (let i = 1; i <= totalPages; i++) {
           pdf.setPage(i);
           pdf.setFontSize(7.5);
-          pdf.setTextColor(138, 125, 106); // #8a7d6a — gris pierre clair
+          pdf.setTextColor(138, 125, 106);
           if (noBrand) {
             pdf.text(totalPages > 1 ? `${i} / ${totalPages}` : '', margin, pageHeight - 6);
           } else {
@@ -295,8 +373,12 @@ export const pdfUtils = {
       }
 
       pdf.save(fileName);
+    } catch (err) {
+      console.error('[pdf exportElementToPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
     } finally {
-      document.body.removeChild(container);
+      try { document.body.removeChild(container); } catch (e) { /* déjà retiré */ }
     }
   },
 
@@ -338,8 +420,35 @@ export const pdfUtils = {
 
     try {
       const canvas = await html2canvas(container, {
-        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#fbf8f3',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Même normalisation oklch/var() que exportElementToPdf
+          try {
+            clonedDoc.querySelectorAll('*').forEach(el => {
+              if (!el.style) return;
+              const inline = el.getAttribute('style');
+              if (inline && (/var\(/.test(inline) || /oklch\(/i.test(inline))) {
+                ['color', 'background', 'backgroundColor', 'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'boxShadow', 'fill', 'stroke'].forEach(prop => {
+                  const v = el.style[prop];
+                  if (v && (/var\(/.test(v) || /oklch\(/i.test(v))) {
+                    el.style[prop] = '';
+                  }
+                });
+              }
+            });
+          } catch (e) {
+            console.warn('[pdf blob onclone normalize] échec non bloquant', e);
+          }
+        },
       });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Le rendu HTML→Canvas a produit une image vide.');
+      }
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
       const pageWidth = orientation === 'landscape' ? 297 : 210;
@@ -378,7 +487,7 @@ export const pdfUtils = {
         for (let i = 1; i <= totalPages; i++) {
           pdf.setPage(i);
           pdf.setFontSize(7.5);
-          pdf.setTextColor(138, 125, 106); // #8a7d6a — gris pierre clair
+          pdf.setTextColor(138, 125, 106);
           if (noBrand) {
             pdf.text(totalPages > 1 ? `${i} / ${totalPages}` : '', margin, pageHeight - 6);
           } else {
@@ -390,8 +499,11 @@ export const pdfUtils = {
 
       // Retourne le PDF sous forme de Blob (pas de download)
       return pdf.output('blob');
+    } catch (err) {
+      console.error('[pdf elementToBlobPDF]', err);
+      throw err;
     } finally {
-      document.body.removeChild(container);
+      try { document.body.removeChild(container); } catch (e) { /* déjà retiré */ }
     }
   },
 };
