@@ -12,53 +12,81 @@ export const pdfUtils = {
 
   _getPrintStyles(orientation = 'portrait') {
     const isLandscape = orientation === 'landscape';
+    // ─── Palette Samper — DA sobre et éditoriale ───
+    // Crème (#fbf8f3) en fond, gris pierre (#2c2620) pour le texte,
+    // beige doré (#b8985e) pour les filets et accents.
+    // Titres en italique serif éditorial (Georgia en fallback web-safe).
     return `
-      @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 15mm; }
+      @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 18mm; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body {
-        font-family: 'Helvetica Neue', Arial, sans-serif;
-        color: #1a1a1a;
-        background: #fff;
+        font-family: 'Helvetica Neue', 'Inter', Arial, sans-serif;
+        color: #2c2620;
+        background: #fbf8f3;
         margin: 0; padding: 0;
         font-size: 10pt;
-        line-height: 1.4;
+        line-height: 1.5;
       }
       .pdf-header {
         display: flex; justify-content: space-between; align-items: flex-start;
-        border-bottom: 2px solid #92702A;
-        padding-bottom: 10px; margin-bottom: 18px;
+        border-bottom: 1px solid #b8985e;
+        padding-bottom: 14px; margin-bottom: 22px;
       }
-      .pdf-brand { display: flex; align-items: center; gap: 12px; }
+      .pdf-brand { display: flex; align-items: center; gap: 14px; }
       .pdf-logo {
-        width: 42px; height: 42px; border-radius: 8px;
+        width: 44px; height: 44px; border-radius: 8px;
         background: #92702A; color: #fff;
         display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 14pt; letter-spacing: 1px;
+        font-weight: 700; font-size: 14pt; letter-spacing: 1.2px;
         overflow: hidden;
       }
       .pdf-logo img { width: 100%; height: 100%; object-fit: cover; }
-      .pdf-brand-text .pdf-brand-name { font-size: 13pt; font-weight: 700; color: #1a1a1a; }
-      .pdf-brand-text .pdf-brand-sub { font-size: 9pt; color: #666; margin-top: 2px; }
-      .pdf-meta { text-align: right; font-size: 9pt; color: #666; }
-      .pdf-meta-title { font-size: 14pt; font-weight: 700; color: #1a1a1a; margin-bottom: 2px; }
-      .pdf-meta-etab { font-weight: 600; color: #92702A; margin-top: 4px; }
-      h1, h2, h3 { color: #1a1a1a; margin: 0 0 10px 0; page-break-after: avoid; }
-      h1 { font-size: 16pt; font-weight: 700; }
-      h2 { font-size: 13pt; font-weight: 700; margin-top: 14px; }
-      h3 { font-size: 11pt; font-weight: 600; margin-top: 10px; }
+      .pdf-brand-text .pdf-brand-name { font-size: 12pt; font-weight: 700; color: #2c2620; letter-spacing: 0.2px; }
+      .pdf-brand-text .pdf-brand-sub { font-size: 8.5pt; color: #8a7d6a; margin-top: 2px; font-style: italic; }
+      .pdf-meta { text-align: right; font-size: 9pt; color: #8a7d6a; }
+      .pdf-meta-title {
+        font-family: Georgia, 'Cormorant Garamond', serif;
+        font-style: italic;
+        font-size: 17pt; font-weight: 600;
+        color: #2c2620; margin-bottom: 4px;
+        letter-spacing: 0.2px;
+      }
+      .pdf-meta-etab { font-weight: 600; color: #b8985e; margin-top: 6px; letter-spacing: 0.3px; }
+      h1, h2, h3 { color: #2c2620; margin: 0 0 10px 0; page-break-after: avoid; }
+      h1 {
+        font-family: Georgia, 'Cormorant Garamond', serif;
+        font-style: italic;
+        font-size: 18pt; font-weight: 600;
+      }
+      h2 {
+        font-family: Georgia, serif;
+        font-size: 12pt; font-weight: 700;
+        margin-top: 18px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #b8985e;
+        border-bottom: 0.5px solid #d4c5a8;
+        padding-bottom: 4px;
+      }
+      h3 { font-size: 10.5pt; font-weight: 600; margin-top: 12px; color: #2c2620; }
       p { margin: 0 0 8px 0; }
-      strong { font-weight: 600; }
-      table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; page-break-inside: auto; }
-      thead { display: table-header-group; background: #f5f0e5; }
+      strong { font-weight: 600; color: #2c2620; }
+      em { font-style: italic; color: #6b5d4a; }
+      table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; page-break-inside: auto; }
+      thead { display: table-header-group; background: transparent; }
       tr { page-break-inside: avoid; page-break-after: auto; }
-      th { text-align: left; font-size: 9pt; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.3px; padding: 6px 8px; border-bottom: 1.5px solid #92702A; }
-      td { padding: 6px 8px; font-size: 10pt; border-bottom: 1px solid #eee; }
-      .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 16px; }
-      .kpi-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; }
-      .kpi-label { font-size: 8pt; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
-      .kpi-value { font-size: 14pt; font-weight: 700; color: #1a1a1a; }
-      .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 8pt; font-weight: 600; background: #f5f0e5; color: #92702A; }
-      .section { margin-bottom: 18px; page-break-inside: avoid; }
+      th {
+        text-align: left; font-size: 8.5pt; font-weight: 700;
+        color: #b8985e; text-transform: uppercase; letter-spacing: 0.8px;
+        padding: 8px 8px 6px; border-bottom: 1px solid #b8985e;
+      }
+      td { padding: 7px 8px; font-size: 10pt; border-bottom: 0.5px solid #e8dfcd; color: #2c2620; }
+      .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 12px 0 18px; }
+      .kpi-card { border: 0.5px solid #d4c5a8; border-radius: 4px; padding: 12px 14px; background: rgba(255,255,255,0.5); }
+      .kpi-label { font-size: 7.5pt; font-weight: 700; color: #8a7d6a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+      .kpi-value { font-family: Georgia, serif; font-size: 15pt; font-weight: 600; color: #2c2620; }
+      .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(184,152,94,0.12); color: #8a6b2f; border: 0.5px solid #d4c5a8; }
+      .section { margin-bottom: 20px; page-break-inside: avoid; }
       ul, ol { margin: 4px 0 12px 20px; padding: 0; }
       li { margin-bottom: 4px; font-size: 10pt; }
       .no-print, button, .pls-tabs, [class*="no-print"] { display: none !important; }
@@ -255,14 +283,14 @@ export const pdfUtils = {
         const totalPages = pdf.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
           pdf.setPage(i);
-          pdf.setFontSize(8);
-          pdf.setTextColor(150);
+          pdf.setFontSize(7.5);
+          pdf.setTextColor(138, 125, 106); // #8a7d6a — gris pierre clair
           if (noBrand) {
-            pdf.text(totalPages > 1 ? `Page ${i}/${totalPages}` : '', margin, pageHeight - 5);
+            pdf.text(totalPages > 1 ? `${i} / ${totalPages}` : '', margin, pageHeight - 6);
           } else {
-            pdf.text(`Samper Consulting — Page ${i}/${totalPages}`, margin, pageHeight - 5);
+            pdf.text(`Samper Consulting · ${i} / ${totalPages}`, margin, pageHeight - 6);
           }
-          pdf.text(new Date().toLocaleDateString('fr-CH'), pageWidth - margin, pageHeight - 5, { align: 'right' });
+          pdf.text(new Date().toLocaleDateString('fr-CH'), pageWidth - margin, pageHeight - 6, { align: 'right' });
         }
       }
 
@@ -349,14 +377,14 @@ export const pdfUtils = {
         const totalPages = pdf.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
           pdf.setPage(i);
-          pdf.setFontSize(8);
-          pdf.setTextColor(150);
+          pdf.setFontSize(7.5);
+          pdf.setTextColor(138, 125, 106); // #8a7d6a — gris pierre clair
           if (noBrand) {
-            pdf.text(totalPages > 1 ? `Page ${i}/${totalPages}` : '', margin, pageHeight - 5);
+            pdf.text(totalPages > 1 ? `${i} / ${totalPages}` : '', margin, pageHeight - 6);
           } else {
-            pdf.text(`Samper Consulting — Page ${i}/${totalPages}`, margin, pageHeight - 5);
+            pdf.text(`Samper Consulting · ${i} / ${totalPages}`, margin, pageHeight - 6);
           }
-          pdf.text(new Date().toLocaleDateString('fr-CH'), pageWidth - margin, pageHeight - 5, { align: 'right' });
+          pdf.text(new Date().toLocaleDateString('fr-CH'), pageWidth - margin, pageHeight - 6, { align: 'right' });
         }
       }
 
