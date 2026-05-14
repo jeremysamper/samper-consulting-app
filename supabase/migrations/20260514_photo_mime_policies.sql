@@ -1,0 +1,23 @@
+-- ═══════════════════════════════════════════════════════════════
+-- Storage policies : whitelist MIME types pour le bucket 'documents'
+-- Sprint 3 — 2026-05-14
+-- ═══════════════════════════════════════════════════════════════
+--
+-- Note : Supabase Storage filtre les uploads via le champ "Allowed MIME types"
+-- du bucket (Dashboard > Storage > Buckets > documents > Settings).
+-- Cette migration NE PEUT PAS modifier ce paramètre via SQL — il faut le
+-- faire manuellement dans le Dashboard.
+--
+-- À appliquer dans Supabase Dashboard :
+--   Storage > Buckets > documents > Edit bucket > Allowed MIME types
+--
+-- Coller cette liste exacte (séparée par virgules) :
+--   image/jpeg, image/png, image/webp, image/heic, image/heif, application/pdf
+--
+-- Note : application/pdf reste autorisé pour les documents non-photo
+-- (factures, fiches imprimables, etc.). La validation côté client dans
+-- PhotoUploader.jsx empêche déjà l'upload d'un PDF comme photo.
+--
+-- Pour le bucket 'documents' utilisé par les recettes photos :
+--   - max upload size : 10 MB (cohérent avec MAX_FILE_SIZE_MB côté client)
+--   - public : non (URLs signées 1 an pour les photos via createSignedUrl)
