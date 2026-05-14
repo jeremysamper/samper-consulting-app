@@ -545,7 +545,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
 
         <div style={{display:'flex', flexDirection:'column', gap:16}}>
           {user.role === 'consultant' && (
-            <div style={rs.detailCard}>
+            <div style={rs.detailCard} className='no-print'>
               <div style={rs.cardHeader}><span style={rs.cardTitle}>Analyse économique</span></div>
               <div style={rs.kpiGrid}>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Coût matière / portion</span><strong style={{color:'var(--accent)'}}>CHF {portions > 0 ? (coutAdj/portions).toFixed(2) : '—'}</strong></div>
