@@ -13,7 +13,6 @@ const FAQAssistant = lazy(() => import('./faq/FAQAssistant.jsx'));
 const FichesSalle = lazy(() => import('./fiches-salle/FichesSalle.jsx'));
 const HACCP = lazy(() => import('./haccp/HACCP.jsx'));
 const Inventaire = lazy(() => import('./inventaire/Inventaire.jsx'));
-const KitCuisinier = lazy(() => import('./kit-cuisinier/KitCuisinier.jsx'));
 const Parametres = lazy(() => import('./parametres/Parametres.jsx'));
 const Pertes = lazy(() => import('./pertes/Pertes.jsx'));
 const Planning = lazy(() => import('./planning/Planning.jsx'));
@@ -118,12 +117,6 @@ export default function LegacyModuleHost({
       const SOPComponent = SOP;
       return permissions.sop !== false
         ? wrap('SOPs & Checklists', <SOPComponent user={user} etablissement={etablissement} />)
-        : accessDenied;
-    }
-    case 'kit_cuisinier': {
-      const KitCuisinierComponent = KitCuisinier;
-      return permissions.kit_cuisinier !== false
-        ? wrap('Kit cuisinier', <KitCuisinierComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'consultant_tools': {

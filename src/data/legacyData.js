@@ -37,11 +37,11 @@ export const DEMO_DATA = {
   },
 
   permissions: {
-    consultant:   { dashboard:true, planning:true, pointage:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    patron:       { dashboard:true, planning:true, pointage:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    resp_cuisine: { dashboard:true, planning:true, pointage:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    cuisinier:    { dashboard:true, planning:true, pointage:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    serveur:      { dashboard:true, planning:true, pointage:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, kit_cuisinier:true, faq:true }
+    consultant:   { dashboard:true, planning:true, pointage:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, faq:true },
+    patron:       { dashboard:true, planning:true, pointage:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    resp_cuisine: { dashboard:true, planning:true, pointage:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    cuisinier:    { dashboard:true, planning:true, pointage:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    serveur:      { dashboard:true, planning:true, pointage:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, faq:true }
   },
 
   // Planning semaine du 21 avril 2026

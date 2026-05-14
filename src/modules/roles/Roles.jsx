@@ -12,11 +12,11 @@ const Roles = ({ user }) => {
   const demoData = getDemoData();
   const [activeTab, setActiveTab] = React.useState('permissions');
   const DEFAULT_PERMS = React.useMemo(() => JSON.parse(JSON.stringify({
-    consultant:   { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    patron:       { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    resp_cuisine: { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    cuisinier:    { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, kit_cuisinier:true, faq:true },
-    serveur:      { dashboard:true, planning:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, kit_cuisinier:true, faq:true }
+    consultant:   { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, faq:true },
+    patron:       { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    resp_cuisine: { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    cuisinier:    { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    serveur:      { dashboard:true, planning:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, faq:true }
   })), []);
   const [selected, setSelected] = React.useState('consultant');
   const [permissions, setPermissions] = React.useState(() => mergePermissionDefaults(readLegacyStorage('sc_permissions', DEFAULT_PERMS), DEFAULT_PERMS));
@@ -70,7 +70,6 @@ const Roles = ({ user }) => {
     { id:'factures',        label:'Factures' },
     { id:'catalogue',       label:'Catalogue produits' },
     { id:'sop',             label:'SOPs & Checklists' },
-    { id:'kit_cuisinier',   label:'Kit cuisinier' },
     { id:'roles',           label:'Rôles & Accès' },
     { id:'parametres',      label:'Établissements' },
     { id:'consultant_tools',label:'Outils consultant' },

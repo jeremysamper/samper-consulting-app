@@ -7,11 +7,11 @@ export const roles = {
 };
 
 export const defaultPermissions = {
-  consultant: { dashboard: true, planning: true, recettes: true, inventaire: true, pertes: true, haccp: true, sop: true, kit_cuisinier: true, fiches_salle: true, documents: true, catalogue: true, consultant_tools: true, faq: true },
-  patron: { dashboard: true, planning: true, recettes: true, inventaire: true, pertes: true, haccp: true, sop: true, kit_cuisinier: true, fiches_salle: true, documents: true, catalogue: true, consultant_tools: false, faq: true },
-  resp_cuisine: { dashboard: true, planning: true, recettes: true, inventaire: true, pertes: true, haccp: true, sop: true, kit_cuisinier: true, fiches_salle: true, documents: true, catalogue: true, consultant_tools: false, faq: true },
-  cuisinier: { dashboard: true, planning: true, recettes: true, inventaire: false, pertes: true, haccp: true, sop: true, kit_cuisinier: true, fiches_salle: false, documents: true, catalogue: true, consultant_tools: false, faq: true },
-  serveur: { dashboard: true, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: true, kit_cuisinier: true, fiches_salle: true, documents: true, catalogue: false, consultant_tools: false, faq: true }
+  consultant: { dashboard: true, planning: true, recettes: true, inventaire: true, pertes: true, haccp: true, sop: true, fiches_salle: true, documents: true, catalogue: true, consultant_tools: true, faq: true },
+  patron: { dashboard: true, planning: true, recettes: true, inventaire: true, pertes: true, haccp: true, sop: true, fiches_salle: true, documents: true, catalogue: true, consultant_tools: false, faq: true },
+  resp_cuisine: { dashboard: true, planning: true, recettes: true, inventaire: true, pertes: true, haccp: true, sop: true, fiches_salle: true, documents: true, catalogue: true, consultant_tools: false, faq: true },
+  cuisinier: { dashboard: true, planning: true, recettes: true, inventaire: false, pertes: true, haccp: true, sop: true, fiches_salle: false, documents: true, catalogue: true, consultant_tools: false, faq: true },
+  serveur: { dashboard: true, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: true, fiches_salle: true, documents: true, catalogue: false, consultant_tools: false, faq: true }
 };
 
 export const navItems = [
@@ -22,7 +22,6 @@ export const navItems = [
   { id: 'pertes', label: 'Pertes', icon: '◬', group: 'Cuisine', permKey: 'pertes' },
   { id: 'haccp', label: 'HACCP', mobileLabel: 'HACCP', icon: '◎', group: 'Cuisine', permKey: 'haccp' },
   { id: 'sop', label: 'SOPs & Checklists', icon: '◻', group: 'Documents', permKey: 'sop' },
-  { id: 'kit_cuisinier', label: 'Kit cuisinier', icon: '◫', group: 'Documents', permKey: 'kit_cuisinier' },
   { id: 'fiches_salle', label: 'Fiches salle', icon: '□', group: 'Documents', permKey: 'fiches_salle' },
   { id: 'documents', label: 'Documents', icon: '◱', group: 'Documents', permKey: 'documents' },
   { id: 'catalogue', label: 'Catalogue produits', icon: '◇', group: 'Consultant', permKey: 'catalogue' },

@@ -608,11 +608,11 @@ function buildAutomationItems({ user, manquants, pertesNonVal, haccpAlerts, acti
     });
   } else {
     items.push({
-      id: 'kit',
-      title: 'Kit cuisinier',
-      detail: 'Acces rapide aux fiches utiles et procedures de service.',
+      id: 'sop',
+      title: 'SOPs du service',
+      detail: 'Acces rapide aux procedures et checklists actives.',
       impact: 'Temps gagne: execution',
-      page: 'kit_cuisinier',
+      page: 'sop',
       tone: 'accent',
     });
   }
