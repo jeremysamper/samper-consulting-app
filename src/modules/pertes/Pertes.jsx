@@ -3,6 +3,9 @@ import { getDemoData } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -16,6 +19,8 @@ const Pertes = ({ user, etablissement }) => {
   const [motifFilter, setMotifFilter] = React.useState('Tous');
   const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
   const perms = demoData.permissions[user.role] || {};
+  const sel = useSelection();
+  const [bulkBusy, setBulkBusy] = React.useState(false);
 
   // ─── Catalogue produits (pour autocomplétion à la déclaration de perte) ───
   const [catalogue, setCatalogue] = React.useState([]);
@@ -63,6 +68,43 @@ const Pertes = ({ user, etablissement }) => {
       catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
     }
     setPertes(prev => prev.filter(p => p.id !== id));
+  };
+
+  // ─── Mode sélection : suppression et export en lot ───
+  const supprimerSelection = async () => {
+    if (!canManage || sel.count === 0) return;
+    if (!confirmLegacy(`Supprimer ${sel.count} perte(s) sélectionnée(s) ?`)) return;
+    setBulkBusy(true);
+    let ok = 0;
+    for (const id of Array.from(sel.ids)) {
+      if (legacySB) {
+        try { await legacySB.db.deletePerte(id); ok += 1; }
+        catch (err) { console.error('[deletePerte]', err); }
+      } else { ok += 1; }
+    }
+    setPertes(prev => prev.filter(p => !sel.ids.has(p.id)));
+    setBulkBusy(false);
+    sel.exit();
+    notifyLegacy(`${ok} perte(s) supprimée(s).`, 'success');
+  };
+
+  const exporterSelection = async () => {
+    const rows = pertesEtab.filter(p => sel.ids.has(p.id));
+    if (!rows.length) return;
+    setBulkBusy(true);
+    const headers = ['Date', 'Produit', 'Motif', 'Catégorie', 'Quantité', 'Unité', 'Valeur unitaire (CHF)', 'Valeur totale (CHF)', 'Statut', 'Commentaire'];
+    const data = rows.map(p => [
+      p.date, p.produit, p.motif, p.categorie, p.quantite, p.unite,
+      p.valeurUnit, Number((p.quantite * p.valeurUnit).toFixed(2)),
+      p.valide ? 'Validé' : 'À valider', p.commentaire || '',
+    ]);
+    try {
+      await exportRowsToXlsx(`pertes-${todayStr}.xlsx`, 'Pertes', headers, data, [12, 28, 18, 16, 10, 10, 18, 18, 12, 30]);
+      notifyLegacy(`${rows.length} perte(s) exportée(s) en Excel.`, 'success');
+    } catch (err) {
+      notifyLegacy('Erreur export : ' + err.message, 'error');
+    }
+    setBulkBusy(false);
   };
 
   const MOTIFS = ['Tous','DLC dépassée','Surproduction','Erreur de préparation','Erreur de commande','Retour client','Casse','Autre'];
@@ -158,6 +200,9 @@ const Pertes = ({ user, etablissement }) => {
         </div>
         <div style={pts.headerRight}>
           {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>+ Déclarer une perte</button>}
+          {canManage && !sel.active && (
+            <button style={pts.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>
+          )}
           <button style={pts.exportBtn} onClick={printPertes}>🖨 Imprimer</button>
           <button style={pts.exportBtn} onClick={exportPertes}>⬇ Export</button>
         </div>
@@ -187,9 +232,25 @@ const Pertes = ({ user, etablissement }) => {
         ))}
       </div>
 
+      {/* Barre d'outils du mode sélection */}
+      {sel.active && (
+        <SelectionToolbar
+          count={sel.count}
+          total={filtered.length}
+          allSelected={sel.count > 0 && sel.count === filtered.length}
+          onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(p => p.id)))}
+          onDelete={supprimerSelection}
+          onExport={exporterSelection}
+          exportLabel="⬇ Exporter Excel"
+          onCancel={sel.exit}
+          busy={bulkBusy}
+        />
+      )}
+
       {/* Liste */}
       <div style={pts.tableWrap} id="pertes-print">
-        <div style={pts.tableHead}>
+        <div style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px' }}>
+          {sel.active && <span className="no-print" />}
           <span>Date</span>
           <span style={{flex:2}}>Produit</span>
           <span>Motif</span>
@@ -208,7 +269,21 @@ const Pertes = ({ user, etablissement }) => {
           const valeur = (p.quantite * p.valeurUnit).toFixed(2);
           const canVal = canManage && !p.valide;
           return (
-            <div key={p.id} style={pts.tableRow}>
+            <div key={p.id} style={{
+              ...pts.tableRow,
+              gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',
+              ...(sel.active && sel.isSelected(p.id) ? { background: 'var(--bg)' } : {}),
+            }}>
+              {sel.active && (
+                <span className="no-print" style={{ display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={sel.isSelected(p.id)}
+                    onChange={() => sel.toggle(p.id)}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  />
+                </span>
+              )}
               <span style={pts.cell}>{p.date}</span>
               <span style={{...pts.cellBold, flex:2}}>
                 {p.produit}
