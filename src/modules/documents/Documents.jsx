@@ -3,6 +3,8 @@ import { getDemoData } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS — Partage hiérarchique de PDFs
@@ -25,6 +27,8 @@ const Documents = ({ user, etablissement }) => {
   // ─── Prévisualisation inline (PDF en iframe, images en <img>) ───
   const [previewing, setPreviewing] = React.useState(null); // { doc, url } | null
   const [previewLoading, setPreviewLoading] = React.useState(false);
+  const sel = useSelection();
+  const [bulkBusy, setBulkBusy] = React.useState(false);
   // Fermeture de la modale avec la touche Échap
   React.useEffect(() => {
     if (!previewing) return;
@@ -213,6 +217,25 @@ const Documents = ({ user, etablissement }) => {
     }
   };
 
+  // ─── Mode sélection : suppression en lot ───
+  const supprimerSelection = async () => {
+    if (sel.count === 0) return;
+    const docs = allDocs.filter(d => sel.ids.has(d.id));
+    const nbFolders = docs.filter(d => d.type === 'folder').length;
+    const msg = `Supprimer ${sel.count} élément(s) sélectionné(s) ?`
+      + (nbFolders > 0 ? `\n\n${nbFolders} dossier(s) et TOUT leur contenu seront supprimés. Action irréversible.` : '');
+    if (!confirmLegacy(msg)) return;
+    setBulkBusy(true);
+    let ok = 0;
+    for (const doc of docs) {
+      try { await legacySB.db.deleteDocument(doc); ok += 1; }
+      catch (err) { console.error('[deleteDocument]', err); }
+    }
+    setBulkBusy(false);
+    sel.exit();
+    notifyLegacy(`${ok} élément(s) supprimé(s).`, 'success');
+  };
+
   const startRename = (doc) => setRenaming({ id: doc.id, currentName: doc.nom, newName: doc.nom });
   const confirmRename = async () => {
     if (!renaming || !renaming.newName.trim() || renaming.newName === renaming.currentName) {
@@ -269,6 +292,9 @@ const Documents = ({ user, etablissement }) => {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+          {canWrite && !sel.active && docsInFolder.length > 0 && (
+            <button style={doc_s.ghostBtn} onClick={sel.enter}>☑ Sélectionner</button>
+          )}
           {canWrite && (
             <>
               <button style={doc_s.ghostBtn} onClick={() => setShowNewFolder(true)}>📁 Nouveau dossier</button>
@@ -288,6 +314,19 @@ const Documents = ({ user, etablissement }) => {
           )}
         </div>
       </div>
+
+      {/* Barre d'outils du mode sélection */}
+      {sel.active && (
+        <SelectionToolbar
+          count={sel.count}
+          total={docsInFolder.length}
+          allSelected={sel.count > 0 && sel.count === docsInFolder.length}
+          onToggleAll={() => (sel.count === docsInFolder.length ? sel.clear() : sel.selectAll(docsInFolder.map(d => d.id)))}
+          onDelete={supprimerSelection}
+          onCancel={sel.exit}
+          busy={bulkBusy}
+        />
+      )}
 
       {/* Contenu */}
       {loading ? (
@@ -310,10 +349,23 @@ const Documents = ({ user, etablissement }) => {
           {folders.map(f => (
             <div
               key={f.id}
-              style={doc_s.itemCard}
-              onClick={() => setCurrentFolder(f.id)}
-              onDoubleClick={() => setCurrentFolder(f.id)}
+              style={{
+                ...doc_s.itemCard,
+                position: 'relative',
+                ...(sel.active && sel.isSelected(f.id) ? { borderColor: 'var(--accent)', background: 'var(--bg)' } : {}),
+              }}
+              onClick={() => (sel.active ? sel.toggle(f.id) : setCurrentFolder(f.id))}
+              onDoubleClick={() => { if (!sel.active) setCurrentFolder(f.id); }}
             >
+              {sel.active && (
+                <input
+                  type="checkbox"
+                  checked={sel.isSelected(f.id)}
+                  onChange={() => sel.toggle(f.id)}
+                  onClick={e => e.stopPropagation()}
+                  style={{ position: 'absolute', top: 8, left: 8, width: 18, height: 18, cursor: 'pointer', zIndex: 2 }}
+                />
+              )}
               <div style={{ fontSize: 42, textAlign: 'center' }}>📁</div>
               {renaming?.id === f.id ? (
                 <input
@@ -342,11 +394,24 @@ const Documents = ({ user, etablissement }) => {
           {files.map(f => (
             <div
               key={f.id}
-              style={doc_s.itemCard}
-              onClick={() => openFile(f)}
-              onDoubleClick={() => openFile(f)}
-              title="Cliquer pour ouvrir"
+              style={{
+                ...doc_s.itemCard,
+                position: 'relative',
+                ...(sel.active && sel.isSelected(f.id) ? { borderColor: 'var(--accent)', background: 'var(--bg)' } : {}),
+              }}
+              onClick={() => (sel.active ? sel.toggle(f.id) : openFile(f))}
+              onDoubleClick={() => { if (!sel.active) openFile(f); }}
+              title={sel.active ? 'Cliquer pour sélectionner' : 'Cliquer pour ouvrir'}
             >
+              {sel.active && (
+                <input
+                  type="checkbox"
+                  checked={sel.isSelected(f.id)}
+                  onChange={() => sel.toggle(f.id)}
+                  onClick={e => e.stopPropagation()}
+                  style={{ position: 'absolute', top: 8, left: 8, width: 18, height: 18, cursor: 'pointer', zIndex: 2 }}
+                />
+              )}
               <div style={{ fontSize: 42, textAlign: 'center' }}>📄</div>
               {renaming?.id === f.id ? (
                 <input
