@@ -27,6 +27,7 @@ const SOP = ({ user, etablissement }) => {
   const canManage = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
 
   const [sops, setSops] = React.useState([]);
+  const [sopTemplates, setSopTemplates] = React.useState([]);
   const [executions, setExecutions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState('liste'); // liste | historique
@@ -41,13 +42,15 @@ const SOP = ({ user, etablissement }) => {
 
     const refresh = async () => {
       try {
-        const [sopsList, execList] = await Promise.all([
+        const [sopsList, execList, tplList] = await Promise.all([
           legacySB.db.listSops(etabId),
           legacySB.db.listSopExecutions(etabId, { limit: 100 }),
+          legacySB.db.listSopTemplates(),
         ]);
         if (mounted) {
           setSops(sopsList);
           setExecutions(execList);
+          setSopTemplates(Array.isArray(tplList) ? tplList : []);
           setLoading(false);
         }
       } catch (err) { console.error('[SOP load]', err); if (mounted) setLoading(false); }
@@ -58,6 +61,33 @@ const SOP = ({ user, etablissement }) => {
     const u2 = legacySB.realtime.subscribe('sop_executions', refresh);
     return () => { mounted = false; u1 && u1(); u2 && u2(); };
   }, [etabId]);
+
+  // Place une SOP existante dans la bibliothèque de templates (copie, is_template).
+  const addToTemplates = async (sop) => {
+    if (!legacySB || !sop) return;
+    const key = (sop.titre || '').trim().toLowerCase();
+    if (sopTemplates.some(t => (t.titre || '').trim().toLowerCase() === key)) {
+      notifyLegacy('Cette SOP est déjà dans la bibliothèque de templates.', 'info');
+      return;
+    }
+    try {
+      await legacySB.db.upsertSop({
+        etablissementId: sop.etablissementId || etabId,
+        titre: sop.titre,
+        description: sop.description,
+        categorie: sop.categorie,
+        frequence: sop.frequence,
+        sections: sop.sections,
+        tags: sop.tags,
+        isTemplate: true,
+        sourceTemplate: sop.id || null,
+        actif: true,
+      });
+      notifyLegacy('SOP ajoutée à la bibliothèque de templates.', 'success');
+    } catch (err) {
+      notifyLegacy('Erreur : ' + err.message, 'error');
+    }
+  };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
@@ -116,11 +146,13 @@ const SOP = ({ user, etablissement }) => {
       {activeTab === 'liste' ? (
         <SopList
           sops={sops}
+          sopTemplates={sopTemplates}
           executions={executions}
           user={user}
           canManage={canManage}
           etabId={etabId}
           onEdit={(s) => setSelectedSop(s)}
+          onAddToTemplates={addToTemplates}
           onStart={async (sop) => {
             try {
               const exec = await legacySB.db.startSopExecution({
@@ -139,6 +171,7 @@ const SOP = ({ user, etablissement }) => {
         <SopTemplatesModal
           etabId={etabId}
           existingSops={sops}
+          dbTemplates={sopTemplates}
           onClose={() => setShowTemplates(false)}
         />
       )}
@@ -147,8 +180,13 @@ const SOP = ({ user, etablissement }) => {
 };
 
 // ─── Liste des SOPs ───
-const SopList = ({ sops, executions = [], user, canManage, etabId, onEdit, onStart }) => {
+const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, onEdit, onStart, onAddToTemplates }) => {
   const [search, setSearch] = React.useState('');
+  // Titres déjà présents dans la bibliothèque de templates (pour le badge des cartes).
+  const templateTitles = React.useMemo(
+    () => new Set((sopTemplates || []).map(t => (t.titre || '').trim().toLowerCase())),
+    [sopTemplates],
+  );
   const [filterFreq, setFilterFreq] = React.useState('all');
   // Mode "nouveau cuisinier" : ne montre que les SOPs taggées 'essentielle'
   const [onboardingMode, setOnboardingMode] = React.useState(false);
@@ -274,6 +312,7 @@ const SopList = ({ sops, executions = [], user, canManage, etabId, onEdit, onSta
             {byFreq[freq.id].map(sop => {
               const totalSteps = (sop.sections || []).reduce((s, sec) => s + (sec.etapes || []).length, 0);
               const doneToday = doneTodayMap[sop.id];
+              const inTemplates = templateTitles.has((sop.titre || '').trim().toLowerCase());
               return (
                 <div key={sop.id} style={{
                   ...ss.sopCard,
@@ -299,6 +338,21 @@ const SopList = ({ sops, executions = [], user, canManage, etabId, onEdit, onSta
                   <div style={ss.sopCardActions}>
                     {canManage && (
                       <button style={ss.iconBtn} onClick={() => onEdit(sop)} title="Modifier">✎</button>
+                    )}
+                    {canManage && (
+                      inTemplates ? (
+                        <button
+                          style={{ ...ss.iconBtn, color: '#15803d', borderColor: '#86efac', cursor: 'default' }}
+                          title="Déjà dans la bibliothèque de templates"
+                          disabled
+                        >📚✓</button>
+                      ) : (
+                        <button
+                          style={ss.iconBtn}
+                          onClick={() => onAddToTemplates && onAddToTemplates(sop)}
+                          title="Ajouter à la bibliothèque de templates (pour export vers d'autres établissements)"
+                        >📚+</button>
+                      )
                     )}
                     <button
                       style={{
@@ -636,21 +690,29 @@ const SopHistory = ({ executions, sops, user, canManage }) => {
   );
 };
 
-// ─── Modale d'import des templates ───
-const SopTemplatesModal = ({ etabId, existingSops, onClose }) => {
+// ─── Modale bibliothèque de templates SOP ───
+// Bibliothèque gérable (templates en base) + modèles Samper prêts à l'emploi.
+// Permet d'importer une SOP dans l'établissement courant et de retirer un
+// template de la bibliothèque.
+const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) => {
   const legacySB = dbService.getBridge();
-  const templates = SOP_TEMPLATES;
   const [selected, setSelected] = React.useState(new Set());
   const [busy, setBusy] = React.useState(false);
 
-  // Marquer ceux déjà importés (recherche par titre)
-  const existingTitles = new Set(existingSops.map(s => s.titre));
+  // SOP déjà présentes dans l'établissement courant (par titre normalisé).
+  const existingTitles = new Set((existingSops || []).map(s => (s.titre || '').trim().toLowerCase()));
+
+  // Items combinés : bibliothèque en base (éditable) + modèles Samper (lecture seule).
+  const dbItems = (dbTemplates || []).map(t => ({ key: 'db:' + t.id, source: 'db', tpl: t }));
+  const samperItems = SOP_TEMPLATES.map(t => ({ key: 'samper:' + t.titre, source: 'samper', tpl: t }));
+  const allItems = [...dbItems, ...samperItems];
 
   const importSelected = async () => {
     setBusy(true);
     let count = 0;
-    for (const tpl of templates) {
-      if (!selected.has(tpl.titre)) continue;
+    for (const item of allItems) {
+      if (!selected.has(item.key)) continue;
+      const tpl = item.tpl;
       try {
         await legacySB.db.upsertSop({
           etablissementId: etabId,
@@ -660,14 +722,74 @@ const SopTemplatesModal = ({ etabId, existingSops, onClose }) => {
           frequence: tpl.frequence,
           sections: tpl.sections,
           tags: tpl.tags,
+          isTemplate: false,
+          sourceTemplate: item.source === 'db' ? tpl.id : tpl.titre,
           actif: true,
         });
-        count++;
-      } catch (err) { console.error(err); }
+        count += 1;
+      } catch (err) { console.error('[importSop]', err); }
     }
     setBusy(false);
-    alertLegacy(`${count} SOP importée${count > 1 ? 's' : ''}.`);
+    alertLegacy(`${count} SOP importée${count > 1 ? 's' : ''} dans cet établissement.`);
     onClose();
+  };
+
+  const removeTemplate = async (tpl) => {
+    if (!confirmLegacy(
+      `Retirer « ${tpl.titre} » de la bibliothèque de templates ?\n\n` +
+      'Les SOP déjà importées dans les établissements ne sont pas affectées.'
+    )) return;
+    try {
+      await legacySB.db.deleteSop(tpl.id);
+      notifyLegacy('Template retiré de la bibliothèque.', 'success');
+    } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+  };
+
+  const renderItem = (item) => {
+    const tpl = item.tpl;
+    const alreadyExists = existingTitles.has((tpl.titre || '').trim().toLowerCase());
+    const checked = selected.has(item.key);
+    const totalSteps = (tpl.sections || []).reduce((s, sec) => s + (sec.etapes || []).length, 0);
+    return (
+      <div key={item.key}
+        style={{
+          padding: '12px 18px', borderBottom: '1px solid var(--border)',
+          display: 'flex', gap: 12, alignItems: 'flex-start',
+          cursor: alreadyExists ? 'default' : 'pointer',
+          opacity: alreadyExists ? 0.5 : 1,
+          background: checked ? 'var(--accent-light)' : 'transparent',
+        }}
+        onClick={() => {
+          if (alreadyExists) return;
+          const next = new Set(selected);
+          checked ? next.delete(item.key) : next.add(item.key);
+          setSelected(next);
+        }}
+      >
+        <input type="checkbox" checked={checked} disabled={alreadyExists} readOnly
+          style={{ width: 18, height: 18, accentColor: 'var(--accent)', marginTop: 2 }}/>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{tpl.titre}</div>
+          {tpl.description && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>{tpl.description}</div>}
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            <span style={{ ...ss.miniBadge, background: '#f1f5f9', color: 'var(--text2)' }}>{tpl.categorie}</span>
+            <span style={{ ...ss.miniBadge, background: FREQ_MAP[tpl.frequence]?.couleur + '22', color: FREQ_MAP[tpl.frequence]?.couleur }}>{FREQ_MAP[tpl.frequence]?.label}</span>
+            <span style={{ ...ss.miniBadge, background: 'var(--bg)', color: 'var(--text2)' }}>{totalSteps} étapes · {(tpl.sections || []).length} sections</span>
+            {(tpl.tags || []).map(t => (
+              <span key={t} style={{ ...ss.miniBadge, background: '#fef3c7', color: '#92400e' }}>{t}</span>
+            ))}
+          </div>
+          {alreadyExists && <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>✓ Déjà dans cet établissement</div>}
+        </div>
+        {item.source === 'db' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); removeTemplate(tpl); }}
+            title="Retirer de la bibliothèque de templates"
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: '#dc2626', fontSize: 13, padding: '4px 8px' }}
+          >🗑</button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -675,64 +797,40 @@ const SopTemplatesModal = ({ etabId, existingSops, onClose }) => {
       <div style={ss.modal} onClick={e => e.stopPropagation()}>
         <div style={ss.modalHeader}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📚 Bibliothèque de templates</div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📚 Bibliothèque de templates SOP</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-              Templates prêts à l'emploi. Vous pourrez les modifier après import.
+              Importez des SOP dans cet établissement. Pour partager une SOP, ajoutez-la
+              à la bibliothèque via le bouton 📚+ sur sa carte.
             </div>
           </div>
           <button style={ss.closeBtn} onClick={onClose}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          {templates.map(tpl => {
-            const alreadyExists = existingTitles.has(tpl.titre);
-            const checked = selected.has(tpl.titre);
-            const totalSteps = (tpl.sections || []).reduce((s, sec) => s + (sec.etapes || []).length, 0);
-            return (
-              <div key={tpl.titre}
-                style={{
-                  padding: '12px 18px', borderBottom: '1px solid var(--border)',
-                  display: 'flex', gap: 12, alignItems: 'flex-start',
-                  cursor: alreadyExists ? 'default' : 'pointer',
-                  opacity: alreadyExists ? 0.5 : 1,
-                  background: checked ? 'var(--accent-light)' : 'transparent',
-                }}
-                onClick={() => {
-                  if (alreadyExists) return;
-                  const next = new Set(selected);
-                  checked ? next.delete(tpl.titre) : next.add(tpl.titre);
-                  setSelected(next);
-                }}
-              >
-                <input type="checkbox" checked={checked} disabled={alreadyExists} readOnly
-                  style={{ width: 18, height: 18, accentColor: 'var(--accent)', marginTop: 2 }}/>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{tpl.titre}</div>
-                  {tpl.description && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>{tpl.description}</div>}
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                    <span style={{ ...ss.miniBadge, background: '#f1f5f9', color: 'var(--text2)' }}>{tpl.categorie}</span>
-                    <span style={{ ...ss.miniBadge, background: FREQ_MAP[tpl.frequence]?.couleur + '22', color: FREQ_MAP[tpl.frequence]?.couleur }}>{FREQ_MAP[tpl.frequence]?.label}</span>
-                    <span style={{ ...ss.miniBadge, background: 'var(--bg)', color: 'var(--text2)' }}>{totalSteps} étapes · {(tpl.sections || []).length} sections</span>
-                    {(tpl.tags || []).map(t => (
-                      <span key={t} style={{ ...ss.miniBadge, background: '#fef3c7', color: '#92400e' }}>{t}</span>
-                    ))}
-                  </div>
-                  {alreadyExists && <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>✓ Déjà importée</div>}
-                </div>
-              </div>
-            );
-          })}
+          <div style={{ padding: '8px 18px 4px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)', letterSpacing: 0.4 }}>
+            Ma bibliothèque ({dbItems.length})
+          </div>
+          {dbItems.length === 0 && (
+            <div style={{ padding: '6px 18px 12px', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+              Aucun template partagé. Utilisez le bouton 📚+ sur une SOP pour l'ajouter ici.
+            </div>
+          )}
+          {dbItems.map(renderItem)}
+          <div style={{ padding: '14px 18px 4px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)', letterSpacing: 0.4 }}>
+            Modèles Samper — prêts à l'emploi ({samperItems.length})
+          </div>
+          {samperItems.map(renderItem)}
         </div>
         <div style={ss.modalFooter}>
           <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>
-            {selected.size} sélectionnée{selected.size > 1 ? 's' : ''} sur {templates.length}
+            {selected.size} sélectionnée{selected.size > 1 ? 's' : ''}
           </span>
-          <button style={ss.ghostBtn} onClick={onClose}>Annuler</button>
+          <button style={ss.ghostBtn} onClick={onClose}>Fermer</button>
           <button
             style={{ ...ss.primaryBtn, opacity: selected.size === 0 || busy ? 0.5 : 1 }}
             onClick={importSelected}
             disabled={selected.size === 0 || busy}
           >
-            {busy ? 'Import…' : `Importer (${selected.size})`}
+            {busy ? 'Import…' : `Importer ici (${selected.size})`}
           </button>
         </div>
       </div>
