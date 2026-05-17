@@ -1,5 +1,4 @@
 import React from 'react';
-import { SOP_TEMPLATES } from '../../data/sopTemplates.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
@@ -296,7 +295,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             {sops.length === 0 ? 'Aucune procédure' : 'Aucun résultat'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-            {sops.length === 0 ? 'Cliquez "📚 Templates" pour importer des SOPs prêtes à l\'emploi.' : 'Modifiez vos filtres.'}
+            {sops.length === 0 ? 'Créez une SOP avec "+ Nouvelle SOP", ou importez-en une depuis "📚 Templates".' : 'Modifiez vos filtres.'}
           </div>
         </div>
       )}
@@ -702,15 +701,13 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
   // SOP déjà présentes dans l'établissement courant (par titre normalisé).
   const existingTitles = new Set((existingSops || []).map(s => (s.titre || '').trim().toLowerCase()));
 
-  // Items combinés : bibliothèque en base (éditable) + modèles Samper (lecture seule).
+  // Items de la bibliothèque de templates (en base, éditables).
   const dbItems = (dbTemplates || []).map(t => ({ key: 'db:' + t.id, source: 'db', tpl: t }));
-  const samperItems = SOP_TEMPLATES.map(t => ({ key: 'samper:' + t.titre, source: 'samper', tpl: t }));
-  const allItems = [...dbItems, ...samperItems];
 
   const importSelected = async () => {
     setBusy(true);
     let count = 0;
-    for (const item of allItems) {
+    for (const item of dbItems) {
       if (!selected.has(item.key)) continue;
       const tpl = item.tpl;
       try {
@@ -723,7 +720,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
           sections: tpl.sections,
           tags: tpl.tags,
           isTemplate: false,
-          sourceTemplate: item.source === 'db' ? tpl.id : tpl.titre,
+          sourceTemplate: tpl.id,
           actif: true,
         });
         count += 1;
@@ -830,19 +827,12 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
           <button style={ss.closeBtn} onClick={onClose}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          <div style={{ padding: '8px 18px 4px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)', letterSpacing: 0.4 }}>
-            Ma bibliothèque ({dbItems.length})
-          </div>
           {dbItems.length === 0 && (
-            <div style={{ padding: '6px 18px 12px', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
-              Aucun template partagé. Utilisez le bouton 📚+ sur une SOP pour l'ajouter ici.
+            <div style={{ padding: '24px 18px', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', textAlign: 'center' }}>
+              Aucun template dans la bibliothèque. Utilisez le bouton 📚+ sur une SOP pour l'ajouter ici.
             </div>
           )}
           {dbItems.map(renderItem)}
-          <div style={{ padding: '14px 18px 4px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)', letterSpacing: 0.4 }}>
-            Modèles Samper — prêts à l'emploi ({samperItems.length})
-          </div>
-          {samperItems.map(renderItem)}
         </div>
         <div style={ss.modalFooter}>
           <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>
