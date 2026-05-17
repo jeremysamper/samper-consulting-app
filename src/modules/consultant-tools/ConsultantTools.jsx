@@ -20,9 +20,47 @@ import { dbService } from '../../services/dbService.js';
 import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, convertFactor } from './ConsultantTools.constants.js';
 import PhotoUploader from './PhotoUploader.jsx';
 import { cts } from './ConsultantTools.styles.js';
+import DebouncedField from '../../components/ui/DebouncedField.jsx';
 
 const safeText = (value) => String(value ?? '').toLowerCase();
 const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures'];
+
+// ─── Stabilité de la saisie : brouillons localStorage + détection de conflit ───
+const RECIPE_DRAFT_PREFIX = 'sc_recipe_draft_';
+
+// Sérialise les champs significatifs d'une recette (comparaison conflit / brouillon).
+const serializeRecipeCore = (r) => {
+  if (!r) return '';
+  return JSON.stringify({
+    nom: r.nom || '', categorie: r.categorie || '', portions: r.portions || 0,
+    prixVente: r.prixVente || 0, statut: r.statut || '', version: r.version || 1,
+    tempsPreparation: r.tempsPreparation || 0, tempsCuisson: r.tempsCuisson || 0,
+    allergenesIds: r.allergenesIds || [], notesConsultant: r.notesConsultant || '',
+    dressage: r.dressage || '', conservation: r.conservation || '',
+    photoUrl: r.photoUrl || null, ingredients: r.ingredients || [], etapes: r.etapes || [],
+  });
+};
+
+const getDraftStore = () => {
+  try { return getBrowserWindow()?.localStorage || null; } catch (e) { return null; }
+};
+const writeRecipeDraft = (id, recipe) => {
+  const store = getDraftStore();
+  if (!store || !id) return;
+  try { store.setItem(RECIPE_DRAFT_PREFIX + id, JSON.stringify({ recipe, savedAt: Date.now() })); }
+  catch (e) { /* quota dépassé : on ignore */ }
+};
+const readRecipeDraft = (id) => {
+  const store = getDraftStore();
+  if (!store || !id) return null;
+  try { const v = store.getItem(RECIPE_DRAFT_PREFIX + id); return v ? JSON.parse(v) : null; }
+  catch (e) { return null; }
+};
+const clearRecipeDraft = (id) => {
+  const store = getDraftStore();
+  if (!store || !id) return;
+  try { store.removeItem(RECIPE_DRAFT_PREFIX + id); } catch (e) { /* noop */ }
+};
 
 const ConsultantToolsGate = (props) => {
   if (props.user?.role !== 'consultant') {
@@ -127,11 +165,42 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           const safeRecs = Array.isArray(recs) ? recs : [];
           setRecettes(safeRecs);
           if (!selectedId && safeRecs[0]) setSelectedId(safeRecs[0].id);
+          // Détection des brouillons localStorage non sauvegardés (crash / hors-ligne)
+          const drafts = [];
+          for (const r of safeRecs) {
+            const d = readRecipeDraft(r.id);
+            if (!d || !d.recipe) continue;
+            if (serializeRecipeCore(d.recipe) !== serializeRecipeCore(r)) {
+              drafts.push({ id: r.id, nom: r.nom, recipe: d.recipe, savedAt: d.savedAt });
+            } else {
+              clearRecipeDraft(r.id); // brouillon identique à la DB → obsolète
+            }
+          }
+          if (mounted && drafts.length) setPendingDrafts(drafts);
         }
       } catch (err) { console.error('[ConsultantTools load]', err); }
     })();
     unsub = legacySB.realtime.subscribe('recettes', async () => {
-      try { const recs = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(Array.isArray(recs) ? recs : []); } catch(e) {}
+      try {
+        const recs = await legacySB.db.listRecettes(etabId);
+        if (!mounted) return;
+        const fresh = Array.isArray(recs) ? recs : [];
+        setRecettes(prev => {
+          const editingId = selectedIdRef.current;
+          // Anti-clobber : si la recette en cours d'édition est « sale »,
+          // on conserve sa version locale plutôt que d'écraser avec le serveur.
+          if (editingId && dirtyRef.current) {
+            const localRec = prev.find(r => r.id === editingId);
+            const serverRec = fresh.find(r => r.id === editingId);
+            if (serverRec && lastSavedSerializedRef.current &&
+                serializeRecipeCore(serverRec) !== lastSavedSerializedRef.current) {
+              notifyLegacy('⚠ Recette modifiée depuis un autre appareil. Vos modifications locales sont conservées.', 'warning');
+            }
+            if (localRec) return fresh.map(r => (r.id === editingId ? localRec : r));
+          }
+          return fresh;
+        });
+      } catch (e) { /* refetch realtime silencieux */ }
     });
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId]);
@@ -162,10 +231,23 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const searchValue = safeText(search);
   const filtered = recettesEtab.filter(r => searchValue === '' || safeText(r.nom).includes(searchValue));
 
-  // Debounce pour updateSelected → upsert Supabase 600ms après la dernière modif
+  // ═══ Sauvegarde différée + stabilité de la saisie ═══
   const saveTimerRef = React.useRef(null);
   const [saveStatus, setSaveStatus] = React.useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [saveError, setSaveError] = React.useState('');
+  // Ref de recettes pour accès hors render (timers, callbacks realtime)
+  const recettesRef = React.useRef(recettes);
+  React.useEffect(() => { recettesRef.current = recettes; }, [recettes]);
+  // Ref du selectedId — closure stable pour les callbacks realtime
+  const selectedIdRef = React.useRef(selectedId);
+  React.useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  // dirtyRef : true entre une édition et son save confirmé
+  const dirtyRef = React.useRef(false);
+  // id de la recette dont un save est en attente (découplé de la closure)
+  const pendingSaveIdRef = React.useRef(null);
+  // sérialisation du dernier état sauvegardé (détection d'édition concurrente)
+  const lastSavedSerializedRef = React.useRef('');
+
   // Scaling : ratio appliqué en temps réel (1 = quantités de base, 2 = double, etc.)
   const [scalingPortions, setScalingPortions] = React.useState('');
   const [showScalingModal, setShowScalingModal] = React.useState(false);
@@ -176,37 +258,99 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [pickerSearch, setPickerSearch] = React.useState('');
   const [pickerCat, setPickerCat] = React.useState('Tous');
   const [pickerSelected, setPickerSelected] = React.useState(new Set());
+  // Brouillons localStorage non sauvegardés détectés au chargement
+  const [pendingDrafts, setPendingDrafts] = React.useState([]);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
   React.useEffect(() => { setScalingPortions(''); setShowScalingModal(false); setScalingTarget({ ingId: '', targetQty: '' }); setCatalogPicker(null); }, [selectedId]);
+
+  // Persiste une recette vers Supabase. Réutilisé par le debounce, le flush et le retry réseau.
+  const performSave = React.useCallback(async (id) => {
+    if (!legacySB || !id) return;
+    const curr = recettesRef.current.find(r => r.id === id);
+    if (!curr) return;
+    setSaveStatus('saving');
+    try {
+      await legacySB.db.upsertRecette(curr);
+      if (pendingSaveIdRef.current === id) {
+        dirtyRef.current = false;
+        pendingSaveIdRef.current = null;
+      }
+      lastSavedSerializedRef.current = serializeRecipeCore(curr);
+      clearRecipeDraft(id);
+      setSaveStatus('saved');
+      setSaveError('');
+      setTimeout(() => setSaveStatus(prev => (prev === 'saved' ? 'idle' : prev)), 2000);
+    } catch (err) {
+      console.error('[upsertRecette]', err);
+      setSaveStatus('error');
+      setSaveError(err.message || 'Erreur sync');
+      // brouillon localStorage conservé → retry au retour réseau
+    }
+  }, [legacySB]);
+
+  // Saisie : state local immédiat + backup localStorage + save Supabase débouncé 600 ms.
   const updateSelected = (updates) => {
+    if (!selected) return;
     setRecettes(prev => prev.map(r => r.id === selectedId ? { ...r, ...updates } : r));
     if (legacySB) {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      dirtyRef.current = true;
+      pendingSaveIdRef.current = selectedId;
+      writeRecipeDraft(selectedId, { ...selected, ...updates }); // backup anti-crash immédiat
       setSaveStatus('saving');
-      saveTimerRef.current = setTimeout(async () => {
-        const curr = recettesRef.current.find(r => r.id === selectedId);
-        if (curr) {
-          try {
-            await legacySB.db.upsertRecette(curr);
-            setSaveStatus('saved');
-            setSaveError('');
-            // Auto-clear le statut "saved" après 2s
-            setTimeout(() => setSaveStatus(prev => prev === 'saved' ? 'idle' : prev), 2000);
-          }
-          catch (err) {
-            console.error('[upsertRecette]', err);
-            setSaveStatus('error');
-            setSaveError(err.message || 'Erreur sync');
-          }
-        }
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
+        performSave(selectedId);
       }, 600);
     }
   };
-  // Ref mise à jour à chaque render pour accès dans le setTimeout
-  const recettesRef = React.useRef(recettes);
-  React.useEffect(() => { recettesRef.current = recettes; }, [recettes]);
+
+  // Force l'exécution immédiate d'un save en attente (changement de recette, démontage).
+  const flushSave = React.useCallback(() => {
+    if (!saveTimerRef.current) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = null;
+    if (pendingSaveIdRef.current) performSave(pendingSaveIdRef.current);
+  }, [performSave]);
+
+  // Flush avant de changer de recette / d'établissement, et au démontage.
+  React.useEffect(() => () => { flushSave(); }, [selectedId, etabId, flushSave]);
+
+  // Retry automatique de la sauvegarde au retour de la connexion réseau.
+  React.useEffect(() => {
+    if (!legacySB) return undefined;
+    const browserWindow = getBrowserWindow();
+    if (!browserWindow) return undefined;
+    const onOnline = () => {
+      if (dirtyRef.current && pendingSaveIdRef.current) performSave(pendingSaveIdRef.current);
+    };
+    browserWindow.addEventListener('online', onOnline);
+    return () => browserWindow.removeEventListener('online', onOnline);
+  }, [legacySB, performSave]);
+
+  // Restaure les brouillons localStorage détectés au chargement (crash / hors-ligne).
+  const restoreDrafts = () => {
+    if (!pendingDrafts.length) return;
+    setRecettes(prev => prev.map(r => {
+      const d = pendingDrafts.find(x => x.id === r.id);
+      return d ? { ...r, ...d.recipe, id: r.id } : r;
+    }));
+    if (legacySB) {
+      pendingDrafts.forEach(d => {
+        legacySB.db.upsertRecette({ ...d.recipe, id: d.id })
+          .then(() => clearRecipeDraft(d.id))
+          .catch(err => console.error('[restoreDrafts]', err));
+      });
+    }
+    notifyLegacy(`${pendingDrafts.length} brouillon(s) restauré(s).`, 'success');
+    setPendingDrafts([]);
+  };
+  const dismissDrafts = () => {
+    pendingDrafts.forEach(d => clearRecipeDraft(d.id));
+    setPendingDrafts([]);
+  };
 
   const createNew = async () => {
     const newRec = {
@@ -1026,6 +1170,23 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         </div>
       ) : (
         <div style={cts.rightCol}>
+          {/* Bannière de restauration de brouillons non sauvegardés */}
+          {pendingDrafts.length > 0 && (
+            <div className="no-print" style={{
+              margin: '0 0 10px', padding: '10px 14px', borderRadius: 8,
+              background: '#fef3c7', border: '1px solid #fde68a',
+              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: 13, color: '#92400e', flex: 1, minWidth: 200 }}>
+                ⚠ {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) — des modifications locales n'ont pas été synchronisées.
+              </span>
+              <button
+                style={{ ...cts.ghostBtn, background: '#15803d', color: '#fff', borderColor: '#15803d' }}
+                onClick={restoreDrafts}
+              >Restaurer</button>
+              <button style={cts.ghostBtn} onClick={dismissDrafts}>Ignorer</button>
+            </div>
+          )}
           {/* Actions bar */}
           <div style={cts.actionBar} className="no-print">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1068,10 +1229,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 onRemove={() => updateSelected({ photoUrl: null })}
               />
               <div style={{flex: 1}}>
-                <input
+                <DebouncedField
                   type="text"
-                  value={selected.nom}
-                  onChange={e => updateSelected({ nom: e.target.value })}
+                  value={selected.nom || ''}
+                  onCommit={v => updateSelected({ nom: v })}
                   style={cts.titleInput}
                   placeholder="Nom de la recette"
                 />
@@ -1092,7 +1253,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div style={cts.inlineField}>
                     <label>Version</label>
-                    <input type="number" min="1" value={selected.version || 1} onChange={e => updateSelected({ version: Number(e.target.value) })} style={{...cts.inlineInput, width: 60}} />
+                    <DebouncedField type="number" min="1" value={selected.version || 1} onCommit={v => updateSelected({ version: Number(v) || 1 })} style={{...cts.inlineInput, width: 60}} />
                   </div>
                   <div style={{...cts.inlineField, marginLeft:'auto'}}>
                     <label style={{fontSize:11, fontWeight:600, color:'#15803d'}}>Publier sur la carte active</label>
@@ -1118,19 +1279,19 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={cts.paramGrid}>
                   <div style={cts.field}>
                     <label style={cts.label}>Portions</label>
-                    <input type="number" min="1" value={selected.portions || 1} onChange={e => updateSelected({ portions: Number(e.target.value) })} style={cts.input} />
+                    <DebouncedField type="number" min="1" value={selected.portions || 1} onCommit={v => updateSelected({ portions: Number(v) })} style={cts.input} />
                   </div>
                   <div style={cts.field}>
                     <label style={cts.label}>Prix vente (CHF)</label>
-                    <input type="number" min="0" step="0.10" value={selected.prixVente || 0} onChange={e => updateSelected({ prixVente: Number(e.target.value) })} style={cts.input} />
+                    <DebouncedField type="number" min="0" step="0.10" value={selected.prixVente || 0} onCommit={v => updateSelected({ prixVente: Number(v) })} style={cts.input} />
                   </div>
                   <div style={cts.field}>
                     <label style={cts.label}>Temps prépa (min)</label>
-                    <input type="number" min="0" value={selected.tempsPreparation || 0} onChange={e => updateSelected({ tempsPreparation: Number(e.target.value) })} style={cts.input} />
+                    <DebouncedField type="number" min="0" value={selected.tempsPreparation || 0} onCommit={v => updateSelected({ tempsPreparation: Number(v) })} style={cts.input} />
                   </div>
                   <div style={cts.field}>
                     <label style={cts.label}>Temps cuisson (min)</label>
-                    <input type="number" min="0" value={selected.tempsCuisson || 0} onChange={e => updateSelected({ tempsCuisson: Number(e.target.value) })} style={cts.input} />
+                    <DebouncedField type="number" min="0" value={selected.tempsCuisson || 0} onCommit={v => updateSelected({ tempsCuisson: Number(v) })} style={cts.input} />
                   </div>
                   <div style={cts.field}>
                     <label style={cts.label}>Temps total (auto)</label>
@@ -1263,12 +1424,18 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                             onClick={() => updateIngredient(idx, 'produitId', null)}
                           >⛓</span>
                         )}
-                        <input
+                        <DebouncedField
+                          key={`${ing.id}:${ing.produitId || ''}`}
                           type="text"
-                          value={ing.nom}
-                          onChange={e => {
-                            if (isLinked) updateIngredient(idx, 'produitId', null);
-                            updateIngredient(idx, 'nom', e.target.value);
+                          value={ing.nom || ''}
+                          onCommit={v => {
+                            if (isLinked) {
+                              const updated = [...(selected.ingredients || [])];
+                              updated[idx] = { ...updated[idx], produitId: null, nom: v };
+                              updateSelected({ ingredients: updated });
+                            } else {
+                              updateIngredient(idx, 'nom', v);
+                            }
                           }}
                           placeholder="Ingrédient"
                           style={{ ...cts.ingInput, flex: 1, width: 'auto' }}
@@ -1293,29 +1460,36 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           </div>
                         )}
                       </div>
-                      <input type="number" min="0" step="0.01" value={ing.quantite} onChange={e => updateIngredient(idx, 'quantite', Number(e.target.value))} style={cts.ingInput} />
+                      <DebouncedField type="number" min="0" step="0.01" value={ing.quantite} onCommit={v => updateIngredient(idx, 'quantite', Number(v))} style={cts.ingInput} />
                       <select value={ing.unite} onChange={e => {
                         const newUnit = e.target.value;
                         const oldUnit = ing.unite;
                         const factor = convertFactor(oldUnit, newUnit);
+                        // Mise à jour groupée en un seul updateSelected : évite 3 re-renders
+                        // et 3 reports du debounce pour une seule action de l'utilisateur.
+                        const updated = [...(selected.ingredients || [])];
                         if (factor !== null && factor !== 1) {
                           // Conversion automatique : on ajuste à la fois la quantité ET le prix
                           // Ex: 500 g à 0.005 CHF/g → 0.5 kg à 5 CHF/kg (cohérent)
                           const newQty = (Number(ing.quantite) || 0) / factor;
                           const newPrix = (Number(ing.prixUnit) || 0) * factor;
-                          updateIngredient(idx, 'unite', newUnit);
-                          updateIngredient(idx, 'quantite', Math.round(newQty * 10000) / 10000);
-                          updateIngredient(idx, 'prixUnit', Math.round(newPrix * 100000) / 100000);
+                          updated[idx] = {
+                            ...updated[idx],
+                            unite: newUnit,
+                            quantite: Math.round(newQty * 10000) / 10000,
+                            prixUnit: Math.round(newPrix * 100000) / 100000,
+                          };
                         } else {
-                          updateIngredient(idx, 'unite', newUnit);
+                          updated[idx] = { ...updated[idx], unite: newUnit };
                         }
+                        updateSelected({ ingredients: updated });
                       }} style={cts.ingInput}>
                         {UNITES_REC.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
-                      <input
+                      <DebouncedField
                         type="number" min="0" step="0.001"
                         value={ing.prixUnit}
-                        onChange={e => updateIngredient(idx, 'prixUnit', Number(e.target.value))}
+                        onCommit={v => updateIngredient(idx, 'prixUnit', Number(v))}
                         style={cts.ingInput}
                       />
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
@@ -1343,9 +1517,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   {(selected.etapes || []).map((etape, idx) => (
                     <div key={idx} style={cts.etapeRow}>
                       <div style={cts.etapeNum}>{idx + 1}</div>
-                      <textarea
-                        value={etape}
-                        onChange={e => updateEtape(idx, e.target.value)}
+                      <DebouncedField
+                        as="textarea"
+                        value={etape || ''}
+                        onCommit={v => updateEtape(idx, v)}
                         placeholder="Décrire l'étape…"
                         rows={2}
                         style={cts.etapeInput}
@@ -1364,9 +1539,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <div style={cts.card}>
                 <div style={cts.cardTitle}>Notes du consultant</div>
                 <div style={{padding: 14}}>
-                  <textarea
+                  <DebouncedField
+                    as="textarea"
                     value={selected.notesConsultant || ''}
-                    onChange={e => updateSelected({ notesConsultant: e.target.value })}
+                    onCommit={v => updateSelected({ notesConsultant: v })}
                     placeholder="Conseils techniques, points d'attention, tours de main…"
                     rows={5}
                     style={cts.textarea}
@@ -1378,9 +1554,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={{padding: 14, display: 'flex', flexDirection: 'column', gap: 10}}>
                   <div>
                     <label style={cts.label}>Dressage</label>
-                    <textarea
+                    <DebouncedField
+                      as="textarea"
                       value={selected.dressage || ''}
-                      onChange={e => updateSelected({ dressage: e.target.value })}
+                      onCommit={v => updateSelected({ dressage: v })}
                       placeholder="Présentation de l'assiette…"
                       rows={2}
                       style={cts.textarea}
@@ -1388,9 +1565,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div>
                     <label style={cts.label}>Conservation</label>
-                    <textarea
+                    <DebouncedField
+                      as="textarea"
                       value={selected.conservation || ''}
-                      onChange={e => updateSelected({ conservation: e.target.value })}
+                      onCommit={v => updateSelected({ conservation: v })}
                       placeholder="Durée, température, conditionnement…"
                       rows={2}
                       style={cts.textarea}
