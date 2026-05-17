@@ -570,9 +570,22 @@ export function installLegacySupabase() {
         .from('sops')
         .select('*')
         .eq('etablissement_id', etabId)
+        .not('is_template', 'is', true) // exclut les SOP placées en bibliothèque de templates
         .order('ordre', { ascending: true })
         .order('titre', { ascending: true });
       if (error) { console.error('[listSops]', error); return []; }
+      return (data || []).map(this.mapSopFromDB);
+    },
+
+    // Bibliothèque de templates SOP : toutes les SOP marquées is_template,
+    // tous établissements confondus (réutilisables pour export multi-établissements).
+    async listSopTemplates() {
+      const { data, error } = await client
+        .from('sops')
+        .select('*')
+        .eq('is_template', true)
+        .order('titre', { ascending: true });
+      if (error) { console.error('[listSopTemplates]', error); return []; }
       return (data || []).map(this.mapSopFromDB);
     },
 
