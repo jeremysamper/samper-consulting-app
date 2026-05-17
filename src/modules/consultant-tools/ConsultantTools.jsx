@@ -21,6 +21,8 @@ import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, 
 import PhotoUploader from './PhotoUploader.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
+import { matchIngredient } from '../../services/recipeProductMatching.js';
+import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
 
 const safeText = (value) => String(value ?? '').toLowerCase();
 const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures'];
@@ -60,6 +62,29 @@ const clearRecipeDraft = (id) => {
   const store = getDraftStore();
   if (!store || !id) return;
   try { store.removeItem(RECIPE_DRAFT_PREFIX + id); } catch (e) { /* noop */ }
+};
+
+// Applique un produit catalogue à un ingrédient (lien + unité/prix cohérents).
+// Renvoie un nouvel objet ingrédient ; ne mute pas l'entrée.
+const applyProductToIngredient = (ing, product) => {
+  const catUnit = product.uniteRef || 'g';
+  const catPrice = Number(product.prixUnitaire) || 0;
+  let finalUnit = catUnit;
+  let finalPrix = catPrice;
+  if (ing.unite && ing.unite !== catUnit) {
+    const factor = convertFactor(catUnit, ing.unite);
+    if (factor !== null) { finalUnit = ing.unite; finalPrix = catPrice * factor; }
+  }
+  const next = {
+    ...ing,
+    nom: product.nom,
+    unite: finalUnit,
+    prixUnit: Math.round(finalPrix * 1000000) / 1000000,
+    produitId: product.id,
+  };
+  delete next.needsReview;
+  delete next.matchSuggestions;
+  return next;
 };
 
 const ConsultantToolsGate = (props) => {
@@ -260,6 +285,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [pickerSelected, setPickerSelected] = React.useState(new Set());
   // Brouillons localStorage non sauvegardés détectés au chargement
   const [pendingDrafts, setPendingDrafts] = React.useState([]);
+  // Écran de résolution des correspondances catalogue ambiguës
+  const [showMatchReview, setShowMatchReview] = React.useState(false);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
@@ -1010,6 +1037,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           : <div style={cts.fallback}>Module Factures non chargé.</div>
       ) : (
     <div style={cts.root}>
+      {showMatchReview && (
+        <AmbiguousMatchReview
+          recettes={recettesEtab}
+          catalogue={catalogue}
+          legacySB={legacySB}
+          onClose={() => setShowMatchReview(false)}
+          onResolved={async () => {
+            try {
+              const recs = await legacySB.db.listRecettes(etabId);
+              setRecettes(Array.isArray(recs) ? recs : []);
+            } catch (e) { /* le realtime rafraîchira la liste */ }
+          }}
+        />
+      )}
       {/* Colonne gauche : liste */}
       <div style={cts.leftCol} className="no-print">
         <div style={cts.leftHeader}>
@@ -1033,6 +1074,15 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <input type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={handleImportXLSX}/>
             </label>
           </div>
+          {(() => {
+            const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
+            return reviewCount > 0 ? (
+              <button
+                style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: '#fef3c7', color: '#92400e', borderColor: '#fcd34d' }}
+                onClick={() => setShowMatchReview(true)}
+              >⚠ Correspondances à valider ({reviewCount})</button>
+            ) : null;
+          })()}
         </div>
         <div style={cts.leftList}>
           {(() => {
@@ -1420,22 +1470,38 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         {isLinked && (
                           <span
                             style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 5, fontSize: 11, color: '#15803d', cursor: 'pointer' }}
-                            title="Lié au catalogue · clic pour délier"
+                            title="Lié au catalogue (matching automatique) · clic pour délier"
                             onClick={() => updateIngredient(idx, 'produitId', null)}
                           >⛓</span>
                         )}
+                        {!isLinked && ing.needsReview && (
+                          <span
+                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 5, fontSize: 11, color: '#92400e', cursor: 'pointer' }}
+                            title="Correspondance catalogue incertaine · cliquer pour choisir"
+                            onClick={() => { setPickerSearch(ing.nom || ''); setCatalogPicker(ing.id); }}
+                          >⚠</span>
+                        )}
                         <DebouncedField
-                          key={`${ing.id}:${ing.produitId || ''}`}
+                          key={`${ing.id}:${ing.produitId || ''}:${ing.needsReview ? 'r' : ''}`}
                           type="text"
                           value={ing.nom || ''}
                           onCommit={v => {
-                            if (isLinked) {
-                              const updated = [...(selected.ingredients || [])];
-                              updated[idx] = { ...updated[idx], produitId: null, nom: v };
-                              updateSelected({ ingredients: updated });
-                            } else {
-                              updateIngredient(idx, 'nom', v);
+                            // Matching automatique catalogue au commit du nom.
+                            const updated = [...(selected.ingredients || [])];
+                            let next = { ...updated[idx], nom: v, produitId: null };
+                            delete next.needsReview;
+                            delete next.matchSuggestions;
+                            const result = matchIngredient(v, catalogue);
+                            if (result.status === 'matched' && result.product) {
+                              next = applyProductToIngredient(next, result.product);
+                            } else if (result.status === 'ambiguous') {
+                              next.needsReview = true;
+                              next.matchSuggestions = (result.suggestions || [])
+                                .filter(s => s.product)
+                                .map(s => ({ produitId: s.product.id, nom: s.product.nom, confidence: s.confidence }));
                             }
+                            updated[idx] = next;
+                            updateSelected({ ingredients: updated });
                           }}
                           placeholder="Ingrédient"
                           style={{ ...cts.ingInput, flex: 1, width: 'auto' }}
