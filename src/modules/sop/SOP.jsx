@@ -2,6 +2,8 @@ import React from 'react';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING — MODULE SOP & CHECKLISTS
@@ -150,6 +152,7 @@ const SOP = ({ user, etablissement }) => {
           user={user}
           canManage={canManage}
           etabId={etabId}
+          legacySB={legacySB}
           onEdit={(s) => setSelectedSop(s)}
           onAddToTemplates={addToTemplates}
           onStart={async (sop) => {
@@ -179,13 +182,65 @@ const SOP = ({ user, etablissement }) => {
 };
 
 // ─── Liste des SOPs ───
-const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, onEdit, onStart, onAddToTemplates }) => {
+const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onAddToTemplates }) => {
   const [search, setSearch] = React.useState('');
+  const sel = useSelection();
+  const [bulkBusy, setBulkBusy] = React.useState(false);
   // Titres déjà présents dans la bibliothèque de templates (pour le badge des cartes).
   const templateTitles = React.useMemo(
     () => new Set((sopTemplates || []).map(t => (t.titre || '').trim().toLowerCase())),
     [sopTemplates],
   );
+
+  // ─── Mode sélection : suppression et ajout aux templates en lot ───
+  const bulkDelete = async () => {
+    if (sel.count === 0) return;
+    if (!confirmLegacy(`Supprimer ${sel.count} SOP sélectionnée(s) ?`)) return;
+    setBulkBusy(true);
+    let ok = 0;
+    for (const id of Array.from(sel.ids)) {
+      if (legacySB) {
+        try { await legacySB.db.deleteSop(id); ok += 1; }
+        catch (err) { console.error('[deleteSop]', err); }
+      } else { ok += 1; }
+    }
+    setBulkBusy(false);
+    sel.exit();
+    notifyLegacy(`${ok} SOP supprimée(s).`, 'success');
+  };
+
+  const bulkAddToTemplates = async () => {
+    if (sel.count === 0 || !legacySB) return;
+    setBulkBusy(true);
+    let ok = 0;
+    let skip = 0;
+    for (const id of Array.from(sel.ids)) {
+      const sop = sops.find(s => s.id === id);
+      if (!sop) continue;
+      if (templateTitles.has((sop.titre || '').trim().toLowerCase())) { skip += 1; continue; }
+      try {
+        await legacySB.db.upsertSop({
+          etablissementId: sop.etablissementId || etabId,
+          titre: sop.titre,
+          description: sop.description,
+          categorie: sop.categorie,
+          frequence: sop.frequence,
+          sections: sop.sections,
+          tags: sop.tags,
+          isTemplate: true,
+          sourceTemplate: sop.id || null,
+          actif: true,
+        });
+        ok += 1;
+      } catch (err) { console.error('[bulkAddToTemplates]', err); }
+    }
+    setBulkBusy(false);
+    sel.exit();
+    notifyLegacy(
+      `${ok} SOP ajoutée(s) aux templates${skip > 0 ? ` (${skip} déjà présente(s))` : ''}.`,
+      'success',
+    );
+  };
   const [filterFreq, setFilterFreq] = React.useState('all');
   // Mode "nouveau cuisinier" : ne montre que les SOPs taggées 'essentielle'
   const [onboardingMode, setOnboardingMode] = React.useState(false);
@@ -275,8 +330,26 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
               ))}
             </>
           )}
+          {canManage && !sel.active && (
+            <button style={ss.chip} onClick={sel.enter} title="Sélectionner plusieurs SOP">☑ Sélectionner</button>
+          )}
         </div>
       </div>
+
+      {/* Barre d'outils du mode sélection */}
+      {sel.active && (
+        <SelectionToolbar
+          count={sel.count}
+          total={filtered.length}
+          allSelected={sel.count > 0 && sel.count === filtered.length}
+          onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(s => s.id)))}
+          onDelete={bulkDelete}
+          onExport={bulkAddToTemplates}
+          exportLabel="📚 Ajouter aux templates"
+          onCancel={sel.exit}
+          busy={bulkBusy}
+        />
+      )}
 
       {/* Bandeau d'info quand mode nouveau cuisinier actif */}
       {onboardingMode && (
@@ -316,7 +389,16 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                 <div key={sop.id} style={{
                   ...ss.sopCard,
                   ...(doneToday ? { borderColor: '#86efac', background: '#f0fdf4' } : {}),
+                  ...(sel.active && sel.isSelected(sop.id) ? { borderColor: 'var(--accent)', background: 'var(--bg)' } : {}),
                 }}>
+                  {sel.active && (
+                    <input
+                      type="checkbox"
+                      checked={sel.isSelected(sop.id)}
+                      onChange={() => sel.toggle(sop.id)}
+                      style={{ width: 18, height: 18, cursor: 'pointer', alignSelf: 'center', marginRight: 4, flexShrink: 0 }}
+                    />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={ss.sopCardTitle}>{sop.titre}</div>
                     {sop.description && <div style={ss.sopCardDesc}>{sop.description}</div>}
