@@ -23,6 +23,9 @@ import { cts } from './ConsultantTools.styles.js';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 
 const safeText = (value) => String(value ?? '').toLowerCase();
 const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures'];
@@ -287,6 +290,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [pendingDrafts, setPendingDrafts] = React.useState([]);
   // Écran de résolution des correspondances catalogue ambiguës
   const [showMatchReview, setShowMatchReview] = React.useState(false);
+  // Mode sélection multiple de recettes (suppression / export en lot)
+  const recSel = useSelection();
+  const [recBulkBusy, setRecBulkBusy] = React.useState(false);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
@@ -438,6 +444,50 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setRecettes(next);
     setSelectedId(next[0]?.id || null);
     setShowDeleteConfirm(false);
+  };
+
+  // ─── Mode sélection : suppression et export Excel de recettes en lot ───
+  const supprimerRecettesSelection = async () => {
+    if (recSel.count === 0) return;
+    if (!confirmLegacy(`Supprimer ${recSel.count} recette(s) sélectionnée(s) ?`)) return;
+    setRecBulkBusy(true);
+    let ok = 0;
+    for (const id of Array.from(recSel.ids)) {
+      if (legacySB) {
+        try { await legacySB.db.deleteRecette(id); ok += 1; }
+        catch (err) { console.error('[deleteRecette]', err); }
+      } else { ok += 1; }
+    }
+    setRecettes(prev => {
+      const next = prev.filter(r => !recSel.ids.has(r.id));
+      if (recSel.ids.has(selectedId)) setSelectedId(next[0]?.id || null);
+      return next;
+    });
+    setRecBulkBusy(false);
+    recSel.exit();
+    notifyLegacy(`${ok} recette(s) supprimée(s).`, 'success');
+  };
+
+  const exporterRecettesSelection = async () => {
+    const rows = recettesEtab.filter(r => recSel.ids.has(r.id));
+    if (!rows.length) return;
+    setRecBulkBusy(true);
+    const headers = ['Nom', 'Catégorie', 'Statut', 'Portions', 'Prix vente (CHF)', 'Coût matière (CHF)', 'Coût/portion (CHF)', 'Food cost (%)', 'Nb ingrédients', 'Nb étapes'];
+    const data = rows.map(r => [
+      r.nom, r.categorie || '', r.statut || '', r.portions || 0,
+      Number(r.prixVente) || 0,
+      Number((r.coutMatiere || 0).toFixed(2)),
+      Number((r.coutPortion || 0).toFixed(2)),
+      r.foodCost != null ? Number(r.foodCost.toFixed(1)) : '',
+      (r.ingredients || []).length, (r.etapes || []).length,
+    ]);
+    try {
+      await exportRowsToXlsx(`recettes-${new Date().toISOString().slice(0, 10)}.xlsx`, 'Recettes', headers, data, [30, 14, 12, 9, 16, 18, 18, 13, 14, 11]);
+      notifyLegacy(`${rows.length} recette(s) exportée(s) en Excel.`, 'success');
+    } catch (err) {
+      notifyLegacy('Erreur export : ' + err.message, 'error');
+    }
+    setRecBulkBusy(false);
   };
 
   // ═══ Synchronisation carte active ═══
@@ -727,7 +777,28 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}}
               onClick={() => setShowImport(true)}
             >📥 Importer des recettes</button>
+            {!recSel.active && (
+              <button
+                style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}}
+                onClick={recSel.enter}
+              >☑ Sélectionner</button>
+            )}
           </div>
+          {recSel.active && (
+            <div style={{ marginTop: 8 }}>
+              <SelectionToolbar
+                count={recSel.count}
+                total={filtered.length}
+                allSelected={recSel.count > 0 && recSel.count === filtered.length}
+                onToggleAll={() => (recSel.count === filtered.length ? recSel.clear() : recSel.selectAll(filtered.map(r => r.id)))}
+                onDelete={supprimerRecettesSelection}
+                onExport={exporterRecettesSelection}
+                exportLabel="⬇ Exporter Excel"
+                onCancel={recSel.exit}
+                busy={recBulkBusy}
+              />
+            </div>
+          )}
           {(() => {
             const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
             return reviewCount > 0 ? (
@@ -759,10 +830,21 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 style={{
                   ...cts.recetteItem,
                   ...(selectedId === r.id ? cts.recetteItemActive : {}),
-                  paddingLeft: 14 + indent * 18,
+                  ...(recSel.active && recSel.isSelected(r.id) ? { background: 'var(--bg)' } : {}),
+                  position: 'relative',
+                  paddingLeft: 14 + indent * 18 + (recSel.active ? 24 : 0),
                 }}
-                onClick={() => setSelectedId(r.id)}
+                onClick={() => (recSel.active ? recSel.toggle(r.id) : setSelectedId(r.id))}
               >
+                {recSel.active && (
+                  <input
+                    type="checkbox"
+                    checked={recSel.isSelected(r.id)}
+                    onChange={() => recSel.toggle(r.id)}
+                    onClick={e => e.stopPropagation()}
+                    style={{ position: 'absolute', left: 6 + indent * 18, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, cursor: 'pointer' }}
+                  />
+                )}
                 <div style={cts.recItemName}>
                   {indent > 0 && <span style={{ color: 'var(--text2)', marginRight: 4 }}>↳</span>}
                   {r.nom}
