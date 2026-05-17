@@ -56,6 +56,7 @@ const panel = {
 export default function ImportLauncher({ etabId, legacySB, user, onClose, onImported }) {
   const [step, setStep] = React.useState('choose'); // choose | mapping | preview | importing | done
   const [parsing, setParsing] = React.useState(false);
+  const [parsingMsg, setParsingMsg] = React.useState('Lecture du fichier…');
   const [parseError, setParseError] = React.useState('');
   const [scannedPdf, setScannedPdf] = React.useState(false);
   const [recipes, setRecipes] = React.useState([]);
@@ -115,11 +116,33 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
     }
   };
 
+  // ── OCR photo via l'IA ──
+  const handlePhotoFile = async (file) => {
+    setParsing(true); setParsingMsg('Analyse de la photo par l\'IA — quelques secondes…');
+    setParseError(''); setScannedPdf(false);
+    try {
+      const { ocrRecipe } = await import('../../../services/aiService.js');
+      const result = await ocrRecipe(file);
+      if (result.recipes && result.recipes.length) {
+        setRecipes(result.recipes);
+        setStep('preview');
+      } else {
+        setParseError('Aucune recette détectée dans cette photo. Réessaie avec une image plus nette.');
+      }
+    } catch (err) {
+      setParseError('Analyse IA impossible : ' + (err.message || err));
+    } finally {
+      setParsing(false);
+      setParsingMsg('Lecture du fichier…');
+    }
+  };
+
   const onPick = (kind) => (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
     if (kind === 'pdf') handlePdfFile(file);
+    else if (kind === 'photo') handlePhotoFile(file);
     else handleExcelFile(file);
   };
 
@@ -225,20 +248,21 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onPick('pdf')} />
                   <div style={tile}>📄<div style={tileLabel}>PDF</div><div style={tileSub}>recettes texte</div></div>
                 </label>
-                <div style={{ ...tile, opacity: 0.5, cursor: 'not-allowed', flex: '1 1 200px' }}>
-                  📷<div style={tileLabel}>Photo</div><div style={tileSub}>conversion IA — prochainement</div>
-                </div>
+                <label style={{ flex: '1 1 200px' }}>
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick('photo')} />
+                  <div style={tile}>📷<div style={tileLabel}>Photo</div><div style={tileSub}>recette papier — lecture par IA</div></div>
+                </label>
               </div>
               <div style={{ marginTop: 14 }}>
                 <Btn variant="ghost" small onClick={downloadTemplate}>⬇ Télécharger le template Excel</Btn>
               </div>
-              {parsing && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--accent)' }}>⟳ Lecture du fichier…</div>}
+              {parsing && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--accent)' }}>⟳ {parsingMsg}</div>}
               {parseError && <div style={errBox}>{parseError}</div>}
               {scannedPdf && (
                 <div style={{ ...errBox, background: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}>
                   Ce PDF semble être une image scannée (aucun texte sélectionnable).
-                  La conversion automatique par IA sera disponible prochainement. Pour
-                  l'instant, merci de saisir cette recette manuellement.
+                  Astuce : prends-en une photo et utilise l'option « Photo » ci-dessus
+                  pour le faire lire par l'IA.
                 </div>
               )}
             </div>
