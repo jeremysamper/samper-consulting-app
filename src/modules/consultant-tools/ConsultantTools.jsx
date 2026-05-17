@@ -1,6 +1,6 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import { getDemoData } from '../../data/demoData.js';
+import ImportLauncher from '../recettes/import/ImportLauncher.jsx';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { readText, removeStorageKeys } from '../../utils/storage.js';
@@ -490,369 +490,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     return carteEtab?.plats?.some(p => p.recetteId === recette.id) || false;
   };
 
-  // ═══ Import / Export XLSX ═══
-  const downloadTemplate = () => {
-    if (typeof XLSX === 'undefined') { alertLegacy('Bibliothèque XLSX non chargée.'); return; }
-    const wb = XLSX.utils.book_new();
-    // Feuille 1 : Recettes (exemple pré-rempli)
-    const recettesRows = [
-      ['Nom de la recette', 'Catégorie', 'Portions', 'Prix de vente (CHF)', 'Temps préparation (min)', 'Temps cuisson (min)', 'Allergènes (séparés par ;)', 'Notes consultant'],
-      ['Risotto aux asperges', 'Plats', 4, 28.50, 15, 20, 'lactose', 'Servir chaud, décorer avec parmesan'],
-      ['Mousse au chocolat', 'Desserts', 6, 12.00, 20, 0, 'lactose;oeufs', 'Préparer la veille'],
-    ];
-    const wsRecettes = XLSX.utils.aoa_to_sheet(recettesRows);
-    wsRecettes['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 25 }, { wch: 30 }];
-    XLSX.utils.book_append_sheet(wb, wsRecettes, 'Recettes');
-
-    // Feuille 2 : Ingrédients (liés par "Nom de la recette")
-    const ingredientsRows = [
-      ['Nom de la recette', 'Ingrédient', 'Quantité', 'Unité', 'Prix unitaire (CHF)', 'Catégorie'],
-      ['Risotto aux asperges', 'Riz Arborio', 320, 'g', 0.012, 'Féculents'],
-      ['Risotto aux asperges', 'Asperges vertes', 400, 'g', 0.018, 'Légumes'],
-      ['Risotto aux asperges', 'Parmesan', 80, 'g', 0.045, 'Produits laitiers'],
-      ['Risotto aux asperges', 'Bouillon de légumes', 1000, 'ml', 0.004, 'Autres'],
-      ['Mousse au chocolat', 'Chocolat noir 70%', 200, 'g', 0.025, 'Autres'],
-      ['Mousse au chocolat', 'Œufs', 4, 'pcs', 0.50, 'Autres'],
-      ['Mousse au chocolat', 'Crème entière', 250, 'ml', 0.006, 'Produits laitiers'],
-    ];
-    const wsIng = XLSX.utils.aoa_to_sheet(ingredientsRows);
-    wsIng['!cols'] = [{ wch: 30 }, { wch: 28 }, { wch: 10 }, { wch: 8 }, { wch: 20 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, wsIng, 'Ingrédients');
-
-    // Feuille 3 : Étapes (liées par "Nom de la recette" avec ordre)
-    const etapesRows = [
-      ['Nom de la recette', 'Ordre', 'Description'],
-      ['Risotto aux asperges', 1, 'Faire revenir l\'oignon dans l\'huile d\'olive'],
-      ['Risotto aux asperges', 2, 'Ajouter le riz et nacrer pendant 2 minutes'],
-      ['Risotto aux asperges', 3, 'Déglacer au vin blanc puis ajouter le bouillon louche par louche'],
-      ['Risotto aux asperges', 4, 'Incorporer les asperges en fin de cuisson'],
-      ['Risotto aux asperges', 5, 'Ajouter le parmesan hors du feu et rectifier l\'assaisonnement'],
-      ['Mousse au chocolat', 1, 'Faire fondre le chocolat au bain-marie'],
-      ['Mousse au chocolat', 2, 'Séparer les blancs des jaunes'],
-      ['Mousse au chocolat', 3, 'Incorporer les jaunes au chocolat fondu'],
-      ['Mousse au chocolat', 4, 'Monter les blancs en neige ferme'],
-      ['Mousse au chocolat', 5, 'Incorporer délicatement les blancs au mélange chocolaté'],
-      ['Mousse au chocolat', 6, 'Réfrigérer 4h minimum'],
-    ];
-    const wsEtapes = XLSX.utils.aoa_to_sheet(etapesRows);
-    wsEtapes['!cols'] = [{ wch: 30 }, { wch: 8 }, { wch: 60 }];
-    XLSX.utils.book_append_sheet(wb, wsEtapes, 'Étapes');
-
-    // Feuille 4 : Instructions
-    const instrRows = [
-      ['Instructions d\'utilisation du template'],
-      [''],
-      ['1. Remplissez la feuille "Recettes" : une ligne = une recette'],
-      ['2. Dans "Ingrédients", utilisez exactement le même "Nom de la recette" pour lier les ingrédients'],
-      ['3. Dans "Étapes", idem — numérotez l\'ordre des étapes'],
-      ['4. Catégories acceptées : Entrées, Plats, Desserts, Fromages, Sauces, Fonds, Amuse-bouches, Garnitures'],
-      ['5. Allergènes acceptés (séparés par ;) : gluten, lactose, oeufs, poissons, crustaces, fruits_coque, sulfites, arachides, soja, celeri, moutarde, sesame, mollusques, lupin'],
-      ['6. Unités acceptées : g, kg, ml, L, pcs, cs, cc, pincée'],
-      ['7. Importez ensuite le fichier via le bouton "Importer XLSX" dans Outils consultant'],
-      [''],
-      ['Les recettes importées seront ajoutées à l\'établissement courant en tant que brouillons.'],
-    ];
-    const wsInstr = XLSX.utils.aoa_to_sheet(instrRows);
-    wsInstr['!cols'] = [{ wch: 90 }];
-    XLSX.utils.book_append_sheet(wb, wsInstr, 'Instructions');
-
-    XLSX.writeFile(wb, 'template-recettes-samper.xlsx');
-  };
-
-  // Parser pour fiche recette unique (format Samper interne)
-  // Détection des sections par mots-clés : "Produit :", "Ingrédients :", "Étapes", "Astuce"
-  const parseFicheUnique = (rows) => {
-    // Extraire toutes les lignes [col1, col2] en ignorant les colonnes vides en début
-    const lines = rows.map(r => {
-      // Trouver les 2 premières cellules non-null
-      const cells = (r || []).filter(c => c !== null && c !== undefined && String(c).trim() !== '');
-      return cells;
-    }).filter(cells => cells.length > 0);
-
-
-    if (lines.length === 0) return null;
-
-    // ─── DÉTECTION DE CATÉGORIE ───
-    // On scanne les 8 premières lignes à la recherche de mots-clés
-    // car le mot-clé peut être dans le titre fusionné ("Fiche recette - Froid"),
-    // dans une cellule libre ("Plat", "Entrée"), etc.
-    let categorie = 'Plats';
-    let catFound = false;
-    for (let i = 0; i < Math.min(8, lines.length); i++) {
-      const fullLine = lines[i].map(c => String(c || '')).join(' ').toLowerCase();
-      // Section "Produit :" ou "Ingrédients :" → on arrête le scan, on est passé l'en-tête
-      if (/^\s*(produit|ingr[\u00e9e]dients|plat)\s*:/.test(fullLine)) break;
-      if (/froid|entr[\u00e9e]e/.test(fullLine)) { categorie = 'Entrées'; catFound = true; break; }
-      if (/dessert|sucr/.test(fullLine)) { categorie = 'Desserts'; catFound = true; break; }
-      if (/fromage/.test(fullLine)) { categorie = 'Fromages'; catFound = true; break; }
-      if (/\bplat\b|\bchaud\b/.test(fullLine)) { categorie = 'Plats'; catFound = true; break; }
-    }
-
-    // Trouver nom : "Produit :" > "Plat :" > fallback
-    let nom = '';
-    let platParent = '';
-    for (const l of lines) {
-      const label = String(l[0] || '').toLowerCase().replace(/[:\s]+$/, '').trim();
-      const val = String(l[1] || '').trim();
-      if (label === 'produit' && val) nom = val;
-      if (label === 'plat' && val) platParent = val;
-    }
-    if (!nom && platParent) nom = platParent;
-    if (!nom) nom = 'Recette importée';
-
-    // Trouver portions : ligne qui contient "X portions"
-    let portions = 4;
-    for (const l of lines) {
-      const txt = l.join(' ').toLowerCase();
-      const m = txt.match(/(\d+)\s*portions?/i);
-      if (m) { portions = parseInt(m[1]) || 4; break; }
-    }
-
-    // Parse des sections : on itère ligne par ligne en gérant les états
-    const ingredients = [];
-    const etapes = [];
-    let notesConsultant = '';
-    let section = null; // null | 'ingredients' | 'etapes' | 'astuce'
-
-    for (const l of lines) {
-      const col1 = String(l[0] || '').trim();
-      const col1Low = col1.toLowerCase();
-      const col2 = l[1] !== undefined ? String(l[1]).trim() : '';
-
-      // Détection des sections
-      if (/^ingr[\u00e9e]dients?\s*:?/i.test(col1)) { section = 'ingredients'; continue; }
-      if (/^[\u00e9e]tapes?\b/i.test(col1)) { section = 'etapes'; continue; }
-      if (/^astuce/i.test(col1)) { section = 'astuce'; continue; }
-      // Sections à ignorer une fois rencontrées (déjà lues via "Produit :" / "Plat :")
-      if (['produit', 'plat', 'fiche recette', 'portions'].some(k => col1Low.startsWith(k))) continue;
-      if (/^\d+\s*portions?$/i.test(col1)) continue;
-
-      if (section === 'ingredients') {
-        // Une ligne d'ingrédient : col1 = nom, col2 = quantité (ex "300 g", "1 L", "4 g", "Qs", "4 citrons")
-        if (!col1) continue;
-        const produit = col1;
-        let quantite = 0, unite = 'g';
-        if (col2) {
-          // Cas "Qs" / "QS" / "qsp" / "selon goût" → quantité 0, unité libre
-          if (/^(qs|qsp|selon|au\s*go[uû]t|pm)\b/i.test(col2)) {
-            quantite = 0;
-            unite = 'g';
-          } else {
-            // Parser "300 g" ou "1 L" ou "3kg" ou "1.5 L" ou "4 citrons"
-            const m = col2.match(/^([\d,.]+)\s*(.*)$/);
-            if (m) {
-              quantite = parseFloat(m[1].replace(',', '.')) || 0;
-              unite = (m[2] || 'g').trim().toLowerCase();
-              // Normaliser quelques unités courantes
-              if (unite === 'kg') { quantite *= 1000; unite = 'g'; }
-              else if (unite === 'l') { quantite *= 1000; unite = 'ml'; }
-              else if (unite === 'cl') { quantite *= 10; unite = 'ml'; }
-              else if (!['g', 'ml', 'pcs', 'cs', 'cc', 'tsp', 'tbsp', 'btl'].includes(unite)) {
-                // Pour les unités libres (citrons, gousses, etc.) → on stocke en pcs
-                unite = 'pcs';
-              }
-            }
-          }
-        }
-        ingredients.push({
-          id: 'i-' + Date.now() + '-' + ingredients.length,
-          nom: produit,
-          quantite,
-          unite,
-          prixUnit: 0,
-          categorie: 'Autres',
-        });
-      } else if (section === 'etapes') {
-        // Une étape : col1 est le texte. Si se termine par ":" c'est un sous-titre de section
-        if (!col1) continue;
-        etapes.push(col1);
-      } else if (section === 'astuce') {
-        if (col1) notesConsultant += (notesConsultant ? '\n' : '') + col1;
-      }
-    }
-
-
-    return {
-      nom,
-      categorie,
-      portions,
-      prixVente: 0,
-      tempsPreparation: 0,
-      tempsCuisson: 0,
-      tempsTotal: 0,
-      statut: 'brouillon',
-      version: 1,
-      allergenesIds: [],
-      notesConsultant: notesConsultant + (platParent && platParent !== nom ? (notesConsultant ? '\n\n' : '') + 'Accompagne : ' + platParent : ''),
-      modifie: new Date().toISOString().slice(0, 10),
-      ingredients,
-      etapes,
-      dressage: '',
-      conservation: '',
-    };
-  };
-
-  const handleImportXLSX = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (typeof XLSX === 'undefined') { alertLegacy('Bibliothèque XLSX non chargée.'); return; }
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: 'array' });
-
-        // ─── DÉTECTION AUTOMATIQUE DU FORMAT ───
-        // Format 1 (multi-recettes) : feuilles "Recettes", "Ingrédients", "Étapes"
-        // Format 2 (fiche unique) : structure avec "Produit :" / "Plat :" / "Ingrédients :"
-        const hasMultiFormat = wb.Sheets['Recettes'] || wb.SheetNames.some(n => n.toLowerCase().includes('recettes'));
-        const firstSheet = wb.Sheets[wb.SheetNames[0]];
-        const firstRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-        // Détection : on cherche des marqueurs caractéristiques d'une fiche unique
-        // ("Fiche recette", "Produit :", "Ingrédients :" ou "Plat :")
-        let isFicheUnique = false;
-        let foundMarkers = [];
-        for (let i = 0; i < Math.min(15, firstRows.length); i++) {
-          const row = firstRows[i] || [];
-          for (let j = 0; j < Math.min(5, row.length); j++) {
-            const cell = String(row[j] || '').trim().toLowerCase();
-            if (/^fiche\s*recette/i.test(cell)) foundMarkers.push('header');
-            if (/^produit\s*:?$/i.test(cell)) foundMarkers.push('produit');
-            if (/^plat\s*:?$/i.test(cell)) foundMarkers.push('plat');
-            if (/^ingr[\u00e9e]dients?\s*:?$/i.test(cell)) foundMarkers.push('ingredients');
-            if (/^[\u00e9e]tapes?\b/i.test(cell)) foundMarkers.push('etapes');
-          }
-        }
-        // Si on trouve "Ingrédients :" + au moins un autre marqueur (Produit/Plat/header), c'est une fiche unique
-        if (foundMarkers.includes('ingredients') &&
-            (foundMarkers.includes('produit') || foundMarkers.includes('plat') || foundMarkers.includes('header'))) {
-          isFicheUnique = true;
-        }
-        if (isFicheUnique) {
-          // ═══ FORMAT FICHE UNIQUE ═══
-          const recette = parseFicheUnique(firstRows);
-          if (!recette) { notifyLegacy('Impossible de parser cette fiche. Vérifiez le format.', 'error'); return; }
-          if (!recette.ingredients || recette.ingredients.length === 0) {
-            alertLegacy(`⚠ Import effectué mais AUCUN ingrédient détecté.\n\nVérifiez que votre fichier Excel a bien une section "Ingrédients :" suivie des lignes produit/quantité.\n\n(${recette.etapes?.length || 0} étapes trouvées)`);
-          }
-          recette.id = 'rec-' + Date.now();
-          recette.etablissementId = etabId;
-          recette.modifiePar = user.id;
-
-          setRecettes(prev => [recette, ...prev]);
-          setSelectedId(recette.id);
-
-          if (legacySB) {
-            try { await legacySB.db.upsertRecette(recette); }
-            catch (err) { notifyLegacy(`⚠ Recette créée localement mais erreur sync : ${err.message}`, 'error'); return; }
-          }
-          alertLegacy(`✓ Recette "${recette.nom}" importée avec succès (${recette.ingredients.length} ingrédients, ${recette.etapes.length} étapes).`);
-          return;
-        }
-
-        if (!hasMultiFormat) {
-          alertLegacy('Format non reconnu.\n\nFormats acceptés :\n• Template multi-recettes (feuilles "Recettes" + "Ingrédients" + "Étapes")\n• Fiche unique commençant par "Fiche recette"');
-          return;
-        }
-
-        // ═══ FORMAT MULTI-RECETTES (template original) ═══
-        const shRec = wb.Sheets['Recettes'] || wb.Sheets[wb.SheetNames[0]];
-        const shIng = wb.Sheets['Ingrédients'] || wb.Sheets['Ingredients'];
-        const shEt = wb.Sheets['Étapes'] || wb.Sheets['Etapes'];
-
-        if (!shRec) { alertLegacy('Feuille "Recettes" introuvable.'); return; }
-        const rowsRec = XLSX.utils.sheet_to_json(shRec, { header: 1 });
-        const rowsIng = shIng ? XLSX.utils.sheet_to_json(shIng, { header: 1 }) : [];
-        const rowsEt = shEt ? XLSX.utils.sheet_to_json(shEt, { header: 1 }) : [];
-
-        // Sauter l'en-tête
-        const imported = [];
-        for (let i = 1; i < rowsRec.length; i++) {
-          const row = rowsRec[i];
-          if (!row || !row[0]) continue;
-          const nom = String(row[0]).trim();
-          if (!nom) continue;
-
-          const recette = {
-            id: 'rec-' + Date.now() + '-' + i,
-            etablissementId: etabId,
-            nom,
-            categorie: String(row[1] || 'Plats').trim(),
-            portions: parseInt(row[2]) || 4,
-            prixVente: parseFloat(row[3]) || 0,
-            tempsPreparation: parseInt(row[4]) || 0,
-            tempsCuisson: parseInt(row[5]) || 0,
-            tempsTotal: (parseInt(row[4]) || 0) + (parseInt(row[5]) || 0),
-            allergenesIds: row[6] ? String(row[6]).split(';').map(s => s.trim()).filter(Boolean) : [],
-            notesConsultant: String(row[7] || '').trim(),
-            statut: 'brouillon',
-            version: 1,
-            modifie: new Date().toISOString().slice(0, 10),
-            modifiePar: user.id,
-            dressage: '',
-            conservation: '',
-            ingredients: [],
-            etapes: [],
-          };
-
-          // Ingrédients liés
-          for (let j = 1; j < rowsIng.length; j++) {
-            const r = rowsIng[j];
-            if (!r || !r[0]) continue;
-            if (String(r[0]).trim() === nom) {
-              recette.ingredients.push({
-                id: 'i' + Date.now() + '_' + i + '_' + j,
-                nom: String(r[1] || '').trim(),
-                quantite: parseFloat(r[2]) || 0,
-                unite: String(r[3] || 'g').trim(),
-                prixUnit: parseFloat(r[4]) || 0,
-                categorie: String(r[5] || 'Autres').trim(),
-              });
-            }
-          }
-
-          // Étapes liées (triées par ordre)
-          const etapesOf = [];
-          for (let j = 1; j < rowsEt.length; j++) {
-            const r = rowsEt[j];
-            if (!r || !r[0]) continue;
-            if (String(r[0]).trim() === nom) {
-              etapesOf.push({ ordre: parseInt(r[1]) || 999, desc: String(r[2] || '').trim() });
-            }
-          }
-          etapesOf.sort((a, b) => a.ordre - b.ordre);
-          recette.etapes = etapesOf.map(e => e.desc).filter(Boolean);
-
-          imported.push(recette);
-        }
-
-        if (imported.length === 0) { alertLegacy('Aucune recette valide trouvée dans le fichier.'); return; }
-        setRecettes(prev => [...imported, ...prev]);
-        setSelectedId(imported[0].id);
-
-        // Push vers Supabase si configuré
-        if (legacySB) {
-          try {
-            for (const rec of imported) {
-              await legacySB.db.upsertRecette(rec);
-            }
-          } catch (err) {
-            notifyLegacy(`⚠ Import réussi localement mais erreur de synchronisation : ${err.message}`, 'error');
-            return;
-          }
-        }
-
-        alertLegacy(`✓ ${imported.length} recette${imported.length > 1 ? 's' : ''} importée${imported.length > 1 ? 's' : ''} avec succès.`);
-      } catch (err) {
-        console.error(err);
-        notifyLegacy('Erreur lors de l\'import : ' + err.message, 'error');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-    e.target.value = ''; // reset input
-  };
+  // ═══ Import multiple de recettes ═══
+  // L'import (Excel / CSV / PDF, template, parsing, preview, insertion par
+  // lots) est géré par le module dédié src/modules/recettes/import.
+  const [showImport, setShowImport] = React.useState(false);
 
   // ── Actions ingrédients
   const addIngredient = () => {
@@ -1010,6 +651,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           : <div style={cts.fallback}>Module Factures non chargé.</div>
       ) : (
     <div style={cts.root}>
+      {showImport && (
+        <ImportLauncher
+          etabId={etabId}
+          legacySB={legacySB}
+          user={user}
+          onClose={() => setShowImport(false)}
+          onImported={async () => {
+            try {
+              const recs = await legacySB.db.listRecettes(etabId);
+              setRecettes(Array.isArray(recs) ? recs : []);
+            } catch (e) { /* le realtime rafraîchira la liste */ }
+          }}
+        />
+      )}
       {/* Colonne gauche : liste */}
       <div style={cts.leftCol} className="no-print">
         <div style={cts.leftHeader}>
@@ -1027,11 +682,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             onChange={e => setSearch(e.target.value)}
           />
           <div style={{display:'flex', gap:6, marginTop:8}}>
-            <button style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}} onClick={downloadTemplate}>📄 Template XLSX</button>
-            <label style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px', textAlign:'center', cursor:'pointer'}}>
-              📥 Importer XLSX
-              <input type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={handleImportXLSX}/>
-            </label>
+            <button
+              style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}}
+              onClick={() => setShowImport(true)}
+            >📥 Importer des recettes</button>
           </div>
         </div>
         <div style={cts.leftList}>
