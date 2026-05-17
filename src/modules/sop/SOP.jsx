@@ -745,6 +745,30 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
     } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
   };
 
+  // Templates de la bibliothèque (en base) actuellement cochés — supprimables en lot.
+  const selectedDbItems = dbItems.filter(it => selected.has(it.key));
+
+  const removeSelected = async () => {
+    if (!selectedDbItems.length) return;
+    if (!confirmLegacy(
+      `Retirer ${selectedDbItems.length} template(s) de la bibliothèque ?\n\n` +
+      'Les SOP déjà importées dans les établissements ne sont pas affectées.'
+    )) return;
+    setBusy(true);
+    let count = 0;
+    for (const item of selectedDbItems) {
+      try { await legacySB.db.deleteSop(item.tpl.id); count += 1; }
+      catch (err) { console.error('[removeSop]', err); }
+    }
+    setBusy(false);
+    setSelected(prev => {
+      const next = new Set(prev);
+      selectedDbItems.forEach(item => next.delete(item.key));
+      return next;
+    });
+    notifyLegacy(`${count} template(s) retiré(s) de la bibliothèque.`, 'success');
+  };
+
   const renderItem = (item) => {
     const tpl = item.tpl;
     const alreadyExists = existingTitles.has((tpl.titre || '').trim().toLowerCase());
@@ -824,6 +848,19 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
           <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>
             {selected.size} sélectionnée{selected.size > 1 ? 's' : ''}
           </span>
+          {selectedDbItems.length > 0 && (
+            <button
+              style={{
+                padding: '8px 14px', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)',
+                cursor: busy ? 'default' : 'pointer', background: '#fef2f2',
+                border: '1px solid #fca5a5', color: '#b91c1c', opacity: busy ? 0.5 : 1,
+              }}
+              onClick={removeSelected}
+              disabled={busy}
+            >
+              🗑 Supprimer ({selectedDbItems.length})
+            </button>
+          )}
           <button style={ss.ghostBtn} onClick={onClose}>Fermer</button>
           <button
             style={{ ...ss.primaryBtn, opacity: selected.size === 0 || busy ? 0.5 : 1 }}
