@@ -8,6 +8,9 @@ import ZoneTile from './ZoneTile.jsx';
 import { hcfg, hs } from './HACCP.styles.js';
 import { isReleveConforme, parseHaccpNumber } from './HACCP.utils.js';
 import { dbService } from '../../services/dbService.js';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -51,6 +54,8 @@ const HACCP = ({ user, etablissement }) => {
   const isConsultant = user.role === 'consultant';
   const canWrite = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'].includes(user.role);
   const canManage = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+  const sel = useSelection();
+  const [bulkBusy, setBulkBusy] = React.useState(false);
 
   // ═══ Chargement depuis Supabase + Realtime ═══
   React.useEffect(() => {
@@ -250,6 +255,48 @@ const HACCP = ({ user, etablissement }) => {
     }
     setReleves(prev => prev.filter(r => r.id !== id));
   };
+
+  // ─── Mode sélection : suppression et export Excel des relevés en lot ───
+  const supprimerRelevesSelection = async () => {
+    if (!canManage || sel.count === 0) return;
+    if (!confirmLegacy(`Supprimer ${sel.count} relevé(s) ?`)) return;
+    setBulkBusy(true);
+    let ok = 0;
+    for (const id of Array.from(sel.ids)) {
+      if (legacySB) {
+        try { await legacySB.db.deleteHaccpReleve(id); ok += 1; }
+        catch (err) { console.error('[deleteHaccpReleve]', err); }
+      } else { ok += 1; }
+    }
+    setReleves(prev => prev.filter(r => !sel.ids.has(r.id)));
+    setBulkBusy(false);
+    sel.exit();
+    notifyLegacy(`${ok} relevé(s) supprimé(s).`, 'success');
+  };
+
+  const exporterRelevesSelection = async () => {
+    const rows = (releves || []).filter(r => sel.ids.has(r.id));
+    if (!rows.length) return;
+    setBulkBusy(true);
+    const headers = ['Zone', 'Date', 'Heure', 'Valeur', 'Opérateur', 'Statut', 'Commentaire'];
+    const data = rows.map(r => {
+      const zone = zones.find(z => z.id === r.zoneId);
+      const op = demoData.utilisateurs.find(u => u.id === r.operateur);
+      return [
+        zone ? zone.nom : r.zoneId, r.date, r.heure,
+        `${r.valeur}${zone ? (zone.unite || '') : ''}`,
+        op ? `${op.prenom || ''} ${op.nom || ''}`.trim() : (r.operateur || ''),
+        r.conforme ? 'Conforme' : 'Anomalie', r.commentaire || '',
+      ];
+    });
+    try {
+      await exportRowsToXlsx(`haccp-releves-${todayStr}.xlsx`, 'Relevés HACCP', headers, data, [22, 12, 8, 12, 22, 12, 32]);
+      notifyLegacy(`${rows.length} relevé(s) exporté(s) en Excel.`, 'success');
+    } catch (err) {
+      notifyLegacy('Erreur export : ' + err.message, 'error');
+    }
+    setBulkBusy(false);
+  };
   const deleteControlRecord = async (id) => {
     if (!canManage) return;
     if (!confirmLegacy('Supprimer ce contrôle enregistré ?')) return;
@@ -440,15 +487,41 @@ const HACCP = ({ user, etablissement }) => {
       {activeTab==='releves' && (
         <div style={{display:'flex',flexDirection:'column',gap:12}} id="haccp-releves-print">
           <div style={hs.zoneGrid}>{(activeZones || []).map(z=><ZoneTile key={z.id} zone={z} last={latestByZone[z.id]} trend={trendByZone[z.id]} inlineReleve={inlineReleve} inlineTempInput={inlineTempInput} canWrite={canWrite} setInlineReleve={setInlineReleve} setInlineTempInput={setInlineTempInput} submitInlineReleve={submitInlineReleve}/>)}</div>
+          {canManage && !sel.active && todayReleves.length > 0 && (
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={sel.enter}
+                style={{ padding: '7px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' }}
+              >☑ Sélectionner</button>
+            </div>
+          )}
+          {sel.active && (
+            <SelectionToolbar
+              count={sel.count}
+              total={todayReleves.length}
+              allSelected={sel.count > 0 && sel.count === todayReleves.length}
+              onToggleAll={() => (sel.count === todayReleves.length ? sel.clear() : sel.selectAll(todayReleves.map(r => r.id)))}
+              onDelete={supprimerRelevesSelection}
+              onExport={exporterRelevesSelection}
+              exportLabel="⬇ Exporter Excel"
+              onCancel={sel.exit}
+              busy={bulkBusy}
+            />
+          )}
           <div style={hs.tableCard}>
             <div style={hs.tableCardHeader}>Relevés du {new Date(dateFilter+'T12:00:00').toLocaleDateString('fr-CH',{weekday:'long',day:'numeric',month:'long'})}</div>
             {todayReleves.length===0&&<div style={hs.empty}>Aucun relevé pour cette date.</div>}
-            <div style={hs.relHead}><span>Zone</span><span>Heure</span><span style={{textAlign:'right'}}>Valeur</span><span>Opérateur</span><span>Statut</span><span style={{flex:2}}>Commentaire</span>{(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className="no-print">Action</span>}</div>
+            <div style={hs.relHead}>{sel.active && <span className="no-print" style={{ flex: '0 0 28px' }} />}<span>Zone</span><span>Heure</span><span style={{textAlign:'right'}}>Valeur</span><span>Opérateur</span><span>Statut</span><span style={{flex:2}}>Commentaire</span>{(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className="no-print">Action</span>}</div>
             {(todayReleves || []).map(r=>{
               const zone=zones.find(z=>z.id===r.zoneId);
               const op=demoData.utilisateurs.find(u=>u.id===r.operateur);
               return(
-                <div key={r.id} style={hs.relRow}>
+                <div key={r.id} style={{...hs.relRow, ...(sel.active && sel.isSelected(r.id) ? { background: 'var(--bg)' } : {})}}>
+                  {sel.active && (
+                    <span className="no-print" style={{ flex: '0 0 28px', display: 'flex', alignItems: 'center' }}>
+                      <input type="checkbox" checked={sel.isSelected(r.id)} onChange={() => sel.toggle(r.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                    </span>
+                  )}
                   <span style={{fontSize:13,fontWeight:600}}>{zone?.icone} {zone?.nom}</span>
                   <span style={hs.cell}>{r.heure}</span>
                   <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-serif)'}}>{r.valeur}{zone?.unite}</span>
