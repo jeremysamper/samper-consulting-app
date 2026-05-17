@@ -4,6 +4,9 @@ import { getDemoData } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 
 // INVENTAIRE MENSUEL
 const Inventaire = ({ user, etablissement }) => {
@@ -27,6 +30,8 @@ const Inventaire = ({ user, etablissement }) => {
   const canManage = !!perms.inventaire;
   // Actions d'import/export/impression réservées à consultant + patron
   const canExport = ['consultant', 'patron'].includes(user.role);
+  const sel = useSelection();
+  const [bulkBusy, setBulkBusy] = React.useState(false);
 
   // ═══ Load Supabase + Realtime ═══
   React.useEffect(() => {
@@ -153,6 +158,34 @@ const Inventaire = ({ user, etablissement }) => {
     const updated = recalcInventaire({ ...inv, lignes: (inv.lignes || []).filter(l => l.id !== lineId) });
     setInventairesAll(prev => prev.map(i => i.id !== inv.id ? i : updated));
     await saveInv(updated);
+  };
+
+  // ─── Mode sélection : suppression et export Excel en lot ───
+  const supprimerLignesSelection = async () => {
+    if (!canManage || sel.count === 0) return;
+    if (!confirmLegacy(`Supprimer ${sel.count} ligne(s) d'inventaire ?`)) return;
+    setBulkBusy(true);
+    const updated = recalcInventaire({ ...inv, lignes: (inv.lignes || []).filter(l => !sel.ids.has(l.id)) });
+    setInventairesAll(prev => prev.map(i => i.id !== inv.id ? i : updated));
+    await saveInv(updated);
+    setBulkBusy(false);
+    sel.exit();
+    notifyLegacy('Lignes supprimées.', 'success');
+  };
+
+  const exporterLignesSelection = async () => {
+    const rows = (inv.lignes || []).filter(l => sel.ids.has(l.id));
+    if (!rows.length) return;
+    setBulkBusy(true);
+    const headers = ['Produit', 'Catégorie', 'Unité', 'Stock théorique', 'Stock réel', 'Écart', 'Prix unitaire (CHF)', 'Valeur (CHF)', 'Écart valeur (CHF)'];
+    const data = rows.map(l => [l.produit, l.categorie, l.unite, l.stockTheo, l.stockReel, l.ecart, l.prixUnit, l.valeur, l.ecartValeur]);
+    try {
+      await exportRowsToXlsx(`inventaire-${inv.date}.xlsx`, 'Inventaire', headers, data, [28, 18, 8, 14, 12, 10, 16, 14, 16]);
+      notifyLegacy(`${rows.length} ligne(s) exportée(s) en Excel.`, 'success');
+    } catch (err) {
+      notifyLegacy('Erreur export : ' + err.message, 'error');
+    }
+    setBulkBusy(false);
   };
 
   const deleteInventory = async () => {
@@ -481,6 +514,7 @@ const Inventaire = ({ user, etablissement }) => {
         <div style={invs.headerRight}>
           {canManage && <button style={invs.addBtn} onClick={() => setShowNew(true)}>+ Nouvel inventaire</button>}
           {canManage && <button style={invs.exportBtn} onClick={openAddLine}>+ Ajouter produit</button>}
+          {canManage && !sel.active && <button style={invs.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>}
           {canExport && <button style={invs.exportBtn} onClick={downloadInventoryTemplate}>📄 Template XLSX</button>}
           {canExport && (
             <label style={{...invs.exportBtn, cursor:'pointer'}}>
@@ -538,8 +572,23 @@ const Inventaire = ({ user, etablissement }) => {
           <input style={invs.search} placeholder="Rechercher un produit…" value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
 
+        {sel.active && (
+          <SelectionToolbar
+            count={sel.count}
+            total={filtered.length}
+            allSelected={sel.count > 0 && sel.count === filtered.length}
+            onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(l => l.id)))}
+            onDelete={supprimerLignesSelection}
+            onExport={exporterLignesSelection}
+            exportLabel="⬇ Exporter Excel"
+            onCancel={sel.exit}
+            busy={bulkBusy}
+          />
+        )}
+
         <div style={invs.tableWrap}>
-          <div style={{...invs.tableHead, gridTemplateColumns: canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr'}}>
+          <div style={{...invs.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr')}}>
+            {sel.active && <span className="no-print"/>}
             <span>Produit</span><span>Catégorie</span><span style={{textAlign:'right'}}>Stock théorique</span><span style={{textAlign:'right'}}>Stock réel</span><span style={{textAlign:'right'}}>Écart</span><span style={{textAlign:'right'}}>Valeur (CHF)</span><span style={{textAlign:'right'}}>Écart valeur</span>{canManage && <span className="no-print"/>}
           </div>
           {(filtered || []).map(l => {
@@ -554,7 +603,16 @@ const Inventaire = ({ user, etablissement }) => {
               }}>{l.type}</span>
             ) : null;
             return (
-              <div key={l.id} style={{...invs.tableRow, gridTemplateColumns: canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr'}}>
+              <div key={l.id} style={{
+                ...invs.tableRow,
+                gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr'),
+                ...(sel.active && sel.isSelected(l.id) ? { background: 'var(--bg)' } : {}),
+              }}>
+                {sel.active && (
+                  <span className="no-print" style={{ display: 'flex', alignItems: 'center' }}>
+                    <input type="checkbox" checked={sel.isSelected(l.id)} onChange={() => sel.toggle(l.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  </span>
+                )}
                 <span style={invs.prodName}>{l.produit}{typeBadge}</span>
                 <span style={invs.cell}><span style={invs.catTag}>{l.categorie}</span></span>
                 <span style={{...invs.cell, textAlign:'right'}}>{l.stockTheo} {l.unite}</span>
