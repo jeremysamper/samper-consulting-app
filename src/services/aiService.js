@@ -98,5 +98,20 @@ export async function ocrRecipe(file) {
   return { recipes };
 }
 
-export const aiService = { ocrRecipe };
+// Détection d'allergènes : déduit les allergènes réglementaires d'une recette
+// à partir de la liste des noms d'ingrédients.
+// Renvoie { allergenes: string[], incertains: string[], note: string }.
+export async function detectAllergens(ingredientNames, recipeName) {
+  const ingredients = (ingredientNames || []).map(s => String(s || '').trim()).filter(Boolean);
+  if (!ingredients.length) return { allergenes: [], incertains: [], note: '' };
+  const data = await callAi('detect-allergens', { ingredients, recipeName: recipeName || '' });
+  const r = (data && data.result) || {};
+  return {
+    allergenes: Array.isArray(r.allergenes) ? r.allergenes : [],
+    incertains: Array.isArray(r.incertains) ? r.incertains : [],
+    note: typeof r.note === 'string' ? r.note : '',
+  };
+}
+
+export const aiService = { ocrRecipe, detectAllergens };
 export default aiService;

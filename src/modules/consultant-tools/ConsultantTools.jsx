@@ -293,6 +293,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Mode sélection multiple de recettes (suppression / export en lot)
   const recSel = useSelection();
   const [recBulkBusy, setRecBulkBusy] = React.useState(false);
+  // Détection IA des allergènes en cours
+  const [allergenAiBusy, setAllergenAiBusy] = React.useState(false);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
@@ -658,6 +660,36 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     const current = selected.allergenesIds || [];
     const next = current.includes(aid) ? current.filter(a => a !== aid) : [...current, aid];
     updateSelected({ allergenesIds: next });
+  };
+
+  // ── Détection automatique des allergènes par IA ──
+  const detectAllergenesIA = async () => {
+    if (!selected) return;
+    const names = (selected.ingredients || []).map(i => i.nom).filter(Boolean);
+    if (!names.length) { notifyLegacy('Ajoutez des ingrédients avant la détection.', 'info'); return; }
+    setAllergenAiBusy(true);
+    try {
+      const { detectAllergens } = await import('../../services/aiService.js');
+      const res = await detectAllergens(names, selected.nom);
+      const validIds = new Set(ALLERGENES_OPTIONS.map(a => a.id));
+      const labelOf = (id) => (ALLERGENES_OPTIONS.find(a => a.id === id) || {}).label || id;
+      const detected = (res.allergenes || []).filter(id => validIds.has(id));
+      const incertains = (res.incertains || []).filter(id => validIds.has(id));
+      const current = selected.allergenesIds || [];
+      const added = detected.filter(id => !current.includes(id));
+      if (added.length) {
+        updateSelected({ allergenesIds: [...new Set([...current, ...detected])] });
+      }
+      let msg = added.length
+        ? `${added.length} allergène(s) ajouté(s) : ${added.map(labelOf).join(', ')}.`
+        : 'Aucun nouvel allergène détecté.';
+      if (incertains.length) msg += ` À vérifier : ${incertains.map(labelOf).join(', ')}.`;
+      notifyLegacy(msg, added.length ? 'success' : 'info');
+    } catch (err) {
+      notifyLegacy('Détection IA impossible : ' + (err.message || err), 'error');
+    } finally {
+      setAllergenAiBusy(false);
+    }
   };
 
   // ── Calculs dérivés pour affichage live
@@ -1113,7 +1145,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
               {/* Allergènes */}
               <div style={{...cts.card, gridColumn: '1/-1'}}>
-                <div style={cts.cardTitle}>Allergènes</div>
+                <div style={{...cts.cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
+                  <span>Allergènes</span>
+                  <button
+                    onClick={detectAllergenesIA}
+                    disabled={allergenAiBusy}
+                    title="Détecter les allergènes à partir des ingrédients (IA)"
+                    style={{
+                      padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                      fontFamily: 'var(--font)', cursor: allergenAiBusy ? 'wait' : 'pointer',
+                      background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6',
+                      opacity: allergenAiBusy ? 0.6 : 1,
+                    }}
+                  >{allergenAiBusy ? '✨ Analyse…' : '✨ Détecter (IA)'}</button>
+                </div>
                 <div style={{ padding: '10px 14px 4px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
                   {catalogue.length > 0
                     ? '✓ Auto-détectés depuis le catalogue lors de la sélection d\'un ingrédient. Cliquer pour ajuster manuellement.'
