@@ -295,6 +295,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [recBulkBusy, setRecBulkBusy] = React.useState(false);
   // Détection IA des allergènes en cours
   const [allergenAiBusy, setAllergenAiBusy] = React.useState(false);
+  // Génération IA de l'analyse HACCP
+  const [haccpAiBusy, setHaccpAiBusy] = React.useState(false);
+  const [haccpResult, setHaccpResult] = React.useState(null);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
@@ -692,6 +695,48 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     }
   };
 
+  // ── Génération d'une analyse HACCP par IA ──
+  const genererHaccpIA = async () => {
+    if (!selected) return;
+    if (!(selected.ingredients || []).length) {
+      notifyLegacy('Ajoutez des ingrédients avant de générer l\'analyse HACCP.', 'info');
+      return;
+    }
+    setHaccpAiBusy(true);
+    try {
+      const { generateHaccp } = await import('../../services/aiService.js');
+      const res = await generateHaccp(selected);
+      if (!res.points.length && !res.conservation && !res.remarques) {
+        notifyLegacy('Aucune analyse HACCP produite. Réessayez.', 'info');
+      } else {
+        setHaccpResult(res);
+      }
+    } catch (err) {
+      notifyLegacy('Génération HACCP impossible : ' + (err.message || err), 'error');
+    } finally {
+      setHaccpAiBusy(false);
+    }
+  };
+
+  // Insère l'analyse HACCP générée dans les notes consultant de la recette.
+  const insererHaccpDansNotes = () => {
+    if (!haccpResult || !selected) return;
+    const lines = ['── Analyse HACCP (générée par IA — à valider par un responsable) ──'];
+    (haccpResult.points || []).forEach(p => {
+      lines.push(`• ${p.etape || '—'} — ${p.danger || '—'} [${p.type || '—'}]${p.ccp ? ' (CCP)' : ''}`);
+      if (p.mesure) lines.push(`  Maîtrise : ${p.mesure}`);
+      if (p.limiteCritique) lines.push(`  Limite critique : ${p.limiteCritique}`);
+      if (p.surveillance) lines.push(`  Surveillance : ${p.surveillance}`);
+    });
+    if (haccpResult.conservation) lines.push(`Conservation : ${haccpResult.conservation}`);
+    if (haccpResult.remarques) lines.push(`Remarques : ${haccpResult.remarques}`);
+    const block = lines.join('\n');
+    const current = selected.notesConsultant || '';
+    updateSelected({ notesConsultant: current ? `${current}\n\n${block}` : block });
+    notifyLegacy('Analyse HACCP insérée dans les notes consultant.', 'success');
+    setHaccpResult(null);
+  };
+
   // ── Calculs dérivés pour affichage live
   const coutMatiere = selected ? (selected.ingredients || []).reduce((s, i) => s + (Number(i.quantite) || 0) * (Number(i.prixUnit) || 0), 0) : 0;
   const coutPortion = (selected?.portions > 0) ? coutMatiere / Number(selected.portions) : 0;
@@ -1020,6 +1065,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 })()}
               </button>
               <button style={{...cts.ghostBtn, color: '#dc2626', borderColor: '#fca5a5'}} onClick={() => setShowDeleteConfirm(true)}>🗑 Supprimer</button>
+              <button
+                style={{ ...cts.ghostBtn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+                onClick={genererHaccpIA}
+                disabled={haccpAiBusy}
+              >{haccpAiBusy ? '✨ Analyse HACCP…' : '🛡 Analyse HACCP (IA)'}</button>
             </div>
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1030,6 +1080,56 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <button style={cts.ghostBtn} onClick={() => pdfUtils?.exportElementToPdf('consultant-recette-print', `recette-${selected.nom.replace(/[^a-z0-9]/gi,'_')}.pdf`)}>⬇ Export PDF</button>
             </div>
           </div>
+
+          {/* Modale d'analyse HACCP générée par IA */}
+          {haccpResult && (
+            <div
+              className="no-print"
+              style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setHaccpResult(null); }}
+            >
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(760px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>🛡 Analyse HACCP — {selected.nom}</div>
+                  <button onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
+                </div>
+                <div style={{ padding: 18, overflowY: 'auto' }}>
+                  <div style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
+                    Généré par IA — à valider par un responsable avant utilisation.
+                  </div>
+                  {(haccpResult.points || []).length === 0 && (
+                    <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucun point de maîtrise identifié.</div>
+                  )}
+                  {(haccpResult.points || []).map((p, i) => (
+                    <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8, background: 'var(--bg)' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '—'}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '—'}</span>
+                        {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#fee2e2', color: '#b91c1c' }}>CCP</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>⚠ {p.danger || '—'}</div>
+                      {p.mesure && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Maîtrise : {p.mesure}</div>}
+                      {p.limiteCritique && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Limite critique : {p.limiteCritique}</div>}
+                      {p.surveillance && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Surveillance : {p.surveillance}</div>}
+                    </div>
+                  ))}
+                  {haccpResult.conservation && (
+                    <div style={{ fontSize: 12, marginTop: 8, color: 'var(--text)' }}><strong>Conservation :</strong> {haccpResult.conservation}</div>
+                  )}
+                  {haccpResult.remarques && (
+                    <div style={{ fontSize: 12, marginTop: 6, color: 'var(--text2)' }}><strong>Remarques :</strong> {haccpResult.remarques}</div>
+                  )}
+                </div>
+                <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button style={cts.ghostBtn} onClick={() => setHaccpResult(null)}>Fermer</button>
+                  <button
+                    style={{ ...cts.ghostBtn, background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }}
+                    onClick={insererHaccpDansNotes}
+                  >Insérer dans les notes</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div id="consultant-recette-print" style={cts.printZone}>
             {/* Header édition */}

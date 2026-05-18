@@ -53,9 +53,23 @@ Les identifiants doivent provenir EXCLUSIVEMENT de cette liste (n'en invente auc
 gluten, lactose, oeufs, poissons, crustaces, fruits_coque, sulfites, arachides, soja, celeri, moutarde, sesame, mollusques, lupin
 Si aucun allergène, renvoie {"allergenes":[],"incertains":[],"note":""}.`;
 
+const HACCP_SYSTEM = `Tu es un expert en sécurité alimentaire et méthode HACCP. À partir d'une recette (ingrédients + étapes), tu produis une analyse des dangers et des points de maîtrise.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
+{"points":[{"etape":"Cuisson","danger":"Survie de pathogènes","type":"biologique","mesure":"Cuisson à cœur","limiteCritique":"≥ 75°C à cœur","surveillance":"Sonde en fin de cuisson","ccp":true}],"conservation":"...","remarques":"..."}
+Règles :
+- "type" parmi : biologique, chimique, physique, allergène
+- "ccp" : true si c'est un point critique pour la maîtrise (CCP), false sinon
+- "limiteCritique" : valeur mesurable quand applicable (ex "≥ 63°C"), sinon ""
+- "surveillance" : comment surveiller concrètement, sinon ""
+- "conservation" : recommandation de conservation du produit fini
+- "remarques" : conseils complémentaires (1 à 3 phrases)
+- couvre les étapes sensibles : réception, stockage, préparation, cuisson, refroidissement, conservation
+Base-toi sur les bonnes pratiques d'hygiène. Cette analyse est une aide à valider par un responsable.`;
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
+  'generate-haccp': { system: HACCP_SYSTEM, maxTokens: 3072 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -76,6 +90,21 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     if (!ingredients.length) throw new Error("Liste d'ingrédients vide.");
     const nom = payload.recipeName ? `Recette : ${payload.recipeName}\n` : '';
     return [{ kind: 'text', text: `${nom}Ingrédients :\n- ${ingredients.join('\n- ')}` }];
+  }
+  if (task === 'generate-haccp') {
+    const name = payload.recipeName as string;
+    if (!name) throw new Error('Recette manquante.');
+    const ingredients = Array.isArray(payload.ingredients) ? (payload.ingredients as string[]) : [];
+    const etapes = Array.isArray(payload.etapes) ? (payload.etapes as string[]) : [];
+    const etapesText = etapes.length
+      ? etapes.map((e, i) => `${i + 1}. ${e}`).join('\n')
+      : '(non précisées)';
+    return [{
+      kind: 'text',
+      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
+        + `Ingrédients : ${ingredients.join(', ') || '(non précisés)'}\n`
+        + `Étapes :\n${etapesText}`,
+    }];
   }
   throw new Error(`Tâche inconnue : ${task}`);
 }

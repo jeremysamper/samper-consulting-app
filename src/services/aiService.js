@@ -113,5 +113,26 @@ export async function detectAllergens(ingredientNames, recipeName) {
   };
 }
 
-export const aiService = { ocrRecipe, detectAllergens };
+// Génération HACCP : analyse des dangers et points de maîtrise d'une recette.
+// Renvoie { points: [...], conservation: string, remarques: string }.
+export async function generateHaccp(recipe) {
+  const ingredients = ((recipe && recipe.ingredients) || [])
+    .map(i => String(i.nom || '').trim()).filter(Boolean);
+  const etapes = ((recipe && recipe.etapes) || [])
+    .map(e => String(e || '').trim()).filter(Boolean);
+  const data = await callAi('generate-haccp', {
+    recipeName: (recipe && recipe.nom) || '',
+    categorie: (recipe && recipe.categorie) || '',
+    ingredients,
+    etapes,
+  });
+  const r = (data && data.result) || {};
+  return {
+    points: Array.isArray(r.points) ? r.points : [],
+    conservation: typeof r.conservation === 'string' ? r.conservation : '',
+    remarques: typeof r.remarques === 'string' ? r.remarques : '',
+  };
+}
+
+export const aiService = { ocrRecipe, detectAllergens, generateHaccp };
 export default aiService;
