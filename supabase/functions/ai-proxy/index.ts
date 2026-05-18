@@ -1,75 +1,154 @@
 // ════════════════════════════════════════════════════════════════
-// Edge function « ai-proxy » — proxy sécurisé vers l'API Claude (Anthropic).
+// Edge function « ai-proxy » — proxy IA multi-fournisseur (Claude / OpenAI).
 //
-// La clé API reste 100 % côté serveur (secret Supabase ANTHROPIC_API_KEY) —
-// elle n'est JAMAIS exposée au client. Le client appelle cette fonction avec
-// son jeton de session Supabase ; la fonction vérifie l'authentification
-// avant tout appel IA.
+// La clé API reste 100 % côté serveur — jamais exposée au client. Le client
+// appelle cette fonction avec son jeton de session Supabase ; la fonction
+// vérifie l'authentification avant tout appel IA.
 //
-// Secrets attendus (Supabase Dashboard → Edge Functions → Manage secrets) :
-//   ANTHROPIC_API_KEY  (requis)  — clé API depuis console.anthropic.com
-//   AI_MODEL           (optionnel) — id du modèle Claude (défaut ci-dessous)
+// Secrets (Supabase Dashboard → Edge Functions → Manage secrets) :
+//   AI_PROVIDER         (optionnel) — 'anthropic' (défaut) | 'openai'
+//   ANTHROPIC_API_KEY   (requis si provider = anthropic)
+//   OPENAI_API_KEY      (requis si provider = openai)
+//   AI_MODEL            (optionnel) — id de modèle ; doit correspondre au
+//                       fournisseur choisi. Sinon défaut par fournisseur.
 // SUPABASE_URL / SUPABASE_ANON_KEY sont injectés automatiquement.
 //
-// Tâches supportées : 'ocr-recipe'. (Les phases suivantes ajoutent des cas.)
+// Tâches : 'ocr-recipe' (vision), 'detect-allergens' (texte).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
-// Modèle par défaut — surchargeable via le secret AI_MODEL.
-const DEFAULT_MODEL = 'claude-sonnet-4-5';
+const PROVIDERS = {
+  anthropic: { url: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-4-5' },
+  openai: { url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o' },
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-// Consigne système pour l'extraction de recettes depuis une image.
+// ── Consignes système par tâche ──
 const OCR_SYSTEM = `Tu extrais des recettes de cuisine depuis une image (photo ou scan d'une fiche papier).
 Réponds UNIQUEMENT avec un objet JSON valide, sans aucun texte autour, au format exact :
 {"recipes":[{"nom":"...","categorie":"Plats","portions":4,"ingredients":[{"nom":"Farine","quantite":200,"unite":"g"}],"etapes":["Étape 1...","Étape 2..."]}]}
 Règles :
 - une image peut contenir plusieurs recettes (renvoie-les toutes dans "recipes")
 - "categorie" parmi : Entrées, Plats, Desserts, Fromages, Sauces, Fonds, Amuse-bouches, Garnitures
-- "quantite" est un nombre ; si elle n'est pas précisée, mets 0
-- "unite" parmi : g, kg, ml, L, pcs, cs, cc, pincée — sinon choisis l'unité la plus proche
+- "quantite" est un nombre ; si non précisée, mets 0
+- "unite" parmi : g, kg, ml, L, pcs, cs, cc, pincée — sinon l'unité la plus proche
 - "portions" est un entier ; si absent, mets 4
 - conserve la formulation des étapes le plus fidèlement possible
 - si l'image ne contient aucune recette lisible, renvoie {"recipes":[]}`;
+
+const ALLERGEN_SYSTEM = `Tu analyses la liste d'ingrédients d'une recette et identifies les allergènes réglementaires (UE) présents.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
+{"allergenes":["gluten","lactose"],"incertains":["soja"],"note":""}
+- "allergenes" : identifiants des allergènes certainement présents
+- "incertains" : identifiants possiblement présents selon la préparation (à vérifier)
+- "note" : courte explication si utile (1 phrase max), sinon ""
+Les identifiants doivent provenir EXCLUSIVEMENT de cette liste (n'en invente aucun) :
+gluten, lactose, oeufs, poissons, crustaces, fruits_coque, sulfites, arachides, soja, celeri, moutarde, sesame, mollusques, lupin
+Si aucun allergène, renvoie {"allergenes":[],"incertains":[],"note":""}.`;
+
+const TASKS: Record<string, { system: string; maxTokens: number }> = {
+  'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
+  'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
+};
+
+type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
+
+// Construit le contenu utilisateur (texte + image) selon la tâche.
+function buildParts(task: string, payload: Record<string, unknown>): Part[] {
+  if (task === 'ocr-recipe') {
+    const imageBase64 = payload.imageBase64 as string;
+    const mediaType = payload.mediaType as string;
+    if (!imageBase64 || !mediaType) throw new Error('Image manquante.');
+    return [
+      { kind: 'image', mediaType, base64: imageBase64 },
+      { kind: 'text', text: 'Extrais la ou les recettes de cette image au format JSON demandé.' },
+    ];
+  }
+  if (task === 'detect-allergens') {
+    const ingredients = Array.isArray(payload.ingredients) ? (payload.ingredients as string[]) : [];
+    if (!ingredients.length) throw new Error("Liste d'ingrédients vide.");
+    const nom = payload.recipeName ? `Recette : ${payload.recipeName}\n` : '';
+    return [{ kind: 'text', text: `${nom}Ingrédients :\n- ${ingredients.join('\n- ')}` }];
+  }
+  throw new Error(`Tâche inconnue : ${task}`);
+}
+
+// ── Adaptateur Anthropic ──
+async function callAnthropic(apiKey: string, model: string, system: string, parts: Part[], maxTokens: number) {
+  const content = parts.map(p => p.kind === 'image'
+    ? { type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.base64 } }
+    : { type: 'text', text: p.text });
+  const messages = [
+    { role: 'user', content },
+    { role: 'assistant', content: '{' }, // préfixe → force une réponse JSON
+  ];
+  const resp = await fetch(PROVIDERS.anthropic.url, {
+    method: 'POST',
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+  });
+  if (!resp.ok) throw new Error(`Anthropic ${resp.status} : ${await resp.text()}`);
+  const data = await resp.json();
+  const text = (data?.content || [])
+    .filter((c: { type: string }) => c.type === 'text')
+    .map((c: { text: string }) => c.text)
+    .join('');
+  return '{' + text;
+}
+
+// ── Adaptateur OpenAI ──
+async function callOpenAI(apiKey: string, model: string, system: string, parts: Part[], maxTokens: number) {
+  const content = parts.map(p => p.kind === 'image'
+    ? { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.base64}` } }
+    : { type: 'text', text: p.text });
+  const messages = [
+    { role: 'system', content: system },
+    { role: 'user', content },
+  ];
+  const resp = await fetch(PROVIDERS.openai.url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages, response_format: { type: 'json_object' } }),
+  });
+  if (!resp.ok) throw new Error(`OpenAI ${resp.status} : ${await resp.text()}`);
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || '';
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Méthode non autorisée' }, 405);
 
-  // ── Authentification : requête issue d'un utilisateur Supabase connecté ──
+  // ── Authentification ──
   const authHeader = req.headers.get('Authorization') || '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  if (!authHeader || !supabaseUrl || !anonKey) {
-    return json({ error: 'Non authentifié' }, 401);
-  }
-  const supabase = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  if (!authHeader || !supabaseUrl || !anonKey) return json({ error: 'Non authentifié' }, 401);
+  const supabase = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr || !user) return json({ error: 'Session invalide' }, 401);
 
-  // ── Clé IA ──
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-  if (!apiKey) {
-    return json({ error: 'Service IA non configuré (secret ANTHROPIC_API_KEY manquant).' }, 503);
+  // ── Fournisseur + clé ──
+  const provider = (Deno.env.get('AI_PROVIDER') || 'anthropic').toLowerCase();
+  if (!PROVIDERS[provider as keyof typeof PROVIDERS]) {
+    return json({ error: `Fournisseur IA inconnu : ${provider}` }, 500);
   }
-  const model = Deno.env.get('AI_MODEL') || DEFAULT_MODEL;
+  const apiKey = provider === 'openai'
+    ? Deno.env.get('OPENAI_API_KEY')
+    : Deno.env.get('ANTHROPIC_API_KEY');
+  if (!apiKey) {
+    return json({ error: `Service IA non configuré (clé ${provider} manquante).` }, 503);
+  }
+  const model = Deno.env.get('AI_MODEL') || PROVIDERS[provider as keyof typeof PROVIDERS].model;
 
-  // ── Corps de requête ──
+  // ── Requête ──
   let task: string;
   let payload: Record<string, unknown>;
   try {
@@ -79,68 +158,33 @@ Deno.serve(async (req: Request) => {
   } catch {
     return json({ error: 'Corps de requête invalide' }, 400);
   }
+  const cfg = TASKS[task];
+  if (!cfg) return json({ error: `Tâche IA inconnue : ${task}` }, 400);
 
-  // ── Construction des messages selon la tâche ──
-  let system: string;
-  let messages: unknown[];
-  const maxTokens = 4096;
-
-  if (task === 'ocr-recipe') {
-    const imageBase64 = payload.imageBase64 as string;
-    const mediaType = payload.mediaType as string;
-    if (!imageBase64 || !mediaType) return json({ error: 'Image manquante.' }, 400);
-    system = OCR_SYSTEM;
-    messages = [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-          { type: 'text', text: 'Extrais la ou les recettes de cette image au format JSON demandé.' },
-        ],
-      },
-      { role: 'assistant', content: '{' }, // préfixe pour forcer une réponse JSON
-    ];
-  } else {
-    return json({ error: `Tâche IA inconnue : ${task}` }, 400);
-  }
-
-  // ── Appel Anthropic ──
-  let aiResp: Response;
+  let parts: Part[];
   try {
-    aiResp = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': ANTHROPIC_VERSION,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
-    });
+    parts = buildParts(task, payload);
   } catch (e) {
-    console.error('[ai-proxy] fetch error', e);
-    return json({ error: 'Service IA injoignable.' }, 502);
+    return json({ error: (e as Error).message }, 400);
   }
 
-  if (!aiResp.ok) {
-    const detail = await aiResp.text();
-    console.error('[ai-proxy] Anthropic error', aiResp.status, detail);
-    return json({ error: `Erreur du service IA (${aiResp.status}).` }, 502);
+  // ── Appel IA ──
+  let text: string;
+  try {
+    text = provider === 'openai'
+      ? await callOpenAI(apiKey, model, cfg.system, parts, cfg.maxTokens)
+      : await callAnthropic(apiKey, model, cfg.system, parts, cfg.maxTokens);
+  } catch (e) {
+    console.error('[ai-proxy]', e);
+    return json({ error: 'Erreur du service IA.' }, 502);
   }
-
-  const data = await aiResp.json();
-  let text: string = (data?.content || [])
-    .filter((c: { type: string }) => c.type === 'text')
-    .map((c: { text: string }) => c.text)
-    .join('');
-  // La réponse a été préfixée par '{' côté assistant → on reforme le JSON.
-  text = '{' + text;
 
   let result: unknown;
   try {
     result = JSON.parse(text);
   } catch {
-    return json({ error: "Réponse IA non exploitable.", raw: text.slice(0, 400) }, 502);
+    return json({ error: 'Réponse IA non exploitable.', raw: text.slice(0, 400) }, 502);
   }
 
-  return json({ task, result, usage: data.usage || null });
+  return json({ task, provider, result });
 });
