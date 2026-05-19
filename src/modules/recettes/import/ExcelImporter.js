@@ -210,6 +210,132 @@ export function buildFromMapping(rows, headerRowIndex, map, catHint = null) {
   });
 }
 
+// ─── Format fiche technique (vertical : première colonne = labels) ────────────
+
+// Vérifie si une clé normalisée commence par l'un des labels donnés.
+function keyStartsWith(key, ...labels) {
+  return labels.some(l => key === l || key.startsWith(l + ' ') || key.startsWith(l + ':'));
+}
+
+// Détecte si une feuille est au format fiche technique :
+// quelques lignes de métadonnées (Plat :, Produit :, Rendement :…)
+// suivies de sections délimitées (Ingrédients :, Étapes :…).
+function detectFicheTechnique(rows) {
+  let hasMeta = false;
+  let hasSection = false;
+  for (let i = 0; i < Math.min(15, rows.length); i++) {
+    const key = norm(String(rows[i]?.[0] ?? ''));
+    if (!key) continue;
+    if (keyStartsWith(key, 'plat', 'produit', 'recette', 'nom', 'rendement',
+      'portions', 'couverts', 'allergene', 'allergenes')) hasMeta = true;
+    if (keyStartsWith(key, 'ingredient', 'ingredients', 'etape', 'etapes')) hasSection = true;
+    if (hasMeta && hasSection) return true;
+  }
+  return false;
+}
+
+// Parse une feuille en format fiche technique et renvoie un tableau d'une recette.
+function parseFicheTechnique(rows) {
+  let nom = '';
+  let platParent = ''; // "Plat :" → contexte du plat parent
+  let catRaw = '';
+  let portions = 4;
+  let allergenesRaw = '';
+  let conservation = '';
+  let dressage = '';
+  const notesLines = [];
+
+  let mode = 'meta'; // meta | ingredients | etapes | notes
+  const ingredients = [];
+  const etapes = [];
+
+  for (const row of rows) {
+    const rawKey = String(row[0] ?? '').trim();
+    const key = norm(rawKey);
+    const val = String(row[1] ?? '').trim();
+
+    if (!rawKey && !val) continue; // ligne entièrement vide
+
+    // ── Détection de section (change le mode) ──
+    if (keyStartsWith(key, 'ingredient', 'ingredients')) { mode = 'ingredients'; continue; }
+    if (keyStartsWith(key, 'etape', 'etapes')) { mode = 'etapes'; continue; }
+    if (keyStartsWith(key, 'conservation', 'dlc', 'stockage')) {
+      if (val) conservation = conservation || val;
+      mode = 'notes'; continue;
+    }
+    if (keyStartsWith(key, 'dressage', 'finition', 'mise en assiette')) {
+      if (val) dressage = dressage || val;
+      mode = 'notes'; continue;
+    }
+    if (keyStartsWith(key, 'astuce', 'conseil', 'note', 'notes', 'remarque',
+      'remarques', 'mise en place', 'astuces', 'service')) { mode = 'notes'; continue; }
+
+    // ── Métadonnées (mode=meta) ──
+    if (mode === 'meta') {
+      // Ligne catégorie : première ligne avec contenu uniquement en col[0], sans ":"
+      if (!catRaw && !key.includes(':') && !val && rawKey) { catRaw = rawKey; continue; }
+
+      if (keyStartsWith(key, 'plat', 'recette', 'nom')) {
+        if (val && !platParent) platParent = val; continue;
+      }
+      if (keyStartsWith(key, 'produit')) { if (val) nom = val; continue; }
+      if (keyStartsWith(key, 'rendement', 'portions', 'couverts', 'nb portions', 'nbr portions')) {
+        const m = (val || '').match(/(\d+)/);
+        if (m) portions = parseInt(m[1], 10);
+        continue;
+      }
+      if (keyStartsWith(key, 'allergene', 'allergenes')) { allergenesRaw = val; continue; }
+      continue; // skip lignes métadonnées inconnues
+    }
+
+    // ── Ingrédients ──
+    if (mode === 'ingredients') {
+      if (rawKey) ingredients.push(makeIngredient(rawKey, row[1], row[2], null));
+      continue;
+    }
+
+    // ── Étapes ──
+    if (mode === 'etapes') {
+      if (rawKey) etapes.push(rawKey);
+      continue;
+    }
+
+    // ── Notes / Astuces ──
+    if (mode === 'notes') {
+      if (rawKey) notesLines.push(rawKey);
+      continue;
+    }
+  }
+
+  // Fallback : si pas de "Produit :", utiliser "Plat :" comme nom
+  if (!nom && platParent) nom = platParent;
+  if (!nom) return [];
+
+  const flagged = ingredients.filter(i => i._import.warning).length;
+  const warnings = [];
+  if (flagged > 0) warnings.push(`${flagged} ligne(s) ingrédient à vérifier`);
+  if (ingredients.length === 0) warnings.push('Aucun ingrédient détecté');
+
+  return [{
+    _tempId: tempId('rec'),
+    nom,
+    categorie: normalizeCategorie(catRaw),
+    portions,
+    prixVente: 0,
+    statut: 'brouillon',
+    version: 1,
+    allergenesIds: splitAllergenes(allergenesRaw),
+    notesConsultant: notesLines.join('\n'),
+    conservation,
+    dressage,
+    ingredients,
+    etapes,
+    _warnings: warnings,
+  }];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Parse le template multi-feuilles (Recettes / Ingrédients / Étapes).
 function parseMultiSheet(wb) {
   const findSheet = (re) => wb.SheetNames.find(n => re.test(norm(n)));
@@ -311,6 +437,18 @@ export function parseWorkbook(arrayBuffer) {
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
     if (!rows.length) { stats.sheetsSkipped.push(sheetName + ' (vide)'); continue; }
 
+    // Format fiche technique (label:valeur vertical) ?
+    if (detectFicheTechnique(rows)) {
+      const ficheRecipes = parseFicheTechnique(rows);
+      if (ficheRecipes.length) {
+        stats.sheetsRead.push({ name: sheetName, count: ficheRecipes.length });
+        stats.rowsTotal += rows.length;
+        allRecipes.push(...ficheRecipes);
+        continue;
+      }
+    }
+
+    // Format plat : détection automatique des colonnes.
     const headerRowIndex = findHeaderRow(rows);
     const headerRow = rows[headerRowIndex] || [];
     const map = detectColumns(headerRow);
