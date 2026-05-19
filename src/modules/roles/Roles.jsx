@@ -1,5 +1,6 @@
 import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
+import { manageableModules, defaultManageRoles } from '../moduleConfig.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 
@@ -107,6 +108,24 @@ const Roles = ({ user }) => {
           await legacySB.db.upsertPermissions(roleKey, perms);
         }
       } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    }
+  };
+
+  // Droit « gérer » (modifier + supprimer) d'un module pour un rôle.
+  // Stocké sous la clé `manage:<moduleId>` dans les permissions du rôle.
+  const manageKey = (moduleId) => 'manage:' + moduleId;
+  const canManageValue = (roleKey, moduleId) => {
+    const explicit = permissions[roleKey]?.[manageKey(moduleId)];
+    return explicit === undefined ? defaultManageRoles.includes(roleKey) : !!explicit;
+  };
+  const toggleManagePerm = async (roleKey, moduleId) => {
+    if (!canEdit) return;
+    const next = !canManageValue(roleKey, moduleId);
+    const newPerms = { ...permissions[roleKey], [manageKey(moduleId)]: next };
+    setPermissions(prev => ({ ...prev, [roleKey]: newPerms }));
+    if (legacySB) {
+      try { await legacySB.db.upsertPermissions(roleKey, newPerms); }
+      catch (err) { notifyLegacy('Erreur sauvegarde permissions : ' + err.message, 'error'); }
     }
   };
 
@@ -226,13 +245,14 @@ const Roles = ({ user }) => {
     <div style={ros.root}>
       <div style={ros.tabs} className="no-print">
         <button style={{ ...ros.tab, ...(activeTab === 'permissions' ? ros.tabActive : {}) }} onClick={() => setActiveTab('permissions')}>Permissions par rôle</button>
+        <button style={{ ...ros.tab, ...(activeTab === 'actions' ? ros.tabActive : {}) }} onClick={() => setActiveTab('actions')}>Droits d'action</button>
         <button style={{ ...ros.tab, ...(activeTab === 'users' ? ros.tabActive : {}) }} onClick={() => setActiveTab('users')}>Utilisateurs ({utilisateurs.length})</button>
         <div style={{ flex: 1 }} />
         {canEdit && activeTab === 'permissions' && <button style={ros.ghostBtn} onClick={resetDefaults}>↻ Réinitialiser</button>}
         {canEdit && activeTab === 'users' && <button style={ros.addBtn} onClick={openNewUser}>+ Nouvel utilisateur</button>}
       </div>
 
-      {activeTab === 'permissions' ? (
+      {(activeTab === 'permissions' || activeTab === 'actions') && (
         <div style={ros.permLayout}>
           <div style={ros.rolesCol}>
             {roles.map(([key, info]) => (
@@ -246,36 +266,66 @@ const Roles = ({ user }) => {
             ))}
           </div>
 
-          <div style={ros.modulesCol}>
-            <div style={ros.modulesHeader}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>{demoData.roles[selected]?.label}</div>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>Modules accessibles</div>
-              </div>
-              {canEdit && (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button style={ros.smallGhost} onClick={() => allowAll(selected, true)}>Tout cocher</button>
-                  <button style={ros.smallGhost} onClick={() => allowAll(selected, false)}>Tout décocher</button>
+          {activeTab === 'permissions' ? (
+            <div style={ros.modulesCol}>
+              <div style={ros.modulesHeader}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>{demoData.roles[selected]?.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>Modules accessibles</div>
                 </div>
-              )}
+                {canEdit && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button style={ros.smallGhost} onClick={() => allowAll(selected, true)}>Tout cocher</button>
+                    <button style={ros.smallGhost} onClick={() => allowAll(selected, false)}>Tout décocher</button>
+                  </div>
+                )}
+              </div>
+              <div style={ros.moduleList}>
+                {MODULES.map(m => {
+                  const val = !!permissions[selected]?.[m.id];
+                  return (
+                    <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
+                      <input type="checkbox" checked={val} onChange={() => togglePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+                      <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
+                      <span style={{ ...ros.permBadge, background: val ? '#dcfce7' : '#fee2e2', color: val ? '#15803d' : '#dc2626' }}>
+                        {val ? '✓ Autorisé' : '✕ Interdit'}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-            <div style={ros.moduleList}>
-              {MODULES.map(m => {
-                const val = !!permissions[selected]?.[m.id];
-                return (
-                  <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
-                    <input type="checkbox" checked={val} onChange={() => togglePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
-                    <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
-                    <span style={{ ...ros.permBadge, background: val ? '#dcfce7' : '#fee2e2', color: val ? '#15803d' : '#dc2626' }}>
-                      {val ? '✓ Autorisé' : '✕ Interdit'}
-                    </span>
-                  </label>
-                );
-              })}
+          ) : (
+            <div style={ros.modulesCol}>
+              <div style={ros.modulesHeader}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>{demoData.roles[selected]?.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>Modifier &amp; supprimer dans ces modules</div>
+                </div>
+              </div>
+              <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+                Autorise ce rôle à <strong>modifier et supprimer</strong> dans le module.
+                La consultation reste régie par l'onglet « Permissions par rôle ».
+              </div>
+              <div style={ros.moduleList}>
+                {manageableModules.map(m => {
+                  const val = canManageValue(selected, m.id);
+                  return (
+                    <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
+                      <input type="checkbox" checked={val} onChange={() => toggleManagePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+                      <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
+                      <span style={{ ...ros.permBadge, background: val ? '#dcfce7' : '#fee2e2', color: val ? '#15803d' : '#dc2626' }}>
+                        {val ? '✓ Peut gérer' : '✕ Lecture seule'}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      ) : (
+      )}
+      {activeTab === 'users' && (
         <div style={ros.usersWrap}>
           {(utilisateurs || []).map(u => {
             const role = demoData.roles[u.role];

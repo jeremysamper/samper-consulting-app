@@ -1,6 +1,9 @@
 import React from 'react';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { canManageModule } from '../../data/demoData.js';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -130,8 +133,10 @@ const FichesSalle = ({ user, etablissement }) => {
   const [editFiche, setEditFiche] = React.useState(null);
   const [bulkProgress, setBulkProgress] = React.useState(null);
   const bulkCancelRef = React.useRef(false);
+  const [selBusy, setSelBusy] = React.useState(false);
+  const sel = useSelection();
 
-  const canEdit = ['consultant','patron','resp_cuisine'].includes(user.role);
+  const canEdit = canManageModule(user.role, 'fiches_salle');
   const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
 
@@ -211,6 +216,24 @@ const FichesSalle = ({ user, etablissement }) => {
     }
     setFiches(prev => prev.filter(f => f.id !== id));
     if (selected?.id === id) setSelected(null);
+  };
+
+  // ── Suppression multiple des fiches salle sélectionnées ──
+  const bulkDeleteFiches = async () => {
+    if (sel.count === 0) return;
+    if (!confirmLegacy(`Supprimer ${sel.count} fiche(s) salle sélectionnée(s) ?`)) return;
+    setSelBusy(true);
+    let ok = 0;
+    for (const id of Array.from(sel.ids)) {
+      try {
+        if (legacySB) await legacySB.db.deleteFicheSalle(id);
+        ok += 1;
+      } catch (err) { console.error('[deleteFicheSalle]', err); }
+    }
+    setFiches(prev => prev.filter(f => !sel.ids.has(f.id)));
+    setSelBusy(false);
+    sel.exit();
+    notifyLegacy(`${ok} fiche(s) salle supprimée(s).`, 'success');
   };
 
   // ── Génération IA des fiches salle pour toute la carte ──
@@ -297,8 +320,11 @@ const FichesSalle = ({ user, etablissement }) => {
             {cats.map(c=><button key={c} style={{...fss.catBtn,...(catFilter===c?fss.catActive:{})}} onClick={()=>setCatFilter(c)}>{c}</button>)}
           </div>
         </div>
-        {canEdit && (
+        {canEdit && !sel.active && (
           <div style={{display:'flex',gap:8,flexShrink:0,flexWrap:'wrap'}}>
+            {fiches.length > 0 && (
+              <button style={fss.selectBtn} onClick={sel.enter}>☑ Sélectionner</button>
+            )}
             <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
               ✨ Générer les fiches salle (IA)
             </button>
@@ -306,6 +332,19 @@ const FichesSalle = ({ user, etablissement }) => {
           </div>
         )}
       </div>
+
+      {/* Barre de sélection multiple */}
+      {canEdit && sel.active && (
+        <SelectionToolbar
+          count={sel.count}
+          total={filtered.length}
+          allSelected={sel.count > 0 && sel.count === filtered.length}
+          onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(f => f.id)))}
+          onDelete={bulkDeleteFiches}
+          onCancel={sel.exit}
+          busy={selBusy}
+        />
+      )}
 
       {/* Progression de la génération IA des fiches salle */}
       {bulkProgress && (
@@ -338,7 +377,24 @@ const FichesSalle = ({ user, etablissement }) => {
 
       <div style={fss.grid}>
         {(filtered || []).map(f => (
-          <div key={f.id} style={fss.card} onClick={()=>setSelected(f)}>
+          <div
+            key={f.id}
+            style={{
+              ...fss.card,
+              position:'relative',
+              ...(sel.active && sel.isSelected(f.id) ? { outline:'2px solid var(--accent)', outlineOffset:-2 } : {}),
+            }}
+            onClick={()=> sel.active ? sel.toggle(f.id) : setSelected(f)}
+          >
+            {sel.active && (
+              <input
+                type="checkbox"
+                checked={sel.isSelected(f.id)}
+                onChange={()=>sel.toggle(f.id)}
+                onClick={e=>e.stopPropagation()}
+                style={{position:'absolute',top:8,left:8,width:18,height:18,zIndex:2,cursor:'pointer',accentColor:'var(--accent)'}}
+              />
+            )}
             {/* Placeholder image */}
             <div style={fss.cardImg}>
               <div style={fss.cardImgPlaceholder}>
@@ -636,6 +692,7 @@ const fss = {
   catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   aiBtn:{padding:'8px 16px',background:'#ede9fe',color:'#5b21b6',border:'1px solid #c4b5fd',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   serverBanner:{background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',gap:14},
   grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14},
   card:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',cursor:'pointer',transition:'box-shadow .15s, transform .15s'},

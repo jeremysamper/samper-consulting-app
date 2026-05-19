@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
+import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
@@ -39,7 +39,7 @@ const Documents = ({ user, etablissement }) => {
   const fileInputRef = React.useRef(null);
 
   const perms = demoData.permissions[user.role] || {};
-  const canWrite = perms.documents !== false && ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+  const canWrite = perms.documents !== false && canManageModule(user.role, 'documents');
   const canRead = perms.documents !== false;
 
   // ═══ Load + Realtime ═══

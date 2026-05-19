@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
+import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { CTRL_TYPES, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
@@ -53,7 +53,7 @@ const HACCP = ({ user, etablissement }) => {
 
   const isConsultant = user.role === 'consultant';
   const canWrite = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'].includes(user.role);
-  const canManage = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+  const canManage = canManageModule(user.role, 'haccp');
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
 
@@ -511,7 +511,7 @@ const HACCP = ({ user, etablissement }) => {
           <div style={hs.tableCard}>
             <div style={hs.tableCardHeader}>Relevés du {new Date(dateFilter+'T12:00:00').toLocaleDateString('fr-CH',{weekday:'long',day:'numeric',month:'long'})}</div>
             {todayReleves.length===0&&<div style={hs.empty}>Aucun relevé pour cette date.</div>}
-            <div style={hs.relHead}>{sel.active && <span className="no-print" style={{ flex: '0 0 28px' }} />}<span>Zone</span><span>Heure</span><span style={{textAlign:'right'}}>Valeur</span><span>Opérateur</span><span>Statut</span><span style={{flex:2}}>Commentaire</span>{(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className="no-print">Action</span>}</div>
+            <div style={hs.relHead}>{sel.active && <span className="no-print" style={{ flex: '0 0 28px' }} />}<span>Zone</span><span>Heure</span><span style={{textAlign:'right'}}>Valeur</span><span>Opérateur</span><span>Statut</span><span style={{flex:2}}>Commentaire</span>{canManage && <span className="no-print">Action</span>}</div>
             {(todayReleves || []).map(r=>{
               const zone=zones.find(z=>z.id===r.zoneId);
               const op=demoData.utilisateurs.find(u=>u.id===r.operateur);
@@ -528,7 +528,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
                   <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
                   <span style={{...hs.cell,flex:2,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'—'}</span>
-                  {(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
+                  {canManage && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
                 </div>
               );
             })}
@@ -568,7 +568,7 @@ const HACCP = ({ user, etablissement }) => {
           </div>
           <div style={hs.tableCard}>
             <div style={hs.tableCardHeader}>Historique complet</div>
-            <div style={hs.relHead}><span style={{flex:2}}>Contrôle</span><span>Date</span><span>Heure</span><span>Opérateur</span><span>Statut</span><span style={{flex:2}}>Notes</span>{(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className='no-print'>Action</span>}</div>
+            <div style={hs.relHead}><span style={{flex:2}}>Contrôle</span><span>Date</span><span>Heure</span><span>Opérateur</span><span>Statut</span><span style={{flex:2}}>Notes</span>{canManage && <span className='no-print'>Action</span>}</div>
             {controls.map(c=>{
               const tpl=ctrlTpls.find(t=>t.id===c.templateId);
               const op=demoData.utilisateurs.find(u=>u.id===c.operateur);
@@ -580,7 +580,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
                   <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'✓ Conforme':'✕ Non conforme'}</span></span>
                   <span style={{...hs.cell,flex:2,fontSize:12,color:'var(--text2)'}}>{c.notes||'—'}</span>
-                  {(isConsultant || user.role==='patron' || user.role==='resp_cuisine') && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
+                  {canManage && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
                 </div>
               );
             })}

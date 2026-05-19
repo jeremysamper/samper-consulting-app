@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
+import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -59,7 +59,7 @@ const Pertes = ({ user, etablissement }) => {
 
   React.useEffect(() => { demoData.pertes = pertes; if (!legacySB) writeLegacyStorage('sc_pertes', pertes); }, [pertes]);
 
-  const canManage = user.role==='consultant'||user.role==='patron'||user.role==='resp_cuisine';
+  const canManage = canManageModule(user.role, 'pertes');
 
   const supprimer = async (id) => {
     if (!canManage || !confirmLegacy('Supprimer cette perte ?')) return;

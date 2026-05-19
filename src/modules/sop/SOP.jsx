@@ -4,6 +4,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { canManageModule } from '../../data/demoData.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING — MODULE SOP & CHECKLISTS
@@ -25,7 +26,7 @@ const SOP = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const browserWindow = getBrowserWindow();
   const isMobile = (browserWindow?.innerWidth || 1024) < 768;
-  const canManage = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+  const canManage = canManageModule(user.role, 'sop');
 
   const [sops, setSops] = React.useState([]);
   const [sopTemplates, setSopTemplates] = React.useState([]);

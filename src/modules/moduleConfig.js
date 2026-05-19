@@ -14,6 +14,20 @@ export const defaultPermissions = {
   serveur: { dashboard: true, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: true, fiches_salle: true, documents: true, catalogue: false, consultant_tools: false, faq: true }
 };
 
+// Modules dont le droit « gérer » (modifier + supprimer) est configurable
+// par rôle dans Rôles & accès → onglet « Droits d'action ».
+// Par défaut, seuls consultant et patron peuvent gérer ces modules.
+export const manageableModules = [
+  { id: 'fiches_salle', label: 'Fiches salle' },
+  { id: 'sop', label: 'SOPs & Checklists' },
+  { id: 'pertes', label: 'Pertes' },
+  { id: 'haccp', label: 'HACCP' },
+  { id: 'documents', label: 'Documents' },
+];
+
+// Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.
+export const defaultManageRoles = ['consultant', 'patron'];
+
 export const navItems = [
   { id: 'dashboard', label: 'Tableau de bord', mobileLabel: 'Accueil', icon: '◉', group: 'Général', permKey: 'dashboard' },
   { id: 'planning', label: 'Planning & Pointage', mobileLabel: 'Planning', icon: '◷', group: 'Général', permKey: 'planning' },
