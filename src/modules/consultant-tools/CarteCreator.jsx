@@ -2,6 +2,7 @@ import React from 'react';
 import { alertLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { writeText } from '../../utils/storage.js';
+import { ALLERGENES_OPTIONS } from './ConsultantTools.constants.js';
 
 const MENU_CATEGORIES = ['Entrées', 'Plats', 'Fromages', 'Desserts', 'Boissons', 'Menus'];
 
@@ -104,7 +105,29 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
   const [exporting, setExporting] = React.useState(false);
   const [showDescriptions, setShowDescriptions] = React.useState(true);
   const [showAllergenes, setShowAllergenes] = React.useState(false);
+  const [showAllergenMatrix, setShowAllergenMatrix] = React.useState(false);
   const seededRef = React.useRef(false);
+
+  // Résolution des allergènes d'une ligne de carte (recette directe ou plat → recettes liées).
+  const recetteById = React.useMemo(() => new Map((recettes || []).map((r) => [r.id, r])), [recettes]);
+  const platById = React.useMemo(() => new Map((plats || []).map((p) => [p.id, p])), [plats]);
+  const allergenesOf = React.useCallback((item) => {
+    if (item.sourceType === 'recette') {
+      const r = recetteById.get(item.sourceId);
+      return r ? (r.allergenesIds || []) : (item.allergenes || []);
+    }
+    if (item.sourceType === 'plat') {
+      const p = platById.get(item.sourceId);
+      if (!p) return item.allergenes || [];
+      const set = new Set();
+      (p.recettes || []).forEach((pr) => {
+        const r = recetteById.get(pr.recetteId);
+        (r?.allergenesIds || []).forEach((a) => set.add(a));
+      });
+      return [...set];
+    }
+    return item.allergenes || [];
+  }, [recetteById, platById]);
 
   React.useEffect(() => {
     setTitle(`Carte ${etablissement?.nom || ''}`.trim());
@@ -195,6 +218,25 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
     }
   };
 
+  const handleExportAllergenesPdf = async () => {
+    setExporting(true);
+    try {
+      await pdfUtils?.exportElementToPdf('carte-allergenes-print', `allergenes-${slugFileName(title)}.pdf`, {
+        title: 'Tableau des allergènes',
+        etablissement,
+        orientation: 'landscape',
+      });
+    } catch (err) {
+      notifyLegacy('Erreur export PDF : ' + (err.message || err), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handlePrintAllergenes = () => {
+    pdfUtils?.printElement('carte-allergenes-print', 'Tableau des allergènes', { etablissement, orientation: 'landscape' });
+  };
+
   const handleSendDraft = async () => {
     if (!legacySB) {
       alertLegacy('Supabase non configuré : impossible d’envoyer dans Documents.');
@@ -251,6 +293,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
           <button style={cts.ghostBtn} onClick={handleExportPdf} disabled={exporting}>
             {exporting ? 'Export…' : 'Export PDF'}
           </button>
+          <button style={cts.ghostBtn} onClick={() => setShowAllergenMatrix(true)}>Tableau des allergènes</button>
           <button style={{ ...cts.newBtn, opacity: draftStatus.state === 'saving' ? 0.7 : 1 }} onClick={handleSendDraft} disabled={draftStatus.state === 'saving'}>
             {draftStatus.state === 'saving' ? 'Envoi…' : 'Envoyer dans Draft'}
           </button>
@@ -397,6 +440,73 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
           {note && <div style={mcs.printNote}>{note}</div>}
         </div>
       </section>
+
+      {showAllergenMatrix && (
+        <div
+          className="no-print"
+          style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAllergenMatrix(false); }}
+        >
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(1100px,97vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Tableau des allergènes — la carte</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button style={cts.ghostBtn} onClick={handlePrintAllergenes}>🖨 Imprimer</button>
+                <button style={cts.ghostBtn} onClick={handleExportAllergenesPdf} disabled={exporting}>{exporting ? 'Export…' : '⬇ Export PDF'}</button>
+                <button style={cts.ghostBtn} onClick={() => setShowAllergenMatrix(false)}>Fermer</button>
+              </div>
+            </div>
+            <div style={{ padding: 16, overflow: 'auto' }}>
+              <div id="carte-allergenes-print" style={{ background: '#fff', color: '#1f2933', padding: '24px 28px' }}>
+                <div style={{ borderBottom: '2px solid #92702A', paddingBottom: 12, marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#92702A', fontWeight: 700 }}>{etablissement?.nom || 'Samper Consulting'}</div>
+                  <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, margin: '4px 0 0', color: '#111827' }}>Tableau des allergènes</h1>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{title} · {items.length} plat{items.length > 1 ? 's' : ''}</div>
+                </div>
+                {items.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>La carte est vide.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '2px solid #92702A', color: '#111827' }}>Plat</th>
+                        {ALLERGENES_OPTIONS.map((a) => (
+                          <th key={a.id} style={{ padding: '6px 3px', borderBottom: '2px solid #92702A', color: '#111827', width: 58, fontSize: 9, lineHeight: 1.15 }}>{a.label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupedItems.map((group) => (
+                        <React.Fragment key={group.category}>
+                          <tr>
+                            <td colSpan={ALLERGENES_OPTIONS.length + 1} style={{ padding: '8px 8px 3px', fontFamily: 'Georgia, serif', fontSize: 13, color: '#92702A', fontWeight: 700 }}>{group.category}</td>
+                          </tr>
+                          {group.items.map((item) => {
+                            const al = allergenesOf(item);
+                            return (
+                              <tr key={item.id}>
+                                <td style={{ padding: '5px 8px', borderBottom: '1px solid #f0ece4', color: '#111827', fontWeight: 600 }}>{item.name || 'Ligne sans nom'}</td>
+                                {ALLERGENES_OPTIONS.map((a) => (
+                                  <td key={a.id} style={{ padding: '5px 3px', borderBottom: '1px solid #f0ece4', textAlign: 'center', color: al.includes(a.id) ? '#92702A' : '#d1d5db', fontWeight: 700 }}>
+                                    {al.includes(a.id) ? '●' : '·'}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ marginTop: 14, fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
+                  ● = allergène présent. Tableau indicatif, à vérifier et tenir à jour. 14 allergènes à déclaration obligatoire (UE).
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
