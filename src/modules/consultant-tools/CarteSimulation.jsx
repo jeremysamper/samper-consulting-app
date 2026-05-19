@@ -54,44 +54,44 @@ const isDressageComplexe = (recette) => {
   return keywords.some(kw => dressage.includes(kw));
 };
 
-// Analyse complète d'un plat (agrège ses recettes)
-const analyzePlat = (plat, recettesEtab) => {
-  const recettesIds = (plat.recettes || []).map(pr => pr.recetteId);
-  const recettesPlat = recettesEtab.filter(r => recettesIds.includes(r.id));
+// Analyse complète d'une unité de carte.
+// `unit` = { id, nom, categorie, prixVente, recettes: [<recettes résolues>] }
+// — fonctionne aussi bien pour un plat (avec ses recettes liées) que pour
+// une recette analysée directement (recettes = [la recette elle-même]).
+const analyzeUnit = (unit) => {
+  const recettesUnit = unit.recettes || [];
 
-  if (recettesPlat.length === 0) {
+  if (recettesUnit.length === 0) {
     return {
-      plat, recettes: [], coutTotal: 0, foodCost: null,
+      plat: unit, recettes: [], coutTotal: 0, foodCost: null,
       etapesTotal: 0, techniques: new Set(), techniquesUniques: 0,
       isMinute: false, isDressageComplexe: false, score: 0, hasData: false,
     };
   }
 
-  const coutTotal = recettesPlat.reduce((s, r) => s + (Number(r.coutPortion) || 0), 0);
-  const foodCost = (plat.prixVente && coutTotal > 0)
-    ? (coutTotal / plat.prixVente * 100) : null;
+  const coutTotal = recettesUnit.reduce((s, r) => s + (Number(r.coutPortion) || 0), 0);
+  const prix = Number(unit.prixVente) || 0;
+  const foodCost = (prix > 0 && coutTotal > 0) ? (coutTotal / prix * 100) : null;
 
-  const etapesTotal = recettesPlat.reduce((s, r) => s + (r.etapes || []).length, 0);
+  const etapesTotal = recettesUnit.reduce((s, r) => s + (r.etapes || []).length, 0);
 
   const techniquesAll = new Set();
-  recettesPlat.forEach(r => {
+  recettesUnit.forEach(r => {
     detectTechniques(r.etapes).forEach(t => techniquesAll.add(t));
   });
 
-  // Un plat est "minute" si AU MOINS UNE de ses recettes est minute
-  const isMinute = recettesPlat.some(isPreparationMinute);
-  // Idem pour dressage complexe
-  const isDressageComplexeFlag = recettesPlat.some(isDressageComplexe);
+  // "Minute" / dressage complexe si AU MOINS UNE recette l'est.
+  const isMinute = recettesUnit.some(isPreparationMinute);
+  const isDressageComplexeFlag = recettesUnit.some(isDressageComplexe);
 
-  // Score selon la formule de la spec :
-  // +1 par étape, +2 par technique, +3 si minute, +2 si dressage complexe
+  // Score : +1 par étape, +2 par technique, +3 si minute, +2 si dressage complexe.
   const score = etapesTotal * 1
     + techniquesAll.size * 2
     + (isMinute ? 3 : 0)
     + (isDressageComplexeFlag ? 2 : 0);
 
   return {
-    plat, recettes: recettesPlat,
+    plat: unit, recettes: recettesUnit,
     coutTotal, foodCost,
     etapesTotal,
     techniques: techniquesAll,
@@ -110,14 +110,35 @@ const computeNiveau = (totalScore) => {
 
 // ─── Composant principal ───
 const CarteSimulation = ({ plats, recettes, etablissement }) => {
-  // Filtre : seulement les plats actifs avec un prix de vente
+  // Recettes exploitables (non archivées) + index par id.
+  const recettesActives = (recettes || []).filter(r => r && r.statut !== 'archivée');
+  const recetteById = new Map(recettesActives.map(r => [r.id, r]));
   const platsActifs = (plats || []).filter(p => p.actif !== false);
-  // Analyse plat par plat
-  const analyses = platsActifs.map(p => analyzePlat(p, recettes));
+  // Plats réellement exploitables : au moins une recette liée connue.
+  const platsLies = platsActifs.filter(p => (p.recettes || []).some(pr => recetteById.has(pr.recetteId)));
+
+  // Source d'analyse : les plats si la carte en utilise, sinon les recettes
+  // directement (les recettes portent toutes les données nécessaires).
+  const useRecettesDirect = platsLies.length === 0;
+  const uniteLabel = useRecettesDirect ? 'recette' : 'plat';
+  const Unites = useRecettesDirect ? 'Recettes' : 'Plats';
+  const units = useRecettesDirect
+    ? recettesActives.map(r => ({
+        id: r.id, nom: r.nom, categorie: r.categorie || 'Plats',
+        prixVente: Number(r.prixVente) || 0, recettes: [r],
+      }))
+    : platsActifs.map(p => ({
+        id: p.id, nom: p.nom, categorie: p.categorie || 'Plats',
+        prixVente: Number(p.prixVente) || 0,
+        recettes: (p.recettes || []).map(pr => recetteById.get(pr.recetteId)).filter(Boolean),
+      }));
+
+  // Analyse unité par unité
+  const analyses = units.map(analyzeUnit);
   const platsAvecRecettes = analyses.filter(a => a.hasData);
 
   // Métriques globales
-  const totalPlats = platsActifs.length;
+  const totalPlats = units.length;
   const platsAvecData = platsAvecRecettes.length;
   const platsSansRecette = totalPlats - platsAvecData;
 
@@ -149,8 +170,8 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
     return (
       <div style={cs.empty}>
         <div style={{ fontSize: 40, opacity: 0.3 }}>📊</div>
-        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun plat sur la carte</div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>Créez des plats dans l'onglet "Plats & Recettes" pour lancer la simulation.</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucune recette ni plat à analyser</div>
+        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>Créez des recettes (onglet "Plats & Recettes") pour lancer la simulation.</div>
       </div>
     );
   }
@@ -161,7 +182,10 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
       <div style={cs.header}>
         <div>
           <div style={cs.title}>📊 Simulation de la carte</div>
-          <div style={cs.subtitle}>{etablissement?.nom || ''} · {totalPlats} plat{totalPlats > 1 ? 's' : ''}</div>
+          <div style={cs.subtitle}>
+            {etablissement?.nom || ''} · {totalPlats} {uniteLabel}{totalPlats > 1 ? 's' : ''}
+            {useRecettesDirect ? ' · analyse basée sur les recettes' : ''}
+          </div>
         </div>
       </div>
 
@@ -196,16 +220,16 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
       <div style={cs.section}>
         <div style={cs.sectionTitle}>📈 Métriques détaillées</div>
         <div style={cs.metricsGrid}>
-          <div style={cs.metric}><span>Plats sur la carte</span><strong>{totalPlats}</strong></div>
-          <div style={cs.metric}><span>Plats analysés (avec recettes)</span><strong>{platsAvecData} / {totalPlats}</strong></div>
+          <div style={cs.metric}><span>{Unites} sur la carte</span><strong>{totalPlats}</strong></div>
+          <div style={cs.metric}><span>{Unites} analysé(e)s</span><strong>{platsAvecData} / {totalPlats}</strong></div>
           <div style={cs.metric}><span>Étapes cumulées</span><strong>{totalEtapes}</strong></div>
           <div style={cs.metric}><span>Techniques différentes</span><strong>{techniquesGlobales.size}</strong></div>
-          <div style={cs.metric}><span>Plats à la minute</span><strong>{platsMinute}</strong></div>
-          <div style={cs.metric}><span>Plats préparés à l'avance</span><strong>{platsAvance}</strong></div>
-          <div style={cs.metric}><span>Plats à dressage complexe</span><strong>{platsDressageComplexe}</strong></div>
+          <div style={cs.metric}><span>{Unites} à la minute</span><strong>{platsMinute}</strong></div>
+          <div style={cs.metric}><span>{Unites} préparé(e)s à l'avance</span><strong>{platsAvance}</strong></div>
+          <div style={cs.metric}><span>{Unites} à dressage complexe</span><strong>{platsDressageComplexe}</strong></div>
           {platsSansRecette > 0 && (
             <div style={{ ...cs.metric, color: '#d97706' }}>
-              <span>⚠ Plats sans recette liée</span><strong>{platsSansRecette}</strong>
+              <span>⚠ {Unites} sans recette</span><strong>{platsSansRecette}</strong>
             </div>
           )}
         </div>
@@ -224,12 +248,12 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
 
       {/* Analyse plat par plat */}
       <div style={cs.section}>
-        <div style={cs.sectionTitle}>🍽 Analyse plat par plat</div>
+        <div style={cs.sectionTitle}>🍽 Analyse {useRecettesDirect ? 'recette par recette' : 'plat par plat'}</div>
         <div style={{ overflowX: 'auto' }}>
           <table style={cs.table}>
             <thead>
               <tr style={cs.tableHeadRow}>
-                <th style={cs.tableHead}>Plat</th>
+                <th style={cs.tableHead}>{useRecettesDirect ? 'Recette' : 'Plat'}</th>
                 <th style={cs.tableHead}>Catégorie</th>
                 <th style={{ ...cs.tableHead, textAlign: 'right' }}>Prix</th>
                 <th style={{ ...cs.tableHead, textAlign: 'right' }}>FC %</th>
