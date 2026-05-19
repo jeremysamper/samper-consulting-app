@@ -301,6 +301,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Suggestions de complétion IA
   const [suggestAiBusy, setSuggestAiBusy] = React.useState(false);
   const [suggestResult, setSuggestResult] = React.useState(null);
+  // Détection groupée des allergènes (toutes les recettes)
+  const [bulkAllergenProgress, setBulkAllergenProgress] = React.useState(null);
+  const bulkAllergenCancelRef = React.useRef(false);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
@@ -698,6 +701,54 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     }
   };
 
+  // ── Détection groupée des allergènes sur toutes les recettes ──
+  const detecterAllergenesToutes = async () => {
+    const targets = recettesEtab.filter(r => (r.ingredients || []).length > 0);
+    if (!targets.length) { notifyLegacy('Aucune recette avec des ingrédients à analyser.', 'info'); return; }
+    if (!confirmLegacy(
+      `Détecter les allergènes de ${targets.length} recette(s) ?\n\n`
+      + `Cela effectue ${targets.length} appel(s) à l'IA. Les allergènes détectés sont ajoutés sans retirer les existants.`
+    )) return;
+    bulkAllergenCancelRef.current = false;
+    setBulkAllergenProgress({ done: 0, total: targets.length, added: 0 });
+    let done = 0;
+    let totalAdded = 0;
+    try {
+      const { detectAllergens } = await import('../../services/aiService.js');
+      const validIds = new Set(ALLERGENES_OPTIONS.map(a => a.id));
+      for (let i = 0; i < targets.length; i += 3) {
+        if (bulkAllergenCancelRef.current) break;
+        const batch = targets.slice(i, i + 3);
+        const results = await Promise.allSettled(batch.map(async (r) => {
+          const names = (r.ingredients || []).map(x => x.nom).filter(Boolean);
+          const res = await detectAllergens(names, r.nom);
+          const detected = (res.allergenes || []).filter(id => validIds.has(id));
+          const current = r.allergenesIds || [];
+          const merged = [...new Set([...current, ...detected])];
+          const added = merged.length - current.length;
+          if (added > 0) await legacySB.db.upsertRecette({ ...r, allergenesIds: merged });
+          return { id: r.id, merged, added };
+        }));
+        results.forEach(res => {
+          done += 1;
+          if (res.status === 'fulfilled' && res.value.added > 0) {
+            totalAdded += res.value.added;
+            setRecettes(prev => prev.map(x => (x.id === res.value.id ? { ...x, allergenesIds: res.value.merged } : x)));
+          }
+        });
+        setBulkAllergenProgress({ done, total: targets.length, added: totalAdded });
+      }
+    } catch (err) {
+      notifyLegacy('Détection groupée interrompue : ' + (err.message || err), 'error');
+    }
+    setBulkAllergenProgress(null);
+    notifyLegacy(
+      `Détection terminée : ${done} recette(s) analysée(s), ${totalAdded} allergène(s) ajouté(s)`
+      + `${bulkAllergenCancelRef.current ? ' · interrompu' : ''}.`,
+      'success',
+    );
+  };
+
   // ── Génération d'une analyse HACCP par IA ──
   const genererHaccpIA = async () => {
     if (!selected) return;
@@ -886,6 +937,26 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           }}
         />
       )}
+      {/* Progression de la détection groupée des allergènes */}
+      {bulkAllergenProgress && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>✨ Détection des allergènes</div>
+            <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+              {bulkAllergenProgress.done} / {bulkAllergenProgress.total} recette(s) · {bulkAllergenProgress.added} allergène(s) ajouté(s)
+            </div>
+            <div style={{ height: 10, background: 'var(--bg)', borderRadius: 6, margin: '12px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <div style={{ height: '100%', width: `${bulkAllergenProgress.total ? (bulkAllergenProgress.done / bulkAllergenProgress.total) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                style={{ ...cts.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }}
+                onClick={() => { bulkAllergenCancelRef.current = true; }}
+              >Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Colonne gauche : liste */}
       <div style={cts.leftCol} className="no-print">
         <div style={cts.leftHeader}>
@@ -929,6 +1000,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               />
             </div>
           )}
+          <button
+            style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+            onClick={detecterAllergenesToutes}
+            disabled={!!bulkAllergenProgress}
+          >✨ Allergènes IA — toutes les recettes</button>
           {(() => {
             const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
             return reviewCount > 0 ? (
