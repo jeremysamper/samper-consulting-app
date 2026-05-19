@@ -125,6 +125,7 @@ const FichesSalle = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const [fiches, setFiches] = React.useState([]);
   const [recettes, setRecettes] = React.useState([]);
+  const [plats, setPlats] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [selected, setSelected] = React.useState(null);
   const [search, setSearch] = React.useState('');
@@ -151,11 +152,12 @@ const FichesSalle = ({ user, etablissement }) => {
     const unsubs = [];
     (async () => {
       try {
-        const [rows, recs] = await Promise.all([
+        const [rows, recs, pls] = await Promise.all([
           legacySB.db.listFichesSalle(etabId),
           legacySB.db.listRecettes(etabId),
+          legacySB.db.listPlats(etabId),
         ]);
-        if (mounted) { setFiches(rows); setRecettes(recs); }
+        if (mounted) { setFiches(rows); setRecettes(recs); setPlats(pls || []); }
       } catch (err) { console.error('[FichesSalle]', err); }
       finally { if (mounted) setLoading(false); }
     })();
@@ -167,6 +169,12 @@ const FichesSalle = ({ user, etablissement }) => {
       try { const recs = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(recs); }
       catch (e) {}
     }));
+    const reloadPlats = async () => {
+      try { const pls = await legacySB.db.listPlats(etabId); if (mounted) setPlats(pls || []); }
+      catch (e) {}
+    };
+    unsubs.push(legacySB.realtime.subscribe('plats', reloadPlats));
+    unsubs.push(legacySB.realtime.subscribe('plat_recettes', reloadPlats));
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
 
@@ -236,23 +244,46 @@ const FichesSalle = ({ user, etablissement }) => {
     notifyLegacy(`${ok} fiche(s) salle supprimée(s).`, 'success');
   };
 
-  // ── Génération IA des fiches salle pour toute la carte ──
+  // ── Génération IA des fiches salle — une fiche par PLAT FINI de la carte ──
+  // Un plat fini = une fiche salle. Les recettes liées à un plat alimentent
+  // l'IA (ingrédients, étapes, allergènes) mais ne donnent pas chacune une
+  // fiche. À défaut de plats sur la carte, on retombe sur les recettes servies.
   const genererFichesSalleIA = async () => {
-    const existingByRec = new Set(fiches.map(f => f.recetteId).filter(Boolean));
     const existingByNom = new Set(fiches.map(f => (f.nom || '').trim().toLowerCase()));
-    const targets = (recettes || []).filter(r =>
-      r && r.statut !== 'archivée'
-      && estRecetteServie(r.categorie)
-      && !existingByRec.has(r.id)
-      && !existingByNom.has((r.nom || '').trim().toLowerCase())
-      && (r.ingredients || []).length > 0
+
+    const recettesActives = (recettes || []).filter(r => r && r.statut !== 'archivée');
+    const recetteById = new Map(recettesActives.map(r => [r.id, r]));
+    const platsActifs = (plats || []).filter(p => p && p.actif !== false);
+    // Plats réellement exploitables : au moins une recette liée connue.
+    const platsLies = platsActifs.filter(p => (p.recettes || []).some(pr => recetteById.has(pr.recetteId)));
+    const useRecettesDirect = platsLies.length === 0;
+
+    // Unités à transformer en fiche salle : plats finis, ou recettes servies
+    // si la carte n'a pas de plats.
+    const units = useRecettesDirect
+      ? recettesActives
+        .filter(r => estRecetteServie(r.categorie))
+        .map(r => ({ nom: r.nom || 'Recette', categorie: r.categorie || 'Plats', recettes: [r] }))
+      : platsLies.map(p => ({
+        nom: p.nom || 'Plat',
+        categorie: p.categorie || 'Plats',
+        recettes: (p.recettes || []).map(pr => recetteById.get(pr.recetteId)).filter(Boolean),
+      }));
+
+    const targets = units.filter(u =>
+      u.nom
+      && !existingByNom.has(u.nom.trim().toLowerCase())
+      && u.recettes.some(r => (r.ingredients || []).length > 0)
     );
     if (!targets.length) {
-      notifyLegacy('Tous les plats ont déjà une fiche salle (les sauces, fonds et garnitures sont exclus).', 'info');
+      notifyLegacy(useRecettesDirect
+        ? 'Tous les plats ont déjà une fiche salle.'
+        : 'Tous les plats de la carte ont déjà une fiche salle.', 'info');
       return;
     }
     if (!confirmLegacy(
       `Générer ${targets.length} fiche(s) salle par IA ?\n\n`
+      + `Une fiche par plat fini${useRecettesDirect ? '' : ' de la carte'}. `
       + `Cela effectue ${targets.length} appel(s) à l'IA. Les fiches sont créées en statut « Brouillon » — à relire avant publication.`
     )) return;
     bulkCancelRef.current = false;
@@ -264,22 +295,30 @@ const FichesSalle = ({ user, etablissement }) => {
       for (let i = 0; i < targets.length; i += 3) {
         if (bulkCancelRef.current) break;
         const batch = targets.slice(i, i + 3);
-        const results = await Promise.allSettled(batch.map(async (r) => {
-          const allergLabels = (r.allergenesIds || []).map(id => ALLERGENES_LABELS[id] || id);
-          const ai = await generateFicheSalle(r, allergLabels);
+        const results = await Promise.allSettled(batch.map(async (u) => {
+          const multi = u.recettes.length > 1;
+          // Agrège les composants du plat pour donner le contexte à l'IA.
+          const ingredients = u.recettes.flatMap(r => r.ingredients || []);
+          const etapes = u.recettes.flatMap(r => (multi
+            ? [`— ${r.nom} —`, ...((r.etapes) || [])]
+            : (r.etapes || [])));
+          const allergIds = [...new Set(u.recettes.flatMap(r => r.allergenesIds || []))];
+          const allergLabels = allergIds.map(id => ALLERGENES_LABELS[id] || id);
+          const platRecipe = { nom: u.nom, categorie: u.categorie, portions: '', ingredients, etapes };
+          const ai = await generateFicheSalle(platRecipe, allergLabels);
           const fiche = {
             id: null,
             etablissementId: etabId,
-            recetteId: r.id,
-            nom: r.nom || 'Recette',
-            categorie: FICHE_CATS.includes(r.categorie) ? r.categorie : 'Plats',
+            recetteId: u.recettes[0]?.id || null,
+            nom: u.nom,
+            categorie: FICHE_CATS.includes(u.categorie) ? u.categorie : 'Plats',
             statut: 'brouillon',
             descriptionService: ai.descriptionService,
             temperatureService: ai.temperatureService,
             dressageNotes: ai.dressageNotes,
             infosService: ai.infosService,
             tempsPreparation: ai.tempsPreparation,
-            allergenes: [...(r.allergenesIds || [])],
+            allergenes: allergIds,
             accords: ai.accords,
             accordsGeneraux: ai.accordsGeneraux || [],
             modifiePar: user.id,
@@ -352,7 +391,7 @@ const FichesSalle = ({ user, etablissement }) => {
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
             <div style={{fontSize:15,fontWeight:800,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>✨ Génération des fiches salle</div>
             <div style={{fontSize:13,color:'var(--text2)'}}>
-              {bulkProgress.done} / {bulkProgress.total} recette(s) · {bulkProgress.created} fiche(s) créée(s)
+              {bulkProgress.done} / {bulkProgress.total} plat(s) · {bulkProgress.created} fiche(s) créée(s)
             </div>
             <div style={{height:10,background:'var(--bg)',borderRadius:6,margin:'12px 0',overflow:'hidden',border:'1px solid var(--border)'}}>
               <div style={{height:'100%',width:`${bulkProgress.total?(bulkProgress.done/bulkProgress.total)*100:0}%`,background:'var(--accent)',transition:'width 0.2s'}}/>
