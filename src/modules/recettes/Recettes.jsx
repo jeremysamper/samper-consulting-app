@@ -489,7 +489,6 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       </div>
       <div id='fiche-recette-print'>
       <div style={rs.detailHeader}>
-        <div style={rs.backGhost} className='no-print'>← Retour</div>
         {recette.photoUrl && (
           <img src={recette.photoUrl} alt={recette.nom}
             style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
@@ -936,7 +935,6 @@ const rs = {
   platPrix: {fontSize:16,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
   recetteLink: {background:'none',border:'none',color:'var(--accent)',fontSize:11,fontWeight:600,cursor:'pointer',padding:0,fontFamily:'var(--font)'},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  backGhost:{padding:'8px 14px',background:'none',border:'1px solid transparent',color:'var(--text2)',borderRadius:8,fontSize:13,fontFamily:'var(--font)'},
   fcLine: {fontSize:11,color:'var(--text2)',marginTop:6},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
   // Recettes list
