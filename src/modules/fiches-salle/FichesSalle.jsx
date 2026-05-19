@@ -21,6 +21,18 @@ const ALLERGENES_COLORS = {
   sesame:'#f97316', mollusques:'#8b5cf6', lupin:'#ec4899',
 };
 
+// Catégories de recettes « techniques » qui ne sont pas des plats servis
+// au client — elles ne donnent pas lieu à une fiche salle.
+const RECETTE_CATS_NON_SERVIES = [
+  'sauce', 'sauces', 'fond', 'fonds', 'garniture', 'garnitures',
+  'base', 'bases', 'préparation', 'préparations', 'preparation', 'preparations',
+];
+const estRecetteServie = (categorie) => {
+  const c = (categorie || '').toLowerCase().trim();
+  if (!c) return true; // recette sans catégorie : on la garde par défaut
+  return !RECETTE_CATS_NON_SERVIES.some(x => c === x || c.startsWith(x + ' '));
+};
+
 const INITIAL_FICHES = [
   {
     id:'fs1', platId:'p1', nom:'Velouté d\'asperges vertes, crème de chèvre',
@@ -165,14 +177,19 @@ const FichesSalle = ({ user, etablissement }) => {
     setEditFiche(f || {
       id: null, nom: '', categorie: 'Plats', statut: 'active',
       descriptionService: '', temperatureService: '', dressageNotes: '',
-      allergenes: [], accords: [], infosService: '', tempsPreparation: '',
+      allergenes: [], accords: [], accordsGeneraux: [], infosService: '', tempsPreparation: '',
       etablissementId: etabId, modifiePar: user.id, modifie: todayStr,
     });
     setShowForm(true);
   };
 
   const saveFiche = async (f) => {
-    const payload = { ...f, etablissementId: etabId, modifiePar: user.id };
+    const payload = {
+      ...f,
+      etablissementId: etabId,
+      modifiePar: user.id,
+      accordsGeneraux: (f.accordsGeneraux || []).map(s => String(s || '').trim()).filter(Boolean),
+    };
     if (legacySB) {
       try {
         const saved = await legacySB.db.upsertFicheSalle(payload);
@@ -202,12 +219,13 @@ const FichesSalle = ({ user, etablissement }) => {
     const existingByNom = new Set(fiches.map(f => (f.nom || '').trim().toLowerCase()));
     const targets = (recettes || []).filter(r =>
       r && r.statut !== 'archivée'
+      && estRecetteServie(r.categorie)
       && !existingByRec.has(r.id)
       && !existingByNom.has((r.nom || '').trim().toLowerCase())
       && (r.ingredients || []).length > 0
     );
     if (!targets.length) {
-      notifyLegacy('Toutes les recettes ont déjà une fiche salle (ou aucune recette exploitable).', 'info');
+      notifyLegacy('Tous les plats ont déjà une fiche salle (les sauces, fonds et garnitures sont exclus).', 'info');
       return;
     }
     if (!confirmLegacy(
@@ -240,6 +258,7 @@ const FichesSalle = ({ user, etablissement }) => {
             tempsPreparation: ai.tempsPreparation,
             allergenes: [...(r.allergenesIds || [])],
             accords: ai.accords,
+            accordsGeneraux: ai.accordsGeneraux || [],
             modifiePar: user.id,
             modifie: todayStr,
           };
@@ -425,6 +444,18 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
         {/* Accords */}
         <div style={{...fss.detailCard,gridColumn:'1/-1'}}>
           <div style={fss.detailCardTitle}>🍷 Accords mets & boissons</div>
+          {fiche.accordsGeneraux?.length > 0 && (
+            <div style={{marginTop:10,marginBottom:4}}>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3,marginBottom:6}}>
+                Familles recommandées
+              </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {(fiche.accordsGeneraux || []).map((g,i)=>(
+                  <span key={i} style={fss.familleBadge}>{g}</span>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{display:'flex',gap:6,marginTop:10,marginBottom:14}}>
             <button style={{...fss.accordTab,...(accordTab==='vin'?fss.accordTabActive:{})}} onClick={()=>setAccordTab('vin')}>Vins ({vins.length})</button>
             <button style={{...fss.accordTab,...(accordTab==='sans'?fss.accordTabActive:{})}} onClick={()=>setAccordTab('sans')}>Sans alcool ({sansAlcool.length})</button>
@@ -436,6 +467,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
                 <div>
                   <div style={fss.accordNom}>{a.nom}</div>
                   {a.region && <div style={fss.accordRegion}>{a.region}</div>}
+                  {a.alternative && <div style={fss.accordAlt}>↪ {a.alternative}</div>}
                   <div style={fss.accordNotes}>{a.notes}</div>
                 </div>
               </div>
@@ -454,7 +486,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
 const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => {
   const allAllergs = Object.keys(ALLERGENES_LABELS);
   const toggleAllerg = (a) => setFiche(f=>({...f,allergenes:(f.allergenes || []).includes(a)?f.allergenes.filter(x=>x!==a):[...f.allergenes,a]}));
-  const addAccord = (type) => setFiche(f=>({...f,accords:[...(f.accords||[]),{type,nom:'',region:'',notes:''}]}));
+  const addAccord = (type) => setFiche(f=>({...f,accords:[...(f.accords||[]),{type,nom:'',region:'',alternative:'',notes:''}]}));
   const updateAccord = (i,field,val) => setFiche(f=>({...f,accords:(f.accords || []).map((a,idx)=>idx===i?{...a,[field]:val}:a)}));
   const removeAccord = (i) => setFiche(f=>({...f,accords:f.accords.filter((_,idx)=>idx!==i)}));
 
@@ -554,14 +586,33 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => 
                 </div>
               </div>
               {(fiche?.accords||[]).map((a,i)=>(
-                <div key={i} style={{display:'grid',gridTemplateColumns:'auto 1fr 100px 1fr 28px',gap:8,marginBottom:8,alignItems:'center'}}>
-                  <span style={{fontSize:16}}>{a.type==='vin'?'🍷':'🥤'}</span>
-                  <input style={fss.fInput} placeholder="Nom" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
-                  <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
-                  <input style={fss.fInput} placeholder="Notes d'accord" value={a.notes} onChange={e=>updateAccord(i,'notes',e.target.value)}/>
-                  <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)}>✕</button>
+                <div key={i} style={{border:'1px solid var(--border)',borderRadius:8,padding:8,marginBottom:8}}>
+                  <div style={{display:'grid',gridTemplateColumns:'auto 1fr 110px 28px',gap:8,alignItems:'center'}}>
+                    <span style={{fontSize:16}}>{a.type==='vin'?'🍷':'🥤'}</span>
+                    <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
+                    <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
+                    <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)}>✕</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:6}}>
+                    <input style={fss.fInput} placeholder="Type général (ex. Vin blanc sec)" value={a.alternative||''} onChange={e=>updateAccord(i,'alternative',e.target.value)}/>
+                    <input style={fss.fInput} placeholder="Notes d'accord" value={a.notes} onChange={e=>updateAccord(i,'notes',e.target.value)}/>
+                  </div>
                 </div>
               ))}
+            </div>
+
+            {/* Accords généraux — familles de boissons recommandées */}
+            <div style={fss.field}>
+              <label style={fss.fLabel}>Accords généraux — familles recommandées</label>
+              <textarea
+                style={{...fss.fInput,minHeight:56,resize:'vertical'}}
+                placeholder={'Une famille par ligne — ex. :\nVin rouge corsé\nVin blanc sec\nVin blanc moelleux'}
+                value={(fiche?.accordsGeneraux||[]).join('\n')}
+                onChange={e=>setFiche(f=>({...f,accordsGeneraux:e.target.value.split('\n')}))}
+              />
+              <div style={{fontSize:11,color:'var(--text2)'}}>
+                Repli simple pour le service quand la référence précise n'est pas disponible.
+              </div>
             </div>
           </div>
 
@@ -623,7 +674,9 @@ const fss = {
   accordIcon:{fontSize:22,flexShrink:0},
   accordNom:{fontSize:13,fontWeight:700,color:'var(--text)'},
   accordRegion:{fontSize:11,color:'var(--accent)',fontWeight:600,marginTop:1},
+  accordAlt:{fontSize:11,color:'var(--text2)',fontStyle:'italic',marginTop:3},
   accordNotes:{fontSize:12,color:'var(--text2)',marginTop:4,lineHeight:1.4},
+  familleBadge:{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:12,background:'var(--accent-light)',color:'var(--accent)',border:'1px solid var(--accent)'},
   // Form modal
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
   modal:{background:'var(--surface)',borderRadius:14,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},

@@ -101,13 +101,14 @@ Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche
 
 const FICHE_SALLE_SYSTEM = `Tu es un expert de la restauration. À partir d'une recette, tu rédiges sa FICHE SALLE destinée à l'équipe de service pour conseiller les clients.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
-{"descriptionService":"...","temperatureService":"...","dressageNotes":"...","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","notes":"..."}]}
+{"descriptionService":"...","temperatureService":"...","dressageNotes":"...","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","alternative":"...","notes":"..."}],"accordsGeneraux":["Vin rouge corsé","Vin blanc sec"]}
 - "descriptionService" : description commerciale et appétissante du plat pour le service (2 à 3 phrases)
 - "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
 - "dressageNotes" : conseils de dressage / service en salle (1 à 2 phrases)
 - "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
 - "tempsPreparation" : estimation courte (ex "12 min")
-- "accords" : 2 à 4 accords mets-boissons ; "type" vaut "vin" ou "sans_alcool" ; "region" renseignée pour les vins
+- "accords" : 2 à 4 accords mets-boissons ; "type" vaut "vin" ou "sans_alcool" ; "region" renseignée pour les vins ; "alternative" = la FAMILLE GÉNÉRALE de la boisson (ex. "Vin blanc sec et minéral", "Vin rouge léger", "Vin blanc moelleux", "Vin effervescent", "Infusion fraîche") pour que le service propose un équivalent si la référence précise manque
+- "accordsGeneraux" : 2 à 4 familles générales de boissons recommandées pour ce plat (texte libre, ex. "Vin rouge corsé", "Vin blanc sec", "Vin blanc moelleux", "Vin rosé") — un repli simple quand la carte des boissons varie
 Reste juste et professionnel ; n'invente aucun ingrédient absent de la recette.`;
 
 const CATALOGUE_SYSTEM = `Tu extrais et fiabilises un catalogue de produits alimentaires à partir d'un fichier fournisseur brut (export Excel/CSV, format et colonnes variables : Metro, Transgourmet, inventaire interne…).

@@ -180,7 +180,7 @@ export async function matchProductSemantic(ingredientName, products) {
 // Génération de fiche salle : à partir d'une recette, l'IA rédige le contenu
 // service (description commerciale, dressage, accords mets-boissons…).
 // Renvoie { descriptionService, temperatureService, dressageNotes,
-// infosService, tempsPreparation, accords: [...] }.
+// infosService, tempsPreparation, accords: [...], accordsGeneraux: [...] }.
 export async function generateFicheSalle(recipe, allergenLabels) {
   const ingredients = ((recipe && recipe.ingredients) || [])
     .map(i => String(i.nom || '').trim()).filter(Boolean);
@@ -201,9 +201,13 @@ export async function generateFicheSalle(recipe, allergenLabels) {
       type: a && a.type === 'sans_alcool' ? 'sans_alcool' : 'vin',
       nom: String((a && a.nom) || '').trim(),
       region: String((a && a.region) || '').trim(),
+      alternative: String((a && a.alternative) || '').trim(),
       notes: String((a && a.notes) || '').trim(),
     }))
     .filter(a => a.nom);
+  const accordsGeneraux = (Array.isArray(r.accordsGeneraux) ? r.accordsGeneraux : [])
+    .map(x => String(x || '').trim())
+    .filter(Boolean);
   return {
     descriptionService: typeof r.descriptionService === 'string' ? r.descriptionService : '',
     temperatureService: typeof r.temperatureService === 'string' ? r.temperatureService : '',
@@ -211,6 +215,7 @@ export async function generateFicheSalle(recipe, allergenLabels) {
     infosService: typeof r.infosService === 'string' ? r.infosService : '',
     tempsPreparation: typeof r.tempsPreparation === 'string' ? r.tempsPreparation : '',
     accords,
+    accordsGeneraux,
   };
 }
 
