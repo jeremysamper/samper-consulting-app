@@ -298,6 +298,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Génération IA de l'analyse HACCP
   const [haccpAiBusy, setHaccpAiBusy] = React.useState(false);
   const [haccpResult, setHaccpResult] = React.useState(null);
+  // Suggestions de complétion IA
+  const [suggestAiBusy, setSuggestAiBusy] = React.useState(false);
+  const [suggestResult, setSuggestResult] = React.useState(null);
   React.useEffect(() => {
     if (catalogPicker === null) { setPickerSearch(''); setPickerCat('Tous'); setPickerSelected(new Set()); }
   }, [catalogPicker]);
@@ -737,6 +740,56 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setHaccpResult(null);
   };
 
+  // ── Suggestions de complétion par IA ──
+  const suggererIA = async () => {
+    if (!selected) return;
+    if (!String(selected.nom || '').trim()) {
+      notifyLegacy('Donnez d\'abord un nom à la recette.', 'info');
+      return;
+    }
+    setSuggestAiBusy(true);
+    try {
+      const { suggestRecipe } = await import('../../services/aiService.js');
+      const res = await suggestRecipe(selected, (catalogue || []).map(p => p.nom));
+      if (!res.ingredients.length && !res.etapes.length) {
+        notifyLegacy('L\'IA n\'a pas de suggestion — la recette semble complète.', 'info');
+      } else {
+        setSuggestResult(res);
+      }
+    } catch (err) {
+      notifyLegacy('Suggestions IA impossibles : ' + (err.message || err), 'error');
+    } finally {
+      setSuggestAiBusy(false);
+    }
+  };
+
+  const ajouterIngredientSuggere = (idx) => {
+    if (!selected || !suggestResult) return;
+    const ing = suggestResult.ingredients[idx];
+    if (!ing) return;
+    const newIng = { id: 'i' + Date.now() + Math.floor(Math.random() * 1000), nom: ing.nom, quantite: ing.quantite || 0, unite: ing.unite || 'g', prixUnit: 0, categorie: 'Autres' };
+    updateSelected({ ingredients: [...(selected.ingredients || []), newIng] });
+    setSuggestResult(prev => (prev ? { ...prev, ingredients: prev.ingredients.filter((_, i) => i !== idx) } : prev));
+  };
+  const ajouterTousIngredientsSuggere = () => {
+    if (!selected || !suggestResult || !suggestResult.ingredients.length) return;
+    const news = suggestResult.ingredients.map((ing, k) => ({ id: 'i' + Date.now() + '_' + k, nom: ing.nom, quantite: ing.quantite || 0, unite: ing.unite || 'g', prixUnit: 0, categorie: 'Autres' }));
+    updateSelected({ ingredients: [...(selected.ingredients || []), ...news] });
+    setSuggestResult(prev => (prev ? { ...prev, ingredients: [] } : prev));
+  };
+  const ajouterEtapeSuggere = (idx) => {
+    if (!selected || !suggestResult) return;
+    const txt = suggestResult.etapes[idx];
+    if (!txt) return;
+    updateSelected({ etapes: [...(selected.etapes || []), txt] });
+    setSuggestResult(prev => (prev ? { ...prev, etapes: prev.etapes.filter((_, i) => i !== idx) } : prev));
+  };
+  const ajouterToutesEtapesSuggere = () => {
+    if (!selected || !suggestResult || !suggestResult.etapes.length) return;
+    updateSelected({ etapes: [...(selected.etapes || []), ...suggestResult.etapes] });
+    setSuggestResult(prev => (prev ? { ...prev, etapes: [] } : prev));
+  };
+
   // ── Calculs dérivés pour affichage live
   const coutMatiere = selected ? (selected.ingredients || []).reduce((s, i) => s + (Number(i.quantite) || 0) * (Number(i.prixUnit) || 0), 0) : 0;
   const coutPortion = (selected?.portions > 0) ? coutMatiere / Number(selected.portions) : 0;
@@ -1070,6 +1123,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 onClick={genererHaccpIA}
                 disabled={haccpAiBusy}
               >{haccpAiBusy ? '✨ Analyse HACCP…' : '🛡 Analyse HACCP (IA)'}</button>
+              <button
+                style={{ ...cts.ghostBtn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+                onClick={suggererIA}
+                disabled={suggestAiBusy}
+              >{suggestAiBusy ? '✨ Suggestions…' : '✨ Suggestions (IA)'}</button>
             </div>
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1126,6 +1184,50 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     style={{ ...cts.ghostBtn, background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }}
                     onClick={insererHaccpDansNotes}
                   >Insérer dans les notes</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modale des suggestions de complétion IA */}
+          {suggestResult && (
+            <div
+              className="no-print"
+              style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setSuggestResult(null); }}
+            >
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(680px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>✨ Suggestions IA — {selected.nom}</div>
+                  <button onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
+                </div>
+                <div style={{ padding: 18, overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)' }}>Ingrédients suggérés ({suggestResult.ingredients.length})</div>
+                    {suggestResult.ingredients.length > 0 && <button style={cts.smallBtn} onClick={ajouterTousIngredientsSuggere}>+ Tout ajouter</button>}
+                  </div>
+                  {suggestResult.ingredients.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 10 }}>Aucune suggestion d'ingrédient.</div>}
+                  {suggestResult.ingredients.map((ing, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>{ing.nom}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>{ing.quantite || ''} {ing.unite}</span>
+                      <button style={cts.smallBtn} onClick={() => ajouterIngredientSuggere(i)}>+ Ajouter</button>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 0 6px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)' }}>Étapes suggérées ({suggestResult.etapes.length})</div>
+                    {suggestResult.etapes.length > 0 && <button style={cts.smallBtn} onClick={ajouterToutesEtapesSuggere}>+ Tout ajouter</button>}
+                  </div>
+                  {suggestResult.etapes.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucune suggestion d'étape.</div>}
+                  {suggestResult.etapes.map((e, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>{e}</span>
+                      <button style={cts.smallBtn} onClick={() => ajouterEtapeSuggere(i)}>+ Ajouter</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button style={cts.ghostBtn} onClick={() => setSuggestResult(null)}>Fermer</button>
                 </div>
               </div>
             </div>

@@ -134,5 +134,29 @@ export async function generateHaccp(recipe) {
   };
 }
 
-export const aiService = { ocrRecipe, detectAllergens, generateHaccp };
+// Suggestions de complétion : à partir d'une recette en cours, propose des
+// ingrédients manquants et des étapes. Renvoie { ingredients: [...], etapes: [...] }.
+export async function suggestRecipe(recipe, catalogueNames) {
+  const data = await callAi('suggest-recipe', {
+    recipeName: (recipe && recipe.nom) || '',
+    categorie: (recipe && recipe.categorie) || '',
+    ingredients: ((recipe && recipe.ingredients) || []).map(i => String(i.nom || '').trim()).filter(Boolean),
+    etapes: ((recipe && recipe.etapes) || []).map(e => String(e || '').trim()).filter(Boolean),
+    catalogue: (catalogueNames || []).map(s => String(s || '').trim()).filter(Boolean).slice(0, 120),
+  });
+  const r = (data && data.result) || {};
+  const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : [])
+    .map((ing) => {
+      const canonical = normalizeUnit(ing.unite) || ing.unite || 'g';
+      const app = toAppUnit(canonical, Number(ing.quantite) || 0);
+      return { nom: String(ing.nom || '').trim(), quantite: app.quantity, unite: app.unit };
+    })
+    .filter(i => i.nom);
+  const etapes = (Array.isArray(r.etapes) ? r.etapes : [])
+    .map(e => String(e || '').trim())
+    .filter(Boolean);
+  return { ingredients, etapes };
+}
+
+export const aiService = { ocrRecipe, detectAllergens, generateHaccp, suggestRecipe };
 export default aiService;

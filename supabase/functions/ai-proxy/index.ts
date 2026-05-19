@@ -66,10 +66,24 @@ Règles :
 - couvre les étapes sensibles : réception, stockage, préparation, cuisson, refroidissement, conservation
 Base-toi sur les bonnes pratiques d'hygiène. Cette analyse est une aide à valider par un responsable.`;
 
+const SUGGEST_SYSTEM = `Tu aides un chef à compléter une recette en cours de rédaction.
+On te fournit le nom de la recette, sa catégorie, ses ingrédients et étapes actuels, et une liste de produits du catalogue.
+Suggère UNIQUEMENT des AJOUTS pertinents — ingrédients manquants et étapes de préparation — sans jamais répéter l'existant.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
+{"ingredients":[{"nom":"Beurre","quantite":50,"unite":"g"}],"etapes":["Préchauffer le four à 180°C","..."]}
+Règles :
+- privilégie des ingrédients présents dans le catalogue fourni (reprends leur formulation)
+- "unite" parmi : g, kg, ml, L, pcs, cs, cc, pincée
+- "quantite" : estimation raisonnable pour la recette, sinon 0
+- propose les étapes dans l'ordre logique de préparation
+- reste sobre : 3 à 8 ingrédients et 3 à 8 étapes maximum
+- si la recette paraît déjà complète, renvoie {"ingredients":[],"etapes":[]}`;
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
   'generate-haccp': { system: HACCP_SYSTEM, maxTokens: 3072 },
+  'suggest-recipe': { system: SUGGEST_SYSTEM, maxTokens: 2048 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -104,6 +118,20 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
       text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
         + `Ingrédients : ${ingredients.join(', ') || '(non précisés)'}\n`
         + `Étapes :\n${etapesText}`,
+    }];
+  }
+  if (task === 'suggest-recipe') {
+    const name = payload.recipeName as string;
+    if (!name) throw new Error('Recette manquante.');
+    const ingredients = Array.isArray(payload.ingredients) ? (payload.ingredients as string[]) : [];
+    const etapes = Array.isArray(payload.etapes) ? (payload.etapes as string[]) : [];
+    const catalogue = Array.isArray(payload.catalogue) ? (payload.catalogue as string[]) : [];
+    return [{
+      kind: 'text',
+      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
+        + `Ingrédients actuels : ${ingredients.join(', ') || '(aucun)'}\n`
+        + `Étapes actuelles :\n${etapes.map((e, i) => `${i + 1}. ${e}`).join('\n') || '(aucune)'}\n`
+        + `Produits du catalogue : ${catalogue.join(', ') || '(aucun)'}`,
     }];
   }
   throw new Error(`Tâche inconnue : ${task}`);
