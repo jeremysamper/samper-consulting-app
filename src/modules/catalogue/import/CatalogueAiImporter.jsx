@@ -110,8 +110,8 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
     return { byRef, byName };
   }, [existingProduits]);
 
-  // Ajoute les drapeaux locaux (doublon, prix aberrant) aux produits IA.
-  const annotate = (p) => {
+  // Ajoute les drapeaux locaux (doublon, prix aberrant, _tempId) aux produits IA.
+  const annotate = (p, idx = 0) => {
     const issues = [...(p.issues || [])];
     const refKey = (p.referenceFourn || '').trim().toLowerCase();
     const nameKey = normalizeName(p.nom);
@@ -126,6 +126,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
     if (!p.nom) issues.push('nom manquant');
     return {
       ...p,
+      _tempId: 'p' + idx + '-' + Math.random().toString(36).slice(2, 6),
       issues,
       _selected: !!p.nom,
       _existing: existing,
@@ -180,7 +181,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       if (cancelRef.current) {
         notifyLegacy(`Analyse interrompue — ${all.length} produit(s) déjà détecté(s).`, 'info');
       }
-      setProduits(all.map(annotate));
+      setProduits(all.map((p, i) => annotate(p, i)));
       setStep('preview');
     } catch (err) {
       notifyLegacy('Import IA impossible : ' + (err.message || err), 'error');
