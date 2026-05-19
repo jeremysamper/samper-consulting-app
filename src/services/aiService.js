@@ -177,5 +177,82 @@ export async function matchProductSemantic(ingredientName, products) {
   };
 }
 
-export const aiService = { ocrRecipe, detectAllergens, generateHaccp, suggestRecipe, matchProductSemantic };
+// Génération de fiche salle : à partir d'une recette, l'IA rédige le contenu
+// service (description commerciale, dressage, accords mets-boissons…).
+// Renvoie { descriptionService, temperatureService, dressageNotes,
+// infosService, tempsPreparation, accords: [...] }.
+export async function generateFicheSalle(recipe, allergenLabels) {
+  const ingredients = ((recipe && recipe.ingredients) || [])
+    .map(i => String(i.nom || '').trim()).filter(Boolean);
+  const etapes = ((recipe && recipe.etapes) || [])
+    .map(e => String(e || '').trim()).filter(Boolean);
+  const allergenes = (allergenLabels || []).map(s => String(s || '').trim()).filter(Boolean);
+  const data = await callAi('generate-fiche-salle', {
+    recipeName: (recipe && recipe.nom) || '',
+    categorie: (recipe && recipe.categorie) || '',
+    portions: (recipe && recipe.portions) || '',
+    ingredients,
+    etapes,
+    allergenes,
+  });
+  const r = (data && data.result) || {};
+  const accords = (Array.isArray(r.accords) ? r.accords : [])
+    .map((a) => ({
+      type: a && a.type === 'sans_alcool' ? 'sans_alcool' : 'vin',
+      nom: String((a && a.nom) || '').trim(),
+      region: String((a && a.region) || '').trim(),
+      notes: String((a && a.notes) || '').trim(),
+    }))
+    .filter(a => a.nom);
+  return {
+    descriptionService: typeof r.descriptionService === 'string' ? r.descriptionService : '',
+    temperatureService: typeof r.temperatureService === 'string' ? r.temperatureService : '',
+    dressageNotes: typeof r.dressageNotes === 'string' ? r.dressageNotes : '',
+    infosService: typeof r.infosService === 'string' ? r.infosService : '',
+    tempsPreparation: typeof r.tempsPreparation === 'string' ? r.tempsPreparation : '',
+    accords,
+  };
+}
+
+// Import catalogue assisté par IA : extrait et fiabilise une liste de produits
+// à partir du contenu texte brut d'un fichier fournisseur (Excel/CSV converti).
+// Renvoie { produits: [{ nom, categorie, uniteRef, conditionnement,
+// prixUnitaire, referenceFourn, confidence, issues }] }.
+const CATALOGUE_UNITS = new Set(['g', 'ml', 'pcs']);
+
+export async function parseCatalogue(rawText) {
+  const rows = String(rawText || '').trim();
+  if (!rows) return { produits: [] };
+  const data = await callAi('parse-catalogue', { rows });
+  const r = (data && data.result) || {};
+  const produits = (Array.isArray(r.produits) ? r.produits : [])
+    .map((p) => {
+      const nom = String((p && p.nom) || '').trim();
+      let uniteRef = String((p && p.uniteRef) || '').trim().toLowerCase();
+      if (!CATALOGUE_UNITS.has(uniteRef)) uniteRef = 'g';
+      const prix = Number(p && p.prixUnitaire);
+      const issues = Array.isArray(p && p.issues)
+        ? p.issues.map(s => String(s || '').trim()).filter(Boolean)
+        : [];
+      const conf = Math.max(0, Math.min(100, Math.round(Number(p && p.confidence) || 0)));
+      return {
+        _tempId: tid('prod'),
+        nom,
+        categorie: String((p && p.categorie) || '').trim() || 'Autres',
+        uniteRef,
+        conditionnement: String((p && p.conditionnement) || '').trim(),
+        prixUnitaire: Number.isFinite(prix) && prix > 0 ? prix : 0,
+        referenceFourn: String((p && p.referenceFourn) || '').trim(),
+        confidence: conf,
+        issues,
+      };
+    })
+    .filter(p => p.nom);
+  return { produits };
+}
+
+export const aiService = {
+  ocrRecipe, detectAllergens, generateHaccp, suggestRecipe, matchProductSemantic,
+  generateFicheSalle, parseCatalogue,
+};
 export default aiService;

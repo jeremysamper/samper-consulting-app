@@ -2,6 +2,7 @@ import React from 'react';
 import * as XLSX from 'xlsx';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE — Base de données produits & fournisseurs
@@ -38,6 +39,7 @@ const Catalogue = ({ user, etablissement }) => {
   const [editFourn, setEditFourn] = React.useState(null);
   const [importing, setImporting] = React.useState(false);
   const [importReport, setImportReport] = React.useState(null); // { newItems, duplicates, aberrants }
+  const [showAiImport, setShowAiImport] = React.useState(false);
   const [selected, setSelected] = React.useState(new Set());
   const fileRef = React.useRef(null);
 
@@ -422,6 +424,9 @@ const Catalogue = ({ user, etablissement }) => {
         </div>
         {canWrite && (
           <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...cat.btn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }} onClick={() => setShowAiImport(true)}>
+              ✨ Import IA
+            </button>
             <label style={{ ...cat.btn, background: 'var(--surface)', border: '1px solid var(--border)', cursor: importing ? 'wait' : 'pointer', color: 'var(--text)' }}>
               {importing ? '⏳ Import…' : '📥 Importer Excel'}
               <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
@@ -697,6 +702,15 @@ const Catalogue = ({ user, etablissement }) => {
           onCancel={() => setImportReport(null)}
           onConfirmSafe={() => confirmImport('safe')}
           onConfirmAll={() => confirmImport('all')}
+        />
+      )}
+
+      {/* ─── Modal Import IA ─── */}
+      {showAiImport && (
+        <CatalogueAiImporter
+          etabId={etabId}
+          existingProduits={produits}
+          onClose={() => setShowAiImport(false)}
         />
       )}
     </div>

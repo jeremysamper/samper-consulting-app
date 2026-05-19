@@ -116,9 +116,12 @@ const FichesSalle = ({ user, etablissement }) => {
   const [catFilter, setCatFilter] = React.useState('Tous');
   const [showForm, setShowForm] = React.useState(false);
   const [editFiche, setEditFiche] = React.useState(null);
+  const [bulkProgress, setBulkProgress] = React.useState(null);
+  const bulkCancelRef = React.useRef(false);
 
   const canEdit = ['consultant','patron','resp_cuisine'].includes(user.role);
   const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
+  const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
 
   // ═══ Chargement depuis Supabase + Realtime ═══
   React.useEffect(() => {
@@ -193,6 +196,76 @@ const FichesSalle = ({ user, etablissement }) => {
     if (selected?.id === id) setSelected(null);
   };
 
+  // ── Génération IA des fiches salle pour toute la carte ──
+  const genererFichesSalleIA = async () => {
+    const existingByRec = new Set(fiches.map(f => f.recetteId).filter(Boolean));
+    const existingByNom = new Set(fiches.map(f => (f.nom || '').trim().toLowerCase()));
+    const targets = (recettes || []).filter(r =>
+      r && r.statut !== 'archivée'
+      && !existingByRec.has(r.id)
+      && !existingByNom.has((r.nom || '').trim().toLowerCase())
+      && (r.ingredients || []).length > 0
+    );
+    if (!targets.length) {
+      notifyLegacy('Toutes les recettes ont déjà une fiche salle (ou aucune recette exploitable).', 'info');
+      return;
+    }
+    if (!confirmLegacy(
+      `Générer ${targets.length} fiche(s) salle par IA ?\n\n`
+      + `Cela effectue ${targets.length} appel(s) à l'IA. Les fiches sont créées en statut « Brouillon » — à relire avant publication.`
+    )) return;
+    bulkCancelRef.current = false;
+    setBulkProgress({ done: 0, total: targets.length, created: 0 });
+    let done = 0;
+    let created = 0;
+    try {
+      const { generateFicheSalle } = await import('../../services/aiService.js');
+      for (let i = 0; i < targets.length; i += 3) {
+        if (bulkCancelRef.current) break;
+        const batch = targets.slice(i, i + 3);
+        const results = await Promise.allSettled(batch.map(async (r) => {
+          const allergLabels = (r.allergenesIds || []).map(id => ALLERGENES_LABELS[id] || id);
+          const ai = await generateFicheSalle(r, allergLabels);
+          const fiche = {
+            id: null,
+            etablissementId: etabId,
+            recetteId: r.id,
+            nom: r.nom || 'Recette',
+            categorie: FICHE_CATS.includes(r.categorie) ? r.categorie : 'Plats',
+            statut: 'brouillon',
+            descriptionService: ai.descriptionService,
+            temperatureService: ai.temperatureService,
+            dressageNotes: ai.dressageNotes,
+            infosService: ai.infosService,
+            tempsPreparation: ai.tempsPreparation,
+            allergenes: [...(r.allergenesIds || [])],
+            accords: ai.accords,
+            modifiePar: user.id,
+            modifie: todayStr,
+          };
+          if (legacySB) return legacySB.db.upsertFicheSalle(fiche);
+          return { ...fiche, id: 'fs-' + Date.now() + Math.round(Math.random() * 1e6) };
+        }));
+        results.forEach(res => {
+          done += 1;
+          if (res.status === 'fulfilled' && res.value) {
+            created += 1;
+            setFiches(prev => prev.some(x => x.id === res.value.id) ? prev : [...prev, res.value]);
+          }
+        });
+        setBulkProgress({ done, total: targets.length, created });
+      }
+    } catch (err) {
+      notifyLegacy('Génération interrompue : ' + (err.message || err), 'error');
+    }
+    setBulkProgress(null);
+    notifyLegacy(
+      `Génération terminée : ${created} fiche(s) salle créée(s) sur ${done} traitée(s)`
+      + `${bulkCancelRef.current ? ' · interrompu' : ''}.`,
+      created > 0 ? 'success' : 'info',
+    );
+  };
+
   // ── Détail fiche ──
   if (selected) return <FicheDetail fiche={selected} user={user} canEdit={canEdit} onBack={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes}/>;
 
@@ -205,8 +278,33 @@ const FichesSalle = ({ user, etablissement }) => {
             {cats.map(c=><button key={c} style={{...fss.catBtn,...(catFilter===c?fss.catActive:{})}} onClick={()=>setCatFilter(c)}>{c}</button>)}
           </div>
         </div>
-        {canEdit && <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche salle</button>}
+        {canEdit && (
+          <div style={{display:'flex',gap:8,flexShrink:0,flexWrap:'wrap'}}>
+            <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
+              ✨ Générer les fiches salle (IA)
+            </button>
+            <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche salle</button>
+          </div>
+        )}
       </div>
+
+      {/* Progression de la génération IA des fiches salle */}
+      {bulkProgress && (
+        <div className="no-print" style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(20,16,12,0.55)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
+            <div style={{fontSize:15,fontWeight:800,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>✨ Génération des fiches salle</div>
+            <div style={{fontSize:13,color:'var(--text2)'}}>
+              {bulkProgress.done} / {bulkProgress.total} recette(s) · {bulkProgress.created} fiche(s) créée(s)
+            </div>
+            <div style={{height:10,background:'var(--bg)',borderRadius:6,margin:'12px 0',overflow:'hidden',border:'1px solid var(--border)'}}>
+              <div style={{height:'100%',width:`${bulkProgress.total?(bulkProgress.done/bulkProgress.total)*100:0}%`,background:'var(--accent)',transition:'width 0.2s'}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'flex-end'}}>
+              <button style={{...fss.cancelBtn,color:'#dc2626',borderColor:'#fca5a5'}} onClick={()=>{bulkCancelRef.current=true;}}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Intro banner pour serveurs */}
       {user.role === 'serveur' && (
@@ -486,6 +584,7 @@ const fss = {
   catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  aiBtn:{padding:'8px 16px',background:'#ede9fe',color:'#5b21b6',border:'1px solid #c4b5fd',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   serverBanner:{background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',gap:14},
   grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14},
   card:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',cursor:'pointer',transition:'box-shadow .15s, transform .15s'},

@@ -13,7 +13,9 @@
 //                       fournisseur choisi. Sinon défaut par fournisseur.
 // SUPABASE_URL / SUPABASE_ANON_KEY sont injectés automatiquement.
 //
-// Tâches : 'ocr-recipe' (vision), 'detect-allergens' (texte).
+// Tâches : 'ocr-recipe' (vision), 'detect-allergens', 'generate-haccp',
+//          'suggest-recipe', 'match-product', 'generate-fiche-salle',
+//          'parse-catalogue' (texte).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -97,12 +99,45 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche acceptée :
 "blanc de poulet" ↔ "escalope de poulet" = oui ; "poulet" ↔ "bouillon de poulet" = non).`;
 
+const FICHE_SALLE_SYSTEM = `Tu es un expert de la restauration. À partir d'une recette, tu rédiges sa FICHE SALLE destinée à l'équipe de service pour conseiller les clients.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
+{"descriptionService":"...","temperatureService":"...","dressageNotes":"...","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","notes":"..."}]}
+- "descriptionService" : description commerciale et appétissante du plat pour le service (2 à 3 phrases)
+- "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
+- "dressageNotes" : conseils de dressage / service en salle (1 à 2 phrases)
+- "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
+- "tempsPreparation" : estimation courte (ex "12 min")
+- "accords" : 2 à 4 accords mets-boissons ; "type" vaut "vin" ou "sans_alcool" ; "region" renseignée pour les vins
+Reste juste et professionnel ; n'invente aucun ingrédient absent de la recette.`;
+
+const CATALOGUE_SYSTEM = `Tu extrais et fiabilises un catalogue de produits alimentaires à partir d'un fichier fournisseur brut (export Excel/CSV, format et colonnes variables : Metro, Transgourmet, inventaire interne…).
+On te fournit les lignes brutes du fichier. Tu identifies les vrais produits (ignore en-têtes, totaux, lignes vides, séparateurs) et tu corriges les incohérences.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"produits":[{"nom":"Tomate grappe","categorie":"Légumes","uniteRef":"g","conditionnement":"Caisse 5 kg","prixUnitaire":0.0042,"referenceFourn":"ART12345","confidence":92,"issues":[]}]}
+Règles :
+- "nom" : nom clair du produit (corrige les abréviations évidentes), obligatoire
+- "categorie" : catégorie culinaire cohérente (Légumes, Viandes, Poissons, Épicerie, Crémerie, Boissons, Surgelés…) ; "Autres" si indéterminée
+- "uniteRef" : unité de référence du prix, EXCLUSIVEMENT "g", "ml" ou "pcs"
+  (poids → g, volume → ml, comptage → pcs)
+- "prixUnitaire" : prix par unité de référence, en CHF, nombre positif ; convertis
+  si le fichier donne un prix au kg/L/colis (ex. 21 CHF/kg → 0.021 par g)
+- "conditionnement" : description du conditionnement d'origine si disponible, sinon ""
+- "referenceFourn" : référence/numéro d'article fournisseur si présent, sinon ""
+- "confidence" : entier 0-100, ta certitude sur la ligne
+- "issues" : liste de courts libellés en français pour toute anomalie détectée
+  (ex. "prix aberrant", "unité ambiguë", "doublon probable", "prix manquant",
+  "nom incomplet") ; liste vide si la ligne est fiable
+- ne renvoie aucun produit inventé : uniquement ce qui est réellement dans le fichier
+- si aucun produit exploitable, renvoie {"produits":[]}`;
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
   'generate-haccp': { system: HACCP_SYSTEM, maxTokens: 3072 },
   'suggest-recipe': { system: SUGGEST_SYSTEM, maxTokens: 2048 },
   'match-product': { system: MATCH_SYSTEM, maxTokens: 512 },
+  'generate-fiche-salle': { system: FICHE_SALLE_SYSTEM, maxTokens: 2048 },
+  'parse-catalogue': { system: CATALOGUE_SYSTEM, maxTokens: 4096 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -159,6 +194,28 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     if (!ingredient || !products.length) throw new Error('Ingrédient ou catalogue manquant.');
     const list = products.map(p => `- [${p.id}] ${p.nom}`).join('\n');
     return [{ kind: 'text', text: `Ingrédient à rapprocher : "${ingredient}"\n\nCatalogue :\n${list}` }];
+  }
+  if (task === 'generate-fiche-salle') {
+    const name = payload.recipeName as string;
+    if (!name) throw new Error('Recette manquante.');
+    const ingredients = Array.isArray(payload.ingredients) ? (payload.ingredients as string[]) : [];
+    const etapes = Array.isArray(payload.etapes) ? (payload.etapes as string[]) : [];
+    const allergenes = Array.isArray(payload.allergenes) ? (payload.allergenes as string[]) : [];
+    return [{
+      kind: 'text',
+      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
+        + `Portions : ${payload.portions || '—'}\n`
+        + `Ingrédients : ${ingredients.join(', ') || '(non précisés)'}\n`
+        + `Étapes :\n${etapes.map((e, i) => `${i + 1}. ${e}`).join('\n') || '(non précisées)'}\n`
+        + `Allergènes connus : ${allergenes.join(', ') || '(aucun renseigné)'}`,
+    }];
+  }
+  if (task === 'parse-catalogue') {
+    const rows = (payload.rows as string) || '';
+    if (!rows.trim()) throw new Error('Fichier catalogue vide.');
+    // Garde-fou : on borne la taille du texte transmis à l'IA.
+    const text = rows.length > 24000 ? rows.slice(0, 24000) : rows;
+    return [{ kind: 'text', text: `Lignes brutes du fichier fournisseur :\n${text}` }];
   }
   throw new Error(`Tâche inconnue : ${task}`);
 }
