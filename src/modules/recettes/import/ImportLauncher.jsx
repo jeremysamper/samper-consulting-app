@@ -24,8 +24,8 @@ function toRecettePayload(recipe, etabId, userId) {
     version: 1,
     allergenesIds: recipe.allergenesIds || [],
     notesConsultant: recipe.notesConsultant || '',
-    dressage: '',
-    conservation: '',
+    dressage: recipe.dressage || '',
+    conservation: recipe.conservation || '',
     modifie: new Date().toISOString().slice(0, 10),
     modifiePar: userId || null,
     ingredients: (recipe.ingredients || []).map((ing, i) => ({
@@ -62,12 +62,13 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
   const [recipes, setRecipes] = React.useState([]);
   const [mappingData, setMappingData] = React.useState(null);
   const [mapping, setMapping] = React.useState({});
+  const [parseStats, setParseStats] = React.useState(null);
   const [progress, setProgress] = React.useState({ done: 0, total: 0, imported: 0, failed: 0 });
   const cancelRef = React.useRef(false);
 
   const reset = () => {
     setStep('choose'); setParseError(''); setScannedPdf(false);
-    setRecipes([]); setMappingData(null); setMapping({});
+    setRecipes([]); setMappingData(null); setMapping({}); setParseStats(null);
   };
 
   // ── Parsing fichier ──
@@ -77,6 +78,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
     try {
       const buf = await file.arrayBuffer();
       const result = parseWorkbook(buf);
+      if (result.stats) setParseStats(result.stats);
       if (result.needsMapping) {
         setMappingData(result);
         setMapping(result.detected || {});
@@ -303,6 +305,25 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Aperçu avant import ── */}
           {step === 'preview' && (
             <div>
+              {parseStats && (
+                <div style={statsBanner}>
+                  <strong>{parseStats.sheetsTotal}</strong> feuille(s) dans le classeur ·{' '}
+                  <strong>{parseStats.sheetsRead.length}</strong> lue(s) ·{' '}
+                  <strong>{parseStats.rowsTotal}</strong> ligne(s) analysée(s) ·{' '}
+                  <strong>{recipes.length}</strong> recette(s) détectée(s) ·{' '}
+                  <strong>{recipes.reduce((s, r) => s + (r.ingredients || []).length, 0)}</strong> ingrédient(s)
+                  {parseStats.sheetsRead.length > 0 && (
+                    <span style={{ color: 'var(--text2)' }}>
+                      {' '}— {parseStats.sheetsRead.map(s => `${s.name} (${s.count})`).join(', ')}
+                    </span>
+                  )}
+                  {parseStats.sheetsSkipped.length > 0 && (
+                    <span style={{ color: '#b45309' }}>
+                      {' '}· ignoré(s) : {parseStats.sheetsSkipped.join(', ')}
+                    </span>
+                  )}
+                </div>
+              )}
               <ImportPreview recipes={recipes} onChange={setRecipes} unrecognizedUnits={getUnrecognizedUnits()} />
               <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                 <Btn variant="ghost" onClick={reset}>← Autre fichier</Btn>
@@ -351,6 +372,10 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
   );
 }
 
+const statsBanner = {
+  marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
+  background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', lineHeight: 1.6,
+};
 const tile = {
   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer',
   border: '1px solid var(--border)', borderRadius: 10, padding: '18px 12px', fontSize: 30,

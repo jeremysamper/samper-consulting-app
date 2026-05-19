@@ -19,17 +19,19 @@ const norm = (s) => String(s ?? '')
 
 // Champs cibles + synonymes d'en-tête pour l'auto-détection.
 const COLUMN_SYNONYMS = {
-  titre: ['titre', 'nom', 'nom de la recette', 'recette', 'name', 'plat'],
-  categorie: ['categorie', 'category', 'type', 'famille'],
+  titre: ['titre', 'nom', 'nom de la recette', 'nom du plat', 'recette', 'name', 'plat'],
+  categorie: ['categorie', 'category', 'type', 'famille', 'sous-categorie', 'sous categorie'],
   portions: ['portions', 'portion', 'couverts', 'pers', 'personnes', 'nb portions'],
   prixVente: ['prix de vente', 'prix vente', 'prix de vente (chf)', 'prix', 'price'],
-  ingredient: ['ingredient', 'ingredients', 'produit', 'item', 'designation'],
-  quantite: ['quantite', 'qte', 'qty', 'quantity', 'qt'],
+  ingredient: ['ingredient', 'ingredients', 'produit', 'item', 'designation', 'denree', 'denomination', 'libelle'],
+  quantite: ['quantite', 'qte', 'qty', 'quantity', 'qt', 'poids'],
   unite: ['unite', 'unit', 'u', 'mesure'],
-  prixUnit: ['prix unitaire', 'prix unitaire (chf)', 'prix unite', 'prix/unite', 'cout unitaire'],
+  prixUnit: ['prix unitaire', 'prix unitaire (chf)', 'prix unite', 'prix/unite', 'cout unitaire', 'pu', 'cout', 'cout mat'],
   etapeNumero: ['etape numero', 'ordre', 'numero etape', 'step number', 'no etape', 'n etape'],
-  etapeTexte: ['etape texte', 'etape', 'description', 'instruction', 'instructions', 'step', 'steps'],
+  etapeTexte: ['etape texte', 'etape', 'description', 'instruction', 'instructions', 'step', 'steps', 'preparation', 'process', 'methode'],
   allergenes: ['allergenes', 'allergene', 'allergens', 'allergenes (separes par ;)'],
+  conservation: ['conservation', 'dlc', 'stockage', 'duree de vie', 'duree conservation'],
+  dressage: ['dressage', 'finition', 'mise en assiette', 'presentation service'],
 };
 
 export const FIELD_LABELS = {
@@ -44,6 +46,8 @@ export const FIELD_LABELS = {
   etapeNumero: 'N° étape',
   etapeTexte: 'Texte étape',
   allergenes: 'Allergènes',
+  conservation: 'Conservation / DLC',
+  dressage: 'Dressage / Service',
 };
 
 const CATEGORIES_VALIDES = ['Entrées', 'Plats', 'Desserts', 'Fromages', 'Sauces', 'Fonds', 'Amuse-bouches', 'Garnitures'];
@@ -58,6 +62,20 @@ const normalizeCategorie = (raw) => {
   if (/sauce/.test(n)) return 'Sauces';
   return 'Plats';
 };
+
+// Déduit la catégorie de recette depuis le nom de l'onglet Excel.
+// Renvoie une catégorie valide ou null si non reconnu.
+function categoryFromSheetName(sheetName) {
+  const n = norm(sheetName);
+  if (/entree|entrees|starter|amuse|aperitif/.test(n)) return 'Entrées';
+  if (/dessert|sucre|sucrerie|patisserie|gateau|tarte|glace/.test(n)) return 'Desserts';
+  if (/sauce|fond|jus|coulis|veloute|bisque/.test(n)) return 'Sauces';
+  if (/fromage|plateau fromage/.test(n)) return 'Fromages';
+  if (/amuse.?bouche|mise en bouche/.test(n)) return 'Amuse-bouches';
+  if (/garniture|accompagnement|legume|vegetal/.test(n)) return 'Garnitures';
+  if (/plat|principal|chaud|viande|poisson/.test(n)) return 'Plats';
+  return null;
+}
 
 let tempCounter = 0;
 const tempId = (prefix) => `${prefix}-${Date.now()}-${tempCounter++}`;
@@ -135,7 +153,8 @@ const splitAllergenes = (raw) => String(raw ?? '')
   .split(/[;,]/).map(s => norm(s)).filter(Boolean);
 
 // Construit les recettes depuis les lignes + un mapping de colonnes.
-export function buildFromMapping(rows, headerRowIndex, map) {
+// catHint : catégorie déduite du nom de feuille — utilisée si la ligne ne renseigne pas la catégorie.
+export function buildFromMapping(rows, headerRowIndex, map, catHint = null) {
   const dataRows = rows.slice(headerRowIndex + 1);
   const byTitre = new Map();
 
@@ -145,16 +164,19 @@ export function buildFromMapping(rows, headerRowIndex, map) {
     if (!titre) continue;
 
     if (!byTitre.has(titre)) {
+      const rawCat = String(get('categorie') ?? '').trim();
       byTitre.set(titre, {
         _tempId: tempId('rec'),
         nom: titre,
-        categorie: normalizeCategorie(get('categorie')),
+        categorie: rawCat ? normalizeCategorie(rawCat) : (catHint || 'Plats'),
         portions: Number(get('portions')) || 4,
         prixVente: Number(String(get('prixVente') ?? '').replace(',', '.')) || 0,
         statut: 'brouillon',
         version: 1,
         allergenesIds: splitAllergenes(get('allergenes')),
         notesConsultant: '',
+        conservation: '',
+        dressage: '',
         ingredients: [],
         etapes: [],
         _etapesBuffer: [],
@@ -171,6 +193,11 @@ export function buildFromMapping(rows, headerRowIndex, map) {
     if (etapeTxt != null && String(etapeTxt).trim() !== '') {
       rec._etapesBuffer.push({ ordre: Number(get('etapeNumero')) || rec._etapesBuffer.length + 1, texte: String(etapeTxt).trim() });
     }
+    // Champs optionnels : conservation et dressage (première valeur non vide trouvée).
+    const cons = String(get('conservation') ?? '').trim();
+    if (cons && !rec.conservation) rec.conservation = cons;
+    const dress = String(get('dressage') ?? '').trim();
+    if (dress && !rec.dressage) rec.dressage = dress;
   }
 
   return Array.from(byTitre.values()).map(rec => {
@@ -212,6 +239,8 @@ function parseMultiSheet(wb) {
       version: 1,
       allergenesIds: splitAllergenes(r[6]),
       notesConsultant: String(r[7] ?? '').trim(),
+      conservation: '',
+      dressage: '',
       ingredients: [],
       etapes: [],
       _etapesBuffer: [],
@@ -255,29 +284,74 @@ export function parseWorkbook(arrayBuffer) {
   const wb = XLSX.read(data, { type: 'array' });
   if (!wb.SheetNames.length) throw new Error('Classeur vide.');
 
-  // Format multi-feuilles ?
+  // Format multi-feuilles (template officiel) ?
   const multi = parseMultiSheet(wb);
-  if (multi && multi.length) return { format: 'multi-feuilles', recipes: multi };
+  if (multi && multi.length) {
+    return {
+      format: 'multi-feuilles',
+      recipes: multi,
+      stats: { sheetsTotal: wb.SheetNames.length, sheetsRead: [{ name: 'Recettes + Ingrédients + Étapes', count: multi.length }], rowsTotal: multi.length, sheetsSkipped: [] },
+    };
+  }
 
-  // Format plat : première feuille.
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
-  if (!rows.length) throw new Error('Aucune donnée dans la feuille.');
+  // Format plat : toutes les feuilles parcourues.
+  const stats = {
+    sheetsTotal: wb.SheetNames.length,
+    sheetsRead: [],   // [{ name, count }]
+    rowsTotal: 0,
+    sheetsSkipped: [],
+  };
+  const allRecipes = [];
+  let firstMappableSheet = null; // premier onglet non auto-détecté (fallback mapping)
 
-  const headerRowIndex = findHeaderRow(rows);
-  const headerRow = rows[headerRowIndex] || [];
-  const map = detectColumns(headerRow);
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    if (!sheet) { stats.sheetsSkipped.push(sheetName + ' (introuvable)'); continue; }
 
-  if (map.titre == null) {
-    // Impossible d'auto-détecter la colonne titre : assistant de mapping requis.
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+    if (!rows.length) { stats.sheetsSkipped.push(sheetName + ' (vide)'); continue; }
+
+    const headerRowIndex = findHeaderRow(rows);
+    const headerRow = rows[headerRowIndex] || [];
+    const map = detectColumns(headerRow);
+
+    if (map.titre == null) {
+      stats.sheetsSkipped.push(sheetName + ' (colonnes non reconnues)');
+      if (!firstMappableSheet) {
+        firstMappableSheet = {
+          sheetName,
+          headers: headerRow.map((h, i) => ({ index: i, label: String(h ?? `Colonne ${i + 1}`) })),
+          headerRowIndex,
+          rows,
+          detected: map,
+        };
+      }
+      continue;
+    }
+
+    const catHint = categoryFromSheetName(sheetName);
+    const sheetRecipes = buildFromMapping(rows, headerRowIndex, map, catHint);
+    stats.sheetsRead.push({ name: sheetName, count: sheetRecipes.length });
+    stats.rowsTotal += Math.max(0, rows.length - headerRowIndex - 1);
+    allRecipes.push(...sheetRecipes);
+  }
+
+  if (allRecipes.length > 0) {
+    return { format: 'plat', recipes: allRecipes, stats };
+  }
+
+  // Aucune feuille auto-détectée → assistant de mapping sur le premier onglet exploitable.
+  if (firstMappableSheet) {
     return {
       format: 'plat',
       needsMapping: true,
-      headers: headerRow.map((h, i) => ({ index: i, label: String(h ?? `Colonne ${i + 1}`) })),
-      headerRowIndex,
-      rows,
-      detected: map,
+      headers: firstMappableSheet.headers,
+      headerRowIndex: firstMappableSheet.headerRowIndex,
+      rows: firstMappableSheet.rows,
+      detected: firstMappableSheet.detected,
+      stats,
     };
   }
-  return { format: 'plat', recipes: buildFromMapping(rows, headerRowIndex, map) };
+
+  throw new Error('Aucune donnée utilisable dans ce classeur.');
 }
