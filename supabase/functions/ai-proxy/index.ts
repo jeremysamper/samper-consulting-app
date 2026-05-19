@@ -30,6 +30,14 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
+// Lit un secret en retirant espaces et guillemets parasites éventuels
+// (erreurs de copier-coller fréquentes dans le dashboard).
+const env = (name: string): string | undefined => {
+  const v = Deno.env.get(name);
+  if (v == null) return undefined;
+  return v.trim().replace(/^["']|["']$/g, '').trim();
+};
+
 // ── Consignes système par tâche ──
 const OCR_SYSTEM = `Tu extrais des recettes de cuisine depuis une image (photo ou scan d'une fiche papier).
 Réponds UNIQUEMENT avec un objet JSON valide, sans aucun texte autour, au format exact :
@@ -211,17 +219,17 @@ Deno.serve(async (req: Request) => {
   if (authErr || !user) return json({ error: 'Session invalide' }, 401);
 
   // ── Fournisseur + clé ──
-  const provider = (Deno.env.get('AI_PROVIDER') || 'anthropic').toLowerCase();
+  const provider = (env('AI_PROVIDER') || 'anthropic').toLowerCase();
   if (!PROVIDERS[provider as keyof typeof PROVIDERS]) {
     return json({ error: `Fournisseur IA inconnu : ${provider}` }, 500);
   }
   const apiKey = provider === 'openai'
-    ? Deno.env.get('OPENAI_API_KEY')
-    : Deno.env.get('ANTHROPIC_API_KEY');
+    ? env('OPENAI_API_KEY')
+    : env('ANTHROPIC_API_KEY');
   if (!apiKey) {
     return json({ error: `Service IA non configuré (clé ${provider} manquante).` }, 503);
   }
-  const model = Deno.env.get('AI_MODEL') || PROVIDERS[provider as keyof typeof PROVIDERS].model;
+  const model = env('AI_MODEL') || PROVIDERS[provider as keyof typeof PROVIDERS].model;
 
   // ── Requête ──
   let task: string;
