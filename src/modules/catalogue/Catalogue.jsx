@@ -710,6 +710,7 @@ const Catalogue = ({ user, etablissement }) => {
         <CatalogueAiImporter
           etabId={etabId}
           existingProduits={produits}
+          fournisseurs={fournisseurs}
           onClose={() => setShowAiImport(false)}
         />
       )}

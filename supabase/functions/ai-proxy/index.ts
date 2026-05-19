@@ -138,7 +138,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'suggest-recipe': { system: SUGGEST_SYSTEM, maxTokens: 2048 },
   'match-product': { system: MATCH_SYSTEM, maxTokens: 512 },
   'generate-fiche-salle': { system: FICHE_SALLE_SYSTEM, maxTokens: 2048 },
-  'parse-catalogue': { system: CATALOGUE_SYSTEM, maxTokens: 4096 },
+  'parse-catalogue': { system: CATALOGUE_SYSTEM, maxTokens: 8192 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };

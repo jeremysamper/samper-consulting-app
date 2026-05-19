@@ -1,17 +1,24 @@
 import React from 'react';
 import * as XLSX from 'xlsx';
-import { notifyLegacy } from '../../../legacy/legacyApi.js';
+import { notifyLegacy, confirmLegacy } from '../../../legacy/legacyApi.js';
 import { dbService } from '../../../services/dbService.js';
 import CatalogueImportPreview from './CatalogueImportPreview.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // CatalogueAiImporter — import de catalogue produits assisté par IA.
 //
-// L'IA lit un fichier fournisseur brut (Excel/CSV, formats variables),
-// en extrait des produits structurés ET signale les anomalies. Un
-// contrôle local complète la vérification (doublons / prix aberrants).
-// L'utilisateur relit et corrige avant l'insertion par lots.
+// L'IA lit un fichier fournisseur brut (Excel/CSV/PDF, formats variables),
+// en extrait des produits structurés ET signale les anomalies. Pour les
+// gros fichiers, l'analyse se fait par LOTS successifs (chunks) afin que
+// la totalité des lignes soit traitée. Un contrôle local complète la
+// vérification (doublons / prix aberrants). L'utilisateur choisit le
+// fournisseur, relit et corrige avant l'insertion par lots.
 // ═══════════════════════════════════════════════════════════════
+
+// Nombre de lignes de produits envoyées à l'IA par appel.
+const CHUNK_ROWS = 80;
+// Appels IA menés en parallèle.
+const PARSE_CONCURRENCY = 4;
 
 // Normalise un nom pour comparaison (minuscule, sans accents/ponctuation).
 const normalizeName = (s) => (s || '')
@@ -36,37 +43,59 @@ const detectAberrantPrice = (prix, uniteRef) => {
   return null;
 };
 
-// Convertit un fichier (Excel, CSV ou PDF) en texte brut pour l'IA.
-async function fileToRows(file) {
-  const name = (file.name || '').toLowerCase();
-  if (name.endsWith('.csv') || file.type === 'text/csv') {
-    return await file.text();
+// Découpe une liste de lignes en lots, chaque lot préfixé d'un en-tête
+// de contexte (titres de colonnes) pour que l'IA comprenne la structure.
+function chunkLines(header, rows) {
+  const clean = rows.map(r => String(r || '').trim()).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < clean.length; i += CHUNK_ROWS) {
+    const part = clean.slice(i, i + CHUNK_ROWS);
+    out.push((header ? header + '\n' : '') + part.join('\n'));
   }
+  return out;
+}
+
+// Convertit un fichier (Excel, CSV ou PDF) en lots de texte pour l'IA.
+async function fileToChunks(file) {
+  const name = (file.name || '').toLowerCase();
+
+  if (name.endsWith('.csv') || file.type === 'text/csv') {
+    const lines = (await file.text()).split(/\r?\n/);
+    return chunkLines(lines[0] || '', lines);
+  }
+
   if (name.endsWith('.pdf') || file.type === 'application/pdf') {
     const { pdfToText } = await import('./pdfText.js');
     const { text, scanned } = await pdfToText(await file.arrayBuffer());
     if (scanned) {
       throw new Error('PDF scanné (image) — sélectionnez un PDF avec du texte sélectionnable, ou un fichier Excel/CSV.');
     }
-    return text;
+    return chunkLines('', text.split(/\r?\n/));
   }
+
   const data = new Uint8Array(await file.arrayBuffer());
   const wb = XLSX.read(data, { type: 'array' });
-  const parts = [];
+  const chunks = [];
+  const toLine = (r) => (Array.isArray(r) ? r : []).map(c => (c == null ? '' : String(c))).join(' | ');
   wb.SheetNames.forEach((sn) => {
-    const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sn] || {});
-    if (csv && csv.trim()) parts.push(`# Feuille : ${sn}\n${csv}`);
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn] || {}, { header: 1, blankrows: false });
+    if (!rows.length) return;
+    // En-tête de contexte : les 2 premières lignes (titre + colonnes).
+    const header = ['# Feuille : ' + sn, ...rows.slice(0, 2).map(toLine)].join('\n');
+    chunks.push(...chunkLines(header, rows.map(toLine)));
   });
-  return parts.join('\n\n');
+  return chunks;
 }
 
-const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImported }) => {
+const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [], onClose }) => {
   const legacySB = dbService.getBridge();
   const [step, setStep] = React.useState('pick'); // pick | parsing | preview | inserting
   const [fileName, setFileName] = React.useState('');
+  const [fournisseurId, setFournisseurId] = React.useState('');
   const [produits, setProduits] = React.useState([]);
   const [progress, setProgress] = React.useState({ done: 0, total: 0 });
   const fileRef = React.useRef(null);
+  const cancelRef = React.useRef(false);
 
   // Index des produits déjà au catalogue (référence + nom normalisé).
   const existIndex = React.useMemo(() => {
@@ -82,8 +111,6 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
   }, [existingProduits]);
 
   // Ajoute les drapeaux locaux (doublon, prix aberrant) aux produits IA.
-  // `_existing` = produit déjà au catalogue qui correspond ; `_dupAction`
-  // = action choisie pour les doublons ('update' | 'create' | 'skip').
   const annotate = (p) => {
     const issues = [...(p.issues || [])];
     const refKey = (p.referenceFourn || '').trim().toLowerCase();
@@ -113,21 +140,47 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
     if (!legacySB) { notifyLegacy('Base de données indisponible.', 'error'); return; }
     setFileName(file.name);
     setStep('parsing');
+    setProgress({ done: 0, total: 0 });
+    cancelRef.current = false;
     try {
-      const rows = await fileToRows(file);
-      if (!rows.trim()) {
+      const chunks = await fileToChunks(file);
+      if (!chunks.length) {
         notifyLegacy('Fichier vide ou illisible.', 'error');
         setStep('pick');
         return;
       }
+      // Gros fichier : on prévient avant de lancer de nombreux appels IA.
+      if (chunks.length > 8 && !confirmLegacy(
+        `Ce fichier est volumineux : l'IA l'analysera en ${chunks.length} lots `
+        + `(~${chunks.length} appels IA, cela peut prendre quelques minutes).\n\n`
+        + `Astuce : pour un fichier fournisseur déjà bien structuré, le bouton `
+        + `« Importer Excel » classique est instantané et sans coût IA.\n\n`
+        + `Lancer l'analyse IA ?`
+      )) {
+        setStep('pick');
+        return;
+      }
       const { parseCatalogue } = await import('../../../services/aiService.js');
-      const { produits: parsed } = await parseCatalogue(rows);
-      if (!parsed.length) {
+      setProgress({ done: 0, total: chunks.length });
+      const all = [];
+      for (let i = 0; i < chunks.length; i += PARSE_CONCURRENCY) {
+        if (cancelRef.current) break;
+        const batch = chunks.slice(i, i + PARSE_CONCURRENCY);
+        const res = await Promise.allSettled(batch.map(c => parseCatalogue(c)));
+        res.forEach((r) => {
+          if (r.status === 'fulfilled') all.push(...(r.value.produits || []));
+        });
+        setProgress({ done: Math.min(i + PARSE_CONCURRENCY, chunks.length), total: chunks.length });
+      }
+      if (!all.length) {
         notifyLegacy('Aucun produit détecté par l\'IA dans ce fichier.', 'info');
         setStep('pick');
         return;
       }
-      setProduits(parsed.map(annotate));
+      if (cancelRef.current) {
+        notifyLegacy(`Analyse interrompue — ${all.length} produit(s) déjà détecté(s).`, 'info');
+      }
+      setProduits(all.map(annotate));
       setStep('preview');
     } catch (err) {
       notifyLegacy('Import IA impossible : ' + (err.message || err), 'error');
@@ -155,6 +208,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
           conditionnement: p.conditionnement || '',
           prixUnitaire: Number(p.prixUnitaire) || 0,
           referenceFourn: p.referenceFourn || '',
+          fournisseurId: fournisseurId || null,
           etablissementId: etabId,
           actif: true,
         };
@@ -169,13 +223,13 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
       `✓ Import IA terminé : ${saved} produit(s)${errors ? ` · ${errors} en erreur` : ''}.`,
       errors ? 'warning' : 'success',
     );
-    if (onImported) onImported(saved);
     onClose();
   };
 
   const selectedCount = produits.filter(isImportable).length;
   const dupCount = produits.filter(p => p._existing).length;
   const flaggedCount = produits.filter(p => (p.issues || []).length > 0 || (p.confidence || 0) < 60).length;
+  const fournisseurNom = (fournisseurs.find(f => f.id === fournisseurId) || {}).nom || '';
 
   return (
     <div style={st.overlay} onClick={step === 'preview' || step === 'pick' ? onClose : undefined}>
@@ -197,11 +251,29 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
                 Choisir un fichier fournisseur
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', maxWidth: 420 }}>
+              <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', maxWidth: 440 }}>
                 Excel (.xlsx, .xls), CSV ou PDF — quel que soit le format des colonnes.
-                L'IA extrait les produits, normalise les unités et signale les anomalies
-                (prix suspects, doublons) avant l'ajout au catalogue.
+                Les gros fichiers sont analysés par lots pour traiter toutes les lignes.
               </div>
+
+              {/* Choix du fournisseur appliqué à tous les produits importés */}
+              <div style={{ width: 'min(360px,90%)' }}>
+                <label style={st.fieldLabel}>Fournisseur de ce fichier</label>
+                <select
+                  style={st.select}
+                  value={fournisseurId}
+                  onChange={e => setFournisseurId(e.target.value)}
+                >
+                  <option value="">— Aucun fournisseur —</option>
+                  {(fournisseurs || []).map(f => (
+                    <option key={f.id} value={f.id}>{f.nom}</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+                  Appliqué à tous les produits importés depuis ce fichier.
+                </div>
+              </div>
+
               <label style={st.primaryBtn}>
                 Sélectionner un fichier
                 <input
@@ -222,8 +294,18 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
                 Analyse du fichier par l'IA…
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-                Extraction et vérification des produits. Cela peut prendre quelques secondes.
+                {progress.total > 0
+                  ? `Lot ${progress.done} / ${progress.total}`
+                  : 'Préparation des lots…'}
               </div>
+              {progress.total > 0 && (
+                <div style={st.progressTrack}>
+                  <div style={{ ...st.progressFill, width: `${(progress.done / progress.total) * 100}%` }} />
+                </div>
+              )}
+              <button style={st.ghostBtn} onClick={() => { cancelRef.current = true; }}>
+                Interrompre
+              </button>
             </div>
           )}
 
@@ -238,6 +320,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
                 {flaggedCount > 0
                   ? <span style={{ color: '#b45309' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
                   : <span style={{ color: '#15803d' }}>aucune anomalie</span>}
+                {fournisseurNom && <span> · Fournisseur : <strong>{fournisseurNom}</strong></span>}
               </div>
               <CatalogueImportPreview produits={produits} onChange={setProduits} />
               <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -288,7 +371,9 @@ const st = {
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
   body: { padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
   foot: { padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' },
-  pickZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '40px 20px' },
+  pickZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 20px' },
+  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
+  select: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
   primaryBtn: { padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: '#fff', display: 'inline-block' },
   ghostBtn: { padding: '9px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)' },
   banner: { padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' },
