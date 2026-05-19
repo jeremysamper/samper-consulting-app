@@ -36,11 +36,19 @@ const detectAberrantPrice = (prix, uniteRef) => {
   return null;
 };
 
-// Convertit un fichier en texte brut (CSV) pour l'IA.
+// Convertit un fichier (Excel, CSV ou PDF) en texte brut pour l'IA.
 async function fileToRows(file) {
   const name = (file.name || '').toLowerCase();
   if (name.endsWith('.csv') || file.type === 'text/csv') {
     return await file.text();
+  }
+  if (name.endsWith('.pdf') || file.type === 'application/pdf') {
+    const { pdfToText } = await import('./pdfText.js');
+    const { text, scanned } = await pdfToText(await file.arrayBuffer());
+    if (scanned) {
+      throw new Error('PDF scanné (image) — sélectionnez un PDF avec du texte sélectionnable, ou un fichier Excel/CSV.');
+    }
+    return text;
   }
   const data = new Uint8Array(await file.arrayBuffer());
   const wb = XLSX.read(data, { type: 'array' });
@@ -74,19 +82,28 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
   }, [existingProduits]);
 
   // Ajoute les drapeaux locaux (doublon, prix aberrant) aux produits IA.
+  // `_existing` = produit déjà au catalogue qui correspond ; `_dupAction`
+  // = action choisie pour les doublons ('update' | 'create' | 'skip').
   const annotate = (p) => {
     const issues = [...(p.issues || [])];
     const refKey = (p.referenceFourn || '').trim().toLowerCase();
     const nameKey = normalizeName(p.nom);
-    if ((refKey && existIndex.byRef.has(refKey)) || (nameKey && existIndex.byName.has(nameKey))) {
-      if (!issues.some(i => i.toLowerCase().includes('doublon') || i.toLowerCase().includes('catalogue'))) {
-        issues.push('déjà au catalogue');
-      }
+    const existing = (refKey && existIndex.byRef.get(refKey))
+      || (nameKey && existIndex.byName.get(nameKey))
+      || null;
+    if (existing && !issues.some(i => i.toLowerCase().includes('doublon') || i.toLowerCase().includes('catalogue'))) {
+      issues.push('déjà au catalogue');
     }
     const ab = detectAberrantPrice(Number(p.prixUnitaire), p.uniteRef);
     if (ab && !issues.some(i => i.toLowerCase().includes('prix'))) issues.push(ab);
     if (!p.nom) issues.push('nom manquant');
-    return { ...p, issues, _selected: !!p.nom };
+    return {
+      ...p,
+      issues,
+      _selected: !!p.nom,
+      _existing: existing,
+      _dupAction: existing ? 'update' : null,
+    };
   };
 
   const handleFile = async (e) => {
@@ -118,8 +135,11 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
     }
   };
 
+  // Un produit est importable s'il est coché, nommé, et non « ignoré ».
+  const isImportable = (p) => !!p._selected && !!(p.nom || '').trim() && p._dupAction !== 'skip';
+
   const doImport = async () => {
-    const toImport = produits.filter(p => p._selected && (p.nom || '').trim());
+    const toImport = produits.filter(isImportable);
     if (!toImport.length) { notifyLegacy('Aucun produit sélectionné.', 'info'); return; }
     setStep('inserting');
     setProgress({ done: 0, total: toImport.length });
@@ -138,10 +158,8 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
           etablissementId: etabId,
           actif: true,
         };
-        const refKey = (p.referenceFourn || '').trim().toLowerCase();
-        const nameKey = normalizeName(p.nom);
-        const existing = (refKey && existIndex.byRef.get(refKey)) || (nameKey && existIndex.byName.get(nameKey));
-        if (existing) payload.id = existing.id;
+        // Mise à jour du produit existant uniquement si l'action est « update ».
+        if (p._existing && p._dupAction === 'update') payload.id = p._existing.id;
         return legacySB.db.upsertProduit(payload);
       }));
       res.forEach((r) => { if (r.status === 'fulfilled') saved += 1; else errors += 1; });
@@ -155,7 +173,8 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
     onClose();
   };
 
-  const selectedCount = produits.filter(p => p._selected && (p.nom || '').trim()).length;
+  const selectedCount = produits.filter(isImportable).length;
+  const dupCount = produits.filter(p => p._existing).length;
   const flaggedCount = produits.filter(p => (p.issues || []).length > 0 || (p.confidence || 0) < 60).length;
 
   return (
@@ -179,8 +198,8 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
                 Choisir un fichier fournisseur
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', maxWidth: 420 }}>
-                Excel (.xlsx, .xls) ou CSV — quel que soit le format des colonnes. L'IA
-                extrait les produits, normalise les unités et signale les anomalies
+                Excel (.xlsx, .xls), CSV ou PDF — quel que soit le format des colonnes.
+                L'IA extrait les produits, normalise les unités et signale les anomalies
                 (prix suspects, doublons) avant l'ajout au catalogue.
               </div>
               <label style={st.primaryBtn}>
@@ -188,7 +207,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".xlsx,.xls,.csv,.pdf"
                   style={{ display: 'none' }}
                   onChange={handleFile}
                 />
@@ -212,15 +231,19 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], onClose, onImporte
             <>
               <div style={st.banner}>
                 <strong>{produits.length}</strong> produit(s) détecté(s) ·{' '}
-                <strong>{selectedCount}</strong> sélectionné(s) à importer ·{' '}
+                <strong>{selectedCount}</strong> à importer ·{' '}
+                {dupCount > 0 && (
+                  <span style={{ color: '#b45309' }}><strong>{dupCount}</strong> doublon(s) · </span>
+                )}
                 {flaggedCount > 0
                   ? <span style={{ color: '#b45309' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
                   : <span style={{ color: '#15803d' }}>aucune anomalie</span>}
               </div>
               <CatalogueImportPreview produits={produits} onChange={setProduits} />
               <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                Les lignes surlignées portent une anomalie ou une confiance faible —
-                relisez-les. Les produits déjà au catalogue seront mis à jour.
+                Les lignes surlignées portent une anomalie ou une confiance faible.
+                Pour un produit déjà au catalogue, choisissez l'action : mettre à jour,
+                créer quand même ou ignorer.
               </div>
             </>
           )}

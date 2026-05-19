@@ -5,7 +5,9 @@ import React from 'react';
 // par l'IA avant insertion dans le catalogue.
 //
 // Chaque ligne porte : champs produit éditables, drapeau `_selected`,
-// liste `issues` (anomalies IA + contrôles locaux) et `confidence`.
+// liste `issues` (anomalies IA + contrôles locaux), `confidence`, et
+// pour un doublon `_existing` (produit déjà au catalogue) + `_dupAction`
+// (mettre à jour / créer quand même / ignorer).
 // ═══════════════════════════════════════════════════════════════
 
 const CATS = [
@@ -14,6 +16,10 @@ const CATS = [
   'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie', 'Autres',
 ];
 const UNITES = ['g', 'ml', 'pcs'];
+
+const fmtPrix = (v, u) => (v == null || isNaN(Number(v))
+  ? '—'
+  : `${Number(v).toFixed(4)} CHF/${u || 'g'}`);
 
 const CatalogueImportPreview = ({ produits, onChange }) => {
   const patch = (tempId, field, value) => {
@@ -43,10 +49,11 @@ const CatalogueImportPreview = ({ produits, onChange }) => {
             const hasIssues = (p.issues || []).length > 0;
             const lowConf = (p.confidence || 0) < 60;
             const flagged = hasIssues || lowConf;
+            const off = !p._selected || p._dupAction === 'skip';
             return (
               <tr
                 key={p._tempId}
-                style={{ ...s.tr, ...(flagged ? s.trFlag : {}), ...(p._selected ? {} : s.trOff) }}
+                style={{ ...s.tr, ...(flagged ? s.trFlag : {}), ...(off ? s.trOff : {}) }}
               >
                 <td style={s.td}>
                   <input
@@ -98,16 +105,34 @@ const CatalogueImportPreview = ({ produits, onChange }) => {
                   />
                 </td>
                 <td style={s.td}>
-                  {flagged ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, maxWidth: 180 }}>
-                      {(p.issues || []).map((iss, i) => (
-                        <span key={i} style={s.issueBadge}>{iss}</span>
-                      ))}
-                      {lowConf && <span style={s.confBadge}>confiance {p.confidence || 0}%</span>}
-                    </div>
-                  ) : (
-                    <span style={s.okBadge}>✓ fiable</span>
-                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 230 }}>
+                    {flagged && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                        {(p.issues || []).map((iss, i) => (
+                          <span key={i} style={s.issueBadge}>{iss}</span>
+                        ))}
+                        {lowConf && <span style={s.confBadge}>confiance {p.confidence || 0}%</span>}
+                      </div>
+                    )}
+                    {!flagged && !p._existing && <span style={s.okBadge}>✓ fiable</span>}
+                    {p._existing && (
+                      <div style={s.dupBox}>
+                        <div style={s.dupInfo}>
+                          Au catalogue : <strong>{p._existing.nom}</strong>
+                          {' · '}{fmtPrix(p._existing.prixUnitaire, p._existing.uniteRef)}
+                        </div>
+                        <select
+                          style={{ ...s.inp, width: '100%' }}
+                          value={p._dupAction || 'update'}
+                          onChange={e => patch(p._tempId, '_dupAction', e.target.value)}
+                        >
+                          <option value="update">↻ Mettre à jour</option>
+                          <option value="create">＋ Créer quand même</option>
+                          <option value="skip">✕ Ignorer</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -133,6 +158,8 @@ const s = {
   issueBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: '#fef3c7', color: '#92400e' },
   confBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: '#fee2e2', color: '#b91c1c' },
   okBadge: { fontSize: 11, fontWeight: 600, color: '#15803d' },
+  dupBox: { display: 'flex', flexDirection: 'column', gap: 3, padding: '5px 7px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 7 },
+  dupInfo: { fontSize: 10, color: '#9a3412', lineHeight: 1.35 },
 };
 
 export default CatalogueImportPreview;
