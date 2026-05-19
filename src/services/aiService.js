@@ -158,5 +158,24 @@ export async function suggestRecipe(recipe, catalogueNames) {
   return { ingredients, etapes };
 }
 
-export const aiService = { ocrRecipe, detectAllergens, generateHaccp, suggestRecipe };
+// Matching sémantique : l'IA choisit le produit du catalogue le plus pertinent
+// pour un nom d'ingrédient. Renvoie { produitId, confidence, raison }.
+export async function matchProductSemantic(ingredientName, products) {
+  const ingredient = String(ingredientName || '').trim();
+  const list = (products || [])
+    .filter(p => p && p.id && p.nom)
+    .map(p => ({ id: p.id, nom: p.nom }));
+  if (!ingredient || !list.length) return { produitId: null, confidence: 0, raison: '' };
+  const data = await callAi('match-product', { ingredient, products: list.slice(0, 200) });
+  const r = (data && data.result) || {};
+  // On ne retient l'id que s'il existe réellement dans le catalogue fourni.
+  const produitId = r.produitId && list.some(p => p.id === r.produitId) ? r.produitId : null;
+  return {
+    produitId,
+    confidence: Number(r.confidence) || 0,
+    raison: typeof r.raison === 'string' ? r.raison : '',
+  };
+}
+
+export const aiService = { ocrRecipe, detectAllergens, generateHaccp, suggestRecipe, matchProductSemantic };
 export default aiService;

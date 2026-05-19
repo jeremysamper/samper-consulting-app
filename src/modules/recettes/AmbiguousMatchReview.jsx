@@ -46,6 +46,7 @@ const chip = (conf) => ({
 export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, onClose, onResolved }) {
   const [filterRecette, setFilterRecette] = React.useState('all');
   const [busy, setBusy] = React.useState(false);
+  const [aiBusy, setAiBusy] = React.useState(false);
 
   const catalogueById = React.useMemo(() => {
     const m = new Map();
@@ -97,6 +98,25 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
   };
 
   const resolveOne = (it, product) => resolveMany([{ recetteId: it.recetteId, ingId: it.ing.id, product }]);
+
+  // Matching sémantique par IA : l'IA choisit le meilleur produit du catalogue.
+  const suggererIA = async (it) => {
+    setAiBusy(true);
+    try {
+      const { matchProductSemantic } = await import('../../services/aiService.js');
+      const res = await matchProductSemantic(it.ing.nom, catalogue);
+      const product = res.produitId ? catalogueById.get(res.produitId) : null;
+      if (product) {
+        await resolveMany([{ recetteId: it.recetteId, ingId: it.ing.id, product }]);
+      } else {
+        notify(`L'IA n'a pas trouvé de correspondance fiable pour « ${it.ing.nom} ».`, 'info');
+      }
+    } catch (err) {
+      notify('Suggestion IA impossible : ' + (err.message || err), 'error');
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   // Valide automatiquement toutes les suggestions de confiance >= 85 %.
   const validateHighConfidence = () => {
@@ -174,6 +194,16 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                       </button>
                     );
                   })}
+                  <button
+                    disabled={busy || aiBusy}
+                    onClick={() => suggererIA(it)}
+                    title="Laisser l'IA choisir le produit le plus pertinent"
+                    style={{
+                      padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
+                      cursor: (busy || aiBusy) ? 'wait' : 'pointer',
+                      background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6', fontWeight: 700,
+                    }}
+                  >✨ IA</button>
                   <button
                     disabled={busy}
                     onClick={() => resolveOne(it, null)}

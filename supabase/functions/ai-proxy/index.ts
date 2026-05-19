@@ -79,11 +79,22 @@ Règles :
 - reste sobre : 3 à 8 ingrédients et 3 à 8 étapes maximum
 - si la recette paraît déjà complète, renvoie {"ingredients":[],"etapes":[]}`;
 
+const MATCH_SYSTEM = `Tu rapproches un ingrédient de recette du produit le plus pertinent d'un catalogue.
+On te donne le nom d'un ingrédient et une liste de produits (identifiant + nom).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
+{"produitId":"<id ou null>","confidence":85,"raison":"..."}
+- "produitId" : l'identifiant EXACT d'un produit de la liste, ou null si aucun ne correspond raisonnablement
+- "confidence" : entier 0-100 (ta certitude)
+- "raison" : courte justification (1 phrase)
+Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche acceptée :
+"blanc de poulet" ↔ "escalope de poulet" = oui ; "poulet" ↔ "bouillon de poulet" = non).`;
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
   'generate-haccp': { system: HACCP_SYSTEM, maxTokens: 3072 },
   'suggest-recipe': { system: SUGGEST_SYSTEM, maxTokens: 2048 },
+  'match-product': { system: MATCH_SYSTEM, maxTokens: 512 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -133,6 +144,13 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
         + `Étapes actuelles :\n${etapes.map((e, i) => `${i + 1}. ${e}`).join('\n') || '(aucune)'}\n`
         + `Produits du catalogue : ${catalogue.join(', ') || '(aucun)'}`,
     }];
+  }
+  if (task === 'match-product') {
+    const ingredient = payload.ingredient as string;
+    const products = Array.isArray(payload.products) ? (payload.products as { id: string; nom: string }[]) : [];
+    if (!ingredient || !products.length) throw new Error('Ingrédient ou catalogue manquant.');
+    const list = products.map(p => `- [${p.id}] ${p.nom}`).join('\n');
+    return [{ kind: 'text', text: `Ingrédient à rapprocher : "${ingredient}"\n\nCatalogue :\n${list}` }];
   }
   throw new Error(`Tâche inconnue : ${task}`);
 }

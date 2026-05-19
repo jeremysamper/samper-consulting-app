@@ -51,10 +51,10 @@ consommation sur la console du fournisseur.
 
 ### Tâches supportées
 
-| Tâche              | Phase | Description                                          |
-|--------------------|-------|------------------------------------------------------|
-| `ocr-recipe`       | 1     | Extraction d'une recette depuis une image            |
+| Tâche              | Phase | Description                                             |
+|--------------------|-------|---------------------------------------------------------|
+| `ocr-recipe`       | 1     | Extraction d'une recette depuis une image               |
 | `detect-allergens` | 2     | Déduction des allergènes depuis une liste d'ingrédients |
-
-Les phases suivantes (génération HACCP, suggestions de complétion) ajouteront
-de nouvelles tâches à la même fonction.
+| `generate-haccp`   | 3     | Analyse HACCP (dangers, points de maîtrise) d'une recette |
+| `suggest-recipe`   | 4     | Suggestions d'ingrédients et d'étapes pour une recette  |
+| `match-product`    | 5     | Rapprochement sémantique ingrédient ↔ produit catalogue |
