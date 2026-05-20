@@ -114,10 +114,15 @@ Reste juste et professionnel ; n'invente aucun ingrédient absent de la recette.
 const CATALOGUE_SYSTEM = `Tu extrais et fiabilises un catalogue de produits alimentaires à partir d'un fichier fournisseur brut (export Excel/CSV, format et colonnes variables : Metro, Transgourmet, inventaire interne…).
 On te fournit les lignes brutes du fichier. Tu identifies les vrais produits (ignore en-têtes, totaux, lignes vides, séparateurs) et tu corriges les incohérences.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
-{"produits":[{"nom":"Tomate grappe","categorie":"Légumes","uniteRef":"g","conditionnement":"Caisse 5 kg","prixUnitaire":0.0042,"referenceFourn":"ART12345","confidence":92,"issues":[]}]}
+{"produits":[{"nom":"Tomate grappe","categorie":"Légumes & Fruits","uniteRef":"g","conditionnement":"Caisse 5 kg","prixUnitaire":0.0042,"referenceFourn":"ART12345","confidence":92,"issues":[]}]}
 Règles :
 - "nom" : nom clair du produit (corrige les abréviations évidentes), obligatoire
-- "categorie" : catégorie culinaire cohérente (Légumes, Viandes, Poissons, Épicerie, Crémerie, Boissons, Surgelés…) ; "Autres" si indéterminée
+- "categorie" : utilise EXCLUSIVEMENT l'une de ces 14 catégories exactes (respecte l'orthographe et les majuscules) :
+  "Viandes & Volailles", "Poissons & Fruits de mer", "Légumes & Fruits",
+  "Produits laitiers", "Fromages", "Charcuterie & Salaisons",
+  "Épicerie sèche", "Épices & Condiments", "Huiles & Graisses",
+  "Vins & Spiritueux", "Boissons", "Pâtisserie & Boulangerie",
+  "Surgelés", "Autres"
 - "uniteRef" : unité de référence du prix, EXCLUSIVEMENT "g", "ml" ou "pcs"
   (poids → g, volume → ml, comptage → pcs)
 - "prixUnitaire" : prix par unité de référence, en CHF, nombre positif ; convertis
@@ -215,7 +220,7 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     const rows = (payload.rows as string) || '';
     if (!rows.trim()) throw new Error('Fichier catalogue vide.');
     // Garde-fou : on borne la taille du texte transmis à l'IA.
-    const text = rows.length > 24000 ? rows.slice(0, 24000) : rows;
+    const text = rows.length > 32000 ? rows.slice(0, 32000) : rows;
     return [{ kind: 'text', text: `Lignes brutes du fichier fournisseur :\n${text}` }];
   }
   throw new Error(`Tâche inconnue : ${task}`);

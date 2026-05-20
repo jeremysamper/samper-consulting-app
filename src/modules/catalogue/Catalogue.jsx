@@ -10,8 +10,10 @@ import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 
 const CATEGORIES_PRODUITS = [
   'Viandes & Volailles', 'Poissons & Fruits de mer', 'Légumes & Fruits',
-  'Produits laitiers', 'Épicerie sèche', 'Épices & Condiments',
-  'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie', 'Autres',
+  'Produits laitiers', 'Fromages', 'Charcuterie & Salaisons',
+  'Épicerie sèche', 'Épices & Condiments', 'Huiles & Graisses',
+  'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie',
+  'Surgelés', 'Autres',
 ];
 
 const UNITES_REF = [

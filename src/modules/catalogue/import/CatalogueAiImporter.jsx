@@ -16,9 +16,44 @@ import CatalogueImportPreview from './CatalogueImportPreview.jsx';
 // ═══════════════════════════════════════════════════════════════
 
 // Nombre de lignes de produits envoyées à l'IA par appel.
-const CHUNK_ROWS = 80;
+// 40 lignes max pour rester sous la limite de tokens et éviter les réponses tronquées.
+const CHUNK_ROWS = 40;
 // Appels IA menés en parallèle.
 const PARSE_CONCURRENCY = 4;
+
+// Les 14 catégories officielles du catalogue — doit être identique à CATEGORIES_PRODUITS (Catalogue.jsx).
+const CATALOGUE_CATS = [
+  'Viandes & Volailles', 'Poissons & Fruits de mer', 'Légumes & Fruits',
+  'Produits laitiers', 'Fromages', 'Charcuterie & Salaisons',
+  'Épicerie sèche', 'Épices & Condiments', 'Huiles & Graisses',
+  'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie',
+  'Surgelés', 'Autres',
+];
+
+// Normalise la catégorie renvoyée par l'IA vers une des 14 catégories officielles.
+// L'IA peut répondre "Légumes", "Viandes", "Crémerie"… ce filtre corrige.
+function normalizeCategory(raw) {
+  const n = (raw || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  if (!n) return 'Autres';
+  const exact = CATALOGUE_CATS.find(c =>
+    c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') === n
+  );
+  if (exact) return exact;
+  if (/viande|boeuf|veau|porc|agneau|volaille|poulet|canard|dinde|lapin|gibier/.test(n)) return 'Viandes & Volailles';
+  if (/poisson|saumon|thon|cabillaud|sole|dorade|truite|fruit.?de.?mer|crevette|moule|huitre|homard|langoustine/.test(n)) return 'Poissons & Fruits de mer';
+  if (/legume|fruit|tomate|carotte|pomme.?de.?terre|salade|oignon|courgette|epinard|champignon/.test(n)) return 'Légumes & Fruits';
+  if (/fromage|comte|gruyere|emmental|roquefort|brie|camembert|parmesan|mozzarella/.test(n)) return 'Fromages';
+  if (/lait|creme|beurre|yaourt|fromage.blanc|serac|mascarpone|ricotta/.test(n)) return 'Produits laitiers';
+  if (/charcuterie|jambon|saucisson|salami|lard|bacon|chorizo|saucisse|cervelas|coppa|pancetta|terrine/.test(n)) return 'Charcuterie & Salaisons';
+  if (/epicerie|farine|pate|riz|sucre|bouillon|conserve|lentille|semoule|polenta/.test(n)) return 'Épicerie sèche';
+  if (/epice|condiment|moutarde|ketchup|sauce.soja|vinaigre.balsamique|curry|paprika|cumin|poivre|piment/.test(n)) return 'Épices & Condiments';
+  if (/huile|graisse|margarine|saindoux|ghee|vinaigre/.test(n)) return 'Huiles & Graisses';
+  if (/vin|spiritueux|alcool|whisky|cognac|rhum|vodka|gin|champagne|porto|liqueur/.test(n)) return 'Vins & Spiritueux';
+  if (/biere|boisson|eau|jus|soda|sirop|the|cafe|infusion/.test(n)) return 'Boissons';
+  if (/patisserie|boulangerie|pain|viennoiserie|gateau|tarte|croissant|brioche|biscuit/.test(n)) return 'Pâtisserie & Boulangerie';
+  if (/surgele|congele|glace/.test(n)) return 'Surgelés';
+  return 'Autres';
+}
 
 // Normalise un nom pour comparaison (minuscule, sans accents/ponctuation).
 const normalizeName = (s) => (s || '')
@@ -115,6 +150,8 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
     const issues = [...(p.issues || [])];
     const refKey = (p.referenceFourn || '').trim().toLowerCase();
     const nameKey = normalizeName(p.nom);
+    // Normalise la catégorie IA vers les catégories officielles.
+    const categorie = normalizeCategory(p.categorie);
     const existing = (refKey && existIndex.byRef.get(refKey))
       || (nameKey && existIndex.byName.get(nameKey))
       || null;
@@ -126,6 +163,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
     if (!p.nom) issues.push('nom manquant');
     return {
       ...p,
+      categorie,
       _tempId: 'p' + idx + '-' + Math.random().toString(36).slice(2, 6),
       issues,
       _selected: !!p.nom,
