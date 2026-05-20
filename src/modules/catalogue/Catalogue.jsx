@@ -9,11 +9,11 @@ import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 // ═══════════════════════════════════════════════════════════════
 
 const CATEGORIES_PRODUITS = [
-  'Viandes & Volailles', 'Poissons & Fruits de mer', 'Légumes & Fruits',
-  'Produits laitiers', 'Fromages', 'Charcuterie & Salaisons',
-  'Épicerie sèche', 'Épices & Condiments', 'Huiles & Graisses',
-  'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie',
-  'Surgelés', 'Autres',
+  'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
+  'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
+  'Boulangerie / pâtisserie', 'Boissons', 'Alcools',
+  'Surgelés', 'Condiments / sauces', 'Herbes / épices',
+  'Hygiène / non alimentaire', 'Autres',
 ];
 
 const UNITES_REF = [
@@ -193,13 +193,20 @@ const Catalogue = ({ user, etablissement }) => {
   const WOOD_SHEET_CAT = {
     'food': 'Épicerie sèche', 'alimentaire': 'Épicerie sèche',
     'tabak': 'Autres', 'tabac': 'Autres',
-    'wein': 'Vins & Spiritueux', 'vin': 'Vins & Spiritueux',
-    'spirituosen': 'Vins & Spiritueux', 'spiritueux': 'Vins & Spiritueux',
-    'getränke': 'Boissons', 'boissons': 'Boissons',
-    'molkerei': 'Produits laitiers', 'laitier': 'Produits laitiers', 'backwaren': 'Pâtisserie & Boulangerie',
-    'früchte': 'Légumes & Fruits', 'gemüse': 'Légumes & Fruits', 'fruits': 'Légumes & Fruits',
-    'metzgerei': 'Viandes & Volailles', 'viande': 'Viandes & Volailles', 'boucherie': 'Viandes & Volailles',
-    'nonfood': 'Autres', 'nearfood': 'Autres',
+    'wein': 'Alcools', 'vin': 'Alcools', 'vins': 'Alcools',
+    'spirituosen': 'Alcools', 'spiritueux': 'Alcools', 'alcool': 'Alcools',
+    'bier': 'Alcools', 'biere': 'Alcools', 'champagne': 'Alcools',
+    'getränke': 'Boissons', 'boissons': 'Boissons', 'boisson': 'Boissons',
+    'molkerei': 'Produits laitiers', 'laitier': 'Produits laitiers',
+    'cremerie': 'Crèmerie / fromages', 'fromage': 'Crèmerie / fromages',
+    'backwaren': 'Boulangerie / pâtisserie', 'boulangerie': 'Boulangerie / pâtisserie', 'patisserie': 'Boulangerie / pâtisserie',
+    'früchte': 'Fruits & légumes', 'gemüse': 'Fruits & légumes', 'fruits': 'Fruits & légumes', 'legume': 'Fruits & légumes',
+    'metzgerei': 'Viandes', 'viande': 'Viandes', 'boucherie': 'Viandes', 'volaille': 'Viandes',
+    'fischerei': 'Poissons & fruits de mer', 'poisson': 'Poissons & fruits de mer', 'maree': 'Poissons & fruits de mer',
+    'surgele': 'Surgelés', 'congele': 'Surgelés', 'frozen': 'Surgelés',
+    'epice': 'Herbes / épices', 'herbe': 'Herbes / épices', 'gewurz': 'Herbes / épices',
+    'condiment': 'Condiments / sauces', 'sauce': 'Condiments / sauces',
+    'nonfood': 'Hygiène / non alimentaire', 'nearfood': 'Hygiène / non alimentaire', 'hygiene': 'Hygiène / non alimentaire',
   };
 
   const detectCategory = (sheetName) => {

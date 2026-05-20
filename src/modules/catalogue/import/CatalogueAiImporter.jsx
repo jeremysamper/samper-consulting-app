@@ -23,11 +23,11 @@ const PARSE_CONCURRENCY = 4;
 
 // Les 14 catégories officielles du catalogue — doit être identique à CATEGORIES_PRODUITS (Catalogue.jsx).
 const CATALOGUE_CATS = [
-  'Viandes & Volailles', 'Poissons & Fruits de mer', 'Légumes & Fruits',
-  'Produits laitiers', 'Fromages', 'Charcuterie & Salaisons',
-  'Épicerie sèche', 'Épices & Condiments', 'Huiles & Graisses',
-  'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie',
-  'Surgelés', 'Autres',
+  'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
+  'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
+  'Boulangerie / pâtisserie', 'Boissons', 'Alcools',
+  'Surgelés', 'Condiments / sauces', 'Herbes / épices',
+  'Hygiène / non alimentaire', 'Autres',
 ];
 
 // Normalise la catégorie renvoyée par l'IA vers une des 14 catégories officielles.
@@ -39,19 +39,52 @@ function normalizeCategory(raw) {
     c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') === n
   );
   if (exact) return exact;
-  if (/viande|boeuf|veau|porc|agneau|volaille|poulet|canard|dinde|lapin|gibier/.test(n)) return 'Viandes & Volailles';
-  if (/poisson|saumon|thon|cabillaud|sole|dorade|truite|fruit.?de.?mer|crevette|moule|huitre|homard|langoustine/.test(n)) return 'Poissons & Fruits de mer';
-  if (/legume|fruit|tomate|carotte|pomme.?de.?terre|salade|oignon|courgette|epinard|champignon/.test(n)) return 'Légumes & Fruits';
-  if (/fromage|comte|gruyere|emmental|roquefort|brie|camembert|parmesan|mozzarella/.test(n)) return 'Fromages';
-  if (/lait|creme|beurre|yaourt|fromage.blanc|serac|mascarpone|ricotta/.test(n)) return 'Produits laitiers';
-  if (/charcuterie|jambon|saucisson|salami|lard|bacon|chorizo|saucisse|cervelas|coppa|pancetta|terrine/.test(n)) return 'Charcuterie & Salaisons';
-  if (/epicerie|farine|pate|riz|sucre|bouillon|conserve|lentille|semoule|polenta/.test(n)) return 'Épicerie sèche';
-  if (/epice|condiment|moutarde|ketchup|sauce.soja|vinaigre.balsamique|curry|paprika|cumin|poivre|piment/.test(n)) return 'Épices & Condiments';
-  if (/huile|graisse|margarine|saindoux|ghee|vinaigre/.test(n)) return 'Huiles & Graisses';
-  if (/vin|spiritueux|alcool|whisky|cognac|rhum|vodka|gin|champagne|porto|liqueur/.test(n)) return 'Vins & Spiritueux';
-  if (/biere|boisson|eau|jus|soda|sirop|the|cafe|infusion/.test(n)) return 'Boissons';
-  if (/patisserie|boulangerie|pain|viennoiserie|gateau|tarte|croissant|brioche|biscuit/.test(n)) return 'Pâtisserie & Boulangerie';
+  // Viandes — avant fromage/cremerie pour éviter les faux positifs
+  if (/viande|boucherie|boeuf|veau|porc|agneau|gibier|volaille|poulet|canard|dinde|lapin/.test(n)) return 'Viandes';
+  // Poissons & fruits de mer
+  if (/poisson|maree|saumon|thon|cabillaud|sole|dorade|truite|fruit.?de.?mer|crevette|moule|huitre|homard|langoustine/.test(n)) return 'Poissons & fruits de mer';
+  // Fruits & légumes
+  if (/legume|fruit|tomate|carotte|pomme.?de.?terre|salade|oignon|courgette|epinard|champignon/.test(n)) return 'Fruits & légumes';
+  // Crèmerie / fromages — fromage avant lait pour éviter "fromage blanc" → Produits laitiers
+  if (/fromage|comte|gruyere|emmental|roquefort|brie|camembert|parmesan|mozzarella|cremerie/.test(n)) return 'Crèmerie / fromages';
+  // Produits laitiers
+  if (/lait|creme|beurre|yaourt|serac|mascarpone|ricotta/.test(n)) return 'Produits laitiers';
+  // Boulangerie / pâtisserie
+  if (/boulangerie|patisserie|pain|viennoiserie|gateau|tarte|croissant|brioche|biscuit/.test(n)) return 'Boulangerie / pâtisserie';
+  // Alcools — vin, bière, spiritueux
+  if (/\bvin\b|champagne|whisky|cognac|rhum|vodka|gin|porto|liqueur|spiritueux|alcool|biere/.test(n)) return 'Alcools';
+  // Boissons sans alcool
+  if (/boisson|eau|jus|soda|sirop|\bthe\b|cafe|infusion/.test(n)) return 'Boissons';
+  // Surgelés
   if (/surgele|congele|glace/.test(n)) return 'Surgelés';
+  // Condiments / sauces
+  if (/condiment|sauce|moutarde|ketchup|vinaigre|curry|paprika|cumin|poivre|piment/.test(n)) return 'Condiments / sauces';
+  // Herbes / épices
+  if (/epice|herbe|basilic|thym|romarin|persil|coriandre|laurier|menthe/.test(n)) return 'Herbes / épices';
+  // Hygiène / non alimentaire
+  if (/hygiene|nonfood|detergent|savon|desinfectant|emballage|materiel/.test(n)) return 'Hygiène / non alimentaire';
+  // Épicerie sèche (fallback large)
+  if (/epicerie|farine|pate|riz|sucre|bouillon|conserve|lentille|semoule|polenta/.test(n)) return 'Épicerie sèche';
+  return 'Autres';
+}
+
+// Déduit la catégorie probable à partir du nom de la feuille Excel.
+// Sert d'indice de contexte passé à l'IA dans l'en-tête de chaque lot.
+function categoryFromSheetName(sheetName) {
+  const n = (sheetName || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (/viande|boucherie|boeuf|veau|porc|agneau|gibier|volaille|poulet|metzgerei/.test(n)) return 'Viandes';
+  if (/poisson|maree|fischerei|seafood/.test(n)) return 'Poissons & fruits de mer';
+  if (/legume|fruit|fruchte|gemuse|maraicher/.test(n)) return 'Fruits & légumes';
+  if (/cremerie|fromage|molkerei/.test(n)) return 'Crèmerie / fromages';
+  if (/laitier|dairy/.test(n)) return 'Produits laitiers';
+  if (/boulangerie|patisserie|pain|backwaren|viennoiserie/.test(n)) return 'Boulangerie / pâtisserie';
+  if (/alcool|\bvin\b|vins|wein|spiritueux|spirituosen|champagne|biere|bier/.test(n)) return 'Alcools';
+  if (/boisson|getranke|soda|jus/.test(n)) return 'Boissons';
+  if (/surgele|congele|frozen/.test(n)) return 'Surgelés';
+  if (/condiment|sauce|vinaigre/.test(n)) return 'Condiments / sauces';
+  if (/epice|herbe|gewurz/.test(n)) return 'Herbes / épices';
+  if (/hygiene|nonfood|nearfood|detergent|emballage|non.alimentaire/.test(n)) return 'Hygiène / non alimentaire';
+  if (/epicerie|alimentation|food\b|sec\b/.test(n)) return 'Épicerie sèche';
   return 'Autres';
 }
 
@@ -81,7 +114,8 @@ const detectAberrantPrice = (prix, uniteRef) => {
 // Découpe une liste de lignes en lots, chaque lot préfixé d'un en-tête
 // de contexte (titres de colonnes) pour que l'IA comprenne la structure.
 function chunkLines(header, rows) {
-  const clean = rows.map(r => String(r || '').trim()).filter(Boolean);
+  // Filtre les lignes vides OU entièrement composées de séparateurs/espaces (" | | | ").
+  const clean = rows.map(r => String(r || '').trim()).filter(l => l.replace(/[\s|]/g, '').length > 0);
   const out = [];
   for (let i = 0; i < clean.length; i += CHUNK_ROWS) {
     const part = clean.slice(i, i + CHUNK_ROWS);
@@ -91,12 +125,23 @@ function chunkLines(header, rows) {
 }
 
 // Convertit un fichier (Excel, CSV ou PDF) en lots de texte pour l'IA.
+// Renvoie { chunks: string[], stats: SheetStat[] }.
+// Correction clé : les 2 premières lignes d'une feuille (titre + colonnes) sont placées
+// UNIQUEMENT dans l'en-tête de contexte (répété en préfixe de chaque lot) — elles ne
+// sont PAS renvoyées une seconde fois dans les données, ce qui évitait la duplication.
 async function fileToChunks(file) {
   const name = (file.name || '').toLowerCase();
+  const toLine = (r) => (Array.isArray(r) ? r : []).map(c => (c == null ? '' : String(c))).join(' | ');
 
   if (name.endsWith('.csv') || file.type === 'text/csv') {
     const lines = (await file.text()).split(/\r?\n/);
-    return chunkLines(lines[0] || '', lines);
+    const header = lines[0] || '';
+    const data = lines.slice(1);
+    const chunks = chunkLines(header, data);
+    return {
+      chunks,
+      stats: [{ sheet: 'CSV', rowsTotal: lines.length, rowsData: data.length, chunks: chunks.length, skipped: false, catHint: 'Autres' }],
+    };
   }
 
   if (name.endsWith('.pdf') || file.type === 'application/pdf') {
@@ -105,21 +150,52 @@ async function fileToChunks(file) {
     if (scanned) {
       throw new Error('PDF scanné (image) — sélectionnez un PDF avec du texte sélectionnable, ou un fichier Excel/CSV.');
     }
-    return chunkLines('', text.split(/\r?\n/));
+    const lines = text.split(/\r?\n/);
+    const chunks = chunkLines('', lines);
+    return {
+      chunks,
+      stats: [{ sheet: 'PDF', rowsTotal: lines.length, rowsData: lines.length, chunks: chunks.length, skipped: false, catHint: 'Autres' }],
+    };
   }
 
-  const data = new Uint8Array(await file.arrayBuffer());
-  const wb = XLSX.read(data, { type: 'array' });
+  // ── Excel / XLS ──
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const wb = XLSX.read(buf, { type: 'array' });
   const chunks = [];
-  const toLine = (r) => (Array.isArray(r) ? r : []).map(c => (c == null ? '' : String(c))).join(' | ');
+  const stats = [];
+
   wb.SheetNames.forEach((sn) => {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn] || {}, { header: 1, blankrows: false });
-    if (!rows.length) return;
-    // En-tête de contexte : les 2 premières lignes (titre + colonnes).
-    const header = ['# Feuille : ' + sn, ...rows.slice(0, 2).map(toLine)].join('\n');
-    chunks.push(...chunkLines(header, rows.map(toLine)));
+    if (!rows.length) {
+      stats.push({ sheet: sn, rowsTotal: 0, rowsData: 0, chunks: 0, skipped: true, catHint: 'Autres' });
+      return;
+    }
+
+    // Catégorie déduite du nom de la feuille → indice de contexte pour l'IA
+    const catHint = categoryFromSheetName(sn);
+
+    // En-tête de contexte : nom de feuille + catégorie suggérée + 2 premières lignes
+    const headerParts = [`# Feuille : ${sn}`];
+    if (catHint !== 'Autres') headerParts.push(`# Catégorie suggérée : ${catHint}`);
+    rows.slice(0, 2).forEach(r => headerParts.push(toLine(r)));
+    const ctxHeader = headerParts.join('\n');
+
+    // Données : à partir de la ligne 2 pour éviter de dupliquer les en-têtes déjà dans ctxHeader.
+    const dataLines = rows.slice(2).map(toLine);
+    const sheetChunks = chunkLines(ctxHeader, dataLines);
+    chunks.push(...sheetChunks);
+
+    stats.push({
+      sheet: sn,
+      rowsTotal: rows.length,
+      rowsData: dataLines.length,
+      chunks: sheetChunks.length,
+      skipped: false,
+      catHint,
+    });
   });
-  return chunks;
+
+  return { chunks, stats };
 }
 
 const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [], onClose }) => {
@@ -131,6 +207,8 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
   const [progress, setProgress] = React.useState({ done: 0, total: 0 });
   const fileRef = React.useRef(null);
   const cancelRef = React.useRef(false);
+  const [fileStats, setFileStats] = React.useState(null);   // statistiques par feuille
+  const [parseErrors, setParseErrors] = React.useState(0);  // lots IA ayant échoué
 
   // Index des produits déjà au catalogue (référence + nom normalisé).
   const existIndex = React.useMemo(() => {
@@ -182,9 +260,10 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
     setProgress({ done: 0, total: 0 });
     cancelRef.current = false;
     try {
-      const chunks = await fileToChunks(file);
+      const { chunks, stats } = await fileToChunks(file);
+      setFileStats(stats || []);
       if (!chunks.length) {
-        notifyLegacy('Fichier vide ou illisible.', 'error');
+        notifyLegacy('Fichier vide ou illisible — aucune donnée détectée.', 'error');
         setStep('pick');
         return;
       }
@@ -201,16 +280,23 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       }
       const { parseCatalogue } = await import('../../../services/aiService.js');
       setProgress({ done: 0, total: chunks.length });
+      setParseErrors(0);
       const all = [];
+      let errCount = 0;
       for (let i = 0; i < chunks.length; i += PARSE_CONCURRENCY) {
         if (cancelRef.current) break;
         const batch = chunks.slice(i, i + PARSE_CONCURRENCY);
         const res = await Promise.allSettled(batch.map(c => parseCatalogue(c)));
         res.forEach((r) => {
           if (r.status === 'fulfilled') all.push(...(r.value.produits || []));
+          else {
+            errCount++;
+            console.warn('[CatalogueAiImporter] lot IA en erreur :', r.reason);
+          }
         });
         setProgress({ done: Math.min(i + PARSE_CONCURRENCY, chunks.length), total: chunks.length });
       }
+      setParseErrors(errCount);
       if (!all.length) {
         notifyLegacy('Aucun produit détecté par l\'IA dans ce fichier.', 'info');
         setStep('pick');
@@ -360,7 +446,31 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                   ? <span style={{ color: '#b45309' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
                   : <span style={{ color: '#15803d' }}>aucune anomalie</span>}
                 {fournisseurNom && <span> · Fournisseur : <strong>{fournisseurNom}</strong></span>}
+                {parseErrors > 0 && (
+                  <span style={{ color: '#dc2626' }}> · <strong>{parseErrors}</strong> lot(s) IA en erreur (voir console)</span>
+                )}
               </div>
+              {/* Diagnostique par feuille — affiché seulement si plusieurs feuilles */}
+              {fileStats && fileStats.length > 1 && (
+                <div style={st.sheetStats}>
+                  {fileStats.map(s => (
+                    <div key={s.sheet} style={{ ...st.sheetItem, ...(s.skipped ? st.sheetItemSkipped : {}) }}>
+                      <span style={{ fontWeight: 600 }}>📄 {s.sheet}</span>
+                      {s.skipped
+                        ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide — ignorée</span>
+                        : <>
+                            <span style={{ color: 'var(--text2)' }}>
+                              {s.rowsData} ligne{s.rowsData !== 1 ? 's' : ''} · {s.chunks} lot{s.chunks !== 1 ? 's' : ''} IA
+                            </span>
+                            {s.catHint && s.catHint !== 'Autres' && (
+                              <span style={st.catHintBadge}>{s.catHint}</span>
+                            )}
+                          </>
+                      }
+                    </div>
+                  ))}
+                </div>
+              )}
               <CatalogueImportPreview produits={produits} onChange={setProduits} />
               <div style={{ fontSize: 11, color: 'var(--text2)' }}>
                 Les lignes surlignées portent une anomalie ou une confiance faible.
@@ -418,6 +528,11 @@ const st = {
   banner: { padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' },
   progressTrack: { width: 'min(360px,80vw)', height: 10, background: 'var(--bg)', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' },
   progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
+  // Diagnostique par feuille
+  sheetStats: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  sheetItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: 'var(--text)' },
+  sheetItemSkipped: { opacity: 0.55 },
+  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 8, background: '#ede9fe', color: '#5b21b6', fontSize: 10, fontWeight: 600 },
 };
 
 export default CatalogueAiImporter;

@@ -11,11 +11,11 @@ import React from 'react';
 // ═══════════════════════════════════════════════════════════════
 
 const CATS = [
-  'Viandes & Volailles', 'Poissons & Fruits de mer', 'Légumes & Fruits',
-  'Produits laitiers', 'Fromages', 'Charcuterie & Salaisons',
-  'Épicerie sèche', 'Épices & Condiments', 'Huiles & Graisses',
-  'Vins & Spiritueux', 'Boissons', 'Pâtisserie & Boulangerie',
-  'Surgelés', 'Autres',
+  'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
+  'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
+  'Boulangerie / pâtisserie', 'Boissons', 'Alcools',
+  'Surgelés', 'Condiments / sauces', 'Herbes / épices',
+  'Hygiène / non alimentaire', 'Autres',
 ];
 const UNITES = ['g', 'ml', 'pcs'];
 

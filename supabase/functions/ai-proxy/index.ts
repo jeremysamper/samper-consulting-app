@@ -117,12 +117,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exac
 {"produits":[{"nom":"Tomate grappe","categorie":"Légumes & Fruits","uniteRef":"g","conditionnement":"Caisse 5 kg","prixUnitaire":0.0042,"referenceFourn":"ART12345","confidence":92,"issues":[]}]}
 Règles :
 - "nom" : nom clair du produit (corrige les abréviations évidentes), obligatoire
-- "categorie" : utilise EXCLUSIVEMENT l'une de ces 14 catégories exactes (respecte l'orthographe et les majuscules) :
-  "Viandes & Volailles", "Poissons & Fruits de mer", "Légumes & Fruits",
-  "Produits laitiers", "Fromages", "Charcuterie & Salaisons",
-  "Épicerie sèche", "Épices & Condiments", "Huiles & Graisses",
-  "Vins & Spiritueux", "Boissons", "Pâtisserie & Boulangerie",
-  "Surgelés", "Autres"
+- "categorie" : utilise EXCLUSIVEMENT l'une de ces 14 catégories exactes (respecte l'orthographe, les accents, la casse et les slashes) :
+  "Viandes", "Poissons & fruits de mer", "Fruits & légumes",
+  "Épicerie sèche", "Produits laitiers", "Crèmerie / fromages",
+  "Boulangerie / pâtisserie", "Boissons", "Alcools",
+  "Surgelés", "Condiments / sauces", "Herbes / épices",
+  "Hygiène / non alimentaire", "Autres"
 - "uniteRef" : unité de référence du prix, EXCLUSIVEMENT "g", "ml" ou "pcs"
   (poids → g, volume → ml, comptage → pcs)
 - "prixUnitaire" : prix par unité de référence, en CHF, nombre positif ; convertis
