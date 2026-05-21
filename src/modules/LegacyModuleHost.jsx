@@ -18,6 +18,7 @@ const Pertes = lazy(() => import('./pertes/Pertes.jsx'));
 const Planning = lazy(() => import('./planning/Planning.jsx'));
 const Recettes = lazy(() => import('./recettes/Recettes.jsx'));
 const Roles = lazy(() => import('./roles/Roles.jsx'));
+const Previsions = lazy(() => import('./previsions/Previsions.jsx'));
 const SOP = lazy(() => import('./sop/SOP.jsx'));
 
 export default function LegacyModuleHost({
@@ -87,6 +88,11 @@ export default function LegacyModuleHost({
       const HACCPComponent = HACCP;
       return permissions.haccp !== false
         ? wrap('HACCP', <HACCPComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'previsions': {
+      return permissions.previsions === true
+        ? wrap('Prévisions', <Previsions user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'fiches_salle': {
