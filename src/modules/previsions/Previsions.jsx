@@ -20,12 +20,25 @@ export default function Previsions({ user, etablissement }) {
     );
   }
 
+  const etabId = etablissement?.id;
+
   return (
     <section style={{ padding: '20px 24px', position: 'relative', minHeight: '100%' }}>
       <SectionHeader
         title="Prévisions"
         sub="Vue semaine cuisine — couverts et particularités par jour"
       />
+
+      {/* Bannière d'alerte si aucun établissement chargé */}
+      {!etabId && (
+        <div style={{
+          marginTop: 12, padding: '10px 14px', borderRadius: 8,
+          background: '#fef9ec', border: '1px solid #fbbf24',
+          color: '#92400e', fontSize: 13, fontFamily: 'var(--font)',
+        }}>
+          ⚠️ Aucun établissement sélectionné. Sélectionne un établissement avant de saisir des réservations.
+        </div>
+      )}
 
       {/* État vide — vue semaine en J3 */}
       <div style={{
@@ -43,27 +56,30 @@ export default function Previsions({ user, etablissement }) {
         </div>
       </div>
 
-      {/* FAB + Nouvelle réservation */}
+      {/* FAB — désactivé si pas d'établissement */}
       <button
         type="button"
-        onClick={() => setShowForm(true)}
+        onClick={() => etabId ? setShowForm(true) : null}
+        disabled={!etabId}
         aria-label="Nouvelle réservation"
-        title="Nouvelle réservation"
+        title={etabId ? 'Nouvelle réservation' : 'Sélectionne un établissement d\'abord'}
         style={{
           position: 'fixed', bottom: 28, right: 24,
           width: 56, height: 56, borderRadius: '50%',
-          background: 'var(--accent)', color: '#fff', border: 'none',
-          cursor: 'pointer', fontSize: 28, fontWeight: 700,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+          background: etabId ? 'var(--accent)' : 'var(--border)',
+          color: '#fff', border: 'none',
+          cursor: etabId ? 'pointer' : 'not-allowed',
+          fontSize: 28, fontWeight: 700,
+          boxShadow: etabId ? '0 4px 20px rgba(0,0,0,0.18)' : 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 100,
+          zIndex: 100, opacity: etabId ? 1 : 0.5,
         }}>
         +
       </button>
 
-      {showForm && (
+      {showForm && etabId && (
         <ReservationForm
-          etablissementId={etablissement?.id}
+          etablissementId={etabId}
           onClose={() => setShowForm(false)}
           onSaved={() => { /* rafraîchissement vue semaine branché en J3 */ }}
         />
