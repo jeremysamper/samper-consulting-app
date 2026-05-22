@@ -102,7 +102,20 @@ Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche
 const FICHE_SALLE_SYSTEM = `Tu es un expert de la restauration. À partir d'une recette, tu rédiges sa FICHE SALLE destinée à l'équipe de service pour conseiller les clients.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 {"descriptionService":"...","temperatureService":"...","dressageNotes":"...","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","alternative":"...","notes":"..."}],"accordsGeneraux":["Vin rouge corsé","Vin blanc sec"]}
-- "descriptionService" : description commerciale et appétissante du plat pour le service (2 à 3 phrases)
+- "descriptionService" : exactement 2 phrases, 30 à 40 mots au total, ton chef chaleureux et direct (voir exemples ci-dessous).
+  RÈGLES DE STYLE : verbes vivants au lieu d'adjectifs creux ; mentionner les ingrédients principaux (le serveur doit pouvoir répondre aux questions à table) ; privilégier le concret (texture, cuisson, geste, origine des produits quand pertinent) ; une touche personnelle autorisée ("comme on l'aime", "à notre façon", "selon l'arrivage") mais pas obligatoire.
+  INTERDITS ABSOLUS pour descriptionService : "Ce plat est composé de…" / "Une composition de…" / "Un mariage subtil entre…" ; adjectifs vides (délicat, savoureux, harmonieux, raffiné, exquis, sublime, onctueux sauf si justifié par la texture réelle) ; superlatifs gratuits ; allergènes mentionnés (champ séparé) ; point d'exclamation ; emoji.
+  EXEMPLES DE CALIBRAGE DU TON :
+  ❌ "Ce tartare de bœuf est délicatement préparé au couteau et sublimé par un jaune d'œuf onctueux, accompagné de frites paille croustillantes et d'une émulsion gribiche aux notes herbacées."
+  ✅ "Du bœuf coupé au couteau, un jaune d'œuf bien crémeux qu'on casse à table, et nos frites paille pour le croquant. La gribiche maison apporte les herbes du jardin et ce qu'il faut d'acidité."
+  ❌ "Une assiette de Saint-Jacques snackées sur un lit de purée de céleri-rave, relevée par une émulsion au beurre noisette et parsemée de cresson."
+  ✅ "Trois Saint-Jacques juste saisies, posées sur une purée de céleri bien crémeuse. Un trait de beurre noisette pour la rondeur, et le cresson qui réveille tout."
+  ❌ "Filet de truite du lac confit à basse température, accompagné de légumes racines glacés et d'une sauce vin jaune réduite."
+  ✅ "Notre truite du lac cuite tout doucement pour qu'elle reste fondante. On la sert avec les légumes racines du moment et une sauce au vin jaune, courte et bien serrée."
+  ❌ "Risotto crémeux aux champignons des bois, parfumé à l'huile de truffe et fini au parmesan affiné 24 mois."
+  ✅ "Un risotto qu'on monte au dernier moment avec les champignons des bois ramassés cette semaine. Parmesan vieux, un filet d'huile de truffe à table, et c'est tout."
+  ❌ "Soufflé chaud au Grand Marnier, servi avec une glace artisanale à la vanille de Madagascar et son coulis d'oranges sanguines."
+  ✅ "Notre soufflé Grand Marnier qui monte au four et qu'on sert tout de suite. À côté, une glace vanille faite maison et un coulis d'oranges sanguines pour la fraîcheur."
 - "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
 - "dressageNotes" : conseils de dressage / service en salle (1 à 2 phrases)
 - "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
