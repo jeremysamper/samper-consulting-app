@@ -22,11 +22,13 @@ export function usePrevisionsSemaine(etablissementId) {
     setError(null);
     try {
       const dateStr = typeof dateDebut === 'string' ? dateDebut : isoDate(dateDebut);
-      console.log('[usePrevisionsSemaine] fetchSemaine', { etablissementId, dateStr });
+      const t0 = performance.now();
       const { data, error: err } = await supabase.rpc('get_semaine_previsions', {
         p_etablissement_id: etablissementId,
         p_date_debut:       dateStr,
       });
+      const t1 = performance.now();
+      console.log(`[usePrevisionsSemaine] RPC ${(t1 - t0).toFixed(0)}ms`, { dateStr, count: data?.length });
       if (err) { setError(mapError(err)); return; }
       setSemaine(Array.isArray(data) ? data : []);
     } finally {

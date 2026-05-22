@@ -46,13 +46,15 @@ export function useReservations(etablissementId) {
   }
 
   async function findByDate(date) {
-    console.log('[useReservations] findByDate', { etablissementId, date });
+    const t0 = performance.now();
     const { data, error } = await supabase
       .from(TABLE)
       .select('*, reservation_tags(*)')
       .eq('etablissement_id', etablissementId)
       .eq('date_service', date)
       .order('heure_arrivee');
+    const t1 = performance.now();
+    console.log(`[useReservations] findByDate ${(t1 - t0).toFixed(0)}ms`, { date, count: data?.length });
     if (error) return { data: null, error: mapError(error) };
     return { data, error: null };
   }

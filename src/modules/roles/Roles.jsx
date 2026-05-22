@@ -13,11 +13,11 @@ const Roles = ({ user }) => {
   const demoData = getDemoData();
   const [activeTab, setActiveTab] = React.useState('permissions');
   const DEFAULT_PERMS = React.useMemo(() => JSON.parse(JSON.stringify({
-    consultant:   { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, faq:true },
-    patron:       { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
-    resp_cuisine: { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
-    cuisinier:    { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
-    serveur:      { dashboard:true, planning:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, faq:true }
+    consultant:   { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, previsions:true,  fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, faq:true },
+    patron:       { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, previsions:true,  fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    resp_cuisine: { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, previsions:true,  fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    cuisinier:    { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, previsions:false, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
+    serveur:      { dashboard:true, planning:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, previsions:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, faq:true }
   })), []);
   const [selected, setSelected] = React.useState('consultant');
   const [permissions, setPermissions] = React.useState(() => mergePermissionDefaults(readLegacyStorage('sc_permissions', DEFAULT_PERMS), DEFAULT_PERMS));
@@ -59,6 +59,9 @@ const Roles = ({ user }) => {
     return () => { unsub1 && unsub1(); unsub2 && unsub2(); };
   }, []);
 
+  // DETTE R14 : MODULES et DEFAULT_PERMS devraient être lus
+  // dynamiquement depuis moduleConfig.navItems + defaultPermissions
+  // pour éviter la duplication. À refacto en J5-J6.
   const MODULES = [
     { id:'dashboard',       label:'Tableau de bord' },
     { id:'planning',        label:'Planning & Pointage' },
@@ -66,6 +69,7 @@ const Roles = ({ user }) => {
     { id:'inventaire',      label:'Inventaire' },
     { id:'pertes',          label:'Pertes' },
     { id:'haccp',           label:'HACCP' },
+    { id:'previsions',      label:'Prévisions' },
     { id:'fiches_salle',    label:'Fiches salle' },
     { id:'documents',       label:'Documents' },
     { id:'factures',        label:'Factures' },

@@ -50,21 +50,24 @@ export default function Previsions({ user, etablissement }) {
       )}
 
       {/* ── Routeur local : vue semaine ↔ vue jour ── */}
-      {etabId && !selectedDate && (
-        <VueSemaine
-          etablissementId={etabId}
-          onDayClick={setSelectedDate}
-          refreshKey={refreshKey}
-        />
-      )}
-
-      {etabId && selectedDate && (
-        <VueJour
-          etablissementId={etabId}
-          date={selectedDate}
-          onBack={() => setSelectedDate(null)}
-          onResaUpdated={() => setRefreshKey((k) => k + 1)}
-        />
+      {etabId && (
+        <>
+          <div style={{ display: selectedDate ? 'none' : 'block' }}>
+            <VueSemaine
+              etablissementId={etabId}
+              onDayClick={setSelectedDate}
+              refreshKey={refreshKey}
+            />
+          </div>
+          {selectedDate && (
+            <VueJour
+              etablissementId={etabId}
+              date={selectedDate}
+              onBack={() => setSelectedDate(null)}
+              onResaUpdated={() => setRefreshKey((k) => k + 1)}
+            />
+          )}
+        </>
       )}
 
       {/* État vide si pas d'établissement */}
