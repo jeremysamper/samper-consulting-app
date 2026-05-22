@@ -231,6 +231,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated }
         <ReservationDetailModal
           resa={selectedResa}
           onClose={() => setSelectedResa(null)}
+          onResaUpdated={() => { setSelectedResa(null); load(); onResaUpdated?.(); }}
         />
       )}
     </div>

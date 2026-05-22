@@ -1,4 +1,11 @@
-export default function ReservationDetailModal({ resa, onClose }) {
+import { useState } from 'react';
+import { notify } from '../../components/toast/index.js';
+import { useReservations } from '../../hooks/useReservations.js';
+
+export default function ReservationDetailModal({ resa, onClose, onResaUpdated }) {
+  const reservations  = useReservations(resa.etablissement_id);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
   const tags = Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [];
 
   function LigneDetail({ label, valeur }) {
@@ -19,6 +26,18 @@ export default function ReservationDetailModal({ resa, onClose }) {
         </div>
       </div>
     );
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const { error } = await reservations.delete(resa.id);
+    setDeleting(false);
+    if (error) {
+      notify(error, 'error');
+      return; // modal reste ouvert → l'utilisateur peut réessayer
+    }
+    notify(`Réservation ${resa.nom} annulée`, 'success');
+    onResaUpdated?.();
   }
 
   return (
@@ -97,31 +116,80 @@ export default function ReservationDetailModal({ resa, onClose }) {
               </div>
             </div>
           )}
-          <div style={{
-            marginTop: 14, padding: '8px 12px', borderRadius: 8,
-            background: 'var(--bg)', fontSize: 11, color: 'var(--text3)', fontStyle: 'italic',
-          }}>
-            Édition et suppression disponibles en J4.
-          </div>
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: '12px 18px', borderTop: '1px solid var(--border)',
-          display: 'flex', justifyContent: 'flex-end',
-        }}>
-          <button
-            type="button" onClick={onClose}
-            style={{
-              padding: '9px 18px', borderRadius: 8,
-              border: '1px solid var(--border)', background: 'var(--surface)',
-              color: 'var(--text)', cursor: 'pointer',
-              fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
-            }}
-          >
-            Fermer
-          </button>
-        </div>
+        {/* Footer — état normal */}
+        {!showConfirm && (
+          <div style={{
+            padding: '12px 18px', borderTop: '1px solid var(--border)',
+            display: 'flex', justifyContent: 'space-between', gap: 8,
+          }}>
+            <button
+              type="button" onClick={() => setShowConfirm(true)}
+              style={{
+                padding: '9px 18px', borderRadius: 8,
+                border: '1px solid #fca5a5', background: '#fef2f2',
+                color: '#b91c1c', cursor: 'pointer',
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+              }}
+            >
+              Supprimer
+            </button>
+            <button
+              type="button" onClick={onClose}
+              style={{
+                padding: '9px 18px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                color: 'var(--text)', cursor: 'pointer',
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+              }}
+            >
+              Fermer
+            </button>
+          </div>
+        )}
+
+        {/* Footer — état confirmation */}
+        {showConfirm && (
+          <div style={{
+            padding: '14px 18px', borderTop: '1px solid #fca5a5',
+            background: '#fef2f2', display: 'flex', flexDirection: 'column', gap: 10,
+            borderRadius: '0 0 14px 14px',
+          }}>
+            <div style={{ fontSize: 13, color: '#b91c1c', fontWeight: 600, lineHeight: 1.4 }}>
+              Annuler la réservation de {resa.nom}
+              {resa.date_service ? ` pour le ${resa.date_service}` : ''}
+              {resa.heure_arrivee ? ` à ${(resa.heure_arrivee).slice(0, 5)}` : ''} ?
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button" onClick={() => setShowConfirm(false)} disabled={deleting}
+                style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text)', cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                  opacity: deleting ? 0.5 : 1,
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button" onClick={handleDelete} disabled={deleting}
+                style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  border: '1px solid #b91c1c',
+                  background: deleting ? '#fca5a5' : '#b91c1c',
+                  color: '#fff', cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                  opacity: deleting ? 0.7 : 1,
+                }}
+              >
+                {deleting ? 'Suppression…' : 'Confirmer la suppression'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
