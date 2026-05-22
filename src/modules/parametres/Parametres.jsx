@@ -2,6 +2,7 @@ import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
 import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 
 // ─────────────────────────────────────────────────────
 // PARAMÈTRES — Gestion des établissements (Consultant)
@@ -90,7 +91,7 @@ const EtabForm = ({ etab, onSave, onCancel }) => {
   );
 };
 
-const Parametres = ({ user }) => {
+const Parametres = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   const [etablissements, setEtablissements] = React.useState(demoData.etablissements || []);
@@ -273,6 +274,9 @@ const Parametres = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Intégrations POS */}
+      <PosIntegrationsCard etablissement={etablissement} user={user} />
 
       {/* Maintenance */}
       <div style={ps.listCard}>

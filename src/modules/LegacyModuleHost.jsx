@@ -19,6 +19,7 @@ const Planning = lazy(() => import('./planning/Planning.jsx'));
 const Recettes = lazy(() => import('./recettes/Recettes.jsx'));
 const Roles = lazy(() => import('./roles/Roles.jsx'));
 const Previsions = lazy(() => import('./previsions/Previsions.jsx'));
+const VentesPos = lazy(() => import('./pos/VentesPos.jsx'));
 const SOP = lazy(() => import('./sop/SOP.jsx'));
 
 export default function LegacyModuleHost({
@@ -147,6 +148,12 @@ export default function LegacyModuleHost({
       const RolesComponent = Roles;
       return user.role === 'consultant' && permissions.consultant_tools !== false
         ? wrap('Roles et acces', <RolesComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'pos': {
+      const VentesPosComponent = VentesPos;
+      return permissions.pos !== false
+        ? wrap('Ventes POS', <VentesPosComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     default:
