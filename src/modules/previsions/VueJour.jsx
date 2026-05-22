@@ -4,6 +4,7 @@ import { useReservations } from '../../hooks/useReservations.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
+import ReservationForm from './ReservationForm.jsx';
 
 const SERVICES_ORDER = ['midi', 'soir', 'brunch'];
 const SERVICE_META = {
@@ -110,6 +111,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated }
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState(null);
   const [selectedResa, setSelectedResa] = useState(null);
+  const [editingResa,  setEditingResa]  = useState(null);
 
   async function load() {
     if (!etablissementId || !date) return;
@@ -231,7 +233,18 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated }
         <ReservationDetailModal
           resa={selectedResa}
           onClose={() => setSelectedResa(null)}
+          onEdit={(resa) => { setSelectedResa(null); setEditingResa(resa); }}
           onResaUpdated={() => { setSelectedResa(null); load(); onResaUpdated?.(); }}
+        />
+      )}
+
+      {/* ── Formulaire modification ── */}
+      {editingResa && (
+        <ReservationForm
+          etablissementId={etablissementId}
+          initialResa={editingResa}
+          onClose={() => setEditingResa(null)}
+          onSaved={() => { setEditingResa(null); load(); onResaUpdated?.(); }}
         />
       )}
     </div>

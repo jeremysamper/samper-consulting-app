@@ -31,9 +31,26 @@ function validateForm(form) {
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
 
-export default function ReservationForm({ etablissementId, onClose, onSaved }) {
+function formFromResa(resa) {
+  const heure   = (resa.heure_arrivee || '').slice(0, 5);
+  const service = resa.service || 'soir';
+  return {
+    date:        resa.date_service  || todayISO(),
+    service,
+    heure,
+    heureCustom: !(SUGGESTIONS[service] || []).includes(heure),
+    couverts:    resa.nb_couverts   || 2,
+    nom:         resa.nom           || '',
+    telephone:   resa.telephone     || '',
+    groupe:      resa.est_groupe    || false,
+    tags:        Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [],
+    notes:       resa.notes_libres  || '',
+  };
+}
+
+export default function ReservationForm({ etablissementId, onClose, onSaved, initialResa = null }) {
   const isMobile = useIsMobile();
-  const [form, setForm] = useState(defaultState);
+  const [form, setForm] = useState(() => initialResa ? formFromResa(initialResa) : defaultState());
   const [loading, setLoading] = useState(false);
   const reservations = useReservations(etablissementId);
   const tags = useReservationTags();
@@ -69,39 +86,53 @@ export default function ReservationForm({ etablissementId, onClose, onSaved }) {
         telephone:     form.telephone.trim() || null,
         est_groupe:    form.groupe,
         notes_libres:  form.notes.trim() || null,
-        statut:        'confirme',
       };
 
-      const { data: resa, error: eResa } = await reservations.create(payload);
-      if (eResa || !resa) {
-        notify(eResa || 'Erreur lors de la création de la réservation.', 'error');
-        return;
-      }
-
-      if (form.tags.length > 0) {
-        const { error: eTags } = await tags.bulkCreate(resa.id, form.tags);
-        if (eTags) {
-          // Rollback : soft-delete via statut='annule'
-          // → le trigger recalcule previsions_jour proprement
-          console.error('[ReservationForm] erreur tags, tentative rollback', resa.id, eTags);
-          const { error: eRollback } = await reservations.delete(resa.id);
-          if (eRollback) {
-            console.error('[ReservationForm] ROLLBACK ÉCHOUÉ', resa.id, eRollback);
-            notify(
-              `Tags KO et rollback impossible. Résa ${resa.id} à supprimer manuellement.`,
-              'error'
-            );
-          } else {
-            notify(eTags || 'Erreur tags — réservation annulée.', 'error');
-          }
+      if (initialResa) {
+        // ── MODE ÉDITION ──
+        const { error: eUpd } = await reservations.update(initialResa.id, payload);
+        if (eUpd) { notify(eUpd, 'error'); return; }
+        // Remplacement des tags : supprime tous → recrée
+        const { error: eDel } = await tags.deleteByReservationId(initialResa.id);
+        if (eDel) { notify(eDel, 'error'); return; }
+        if (form.tags.length > 0) {
+          const { error: eTags } = await tags.bulkCreate(initialResa.id, form.tags);
+          if (eTags) { notify(eTags, 'error'); return; }
+        }
+        notify(`Résa ${form.nom.trim()} · ${form.couverts} pax · ${form.heure.slice(0, 5)} modifiée ✓`, 'success');
+        onSaved?.();
+        onClose();
+      } else {
+        // ── MODE CRÉATION ──
+        const { data: resa, error: eResa } = await reservations.create({ ...payload, statut: 'confirme' });
+        if (eResa || !resa) {
+          notify(eResa || 'Erreur lors de la création de la réservation.', 'error');
           return;
         }
+        if (form.tags.length > 0) {
+          const { error: eTags } = await tags.bulkCreate(resa.id, form.tags);
+          if (eTags) {
+            // Rollback : soft-delete via statut='annule'
+            // → le trigger recalcule previsions_jour proprement
+            console.error('[ReservationForm] erreur tags, tentative rollback', resa.id, eTags);
+            const { error: eRollback } = await reservations.delete(resa.id);
+            if (eRollback) {
+              console.error('[ReservationForm] ROLLBACK ÉCHOUÉ', resa.id, eRollback);
+              notify(
+                `Tags KO et rollback impossible. Résa ${resa.id} à supprimer manuellement.`,
+                'error'
+              );
+            } else {
+              notify(eTags || 'Erreur tags — réservation annulée.', 'error');
+            }
+            return;
+          }
+        }
+        const h = resa.heure_arrivee?.slice(0, 5) ?? form.heure;
+        notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée ✓`, 'success');
+        onSaved?.(resa);
+        keepOpen ? resetForNext() : onClose();
       }
-
-      const h = resa.heure_arrivee?.slice(0, 5) ?? form.heure;
-      notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée ✓`, 'success');
-      onSaved?.(resa);
-      keepOpen ? resetForNext() : onClose();
     } finally {
       setLoading(false);
     }
@@ -142,7 +173,7 @@ export default function ReservationForm({ etablissementId, onClose, onSaved }) {
           borderRadius: isMobile ? '16px 16px 0 0' : '14px 14px 0 0',
         }}>
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
-            Nouvelle réservation
+            {initialResa ? 'Modifier la réservation' : 'Nouvelle réservation'}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer"
             style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text2)', padding: 4, lineHeight: 1 }}>
@@ -301,10 +332,12 @@ export default function ReservationForm({ etablissementId, onClose, onSaved }) {
           padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--surface)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
         }}>
-          <button type="button" disabled={loading} onClick={() => submit(true)}
-            style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 600, padding: 0, opacity: loading ? 0.5 : 1 }}>
-            + Saisir une autre
-          </button>
+          {!initialResa && (
+            <button type="button" disabled={loading} onClick={() => submit(true)}
+              style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 600, padding: 0, opacity: loading ? 0.5 : 1 }}>
+              + Saisir une autre
+            </button>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" disabled={loading} onClick={onClose}
               style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>
