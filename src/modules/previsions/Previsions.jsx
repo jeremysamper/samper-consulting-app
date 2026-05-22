@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { SectionHeader } from '../../components/ui/index.jsx';
 import ReservationForm from './ReservationForm.jsx';
+import VueSemaine from './VueSemaine.jsx';
+import VueJour from './VueJour.jsx';
 
 const ROLES_AUTORISES = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 
 export default function Previsions({ user, etablissement }) {
-  const [showForm, setShowForm] = useState(false);
+  const [showForm,     setShowForm]     = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null); // null = vue semaine
+  const [refreshKey,   setRefreshKey]   = useState(0);
 
   if (!ROLES_AUTORISES.includes(user?.role)) {
     return (
@@ -22,14 +26,19 @@ export default function Previsions({ user, etablissement }) {
 
   const etabId = etablissement?.id;
 
+  function handleSaved() {
+    setRefreshKey((k) => k + 1);
+    setShowForm(false);
+  }
+
   return (
     <section style={{ padding: '20px 24px', position: 'relative', minHeight: '100%' }}>
       <SectionHeader
         title="Prévisions"
-        sub="Vue semaine cuisine — couverts et particularités par jour"
+        sub={selectedDate ? null : 'Vue semaine cuisine — couverts et particularités par jour'}
       />
 
-      {/* Bannière d'alerte si aucun établissement chargé */}
+      {/* Bannière si pas d'établissement */}
       {!etabId && (
         <div style={{
           marginTop: 12, padding: '10px 14px', borderRadius: 8,
@@ -40,29 +49,47 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
-      {/* État vide — vue semaine en J3 */}
-      <div style={{
-        marginTop: 48, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: 12, textAlign: 'center',
-      }}>
-        <div style={{ fontSize: 42, opacity: 0.2 }}>◐</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
-          La vue semaine arrive en J3
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 300, lineHeight: 1.6 }}>
-          Commence par saisir des réservations avec le bouton ci-dessous.
-          <br />
-          Elles alimenteront automatiquement les prévisions du chef.
-        </div>
-      </div>
+      {/* ── Routeur local : vue semaine ↔ vue jour ── */}
+      {etabId && !selectedDate && (
+        <VueSemaine
+          etablissementId={etabId}
+          onDayClick={setSelectedDate}
+          refreshKey={refreshKey}
+        />
+      )}
 
-      {/* FAB — désactivé si pas d'établissement */}
+      {etabId && selectedDate && (
+        <VueJour
+          etablissementId={etabId}
+          date={selectedDate}
+          onBack={() => setSelectedDate(null)}
+          onResaUpdated={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
+
+      {/* État vide si pas d'établissement */}
+      {!etabId && (
+        <div style={{
+          marginTop: 48, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 12, textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 42, opacity: 0.2 }}>◐</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            Sélectionne un établissement
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 300, lineHeight: 1.6 }}>
+            La vue semaine s'affichera une fois un établissement sélectionné.
+          </div>
+        </div>
+      )}
+
+      {/* FAB — intact depuis J2 */}
       <button
         type="button"
         onClick={() => etabId ? setShowForm(true) : null}
         disabled={!etabId}
         aria-label="Nouvelle réservation"
-        title={etabId ? 'Nouvelle réservation' : 'Sélectionne un établissement d\'abord'}
+        title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
         style={{
           position: 'fixed', bottom: 28, right: 24,
           width: 56, height: 56, borderRadius: '50%',
@@ -81,7 +108,7 @@ export default function Previsions({ user, etablissement }) {
         <ReservationForm
           etablissementId={etabId}
           onClose={() => setShowForm(false)}
-          onSaved={() => { /* rafraîchissement vue semaine branché en J3 */ }}
+          onSaved={handleSaved}
         />
       )}
     </section>
