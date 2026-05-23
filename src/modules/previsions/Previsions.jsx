@@ -63,13 +63,13 @@ export default function Previsions({ user, etablissement }) {
       {/* ── Routeur local : vue semaine ↔ vue jour ── */}
       {etabId && (
         <>
-          <div style={{ display: selectedDate ? 'none' : 'block' }}>
+          {!selectedDate && (
             <VueSemaine
               etablissementId={etabId}
               onDayClick={setSelectedDate}
               refreshKey={refreshKey}
             />
-          </div>
+          )}
           {selectedDate && (
             <VueJour
               etablissementId={etabId}
