@@ -2,6 +2,8 @@ import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
 import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { navItems as NAV_ITEMS } from '../../modules/moduleConfig.js';
+import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 
 // ─────────────────────────────────────────────────────
@@ -100,6 +102,34 @@ const Parametres = ({ user, etablissement }) => {
   const [showConfirm, setShowConfirm] = React.useState(null);
 
   const canEdit = user.role === 'consultant';
+  // Labels de modules configurables : consultant + patron
+  const canEditLabels = ['consultant', 'patron'].includes(user?.role);
+  const { getLabelForModule, updateLabel, resetLabel, labels: customLabels } = useModuleLabels(etablissement?.id);
+  const [editingLabelKey, setEditingLabelKey] = React.useState(null);
+  const [editingLabelValue, setEditingLabelValue] = React.useState('');
+  const [labelSaving, setLabelSaving] = React.useState(false);
+
+  const startEditLabel = (item) => {
+    setEditingLabelKey(item.id);
+    setEditingLabelValue(getLabelForModule(item.id, item.label));
+  };
+
+  const saveLabelEdit = async () => {
+    if (!editingLabelKey) return;
+    setLabelSaving(true);
+    const { error } = await updateLabel(editingLabelKey, editingLabelValue);
+    setLabelSaving(false);
+    if (error) { notifyLegacy(error, 'error'); return; }
+    notifyLegacy('Label mis à jour.', 'success');
+    setEditingLabelKey(null);
+  };
+
+  const resetLabelItem = async (key) => {
+    const { error } = await resetLabel(key);
+    if (error) { notifyLegacy(error, 'error'); return; }
+    notifyLegacy('Label réinitialisé.', 'success');
+    if (editingLabelKey === key) setEditingLabelKey(null);
+  };
 
   // Charger depuis Supabase + realtime
   React.useEffect(() => {
@@ -277,6 +307,102 @@ const Parametres = ({ user, etablissement }) => {
 
       {/* Intégrations POS */}
       <PosIntegrationsCard etablissement={etablissement} user={user} />
+
+      {/* Personnalisation des modules */}
+      {canEditLabels && (
+        <div style={ps.listCard}>
+          <div style={ps.listHeader}>
+            <div>
+              <div style={ps.listTitle}>Personnalisation des modules</div>
+              <div style={{ fontSize:12, color:'var(--text2)', marginTop:4, fontWeight:400, textTransform:'none', letterSpacing:0 }}>
+                Renommez les modules dans la navigation pour cet établissement. Les clés techniques ne changent pas.
+              </div>
+            </div>
+          </div>
+
+          {!etablissement?.id && (
+            <div style={{ padding:'16px 20px', fontSize:13, color:'var(--text2)' }}>
+              ⚠️ Sélectionne un établissement pour personnaliser ses labels.
+            </div>
+          )}
+
+          {etablissement?.id && NAV_ITEMS.map((item) => {
+            const isEditing = editingLabelKey === item.id;
+            const customLabel = customLabels[item.id];
+            const isCustomised = Boolean(customLabel);
+            const displayLabel = customLabel || item.label;
+
+            return (
+              <div key={item.id} style={{
+                display:'flex', alignItems:'center', gap:12, padding:'12px 20px',
+                borderBottom:'1px solid var(--border)', flexWrap:'wrap',
+              }}>
+                {/* Icône + clé technique */}
+                <div style={{ width:24, textAlign:'center', fontSize:15, flexShrink:0 }}>
+                  {item.icon || '•'}
+                </div>
+                <div style={{ flex:1, minWidth:160 }}>
+                  {isEditing ? (
+                    <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                      <input
+                        type="text"
+                        value={editingLabelValue}
+                        onChange={(e) => setEditingLabelValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveLabelEdit(); if (e.key === 'Escape') setEditingLabelKey(null); }}
+                        autoFocus
+                        style={{ ...ps.fInput, maxWidth:240, padding:'6px 10px' }}
+                      />
+                      <button style={{ ...ps.saveBtn, padding:'6px 14px', fontSize:12 }} onClick={saveLabelEdit} disabled={labelSaving}>
+                        {labelSaving ? '…' : 'Enregistrer'}
+                      </button>
+                      <button style={{ ...ps.cancelBtn, padding:'6px 12px', fontSize:12 }} onClick={() => setEditingLabelKey(null)}>
+                        Annuler
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{displayLabel}</span>
+                      {isCustomised && (
+                        <span style={{
+                          fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:20,
+                          background:'#eff6ff', color:'#1d4ed8', border:'1px solid #bfdbfe',
+                        }}>
+                          personnalisé
+                        </span>
+                      )}
+                      {!isCustomised && (
+                        <span style={{ fontSize:11, color:'var(--text3)', fontStyle:'italic' }}>par défaut</span>
+                      )}
+                    </div>
+                  )}
+                  {!isEditing && (
+                    <div style={{ fontSize:11, color:'var(--text3)', marginTop:1 }}>
+                      clé : <code style={{ fontSize:10 }}>{item.id}</code>
+                    </div>
+                  )}
+                </div>
+                {/* Actions */}
+                {!isEditing && (
+                  <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                    <button style={ps.ghostBtn} onClick={() => startEditLabel(item)}>
+                      Renommer
+                    </button>
+                    {isCustomised && (
+                      <button
+                        style={{ ...ps.ghostBtn, color:'#92400e', borderColor:'#fde68a' }}
+                        onClick={() => resetLabelItem(item.id)}
+                        title={`Rétablir "${item.label}"`}
+                      >
+                        Réinitialiser
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Maintenance */}
       <div style={ps.listCard}>

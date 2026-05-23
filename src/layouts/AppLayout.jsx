@@ -3,6 +3,7 @@ import { navItems as NAV_ITEMS } from '../modules/moduleConfig.js';
 import { getDemoData } from '../data/demoData.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useTheme } from '../hooks/useTheme.js';
+import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
@@ -196,6 +197,10 @@ export default function AppLayout({
   const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
   const todayLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // Labels personnalisés par établissement (Chantier 2 — module_labels table)
+  // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
+  const { getLabelForModule } = useModuleLabels(etablissement?.id);
+
   // ── Logo upload (consultant uniquement)
   const canEditLogo = user.role === 'consultant';
 
@@ -327,7 +332,7 @@ export default function AppLayout({
           </button>
 
           {/* Titre central */}
-          <div style={mls.title}>{currentItem?.label || 'Tableau de bord'}</div>
+          <div style={mls.title}>{getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}</div>
 
           {/* Cloche notifications à droite */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
@@ -427,7 +432,7 @@ export default function AppLayout({
                       style={{ ...mls.drawerItem, ...(active ? mls.drawerItemActive : {}) }}
                       onClick={() => handleSetPage(item.id)}
                     >
-                      <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+                      <span style={{ flex: 1, textAlign: 'left' }}>{getLabelForModule(item.id, item.label)}</span>
                       {active && <span style={{ color: 'var(--accent)', fontSize: 16 }}>●</span>}
                     </button>
                   );
@@ -494,9 +499,9 @@ export default function AppLayout({
                 return (
                   <button key={item.id}
                     style={{ ...ls.navItem, ...(active ? ls.navActive : {}), justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
-                    onClick={() => handleSetPage(item.id)} title={!sidebarOpen ? item.label : ''}>
+                    onClick={() => handleSetPage(item.id)} title={!sidebarOpen ? getLabelForModule(item.id, item.label) : ''}>
                     {!sidebarOpen && <span style={{ ...ls.navIcon, opacity: active ? 1 : 0.72 }}>{item.icon || '•'}</span>}
-                    {sidebarOpen && <span style={ls.navLabel}>{item.label}</span>}
+                    {sidebarOpen && <span style={ls.navLabel}>{getLabelForModule(item.id, item.label)}</span>}
                     {active && sidebarOpen && <div style={ls.navActiveLine} />}
                   </button>
                 );
@@ -520,7 +525,7 @@ export default function AppLayout({
         <header style={ls.topbar}>
           <div style={ls.topbarLeft}>
             <div style={ls.titleBlock}>
-              <div style={ls.pageTitle}>{currentItem?.label || 'Tableau de bord'}</div>
+              <div style={ls.pageTitle}>{getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}</div>
               <div style={ls.topbarSub}>{todayLabel}</div>
             </div>
             {etablissement && (
