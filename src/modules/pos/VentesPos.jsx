@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { Btn, SectionHeader, TabBar } from '../../components/ui/index.jsx';
+import { SectionHeader, TabBar } from '../../components/ui/index.jsx';
+import MappingPlats from './MappingPlats.jsx';
 
 // ─────────────────────────────────────────────────────────────────
-// VentesPos — Module Ventes POS (J2-J4)
+// VentesPos — Module Ventes POS
 //
-// J1 : Placeholder — wiring navigation + accès POS confirmé.
-// J2 : Cron Vercel sync items + ventes (pos_items, pos_sales).
-// J3 : Algorithme matching + UI Mapping plats POS ↔ Recettes.
-// J4 : 3 vues cuisine (Mise en place J+1, Top/Flop, Conso ingrédients).
+// J2 : Sync automatique Lightspeed (cron 04:00 UTC).
+// J3 : ✅ Mapping plats POS ↔ Recettes (onglet Mapping).
+// J4 : Vues cuisine (Mise en place J+1, Top/Flop, Conso).
 // ─────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -29,43 +29,49 @@ export default function VentesPos({ user, etablissement }) {
         subtitle={`Synchronisation Lightspeed · ${etabNom}`}
       />
 
-      <TabBar
-        tabs={TABS}
-        active={tab}
-        onChange={setTab}
-      />
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)',
-        borderRadius: 12, padding: '48px 32px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 16, textAlign: 'center',
-      }}>
-        <div style={{ fontSize: 48, opacity: 0.15 }}>◑</div>
-        <div style={{
-          fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)',
-          color: 'var(--text)',
-        }}>
-          Module Ventes POS — En cours de développement
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 440, lineHeight: 1.6 }}>
-          Connectez d'abord votre caisse Lightspeed dans <strong>Paramètres → Intégrations POS</strong>,
-          puis lancez une synchronisation pour accéder aux données de ventes.
-        </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
-          <div style={chipStyle('#f0fdf4', '#15803d', '#86efac')}>J2 — Sync automatique</div>
-          <div style={chipStyle('#eff6ff', '#1d4ed8', '#bfdbfe')}>J3 — Mapping plats</div>
-          <div style={chipStyle('#faf5ff', '#7c3aed', '#c4b5fd')}>J4 — 3 vues cuisine</div>
-        </div>
-      </div>
+      {/* ── Mapping plats POS ↔ Recettes (J3) ── */}
+      {tab === 'mapping' && (
+        <MappingPlats user={user} etablissement={etablissement} />
+      )}
+
+      {/* ── Vues cuisine — placeholder J4 ── */}
+      {tab !== 'mapping' && (
+        <PlaceholderJ4 tab={tab} />
+      )}
     </div>
   );
 }
 
-function chipStyle(bg, color, border) {
-  return {
-    padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-    background: bg, color, border: `1px solid ${border}`,
-    fontFamily: 'var(--font)',
+function PlaceholderJ4({ tab }) {
+  const labels = {
+    mise_en_place: { icon: '◷', label: 'Mise en place J+1', desc: 'Quantités à préparer pour demain, basées sur les ventes Lightspeed + le mapping plats.' },
+    top_flop:      { icon: '↑↓', label: 'Top / Flop',       desc: 'Classement des plats par chiffre d\'affaires et volume sur la période sélectionnée.' },
+    conso:         { icon: '◈',  label: 'Conso ingrédients', desc: 'Consommation théorique des ingrédients déduite des ventes POS et des fiches techniques.' },
   };
+  const { icon, label, desc } = labels[tab] ?? labels.mise_en_place;
+
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: 12, padding: '48px 32px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 14, textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 40, opacity: 0.15 }}>{icon}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+        {label} — J4
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 420, lineHeight: 1.6 }}>
+        {desc}
+      </div>
+      <div style={{
+        fontSize: 11, color: 'var(--text3)', fontStyle: 'italic',
+        borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4,
+      }}>
+        Disponible après J4 — commencez par mapper vos plats dans l'onglet <strong>Mapping plats</strong>.
+      </div>
+    </div>
+  );
 }
