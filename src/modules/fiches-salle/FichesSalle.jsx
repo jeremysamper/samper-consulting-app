@@ -315,7 +315,7 @@ const FichesSalle = ({ user, etablissement }) => {
             statut: 'brouillon',
             descriptionService: ai.descriptionService,
             temperatureService: ai.temperatureService,
-            dressageNotes: ai.dressageNotes,
+            dressageNotes: '',
             infosService: ai.infosService,
             tempsPreparation: ai.tempsPreparation,
             allergenes: allergIds,
@@ -628,7 +628,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => 
               <div style={fss.field}><label style={fss.fLabel}>Température de service</label><input style={fss.fInput} placeholder="ex. Chaud — servir immédiatement" value={fiche?.temperatureService||''} onChange={e=>setFiche(f=>({...f,temperatureService:e.target.value}))}/></div>
               <div style={fss.field}><label style={fss.fLabel}>Temps préparation</label><input style={fss.fInput} placeholder="ex. 12 min" value={fiche?.tempsPreparation||''} onChange={e=>setFiche(f=>({...f,tempsPreparation:e.target.value}))}/></div>
             </div>
-            <div style={fss.field}><label style={fss.fLabel}>Notes de dressage / service en salle</label><textarea style={{...fss.fInput,minHeight:56,resize:'vertical'}} value={fiche?.dressageNotes||''} onChange={e=>setFiche(f=>({...f,dressageNotes:e.target.value}))}/></div>
+            <div style={fss.field}><label style={fss.fLabel}>Notes de dressage / service en salle</label><textarea style={{...fss.fInput,minHeight:56,resize:'vertical'}} placeholder="À compléter manuellement" value={fiche?.dressageNotes||''} onChange={e=>setFiche(f=>({...f,dressageNotes:e.target.value}))}/></div>
             <div style={fss.field}><label style={fss.fLabel}>Info service (allergies, restrictions…)</label><textarea style={{...fss.fInput,minHeight:56,resize:'vertical'}} value={fiche?.infosService||''} onChange={e=>setFiche(f=>({...f,infosService:e.target.value}))}/></div>
 
             {/* Lien recette → import allergènes automatique */}

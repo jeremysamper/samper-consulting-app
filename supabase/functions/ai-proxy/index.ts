@@ -101,23 +101,23 @@ Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche
 
 const FICHE_SALLE_SYSTEM = `Tu es un expert de la restauration. À partir d'une recette, tu rédiges sa FICHE SALLE destinée à l'équipe de service pour conseiller les clients.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
-{"descriptionService":"...","temperatureService":"...","dressageNotes":"...","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","alternative":"...","notes":"..."}],"accordsGeneraux":["Vin rouge corsé","Vin blanc sec"]}
-- "descriptionService" : exactement 2 phrases, 30 à 40 mots au total, ton chef chaleureux et direct (voir exemples ci-dessous).
-  RÈGLES DE STYLE : verbes vivants au lieu d'adjectifs creux ; mentionner les ingrédients principaux (le serveur doit pouvoir répondre aux questions à table) ; privilégier le concret (texture, cuisson, geste, origine des produits quand pertinent) ; une touche personnelle autorisée ("comme on l'aime", "à notre façon", "selon l'arrivage") mais pas obligatoire.
-  INTERDITS ABSOLUS pour descriptionService : "Ce plat est composé de…" / "Une composition de…" / "Un mariage subtil entre…" ; adjectifs vides (délicat, savoureux, harmonieux, raffiné, exquis, sublime, onctueux sauf si justifié par la texture réelle) ; superlatifs gratuits ; allergènes mentionnés (champ séparé) ; point d'exclamation ; emoji.
-  EXEMPLES DE CALIBRAGE DU TON :
-  ❌ "Ce tartare de bœuf est délicatement préparé au couteau et sublimé par un jaune d'œuf onctueux, accompagné de frites paille croustillantes et d'une émulsion gribiche aux notes herbacées."
-  ✅ "Du bœuf coupé au couteau, un jaune d'œuf bien crémeux qu'on casse à table, et nos frites paille pour le croquant. La gribiche maison apporte les herbes du jardin et ce qu'il faut d'acidité."
-  ❌ "Une assiette de Saint-Jacques snackées sur un lit de purée de céleri-rave, relevée par une émulsion au beurre noisette et parsemée de cresson."
-  ✅ "Trois Saint-Jacques juste saisies, posées sur une purée de céleri bien crémeuse. Un trait de beurre noisette pour la rondeur, et le cresson qui réveille tout."
-  ❌ "Filet de truite du lac confit à basse température, accompagné de légumes racines glacés et d'une sauce vin jaune réduite."
-  ✅ "Notre truite du lac cuite tout doucement pour qu'elle reste fondante. On la sert avec les légumes racines du moment et une sauce au vin jaune, courte et bien serrée."
-  ❌ "Risotto crémeux aux champignons des bois, parfumé à l'huile de truffe et fini au parmesan affiné 24 mois."
-  ✅ "Un risotto qu'on monte au dernier moment avec les champignons des bois ramassés cette semaine. Parmesan vieux, un filet d'huile de truffe à table, et c'est tout."
-  ❌ "Soufflé chaud au Grand Marnier, servi avec une glace artisanale à la vanille de Madagascar et son coulis d'oranges sanguines."
-  ✅ "Notre soufflé Grand Marnier qui monte au four et qu'on sert tout de suite. À côté, une glace vanille faite maison et un coulis d'oranges sanguines pour la fraîcheur."
+{"descriptionService":"...","temperatureService":"...","dressageNotes":"","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","alternative":"...","notes":"..."}],"accordsGeneraux":["Vin rouge corsé","Vin blanc sec"]}
+- "descriptionService" : 1 à 2 phrases maximum, ton direct et factuel, style fiche technique salle.
+  FORMAT : [élément principal ou technique de cuisson] + [durée si utile pour le service] + [accompagnements clés] + [sauce/garniture]. Commencer par le nom de l'élément principal ou sa technique.
+  RÈGLES ABSOLUES : mentionner les ingrédients principaux et les techniques de cuisson ; inclure les temps de cuisson quand utiles pour le service (12 min, 6h de braisage, 3 min à la commande…) ; zéro adjectif subjectif (fondant, onctueux, raffiné, savoureux, généreux, subtil, délicat, harmonieux, exquis, sublime, crémeux sauf si c'est la texture réelle du plat…) ; zéro lyrisme, zéro métaphore, zéro touche personnelle ; allergènes jamais mentionnés (champ séparé) ; point d'exclamation interdit ; emoji interdit.
+  EXEMPLES CIBLES :
+  ❌ "Une joue fondante qui révèle toute la profondeur du terroir alpin..."
+  ✅ "Joue de bœuf braisée 6h, aubergine grillée, sarrasin soufflé, citron confit."
+  ❌ "Un sérac croustillant aux notes herbacées subtilement sublimé par..."
+  ✅ "Sérac pané frit 2 min, sauce acidulée aux herbes, basilic, jeunes pousses."
+  ❌ "Délicat filet de perche aux saveurs estivales..."
+  ✅ "Filet de perche poêlé minute, poivron doux, citron vert, riz soufflé croustillant."
+  ❌ "Une caille rôtie au four, délicatement accompagnée d'orge croustillante..."
+  ✅ "Caille rôtie 12 min, orge croustillante, fenouil, fromage frais aux herbes."
+  ❌ "Un omble chevalier en ceviche aux saveurs marines délicatement acidulées..."
+  ✅ "Omble chevalier en ceviche, lait ribot, ail noir, fenouil, piri-piri."
 - "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
-- "dressageNotes" : conseils de dressage / service en salle (1 à 2 phrases)
+- "dressageNotes" : toujours "" (chaîne vide — champ complété manuellement par le chef, ne pas remplir)
 - "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
 - "tempsPreparation" : estimation courte (ex "12 min")
 - "accords" : 2 à 4 accords mets-boissons ; "type" vaut "vin" ou "sans_alcool" ; "region" renseignée pour les vins ; "alternative" = la FAMILLE GÉNÉRALE de la boisson (ex. "Vin blanc sec et minéral", "Vin rouge léger", "Vin blanc moelleux", "Vin effervescent", "Infusion fraîche") pour que le service propose un équivalent si la référence précise manque
