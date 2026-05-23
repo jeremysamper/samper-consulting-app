@@ -104,7 +104,7 @@ function ResaCard({ resa, isMobile, onClick }) {
 }
 
 // ── Composant principal ────────────────────────────────────
-export default function VueJour({ etablissementId, date, onBack, onResaUpdated }) {
+export default function VueJour({ etablissementId, date, onBack, onResaUpdated, canEdit = true }) {
   const isMobile    = useIsMobile();
   const reservations = useReservations(etablissementId);
   const [resas,        setResas]        = useState(null);
@@ -233,13 +233,14 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated }
         <ReservationDetailModal
           resa={selectedResa}
           onClose={() => setSelectedResa(null)}
-          onEdit={(resa) => { setSelectedResa(null); setEditingResa(resa); }}
+          onEdit={canEdit ? (resa) => { setSelectedResa(null); setEditingResa(resa); } : undefined}
           onResaUpdated={() => { setSelectedResa(null); load(); onResaUpdated?.(); }}
+          canEdit={canEdit}
         />
       )}
 
-      {/* ── Formulaire modification ── */}
-      {editingResa && (
+      {/* ── Formulaire modification (rôles éditeurs uniquement) ── */}
+      {canEdit && editingResa && (
         <ReservationForm
           etablissementId={etablissementId}
           initialResa={editingResa}

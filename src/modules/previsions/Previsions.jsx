@@ -4,7 +4,15 @@ import ReservationForm from './ReservationForm.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 
-const ROLES_AUTORISES = ['consultant', 'patron', 'resp_cuisine', 'hote'];
+// Tous les rôles ayant accès au module (réservations en lecture au minimum)
+const ROLES_AUTORISES = ['consultant', 'patron', 'resp_cuisine', 'hote', 'serveur'];
+
+// Rôles pouvant créer / modifier / annuler des réservations
+const ROLES_EDIT = ['consultant', 'patron', 'resp_cuisine', 'hote'];
+
+// Rôles voyant les KPIs financiers (CA prévisionnel, etc.)
+// Réservé pour les futurs affichages de chiffre d'affaires estimé.
+const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 
 export default function Previsions({ user, etablissement }) {
   const [showForm,     setShowForm]     = useState(false);
@@ -18,13 +26,16 @@ export default function Previsions({ user, etablissement }) {
           Accès non autorisé à ce module.
         </div>
         <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-          Ce module est réservé aux rôles consultant, patron et responsable cuisine.
+          Ce module est réservé aux rôles consultant, patron, responsable cuisine, hôte et serveur.
         </div>
       </section>
     );
   }
 
-  const etabId = etablissement?.id;
+  const etabId         = etablissement?.id;
+  const canEdit        = ROLES_EDIT.includes(user?.role);
+  // showFinancials réservé pour les futures sections KPIs CA
+  // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 
   function handleSaved() {
     setRefreshKey((k) => k + 1);
@@ -65,6 +76,7 @@ export default function Previsions({ user, etablissement }) {
               date={selectedDate}
               onBack={() => setSelectedDate(null)}
               onResaUpdated={() => setRefreshKey((k) => k + 1)}
+              canEdit={canEdit}
             />
           )}
         </>
@@ -86,28 +98,30 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
-      {/* FAB — intact depuis J2 */}
-      <button
-        type="button"
-        onClick={() => etabId ? setShowForm(true) : null}
-        disabled={!etabId}
-        aria-label="Nouvelle réservation"
-        title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
-        style={{
-          position: 'fixed', bottom: 28, right: 24,
-          width: 56, height: 56, borderRadius: '50%',
-          background: etabId ? 'var(--accent)' : 'var(--border)',
-          color: '#fff', border: 'none',
-          cursor: etabId ? 'pointer' : 'not-allowed',
-          fontSize: 28, fontWeight: 700,
-          boxShadow: etabId ? '0 4px 20px rgba(0,0,0,0.18)' : 'none',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 100, opacity: etabId ? 1 : 0.5,
-        }}>
-        +
-      </button>
+      {/* FAB — création réservation (rôles éditeurs uniquement) */}
+      {canEdit && (
+        <button
+          type="button"
+          onClick={() => etabId ? setShowForm(true) : null}
+          disabled={!etabId}
+          aria-label="Nouvelle réservation"
+          title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
+          style={{
+            position: 'fixed', bottom: 28, right: 24,
+            width: 56, height: 56, borderRadius: '50%',
+            background: etabId ? 'var(--accent)' : 'var(--border)',
+            color: '#fff', border: 'none',
+            cursor: etabId ? 'pointer' : 'not-allowed',
+            fontSize: 28, fontWeight: 700,
+            boxShadow: etabId ? '0 4px 20px rgba(0,0,0,0.18)' : 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 100, opacity: etabId ? 1 : 0.5,
+          }}>
+          +
+        </button>
+      )}
 
-      {showForm && etabId && (
+      {canEdit && showForm && etabId && (
         <ReservationForm
           etablissementId={etabId}
           onClose={() => setShowForm(false)}

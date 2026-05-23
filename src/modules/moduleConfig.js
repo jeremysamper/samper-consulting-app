@@ -1,9 +1,10 @@
 export const roles = {
-  consultant: { label: 'Consultant culinaire', color: '#92702A' },
-  patron: { label: 'Patron / Directeur', color: '#1a5276' },
-  resp_cuisine: { label: 'Responsable cuisine', color: '#1e6b40' },
-  cuisinier: { label: 'Cuisinier', color: '#6c3483' },
-  serveur: { label: 'Serveur / Serveuse', color: '#2e7ab8' }
+  consultant:   { label: 'Consultant culinaire',  color: '#92702A' },
+  patron:       { label: 'Patron / Directeur',    color: '#1a5276' },
+  resp_cuisine: { label: 'Responsable cuisine',   color: '#1e6b40' },
+  cuisinier:    { label: 'Cuisinier',             color: '#6c3483' },
+  serveur:      { label: 'Serveur / Serveuse',    color: '#2e7ab8' },
+  hote:         { label: 'Hôte / Réception',      color: '#0e7490' },
 };
 
 export const defaultPermissions = {
@@ -11,7 +12,7 @@ export const defaultPermissions = {
   patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: true,  previsions: true,  pos: true  },
   resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: true,  previsions: true,  pos: true  },
   cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: true,  previsions: false, pos: true  },
-  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: true,  previsions: false, pos: false },
+  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: true,  previsions: true,  pos: false },
   hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false },
 };
 

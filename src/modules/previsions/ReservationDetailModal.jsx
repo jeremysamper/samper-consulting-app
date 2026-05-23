@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 
-export default function ReservationDetailModal({ resa, onClose, onResaUpdated, onEdit }) {
+export default function ReservationDetailModal({ resa, onClose, onResaUpdated, onEdit, canEdit = true }) {
   const reservations  = useReservations(resa.etablissement_id);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
@@ -124,30 +124,32 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
             padding: '12px 18px', borderTop: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
           }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button" onClick={() => onEdit?.(resa)}
-                style={{
-                  padding: '9px 18px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--surface)',
-                  color: 'var(--text)', cursor: 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
-                }}
-              >
-                Modifier
-              </button>
-              <button
-                type="button" onClick={() => setShowConfirm(true)}
-                style={{
-                  padding: '9px 18px', borderRadius: 8,
-                  border: '1px solid #fca5a5', background: '#fef2f2',
-                  color: '#b91c1c', cursor: 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
-                }}
-              >
-                Supprimer
-              </button>
-            </div>
+            {canEdit && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button" onClick={() => onEdit?.(resa)}
+                  style={{
+                    padding: '9px 18px', borderRadius: 8,
+                    border: '1px solid var(--border)', background: 'var(--surface)',
+                    color: 'var(--text)', cursor: 'pointer',
+                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                  }}
+                >
+                  Modifier
+                </button>
+                <button
+                  type="button" onClick={() => setShowConfirm(true)}
+                  style={{
+                    padding: '9px 18px', borderRadius: 8,
+                    border: '1px solid #fca5a5', background: '#fef2f2',
+                    color: '#b91c1c', cursor: 'pointer',
+                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                  }}
+                >
+                  Supprimer
+                </button>
+              </div>
+            )}
             <button
               type="button" onClick={onClose}
               style={{
@@ -155,6 +157,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
                 border: '1px solid var(--border)', background: 'var(--surface)',
                 color: 'var(--text)', cursor: 'pointer',
                 fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                marginLeft: canEdit ? 0 : 'auto',
               }}
             >
               Fermer
