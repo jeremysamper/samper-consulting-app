@@ -1,19 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseConfig } from '../../services/supabase.js';
 import { notify } from '../../components/toast/index.js';
+import LightspeedSetupGuide from './LightspeedSetupGuide.jsx';
 
 // ─────────────────────────────────────────────────────────────────
-// PosIntegrationsCard v2
+// PosIntegrationsCard v3
 //
 // Gère la connexion Lightspeed par établissement :
+//   • Écran de setup guidé (3 étapes) quand aucune connexion n'existe
+//   • Ping pour vérifier si les secrets Supabase sont configurés
 //   • Flow OAuth popup
 //   • Sélecteur multi-location (si compte LS a plusieurs restaurants)
 //   • Affichage statut connexion + test + déconnexion
 //   • Bloc backfill : importe l'historique 14 jours après connexion
+//   • Messages d'erreur OAuth explicites par code
 // ─────────────────────────────────────────────────────────────────
 
-const POS_OAUTH_FN  = 'pos-oauth';
+const POS_OAUTH_FN    = 'pos-oauth';
 const POS_BACKFILL_FN = 'pos-backfill';
+
+// Messages d'erreur OAuth traduits par code d'erreur
+const OAUTH_ERRORS = {
+  invalid_client:
+    "Client ID ou Secret incorrect. Vérifie les secrets Supabase (LS_CLIENT_ID et LS_CLIENT_SECRET).",
+  invalid_redirect_uri:
+    "Redirect URI non autorisée. Vérifie qu'elle est bien enregistrée dans le portail Lightspeed.",
+  access_denied:
+    "Autorisation refusée. Réessaie et accepte les permissions demandées.",
+  invalid_scope:
+    "Scopes insuffisants. Vérifie que financial-api et offline_access sont activés dans le portail Lightspeed.",
+};
 
 function IconLightspeed() {
   return (
@@ -121,7 +137,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
 // ── Bloc backfill ─────────────────────────────────────────────────
 function BackfillBlock({ connectionId, hasData, onComplete }) {
   const [running, setRunning]   = useState(false);
-  const [progress, setProgress] = useState(null); // { done, total }
+  const [progress, setProgress] = useState(null);
   const [done, setDone]         = useState(false);
 
   async function handleBackfill() {
@@ -200,13 +216,113 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
   );
 }
 
+// ── Écran de setup guidé (3 étapes) ──────────────────────────────
+function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy }) {
+  const configured = secretsConfigured === true;
+  const checking   = secretsConfigured === null;
+
+  // Indicateur visuel de l'étape 2 (secrets Supabase)
+  let step2Icon, step2Color;
+  if (checking)        { step2Icon = '⌛'; step2Color = 'var(--text3)'; }
+  else if (configured) { step2Icon = '✅'; step2Color = '#15803d'; }
+  else                 { step2Icon = '⚠️'; step2Color = '#c2410c'; }
+
+  const steps = [
+    { icon: '①', color: 'var(--text2)', label: 'Créer une app sur le portail développeur Lightspeed' },
+    { icon: step2Icon, color: step2Color, label: 'Configurer les 4 secrets Supabase' },
+    { icon: '→',  color: 'var(--text)',  label: 'Autoriser la connexion' },
+  ];
+
+  return (
+    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, borderBottom: '1px solid var(--border)' }}>
+      {/* En-tête provider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <IconLightspeed />
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{provider.label}</div>
+          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+            Connexion requise pour activer les vues cuisine
+          </div>
+        </div>
+      </div>
+
+      {/* Étapes */}
+      <div style={{
+        padding: '14px 16px',
+        background: 'var(--bg)',
+        border: '1px solid var(--border)',
+        borderRadius: 10,
+        display: 'flex', flexDirection: 'column', gap: 9,
+      }}>
+        {steps.map((step, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 15, width: 22, textAlign: 'center', flexShrink: 0, lineHeight: 1 }}>
+              {step.icon}
+            </span>
+            <span style={{ fontSize: 13, color: step.color }}>
+              <strong>Étape {i + 1}</strong> — {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Alerte si secrets absents */}
+      {secretsConfigured === false && (
+        <div style={{
+          fontSize: 12, color: '#c2410c',
+          background: '#fff7ed', border: '1px solid #fed7aa',
+          borderRadius: 8, padding: '8px 12px',
+        }}>
+          ⚠ Configure d'abord les secrets Supabase (étape 2) avant de connecter.
+          Clique sur "Voir le guide" pour les instructions détaillées.
+        </div>
+      )}
+
+      {/* Boutons */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={onShowGuide}
+          style={{
+            padding: '8px 16px', borderRadius: 8,
+            border: '1px solid var(--border)', background: 'var(--surface)',
+            color: 'var(--text)', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'var(--font)',
+          }}
+        >
+          📖 Voir le guide de configuration
+        </button>
+        <button
+          type="button"
+          onClick={onConnect}
+          disabled={!configured || busy}
+          title={!configured && !checking ? "Configure d'abord les secrets Supabase" : undefined}
+          style={{
+            padding: '8px 20px', borderRadius: 8, border: 'none',
+            background: (!configured || busy) ? 'var(--border)' : 'var(--accent)',
+            color: (!configured || busy) ? 'var(--text3)' : '#fff',
+            fontSize: 13, fontWeight: 600,
+            cursor: (!configured || busy) ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font)', transition: 'background 0.15s',
+          }}
+        >
+          {busy ? 'Connexion…' : checking ? 'Vérification…' : 'Connecter Lightspeed'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Carte d'un provider ───────────────────────────────────────────
 function ProviderCard({ provider, etablissementId, canEdit }) {
   const [status, setStatus]           = useState(null);
   const [loading, setLoading]         = useState(false);
   const [action, setAction]           = useState(null);
-  const [pendingLocations, setLocs]   = useState(null);   // locations en attente de sélection
+  const [pendingLocations, setLocs]   = useState(null);
   const [pendingConnId, setPendingId] = useState(null);
+  // Ping : secrets Supabase configurés ? null=vérification, true, false
+  const [secretsConfigured, setSecrets] = useState(null);
+  const [showGuide, setShowGuide]       = useState(false);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -222,10 +338,19 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
+  // Ping — aucune auth requise, vérifie uniquement la présence des secrets
+  useEffect(() => {
+    const { url: supabaseUrl } = getSupabaseConfig();
+    fetch(`${supabaseUrl}/functions/v1/${POS_OAUTH_FN}?action=ping`)
+      .then(r => r.json())
+      .then(data => setSecrets(data.configured === true))
+      .catch(() => setSecrets(null)); // silencieux si edge function inaccessible
+  }, []);
+
   // Écoute les messages postMessage du popup OAuth
   useEffect(() => {
     const handler = (event) => {
-      const { type, locations, connectionId, locationName } = event.data ?? {};
+      const { type, locations, connectionId, locationName, error_code } = event.data ?? {};
       if (type === 'pos_oauth_success') {
         setAction(null);
         const name = locationName ? ` (${locationName})` : '';
@@ -237,7 +362,11 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
         setPendingId(connectionId);
       } else if (type === 'pos_oauth_error') {
         setAction(null);
-        notify(`Erreur OAuth : ${event.data.error}`, 'error');
+        // Message traduit selon le code d'erreur OAuth, générique en fallback
+        const msg = (error_code && OAUTH_ERRORS[error_code])
+          ? OAUTH_ERRORS[error_code]
+          : (event.data.error || 'Connexion échouée. Vérifie ta configuration et réessaie.');
+        notify(`Erreur OAuth : ${msg}`, 'error');
       }
     };
     window.addEventListener('message', handler);
@@ -293,89 +422,113 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
     return new Date(iso).toLocaleString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
-  const isConnected      = status?.status === 'connected';
-  const isError          = status?.status === 'error';
-  const needsLocation    = status?.status === 'needs_location';
-  const notConnected     = !status || status.status === 'disconnected' || status.status === 'not_connected';
-  const hasData          = isConnected && !!status?.last_sync_at;
-  const showBackfill     = isConnected && !needsLocation;
-  const busy             = !!action;
+  const isConnected   = status?.status === 'connected';
+  const isError       = status?.status === 'error';
+  const needsLocation = status?.status === 'needs_location';
+  const notConnected  = !status || status.status === 'disconnected' || status.status === 'not_connected';
+  const hasData       = isConnected && !!status?.last_sync_at;
+  const showBackfill  = isConnected && !needsLocation;
+  const busy          = !!action;
 
   return (
     <div>
-      {/* Ligne provider */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '16px 20px', borderBottom: pendingLocations || (isConnected && !hasData) ? 'none' : '1px solid var(--border)' }}>
-        <div style={{ flexShrink: 0, marginTop: 2 }}><IconLightspeed /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{provider.label}</span>
-            {loading && <span style={{ fontSize: 11, color: 'var(--text3)' }}>Chargement…</span>}
-            {!loading && isConnected && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' }}>Connecté</span>}
-            {!loading && isError && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5' }}>Erreur</span>}
-            {!loading && needsLocation && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>Sélection requise</span>}
-            {!loading && notConnected && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--bg)', color: 'var(--text3)', border: '1px solid var(--border)' }}>Non connecté</span>}
+      {/* ── Écran de setup (aucune connexion) — canEdit uniquement ── */}
+      {notConnected && canEdit && (
+        loading ? (
+          <div style={{
+            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <IconLightspeed />
+            <span style={{ fontSize: 13, color: 'var(--text3)' }}>Vérification de la connexion…</span>
           </div>
-          {isConnected && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
-              {status.ls_business_location_id
-                ? `Location : ${status.ls_business_location_id} · `
-                : ''}
-              Dernière sync : {formatDate(status.last_sync_at)}
+        ) : (
+          <SetupScreen
+            provider={provider}
+            secretsConfigured={secretsConfigured}
+            onShowGuide={() => setShowGuide(true)}
+            onConnect={handleConnect}
+            busy={busy}
+          />
+        )
+      )}
+
+      {/* ── Vue lecture seule (non connecté, !canEdit) ── */}
+      {notConnected && !canEdit && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <IconLightspeed />
+          <div>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{provider.label}</span>
+            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Non connecté</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Vue standard (connecté / erreur / sélection location) ── */}
+      {!notConnected && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '16px 20px', borderBottom: pendingLocations || (isConnected && !hasData) ? 'none' : '1px solid var(--border)' }}>
+          <div style={{ flexShrink: 0, marginTop: 2 }}><IconLightspeed /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{provider.label}</span>
+              {loading && <span style={{ fontSize: 11, color: 'var(--text3)' }}>Chargement…</span>}
+              {!loading && isConnected    && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' }}>Connecté</span>}
+              {!loading && isError        && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5' }}>Erreur</span>}
+              {!loading && needsLocation  && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>Sélection requise</span>}
             </div>
-          )}
-          {isError && status?.last_error && (
-            <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4, background: '#fef2f2', padding: '5px 9px', borderRadius: 6 }}>⚠ {status.last_error}</div>
-          )}
-          {needsLocation && (
-            <div style={{ fontSize: 12, color: '#c2410c', marginTop: 3 }}>
-              Plusieurs restaurants détectés — choisissez la location ci-dessous.
+            {isConnected && (
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
+                {status.ls_business_location_id ? `Location : ${status.ls_business_location_id} · ` : ''}
+                Dernière sync : {formatDate(status.last_sync_at)}
+              </div>
+            )}
+            {isError && status?.last_error && (
+              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4, background: '#fef2f2', padding: '5px 9px', borderRadius: 6 }}>⚠ {status.last_error}</div>
+            )}
+            {needsLocation && (
+              <div style={{ fontSize: 12, color: '#c2410c', marginTop: 3 }}>
+                Plusieurs restaurants détectés — choisissez la location ci-dessous.
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          {canEdit && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {needsLocation && (
+                <button type="button" onClick={handleConnect} disabled={busy}
+                  style={{ padding: '8px 16px', borderRadius: 8, background: busy ? '#fde68a' : 'var(--accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
+                  {action === 'connecting' ? 'Connexion…' : 'Reconnecter'}
+                </button>
+              )}
+              {(isConnected || isError) && (
+                <>
+                  {isConnected && (
+                    <button type="button" onClick={handleTest} disabled={busy}
+                      style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                      {action === 'testing' ? 'Test…' : 'Tester'}
+                    </button>
+                  )}
+                  {isError && (
+                    <button type="button" onClick={handleConnect} disabled={busy}
+                      style={{ padding: '8px 14px', borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
+                      Reconnecter
+                    </button>
+                  )}
+                  <button type="button" onClick={handleDisconnect} disabled={busy}
+                    style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                    {action === 'disconnecting' ? 'Déconnexion…' : 'Déconnecter'}
+                  </button>
+                </>
+              )}
             </div>
-          )}
-          {notConnected && (
-            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}>Synchronisez vos ventes pour activer les 3 vues cuisine.</div>
           )}
         </div>
-
-        {/* Actions */}
-        {canEdit && (
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(notConnected || needsLocation) && (
-              <button type="button" onClick={handleConnect} disabled={busy}
-                style={{ padding: '8px 16px', borderRadius: 8, background: busy ? '#fde68a' : 'var(--accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
-                {action === 'connecting' ? 'Connexion…' : notConnected ? 'Connecter' : 'Reconnecter'}
-              </button>
-            )}
-            {(isConnected || isError) && (
-              <>
-                {isConnected && (
-                  <button type="button" onClick={handleTest} disabled={busy}
-                    style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
-                    {action === 'testing' ? 'Test…' : 'Tester'}
-                  </button>
-                )}
-                {isError && (
-                  <button type="button" onClick={handleConnect} disabled={busy}
-                    style={{ padding: '8px 14px', borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
-                    Reconnecter
-                  </button>
-                )}
-                <button type="button" onClick={handleDisconnect} disabled={busy}
-                  style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
-                  {action === 'disconnecting' ? 'Déconnexion…' : 'Déconnecter'}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Backfill */}
       {showBackfill && (
-        <BackfillBlock
-          connectionId={status?.id}
-          hasData={hasData}
-          onComplete={loadStatus}
-        />
+        <BackfillBlock connectionId={status?.id} hasData={hasData} onComplete={loadStatus} />
       )}
 
       {/* Sélecteur multi-location (modal) */}
@@ -389,13 +542,18 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
           onCancel={() => { setLocs(null); setPendingId(null); }}
         />
       )}
+
+      {/* Guide de configuration (modal) */}
+      {showGuide && (
+        <LightspeedSetupGuide onClose={() => setShowGuide(false)} />
+      )}
     </div>
   );
 }
 
 // ── Composant principal ──────────────────────────────────────────
 export default function PosIntegrationsCard({ etablissement, user }) {
-  const [providers, setProviders] = useState([]);
+  const [providers, setProviders]             = useState([]);
   const [loadingProviders, setLoadingProviders] = useState(true);
 
   const canEdit = ['consultant', 'patron'].includes(user?.role);

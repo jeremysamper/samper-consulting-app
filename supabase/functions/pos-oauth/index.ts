@@ -150,8 +150,45 @@ Deno.serve(async (req: Request) => {
   const lsEnv = (Deno.env.get('LS_ENV') ?? 'demo').trim();
   const url   = new URL(req.url);
 
-  // ── GET : callback OAuth2 ────────────────────────────────────────
+  // ── GET : callback OAuth2 + utilitaires ─────────────────────────
   if (req.method === 'GET') {
+
+    // ── ping — vérifie la présence des secrets (aucune auth requise) ──
+    if (url.searchParams.get('action') === 'ping') {
+      const configured = !!(
+        Deno.env.get('LS_CLIENT_ID') &&
+        Deno.env.get('LS_CLIENT_SECRET') &&
+        Deno.env.get('LS_REDIRECT_URI')
+      );
+      return json({ configured });
+    }
+
+    // ── Erreur OAuth renvoyée par Lightspeed (?error=...) ─────────
+    const oauthError = url.searchParams.get('error');
+    if (oauthError) {
+      const errorDesc = url.searchParams.get('error_description') ?? oauthError;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Erreur OAuth</title>
+<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;
+height:100vh;margin:0;background:#fef2f2;}.box{padding:28px 32px;border-radius:12px;
+background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center;}
+.icon{font-size:42px;margin-bottom:12px;}p{color:#b91c1c;font-weight:600;font-size:14px;margin:0;}
+small{color:#6b7280;font-size:12px;font-weight:400;display:block;margin-top:6px;}
+</style></head><body>
+<div class="box">
+  <div class="icon">❌</div>
+  <p>Autorisation refusée<small>${errorDesc.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</small></p>
+</div>
+<script>
+  try { window.opener && window.opener.postMessage({
+    type: 'pos_oauth_error',
+    error_code: ${JSON.stringify(oauthError)},
+    error: ${JSON.stringify(errorDesc)}
+  }, '*'); } catch(e) {}
+  setTimeout(() => window.close(), 2500);
+</script></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
+
     const code  = url.searchParams.get('code');
     const state = url.searchParams.get('state');
     if (!code || !state) return new Response('Paramètres manquants', { status: 400 });
