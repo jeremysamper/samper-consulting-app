@@ -46,6 +46,16 @@ export const navItems = [
   { id: 'faq', label: 'FAQ & Assistant IA', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' }
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Modules consultant-only — non présents dans navItems ni defaultPermissions.
+// Leur accès est géré par condition directe dans LegacyModuleHost.jsx :
+//   user.role === 'consultant' && permissions.consultant_tools !== false
+//
+//   • factures    → Facturation client        src/modules/factures/
+//   • parametres  → Paramètres établissement  src/modules/parametres/
+//   • roles       → Gestion rôles & accès     src/modules/roles/
+// ─────────────────────────────────────────────────────────────────────────────
+
 const pageAliases = {
   recettes: 'cartes',
   outils: 'consultant_tools',
