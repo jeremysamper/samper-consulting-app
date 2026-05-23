@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,7 +65,57 @@ function productionIndexPlugin() {
 }
 
 export default defineConfig({
-  plugins: [legacyRawComponentsPlugin(), react(), productionIndexPlugin()],
+  plugins: [
+    legacyRawComponentsPlugin(),
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      // On fournit notre propre manifest.json dans public/ — pas de génération auto
+      manifest: false,
+      includeAssets: ['favicon.ico', 'favicon.svg', 'icons/*.png', 'offline.html'],
+      workbox: {
+        // Cacher tous les assets statiques compilés par Vite
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Page hors-ligne servie quand une navigation échoue sans cache
+        navigateFallback: '/offline.html',
+        navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            // Appels Supabase : NetworkFirst — données fraîches prioritaires,
+            // fallback sur cache 5 min max si réseau absent
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 5 * 60,
+              },
+              networkTimeoutSeconds: 10,
+            },
+          },
+          {
+            // Google Fonts : StaleWhileRevalidate (cache immédiat, màj en fond)
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 an
+              },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        // Désactivé en dev (évite les conflits HMR + SW)
+        // Mettre à true pour tester le SW localement
+        enabled: false,
+      },
+    }),
+    productionIndexPlugin(),
+  ],
   build: {
     outDir: 'dist-vite',
     emptyOutDir: true,
