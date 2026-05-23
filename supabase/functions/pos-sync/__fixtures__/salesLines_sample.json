@@ -1,0 +1,114 @@
+{
+  "_comment": "Fixture dry-run — 15 lignes de ventes, 6 SKU, cas timezone limite inclus",
+  "_timezone_note": "RISOTTO-001 à 22:30 UTC (CEST été UTC+2 → 00:30 lendemain). Vérifie le split jour.",
+  "sales": [
+    {
+      "name": "Risotto aux champignons",
+      "sku": "RISOTTO-001",
+      "qty": 2,
+      "price": 2800,
+      "timestamp": "2026-05-22T12:15:00Z"
+    },
+    {
+      "name": "Risotto aux champignons",
+      "sku": "RISOTTO-001",
+      "qty": 1,
+      "price": 2800,
+      "timestamp": "2026-05-22T19:30:00Z"
+    },
+    {
+      "name": "Risotto aux champignons",
+      "sku": "RISOTTO-001",
+      "qty": 1,
+      "price": 2800,
+      "timestamp": "2026-05-22T22:30:00Z",
+      "_note": "22:30 UTC = 00:30 CEST → doit être compté le 2026-05-23, PAS le 22"
+    },
+    {
+      "name": "Entrecôte grillée",
+      "sku": "ENTRECOTE-002",
+      "qty": 3,
+      "price": 4500,
+      "timestamp": "2026-05-22T11:45:00Z"
+    },
+    {
+      "name": "Entrecôte grillée",
+      "sku": "ENTRECOTE-002",
+      "qty": 2,
+      "price": 4500,
+      "timestamp": "2026-05-22T18:20:00Z"
+    },
+    {
+      "name": "Salade César",
+      "sku": "SALADE-003",
+      "qty": 4,
+      "price": 1850,
+      "timestamp": "2026-05-22T11:30:00Z"
+    },
+    {
+      "name": "Salade César",
+      "sku": "SALADE-003",
+      "qty": 2,
+      "price": 1850,
+      "timestamp": "2026-05-22T12:00:00Z"
+    },
+    {
+      "name": "Tarte Tatin",
+      "sku": "DESSERT-004",
+      "qty": 5,
+      "price": 1200,
+      "timestamp": "2026-05-22T13:15:00Z"
+    },
+    {
+      "name": "Tarte Tatin",
+      "sku": "DESSERT-004",
+      "qty": 3,
+      "price": 1200,
+      "timestamp": "2026-05-22T20:45:00Z"
+    },
+    {
+      "name": "Soupe du jour",
+      "sku": "SOUPE-005",
+      "qty": 6,
+      "price": 1100,
+      "timestamp": "2026-05-22T11:15:00Z"
+    },
+    {
+      "name": "Filet de truite",
+      "sku": "TRUITE-006",
+      "qty": 2,
+      "price": 3200,
+      "timestamp": "2026-05-22T12:30:00Z"
+    },
+    {
+      "name": "Filet de truite",
+      "sku": "TRUITE-006",
+      "qty": 4,
+      "price": 3200,
+      "timestamp": "2026-05-22T19:15:00Z"
+    },
+    {
+      "name": "Filet de truite",
+      "sku": "TRUITE-006",
+      "qty": 1,
+      "price": 3200,
+      "timestamp": "2026-05-22T21:45:00Z",
+      "_note": "21:45 UTC = 23:45 CEST → doit rester sur le 2026-05-22"
+    },
+    {
+      "name": "Plat sans SKU — test fallback nom",
+      "sku": null,
+      "qty": 2,
+      "price": 2200,
+      "timestamp": "2026-05-22T13:00:00Z",
+      "_note": "SKU null → clé = slugify(name)"
+    },
+    {
+      "name": "Soupe du jour",
+      "sku": "SOUPE-005",
+      "qty": 3,
+      "price": 1100,
+      "timestamp": "2026-05-22T19:00:00Z"
+    }
+  ]
+}

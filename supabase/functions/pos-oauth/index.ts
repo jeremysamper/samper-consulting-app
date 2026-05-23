@@ -1,28 +1,29 @@
 // ════════════════════════════════════════════════════════════════
-// Edge function « pos-oauth » — OAuth2 Lightspeed K-Series.
+// Edge function « pos-oauth » v2 — OAuth2 Lightspeed K-Series.
+//
+// Nouveautés v2 :
+//   • Détection multi-location après token exchange
+//   • Si 1 location → auto-select, status='connected'
+//   • Si N locations → status='needs_location', page HTML envoie
+//     postMessage({ type: 'pos_oauth_needs_location', locations })
+//   • Nouveau endpoint POST action='set_location'
+//   • status étendu : 'needs_location' (état intermédiaire)
 //
 // Sécurité : tokens JAMAIS exposés côté client.
-//   • Cette fonction s'exécute avec SUPABASE_SERVICE_ROLE_KEY →
-//     bypasse le RLS pour écrire/lire les tokens.
-//   • Le client reçoit uniquement status / last_sync_at / last_error.
 //
-// Secrets requis (Supabase Dashboard → Edge Functions → Manage secrets) :
-//   LS_CLIENT_ID      — Client ID de l'app Lightspeed
-//   LS_CLIENT_SECRET  — Client Secret
-//   LS_REDIRECT_URI   — https://<project>.supabase.co/functions/v1/pos-oauth
-//   LS_ENV            — 'demo' (défaut) | 'prod'
-// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY sont injectés automatiquement.
+// Secrets requis :
+//   LS_CLIENT_ID, LS_CLIENT_SECRET, LS_REDIRECT_URI, LS_ENV
 //
-// Endpoints exposés :
-//   GET  ?code=&state=     → callback OAuth2 (Lightspeed redirige ici)
-//   POST { action: 'get_auth_url',  etablissementId, providerId }
-//   POST { action: 'status',        etablissementId, providerId }
-//   POST { action: 'test',          etablissementId, providerId }
-//   POST { action: 'disconnect',    etablissementId, providerId }
+// Endpoints :
+//   GET  ?code=&state=           → callback OAuth2
+//   POST action='get_auth_url'   → URL OAuth Lightspeed
+//   POST action='status'         → statut connexion (sans tokens)
+//   POST action='set_location'   → choisit la location (multi-location)
+//   POST action='test'           → vérifie le token
+//   POST action='disconnect'     → purge tokens
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-
-// ── Helpers ──────────────────────────────────────────────────────
+import { fetchBusinessLocations } from '../_shared/lightspeed-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,7 +43,6 @@ const env = (name: string): string => {
   return v.trim().replace(/^["']|["']$/g, '').trim();
 };
 
-// ── URLs Lightspeed selon environnement ─────────────────────────
 function lsBaseAuth(lsEnv: string) {
   const domain = lsEnv === 'prod' ? 'lsk-prod.app' : 'lsk-demo.app';
   return `https://auth.${domain}/realms/k-series/protocol/openid-connect`;
@@ -51,7 +51,6 @@ function lsBaseApi(lsEnv: string) {
   return lsEnv === 'prod' ? 'https://api.lsk.lightspeed.app' : 'https://api.lsk-demo.app';
 }
 
-// ── Client Supabase service_role (bypasse RLS) ───────────────────
 function adminClient() {
   return createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -59,8 +58,6 @@ function adminClient() {
     { auth: { persistSession: false } }
   );
 }
-
-// ── Client Supabase anon (pour vérifier l'identité de l'appelant) ─
 function userClient(authHeader: string) {
   return createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -69,81 +66,61 @@ function userClient(authHeader: string) {
   );
 }
 
-// ── Échange code → tokens ────────────────────────────────────────
-async function exchangeCode(code: string, lsEnv: string): Promise<{
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}> {
-  const clientId     = env('LS_CLIENT_ID');
-  const clientSecret = env('LS_CLIENT_SECRET');
-  const redirectUri  = env('LS_REDIRECT_URI');
-  const tokenUrl     = `${lsBaseAuth(lsEnv)}/token`;
-
-  const body = new URLSearchParams({
-    grant_type:   'authorization_code',
-    code,
-    redirect_uri: redirectUri,
-  });
-
+async function exchangeCode(code: string, lsEnv: string) {
+  const tokenUrl = `${lsBaseAuth(lsEnv)}/token`;
   const res = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      'Authorization': `Basic ${btoa(`${env('LS_CLIENT_ID')}:${env('LS_CLIENT_SECRET')}`)}`,
     },
-    body: body.toString(),
+    body: new URLSearchParams({
+      grant_type:   'authorization_code',
+      code,
+      redirect_uri: env('LS_REDIRECT_URI'),
+    }).toString(),
   });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Lightspeed token exchange failed (${res.status}): ${txt}`);
-  }
-  return res.json();
+  if (!res.ok) throw new Error(`Token exchange failed (${res.status}): ${await res.text()}`);
+  return res.json() as Promise<{ access_token: string; refresh_token: string; expires_in: number }>;
 }
 
-// ── Refresh access_token ─────────────────────────────────────────
-async function refreshTokens(refreshToken: string, lsEnv: string): Promise<{
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}> {
-  const clientId     = env('LS_CLIENT_ID');
-  const clientSecret = env('LS_CLIENT_SECRET');
-  const tokenUrl     = `${lsBaseAuth(lsEnv)}/token`;
-
-  const body = new URLSearchParams({
-    grant_type:    'refresh_token',
-    refresh_token: refreshToken,
-  });
-
-  const res = await fetch(tokenUrl, {
+async function refreshTokens(refreshToken: string, lsEnv: string) {
+  const res = await fetch(`${lsBaseAuth(lsEnv)}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      'Authorization': `Basic ${btoa(`${env('LS_CLIENT_ID')}:${env('LS_CLIENT_SECRET')}`)}`,
     },
-    body: body.toString(),
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }).toString(),
   });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Lightspeed token refresh failed (${res.status}): ${txt}`);
-  }
-  return res.json();
+  if (!res.ok) throw new Error(`Token refresh failed (${res.status}): ${await res.text()}`);
+  return res.json() as Promise<{ access_token: string; refresh_token: string; expires_in: number }>;
 }
 
-// ── Upsert connexion POS en base ────────────────────────────────
+/** Upsert la connexion POS (sans ls_business_location_id — sera ajouté par set_location) */
 async function upsertConnection(
   admin: ReturnType<typeof adminClient>,
   etablissementId: string,
   providerId: string,
   tokens: { access_token: string; refresh_token: string; expires_in: number },
-  lsEnv: string
-) {
+  status: 'connected' | 'needs_location',
+  locationIds?: { businessId: string; locationId: string }
+): Promise<string> {
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-  // Cherche une connexion existante
+  const payload: Record<string, unknown> = {
+    access_token_enc:  tokens.access_token,
+    refresh_token_enc: tokens.refresh_token,
+    token_expires_at:  expiresAt,
+    status,
+    last_error:        null,
+    updated_at:        new Date().toISOString(),
+  };
+  if (locationIds) {
+    payload.ls_business_id          = locationIds.businessId;
+    payload.ls_business_location_id = locationIds.locationId;
+  }
+
   const { data: existing } = await admin
     .from('pos_connections')
     .select('id')
@@ -152,30 +129,13 @@ async function upsertConnection(
     .maybeSingle();
 
   if (existing) {
-    const { error } = await admin
-      .from('pos_connections')
-      .update({
-        access_token_enc:  tokens.access_token,
-        refresh_token_enc: tokens.refresh_token,
-        token_expires_at:  expiresAt,
-        status:            'connected',
-        last_error:        null,
-        updated_at:        new Date().toISOString(),
-      })
-      .eq('id', existing.id);
+    const { error } = await admin.from('pos_connections').update(payload).eq('id', existing.id);
     if (error) throw new Error(`DB update failed: ${error.message}`);
     return existing.id as string;
   } else {
     const { data, error } = await admin
       .from('pos_connections')
-      .insert({
-        etablissement_id:  etablissementId,
-        provider_id:       providerId,
-        access_token_enc:  tokens.access_token,
-        refresh_token_enc: tokens.refresh_token,
-        token_expires_at:  expiresAt,
-        status:            'connected',
-      })
+      .insert({ ...payload, etablissement_id: etablissementId, provider_id: providerId })
       .select('id')
       .single();
     if (error) throw new Error(`DB insert failed: ${error.message}`);
@@ -184,107 +144,142 @@ async function upsertConnection(
 }
 
 // ────────────────────────────────────────────────────────────────
-// HANDLER PRINCIPAL
-// ────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
-  // Preflight CORS
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const url    = new URL(req.url);
-  const lsEnv  = (Deno.env.get('LS_ENV') ?? 'demo').trim();
+  const lsEnv = (Deno.env.get('LS_ENV') ?? 'demo').trim();
+  const url   = new URL(req.url);
 
-  // ── GET : callback OAuth2 depuis Lightspeed ─────────────────────
+  // ── GET : callback OAuth2 ────────────────────────────────────────
   if (req.method === 'GET') {
     const code  = url.searchParams.get('code');
     const state = url.searchParams.get('state');
-
-    if (!code || !state) {
-      return new Response('Paramètres manquants (code, state)', { status: 400 });
-    }
+    if (!code || !state) return new Response('Paramètres manquants', { status: 400 });
 
     let stateData: { etablissementId: string; providerId: string };
-    try {
-      stateData = JSON.parse(atob(state));
-    } catch {
-      return new Response('State invalide', { status: 400 });
-    }
+    try { stateData = JSON.parse(atob(state)); }
+    catch { return new Response('State invalide', { status: 400 }); }
 
     try {
-      const tokens = await exchangeCode(code, lsEnv);
-      const admin  = adminClient();
-      await upsertConnection(admin, stateData.etablissementId, stateData.providerId, tokens, lsEnv);
+      const tokens    = await exchangeCode(code, lsEnv);
+      const admin     = adminClient();
 
-      // Renvoie une page HTML minimaliste qui notifie le popup parent et se ferme
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Connexion réussie</title>
-<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f0fdf4;}
-.box{text-align:center;padding:32px;border-radius:12px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);}
-.icon{font-size:48px;margin-bottom:12px;}
-p{color:#15803d;font-weight:600;font-size:16px;margin:0;}
-</style></head><body>
-<div class="box"><div class="icon">✅</div><p>Connexion Lightspeed réussie !<br>Cette fenêtre va se fermer…</p></div>
+      // Récupère les business locations disponibles
+      const locations = await fetchBusinessLocations(tokens.access_token, lsEnv);
+
+      let connectionId: string;
+      let htmlMsg: string;
+
+      if (locations.length === 1) {
+        // Auto-sélection : 1 seule location
+        connectionId = await upsertConnection(
+          admin,
+          stateData.etablissementId,
+          stateData.providerId,
+          tokens,
+          'connected',
+          { businessId: locations[0].businessId, locationId: locations[0].locationId }
+        );
+        htmlMsg = `
+<div class="box">
+  <div class="icon">✅</div>
+  <p>Connexion Lightspeed réussie !<br>
+     <small style="font-size:12px;color:#6b7280">${locations[0].locationName}</small><br>
+     Cette fenêtre va se fermer…</p>
+</div>
 <script>
-  try { window.opener && window.opener.postMessage({ type: 'pos_oauth_success' }, '*'); } catch(e) {}
+  try { window.opener && window.opener.postMessage({
+    type: 'pos_oauth_success',
+    connectionId: ${JSON.stringify(connectionId)},
+    locationName: ${JSON.stringify(locations[0].locationName)}
+  }, '*'); } catch(e) {}
   setTimeout(() => window.close(), 1500);
-</script>
-</body></html>`;
-      return new Response(html, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      });
+</script>`;
+      } else {
+        // Multi-location : stocker les tokens, statut intermédiaire
+        connectionId = await upsertConnection(
+          admin,
+          stateData.etablissementId,
+          stateData.providerId,
+          tokens,
+          'needs_location'
+        );
+
+        const locJson = JSON.stringify(locations);
+        htmlMsg = `
+<div class="box" style="max-width:480px;text-align:left">
+  <div class="icon" style="text-align:center">🔍</div>
+  <p style="text-align:center;color:#1d4ed8;font-weight:700;font-size:15px;margin:0 0 12px">
+    Plusieurs locations détectées
+  </p>
+  <p style="color:#374151;font-size:13px;margin:0 0 16px">
+    Votre compte Lightspeed contient ${locations.length} restaurants.<br>
+    La sélection se fait dans l'application Samper — cette fenêtre va se fermer.
+  </p>
+</div>
+<script>
+  try { window.opener && window.opener.postMessage({
+    type: 'pos_oauth_needs_location',
+    connectionId: ${JSON.stringify(connectionId)},
+    locations: ${locJson}
+  }, '*'); } catch(e) {}
+  setTimeout(() => window.close(), 2000);
+</script>`;
+      }
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Lightspeed</title>
+<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;
+height:100vh;margin:0;background:#f0f9ff;}.box{padding:28px 32px;border-radius:12px;
+background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);}.icon{font-size:42px;margin-bottom:12px;}
+p{margin:0;line-height:1.5;}small{color:#6b7280;}</style>
+</head><body>${htmlMsg}</body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Erreur de connexion</title>
-<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fef2f2;}
-.box{text-align:center;padding:32px;border-radius:12px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);}
-.icon{font-size:48px;margin-bottom:12px;}
-p{color:#b91c1c;font-weight:600;font-size:14px;margin:0;}
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Erreur</title>
+<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;
+height:100vh;margin:0;background:#fef2f2;}.box{padding:28px 32px;border-radius:12px;
+background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center;}
+.icon{font-size:42px;margin-bottom:12px;}p{color:#b91c1c;font-weight:600;font-size:14px;margin:0;}
 </style></head><body>
-<div class="box"><div class="icon">❌</div><p>Erreur lors de la connexion.<br>${errMsg.replace(/</g, '&lt;')}</p></div>
+<div class="box"><div class="icon">❌</div><p>Erreur lors de la connexion.<br>
+${errMsg.replace(/</g, '&lt;')}</p></div>
 <script>
-  try { window.opener && window.opener.postMessage({ type: 'pos_oauth_error', error: ${JSON.stringify(errMsg)} }, '*'); } catch(e) {}
+  try { window.opener && window.opener.postMessage({
+    type: 'pos_oauth_error', error: ${JSON.stringify(errMsg)}
+  }, '*'); } catch(e) {}
   setTimeout(() => window.close(), 3000);
-</script>
-</body></html>`;
-      return new Response(html, {
-        status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      });
+</script></body></html>`;
+      return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
   }
 
-  // ── POST : actions depuis le client ────────────────────────────
+  // ── POST : actions ───────────────────────────────────────────────
   if (req.method === 'POST') {
-    // 1. Vérifier l'authentification utilisateur
     const authHeader = req.headers.get('Authorization') ?? '';
     if (!authHeader) return json({ error: 'Non authentifié' }, 401);
-
     const userSupa = userClient(authHeader);
     const { data: { user }, error: authErr } = await userSupa.auth.getUser();
     if (authErr || !user) return json({ error: 'Session invalide' }, 401);
 
-    // 2. Lire le body
     let body: Record<string, string>;
     try { body = await req.json(); } catch { return json({ error: 'Body invalide' }, 400); }
 
     const { action, etablissementId, providerId } = body;
-    if (!action || !etablissementId || !providerId) {
-      return json({ error: 'Paramètres manquants' }, 400);
-    }
+    if (!action || !etablissementId || !providerId) return json({ error: 'Paramètres manquants' }, 400);
 
     const admin = adminClient();
 
-    // ── Action : get_auth_url ─────────────────────────────────────
+    // ── get_auth_url ─────────────────────────────────────────────
     if (action === 'get_auth_url') {
       try {
-        const clientId   = env('LS_CLIENT_ID');
-        const redirectUri = env('LS_REDIRECT_URI');
-        const state       = btoa(JSON.stringify({ etablissementId, providerId }));
-        const authUrl     = `${lsBaseAuth(lsEnv)}/auth`
-          + `?client_id=${encodeURIComponent(clientId)}`
+        const state   = btoa(JSON.stringify({ etablissementId, providerId }));
+        const authUrl = `${lsBaseAuth(lsEnv)}/auth`
+          + `?client_id=${encodeURIComponent(env('LS_CLIENT_ID'))}`
           + `&response_type=code`
           + `&scope=${encodeURIComponent('financial-api offline_access')}`
-          + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+          + `&redirect_uri=${encodeURIComponent(env('LS_REDIRECT_URI'))}`
           + `&state=${encodeURIComponent(state)}`;
         return json({ url: authUrl });
       } catch (err) {
@@ -292,104 +287,110 @@ p{color:#b91c1c;font-weight:600;font-size:14px;margin:0;}
       }
     }
 
-    // ── Action : status ───────────────────────────────────────────
+    // ── status ───────────────────────────────────────────────────
     if (action === 'status') {
       const { data, error } = await admin
         .from('pos_connections')
-        .select('id, status, last_sync_at, last_error, token_expires_at')
+        .select('id, status, last_sync_at, last_error, token_expires_at, ls_business_id, ls_business_location_id')
         .eq('etablissement_id', etablissementId)
         .eq('provider_id', providerId)
         .maybeSingle();
       if (error) return json({ error: error.message }, 500);
       if (!data) return json({ status: 'not_connected' });
       return json({
-        id:            data.id,
-        status:        data.status,
-        last_sync_at:  data.last_sync_at,
-        last_error:    data.last_error,
-        token_expires_at: data.token_expires_at,
+        id:                      data.id,
+        status:                  data.status,
+        last_sync_at:            data.last_sync_at,
+        last_error:              data.last_error,
+        token_expires_at:        data.token_expires_at,
+        ls_business_id:          data.ls_business_id,
+        ls_business_location_id: data.ls_business_location_id,
       });
     }
 
-    // ── Action : test ─────────────────────────────────────────────
+    // ── set_location (multi-location flow) ───────────────────────
+    if (action === 'set_location') {
+      const { connectionId, businessId, locationId } = body;
+      if (!connectionId || !businessId || !locationId) {
+        return json({ error: 'connectionId, businessId, locationId requis' }, 400);
+      }
+      const { error } = await admin
+        .from('pos_connections')
+        .update({
+          ls_business_id:          businessId,
+          ls_business_location_id: locationId,
+          status:                  'connected',
+          last_error:              null,
+        })
+        .eq('id', connectionId)
+        .eq('etablissement_id', etablissementId); // double sécurité
+
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true, message: 'Location sélectionnée ✓' });
+    }
+
+    // ── test ──────────────────────────────────────────────────────
     if (action === 'test') {
-      // Récupère le token (service_role → RLS bypassé)
       const { data: conn, error: connErr } = await admin
         .from('pos_connections')
         .select('id, access_token_enc, refresh_token_enc, token_expires_at')
         .eq('etablissement_id', etablissementId)
         .eq('provider_id', providerId)
         .maybeSingle();
-
       if (connErr) return json({ error: connErr.message }, 500);
       if (!conn)   return json({ error: 'Aucune connexion trouvée' }, 404);
 
       let accessToken = conn.access_token_enc;
-
-      // Auto-refresh si expiré (ou expiration dans < 5 min)
       const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at) : null;
       const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 300_000;
       if (needsRefresh && conn.refresh_token_enc) {
         try {
           const refreshed = await refreshTokens(conn.refresh_token_enc, lsEnv);
           accessToken = refreshed.access_token;
-          const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
           await admin.from('pos_connections').update({
             access_token_enc:  refreshed.access_token,
             refresh_token_enc: refreshed.refresh_token,
-            token_expires_at:  newExpiry,
-            status:            'connected',
-            last_error:        null,
+            token_expires_at:  new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+            status:            'connected', last_error: null,
           }).eq('id', conn.id);
         } catch (e) {
-          // Refresh échoué → marquer en erreur
           await admin.from('pos_connections').update({
-            status:     'error',
-            last_error: e instanceof Error ? e.message : 'Refresh token invalide',
+            status: 'error', last_error: e instanceof Error ? e.message : 'Refresh token invalide',
           }).eq('id', conn.id);
           return json({ error: 'Token expiré — reconnexion nécessaire', needs_reconnect: true }, 401);
         }
       }
 
-      // Appel test : liste les business locations disponibles
-      const apiBase = lsBaseApi(lsEnv);
-      const testRes = await fetch(`${apiBase}/account/v1/business-locations?pageSize=1`, {
+      const testRes = await fetch(`${lsBaseApi(lsEnv)}/account/v1/business-locations?pageSize=1`, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
-
       if (testRes.ok) {
-        // Mise à jour du statut en DB
-        await admin.from('pos_connections').update({
-          status:     'connected',
-          last_error: null,
-        }).eq('id', conn.id);
+        await admin.from('pos_connections').update({ status: 'connected', last_error: null }).eq('id', conn.id);
         return json({ ok: true, message: 'Connexion Lightspeed opérationnelle ✓' });
       } else {
         const errTxt = await testRes.text();
         await admin.from('pos_connections').update({
-          status:     'error',
-          last_error: `API test failed (${testRes.status}): ${errTxt.slice(0, 200)}`,
+          status: 'error', last_error: `API test failed (${testRes.status}): ${errTxt.slice(0, 200)}`,
         }).eq('id', conn.id);
         return json({ error: `Lightspeed API test échoué (${testRes.status})` }, 502);
       }
     }
 
-    // ── Action : disconnect ───────────────────────────────────────
+    // ── disconnect ────────────────────────────────────────────────
     if (action === 'disconnect') {
-      // Optionnel : tenter une révocation côté Lightspeed
-      // (K-Series ne documente pas encore de revocation endpoint — on purge juste en local)
       const { error } = await admin
         .from('pos_connections')
         .update({
-          access_token_enc:  null,
-          refresh_token_enc: null,
-          token_expires_at:  null,
-          status:            'disconnected',
-          last_error:        null,
+          access_token_enc:        null,
+          refresh_token_enc:       null,
+          token_expires_at:        null,
+          ls_business_id:          null,
+          ls_business_location_id: null,
+          status:                  'disconnected',
+          last_error:              null,
         })
         .eq('etablissement_id', etablissementId)
         .eq('provider_id', providerId);
-
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true, message: 'Déconnexion effectuée' });
     }
