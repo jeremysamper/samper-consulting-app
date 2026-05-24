@@ -11,6 +11,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -414,7 +415,7 @@ const HACCP = ({ user, etablissement }) => {
             <button key={t.id} style={{...hs.tab, ...(activeTab===t.id?hs.tabActive:{}), ...(t.id==='config'?{color:activeTab==='config'?'#fff':'var(--accent)',borderColor:'var(--accent)'}:{})}} onClick={()=>setActiveTab(t.id)}>{t.l}</button>
           ))}
         </div>
-        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}} className="desktop-toolbar">
           {activeTab!=='config' && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>setShowReleve(true)}>+ Nouveau relevé</button>}
           {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>setShowControl(true)}>+ Enregistrer contrôle</button>}
@@ -828,6 +829,19 @@ const HACCP = ({ user, etablissement }) => {
           </div>
         </div>
       )}
+
+      <BottomActionBar
+        actions={[
+          { label: 'Imprimer', icon: '🖨', onClick: () => pdfUtils?.printElement(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP') },
+          { label: 'PDF', icon: '⬇', onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
+        ]}
+        primaryAction={
+          activeTab==='releves'   ? { label: '+ Relevé', onClick: () => setShowReleve(true) } :
+          activeTab==='controles' ? { label: '+ Contrôle', onClick: () => setShowControl(true) } :
+          activeTab==='config' && isConsultant ? { label: '+ Zone', onClick: () => setZoneModal('new') } :
+          null
+        }
+      />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 // INVENTAIRE MENSUEL
 const Inventaire = ({ user, etablissement }) => {
@@ -511,7 +512,7 @@ const Inventaire = ({ user, etablissement }) => {
           </select>
           <span style={{...invs.badge, background: inv.statut==='validé' ? 'var(--success-bg)' : '#fef9c3', color: inv.statut==='validé' ? 'var(--success-text)' : 'var(--warning-text)'}}>{inv.statut === 'validé' ? '✓ Validé' : '⏳ En cours'}</span>
         </div>
-        <div style={invs.headerRight}>
+        <div style={invs.headerRight} className="desktop-toolbar">
           {canManage && <button style={invs.addBtn} onClick={() => setShowNew(true)}>+ Nouvel inventaire</button>}
           {canManage && <button style={invs.exportBtn} onClick={openAddLine}>+ Ajouter produit</button>}
           {canManage && !sel.active && <button style={invs.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>}
@@ -805,6 +806,14 @@ const Inventaire = ({ user, etablissement }) => {
           </div>
         </div>
       )}
+
+      <BottomActionBar
+        actions={[
+          canExport ? { label: 'Template', icon: '📄', onClick: downloadInventoryTemplate } : null,
+          canExport ? { label: 'PDF', icon: '⬇', onClick: exportInventoryPdf } : null,
+        ].filter(Boolean)}
+        primaryAction={canManage ? { label: '+ Produit', onClick: openAddLine } : null}
+      />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import ShiftCell from './ShiftCell.jsx';
 import { ccntCell, pls } from './Planning.styles.js';
 import { dbService } from '../../services/dbService.js';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -952,7 +953,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       </div>
 
       {/* Actions secondaires */}
-      <div style={pls.actionsBar} className="no-print">
+      <div style={pls.actionsBar} className="desktop-toolbar no-print">
         {canWrite && <button style={pls.addBtn} onClick={() => openNewShift()}>+ Ajouter horaire</button>}
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateDay}>📋 Dupliquer journée</button>}
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>📅 Dupliquer semaine</button>}
@@ -1797,6 +1798,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
           </div>
         );
       })()}
+      <BottomActionBar
+        actions={[
+          canExport && activeTab === 'planning' ? { label: 'Journée', icon: '📋', onClick: openDuplicateDay } : null,
+          canExport && activeTab === 'planning' ? { label: 'Semaine', icon: '📅', onClick: openDuplicateWeek } : null,
+          canExport ? { label: 'PDF', icon: '⬇', onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
+        ].filter(Boolean)}
+        primaryAction={canWrite ? { label: '+ Horaire', onClick: () => openNewShift() } : null}
+      />
     </div>
   );
 };

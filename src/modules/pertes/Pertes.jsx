@@ -6,6 +6,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -198,7 +199,7 @@ const Pertes = ({ user, etablissement }) => {
             ))}
           </div>
         </div>
-        <div style={pts.headerRight}>
+        <div style={pts.headerRight} className="desktop-toolbar">
           {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>+ Déclarer une perte</button>}
           {canManage && !sel.active && (
             <button style={pts.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>
@@ -504,6 +505,13 @@ const Pertes = ({ user, etablissement }) => {
           </div>
         </div>
       )}
+
+      <BottomActionBar
+        actions={[
+          { label: 'Export', icon: '⬇', onClick: exportPertes },
+        ]}
+        primaryAction={perms.pertes ? { label: '+ Perte', onClick: () => setShowForm(true) } : null}
+      />
     </div>
   );
 };

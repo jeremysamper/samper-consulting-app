@@ -5,6 +5,7 @@ import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS — Partage hiérarchique de PDFs
@@ -285,7 +286,7 @@ const Documents = ({ user, etablissement }) => {
           ))}
         </div>
 
-        <div style={doc_s.headerRight}>
+        <div style={doc_s.headerRight} className="desktop-toolbar">
           <input
             style={doc_s.search}
             placeholder="🔍 Rechercher…"
@@ -601,6 +602,15 @@ const Documents = ({ user, etablissement }) => {
           </div>
         );
       })()}
+
+      {canWrite && (
+        <BottomActionBar
+          actions={[
+            { label: 'Dossier', icon: '📁', onClick: () => setShowNewFolder(true) },
+          ]}
+          primaryAction={{ label: uploading ? '⏳ Upload…' : '📤 Importer', onClick: () => fileInputRef.current?.click(), disabled: uploading }}
+        />
+      )}
     </div>
   );
 };

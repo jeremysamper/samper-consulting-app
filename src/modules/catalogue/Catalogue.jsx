@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE — Base de données produits & fournisseurs
@@ -432,7 +433,7 @@ const Catalogue = ({ user, etablissement }) => {
           <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''} · {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
         {canWrite && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }} className="desktop-toolbar">
             <button style={{ ...cat.btn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }} onClick={() => setShowAiImport(true)}>
               ✨ Import IA
             </button>
@@ -721,6 +722,20 @@ const Catalogue = ({ user, etablissement }) => {
           existingProduits={produits}
           fournisseurs={fournisseurs}
           onClose={() => setShowAiImport(false)}
+        />
+      )}
+
+      {canWrite && (
+        <BottomActionBar
+          actions={[
+            { label: 'Import IA', icon: '✨', onClick: () => setShowAiImport(true) },
+            { label: 'Excel', icon: '📥', onClick: () => fileRef.current?.click() },
+          ]}
+          primaryAction={
+            activeTab === 'produits'
+              ? { label: '+ Produit', onClick: () => { setEditProd(null); setShowProdForm(true); } }
+              : { label: '+ Fournisseur', onClick: () => { setEditFourn(null); setShowFournForm(true); } }
+          }
         />
       )}
     </div>
