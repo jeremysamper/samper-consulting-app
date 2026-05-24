@@ -197,9 +197,9 @@ export default function AppLayout({
   const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
   const todayLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  // Labels personnalisés par établissement (Chantier 2 — module_labels table)
+  // Labels personnalisés globaux (module_labels table — portée tous établissements)
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
-  const { getLabelForModule } = useModuleLabels(etablissement?.id);
+  const { getLabelForModule } = useModuleLabels();
 
   // ── Logo upload (consultant uniquement)
   const canEditLogo = user.role === 'consultant';

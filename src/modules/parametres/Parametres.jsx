@@ -104,7 +104,7 @@ const Parametres = ({ user, etablissement }) => {
   const canEdit = user.role === 'consultant';
   // Labels de modules configurables : consultant + patron
   const canEditLabels = ['consultant', 'patron'].includes(user?.role);
-  const { getLabelForModule, updateLabel, resetLabel, labels: customLabels } = useModuleLabels(etablissement?.id);
+  const { getLabelForModule, updateLabel, resetLabel, labels: customLabels } = useModuleLabels();
   const [editingLabelKey, setEditingLabelKey] = React.useState(null);
   const [editingLabelValue, setEditingLabelValue] = React.useState('');
   const [labelSaving, setLabelSaving] = React.useState(false);
@@ -315,18 +315,12 @@ const Parametres = ({ user, etablissement }) => {
             <div>
               <div style={ps.listTitle}>Personnalisation des modules</div>
               <div style={{ fontSize:12, color:'var(--text2)', marginTop:4, fontWeight:400, textTransform:'none', letterSpacing:0 }}>
-                Renommez les modules dans la navigation pour cet établissement. Les clés techniques ne changent pas.
+                Renommez les modules dans la navigation — s'applique globalement à tous les établissements. Les clés techniques ne changent pas.
               </div>
             </div>
           </div>
 
-          {!etablissement?.id && (
-            <div style={{ padding:'16px 20px', fontSize:13, color:'var(--text2)' }}>
-              ⚠️ Sélectionne un établissement pour personnaliser ses labels.
-            </div>
-          )}
-
-          {etablissement?.id && NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isEditing = editingLabelKey === item.id;
             const customLabel = customLabels[item.id];
             const isCustomised = Boolean(customLabel);

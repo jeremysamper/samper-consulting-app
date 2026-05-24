@@ -4,29 +4,26 @@ import { supabase } from '../services/supabase.js';
 const TABLE = 'module_labels';
 
 /**
- * Labels personnalisés de modules pour un établissement.
+ * Labels personnalisés de modules — portée GLOBALE (tous établissements).
  *
  * Les clés techniques (module_key = navItem.id) ne changent JAMAIS côté code.
- * Seul le label affiché est stocké ici pour chaque établissement.
+ * Seul le label affiché est stocké ici. Une seule valeur par clé, partagée
+ * par tous les établissements de l'application.
  *
  * Utilisation :
- *   const { getLabelForModule, updateLabel, resetLabel } = useModuleLabels(etablissementId);
+ *   const { getLabelForModule, updateLabel, resetLabel } = useModuleLabels();
  *   getLabelForModule('previsions', 'Prévisions') → label custom ou 'Prévisions'
  */
-export function useModuleLabels(etablissementId) {
-  // { module_key: label } — vide tant que pas d'établissement ou pas de labels customs
+export function useModuleLabels() {
+  // { module_key: label } — vide tant que les labels n'ont pas été chargés
   const [labels, setLabels] = useState({});
 
   useEffect(() => {
-    if (!etablissementId) {
-      setLabels({});
-      return;
-    }
     let mounted = true;
     supabase
       .from(TABLE)
       .select('module_key, label')
-      .eq('etablissement_id', etablissementId)
+      // Pas de filtre etablissement_id — les labels sont globaux
       .then(({ data, error }) => {
         if (!mounted) return;
         if (error) {
@@ -38,7 +35,7 @@ export function useModuleLabels(etablissementId) {
         setLabels(map);
       });
     return () => { mounted = false; };
-  }, [etablissementId]);
+  }, []); // Pas de dépendance — global, chargé une seule fois
 
   /**
    * Retourne le label custom s'il existe, sinon le label par défaut.
@@ -50,12 +47,11 @@ export function useModuleLabels(etablissementId) {
   );
 
   /**
-   * Enregistre (upsert) un label custom.
+   * Enregistre (upsert) un label custom globalement.
    * Met à jour le state local immédiatement — pas besoin de refetch.
    * Retourne { error: string | null }.
    */
   const updateLabel = useCallback(async (key, label) => {
-    if (!etablissementId) return { error: 'Aucun établissement sélectionné.' };
     const trimmed = (label || '').trim();
     if (!trimmed) return { error: 'Le label ne peut pas être vide.' };
 
@@ -63,12 +59,11 @@ export function useModuleLabels(etablissementId) {
       .from(TABLE)
       .upsert(
         {
-          etablissement_id: etablissementId,
           module_key: key,
           label: trimmed,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: 'etablissement_id,module_key' },
+        { onConflict: 'module_key' }, // contrainte unique sur module_key seul
       );
 
     if (error) {
@@ -78,19 +73,16 @@ export function useModuleLabels(etablissementId) {
 
     setLabels((prev) => ({ ...prev, [key]: trimmed }));
     return { error: null };
-  }, [etablissementId]);
+  }, []);
 
   /**
-   * Supprime le label custom (retour au label par défaut du code).
+   * Supprime le label custom global (retour au label par défaut du code).
    * Retourne { error: string | null }.
    */
   const resetLabel = useCallback(async (key) => {
-    if (!etablissementId) return { error: 'Aucun établissement sélectionné.' };
-
     const { error } = await supabase
       .from(TABLE)
       .delete()
-      .eq('etablissement_id', etablissementId)
       .eq('module_key', key);
 
     if (error) {
@@ -104,7 +96,7 @@ export function useModuleLabels(etablissementId) {
       return next;
     });
     return { error: null };
-  }, [etablissementId]);
+  }, []);
 
   return { getLabelForModule, updateLabel, resetLabel, labels };
 }
