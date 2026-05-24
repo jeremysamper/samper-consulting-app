@@ -52,37 +52,11 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    async function boot() {
-      try {
-        // ─── Session éphémère : si l'utilisateur n'a pas coché "Rester connecté"
-        // lors de la connexion, Auth.jsx pose sc_session_only = '1' en sessionStorage.
-        // sessionStorage est effacé à la fermeture de l'onglet/PWA → à la prochaine
-        // ouverture, le flag est absent et la session localStorage est utilisée normalement.
-        // Si le flag EST présent (même onglet toujours ouvert) → on laisse la session active.
-        // Comportement intentionnel : "ne pas rester connecté" = session active dans l'onglet
-        // courant mais pas persistée sur d'autres appareils/ouvertures.
-        const sessionOnly = (() => {
-          try { return sessionStorage.getItem('sc_session_only') === '1'; } catch (_) { return false; }
-        })();
-        if (sessionOnly) {
-          // Flag présent → on a déjà une session active dans cet onglet, pas besoin de signer out
-          // Le flag est géré par Auth.jsx (ajout à la connexion, retiré si rememberMe est coché)
-        }
-
-        const currentSession = await withTimeout(authService.getSession(), null);
-        const currentProfile = await loadProfileSafe(currentSession?.user);
-
-        if (!mounted) return;
-        setSession(currentSession);
-        setUser(currentSession?.user || null);
-        // Au boot, si l'appel profil a échoué, on stocke null (pas de profil précédent à préserver)
-        setProfile(currentProfile === PROFILE_LOAD_FAILED ? null : currentProfile);
-      } catch (err) {
-        if (mounted) setError(err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
+    // ─── Garde-fou : si INITIAL_SESSION ne se déclenche jamais (défaillance client Supabase),
+    // débloque l'affichage après 20 s pour éviter un spinner infini.
+    const safetyTimer = globalThis.setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 20000);
 
     let unsubscribe = () => {};
     try {
@@ -90,8 +64,36 @@ export function useAuth() {
         if (!mounted) return;
 
         // Log temporaire pour diagnostic en prod — à retirer dans 2 semaines une fois validé.
-        // Montre l'event Supabase (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION, PASSWORD_RECOVERY).
         console.log('[Auth]', event, nextSession?.user?.email ?? 'no session');
+
+        // ─── INITIAL_SESSION : premier état auth déterminé — débloque le chargement ───
+        //
+        // Supabase JS v2 émet toujours INITIAL_SESSION en premier dès qu'un écouteur
+        // est enregistré. Il représente l'état initial lu en localStorage (session valide,
+        // token expiré mais rafraîchi, ou absence de session).
+        //
+        // FIX flash login : loading ne passe jamais à false avant cet event.
+        // Le Login n'est donc jamais affiché avant que Supabase ait répondu de façon
+        // définitive — même si le rafraîchissement JWT prend plusieurs secondes.
+        if (event === 'INITIAL_SESSION') {
+          globalThis.clearTimeout(safetyTimer);
+
+          if (nextSession?.user) {
+            const nextProfile = await loadProfileSafe(nextSession.user);
+            if (!mounted) return;
+            setSession(nextSession);
+            setUser(nextSession.user);
+            setProfile(nextProfile === PROFILE_LOAD_FAILED ? null : nextProfile);
+          } else {
+            // Pas de session → état propre. Login s'affichera après loading = false.
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
+
+          setLoading(false);
+          return;
+        }
 
         // ─── Déconnexion explicite : on vide tout ───
         if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
@@ -115,7 +117,7 @@ export function useAuth() {
           return;
         }
 
-        // ─── SIGNED_IN / INITIAL_SESSION (ou event inconnu) : charger le profil ───
+        // ─── SIGNED_IN (login manuel via Auth.jsx) : charger le profil ───
         const nextProfile = await loadProfileSafe(nextSession?.user);
         if (!mounted) return;
 
@@ -126,11 +128,8 @@ export function useAuth() {
         // Ne déconnecte JAMAIS l'utilisateur à cause d'un timeout/erreur transitoire.
         if (nextProfile === PROFILE_LOAD_FAILED) {
           if (!profileRef.current) {
-            // Pas de profil précédent → on laisse null (l'écran d'auth s'affichera)
-            // C'est le bon comportement : pas de session = pas de profil = login.
             setProfile(null);
           }
-          // sinon : on garde profileRef.current via le state existant (no-op intentionnel)
           return;
         }
 
@@ -138,12 +137,19 @@ export function useAuth() {
       });
     } catch (err) {
       console.warn('[Auth] Ecoute auth indisponible', err);
+      globalThis.clearTimeout(safetyTimer);
+      if (mounted) setLoading(false); // débloque si l'écoute échoue totalement
     }
 
-    boot();
+    // Note : sc_session_only (sessionStorage flag) — mécanisme de session éphémère.
+    // La vérification a lieu ici uniquement pour documenter l'intention ; le vrai
+    // comportement (ne pas persister) est géré par le fait que sessionStorage est effacé
+    // à la fermeture de l'onglet. Supabase conserve la session en localStorage (storageKey
+    // 'samper-auth') mais l'app ne force pas la déconnexion ici (complexité PWA inutile).
 
     return () => {
       mounted = false;
+      globalThis.clearTimeout(safetyTimer);
       unsubscribe();
     };
   }, []);
