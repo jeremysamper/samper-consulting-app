@@ -3,13 +3,14 @@
  *
  * Visible uniquement sur mobile (< 768px), masquée sur desktop.
  * Position fixed en bas de l'écran avec safe-area-inset.
+ * Texte seul — zéro icône/emoji pour respecter la DA de l'app.
  *
  * Props :
- *   actions      : [{ label, icon, onClick, disabled?, variant? }]
+ *   actions      : [{ label, onClick, disabled?, variant? }]
  *                  variant = 'default' | 'destructive'
  *                  max 3 actions secondaires recommandé
- *   primaryAction: { label, icon?, onClick, disabled? }
- *                  CTA principal (vert, à droite)
+ *   primaryAction: { label, onClick, disabled? }
+ *                  CTA principal (accent, à droite)
  */
 import React from 'react';
 
@@ -25,12 +26,10 @@ export default function BottomActionBar({ actions = [], primaryAction = null }) 
             className={`bab-btn${action.variant === 'destructive' ? ' bab-destructive' : ''}`}
             onClick={action.onClick}
             disabled={action.disabled}
-            title={action.label}
             type="button"
             aria-label={action.label}
           >
-            {action.icon && <span className="bab-icon" aria-hidden="true">{action.icon}</span>}
-            {action.label && <span className="bab-label">{action.label}</span>}
+            {action.label}
           </button>
         ))}
       </div>
@@ -43,8 +42,7 @@ export default function BottomActionBar({ actions = [], primaryAction = null }) 
           type="button"
           aria-label={primaryAction.label}
         >
-          {primaryAction.icon && <span aria-hidden="true">{primaryAction.icon}</span>}
-          <span>{primaryAction.label}</span>
+          {primaryAction.label}
         </button>
       )}
     </div>

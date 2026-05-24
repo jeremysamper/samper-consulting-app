@@ -728,13 +728,13 @@ const Catalogue = ({ user, etablissement }) => {
       {canWrite && (
         <BottomActionBar
           actions={[
-            { label: 'Import IA', icon: '✨', onClick: () => setShowAiImport(true) },
-            { label: 'Excel', icon: '📥', onClick: () => fileRef.current?.click() },
+            { label: 'Import IA', onClick: () => setShowAiImport(true) },
+            { label: 'Importer Excel', onClick: () => fileRef.current?.click() },
           ]}
           primaryAction={
             activeTab === 'produits'
-              ? { label: '+ Produit', onClick: () => { setEditProd(null); setShowProdForm(true); } }
-              : { label: '+ Fournisseur', onClick: () => { setEditFourn(null); setShowFournForm(true); } }
+              ? { label: '+ Nouveau produit', onClick: () => { setEditProd(null); setShowProdForm(true); } }
+              : { label: '+ Nouveau fournisseur', onClick: () => { setEditFourn(null); setShowFournForm(true); } }
           }
         />
       )}
@@ -796,8 +796,8 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
   };
 
   return (
-    <div style={cat.overlay} onClick={onClose}>
-      <div style={cat.modal} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={cat.overlay} onClick={onClose}>
+      <div className="modal-full" style={cat.modal} onClick={e => e.stopPropagation()}>
         <div style={cat.modalHead}>
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>
             {prod ? 'Modifier' : 'Nouveau'} produit
@@ -972,8 +972,8 @@ const FournisseurForm = ({ fourn, onSave, onClose }) => {
     await onSave(form);
   };
   return (
-    <div style={cat.overlay} onClick={onClose}>
-      <div style={{ ...cat.modal, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={cat.overlay} onClick={onClose}>
+      <div className="modal-full" style={{ ...cat.modal, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div style={cat.modalHead}>
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>{fourn ? 'Modifier' : 'Nouveau'} fournisseur</div>
           <button style={cat.closeBtn} onClick={onClose}>✕</button>
@@ -1047,8 +1047,8 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
   const { newItems, duplicates, aberrants, totalScanned } = report;
 
   return (
-    <div style={ipm.overlay} onClick={onCancel}>
-      <div style={ipm.modal} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={ipm.overlay} onClick={onCancel}>
+      <div className="modal-full" style={ipm.modal} onClick={e => e.stopPropagation()}>
         <div style={ipm.header}>
           <div>
             <div style={ipm.title}>📋 Prévisualisation de l'import</div>

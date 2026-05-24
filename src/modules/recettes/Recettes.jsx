@@ -3,6 +3,7 @@ import { getDemoData } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 
 // CARTES & RECETTES
@@ -41,8 +42,8 @@ const ScalingModal = ({ recette, onClose }) => {
   };
 
   return (
-    <div style={smStyle.overlay} onClick={onClose}>
-      <div style={smStyle.modal} onClick={e => e.stopPropagation()}>
+    <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
+      <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
         <div style={smStyle.header}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⚖ Calculateur de quantités</div>
@@ -306,8 +307,8 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
   };
 
   return (
-    <div style={smStyle.overlay} onClick={() => !saving && onClose()}>
-      <div style={{ ...smStyle.modal, maxWidth: 640, width: '94vw' }} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={smStyle.overlay} onClick={() => !saving && onClose()}>
+      <div className="modal-full" style={{ ...smStyle.modal, maxWidth: 640, width: '94vw' }} onClick={e => e.stopPropagation()}>
         <div style={smStyle.header}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🔀 Dupliquer la recette vers…</div>
@@ -478,15 +479,23 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       <div style={{display:'flex',gap:8,marginBottom:16, flexWrap: 'wrap'}} className='no-print'>
         <button style={rs.backBtn} onClick={onBack}>← Retour</button>
         <button
+          className="desktop-toolbar"
           style={{ ...rs.printBtn, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}
           onClick={() => setShowCalc(true)}
-        >⚖ Calculer</button>
-        <button style={rs.printBtn} onClick={printRecipe}>🖨 Imprimer</button>
-        <button style={rs.printBtn} onClick={exportRecipePdf}>⬇ Export PDF</button>
+        >Calculer</button>
+        <button style={rs.printBtn} onClick={printRecipe}>Imprimer</button>
+        <button style={rs.printBtn} onClick={exportRecipePdf}>Export PDF</button>
         {canDuplicate && (
-          <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>🔀 Dupliquer vers…</button>
+          <button className="desktop-toolbar" style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
         )}
       </div>
+      <BottomActionBar
+        actions={[
+          { label: 'Calculer', onClick: () => setShowCalc(true) },
+          canDuplicate ? { label: 'Dupliquer vers…', onClick: () => setShowDuplicate(true) } : null,
+        ].filter(Boolean)}
+        primaryAction={{ label: '← Retour', onClick: onBack }}
+      />
       <div id='fiche-recette-print'>
       <div style={rs.detailHeader}>
         {recette.photoUrl && (

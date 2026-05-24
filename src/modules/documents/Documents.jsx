@@ -497,8 +497,8 @@ const Documents = ({ user, etablissement }) => {
 
       {/* Modal nouveau dossier */}
       {showNewFolder && (
-        <div style={doc_s.overlay} onClick={() => setShowNewFolder(false)}>
-          <div style={doc_s.modal} onClick={e => e.stopPropagation()}>
+        <div className="modal-sheet-overlay" style={doc_s.overlay} onClick={() => setShowNewFolder(false)}>
+          <div className="modal-sheet" style={doc_s.modal} onClick={e => e.stopPropagation()}>
             <div style={doc_s.modalHeader}>
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Nouveau dossier</div>
               <button style={doc_s.closeBtn} onClick={() => setShowNewFolder(false)}>✕</button>
@@ -606,9 +606,9 @@ const Documents = ({ user, etablissement }) => {
       {canWrite && (
         <BottomActionBar
           actions={[
-            { label: 'Dossier', icon: '📁', onClick: () => setShowNewFolder(true) },
+            { label: 'Nouveau dossier', onClick: () => setShowNewFolder(true) },
           ]}
-          primaryAction={{ label: uploading ? '⏳ Upload…' : '📤 Importer', onClick: () => fileInputRef.current?.click(), disabled: uploading }}
+          primaryAction={{ label: uploading ? 'Upload en cours…' : 'Importer PDF', onClick: () => fileInputRef.current?.click(), disabled: uploading }}
         />
       )}
     </div>

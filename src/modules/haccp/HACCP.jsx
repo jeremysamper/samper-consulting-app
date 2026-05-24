@@ -673,8 +673,8 @@ const HACCP = ({ user, etablissement }) => {
 
       {/* ── MODAL RELEVÉ ── */}
       {showReleve&&(
-        <div style={hs.overlay} onClick={()=>setShowReleve(false)}>
-          <div style={hs.modal} onClick={e=>e.stopPropagation()}>
+        <div className="modal-sheet-overlay" style={hs.overlay} onClick={()=>setShowReleve(false)}>
+          <div className="modal-sheet" style={hs.modal} onClick={e=>e.stopPropagation()}>
             <div style={hs.modalHeader}><div style={hs.modalTitle}>Nouveau relevé de température</div><button style={hs.closeBtn} onClick={()=>setShowReleve(false)}>✕</button></div>
             <div style={hs.modalBody}>
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -714,8 +714,8 @@ const HACCP = ({ user, etablissement }) => {
 
       {/* ── MODAL CONTRÔLE ── */}
       {showControl&&(
-        <div style={hs.overlay} onClick={()=>setShowControl(false)}>
-          <div style={hs.modal} onClick={e=>e.stopPropagation()}>
+        <div className="modal-sheet-overlay" style={hs.overlay} onClick={()=>setShowControl(false)}>
+          <div className="modal-sheet" style={hs.modal} onClick={e=>e.stopPropagation()}>
             <div style={hs.modalHeader}><div style={hs.modalTitle}>Enregistrer un contrôle</div><button style={hs.closeBtn} onClick={()=>setShowControl(false)}>✕</button></div>
             <div style={hs.modalBody}>
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -756,8 +756,8 @@ const HACCP = ({ user, etablissement }) => {
 
       {/* ─── Modale "Tout conforme" — saisie groupée des relevés ─── */}
       {showQuickReleves && (
-        <div style={hs.qrOverlay} onClick={() => !quickSaving && setShowQuickReleves(false)}>
-          <div style={hs.qrModal} onClick={e => e.stopPropagation()}>
+        <div className="modal-full-overlay" style={hs.qrOverlay} onClick={() => !quickSaving && setShowQuickReleves(false)}>
+          <div className="modal-full" style={hs.qrModal} onClick={e => e.stopPropagation()}>
             <div style={hs.qrHeader}>
               <div>
                 <div style={hs.qrTitle}>✓ Saisie rapide des relevés</div>
@@ -832,13 +832,12 @@ const HACCP = ({ user, etablissement }) => {
 
       <BottomActionBar
         actions={[
-          { label: 'Imprimer', icon: '🖨', onClick: () => pdfUtils?.printElement(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP') },
-          { label: 'PDF', icon: '⬇', onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
+          { label: 'Export PDF', onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
         ]}
         primaryAction={
-          activeTab==='releves'   ? { label: '+ Relevé', onClick: () => setShowReleve(true) } :
-          activeTab==='controles' ? { label: '+ Contrôle', onClick: () => setShowControl(true) } :
-          activeTab==='config' && isConsultant ? { label: '+ Zone', onClick: () => setZoneModal('new') } :
+          activeTab==='releves'   ? { label: '+ Nouveau relevé', onClick: () => setShowReleve(true) } :
+          activeTab==='controles' ? { label: '+ Enregistrer contrôle', onClick: () => setShowControl(true) } :
+          activeTab==='config' && isConsultant ? { label: '+ Ajouter zone', onClick: () => setZoneModal('new') } :
           null
         }
       />

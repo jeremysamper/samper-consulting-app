@@ -338,8 +338,8 @@ const Pertes = ({ user, etablissement }) => {
 
       {/* Modal saisie perte */}
       {showForm && (
-        <div style={pts.overlay} onClick={() => setShowForm(false)}>
-          <div style={pts.modal} onClick={e=>e.stopPropagation()}>
+        <div className="modal-full-overlay" style={pts.overlay} onClick={() => setShowForm(false)}>
+          <div className="modal-full" style={pts.modal} onClick={e=>e.stopPropagation()}>
             <div style={pts.modalHeader}>
               <div style={{fontWeight:700,fontSize:16,fontFamily:'var(--font-serif)'}}>Déclarer une perte</div>
               <button style={pts.closeBtn} onClick={()=>setShowForm(false)}>✕</button>
@@ -508,9 +508,9 @@ const Pertes = ({ user, etablissement }) => {
 
       <BottomActionBar
         actions={[
-          { label: 'Export', icon: '⬇', onClick: exportPertes },
+          { label: 'Exporter', onClick: exportPertes },
         ]}
-        primaryAction={perms.pertes ? { label: '+ Perte', onClick: () => setShowForm(true) } : null}
+        primaryAction={perms.pertes ? { label: '+ Déclarer une perte', onClick: () => setShowForm(true) } : null}
       />
     </div>
   );

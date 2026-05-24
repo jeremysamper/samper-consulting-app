@@ -4,6 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -360,12 +361,12 @@ const FichesSalle = ({ user, etablissement }) => {
           </div>
         </div>
         {canEdit && !sel.active && (
-          <div style={{display:'flex',gap:8,flexShrink:0,flexWrap:'wrap'}}>
+          <div className="desktop-toolbar" style={{display:'flex',gap:8,flexShrink:0,flexWrap:'wrap'}}>
             {fiches.length > 0 && (
-              <button style={fss.selectBtn} onClick={sel.enter}>☑ Sélectionner</button>
+              <button style={fss.selectBtn} onClick={sel.enter}>Sélectionner</button>
             )}
             <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
-              ✨ Générer les fiches salle (IA)
+              Générer fiches salle (IA)
             </button>
             <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche salle</button>
           </div>
@@ -465,6 +466,16 @@ const FichesSalle = ({ user, etablissement }) => {
         ))}
         {filtered.length===0&&<div style={fss.empty}>Aucune fiche pour ces critères.</div>}
       </div>
+
+      {canEdit && !sel.active && (
+        <BottomActionBar
+          actions={[
+            { label: 'Générer IA', onClick: genererFichesSalleIA, disabled: !!bulkProgress },
+            fiches.length > 0 ? { label: 'Sélectionner', onClick: sel.enter } : null,
+          ].filter(Boolean)}
+          primaryAction={{ label: '+ Nouvelle fiche salle', onClick: () => openEdit(null) }}
+        />
+      )}
 
       {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes}/>}
     </div>
@@ -602,8 +613,8 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => 
   };
 
   return (
-    <div style={fss.overlay} onClick={onClose}>
-      <div style={{...fss.modal,width:620}} onClick={e=>e.stopPropagation()}>
+    <div className="modal-full-overlay" style={fss.overlay} onClick={onClose}>
+      <div className="modal-full" style={{...fss.modal,width:620}} onClick={e=>e.stopPropagation()}>
         <div style={fss.modalHeader}>
           <div style={fss.modalTitle}>{fiche?.id?.startsWith('fs') && fiche?.nom?'Modifier la fiche':'Nouvelle fiche salle'}</div>
           <button style={fss.closeBtn} onClick={onClose}>✕</button>

@@ -1049,8 +1049,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
       {/* Modale détail */}
       {showDetailModal && selectedShift && (
-        <div style={pls.overlay} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>
-          <div style={pls.modal} onClick={e => e.stopPropagation()}>
+        <div className="modal-full-overlay" style={pls.overlay} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>
+          <div className="modal-full" style={pls.modal} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button style={pls.closeBtn} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>✕</button></div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
@@ -1124,8 +1124,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
       {/* Modale ajout/édition */}
       {showEditModal && editForm && (
-        <div style={pls.overlay} onClick={() => setShowEditModal(false)}>
-          <div style={pls.modal} onClick={e => e.stopPropagation()}>
+        <div className="modal-full-overlay" style={pls.overlay} onClick={() => setShowEditModal(false)}>
+          <div className="modal-full" style={pls.modal} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}><div style={pls.modalTitle}>{editForm.id ? 'Modifier l\'horaire' : 'Nouvel horaire'}</div><button style={pls.closeBtn} onClick={() => setShowEditModal(false)}>✕</button></div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
@@ -1188,8 +1188,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {/* ═════════ MODALE DUPLIQUER ═════════ */}
       {/* Mode 'day' = duplication multi-employés × multi-dates ; mode 'week' = semaine complète vers semaine */}
       {duplicateMode === 'week' && (
-        <div style={pls.overlay} onClick={() => setDuplicateMode(null)}>
-          <div style={{ ...pls.modal, width: 480 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-full-overlay" style={pls.overlay} onClick={() => setDuplicateMode(null)}>
+          <div className="modal-full" style={{ ...pls.modal, width: 480 }} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}>
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Dupliquer une semaine complète</div>
               <button style={pls.closeBtn} onClick={() => setDuplicateMode(null)}>✕</button>
@@ -1261,8 +1261,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
         return (
-          <div style={pls.overlay} onClick={() => !dupSaving && setDuplicateMode(null)}>
-            <div style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-full-overlay" style={pls.overlay} onClick={() => !dupSaving && setDuplicateMode(null)}>
+            <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
               <div style={pls.modalHeader}>
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📋 Dupliquer une journée vers plusieurs employés</div>
                 <button style={pls.closeBtn} onClick={() => !dupSaving && setDuplicateMode(null)}>✕</button>
@@ -1447,8 +1447,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
       {/* ═════════ MODALE RELEVÉ CCNT ═════════ */}
       {showCCNTModal && (
-        <div style={pls.overlay} onClick={() => setShowCCNTModal(false)}>
-          <div style={{ ...pls.modal, width: 560 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-full-overlay" style={pls.overlay} onClick={() => setShowCCNTModal(false)}>
+          <div className="modal-full" style={{ ...pls.modal, width: 560 }} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}>
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Générer un relevé CCNT</div>
               <button style={pls.closeBtn} onClick={() => setShowCCNTModal(false)}>✕</button>
@@ -1671,8 +1671,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const allDatesSelected = DAYS.length > 0 && DAYS.every(d => demultDates.has(d.date));
         const allUsersSelected = employees.length > 0 && employees.every(e => demultUserIds.has(e.id));
         return (
-          <div style={pls.overlay} onClick={closeDemult}>
-            <div style={{ ...pls.modal, maxWidth: 720, width: '94vw' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-full-overlay" style={pls.overlay} onClick={closeDemult}>
+            <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw' }} onClick={e => e.stopPropagation()}>
               <div style={pls.modalHeader}>
                 <div style={pls.modalTitle}>⚡ Démultiplier l'horaire</div>
                 <button style={pls.closeBtn} onClick={closeDemult}>✕</button>
@@ -1800,11 +1800,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
       })()}
       <BottomActionBar
         actions={[
-          canExport && activeTab === 'planning' ? { label: 'Journée', icon: '📋', onClick: openDuplicateDay } : null,
-          canExport && activeTab === 'planning' ? { label: 'Semaine', icon: '📅', onClick: openDuplicateWeek } : null,
-          canExport ? { label: 'PDF', icon: '⬇', onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
+          canExport && activeTab === 'planning' ? { label: 'Dupliquer journée', onClick: openDuplicateDay } : null,
+          canExport && activeTab === 'planning' ? { label: 'Dupliquer semaine', onClick: openDuplicateWeek } : null,
+          canExport ? { label: 'Export PDF', onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
         ].filter(Boolean)}
-        primaryAction={canWrite ? { label: '+ Horaire', onClick: () => openNewShift() } : null}
+        primaryAction={canWrite ? { label: '+ Ajouter horaire', onClick: () => openNewShift() } : null}
       />
     </div>
   );

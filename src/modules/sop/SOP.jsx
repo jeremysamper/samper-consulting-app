@@ -5,6 +5,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
+import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING — MODULE SOP & CHECKLISTS
@@ -125,10 +126,10 @@ const SOP = ({ user, etablissement }) => {
             {' · '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="desktop-toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canManage && (
             <>
-              <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>📚 Templates</button>
+              <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>Templates</button>
               <button style={ss.primaryBtn} onClick={() => setSelectedSop({})}>+ Nouvelle SOP</button>
             </>
           )}
@@ -167,6 +168,13 @@ const SOP = ({ user, etablissement }) => {
         />
       ) : (
         <SopHistory executions={executions} sops={sops} user={user} canManage={canManage} />
+      )}
+
+      {canManage && (
+        <BottomActionBar
+          actions={[{ label: 'Templates', onClick: () => setShowTemplates(true) }]}
+          primaryAction={{ label: '+ Nouvelle SOP', onClick: () => setSelectedSop({}) }}
+        />
       )}
 
       {/* Modale templates */}
@@ -897,8 +905,8 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
   };
 
   return (
-    <div style={ss.overlay} onClick={onClose}>
-      <div style={ss.modal} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={ss.overlay} onClick={onClose}>
+      <div className="modal-full" style={ss.modal} onClick={e => e.stopPropagation()}>
         <div style={ss.modalHeader}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📚 Bibliothèque de templates SOP</div>

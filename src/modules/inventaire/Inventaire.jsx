@@ -643,8 +643,8 @@ const Inventaire = ({ user, etablissement }) => {
 
       {/* Modale ajout produit manuel */}
       {showAddLine && (
-        <div style={invs.overlay} onClick={() => setShowAddLine(false)}>
-          <div style={{...invs.modal, width: 500}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => setShowAddLine(false)}>
+          <div className="modal-sheet" style={{...invs.modal, width: 500}} onClick={e=>e.stopPropagation()}>
             <div style={invs.modalHeader}>
               <div style={{fontWeight:700, fontSize:16, fontFamily:'var(--font-serif)'}}>Ajouter un produit à l'inventaire</div>
               <button style={invs.closeBtn} onClick={() => setShowAddLine(false)}>✕</button>
@@ -809,10 +809,10 @@ const Inventaire = ({ user, etablissement }) => {
 
       <BottomActionBar
         actions={[
-          canExport ? { label: 'Template', icon: '📄', onClick: downloadInventoryTemplate } : null,
-          canExport ? { label: 'PDF', icon: '⬇', onClick: exportInventoryPdf } : null,
+          canExport ? { label: 'Template XLSX', onClick: downloadInventoryTemplate } : null,
+          canExport ? { label: 'Export PDF', onClick: exportInventoryPdf } : null,
         ].filter(Boolean)}
-        primaryAction={canManage ? { label: '+ Produit', onClick: openAddLine } : null}
+        primaryAction={canManage ? { label: '+ Ajouter produit', onClick: openAddLine } : null}
       />
     </div>
   );
