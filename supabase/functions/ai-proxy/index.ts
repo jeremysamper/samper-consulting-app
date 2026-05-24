@@ -102,20 +102,26 @@ Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche
 const FICHE_SALLE_SYSTEM = `Tu es un expert de la restauration. À partir d'une recette, tu rédiges sa FICHE SALLE destinée à l'équipe de service pour conseiller les clients.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 {"descriptionService":"...","temperatureService":"...","dressageNotes":"","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","alternative":"...","notes":"..."}],"accordsGeneraux":["Vin rouge corsé","Vin blanc sec"]}
-- "descriptionService" : 1 à 2 phrases maximum, ton direct et factuel, style fiche technique salle.
-  FORMAT : [élément principal ou technique de cuisson] + [durée si utile pour le service] + [accompagnements clés] + [sauce/garniture]. Commencer par le nom de l'élément principal ou sa technique.
-  RÈGLES ABSOLUES : mentionner les ingrédients principaux et les techniques de cuisson ; inclure les temps de cuisson quand utiles pour le service (12 min, 6h de braisage, 3 min à la commande…) ; zéro adjectif subjectif (fondant, onctueux, raffiné, savoureux, généreux, subtil, délicat, harmonieux, exquis, sublime, crémeux sauf si c'est la texture réelle du plat…) ; zéro lyrisme, zéro métaphore, zéro touche personnelle ; allergènes jamais mentionnés (champ séparé) ; point d'exclamation interdit ; emoji interdit.
-  EXEMPLES CIBLES :
-  ❌ "Une joue fondante qui révèle toute la profondeur du terroir alpin..."
-  ✅ "Joue de bœuf braisée 6h, aubergine grillée, sarrasin soufflé, citron confit."
-  ❌ "Un sérac croustillant aux notes herbacées subtilement sublimé par..."
-  ✅ "Sérac pané frit 2 min, sauce acidulée aux herbes, basilic, jeunes pousses."
-  ❌ "Délicat filet de perche aux saveurs estivales..."
-  ✅ "Filet de perche poêlé minute, poivron doux, citron vert, riz soufflé croustillant."
-  ❌ "Une caille rôtie au four, délicatement accompagnée d'orge croustillante..."
-  ✅ "Caille rôtie 12 min, orge croustillante, fenouil, fromage frais aux herbes."
-  ❌ "Un omble chevalier en ceviche aux saveurs marines délicatement acidulées..."
-  ✅ "Omble chevalier en ceviche, lait ribot, ail noir, fenouil, piri-piri."
+- "descriptionService" : Tu décris un plat pour un serveur de salle. Règles absolues :
+  1. Zéro adjectif subjectif.
+     Interdit : délicat, savoureux, raffiné, généreux, gourmand,
+     exquis, subtil, tendre, onctueux, fin, léger, riche.
+     Autorisé : les faits — noms d'ingrédients, techniques de cuisson,
+     temps de cuisson, textures mesurables (croustillant, fondant).
+  2. Zéro compliment sur le plat.
+     Interdit : "un plat qui ravira", "une expérience unique",
+     "parfaitement maîtrisé", "une belle harmonie de saveurs".
+  3. Format : 1 à 2 phrases. Maximum 35 mots. Ton direct, factuel.
+  4. Structure : technique/cuisson + ingrédients principaux + garniture.
+  EXEMPLES :
+  Plat : Joue de bœuf, aubergine grillée, sarrasin soufflé, citron confit
+  → "Joue de bœuf braisée 6h, aubergine grillée, sarrasin soufflé, citron confit."
+  Plat : Filet de perche, poivron doux, citron vert, riz soufflé
+  → "Filet de perche poêlé minute, poivron doux, citron vert, riz soufflé croustillant."
+  Plat : Caille rôtie, orge, fenouil, fromage frais aux herbes
+  → "Caille rôtie 12 min, orge croustillante, fenouil, fromage frais aux herbes alpines."
+  Plat : Prune pochée, myrtille, crème anglaise basilic, miel
+  → "Prune pochée, myrtille, crème anglaise basilic, miel d'Évolène."
 - "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
 - "dressageNotes" : toujours "" (chaîne vide — champ complété manuellement par le chef, ne pas remplir)
 - "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
