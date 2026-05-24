@@ -450,7 +450,7 @@ export default function AppLayout({
         </aside>
 
         {/* ─── Contenu principal ─── */}
-        <main style={mls.content} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+        <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
           {children}
         </main>
       </div>

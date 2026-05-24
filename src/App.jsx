@@ -119,7 +119,7 @@ export default function App() {
   if (auth.loading) {
     content = <BootScreen />;
   } else if (!auth.profile) {
-    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} />;
+    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} onNavigateToDashboard={() => setPage('dashboard')} />;
   } else if (auth.profile.actif === false) {
     content = <DisabledAccount onLogout={handleLogout} />;
   } else if (legacyState.loading) {
@@ -161,16 +161,22 @@ export default function App() {
 }
 
 function BootScreen({ title = '' }) {
-  // Loader minimaliste : spinner Samper or sur fond crème, sans le panel "migration"
-  // qui faisait trop "page d'erreur". Animation @keyframes spin déjà dans app.css.
+  // Splash screen : logo SC (orange sur fond vert, cohérent avec l'icône PWA)
+  // + barre de progression animée + nom de l'app.
+  // Animation @keyframes spin + splashBar définis dans app.css.
   return (
     <main style={bootScreenStyles.root}>
       <div style={bootScreenStyles.center}>
-        <div style={bootScreenStyles.spinner} aria-label="Chargement">
-          <div style={bootScreenStyles.spinnerInner} />
-        </div>
+        {/* Logo SC — identique à l'icône PWA : fond vert #0f1a12, lettres orange #c87f3e */}
+        <div style={bootScreenStyles.logoBox}>SC</div>
+
         <div style={bootScreenStyles.brand}>Samper Consulting</div>
         {title && <div style={bootScreenStyles.subtitle}>{title}</div>}
+
+        {/* Barre de progression */}
+        <div style={bootScreenStyles.barTrack}>
+          <div style={bootScreenStyles.barFill} />
+        </div>
       </div>
     </main>
   );
@@ -178,40 +184,62 @@ function BootScreen({ title = '' }) {
 
 const bootScreenStyles = {
   root: {
-    minHeight: '100vh',
+    position: 'fixed',
+    inset: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'var(--bg)',
     fontFamily: 'var(--font)',
+    zIndex: 9999,
   },
   center: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 18,
+    gap: 16,
   },
-  spinner: {
-    width: 44,
-    height: 44,
-    borderRadius: '50%',
-    border: '3px solid var(--accent-light)',
-    borderTopColor: 'var(--accent)',
-    animation: 'spin 0.9s linear infinite',
+  logoBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    background: '#0f1a12',
+    color: '#c87f3e',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 700,
+    fontSize: 20,
+    fontFamily: 'var(--font-serif)',
+    letterSpacing: 1,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
   },
-  spinnerInner: { display: 'none' }, // placeholder pour compat future
   brand: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 700,
     color: 'var(--text)',
     fontFamily: 'var(--font-serif)',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 11,
     color: 'var(--text2)',
     fontStyle: 'italic',
     marginTop: -8,
+  },
+  barTrack: {
+    width: 80,
+    height: 2,
+    background: 'var(--border)',
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    width: '40%',
+    background: '#c87f3e',
+    borderRadius: 1,
+    animation: 'splashBar 1.2s ease-in-out infinite',
   },
 };
 

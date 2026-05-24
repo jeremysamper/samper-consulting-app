@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { getSupabaseConfigState } from '../../services/supabase.js';
 
-export default function Auth({ onSignIn, onResetPassword }) {
+export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard }) {
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,6 +48,9 @@ export default function Auth({ onSignIn, onResetPassword }) {
         } else {
           try { sessionStorage.removeItem('sc_session_only'); } catch (_) {}
         }
+        // SIGNED_IN (nouvelle connexion manuelle) → toujours dashboard
+        // TOKEN_REFRESHED (reconnexion silencieuse) → dernière page visitée (géré par readInitialPage)
+        onNavigateToDashboard?.();
         notify('Connexion réussie');
       } else {
         if (!email.trim()) {
