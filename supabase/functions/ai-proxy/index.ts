@@ -102,26 +102,26 @@ Ne retiens un produit que s'il s'agit bien du même ingrédient (variante proche
 const FICHE_SALLE_SYSTEM = `Tu es un expert de la restauration. À partir d'une recette, tu rédiges sa FICHE SALLE destinée à l'équipe de service pour conseiller les clients.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 {"descriptionService":"...","temperatureService":"...","dressageNotes":"","infosService":"...","tempsPreparation":"...","accords":[{"type":"vin","nom":"...","region":"...","alternative":"...","notes":"..."}],"accordsGeneraux":["Vin rouge corsé","Vin blanc sec"]}
-- "descriptionService" : Tu décris un plat pour un serveur de salle. Règles absolues :
-  1. Zéro adjectif subjectif.
-     Interdit : délicat, savoureux, raffiné, généreux, gourmand,
-     exquis, subtil, tendre, onctueux, fin, léger, riche.
-     Autorisé : les faits — noms d'ingrédients, techniques de cuisson,
-     temps de cuisson, textures mesurables (croustillant, fondant).
-  2. Zéro compliment sur le plat.
-     Interdit : "un plat qui ravira", "une expérience unique",
-     "parfaitement maîtrisé", "une belle harmonie de saveurs".
-  3. Format : 1 à 2 phrases. Maximum 35 mots. Ton direct, factuel.
-  4. Structure : technique/cuisson + ingrédients principaux + garniture.
+- "descriptionService" : Tu décris un plat pour un serveur de salle qui doit pouvoir l'expliquer à un client et répondre à ses questions.
+  Règles :
+  1. Mentionner la technique de cuisson et le temps si pertinent
+  2. Citer les ingrédients principaux avec leur préparation exacte
+  3. Inclure 1 détail concret qui distingue le plat
+     (origine d'un produit, association inattendue, geste de finition)
+  4. Zéro adjectif subjectif : interdit de dire "délicat", "savoureux",
+     "raffiné", "généreux", "exquis", "subtil", "onctueux", "fin",
+     "gourmand", "tendre", "riche", "parfait", "magnifique"
+  5. Zéro phrase de compliment sur le plat
+  6. 2 phrases. 40-55 mots. Ton direct, professionnel.
   EXEMPLES :
   Plat : Joue de bœuf, aubergine grillée, sarrasin soufflé, citron confit
-  → "Joue de bœuf braisée 6h, aubergine grillée, sarrasin soufflé, citron confit."
+  → "Joue de bœuf braisée 6h au vin rouge, effilochée, servie avec de l'aubergine grillée au feu et du sarrasin soufflé pour le croustillant. Le citron confit apporte une touche d'acidité qui équilibre la puissance de la viande."
   Plat : Filet de perche, poivron doux, citron vert, riz soufflé
-  → "Filet de perche poêlé minute, poivron doux, citron vert, riz soufflé croustillant."
-  Plat : Caille rôtie, orge, fenouil, fromage frais aux herbes
-  → "Caille rôtie 12 min, orge croustillante, fenouil, fromage frais aux herbes alpines."
-  Plat : Prune pochée, myrtille, crème anglaise basilic, miel
-  → "Prune pochée, myrtille, crème anglaise basilic, miel d'Évolène."
+  → "Filet de perche du lac poêlé à la minute, côté peau croustillant, accompagné de poivron doux confit et de riz soufflé. Quelques gouttes de citron vert finissent le plat devant vous."
+  Plat : Caille rôtie, orge croustillante, fenouil, fromage frais herbes
+  → "Caille entière rôtie 12 minutes, désossée en cuisine, servie sur un lit d'orge croustillante et de fenouil braisé. Le fromage frais aux herbes alpines est déposé à la dernière minute."
+  Plat : Sérac croustillant, sauce herbes, basilic, jeunes pousses
+  → "Sérac de la vallée pané et frit à la commande, servi avec une sauce acidulée aux herbes fraîches et basilic. Les jeunes pousses apportent de la fraîcheur et un contraste de textures."
 - "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
 - "dressageNotes" : toujours "" (chaîne vide — champ complété manuellement par le chef, ne pas remplir)
 - "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
