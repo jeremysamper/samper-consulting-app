@@ -31,17 +31,14 @@ export function computeCouverts(scoreMoyen, nbCuisiniers, dureeService, scoresIn
   const malus = variance > 2 ? 0.85 : 1;
 
   return {
-    couverts_min:    Math.round(cMin * nbCuisiniers * heures * malus),
-    couverts_max:    Math.round(cMax * nbCuisiniers * heures * malus),
-    charge_brigade:  Math.min(100, Math.round((sc / 5) * 100 * (1 / malus))),
+    couverts_min:   Math.round(cMin * nbCuisiniers * heures * malus),
+    couverts_max:   Math.round(cMax * nbCuisiniers * heures * malus),
+    charge_brigade: Math.min(100, Math.round((sc / 5) * 100 * (1 / malus))),
   };
 }
 
 /**
  * Hook principal — analyse IA d'une carte + persistance des scores en base.
- *
- * Utilisation :
- *   const { result, loading, error, analyseSimulation, reset } = useSimulationIA();
  *
  * analyseSimulation({ plats, nbCuisiniers, dureeService, segment })
  *   - plats : [{ id, nom, ingredients: string[] }]

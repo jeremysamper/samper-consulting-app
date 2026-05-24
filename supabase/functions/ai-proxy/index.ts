@@ -153,6 +153,12 @@ Règles :
 - "charge_brigade" : % de saturation estimé (entier 0-100)
 - "alerte" : true si charge_brigade > 85 ou si ≥ 2 plats ont score ≥ 4
 - "synthese" : 3-4 phrases factuelle, recommandations concrètes et immédiatement applicables, sans adjectifs creux
+Règle réchauffe : si un plat est préparé à l'avance (braisé J-1, confit, cuit sous-vide, mariné)
+et réchauffé en service par basse température ou vapeur, réduire le score de 1 point —
+pas de timing critique en coup de feu, la charge réelle sur le service est moindre.
+Exemples : joue de bœuf braisée 6h réchauffée BT → score 3 et non 4 ;
+quasi de veau confit réchauffé vapeur → score 2 et non 3 ;
+fondant au chocolat (cuit à l'avance, réchauffé four 2 min) → score 2 et non 3.
 Si les informations sur un plat sont partielles, base-toi sur le nom et les ingrédients visibles.`;
 
 const CATALOGUE_SYSTEM = `Tu extrais et fiabilises un catalogue de produits alimentaires à partir d'un fichier fournisseur brut (export Excel/CSV, format et colonnes variables : Metro, Transgourmet, inventaire interne…).
