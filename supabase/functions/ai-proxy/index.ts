@@ -130,6 +130,31 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 - "accordsGeneraux" : 2 à 4 familles générales de boissons recommandées pour ce plat (texte libre, ex. "Vin rouge corsé", "Vin blanc sec", "Vin blanc moelleux", "Vin rosé") — un repli simple quand la carte des boissons varie
 Reste juste et professionnel ; n'invente aucun ingrédient absent de la recette.`;
 
+const SIMULATION_SYSTEM = `Tu es un chef consultant culinaire expert en organisation de brigade.
+Tu analyses la faisabilité d'une carte restaurant selon la taille de la brigade.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
+{"plats":[{"id":"...","nom":"...","score":3,"justification":"...","suggestion":"...","impact_si_simplifie":2}],"score_moyen":2.8,"couverts_min":24,"couverts_max":32,"charge_brigade":75,"alerte":true,"synthese":"..."}
+Échelle de complexité :
+1 — Simple        : < 3 ingrédients, 1 technique, pas de timing critique (salade, gaspacho, tartine)
+2 — Accessible    : 3-5 ingrédients, 1-2 techniques, mise en place J-1 possible (tartare, carpaccio, soupe)
+3 — Intermédiaire : 5-8 ingrédients, 2-3 techniques, timing à gérer (risotto, poisson poêlé+garniture, viande+sauce)
+4 — Technique     : 8+ ingrédients, 3-4 techniques, plusieurs éléments en parallèle (caille rôtie+orge+fenouil, raviole ouverte)
+5 — Haute cuisine : multiples préparations distinctes, finition minute obligatoire, dressage précis, timing serré
+Règles :
+- "id" : reprend EXACTEMENT l'identifiant fourni dans la liste des plats
+- "score" : entier de 1 à 5 uniquement
+- "justification" : 1 phrase courte, factuelle, sans adjectif subjectif
+- "suggestion" : piste concrète de simplification si score ≥ 4, null sinon
+- "impact_si_simplifie" : nouveau score estimé si suggestion appliquée, null si pas de suggestion
+- "score_moyen" : moyenne des scores (1 décimale)
+- "couverts_min" / "couverts_max" : estimation selon brigade et durée de service
+  Capacité de base par cuisinier : complexité 1-2 → 8-10 cov/h · complexité 3 → 5-7 · complexité 4 → 3-5 · complexité 5 → 1-3
+  Malus ×0.85 si variance des scores > 2 niveaux d'écart
+- "charge_brigade" : % de saturation estimé (entier 0-100)
+- "alerte" : true si charge_brigade > 85 ou si ≥ 2 plats ont score ≥ 4
+- "synthese" : 3-4 phrases factuelle, recommandations concrètes et immédiatement applicables, sans adjectifs creux
+Si les informations sur un plat sont partielles, base-toi sur le nom et les ingrédients visibles.`;
+
 const CATALOGUE_SYSTEM = `Tu extrais et fiabilises un catalogue de produits alimentaires à partir d'un fichier fournisseur brut (export Excel/CSV, format et colonnes variables : Metro, Transgourmet, inventaire interne…).
 On te fournit les lignes brutes du fichier. Tu identifies les vrais produits (ignore en-têtes, totaux, lignes vides, séparateurs) et tu corriges les incohérences.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
@@ -161,8 +186,9 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'generate-haccp': { system: HACCP_SYSTEM, maxTokens: 3072 },
   'suggest-recipe': { system: SUGGEST_SYSTEM, maxTokens: 2048 },
   'match-product': { system: MATCH_SYSTEM, maxTokens: 512 },
-  'generate-fiche-salle': { system: FICHE_SALLE_SYSTEM, maxTokens: 2048 },
-  'parse-catalogue': { system: CATALOGUE_SYSTEM, maxTokens: 8192 },
+  'generate-fiche-salle':       { system: FICHE_SALLE_SYSTEM,  maxTokens: 2048 },
+  'analyse-simulation-carte':   { system: SIMULATION_SYSTEM,   maxTokens: 2048 },
+  'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -233,6 +259,27 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
         + `Ingrédients : ${ingredients.join(', ') || '(non précisés)'}\n`
         + `Étapes :\n${etapes.map((e, i) => `${i + 1}. ${e}`).join('\n') || '(non précisées)'}\n`
         + `Allergènes connus : ${allergenes.join(', ') || '(aucun renseigné)'}`,
+    }];
+  }
+  if (task === 'analyse-simulation-carte') {
+    const plats = Array.isArray(payload.plats)
+      ? (payload.plats as { id: string; nom: string; ingredients?: string[] }[])
+      : [];
+    if (!plats.length) throw new Error('Carte vide.');
+    const nbCuisiniers = Number(payload.nbCuisiniers) || 2;
+    const duree = payload.dureeService === 'midi' ? 'midi (2h)' : 'soir (3h)';
+    const segment = String(payload.segment || 'bistro');
+    const list = plats
+      .map(p => {
+        const ing = Array.isArray(p.ingredients) && p.ingredients.length
+          ? ` (${p.ingredients.join(', ')})`
+          : '';
+        return `- [${p.id}] ${p.nom}${ing}`;
+      })
+      .join('\n');
+    return [{
+      kind: 'text',
+      text: `Brigade : ${nbCuisiniers} cuisinier(s), service ${duree}, segment ${segment}.\n\nCarte :\n${list}`,
     }];
   }
   if (task === 'parse-catalogue') {
