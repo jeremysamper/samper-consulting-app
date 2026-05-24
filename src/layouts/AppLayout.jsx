@@ -4,9 +4,24 @@ import { getDemoData } from '../data/demoData.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
+import { useAlertInstances } from '../hooks/useAlertInstances.js';
+import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
+
+/** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
+function formatRelativeTime(isoString) {
+  if (!isoString) return '';
+  const diff = Date.now() - new Date(isoString).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'À l\'instant';
+  if (minutes < 60) return `il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `il y a ${days} jour${days > 1 ? 's' : ''}`;
+}
 
 export default function AppLayout({
   user,
@@ -131,62 +146,15 @@ export default function AppLayout({
     }
     return groups;
   }, []), [visibleNav]);
-  // ═══ ALERTES DYNAMIQUES : Pointages manquants + HACCP en retard ═══
-  const alertes = React.useMemo(() => {
-    const result = [];
-    const today = new Date().toISOString().slice(0, 10);
-    const etabId = etablissement?.id || 'etab-1';
-
-    // 1. Pointages manquants : shifts d'aujourd'hui où l'employé devait être là mais n'a pas pointé l'arrivée
-    try {
-      const planning = scRead('sc_planning', DEMO_DATA.planning);
-      const now = new Date();
-      const nowTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-      const todayShifts = planning.filter(s => s.date === today && (s.etablissementId || 'etab-1') === etabId);
-      todayShifts.forEach(shift => {
-        if (!shift.pointageDebut && shift.debut && shift.debut <= nowTime) {
-          const emp = DEMO_DATA.utilisateurs.find(u => u.id === shift.userId);
-          if (emp) {
-            result.push({
-              txt: `Pointage manquant — ${emp.prenom} ${emp.nom} (${shift.debut})`,
-              type: 'warn',
-              category: 'pointage',
-            });
-          }
-        }
-      });
-    } catch (e) { /* silencieux */ }
-
-    // 2. Relevés HACCP en retard : tâches/contrôles non effectués à date
-    try {
-      const releves = scRead('sc_haccp_releves', []);
-      const controls = scRead('sc_haccp_controls', []);
-      // Compter les contrôles de ce jour non effectués
-      const todayControls = (Array.isArray(controls) ? controls : []).filter(c => c.date === today && (c.etablissementId || 'etab-1') === etabId && !c.effectue);
-      todayControls.forEach(c => {
-        result.push({
-          txt: `HACCP en retard — ${c.nom || c.type || 'contrôle'} (aujourd'hui)`,
-          type: 'warn',
-          category: 'haccp',
-        });
-      });
-      // Relevés de température hors plage sur les 2 derniers jours
-      const d2 = new Date(); d2.setDate(d2.getDate() - 2);
-      const d2str = d2.toISOString().slice(0, 10);
-      const relevesRecent = (Array.isArray(releves) ? releves : []).filter(r => r.date >= d2str && (r.etablissementId || 'etab-1') === etabId);
-      relevesRecent.forEach(r => {
-        if (r.horsPlage || r.alerte) {
-          result.push({
-            txt: `⚠ HACCP — ${r.zone || r.equipement || 'relevé'} hors plage (${r.valeur || '?'}°C le ${r.date})`,
-            type: 'warn',
-            category: 'haccp',
-          });
-        }
-      });
-    } catch (e) { /* silencieux */ }
-
-    return result.slice(0, 10); // max 10 alertes affichées
-  }, [currentPage, etablissement]);
+  // ─── Alertes configurables — Supabase (remplace DEMO_DATA) ──────
+  const {
+    alerts,
+    unreadCount,
+    dismiss: dismissAlert,
+    dismissAll: dismissAllAlerts,
+    markAllRead,
+    loading: alertsLoading,
+  } = useAlertInstances(etablissement?.id);
 
   React.useEffect(() => {
     if (isMobile) setSidebarOpen(false);
@@ -313,6 +281,65 @@ export default function AppLayout({
     )
   );
 
+  // ─── Panel d'alertes — rendu partagé desktop + mobile ────────────
+  // panelStyle / headerStyle / itemStyle viennent de ls ou mls selon le contexte.
+  const handleAlertClick = async (alert) => {
+    await dismissAlert(alert.id);
+    setNotifOpen(false);
+    if (alert.link_module) navigateToPage(alert.link_module);
+  };
+
+  const renderAlertPanel = (panelStyle, headerStyle, itemStyle) => {
+    const severityColor = (sev) => {
+      if (sev === 'critical') return '#ef4444';
+      if (sev === 'info') return '#3b82f6';
+      return '#f59e0b'; // warning (défaut)
+    };
+    return (
+      <div style={panelStyle}>
+        {/* En-tête */}
+        <div style={{ ...headerStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Alertes{alerts.length > 0 ? ` (${alerts.length})` : ''}</span>
+          {alerts.length > 0 && (
+            <button
+              style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 6px' }}
+              onClick={dismissAllAlerts}
+            >Tout effacer</button>
+          )}
+        </div>
+        {/* Chargement */}
+        {alertsLoading && (
+          <div style={{ padding: '16px', fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>Chargement…</div>
+        )}
+        {/* État vide */}
+        {!alertsLoading && alerts.length === 0 && (
+          <div style={{ ...itemStyle, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid #16a34a' }}>
+            ✓ Aucune alerte active
+          </div>
+        )}
+        {/* Liste des alertes */}
+        {alerts.map((alert) => (
+          <div
+            key={alert.id}
+            style={{ ...itemStyle, borderLeft: `3px solid ${severityColor(alert.severity)}`, cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'flex-start' }}
+            onClick={() => handleAlertClick(alert)}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{alert.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 }}>{alert.message}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{formatRelativeTime(alert.created_at)}</div>
+            </div>
+            <button
+              style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--text2)', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
+              onClick={(e) => { e.stopPropagation(); dismissAlert(alert.id); }}
+              aria-label="Fermer"
+            >×</button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // ════════════════════════════════
   // MOBILE BOTTOM NAV
   // ════════════════════════════════
@@ -345,19 +372,11 @@ export default function AppLayout({
             >
               {isDark ? '☀' : '◑'}
             </button>
-            <button style={mls.bellBtn} onClick={() => setNotifOpen(!notifOpen)}>
+            <button style={mls.bellBtn} onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}>
               <span style={{ fontSize: 20 }}>🔔</span>
-              {alertes.length > 0 && <div style={mls.notifDot}>{alertes.length}</div>}
+              {unreadCount > 0 && <div style={mls.notifDot}>{unreadCount}</div>}
             </button>
-            {notifOpen && (
-              <div style={mls.notifPanel}>
-                <div style={mls.notifHeader}>Alertes ({alertes.length})</div>
-                {alertes.length === 0 && <div style={{ ...mls.notifItem, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid #16a34a' }}>✓ Aucune alerte — tout est à jour</div>}
-                {alertes.map((a, i) => (
-                  <div key={i} style={{ ...mls.notifItem, borderLeft: `3px solid ${a.type === 'warn' ? '#f59e0b' : '#3b82f6'}` }}>{a.txt}</div>
-                ))}
-              </div>
-            )}
+            {notifOpen && renderAlertPanel(mls.notifPanel, mls.notifHeader, mls.notifItem)}
           </div>
         </header>
 
@@ -546,19 +565,11 @@ export default function AppLayout({
               {isDark ? '☀' : '◑'}
             </button>
             <div style={{ position: 'relative' }}>
-              <button style={ls.iconBtn} onClick={(e) => { e.stopPropagation(); setNotifOpen(!notifOpen); }}>
+              <button style={ls.iconBtn} onClick={(e) => { e.stopPropagation(); const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}>
                 <span>🔔</span>
-                {alertes.length > 0 && <div style={ls.notifDot}>{alertes.length}</div>}
+                {unreadCount > 0 && <div style={ls.notifDot}>{unreadCount}</div>}
               </button>
-              {notifOpen && (
-                <div style={ls.notifPanel}>
-                  <div style={ls.notifHeader}>Alertes ({alertes.length})</div>
-                  {alertes.length === 0 && <div style={{ ...ls.notifItem, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid #16a34a' }}>✓ Aucune alerte — tout est à jour</div>}
-                  {alertes.map((a, i) => (
-                    <div key={i} style={{ ...ls.notifItem, borderLeft: `3px solid ${a.type === 'warn' ? '#f59e0b' : '#3b82f6'}` }}>{a.txt}</div>
-                  ))}
-                </div>
-              )}
+              {notifOpen && renderAlertPanel(ls.notifPanel, ls.notifHeader, ls.notifItem)}
             </div>
             <div style={ls.topbarDivider} />
             <button style={ls.logoutBtn} onClick={onLogout}>Déconnexion</button>

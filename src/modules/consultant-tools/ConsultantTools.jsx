@@ -26,9 +26,10 @@ import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import AlertRules from './AlertRules.jsx';
 
 const safeText = (value) => String(value ?? '').toLowerCase();
-const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures'];
+const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures', 'alertes'];
 
 // ─── Stabilité de la saisie : brouillons localStorage + détection de conflit ───
 const RECIPE_DRAFT_PREFIX = 'sc_recipe_draft_';
@@ -877,6 +878,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           style={{ ...cts.tabBtn, ...(activeTab === 'factures' ? cts.tabBtnActive : {}) }}
           onClick={() => setActiveTab('factures')}
         >€ Factures</button>
+        <button
+          style={{ ...cts.tabBtn, ...(activeTab === 'alertes' ? cts.tabBtnActive : {}) }}
+          onClick={() => setActiveTab('alertes')}
+        >🔔 Alertes</button>
       </div>
 
       {/* Routage des onglets — reutilise les composants migres via imports.
@@ -907,6 +912,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               ? <SafeModule name="Factures">{React.createElement(Factures, { user, etablissement })}</SafeModule>
               : React.createElement(Factures, { user, etablissement }))
           : <div style={cts.fallback}>Module Factures non chargé.</div>
+      ) : activeTab === 'alertes' ? (
+        SafeModule
+          ? <SafeModule name="Alertes"><AlertRules user={user} etablissement={etablissement} /></SafeModule>
+          : <AlertRules user={user} etablissement={etablissement} />
       ) : (
     <div style={cts.root}>
       {showImport && (
