@@ -63,6 +63,57 @@
   color-scheme: light;
 }
 
+/* ─── Dark mode : valeur initiale via prefers-color-scheme ──────────────────
+   Appliqué par le navigateur AVANT que le JS de useTheme charge.
+   Évite le flash blanc au premier chargement sur un système en dark.
+   Une fois useTheme initialisé, html[data-theme="dark"] prend le relais
+   et les deux règles ont le même contenu → pas de conflit.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(14% 0.010 55);
+    --bg2: oklch(11% 0.006 50);
+    --surface: oklch(18% 0.012 55);
+    --surface2: oklch(21% 0.010 50);
+    --border: oklch(30% 0.014 55);
+    --border2: oklch(34% 0.010 50);
+    --text: oklch(93% 0.008 75);
+    --text2: oklch(70% 0.010 75);
+    --text3: oklch(48% 0.008 55);
+    --accent: oklch(68% 0.13 58);
+    --accent2: oklch(72% 0.12 55);
+    --accent-light: oklch(24% 0.045 58);
+    --accent-bd: oklch(35% 0.08 55);
+    --nav: oklch(10% 0.010 55);
+    --nav-text: oklch(55% 0.007 50);
+    --nav-active: rgba(255, 255, 255, 0.09);
+    --nav-border: rgba(255, 255, 255, 0.05);
+    --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.28);
+    --sh: 0 4px 16px rgba(0, 0, 0, 0.38);
+    --success-bg: oklch(28% 0.06 150);
+    --success-bg-soft: oklch(22% 0.04 150);
+    --success-text: oklch(82% 0.14 150);
+    --success-bd: oklch(40% 0.10 150);
+    --success-strong: oklch(72% 0.16 150);
+    --danger-bg: oklch(28% 0.08 25);
+    --danger-bg-soft: oklch(22% 0.05 25);
+    --danger-text: oklch(82% 0.14 25);
+    --danger-bd: oklch(40% 0.12 25);
+    --danger-strong: oklch(72% 0.18 25);
+    --warning-bg: oklch(28% 0.06 75);
+    --warning-bg-soft: oklch(22% 0.04 75);
+    --warning-text: oklch(85% 0.12 80);
+    --warning-bd: oklch(45% 0.12 75);
+    --warning-strong: oklch(78% 0.16 75);
+    --info-bg: oklch(28% 0.06 250);
+    --info-bg-soft: oklch(22% 0.04 250);
+    --info-text: oklch(82% 0.10 250);
+    --info-bd: oklch(45% 0.10 250);
+    --info-strong: oklch(72% 0.14 250);
+    color-scheme: dark;
+  }
+}
+
 html[data-theme="dark"] {
   --bg: oklch(14% 0.010 55);
   --bg2: oklch(11% 0.006 50);
@@ -132,10 +183,11 @@ html[data-theme="dark"] {
 }
 
 @media (max-width: 768px) {
+  /* Touch targets WCAG 2.5.5 — minimum 44×44px sur mobile */
   button:not(.mini),
   a.button,
   [role="button"]:not(.mini) {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   input[type="text"],
@@ -146,8 +198,8 @@ html[data-theme="dark"] {
   input[type="time"],
   textarea,
   select {
-    font-size: 16px !important;
-    min-height: 40px;
+    font-size: 16px !important; /* évite le zoom auto iOS */
+    min-height: 44px;
   }
 
   table {
@@ -163,6 +215,19 @@ html[data-theme="dark"] {
     margin: 8px !important;
     max-width: calc(100vw - 16px) !important;
   }
+}
+
+/* ─── Tableaux responsive : scroll horizontal sur mobile ─────────────────── */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Barre de scroll discrète mais visible */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.table-container table {
+  min-width: 600px; /* force le scroll plutôt que la compression */
 }
 
 html,
@@ -780,23 +845,23 @@ h1 {
 }
 
 .toast-success {
-  background: #15803d;
-  border-color: #166534;
+  background: var(--success-strong);
+  border-color: var(--success-text);
 }
 
 .toast-error {
-  background: #b91c1c;
-  border-color: #991b1b;
+  background: var(--danger-strong);
+  border-color: var(--danger-text);
 }
 
 .toast-warning {
-  background: #b45309;
-  border-color: #92400e;
+  background: var(--warning-strong);
+  border-color: var(--warning-text);
 }
 
 .toast-info {
-  background: #1f2933;
-  border-color: #374151;
+  background: var(--nav); /* fond sidebar — cohérent avec le thème dark */
+  border-color: var(--border);
 }
 
 .toast-icon,

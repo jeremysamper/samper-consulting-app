@@ -9,6 +9,10 @@ export default function Auth({ onSignIn, onResetPassword }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+  // "Rester connecté 30 jours" — coché par défaut.
+  // Si décoché, on stocke un flag sessionStorage après connexion :
+  // useAuth.js le lit au prochain boot et déconnecte silencieusement.
+  const [rememberMe, setRememberMe] = useState(true);
   const supabaseState = getSupabaseConfigState();
 
   if (!supabaseState.ready) {
@@ -37,6 +41,13 @@ export default function Auth({ onSignIn, onResetPassword }) {
     try {
       if (mode === 'signin') {
         await onSignIn(email.trim(), password);
+        // Si l'utilisateur n'a pas coché "Rester connecté", on marque la session
+        // comme éphémère. useAuth.js effacera la session au prochain boot (nouvelle ouverture PWA).
+        if (!rememberMe) {
+          try { sessionStorage.setItem('sc_session_only', '1'); } catch (_) {}
+        } else {
+          try { sessionStorage.removeItem('sc_session_only'); } catch (_) {}
+        }
         notify('Connexion réussie');
       } else {
         if (!email.trim()) {
@@ -101,6 +112,19 @@ export default function Auth({ onSignIn, onResetPassword }) {
             </div>
           )}
 
+          {mode === 'signin' && (
+            <label style={as.rememberLabel}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={as.rememberCheckbox}
+                disabled={loading}
+              />
+              <span>Rester connecté 30 jours</span>
+            </label>
+          )}
+
           <button type="submit" style={{ ...as.submitBtn, opacity: loading ? 0.6 : 1, cursor: loading ? 'wait' : 'pointer' }} disabled={loading}>
             {loading ? 'Chargement…' : mode === 'signin' ? 'Se connecter' : 'Envoyer le lien'}
           </button>
@@ -140,8 +164,10 @@ const as = {
   input: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
   submitBtn: { width: '100%', padding: '12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 4 },
   linkBtn: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font)', padding: 4 },
-  errorBox: { background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
-  infoBox: { background: '#dbeafe', border: '1px solid #93c5fd', color: '#1e40af', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
+  errorBox: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
+  infoBox: { background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
+  rememberLabel: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)', cursor: 'pointer', userSelect: 'none', marginTop: 4, marginBottom: 14 },
+  rememberCheckbox: { width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 },
   footer: { marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text2)', textAlign: 'center', lineHeight: 1.5 },
   code: { background: 'var(--bg)', padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 11 }
 };

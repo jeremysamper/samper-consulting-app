@@ -20,7 +20,7 @@ const MASKABLE = [192, 512];
 const ALL = [...REGULAR, ...MASKABLE];
 
 const BG    = '#0f1a12';
-const FG    = '#e8e2d9';
+const FG    = '#c87f3e'; // orange ambre Samper — signature couleur
 
 /**
  * SVG pour icône classique (fond arrondi, adapté standalone).

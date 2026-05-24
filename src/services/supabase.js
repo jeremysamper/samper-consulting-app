@@ -44,9 +44,10 @@ if (config.source === 'missing') {
 
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
+    persistSession: true,       // session conservée dans localStorage entre les ouvertures PWA
+    autoRefreshToken: true,     // refresh silencieux du token — pas de reconnexion manuelle
+    detectSessionInUrl: true,   // pour les magic links (si activés plus tard)
+    storageKey: 'samper-auth',  // clé dédiée dans localStorage — évite les conflits multi-projet
   },
   realtime: {
     params: { eventsPerSecond: 10 }

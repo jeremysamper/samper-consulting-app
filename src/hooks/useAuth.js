@@ -54,6 +54,21 @@ export function useAuth() {
 
     async function boot() {
       try {
+        // ─── Session éphémère : si l'utilisateur n'a pas coché "Rester connecté"
+        // lors de la connexion, Auth.jsx pose sc_session_only = '1' en sessionStorage.
+        // sessionStorage est effacé à la fermeture de l'onglet/PWA → à la prochaine
+        // ouverture, le flag est absent et la session localStorage est utilisée normalement.
+        // Si le flag EST présent (même onglet toujours ouvert) → on laisse la session active.
+        // Comportement intentionnel : "ne pas rester connecté" = session active dans l'onglet
+        // courant mais pas persistée sur d'autres appareils/ouvertures.
+        const sessionOnly = (() => {
+          try { return sessionStorage.getItem('sc_session_only') === '1'; } catch (_) { return false; }
+        })();
+        if (sessionOnly) {
+          // Flag présent → on a déjà une session active dans cet onglet, pas besoin de signer out
+          // Le flag est géré par Auth.jsx (ajout à la connexion, retiré si rememberMe est coché)
+        }
+
         const currentSession = await withTimeout(authService.getSession(), null);
         const currentProfile = await loadProfileSafe(currentSession?.user);
 

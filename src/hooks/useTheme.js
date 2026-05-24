@@ -5,12 +5,25 @@ import { readText, UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
 const THEMES = new Set(['light', 'dark']);
 
 function readInitialTheme() {
+  // 1. Préférence enregistrée par l'utilisateur → toujours prioritaire
   const stored = readText(UI_STORAGE_KEYS.theme, '');
   if (THEMES.has(stored)) return stored;
 
+  // 2. data-theme déjà posé sur <html> (rendu serveur ou init précoce)
   const documentElement = getBrowserWindow()?.document?.documentElement;
   const current = documentElement?.getAttribute('data-theme');
-  return THEMES.has(current) ? current : 'light';
+  if (THEMES.has(current)) return current;
+
+  // 3. Aucune préférence sauvegardée → respecter le thème système (prefers-color-scheme)
+  //    Évite le flash blanc au premier lancement en dark system.
+  //    Le CSS @media (prefers-color-scheme: dark) :root:not([data-theme="light"]) a déjà appliqué
+  //    les variables en dark — on doit aligner l'état JS en conséquence.
+  try {
+    const prefersDark = getBrowserWindow()?.matchMedia?.('(prefers-color-scheme: dark)')?.matches;
+    if (prefersDark) return 'dark';
+  } catch (_) {}
+
+  return 'light';
 }
 
 export function useTheme() {
