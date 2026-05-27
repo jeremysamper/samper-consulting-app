@@ -209,8 +209,8 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
       {/* Zone imprimable */}
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-        {/* En-tête print */}
-        <div style={{
+        {/* En-tête contextuel à l'écran — retiré du PDF (l'en-tête branded Samper le remplace) */}
+        <div className="no-print" style={{
           paddingBottom: 10,
           borderBottom:  '1px solid var(--border)',
         }}>

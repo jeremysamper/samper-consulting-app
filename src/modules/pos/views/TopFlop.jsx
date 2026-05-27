@@ -11,6 +11,9 @@
 import { useState } from 'react';
 import { useTopFlop }      from '../hooks/useTopFlop.js';
 import { PosEmptyState }   from '../components/PosEmptyState.jsx';
+import { PosExportButton } from '../components/PosExportButton.jsx';
+
+const PRINT_ID = 'pos-print-topflop';
 
 const PERIODS = [
   { value: 7,  label: '7 jours' },
@@ -137,21 +140,39 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
         </div>
       </div>
 
-      {/* En-tête période */}
-      <div style={{
-        fontSize:   13,
-        color:      'var(--text2)',
-        fontStyle:  'italic',
-        paddingBottom: 4,
-        borderBottom:  '1px solid var(--border)',
+      {/* Barre d'actions (hors export) */}
+      <div className="no-print" style={{
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
       }}>
-        {filter === 'top10'  ? 'Top 10 · ' : ''}
-        {filter === 'flop10' ? 'Flop 10 · ' : ''}
-        Semaine {periodLabel}
+        <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+          {displayedItems.length} plat{displayedItems.length !== 1 ? 's' : ''} affiché{displayedItems.length !== 1 ? 's' : ''}
+        </div>
+        <PosExportButton
+          printId={PRINT_ID}
+          title={`Top/Flop — ${filter === 'top10' ? 'Top 10 · ' : filter === 'flop10' ? 'Flop 10 · ' : ''}Semaine ${periodLabel}`}
+          etablissement={etablissement}
+        />
       </div>
 
-      {/* Tableau */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Zone exportable */}
+      <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        {/* En-tête contextuel à l'écran — retiré du PDF (l'en-tête branded Samper le remplace) */}
+        <div className="no-print" style={{
+          fontSize:   13,
+          color:      'var(--text2)',
+          fontStyle:  'italic',
+          paddingBottom: 4,
+          borderBottom:  '1px solid var(--border)',
+        }}>
+          {filter === 'top10'  ? 'Top 10 · ' : ''}
+          {filter === 'flop10' ? 'Flop 10 · ' : ''}
+          Semaine {periodLabel}
+        </div>
+
+        {/* Tableau */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {/* En-tête */}
         <div style={{
           display:    'grid',
@@ -225,6 +246,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Pied */}

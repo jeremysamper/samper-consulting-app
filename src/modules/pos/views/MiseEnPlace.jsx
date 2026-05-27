@@ -147,16 +147,14 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
           printId={PRINT_ID}
           title={`Mise en place — ${tomorrowLabel}`}
           etablissement={etablissement}
-          label="🖨 Imprimer la mise en place"
         />
       </div>
 
       {/* Zone imprimable */}
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-        {/* En-tête visible en print (masqué visuellement par la barre d'actions au-dessus) */}
-        <div className="no-print" style={{ display: 'none' }} aria-hidden />
-        <div style={{
+        {/* En-tête contextuel à l'écran — retiré du PDF (l'en-tête branded Samper le remplace) */}
+        <div className="no-print" style={{
           paddingBottom: 12,
           borderBottom:  '1px solid var(--border)',
           marginBottom:  4,
