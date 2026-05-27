@@ -5,6 +5,8 @@ import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
+import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
+import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
@@ -168,6 +170,16 @@ export default function AppLayout({
   // Labels personnalisés globaux (module_labels table — portée tous établissements)
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
   const { getLabelForModule } = useModuleLabels();
+
+  // ── Bandeau alerte token POS expiré ────────────────────────────
+  // Visible uniquement pour consultant / patron / resp_cuisine.
+  // Les rôles cuisinier, serveur, hôte ne voient JAMAIS ce bandeau.
+  const POS_BANNER_ROLES = ['consultant', 'patron', 'resp_cuisine'];
+  const bannerEnabled = POS_BANNER_ROLES.includes(user?.role);
+  const { unhealthy: posUnhealthy, hasIssue: posHasIssue, loading: posLoading } =
+    usePosConnectionHealth({ enabled: bannerEnabled });
+  const showPosBanner = bannerEnabled && !posLoading && posHasIssue;
+  const handleReconnect = () => handleSetPage('parametres');
 
   // ── Logo upload (consultant uniquement)
   const canEditLogo = user.role === 'consultant';
@@ -363,6 +375,13 @@ export default function AppLayout({
 
           {/* Cloche notifications à droite */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+            {showPosBanner && (
+              <PosTokenAlertBanner
+                unhealthy={posUnhealthy}
+                onReconnect={handleReconnect}
+                variant="pill"
+              />
+            )}
             <button
               type="button"
               style={mls.themeBtn}
@@ -541,6 +560,12 @@ export default function AppLayout({
       </aside>
 
       <div style={ls.main}>
+        {showPosBanner && (
+          <PosTokenAlertBanner
+            unhealthy={posUnhealthy}
+            onReconnect={handleReconnect}
+          />
+        )}
         <header style={ls.topbar}>
           <div style={ls.topbarLeft}>
             <div style={ls.titleBlock}>
