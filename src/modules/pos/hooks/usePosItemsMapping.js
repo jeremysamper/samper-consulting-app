@@ -32,7 +32,7 @@ export function usePosItemsMapping(etablissement, user) {
     setError(null);
 
     try {
-      const db = dbService.getDb();
+      const db = dbService.getClient();
 
       // 1. Connexions actives de l'établissement
       const { data: connections, error: connErr } = await db
@@ -119,7 +119,7 @@ export function usePosItemsMapping(etablissement, user) {
    * À utiliser quand le mapping existe déjà en DB.
    */
   const validateMapping = useCallback(async (posItemId) => {
-    const db = dbService.getDb();
+    const db = dbService.getClient();
 
     const { error } = await db
       .from('pos_item_recipe_mapping')
@@ -146,7 +146,7 @@ export function usePosItemsMapping(etablissement, user) {
    * Toujours manually_validated = true (action humaine explicite).
    */
   const changeMapping = useCallback(async (posItemId, recipeId, confidence = 0) => {
-    const db = dbService.getDb();
+    const db = dbService.getClient();
 
     const { error } = await db
       .from('pos_item_recipe_mapping')
@@ -178,7 +178,7 @@ export function usePosItemsMapping(etablissement, user) {
    * Supprime un mapping (le plat repasse en "à mapper").
    */
   const unlinkMapping = useCallback(async (posItemId) => {
-    const db = dbService.getDb();
+    const db = dbService.getClient();
 
     const { error } = await db
       .from('pos_item_recipe_mapping')

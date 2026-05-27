@@ -36,7 +36,7 @@ export function useMiseEnPlace(etablissement) {
     setError(null);
 
     try {
-      const db  = dbService.getDb();
+      const db  = dbService.getClient();
       const tz  = etablissement.timezone ?? 'Europe/Zurich';
       const today    = todayInTz(tz);
       const tomorrow = addDays(today, 1);

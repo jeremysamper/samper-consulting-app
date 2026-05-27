@@ -40,7 +40,7 @@ export function useTopFlop(etablissement, periodDays = 7) {
     setError(null);
 
     try {
-      const db  = dbService.getDb();
+      const db  = dbService.getClient();
       const tz  = etablissement.timezone ?? 'Europe/Zurich';
       const today = todayInTz(tz);
       const cutA  = addDays(today, -periodDays);           // début période A

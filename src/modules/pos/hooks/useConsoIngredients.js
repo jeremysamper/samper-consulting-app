@@ -68,7 +68,7 @@ export function useConsoIngredients(etablissement, dateRange) {
     setError(null);
 
     try {
-      const db = dbService.getDb();
+      const db = dbService.getClient();
 
       // 1. Connexions actives
       const { data: conns, error: connErr } = await db
