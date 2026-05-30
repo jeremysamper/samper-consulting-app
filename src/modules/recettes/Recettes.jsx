@@ -4,6 +4,7 @@ import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { Calculator, Copy, ArrowLeft } from 'lucide-react';
 
 
 // CARTES & RECETTES
@@ -491,10 +492,10 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       </div>
       <BottomActionBar
         actions={[
-          { label: 'Calculer', onClick: () => setShowCalc(true) },
-          canDuplicate ? { label: 'Dupliquer vers…', onClick: () => setShowDuplicate(true) } : null,
+          { label: 'Calculer', icon: Calculator, onClick: () => setShowCalc(true) },
+          canDuplicate ? { label: 'Dupliquer vers…', icon: Copy, onClick: () => setShowDuplicate(true) } : null,
         ].filter(Boolean)}
-        primaryAction={{ label: '← Retour', onClick: onBack }}
+        primaryAction={{ label: 'Retour', icon: ArrowLeft, onClick: onBack }}
       />
       <div id='fiche-recette-print'>
       <div style={rs.detailHeader}>

@@ -8,6 +8,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { FileSpreadsheet, FileDown, Plus } from 'lucide-react';
 
 // INVENTAIRE MENSUEL
 const Inventaire = ({ user, etablissement }) => {
@@ -809,10 +810,10 @@ const Inventaire = ({ user, etablissement }) => {
 
       <BottomActionBar
         actions={[
-          canExport ? { label: 'Template XLSX', onClick: downloadInventoryTemplate } : null,
-          canExport ? { label: 'Export PDF', onClick: exportInventoryPdf } : null,
+          canExport ? { label: 'Template', icon: FileSpreadsheet, onClick: downloadInventoryTemplate } : null,
+          canExport ? { label: 'Export PDF', icon: FileDown, onClick: exportInventoryPdf } : null,
         ].filter(Boolean)}
-        primaryAction={canManage ? { label: '+ Ajouter produit', onClick: openAddLine } : null}
+        primaryAction={canManage ? { label: 'Ajouter produit', icon: Plus, onClick: openAddLine } : null}
       />
     </div>
   );

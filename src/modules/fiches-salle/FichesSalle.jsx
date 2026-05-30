@@ -5,6 +5,7 @@ import { canManageModule } from '../../data/demoData.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { Sparkles, ListChecks, Plus } from 'lucide-react';
 
 
 // ─────────────────────────────────────────────────────
@@ -470,10 +471,10 @@ const FichesSalle = ({ user, etablissement }) => {
       {canEdit && !sel.active && (
         <BottomActionBar
           actions={[
-            { label: 'Générer IA', onClick: genererFichesSalleIA, disabled: !!bulkProgress },
-            fiches.length > 0 ? { label: 'Sélectionner', onClick: sel.enter } : null,
+            { label: 'Générer IA', icon: Sparkles, onClick: genererFichesSalleIA, disabled: !!bulkProgress },
+            fiches.length > 0 ? { label: 'Sélection', icon: ListChecks, onClick: sel.enter } : null,
           ].filter(Boolean)}
-          primaryAction={{ label: '+ Nouvelle fiche salle', onClick: () => openEdit(null) }}
+          primaryAction={{ label: 'Nouvelle fiche', icon: Plus, onClick: () => openEdit(null) }}
         />
       )}
 

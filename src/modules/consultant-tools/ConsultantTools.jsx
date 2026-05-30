@@ -20,6 +20,7 @@ import { dbService } from '../../services/dbService.js';
 import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, convertFactor } from './ConsultantTools.constants.js';
 import PhotoUploader from './PhotoUploader.jsx';
 import { cts } from './ConsultantTools.styles.js';
+import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
@@ -1191,36 +1192,36 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           {/* Actions bar */}
           <div style={cts.actionBar} className="no-print">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button style={cts.ghostBtn} onClick={duplicate}>⧉ Dupliquer</button>
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={duplicate}><Copy size={14} /> Dupliquer</button>
               <button
-                style={{ ...cts.ghostBtn, background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
                 onClick={() => setLinkPlatPickerForRecette(selected.id)}
               >
-                🍽 Rattacher à un plat
+                <UtensilsCrossed size={14} /> Rattacher à un plat
                 {(() => {
                   const linkedCount = plats.filter(p => p.recettes.some(pr => pr.recetteId === selected.id)).length;
                   return linkedCount > 0 ? ` (${linkedCount})` : '';
                 })()}
               </button>
-              <button style={{...cts.ghostBtn, color: '#dc2626', borderColor: '#fca5a5'}} onClick={() => setShowDeleteConfirm(true)}>🗑 Supprimer</button>
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#dc2626', borderColor: '#fca5a5' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
               <button
-                style={{ ...cts.ghostBtn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
                 onClick={genererHaccpIA}
                 disabled={haccpAiBusy}
-              >{haccpAiBusy ? '✨ Analyse HACCP…' : '🛡 Analyse HACCP (IA)'}</button>
+              ><ShieldCheck size={14} /> {haccpAiBusy ? 'Analyse HACCP…' : 'Analyse HACCP (IA)'}</button>
               <button
-                style={{ ...cts.ghostBtn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
                 onClick={suggererIA}
                 disabled={suggestAiBusy}
-              >{suggestAiBusy ? '✨ Suggestions…' : '✨ Suggestions (IA)'}</button>
+              ><Sparkles size={14} /> {suggestAiBusy ? 'Suggestions…' : 'Suggestions (IA)'}</button>
             </div>
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {saveStatus === 'saving' && <span style={{ fontSize: 11, color: 'var(--text2)' }}>⏳ Sauvegarde…</span>}
-              {saveStatus === 'saved' && <span style={{ fontSize: 11, color: '#15803d', fontWeight: 600 }}>✓ Sauvegardé</span>}
-              {saveStatus === 'error' && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }} title={saveError}>⚠ Erreur sync</span>}
-              <button style={cts.ghostBtn} onClick={() => pdfUtils?.printElement('consultant-recette-print', 'Fiche recette ' + selected.nom)}>🖨 Imprimer</button>
-              <button style={cts.ghostBtn} onClick={() => pdfUtils?.exportElementToPdf('consultant-recette-print', `recette-${selected.nom.replace(/[^a-z0-9]/gi,'_')}.pdf`)}>⬇ Export PDF</button>
+              {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
+              {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#15803d', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
+              {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#dc2626', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.printElement('consultant-recette-print', 'Fiche recette ' + selected.nom)}><Printer size={14} /> Imprimer</button>
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportElementToPdf('consultant-recette-print', `recette-${selected.nom.replace(/[^a-z0-9]/gi,'_')}.pdf`)}><FileDown size={14} /> Export PDF</button>
             </div>
           </div>
 

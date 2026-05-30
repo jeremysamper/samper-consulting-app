@@ -4,6 +4,7 @@ import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi
 import { dbService } from '../../services/dbService.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { Sparkles, FileSpreadsheet, Plus } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE — Base de données produits & fournisseurs
@@ -728,13 +729,13 @@ const Catalogue = ({ user, etablissement }) => {
       {canWrite && (
         <BottomActionBar
           actions={[
-            { label: 'Import IA', onClick: () => setShowAiImport(true) },
-            { label: 'Importer Excel', onClick: () => fileRef.current?.click() },
+            { label: 'Import IA', icon: Sparkles, onClick: () => setShowAiImport(true) },
+            { label: 'Importer Excel', icon: FileSpreadsheet, onClick: () => fileRef.current?.click() },
           ]}
           primaryAction={
             activeTab === 'produits'
-              ? { label: '+ Nouveau produit', onClick: () => { setEditProd(null); setShowProdForm(true); } }
-              : { label: '+ Nouveau fournisseur', onClick: () => { setEditFourn(null); setShowFournForm(true); } }
+              ? { label: 'Nouveau produit', icon: Plus, onClick: () => { setEditProd(null); setShowProdForm(true); } }
+              : { label: 'Nouveau fournisseur', icon: Plus, onClick: () => { setEditFourn(null); setShowFournForm(true); } }
           }
         />
       )}

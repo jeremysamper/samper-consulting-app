@@ -12,6 +12,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { FileDown, Plus } from 'lucide-react';
 
 
 // ─────────────────────────────────────────────────────
@@ -832,12 +833,12 @@ const HACCP = ({ user, etablissement }) => {
 
       <BottomActionBar
         actions={[
-          { label: 'Export PDF', onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
+          { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
         ]}
         primaryAction={
-          activeTab==='releves'   ? { label: '+ Nouveau relevé', onClick: () => setShowReleve(true) } :
-          activeTab==='controles' ? { label: '+ Enregistrer contrôle', onClick: () => setShowControl(true) } :
-          activeTab==='config' && isConsultant ? { label: '+ Ajouter zone', onClick: () => setZoneModal('new') } :
+          activeTab==='releves'   ? { label: 'Nouveau relevé', icon: Plus, onClick: () => setShowReleve(true) } :
+          activeTab==='controles' ? { label: 'Enregistrer contrôle', icon: Plus, onClick: () => setShowControl(true) } :
+          activeTab==='config' && isConsultant ? { label: 'Ajouter zone', icon: Plus, onClick: () => setZoneModal('new') } :
           null
         }
       />

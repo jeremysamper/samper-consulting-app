@@ -6,6 +6,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { LayoutTemplate, Plus } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING — MODULE SOP & CHECKLISTS
@@ -172,8 +173,8 @@ const SOP = ({ user, etablissement }) => {
 
       {canManage && (
         <BottomActionBar
-          actions={[{ label: 'Templates', onClick: () => setShowTemplates(true) }]}
-          primaryAction={{ label: '+ Nouvelle SOP', onClick: () => setSelectedSop({}) }}
+          actions={[{ label: 'Templates', icon: LayoutTemplate, onClick: () => setShowTemplates(true) }]}
+          primaryAction={{ label: 'Nouvelle SOP', icon: Plus, onClick: () => setSelectedSop({}) }}
         />
       )}
 

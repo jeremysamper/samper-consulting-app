@@ -6,6 +6,7 @@ import ShiftCell from './ShiftCell.jsx';
 import { ccntCell, pls } from './Planning.styles.js';
 import { dbService } from '../../services/dbService.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import { Copy, Files, FileDown, Plus } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -1800,11 +1801,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
       })()}
       <BottomActionBar
         actions={[
-          canExport && activeTab === 'planning' ? { label: 'Dupliquer journée', onClick: openDuplicateDay } : null,
-          canExport && activeTab === 'planning' ? { label: 'Dupliquer semaine', onClick: openDuplicateWeek } : null,
-          canExport ? { label: 'Export PDF', onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
+          canExport && activeTab === 'planning' ? { label: 'Dupl. jour', icon: Copy, onClick: openDuplicateDay } : null,
+          canExport && activeTab === 'planning' ? { label: 'Dupl. sem.', icon: Files, onClick: openDuplicateWeek } : null,
+          canExport ? { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
         ].filter(Boolean)}
-        primaryAction={canWrite ? { label: '+ Ajouter horaire', onClick: () => openNewShift() } : null}
+        primaryAction={canWrite ? { label: 'Ajouter horaire', icon: Plus, onClick: () => openNewShift() } : null}
       />
     </div>
   );

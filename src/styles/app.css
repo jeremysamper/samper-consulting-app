@@ -243,46 +243,97 @@ html[data-theme="dark"] {
     bottom: 0;
     left: 0;
     right: 0;
-    height: auto;
     min-height: 64px;
     background: var(--surface);
     border-top: 1px solid var(--border);
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
-    z-index: 45;
+    align-items: stretch;
     gap: 8px;
+    padding: 8px 12px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 45;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
   }
 
-  .bab-secondary {
-    display: flex;
-    gap: 4px;
+  /* CTA principal — accent, prend l'espace restant (à gauche) */
+  .bab-primary {
     flex: 1;
-    flex-wrap: nowrap;
-    overflow: hidden;
-  }
-
-  /* Boutons secondaires — texte seul, DA alignée avec l'app */
-  .bab-btn {
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 44px;
-    padding: 8px 12px;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--r);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--sh-sm);
+  }
+
+  .bab-primary svg { flex-shrink: 0; }
+
+  .bab-primary-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bab-primary:active:not(:disabled) {
+    background: var(--accent2);
+    transform: scale(0.98);
+  }
+
+  .bab-primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  /* Actions secondaires — icônes empilées, largeur fixe (à droite) */
+  .bab-secondary {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .bab-btn {
+    flex-shrink: 0;
+    width: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 48px;
+    padding: 4px 2px;
     border: none;
     background: transparent;
     border-radius: var(--r-sm);
     color: var(--text2);
     cursor: pointer;
     font-family: var(--font);
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
     transition: background 0.15s, color 0.15s, transform 0.1s;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .bab-btn svg { flex-shrink: 0; }
+
+  .bab-btn-label {
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.1;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .bab-btn:active:not(:disabled) {
@@ -305,36 +356,85 @@ html[data-theme="dark"] {
     color: var(--danger-text);
   }
 
-  /* Bouton principal — CTA prominent */
-  .bab-primary {
+  /* Voile + feuille de débordement « Plus » */
+  .bab-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 46;
+  }
+
+  .bab-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 47;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+    padding-bottom: 8px;
+  }
+
+  .bab-sheet-head {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 10px 20px;
-    min-height: 44px;
-    background: var(--accent);
-    color: #fff;
+    justify-content: space-between;
+    padding: 12px 16px 6px;
+  }
+
+  .bab-sheet-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .bab-sheet-close {
+    display: flex;
+    background: none;
     border: none;
-    border-radius: var(--r);
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--font);
+    padding: 4px;
     cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: background 0.15s, transform 0.1s;
-    -webkit-tap-highlight-color: transparent;
-    box-shadow: var(--sh-sm);
+    color: var(--text2);
   }
 
-  .bab-primary:active:not(:disabled) {
-    background: var(--accent2);
-    transform: scale(0.96);
+  .bab-sheet-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    transition: background 0.15s;
   }
 
-  .bab-primary:disabled {
-    opacity: 0.5;
+  .bab-sheet-btn svg { flex-shrink: 0; }
+
+  .bab-sheet-btn:active:not(:disabled) {
+    background: var(--accent-light);
+  }
+
+  .bab-sheet-btn:disabled {
+    opacity: 0.4;
     cursor: default;
+  }
+
+  .bab-sheet-btn.bab-destructive {
+    color: var(--danger-text);
+  }
+
+  .bab-sheet-btn.bab-destructive:active:not(:disabled) {
+    background: var(--danger-bg);
   }
 
   /* Padding global bas du contenu mobile pour ne pas être masqué par la BAB */
