@@ -105,7 +105,7 @@ export default function AppLayout({
     };
 
     reload();
-    unsub = legacySB.realtime.subscribe('etablissements', reload);
+    unsub = legacySB.realtime.subscribeReload('etablissements', reload);
     return () => { mounted = false; unsub && unsub(); };
   }, []);
 

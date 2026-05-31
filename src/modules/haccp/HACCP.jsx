@@ -93,10 +93,10 @@ const HACCP = ({ user, etablissement }) => {
 
     reload();
 
-    unsubs.push(legacySB.realtime.subscribe('haccp_zones', reload));
-    unsubs.push(legacySB.realtime.subscribe('haccp_ctrl_templates', reload));
-    unsubs.push(legacySB.realtime.subscribe('haccp_releves', reload));
-    unsubs.push(legacySB.realtime.subscribe('haccp_controls', reload));
+    unsubs.push(legacySB.realtime.subscribeReload(
+      ['haccp_zones', 'haccp_ctrl_templates', 'haccp_releves', 'haccp_controls'],
+      reload,
+    ));
 
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);

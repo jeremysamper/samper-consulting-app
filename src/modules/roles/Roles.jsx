@@ -29,7 +29,7 @@ const Roles = ({ user }) => {
   // ═══ Charger depuis Supabase + Realtime ═══
   React.useEffect(() => {
     if (!legacySB) return;
-    let unsub1 = null, unsub2 = null;
+    let unsub1 = null;
 
     const reload = async () => {
       try {
@@ -54,9 +54,8 @@ const Roles = ({ user }) => {
     };
 
     reload();
-    unsub1 = legacySB.realtime.subscribe('profiles', reload);
-    unsub2 = legacySB.realtime.subscribe('permissions', reload);
-    return () => { unsub1 && unsub1(); unsub2 && unsub2(); };
+    unsub1 = legacySB.realtime.subscribeReload(['profiles', 'permissions'], reload);
+    return () => { unsub1 && unsub1(); };
   }, []);
 
   // DETTE R14 : MODULES et DEFAULT_PERMS devraient être lus

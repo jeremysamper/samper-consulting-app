@@ -163,11 +163,11 @@ const FichesSalle = ({ user, etablissement }) => {
       } catch (err) { console.error('[FichesSalle]', err); }
       finally { if (mounted) setLoading(false); }
     })();
-    unsubs.push(legacySB.realtime.subscribe('fiches_salle', async () => {
+    unsubs.push(legacySB.realtime.subscribeReload('fiches_salle', async () => {
       try { const rows = await legacySB.db.listFichesSalle(etabId); if (mounted) setFiches(rows); }
       catch (e) {}
     }));
-    unsubs.push(legacySB.realtime.subscribe('recettes', async () => {
+    unsubs.push(legacySB.realtime.subscribeReload('recettes', async () => {
       try { const recs = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(recs); }
       catch (e) {}
     }));
@@ -175,8 +175,8 @@ const FichesSalle = ({ user, etablissement }) => {
       try { const pls = await legacySB.db.listPlats(etabId); if (mounted) setPlats(pls || []); }
       catch (e) {}
     };
-    unsubs.push(legacySB.realtime.subscribe('plats', reloadPlats));
-    unsubs.push(legacySB.realtime.subscribe('plat_recettes', reloadPlats));
+    unsubs.push(legacySB.realtime.subscribeReload('plats', reloadPlats));
+    unsubs.push(legacySB.realtime.subscribeReload('plat_recettes', reloadPlats));
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
 

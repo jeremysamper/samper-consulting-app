@@ -61,9 +61,8 @@ const SOP = ({ user, etablissement }) => {
     };
     refresh();
 
-    const u1 = legacySB.realtime.subscribe('sops', refresh);
-    const u2 = legacySB.realtime.subscribe('sop_executions', refresh);
-    return () => { mounted = false; u1 && u1(); u2 && u2(); };
+    const u1 = legacySB.realtime.subscribeReload(['sops', 'sop_executions'], refresh);
+    return () => { mounted = false; u1 && u1(); };
   }, [etabId]);
 
   // Place une SOP existante dans la bibliothèque de templates (copie, is_template).

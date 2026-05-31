@@ -93,9 +93,10 @@ const Catalogue = ({ user, etablissement }) => {
       finally { if (mounted) setLoading(false); }
     };
     reload();
-    unsubs.push(legacySB.realtime.subscribe('produits', reload));
-    unsubs.push(legacySB.realtime.subscribe('fournisseurs', reload));
-    unsubs.push(legacySB.realtime.subscribe('produit_fournisseurs', reload));
+    unsubs.push(legacySB.realtime.subscribeReload(
+      ['produits', 'fournisseurs', 'produit_fournisseurs'],
+      reload,
+    ));
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
 

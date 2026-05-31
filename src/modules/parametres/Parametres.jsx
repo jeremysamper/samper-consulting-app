@@ -159,7 +159,7 @@ const Parametres = ({ user, etablissement }) => {
     };
 
     reload();
-    unsub = legacySB.realtime.subscribe('etablissements', reload);
+    unsub = legacySB.realtime.subscribeReload('etablissements', reload);
     return () => { mounted = false; unsub && unsub(); };
   }, []);
 

@@ -34,7 +34,7 @@ const Pertes = ({ user, etablissement }) => {
     legacySB.db.listProduits(etabId)
       .then(ps => { if (mounted) setCatalogue(ps || []); })
       .catch(err => console.warn('[Pertes] catalogue load failed', err));
-    const unsub = legacySB.realtime.subscribe('produits', async () => {
+    const unsub = legacySB.realtime.subscribeReload('produits', async () => {
       try {
         const ps = await legacySB.db.listProduits(etabId);
         if (mounted) setCatalogue(ps || []);
@@ -53,7 +53,7 @@ const Pertes = ({ user, etablissement }) => {
         if (mounted) setPertes(ps);
       } catch (err) { console.error('[Pertes load]', err); }
     })();
-    unsub = legacySB.realtime.subscribe('pertes', async () => {
+    unsub = legacySB.realtime.subscribeReload('pertes', async () => {
       try { const ps = await legacySB.db.listPertes(etabId); if (mounted) setPertes(ps); } catch(e) {}
     });
     return () => { mounted = false; unsub && unsub(); };

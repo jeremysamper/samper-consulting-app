@@ -47,7 +47,7 @@ const Inventaire = ({ user, etablissement }) => {
         }
       } catch (err) { console.error('[Inventaire load]', err); }
     })();
-    unsub = legacySB.realtime.subscribe('inventaires', async () => {
+    unsub = legacySB.realtime.subscribeReload('inventaires', async () => {
       try { const invs = await legacySB.db.listInventaires(etabId); if (mounted) setInventairesAll(invs); } catch(e) {}
     });
     return () => { mounted = false; unsub && unsub(); };
@@ -61,7 +61,7 @@ const Inventaire = ({ user, etablissement }) => {
     legacySB.db.listProduits(etabId)
       .then(ps => { if (mounted) setCatalogue(ps || []); })
       .catch(err => console.warn('[Inventaire] catalogue load failed', err));
-    const unsub = legacySB.realtime.subscribe('produits', async () => {
+    const unsub = legacySB.realtime.subscribeReload('produits', async () => {
       try {
         const ps = await legacySB.db.listProduits(etabId);
         if (mounted) setCatalogue(ps || []);

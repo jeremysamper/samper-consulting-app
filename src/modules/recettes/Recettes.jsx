@@ -657,10 +657,10 @@ const Recettes = ({ user, etablissement }) => {
     const refreshPlats = async () => {
       try { const p = await legacySB.db.listPlats(etabId); if (mounted) setPlats(p); } catch(e) {}
     };
-    unsubRec = legacySB.realtime.subscribe('recettes', refreshRec);
-    unsubCart = legacySB.realtime.subscribe('cartes', refreshCart);
-    unsubPlats = legacySB.realtime.subscribe('plats', refreshPlats);
-    unsubPR = legacySB.realtime.subscribe('plat_recettes', refreshPlats);
+    unsubRec = legacySB.realtime.subscribeReload('recettes', refreshRec);
+    unsubCart = legacySB.realtime.subscribeReload('cartes', refreshCart);
+    unsubPlats = legacySB.realtime.subscribeReload('plats', refreshPlats);
+    unsubPR = legacySB.realtime.subscribeReload('plat_recettes', refreshPlats);
 
     return () => {
       mounted = false;

@@ -1498,6 +1498,32 @@ export function installLegacySupabase() {
         try { client.removeChannel(channel); }
         catch (e) { console.warn('[realtime cleanup]', e); }
       };
+    },
+
+    // Souscription « refetch » coalescée : écoute une ou plusieurs tables et
+    // déclenche UN SEUL reloadFn débouncé, quelle que soit la rafale d'events.
+    // Comportement identique à N subscribe(table, reloadFn) (reloadFn fait un
+    // refetch complet, idempotent) mais :
+    //   - regroupe une rafale multi-tables/multi-lignes en 1 seul reload
+    //   - réduit drastiquement les refetch sous charge concurrente (multi-user)
+    // À utiliser pour les callbacks qui rechargent toute une liste. NE PAS
+    // utiliser quand le callback a besoin de chaque payload.new/old individuel
+    // (ex. Planning) : utiliser subscribe() dans ce cas.
+    subscribeReload(tables, reloadFn, { debounceMs = 300 } = {}) {
+      const list = Array.isArray(tables) ? tables : [tables];
+      let timer = null;
+      let cancelled = false;
+      const schedule = () => {
+        if (cancelled) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { timer = null; if (!cancelled) reloadFn(); }, debounceMs);
+      };
+      const unsubs = list.map(t => this.subscribe(t, schedule));
+      return () => {
+        cancelled = true;
+        if (timer) { clearTimeout(timer); timer = null; }
+        unsubs.forEach(u => u && u());
+      };
     }
   };
 

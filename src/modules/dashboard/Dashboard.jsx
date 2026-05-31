@@ -74,13 +74,13 @@ const Dashboard = ({ user, etablissement, setPage }) => {
       finally { if (mounted) setLoading(false); }
     })();
 
-    unsubs.push(legacySB.realtime.subscribe('shifts', async () => {
+    unsubs.push(legacySB.realtime.subscribeReload('shifts', async () => {
       try { const rows = await legacySB.db.listShifts(etabId); if (mounted) setShifts((rows || []).map(r => legacySB.db.mapShiftFromDB(r))); } catch (e) {}
     }));
-    unsubs.push(legacySB.realtime.subscribe('pertes', async () => {
+    unsubs.push(legacySB.realtime.subscribeReload('pertes', async () => {
       try { const rows = await legacySB.db.listPertes(etabId); if (mounted) setPertes(rows || []); } catch (e) {}
     }));
-    unsubs.push(legacySB.realtime.subscribe('consultant_messages', async () => {
+    unsubs.push(legacySB.realtime.subscribeReload('consultant_messages', async () => {
       try {
         const m = await legacySB.db.getConsultantMessage(etabId);
         if (mounted && m) { setMessage(m); if (!editingMessageRef.current) setMessageDraft(m.message); }

@@ -120,7 +120,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (!legacySB) return;
     let mounted = true;
     legacySB.db.listProduits(etabId).then(ps => { if (mounted) setCatalogue(Array.isArray(ps) ? ps : []); }).catch(() => {});
-    const unsub = legacySB.realtime.subscribe('produits', async () => {
+    const unsub = legacySB.realtime.subscribeReload('produits', async () => {
       try { const ps = await legacySB.db.listProduits(etabId); if (mounted) setCatalogue(Array.isArray(ps) ? ps : []); } catch(e) {}
     });
     return () => { mounted = false; unsub && unsub(); };
@@ -167,10 +167,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (!legacySB) return;
     let mounted = true;
     legacySB.db.listPlats(etabId).then(ps => { if (mounted) setPlats(Array.isArray(ps) ? ps : []); }).catch(() => {});
-    const unsub1 = legacySB.realtime.subscribe('plats', async () => {
+    const unsub1 = legacySB.realtime.subscribeReload('plats', async () => {
       try { const ps = await legacySB.db.listPlats(etabId); if (mounted) setPlats(Array.isArray(ps) ? ps : []); } catch(e) {}
     });
-    const unsub2 = legacySB.realtime.subscribe('plat_recettes', async () => {
+    const unsub2 = legacySB.realtime.subscribeReload('plat_recettes', async () => {
       try { const ps = await legacySB.db.listPlats(etabId); if (mounted) setPlats(Array.isArray(ps) ? ps : []); } catch(e) {}
     });
     return () => { mounted = false; unsub1 && unsub1(); unsub2 && unsub2(); };
@@ -210,7 +210,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         }
       } catch (err) { console.error('[ConsultantTools load]', err); }
     })();
-    unsub = legacySB.realtime.subscribe('recettes', async () => {
+    unsub = legacySB.realtime.subscribeReload('recettes', async () => {
       try {
         const recs = await legacySB.db.listRecettes(etabId);
         if (!mounted) return;
@@ -513,7 +513,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     (async () => {
       try { const c = await legacySB.db.listCartes(etabId); if (mounted) setCartesLocal(c); } catch(e) {}
     })();
-    unsub = legacySB.realtime.subscribe('cartes', async () => {
+    unsub = legacySB.realtime.subscribeReload('cartes', async () => {
       try { const c = await legacySB.db.listCartes(etabId); if (mounted) setCartesLocal(c); } catch(e) {}
     });
     return () => { mounted = false; unsub && unsub(); };

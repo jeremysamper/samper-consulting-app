@@ -57,7 +57,7 @@ const Documents = ({ user, etablissement }) => {
       finally { if (mounted) setLoading(false); }
     })();
 
-    unsub = legacySB.realtime.subscribe('documents', async () => {
+    unsub = legacySB.realtime.subscribeReload('documents', async () => {
       try { const docs = await legacySB.db.listDocuments(etabId); if (mounted) setAllDocs(docs); } catch(e) {}
     });
 
