@@ -1,5 +1,4 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import { getDemoData } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
@@ -244,8 +243,8 @@ const Inventaire = ({ user, etablissement }) => {
   };
 
   // ═══ Import / Template XLSX ═══
-  const downloadInventoryTemplate = () => {
-    if (typeof XLSX === 'undefined') { alertLegacy('Bibliothèque XLSX non chargée.'); return; }
+  const downloadInventoryTemplate = async () => {
+    const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
     const wb = XLSX.utils.book_new();
     const rows = [
       ['Produit', 'Catégorie', 'Stock théorique', 'Stock réel', 'Unité', 'Prix unitaire (CHF)'],
@@ -350,11 +349,11 @@ const Inventaire = ({ user, etablissement }) => {
   const handleImportInventoryXLSX = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (typeof XLSX === 'undefined') { alertLegacy('Bibliothèque XLSX non chargée.'); return; }
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
         const data = new Uint8Array(evt.target.result);
         const wb = XLSX.read(data, { type: 'array' });
 

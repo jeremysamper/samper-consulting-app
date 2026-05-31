@@ -1,5 +1,4 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
@@ -222,9 +221,9 @@ const Catalogue = ({ user, etablissement }) => {
   const handleImportExcel = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (typeof XLSX === 'undefined') { alertLegacy('Bibliothèque XLSX non chargée.'); return; }
     setImporting(true);
     try {
+      const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
       const data = new Uint8Array(await file.arrayBuffer());
       const wb = XLSX.read(data, { type: 'array' });
 

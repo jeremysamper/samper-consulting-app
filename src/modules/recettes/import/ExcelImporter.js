@@ -11,8 +11,15 @@
 //   buildFromMapping(rows, headerRow, map)-> recipes
 //   FIELD_LABELS                          -> libellés des champs cibles (assistant de mapping)
 // ─────────────────────────────────────────────────────────────
-import * as XLSX from 'xlsx';
 import { parse as parseUnit, parseQuantity, normalizeUnit, toAppUnit } from './UnitParser.js';
+
+// xlsx (~143 Ko gzip) chargé à la demande, uniquement quand on parse réellement
+// un classeur. Évite d'alourdir le bundle des modules qui importent ce util.
+let _xlsxPromise = null;
+function loadXLSX() {
+  if (!_xlsxPromise) _xlsxPromise = import('xlsx');
+  return _xlsxPromise;
+}
 
 const norm = (s) => String(s ?? '')
   .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, ' ');
@@ -337,7 +344,7 @@ function parseFicheTechnique(rows) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Parse le template multi-feuilles (Recettes / Ingrédients / Étapes).
-function parseMultiSheet(wb) {
+function parseMultiSheet(wb, XLSX) {
   const findSheet = (re) => wb.SheetNames.find(n => re.test(norm(n)));
   const sRec = findSheet(/^recettes?$/);
   const sIng = findSheet(/^ingredients?$/);
@@ -405,13 +412,14 @@ function findHeaderRow(rows) {
 }
 
 // Point d'entrée principal.
-export function parseWorkbook(arrayBuffer) {
+export async function parseWorkbook(arrayBuffer) {
+  const XLSX = await loadXLSX();
   const data = new Uint8Array(arrayBuffer);
   const wb = XLSX.read(data, { type: 'array' });
   if (!wb.SheetNames.length) throw new Error('Classeur vide.');
 
   // Format multi-feuilles (template officiel) ?
-  const multi = parseMultiSheet(wb);
+  const multi = parseMultiSheet(wb, XLSX);
   if (multi && multi.length) {
     return {
       format: 'multi-feuilles',

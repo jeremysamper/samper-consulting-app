@@ -77,7 +77,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
     resetUnrecognizedUnits();
     try {
       const buf = await file.arrayBuffer();
-      const result = parseWorkbook(buf);
+      const result = await parseWorkbook(buf);
       if (result.stats) setParseStats(result.stats);
       if (result.needsMapping) {
         setMappingData(result);
@@ -199,7 +199,8 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
   };
 
   // ── Template téléchargeable ──
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
     const rows = [
       ['titre', 'categorie', 'portions', 'prix_vente', 'ingredient', 'quantite', 'unite', 'etape_numero', 'etape_texte', 'allergenes'],
       ['Risotto aux asperges', 'Plats', 4, 28.5, 'Riz Arborio', 320, 'g', '', '', 'lactose'],

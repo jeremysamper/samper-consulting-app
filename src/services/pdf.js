@@ -1,5 +1,3 @@
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import { getDemoData } from '../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../legacy/legacyApi.js';
 import { readJson } from '../utils/storage.js';
@@ -9,6 +7,18 @@ import { readJson } from '../utils/storage.js';
 // ─────────────────────────────────────────────────────
 
 export const pdfUtils = {
+
+  // ─── Chargement à la demande des libs lourdes (html2canvas + jsPDF) ──────
+  // Importées dynamiquement pour ne PAS alourdir le bundle des modules qui
+  // importent pdfUtils mais n'exportent pas systématiquement en PDF.
+  // Les deux libs ne sont nécessaires qu'au moment d'un export/print réel.
+  async _loadPdfLibs() {
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+    return { html2canvas, jsPDF };
+  },
 
   // ─── Override CSS variables en HEX pour le rendu PDF / print ────────────
   // html2canvas v1.4 ne supporte PAS oklch() et plante avec
@@ -314,6 +324,7 @@ export const pdfUtils = {
     document.body.appendChild(container);
 
     try {
+      const { html2canvas, jsPDF } = await this._loadPdfLibs();
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
@@ -421,6 +432,7 @@ export const pdfUtils = {
     document.body.appendChild(container);
 
     try {
+      const { html2canvas, jsPDF } = await this._loadPdfLibs();
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,

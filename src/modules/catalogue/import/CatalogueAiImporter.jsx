@@ -1,5 +1,4 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import { notifyLegacy, confirmLegacy } from '../../../legacy/legacyApi.js';
 import { dbService } from '../../../services/dbService.js';
 import CatalogueImportPreview from './CatalogueImportPreview.jsx';
@@ -159,6 +158,7 @@ async function fileToChunks(file) {
   }
 
   // ── Excel / XLS ──
+  const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
   const buf = new Uint8Array(await file.arrayBuffer());
   const wb = XLSX.read(buf, { type: 'array' });
   const chunks = [];
