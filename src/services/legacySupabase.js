@@ -1,5 +1,5 @@
 import { getBrowserWindow, setLegacySB } from '../legacy/legacyApi.js';
-import { getSupabaseConfig, supabase } from './supabase.js';
+import { bootDedupeRead, getSupabaseConfig, invalidateBootRead, supabase } from './supabase.js';
 import { readText, writeText } from '../utils/storage.js';
 
 // ═══════════════════════════════════════════════════════════════
@@ -78,7 +78,11 @@ export function installLegacySupabase() {
   function _invalidateForTables(tables) {
     for (const t of tables) {
       const name = _CACHE_FOR_TABLE[t];
-      if (name) _invalidateRead(name); // toutes les entrées du name (tous établissements)
+      if (name) _invalidateRead(name); // cache produits #4 (toutes entrées du name)
+      // Cache boot (cross-couche) : un event realtime sur etablissements/profiles
+      // doit le rafraîchir, sinon le reload débouncé servirait une version périmée.
+      if (t === 'etablissements') invalidateBootRead('etablissements:all');
+      if (t === 'profiles') { invalidateBootRead('profiles:all'); invalidateBootRead('profile:'); }
     }
   }
 
@@ -125,44 +129,60 @@ export function installLegacySupabase() {
     },
 
     async listProfiles() {
-      const { data, error } = await client.from('profiles').select('*').order('nom');
-      if (error) { console.error('[listProfiles]', error); return []; }
-      return data || [];
+      // Clé 'profiles:all' partagée avec profileService.listProfiles (cross-couche).
+      try {
+        return await bootDedupeRead('profiles:all', async () => {
+          const { data, error } = await client.from('profiles').select('*').order('nom');
+          if (error) throw error;
+          return data || [];
+        });
+      } catch (e) { console.error('[listProfiles]', e); return []; }
     },
 
     async createProfile(profile) {
       // profil.id = auth.users.id déjà créé via signUp
       const { data, error } = await client.from('profiles').insert(profile).select().single();
       if (error) throw error;
+      invalidateBootRead('profiles:all'); invalidateBootRead('profile:');
       return data;
     },
 
     async updateProfile(id, updates) {
       const { data, error } = await client.from('profiles').update(updates).eq('id', id).select().single();
       if (error) throw error;
+      invalidateBootRead('profiles:all'); invalidateBootRead('profile:');
       return data;
     },
 
     async deleteProfile(id) {
       const { error } = await client.from('profiles').delete().eq('id', id);
       if (error) throw error;
+      invalidateBootRead('profiles:all'); invalidateBootRead('profile:');
     },
 
     async listEtablissements() {
-      const { data, error } = await client.from('etablissements').select('*').order('nom');
-      if (error) { console.error('[listEtablissements]', error); return []; }
-      return data || [];
+      // Clé 'etablissements:all' partagée avec etablissementService.listForUser
+      // (cross-couche) : hydrate + AppLayout + useCurrentEtablissement = 1 requête.
+      try {
+        return await bootDedupeRead('etablissements:all', async () => {
+          const { data, error } = await client.from('etablissements').select('*').order('nom');
+          if (error) throw error;
+          return data || [];
+        });
+      } catch (e) { console.error('[listEtablissements]', e); return []; }
     },
 
     async upsertEtablissement(etab) {
       const { data, error } = await client.from('etablissements').upsert(etab).select().single();
       if (error) throw error;
+      invalidateBootRead('etablissements:all'); // saisie visible immédiatement
       return data;
     },
 
     async deleteEtablissement(id) {
       const { error } = await client.from('etablissements').delete().eq('id', id);
       if (error) throw error;
+      invalidateBootRead('etablissements:all');
     },
 
     async listPermissions() {
@@ -239,7 +259,8 @@ export function installLegacySupabase() {
     // Vide le cache (à appeler au logout pour ne pas leak les settings d'un user à un autre).
     clearUserSettingsCache() {
       _userSettingsCache = null;
-      _readCache.clear(); // hygiène : pas de réutilisation de listes entre deux sessions
+      _readCache.clear();      // cache produits #4
+      invalidateBootRead();    // cache boot (etablissements/profiles) — purge au logout
     },
 
     // Lecture async classique. Utilise le cache si dispo, sinon fait l'appel DB.
@@ -315,6 +336,7 @@ export function installLegacySupabase() {
         .update({ logo_url: logoDataUrl })
         .eq('id', etabId);
       if (error) throw error;
+      invalidateBootRead('etablissements:all');
     },
 
     // ─── SHIFTS (planning) ───

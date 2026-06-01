@@ -54,6 +54,37 @@ export const supabase = createClient(config.url, config.anonKey, {
   }
 });
 
+// ─────────────────────────────────────────
+// Dédup in-flight + TTL court pour les lectures d'AMORÇAGE (boot)
+// ─────────────────────────────────────────
+// Même mécanique que le cache #4 (promesse partagée + TTL court + invalidation),
+// mais placée ICI : c'est le module commun aux DEUX couches (services typés
+// ci-dessous ET bridge legacySupabase). Les chemins redondants du login
+// (useAuth, useCurrentEtablissement, hydrate, AppLayout) partagent ainsi UNE
+// seule requête par endpoint au lieu de la refaire chacun de leur côté.
+// Le fetcher DOIT throw sur erreur (pas de cache empoisonné) ; chaque appelant
+// garde sa propre gestion d'erreur autour de l'appel.
+const BOOT_READ_TTL = 8000;
+const _bootReadCache = new Map(); // key -> { ts, promise }
+
+export function bootDedupeRead(key, fetcher, ttl = BOOT_READ_TTL) {
+  const hit = _bootReadCache.get(key);
+  if (hit && (Date.now() - hit.ts) < ttl) return hit.promise;
+  const promise = Promise.resolve()
+    .then(fetcher)
+    .catch((err) => { _bootReadCache.delete(key); throw err; });
+  _bootReadCache.set(key, { ts: Date.now(), promise });
+  return promise;
+}
+
+// Invalide une clé exacte, toutes les clés d'un préfixe, ou tout (sans argument).
+export function invalidateBootRead(prefix) {
+  if (prefix === undefined) { _bootReadCache.clear(); return; }
+  for (const k of _bootReadCache.keys()) {
+    if (k === prefix || k.startsWith(prefix)) _bootReadCache.delete(k);
+  }
+}
+
 export const authService = {
   async signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -124,20 +155,25 @@ function mapEtablissementFromDB(row) {
 
 export const profileService = {
   async getProfile(userId) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (error) throw error;
+    const data = await bootDedupeRead('profile:' + userId, async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    });
     return mapProfileFromDB(data);
   },
 
   async listProfiles() {
-    const { data, error } = await supabase.from('profiles').select('*').order('nom');
-    if (error) throw error;
-    return (data || []).map(mapProfileFromDB);
+    const data = await bootDedupeRead('profiles:all', async () => {
+      const { data, error } = await supabase.from('profiles').select('*').order('nom');
+      if (error) throw error;
+      return data || [];
+    });
+    return data.map(mapProfileFromDB);
   }
 };
 
@@ -181,10 +217,15 @@ export const settingsService = {
 
 export const etablissementService = {
   async listForUser(user) {
-    const { data, error } = await supabase.from('etablissements').select('*').order('nom');
-    if (error) throw error;
+    // La requête brute (tous les établissements) est partagée via le cache boot ;
+    // le filtre par utilisateur s'applique APRÈS (côté client), hors cache.
+    const data = await bootDedupeRead('etablissements:all', async () => {
+      const { data, error } = await supabase.from('etablissements').select('*').order('nom');
+      if (error) throw error;
+      return data || [];
+    });
 
-    const rows = (data || []).map(mapEtablissementFromDB);
+    const rows = data.map(mapEtablissementFromDB);
     if (!user?.etablissementIds?.length) return rows;
     return rows.filter((etab) => user.etablissementIds.includes(etab.id));
   },
