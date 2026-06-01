@@ -18,6 +18,63 @@ export function installLegacySupabase() {
   let _userSettingsCache = null;
 
   // ─────────────────────────────────────────
+  // CACHE COURT + DÉDUP IN-FLIGHT pour les lectures lourdes
+  // ─────────────────────────────────────────
+  // Objectif : absorber les clics rapides entre modules qui chargent tous la
+  // même grosse liste (produits 800+ lignes + jointures). Deux montages
+  // rapprochés partagent UNE seule requête réseau + UN seul remap.
+  //
+  // Garde-fous :
+  //   - clé par etabId : aucune fuite inter-établissement (cacheKey = name:etabId).
+  //   - TTL court (3 s) : juste de quoi couvrir une rafale de navigation.
+  //   - invalidation IMMÉDIATE sur écriture locale (upsert/delete) → l'utilisateur
+  //     voit sa saisie tout de suite, jamais l'ancienne liste.
+  //   - invalidation par event realtime via le MÊME flux que subscribeReload
+  //     (cf. _invalidateForTables appelé dans schedule()) → un seul chemin de
+  //     rafraîchissement, pas de divergence cache/realtime.
+  const READ_CACHE_TTL = 3000;
+  const _readCache = new Map(); // cacheKey -> { ts, promise }
+
+  const _cacheKey = (name, etabId) => `${name}:${etabId || '∅'}`;
+
+  // Lecture dédupée + mise en cache courte. fetcher() n'est appelé qu'en cas de
+  // miss ou d'entrée expirée ; sinon on renvoie la promesse en vol / récente.
+  function _cachedRead(name, etabId, fetcher) {
+    const key = _cacheKey(name, etabId);
+    const hit = _readCache.get(key);
+    if (hit && (Date.now() - hit.ts) < READ_CACHE_TTL) return hit.promise;
+    const promise = Promise.resolve()
+      .then(fetcher)
+      .catch((err) => { _readCache.delete(key); throw err; }); // erreur → pas de cache empoisonné
+    _readCache.set(key, { ts: Date.now(), promise });
+    return promise;
+  }
+
+  // Invalide une entrée précise (name+etabId) ou toutes les entrées d'un name.
+  function _invalidateRead(name, etabId) {
+    if (etabId === undefined) {
+      for (const k of _readCache.keys()) if (k.startsWith(name + ':')) _readCache.delete(k);
+    } else {
+      _readCache.delete(_cacheKey(name, etabId));
+    }
+  }
+
+  // Map table Supabase → cache(s) à invalider quand un event realtime arrive.
+  // produits embarque le nom du fournisseur + les prix (produit_fournisseurs),
+  // donc un changement sur l'une de ces 3 tables doit rafraîchir le cache produits.
+  const _CACHE_FOR_TABLE = {
+    produits: 'produits',
+    produit_fournisseurs: 'produits',
+    fournisseurs: 'produits',
+  };
+  function _invalidateForTables(tables) {
+    for (const t of tables) {
+      const name = _CACHE_FOR_TABLE[t];
+      if (name) _invalidateRead(name); // toutes les entrées du name (tous établissements)
+    }
+  }
+
+  // ─────────────────────────────────────────
   // AUTH helpers
   // ─────────────────────────────────────────
   const auth = {
@@ -173,6 +230,7 @@ export function installLegacySupabase() {
     // Vide le cache (à appeler au logout pour ne pas leak les settings d'un user à un autre).
     clearUserSettingsCache() {
       _userSettingsCache = null;
+      _readCache.clear(); // hygiène : pas de réutilisation de listes entre deux sessions
     },
 
     // Lecture async classique. Utilise le cache si dispo, sinon fait l'appel DB.
@@ -1369,22 +1427,29 @@ export function installLegacySupabase() {
       };
       const { data, error } = await client.from('fournisseurs').upsert(payload).select().single();
       if (error) throw error;
+      _invalidateRead('produits'); // le nom du fournisseur est joint dans la liste produits
       return data;
     },
     async deleteFournisseur(id) {
       const { error } = await client.from('fournisseurs').delete().eq('id', id);
       if (error) throw error;
+      _invalidateRead('produits');
     },
 
     // ─── PRODUITS ───
+    // Lecture lourde (jointures imbriquées) → cache court + dédup in-flight.
+    // Invalidée immédiatement par les écritures produits/fournisseurs ci-dessous
+    // et par les events realtime (via subscribeReload → _invalidateForTables).
     async listProduits(etabId) {
-      let q = client.from('produits')
-        .select(`*, fournisseurs(nom), produit_fournisseurs(id,fournisseur_id,prix_achat,conditionnement,quantite_cond,unite_cond,prix_unitaire,est_principal,reference,fournisseurs(nom))`)
-        .order('categorie').order('nom');
-      if (etabId) q = q.eq('etablissement_id', etabId);
-      const { data, error } = await q;
-      if (error) { console.error('[listProduits]', error); return []; }
-      return (data || []).map(r => this.mapProduitFromDB(r));
+      return _cachedRead('produits', etabId, async () => {
+        let q = client.from('produits')
+          .select(`*, fournisseurs(nom), produit_fournisseurs(id,fournisseur_id,prix_achat,conditionnement,quantite_cond,unite_cond,prix_unitaire,est_principal,reference,fournisseurs(nom))`)
+          .order('categorie').order('nom');
+        if (etabId) q = q.eq('etablissement_id', etabId);
+        const { data, error } = await q;
+        if (error) { console.error('[listProduits]', error); return []; }
+        return (data || []).map(r => this.mapProduitFromDB(r));
+      });
     },
     async searchProduits(etabId, query) {
       // Recherche full-text rapide
@@ -1415,11 +1480,13 @@ export function installLegacySupabase() {
       };
       const { data, error } = await client.from('produits').upsert(payload).select().single();
       if (error) throw error;
+      _invalidateRead('produits'); // garde-fou : la saisie utilisateur est visible tout de suite
       return data;
     },
     async deleteProduit(id) {
       const { error } = await client.from('produits').delete().eq('id', id);
       if (error) throw error;
+      _invalidateRead('produits');
     },
     mapProduitFromDB(row) {
       if (!row) return null;
@@ -1466,11 +1533,13 @@ export function installLegacySupabase() {
       };
       const { data, error } = await client.from('produit_fournisseurs').upsert(payload).select().single();
       if (error) throw error;
+      _invalidateRead('produits'); // le prix principal est agrégé dans la liste produits
       return data;
     },
     async deleteProduitFournisseur(id) {
       const { error } = await client.from('produit_fournisseurs').delete().eq('id', id);
       if (error) throw error;
+      _invalidateRead('produits');
     },
   };
 
@@ -1515,6 +1584,10 @@ export function installLegacySupabase() {
       let cancelled = false;
       const schedule = () => {
         if (cancelled) return;
+        // Garde-fou #1 : on invalide le cache de lecture sur le MÊME event qui
+        // déclenche le reload. Un seul chemin de rafraîchissement → le reload
+        // débouncé refetch toujours des données fraîches (pas de divergence).
+        _invalidateForTables(list);
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => { timer = null; if (!cancelled) reloadFn(); }, debounceMs);
       };
