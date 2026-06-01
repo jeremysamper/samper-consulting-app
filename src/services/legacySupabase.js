@@ -204,7 +204,8 @@ export function installLegacySupabase() {
     // pour la rétro-compatibilité et les cas où le cache n'est pas encore hydraté.
 
     async loadAllUserSettings() {
-      const { data: { user } } = await client.auth.getUser();
+      const { data: { session } } = await client.auth.getSession();
+      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
       if (!user) {
         _userSettingsCache = new Map();
         return _userSettingsCache;
@@ -246,7 +247,8 @@ export function installLegacySupabase() {
       if (_userSettingsCache) {
         return _userSettingsCache.get(key) ?? null;
       }
-      const { data: { user } } = await client.auth.getUser();
+      const { data: { session } } = await client.auth.getSession();
+      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
       if (!user) return null;
       const { data, error } = await client
         .from('user_settings')
@@ -265,7 +267,8 @@ export function installLegacySupabase() {
       if (_userSettingsCache) {
         _userSettingsCache.set(key, value);
       }
-      const { data: { user } } = await client.auth.getUser();
+      const { data: { session } } = await client.auth.getSession();
+      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
       if (!user) throw new Error('Non authentifié');
       const { error } = await client
         .from('user_settings')
@@ -289,7 +292,8 @@ export function installLegacySupabase() {
         });
         return out;
       }
-      const { data: { user } } = await client.auth.getUser();
+      const { data: { session } } = await client.auth.getSession();
+      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
       if (!user) return {};
       const { data, error } = await client
         .from('user_settings')

@@ -143,14 +143,13 @@ export const profileService = {
 
 export const settingsService = {
   async getUserSetting(key) {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!userData.user) return null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
 
     const { data, error } = await supabase
       .from('user_settings')
       .select('value')
-      .eq('user_id', userData.user.id)
+      .eq('user_id', session.user.id)
       .eq('key', key)
       .maybeSingle();
 
@@ -159,12 +158,11 @@ export const settingsService = {
   },
 
   async setUserSetting(key, value) {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!userData.user) return null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
 
     const payload = {
-      user_id: userData.user.id,
+      user_id: session.user.id,
       key,
       value,
       updated_at: new Date().toISOString()
