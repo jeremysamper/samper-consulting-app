@@ -45,6 +45,14 @@ export function installLegacySupabase() {
     if (hit && (Date.now() - hit.ts) < READ_CACHE_TTL) return hit.promise;
     const promise = Promise.resolve()
       .then(fetcher)
+      .then((result) => {
+        // DEV uniquement : on gèle le tableau mis en cache. Comme la promesse est
+        // partagée entre appelants concurrents (dédup in-flight), une mutation en
+        // place (.push/.sort/.splice) corromprait la vue de TOUS les modules.
+        // Object.freeze transforme cette régression silencieuse en erreur bruyante.
+        if (import.meta.env?.DEV && Array.isArray(result)) Object.freeze(result);
+        return result;
+      })
       .catch((err) => { _readCache.delete(key); throw err; }); // erreur → pas de cache empoisonné
     _readCache.set(key, { ts: Date.now(), promise });
     return promise;
