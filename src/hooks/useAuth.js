@@ -49,6 +49,10 @@ export function useAuth() {
   const profileRef = useRef(null);
   useEffect(() => { profileRef.current = profile; }, [profile]);
 
+  // Vrai pendant signIn() : empêche le handler SIGNED_IN de recharger le profil
+  // que signIn charge déjà (évite un second getProfile au login = dédup à la source).
+  const signingInRef = useRef(false);
+
   useEffect(() => {
     let mounted = true;
 
@@ -118,6 +122,9 @@ export function useAuth() {
         }
 
         // ─── SIGNED_IN (login manuel via Auth.jsx) : charger le profil ───
+        // Si signIn() est en cours, c'est LUI qui charge le profil + pose la session
+        // → on évite un second getProfile (dédup à la source).
+        if (signingInRef.current) return;
         const nextProfile = await loadProfileSafe(nextSession?.user);
         if (!mounted) return;
 
@@ -155,28 +162,35 @@ export function useAuth() {
   }, []);
 
   async function signIn(email, password) {
-    const data = await withTimeout(authService.signIn(email, password), null, 15000);
+    signingInRef.current = true;
+    try {
+      const data = await withTimeout(authService.signIn(email, password), null, 15000);
 
-    if (!data?.user) {
-      throw new Error('Connexion trop lente. Verifie ta connexion internet puis reessaie.');
+      if (!data?.user) {
+        throw new Error('Connexion trop lente. Verifie ta connexion internet puis reessaie.');
+      }
+
+      const nextProfile = await withTimeout(profileService.getProfile(data.user.id), null, 15000);
+
+      if (!nextProfile) {
+        await authService.signOut();
+        throw new Error('Compte créé mais profil introuvable. Contactez le consultant.');
+      }
+
+      if (nextProfile.actif === false) {
+        await authService.signOut();
+        throw new Error('Ce compte a été désactivé. Contactez le consultant.');
+      }
+
+      setSession(data.session);
+      setUser(data.user);
+      setProfile(nextProfile);
+      return nextProfile;
+    } finally {
+      // Laisse un court délai avant de relâcher le garde : l'event SIGNED_IN
+      // de supabase-js peut être dispatché juste après la résolution de signIn.
+      setTimeout(() => { signingInRef.current = false; }, 1500);
     }
-
-    const nextProfile = await withTimeout(profileService.getProfile(data.user.id), null, 15000);
-
-    if (!nextProfile) {
-      await authService.signOut();
-      throw new Error('Compte créé mais profil introuvable. Contactez le consultant.');
-    }
-
-    if (nextProfile.actif === false) {
-      await authService.signOut();
-      throw new Error('Ce compte a été désactivé. Contactez le consultant.');
-    }
-
-    setSession(data.session);
-    setUser(data.user);
-    setProfile(nextProfile);
-    return nextProfile;
   }
 
   async function signOut() {
