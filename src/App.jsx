@@ -41,12 +41,14 @@ export default function App() {
         const legacyDb = dbService.getDb();
         const hydrateFromSupabase = getHydrateFromSupabase();
 
-        if (legacyDb?.loadAllUserSettings) {
-          await legacyDb.loadAllUserSettings();
-        }
-        if (hydrateFromSupabase) {
-          await hydrateFromSupabase();
-        }
+        // Les deux sont indépendants (user_settings d'un côté ; etabs/profils/
+        // permissions de l'autre) → on les lance en parallèle au lieu de les
+        // enchaîner en série, ce qui retire un aller-retour réseau de la synchro
+        // post-login. Optimisation sûre quelle que soit la cause de la lenteur.
+        await Promise.all([
+          legacyDb?.loadAllUserSettings ? legacyDb.loadAllUserSettings() : null,
+          hydrateFromSupabase ? hydrateFromSupabase() : null,
+        ]);
         if (mounted) setLegacyVersion((version) => version + 1);
       } catch (err) {
         console.warn('[Vite legacy] Synchronisation post-login echouee', err);
