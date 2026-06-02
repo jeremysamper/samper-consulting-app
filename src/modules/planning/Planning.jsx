@@ -12,6 +12,15 @@ import { Files, FileDown, Plus, CheckSquare, FileText, Printer } from 'lucide-re
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
 // ─────────────────────────────────────────────────────
 
+// Famille de poste, pour le résumé de couverture de la vue mobile par jour.
+// La couleur visuelle d'un shift reste portée par le rôle de l'employé
+// (demoData.roles[role].couleur) — c'est la seule donnée couleur fiable en base.
+const roleFamily = (role) => {
+  if (role === 'serveur') return 'salle';
+  if (role === 'cuisinier' || role === 'resp_cuisine') return 'cuisine';
+  return 'autre';
+};
+
 const Planning = ({ user, etablissement, initialTab }) => {
   const browserWindow = getBrowserWindow();
   const legacySB = dbService.getBridge();
@@ -29,6 +38,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const [selectedDate, setSelectedDate] = React.useState(getMondayOfCurrentWeek());
   const [pointageDate, setPointageDate] = React.useState(todayStr);
+  const [mobileDate, setMobileDate] = React.useState(todayStr); // mobile : l'unité de lecture est le jour
   const [horizon, setHorizon] = React.useState(1);
   const [showDetailModal, setShowDetailModal] = React.useState(false);
   const [showEditModal, setShowEditModal] = React.useState(false);
@@ -446,13 +456,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setSelectedDate(d.toISOString().slice(0, 10));
   };
   const goToCurrentWeek = () => setSelectedDate(getMondayOfCurrentWeek());
+  // Navigation jour (mobile) : avance/recule d'une journée, et retour à aujourd'hui.
+  const shiftMobileDay = (delta) => {
+    const d = new Date(mobileDate + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    setMobileDate(d.toISOString().slice(0, 10));
+  };
+  const goToTodayMobile = () => setMobileDate(todayStr);
   // Libellé « Semaine du JJ mois » à partir du premier jour affiché
   const weekRangeLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' });
 
   // ═══════════════ SUPPRESSION MULTIPLE (Axe 2) ═══════════════
 
-  // Horaires actuellement visibles dans la vue planning (jours affichés) — base du « tout sélectionner ».
-  const visibleShifts = planningEtab.filter(s => DAYS.some(d => d.date === s.date));
+  // Horaires actuellement visibles dans la vue planning — base du « tout sélectionner ».
+  // En mobile, l'unité affichée est le jour ; en desktop, la plage de jours de la grille.
+  const visibleShifts = isMobile
+    ? planningEtab.filter(s => s.date === mobileDate)
+    : planningEtab.filter(s => DAYS.some(d => d.date === s.date));
 
   const toggleSelectionMode = () => {
     setSelectionMode(prev => {
@@ -900,51 +920,97 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const allShifts = planningEtab.filter(s => s.date === pointageDate);
 
-  // ── VUE MOBILE : liste par jour avec cartes
+  // ── VUE MOBILE : agenda par jour (refonte lisibilité)
+  // Une seule journée à la fois, navigation jour sticky, cartes « heure-héros »,
+  // bandeau couleur par rôle, résumé de couverture. La grille desktop est inchangée.
   const renderMobilePlanning = () => {
+    const dayShifts = planningEtab
+      .filter(s => s.date === mobileDate)
+      .sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
+    const isToday = mobileDate === todayStr;
+    const dayLabel = new Date(mobileDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
+    const dayLabelCap = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+
+    // Résumé de couverture : nb de personnes + répartition par famille de rôle.
+    const uniqueEmpIds = [...new Set(dayShifts.map(s => s.userId))];
+    const famCount = { cuisine: 0, salle: 0, autre: 0 };
+    uniqueEmpIds.forEach(id => {
+      const e = demoData.utilisateurs.find(u => u.id === id);
+      famCount[roleFamily(e?.role)]++;
+    });
+    const coverageParts = [];
+    if (famCount.cuisine) coverageParts.push(`${famCount.cuisine} cuisine`);
+    if (famCount.salle) coverageParts.push(`${famCount.salle} salle`);
+    if (famCount.autre) coverageParts.push(`${famCount.autre} autre${famCount.autre > 1 ? 's' : ''}`);
+
     return (
-      <div style={pls.mobilePlanList} id="planning-print">
-        <div style={pls.mobileTitle}>Planning — {horizon} semaine{horizon > 1 ? 's' : ''}</div>
-        {DAYS.map(d => {
-          const shiftsForDay = planningEtab.filter(s => s.date === d.date);
-          return (
-            <div key={d.date} style={pls.mobileDayBlock}>
-              <div style={pls.mobileDayHeader}>
-                <span style={{ fontWeight: 700, fontSize: 13 }}>{new Date(d.date + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: '2-digit', month: '2-digit' })}</span>
-                {canWrite && <button style={pls.mobileDayAdd} onClick={() => openAddPrefill('', d.date)}>+</button>}
-              </div>
-              {shiftsForDay.length === 0 ? (
-                <div style={{ padding: 12, fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucun horaire</div>
-              ) : shiftsForDay.map(shift => {
+      <div style={pls.mobilePlanWrap}>
+        {/* En-tête de jour sticky : ‹ jour › + retour à aujourd'hui */}
+        <div style={pls.mobileDayNav}>
+          <div style={pls.mobileDayNavRow}>
+            <button style={pls.mobileNavArrow} onClick={() => shiftMobileDay(-1)} aria-label="Jour précédent">‹</button>
+            <div style={pls.mobileDayNavCenter}>
+              <span style={{ ...pls.mobileDayName, color: isToday ? 'var(--accent)' : 'var(--text)' }}>{dayLabelCap}</span>
+              {isToday && <span style={pls.mobileTodayChip}>Aujourd'hui</span>}
+            </div>
+            <button style={pls.mobileNavArrow} onClick={() => shiftMobileDay(1)} aria-label="Jour suivant">›</button>
+          </div>
+          {!isToday && <button style={pls.mobileTodayBtn} onClick={goToTodayMobile}>Revenir à aujourd'hui</button>}
+        </div>
+
+        <div style={pls.mobilePlanList} id="planning-print">
+          {/* Résumé de couverture du jour : qui / combien / quels postes */}
+          {uniqueEmpIds.length > 0 && (
+            <div style={pls.mobileCoverage}>
+              {`${uniqueEmpIds.length} personne${uniqueEmpIds.length > 1 ? 's' : ''}${coverageParts.length ? ' · ' + coverageParts.join(' · ') : ''}`}
+            </div>
+          )}
+
+          {dayShifts.length === 0 ? (
+            <div style={pls.mobileEmptyDay}>
+              <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos — aucun horaire planifié.</span>
+              {canWrite && <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>+ Ajouter un horaire</button>}
+            </div>
+          ) : (
+            <>
+              {dayShifts.map(shift => {
                 const emp = demoData.utilisateurs.find(u => u.id === shift.userId);
                 const role = emp ? demoData.roles[emp.role] : null;
+                const roleColor = role?.couleur || 'var(--text3)';
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 const selected = selectionMode && selectedIds.has(shift.id);
                 const onCardClick = selectionMode
                   ? () => toggleShiftSelected(shift.id)
                   : () => { if (canWrite) openEditShift(shift); };
+                const typeLabel = shift.typeShift === 'midi' ? 'Midi' : shift.typeShift === 'soir' ? 'Soir' : null;
+                const statusLabel = enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : null;
                 return (
-                  <div key={shift.id} style={{ ...pls.mobileShiftCard, ...(selected ? { background: 'var(--accent-light)', borderColor: 'var(--accent)' } : {}) }} onClick={onCardClick}>
-                    {selectionMode && (
-                      <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={{ marginRight: 4 }} />
-                    )}
-                    <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp?.avatar || '?'}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{emp?.prenom} {emp?.nom}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                        {shift.typeShift === 'midi' ? '☀ ' : shift.typeShift === 'soir' ? '🌙 ' : ''}
-                        {shift.debut}–{shift.fin} · {shift.poste}
+                  <div key={shift.id} style={{ ...pls.mobileCard, ...(selected ? pls.mobileCardSelected : {}) }} onClick={onCardClick}>
+                    {/* Bandeau de couleur à gauche, codé par rôle → scan des postes d'un coup d'œil */}
+                    <div style={{ ...pls.mobileCardBand, background: roleColor }} />
+                    <div style={pls.mobileCardBody}>
+                      <div style={pls.mobileCardTop}>
+                        {/* Heure = élément héros */}
+                        <span style={pls.mobileHour}>{shift.debut} – {shift.fin}</span>
+                        {selectionMode
+                          ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
+                          : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
-                    </div>
-                    <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageDebut ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageDebut ? 'var(--info-text)' : 'var(--warning-text)' }}>
-                      {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : 'Non pointé'}
+                      <div style={pls.mobileName}>{emp ? `${emp.prenom} ${emp.nom}` : '—'}</div>
+                      <div style={pls.mobileMeta}>
+                        <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{shift.poste || role?.label || 'Poste'}{typeLabel ? ` · ${typeLabel}` : ''}</span>
+                        {shift.pause > 0 && <span style={pls.mobilePause}>Pause {shift.pause} min</span>}
+                      </div>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          );
-        })}
+              {canWrite && !selectionMode && (
+                <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>+ Ajouter un horaire</button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     );
   };
@@ -1000,18 +1066,18 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <button key={t.id} style={{ ...pls.tab, ...(activeTab === t.id ? pls.tabActive : {}) }} onClick={() => setActiveTab(t.id)}>{t.label}</button>
         ))}
         <div style={{ flex: 1 }} />
-        {activeTab === 'planning' ? (
+        {activeTab === 'planning' ? (!isMobile && (
           <>
             <div style={pls.weekNav}>
               <button style={pls.navArrow} onClick={() => shiftWeek(-1)} title="Semaine précédente" aria-label="Semaine précédente">‹</button>
-              {!isMobile && <span style={pls.weekLabel}>Semaine du {weekRangeLabel}</span>}
+              <span style={pls.weekLabel}>Semaine du {weekRangeLabel}</span>
               <button style={pls.navArrow} onClick={() => shiftWeek(1)} title="Semaine suivante" aria-label="Semaine suivante">›</button>
             </div>
             <button style={pls.smallBtn} onClick={goToCurrentWeek}>Aujourd'hui</button>
             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={pls.datePicker} />
-            {!isMobile && [1, 2, 3].map(n => <button key={n} style={{ ...pls.smallBtn, ...(horizon === n ? pls.smallBtnActive : {}) }} onClick={() => setHorizon(n)}>{n} sem.</button>)}
+            {[1, 2, 3].map(n => <button key={n} style={{ ...pls.smallBtn, ...(horizon === n ? pls.smallBtnActive : {}) }} onClick={() => setHorizon(n)}>{n} sem.</button>)}
           </>
-        ) : (
+        )) : (
           <input type="date" value={pointageDate} onChange={e => setPointageDate(e.target.value)} style={pls.datePicker} />
         )}
       </div>
