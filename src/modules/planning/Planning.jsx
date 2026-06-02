@@ -770,7 +770,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
           // Ne pas dupliquer une cellule sur elle-même (origine d'un horaire sélectionné)
           if (sources.some(s => s.userId === userId && s.date === date)) continue;
           const existing = planningEtab.filter(s => s.userId === userId && s.date === date);
-          existing.forEach(ex => { idsToRemove.add(ex.id); replaced++; });
+          // On ne retire que les horaires existants qui chevauchent un des créneaux
+          // dupliqués → un horaire non chevauchant (ex. midi en place, on duplique un
+          // soir) est conservé, le service coupé survit à la duplication.
+          existing.forEach(ex => {
+            if (sources.some(src => shiftsOverlap(ex.debut, ex.fin, src.debut, src.fin))) {
+              idsToRemove.add(ex.id);
+              replaced++;
+            }
+          });
           for (const src of sources) {
             toCreate.push({
               etablissementId: etabId,
