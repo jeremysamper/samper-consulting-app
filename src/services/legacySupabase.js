@@ -394,6 +394,14 @@ export function installLegacySupabase() {
       if (error) throw error;
     },
 
+    // Suppression en masse : une seule requête delete().in('id', [...]).
+    async deleteShifts(ids) {
+      const list = (ids || []).filter(Boolean);
+      if (list.length === 0) return;
+      const { error } = await client.from('shifts').delete().in('id', list);
+      if (error) throw error;
+    },
+
     // Pointage sécurisé via RPC (l'heure est générée côté serveur, pas manipulable par le client)
     async pointerArrivee(shiftId) {
       const { data, error } = await client.rpc('pointer_arrivee', { shift_id: shiftId });

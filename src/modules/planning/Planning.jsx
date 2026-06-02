@@ -416,8 +416,64 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [demultUserIds, setDemultUserIds] = React.useState(new Set());
   const [demultSaving, setDemultSaving] = React.useState(false);
 
+  // ─── État pour la suppression multiple (Axe 2) ───
+  // Mode sélection : des cases à cocher apparaissent sur chaque horaire, une barre
+  // d'action sticky propose « Supprimer la sélection (N) » → une seule requête
+  // delete().in('id', [...]). Réservé à canWrite (consultant / patron / resp_cuisine).
+  const [selectionMode, setSelectionMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = React.useState(false);
+  const [bulkDeleting, setBulkDeleting] = React.useState(false);
+
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
+
+  // ═══════════════ SUPPRESSION MULTIPLE (Axe 2) ═══════════════
+
+  // Horaires actuellement visibles dans la vue planning (jours affichés) — base du « tout sélectionner ».
+  const visibleShifts = planningEtab.filter(s => DAYS.some(d => d.date === s.date));
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(prev => {
+      if (prev) setSelectedIds(new Set()); // on quitte → on vide la sélection
+      return !prev;
+    });
+  };
+
+  const toggleShiftSelected = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const allVisibleSelected = visibleShifts.length > 0 && visibleShifts.every(s => selectedIds.has(s.id));
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(visibleShifts.map(s => s.id)));
+  };
+
+  const doBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      if (legacySB) {
+        await legacySB.db.deleteShifts(ids); // une seule requête delete().in('id', [...])
+      }
+      const idSet = new Set(ids);
+      setPlanning(prev => prev.filter(s => !idSet.has(s.id)));
+      notifyLegacy(`✓ ${ids.length} horaire${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`, 'success');
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+      setShowBulkDeleteConfirm(false);
+    } catch (err) {
+      notifyLegacy('Erreur suppression : ' + err.message, 'error');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const openDuplicateDay = (presetUserId, presetSourceDate) => {
     setDuplicateMode('day');
@@ -869,8 +925,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const emp = demoData.utilisateurs.find(u => u.id === shift.userId);
                 const role = emp ? demoData.roles[emp.role] : null;
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
+                const selected = selectionMode && selectedIds.has(shift.id);
+                const onCardClick = selectionMode
+                  ? () => toggleShiftSelected(shift.id)
+                  : () => { setSelectedShift(shift); setShowDetailModal(true); };
                 return (
-                  <div key={shift.id} style={pls.mobileShiftCard} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
+                  <div key={shift.id} style={{ ...pls.mobileShiftCard, ...(selected ? { background: 'var(--accent-light)', borderColor: 'var(--accent)' } : {}) }} onClick={onCardClick}>
+                    {selectionMode && (
+                      <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={{ marginRight: 4 }} />
+                    )}
                     <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp?.avatar || '?'}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{emp?.prenom} {emp?.nom}</div>
@@ -956,6 +1019,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {/* Actions secondaires */}
       <div style={pls.actionsBar} className="desktop-toolbar no-print">
         {canWrite && <button style={pls.addBtn} onClick={() => openNewShift()}>+ Ajouter horaire</button>}
+        {canWrite && activeTab === 'planning' && (
+          <button
+            style={{ ...pls.exportBtn, ...(selectionMode ? { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)' } : {}) }}
+            onClick={toggleSelectionMode}
+          >{selectionMode ? 'Quitter la sélection' : 'Sélectionner'}</button>
+        )}
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateDay}>📋 Dupliquer journée</button>}
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>📅 Dupliquer semaine</button>}
         <div style={{ flex: 1 }} />
@@ -1010,7 +1079,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           </div>
                         </div>
                       </div>
-                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openNewShift={openNewShift} setSelectedShift={setSelectedShift} setShowDetailModal={setShowDetailModal} calcHeures={calcHeures}/></div>)}
+                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openNewShift={openNewShift} setSelectedShift={setSelectedShift} setShowDetailModal={setShowDetailModal} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected}/></div>)}
                     </React.Fragment>
                   );
                 })}
@@ -1799,6 +1868,48 @@ const Planning = ({ user, etablissement, initialTab }) => {
           </div>
         );
       })()}
+      {/* ═════════ BARRE D'ACTION SÉLECTION MULTIPLE (Axe 2) ═════════ */}
+      {selectionMode && activeTab === 'planning' && (
+        <div className="no-print" style={pls.selectionBar}>
+          <button style={pls.selectionGhostBtn} onClick={toggleSelectAllVisible}>
+            {allVisibleSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+          </button>
+          <span style={pls.selectionCount}>{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
+          <div style={{ flex: 1 }} />
+          <button style={pls.selectionGhostBtn} onClick={toggleSelectionMode}>Annuler</button>
+          <button
+            style={{ ...pls.selectionDeleteBtn, opacity: selectedIds.size === 0 ? 0.5 : 1 }}
+            disabled={selectedIds.size === 0}
+            onClick={() => setShowBulkDeleteConfirm(true)}
+          >Supprimer la sélection ({selectedIds.size})</button>
+        </div>
+      )}
+
+      {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
+      {showBulkDeleteConfirm && (
+        <div className="modal-full-overlay" style={pls.overlay} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>
+          <div className="modal-full" style={{ ...pls.modal, width: 420 }} onClick={e => e.stopPropagation()}>
+            <div style={pls.modalHeader}>
+              <div style={pls.modalTitle}>Supprimer {selectedIds.size} horaire{selectedIds.size > 1 ? 's' : ''} ?</div>
+              <button style={pls.closeBtn} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>✕</button>
+            </div>
+            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                Cette action est <strong>définitive</strong>. {selectedIds.size} horaire{selectedIds.size > 1 ? 's' : ''} {selectedIds.size > 1 ? 'seront supprimés' : 'sera supprimé'} en une seule opération.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button style={pls.exportBtn} onClick={() => setShowBulkDeleteConfirm(false)} disabled={bulkDeleting}>Annuler</button>
+                <button
+                  style={{ ...pls.addBtn, background: 'var(--danger-strong)', borderColor: 'var(--danger-strong)', opacity: bulkDeleting ? 0.5 : 1 }}
+                  onClick={doBulkDelete}
+                  disabled={bulkDeleting}
+                >{bulkDeleting ? '⏳ Suppression…' : `Supprimer (${selectedIds.size})`}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BottomActionBar
         actions={[
           canExport && activeTab === 'planning' ? { label: 'Dupl. jour', icon: Copy, onClick: openDuplicateDay } : null,

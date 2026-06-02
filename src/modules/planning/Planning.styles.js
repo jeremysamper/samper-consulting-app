@@ -55,6 +55,12 @@ const pls = {
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
   fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   fieldInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+
+  // Barre d'action sticky pour la sélection multiple (Axe 2)
+  selectionBar: { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1100, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', boxShadow: '0 -6px 24px rgba(0,0,0,0.12)', flexWrap: 'wrap' },
+  selectionCount: { fontSize: 13, fontWeight: 700, color: 'var(--text)' },
+  selectionGhostBtn: { padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  selectionDeleteBtn: { padding: '10px 16px', background: 'var(--danger-strong)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
 };
 
 export { ccntCell, pls };
