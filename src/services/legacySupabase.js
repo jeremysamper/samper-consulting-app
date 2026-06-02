@@ -369,6 +369,31 @@ export function installLegacySupabase() {
       return data;
     },
 
+    // Création en masse : une seule requête insert([...]) (saisie groupée).
+    async createShifts(shifts) {
+      const list = (shifts || []);
+      if (list.length === 0) return [];
+      const stamp = Date.now();
+      const payload = list.map((shift, i) => ({
+        id: shift.id || ('s' + stamp + '-' + i + '-' + Math.floor(Math.random() * 1000)),
+        etablissement_id: shift.etablissementId,
+        user_id: shift.userId,
+        date: shift.date,
+        debut: shift.debut,
+        fin: shift.fin,
+        pause: shift.pause ?? 0,
+        poste: shift.poste || null,
+        type_shift: shift.typeShift || 'simple',
+        statut: shift.statut || 'confirmé',
+        pointage_debut: shift.pointageDebut || null,
+        pointage_fin: shift.pointageFin || null,
+        note: shift.note || null,
+      }));
+      const { data, error } = await client.from('shifts').insert(payload).select();
+      if (error) throw error;
+      return data;
+    },
+
     async updateShift(id, updates) {
       // Mapper les champs camelCase → snake_case
       const m = {};

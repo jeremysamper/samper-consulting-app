@@ -6,7 +6,7 @@ import ShiftCell from './ShiftCell.jsx';
 import { ccntCell, pls } from './Planning.styles.js';
 import { dbService } from '../../services/dbService.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Copy, Files, FileDown, Plus } from 'lucide-react';
+import { Copy, Files, FileDown, Plus, CalendarPlus } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -425,6 +425,22 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = React.useState(false);
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
 
+  // ─── État pour la saisie groupée d'horaires (Axe 3) ───
+  // Crée des horaires pour plusieurs employés × une plage de dates (filtrée par jours
+  // de semaine) × un créneau commun, en une seule requête insert([...]).
+  const [showBatchModal, setShowBatchModal] = React.useState(false);
+  const [batchUserIds, setBatchUserIds] = React.useState(new Set());
+  const [batchStart, setBatchStart] = React.useState(selectedDate);
+  const [batchEnd, setBatchEnd] = React.useState(selectedDate);
+  const [batchWeekdays, setBatchWeekdays] = React.useState(new Set([0, 1, 2, 3, 4, 5, 6]));
+  const [batchTypeShift, setBatchTypeShift] = React.useState('simple');
+  const [batchDebut, setBatchDebut] = React.useState('09:00');
+  const [batchFin, setBatchFin] = React.useState('17:00');
+  const [batchPause, setBatchPause] = React.useState(30);
+  const [batchPoste, setBatchPoste] = React.useState('');
+  const [batchConflictMode, setBatchConflictMode] = React.useState('skip'); // 'skip' = ignorer+signaler | 'replace' = écraser
+  const [batchSaving, setBatchSaving] = React.useState(false);
+
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
@@ -472,6 +488,122 @@ const Planning = ({ user, etablissement, initialTab }) => {
       notifyLegacy('Erreur suppression : ' + err.message, 'error');
     } finally {
       setBulkDeleting(false);
+    }
+  };
+
+  // ═══════════════ SAISIE GROUPÉE (Axe 3) ═══════════════
+
+  const openBatchModal = () => {
+    setBatchUserIds(new Set());
+    setBatchStart(selectedDate);
+    setBatchEnd(selectedDate);
+    setBatchWeekdays(new Set([0, 1, 2, 3, 4, 5, 6]));
+    setBatchTypeShift('simple');
+    setBatchDebut('09:00');
+    setBatchFin('17:00');
+    setBatchPause(30);
+    setBatchPoste('');
+    setBatchConflictMode('skip');
+    setShowBatchModal(true);
+  };
+
+  const toggleBatchUser = (uid) => {
+    setBatchUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      return next;
+    });
+  };
+
+  const toggleBatchWeekday = (idx) => {
+    setBatchWeekdays(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  };
+
+  // Construit les dates de la plage [batchStart, batchEnd] filtrées par jours de semaine.
+  // Indice ISO : 0=lundi … 6=dimanche. Garde-fou : 366 jours max.
+  const buildBatchDates = () => {
+    if (!batchStart || !batchEnd) return [];
+    const start = new Date(batchStart + 'T12:00:00');
+    const end = new Date(batchEnd + 'T12:00:00');
+    if (end < start) return [];
+    const dates = [];
+    const cursor = new Date(start);
+    for (let i = 0; i < 366 && cursor <= end; i++) {
+      const jsDay = cursor.getDay(); // 0=dim … 6=sam
+      const isoDay = jsDay === 0 ? 6 : jsDay - 1; // 0=lun … 6=dim
+      if (batchWeekdays.has(isoDay)) dates.push(cursor.toISOString().slice(0, 10));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const doBatchCreate = async () => {
+    if (batchUserIds.size === 0) { alertLegacy('Sélectionne au moins un employé.'); return; }
+    if (!batchDebut || !batchFin) { alertLegacy('Renseigne le créneau (début et fin).'); return; }
+    const dates = buildBatchDates();
+    if (dates.length === 0) { alertLegacy('Aucune date valide (vérifie la plage et les jours sélectionnés).'); return; }
+
+    setBatchSaving(true);
+    const toCreate = [];
+    const idsToRemove = new Set();
+    let skipped = 0;
+    try {
+      for (const uid of batchUserIds) {
+        for (const date of dates) {
+          const existing = planningEtab.filter(s => s.userId === uid && s.date === date);
+          if (existing.length > 0) {
+            if (batchConflictMode === 'skip') { skipped += existing.length; continue; }
+            // 'replace' : on supprime l'existant à cette date pour cet employé
+            existing.forEach(ex => idsToRemove.add(ex.id));
+          }
+          toCreate.push({
+            etablissementId: etabId,
+            userId: uid,
+            date,
+            debut: batchDebut,
+            fin: batchFin,
+            pause: batchPause || 0,
+            poste: batchPoste || '',
+            typeShift: batchTypeShift,
+            statut: 'confirmé',
+            pointageDebut: null,
+            pointageFin: null,
+          });
+        }
+      }
+
+      if (toCreate.length === 0) {
+        notifyLegacy(skipped > 0 ? `Aucun horaire créé — ${skipped} conflit(s) ignoré(s).` : 'Aucun horaire à créer.', 'warning');
+        setBatchSaving(false);
+        return;
+      }
+
+      let createdShifts = [];
+      if (legacySB) {
+        // 'replace' : suppression en masse des conflits (1 requête) avant l'insert en masse
+        if (idsToRemove.size > 0) await legacySB.db.deleteShifts(Array.from(idsToRemove));
+        const rows = await legacySB.db.createShifts(toCreate);
+        createdShifts = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
+      } else {
+        createdShifts = toCreate.map((s, i) => ({ ...s, id: 'sb' + Date.now() + '-' + i }));
+      }
+
+      setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...createdShifts]);
+
+      const empCount = batchUserIds.size;
+      let msg = `✓ ${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''} pour ${empCount} employé${empCount > 1 ? 's' : ''} sur ${dates.length} jour${dates.length > 1 ? 's' : ''}`;
+      if (idsToRemove.size > 0) msg += ` (${idsToRemove.size} remplacé${idsToRemove.size > 1 ? 's' : ''})`;
+      if (skipped > 0) msg += ` — ${skipped} conflit${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}`;
+      notifyLegacy(msg, 'success');
+      setShowBatchModal(false);
+    } catch (err) {
+      notifyLegacy('Erreur saisie groupée : ' + err.message, 'error');
+    } finally {
+      setBatchSaving(false);
     }
   };
 
@@ -1019,6 +1151,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {/* Actions secondaires */}
       <div style={pls.actionsBar} className="desktop-toolbar no-print">
         {canWrite && <button style={pls.addBtn} onClick={() => openNewShift()}>+ Ajouter horaire</button>}
+        {canWrite && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openBatchModal}>Saisie groupée</button>}
         {canWrite && activeTab === 'planning' && (
           <button
             style={{ ...pls.exportBtn, ...(selectionMode ? { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)' } : {}) }}
@@ -1910,8 +2043,158 @@ const Planning = ({ user, etablissement, initialTab }) => {
         </div>
       )}
 
+      {/* ═════════ MODALE SAISIE GROUPÉE (Axe 3) ═════════ */}
+      {showBatchModal && (() => {
+        const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+        const allEmpSelected = employees.length > 0 && employees.every(e => batchUserIds.has(e.id));
+        const dates = buildBatchDates();
+        // Conflits = couples (employé, date) ayant déjà ≥ 1 horaire
+        let conflictCount = 0;
+        batchUserIds.forEach(uid => {
+          dates.forEach(date => {
+            if (planningEtab.some(s => s.userId === uid && s.date === date)) conflictCount++;
+          });
+        });
+        const totalPairs = batchUserIds.size * dates.length;
+        const willCreate = batchConflictMode === 'skip' ? totalPairs - conflictCount : totalPairs;
+        const heuresCreneau = calcHeures(batchDebut, batchFin, batchPause);
+        return (
+          <div className="modal-full-overlay" style={pls.overlay} onClick={() => !batchSaving && setShowBatchModal(false)}>
+            <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div style={pls.modalHeader}>
+                <div style={pls.modalTitle}>Saisie groupée d'horaires</div>
+                <button style={pls.closeBtn} onClick={() => !batchSaving && setShowBatchModal(false)}>✕</button>
+              </div>
+              <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* ── Employés ── */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={pls.fieldLabel}>Employés ({batchUserIds.size} sélectionné{batchUserIds.size > 1 ? 's' : ''})</label>
+                    <button type="button" style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
+                      onClick={() => setBatchUserIds(allEmpSelected ? new Set() : new Set(employees.map(e => e.id)))}>
+                      {allEmpSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+                    {employees.map(emp => {
+                      const role = demoData.roles[emp.role];
+                      const checked = batchUserIds.has(emp.id);
+                      return (
+                        <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 6, fontSize: 12, cursor: 'pointer', background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                          <input type="checkbox" checked={checked} onChange={() => toggleBatchUser(emp.id)} />
+                          <div style={{ ...pls.empAvatar, background: role?.couleur, width: 22, height: 22, fontSize: 9 }}>{emp.avatar}</div>
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {emp.prenom} {emp.nom}
+                            <span style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Plage de dates ── */}
+                <div>
+                  <label style={pls.fieldLabel}>Plage de dates ({dates.length} jour{dates.length > 1 ? 's' : ''})</label>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 150px' }}>
+                      <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Du</label>
+                      <input type="date" style={pls.fieldInput} value={batchStart} onChange={e => setBatchStart(e.target.value)} />
+                    </div>
+                    <div style={{ flex: '1 1 150px' }}>
+                      <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Au</label>
+                      <input type="date" style={pls.fieldInput} value={batchEnd} onChange={e => setBatchEnd(e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Jours concernés :</div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {WEEKDAY_LABELS.map((lbl, idx) => {
+                        const checked = batchWeekdays.has(idx);
+                        return (
+                          <button key={lbl} type="button" onClick={() => toggleBatchWeekday(idx)}
+                            style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, background: checked ? 'var(--accent-light)' : 'var(--surface)', color: checked ? 'var(--accent)' : 'var(--text2)', borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                            {lbl}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Créneau ── */}
+                <div>
+                  <label style={pls.fieldLabel}>Créneau</label>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    {[
+                      { id: 'simple', label: 'Journée continue', d: '09:00', f: '17:00' },
+                      { id: 'midi', label: 'Service midi', d: '10:00', f: '15:00' },
+                      { id: 'soir', label: 'Service soir', d: '17:00', f: '23:00' },
+                    ].map(t => {
+                      const active = batchTypeShift === t.id;
+                      return (
+                        <button key={t.id} type="button"
+                          onClick={() => { setBatchTypeShift(t.id); setBatchDebut(t.d); setBatchFin(t.f); }}
+                          style={{ flex: 1, padding: '10px 8px', borderRadius: 8, fontSize: 12, background: active ? 'var(--accent-light)' : 'var(--surface)', border: '1px solid', borderColor: active ? 'var(--accent)' : 'var(--border)', color: active ? 'var(--accent)' : 'var(--text2)', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
+                    <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
+                    <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Poste / Tâche (optionnel)</label>
+                    <input type="text" style={pls.fieldInput} value={batchPoste} placeholder="Ex : Cuisine, Salle…" onChange={e => setBatchPoste(e.target.value)} />
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau || '—'}h</strong></div>
+                </div>
+
+                {/* ── Gestion des conflits ── */}
+                {conflictCount > 0 && (
+                  <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
+                      ⚠ {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (employé déjà planifié sur une date)
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>
+                      {[
+                        { v: 'skip', label: 'Ignorer', desc: 'Ne crée pas sur les dates en conflit' },
+                        { v: 'replace', label: 'Écraser', desc: 'Remplace les horaires existants' },
+                      ].map(opt => (
+                        <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                          <input type="radio" name="batchConflictMode" value={opt.v} checked={batchConflictMode === opt.v} onChange={() => setBatchConflictMode(opt.v)} />
+                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 11 }}>— {opt.desc}</span></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Footer + aperçu ── */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                  <span style={{ flex: 1, fontSize: 12, color: willCreate > 0 ? 'var(--text)' : 'var(--text2)' }}>
+                    {willCreate > 0
+                      ? <>Aperçu : <strong>{willCreate}</strong> horaire{willCreate > 1 ? 's' : ''} {willCreate > 1 ? 'seront créés' : 'sera créé'}{conflictCount > 0 && batchConflictMode === 'skip' ? ` (${conflictCount} ignoré${conflictCount > 1 ? 's' : ''})` : ''}</>
+                      : 'Configuration incomplète'}
+                  </span>
+                  <button style={pls.exportBtn} onClick={() => setShowBatchModal(false)} disabled={batchSaving}>Annuler</button>
+                  <button style={{ ...pls.addBtn, opacity: willCreate === 0 || batchSaving ? 0.5 : 1 }} onClick={doBatchCreate} disabled={willCreate === 0 || batchSaving}>
+                    {batchSaving ? '⏳ Création…' : `Créer (${willCreate})`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <BottomActionBar
         actions={[
+          canWrite && activeTab === 'planning' ? { label: 'Saisie group.', icon: CalendarPlus, onClick: openBatchModal } : null,
           canExport && activeTab === 'planning' ? { label: 'Dupl. jour', icon: Copy, onClick: openDuplicateDay } : null,
           canExport && activeTab === 'planning' ? { label: 'Dupl. sem.', icon: Files, onClick: openDuplicateWeek } : null,
           canExport ? { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
