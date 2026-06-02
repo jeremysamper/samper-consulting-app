@@ -21,6 +21,20 @@ const roleFamily = (role) => {
   return 'autre';
 };
 
+// Détection de chevauchement horaire entre deux créneaux ('HH:MM').
+// Un service midi et un service soir ne se chevauchent pas → le service coupé
+// (double shift) reste possible ; seuls les créneaux qui se recouvrent réellement
+// sont traités comme un conflit. Bornes adjacentes (fin = début) = pas de conflit.
+const timeToMin = (t) => {
+  const [h, m] = (t || '').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+const shiftsOverlap = (aDebut, aFin, bDebut, bFin) => {
+  const aS = timeToMin(aDebut), aE = timeToMin(aFin);
+  const bS = timeToMin(bDebut), bE = timeToMin(bFin);
+  return aS < bE && bS < aE;
+};
+
 const Planning = ({ user, etablissement, initialTab }) => {
   const browserWindow = getBrowserWindow();
   const legacySB = dbService.getBridge();
@@ -579,11 +593,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
     try {
       for (const uid of batchUserIds) {
         for (const date of dates) {
-          const existing = planningEtab.filter(s => s.userId === uid && s.date === date);
-          if (existing.length > 0) {
-            if (batchConflictMode === 'skip') { skipped += existing.length; continue; }
-            // 'replace' : on supprime l'existant à cette date pour cet employé
-            existing.forEach(ex => idsToRemove.add(ex.id));
+          // Conflit = chevauchement horaire uniquement. Un horaire existant qui ne
+          // chevauche pas le nouveau créneau (ex. midi déjà posé, on ajoute le soir)
+          // est conservé → le service coupé reste possible.
+          const overlapping = planningEtab.filter(s => s.userId === uid && s.date === date && shiftsOverlap(s.debut, s.fin, batchDebut, batchFin));
+          if (overlapping.length > 0) {
+            if (batchConflictMode === 'skip') { skipped += overlapping.length; continue; }
+            // 'replace' : on ne supprime que les horaires qui se chevauchent
+            overlapping.forEach(ex => idsToRemove.add(ex.id));
           }
           toCreate.push({
             etablissementId: etabId,
@@ -1764,11 +1781,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
         const allEmpSelected = employees.length > 0 && employees.every(e => batchUserIds.has(e.id));
         const dates = buildBatchDates();
-        // Conflits = couples (employé, date) ayant déjà ≥ 1 horaire
+        // Conflits = couples (employé, date) dont un horaire existant CHEVAUCHE le créneau
+        // (un midi déjà posé n'est pas un conflit quand on ajoute un soir → service coupé).
         let conflictCount = 0;
         batchUserIds.forEach(uid => {
           dates.forEach(date => {
-            if (planningEtab.some(s => s.userId === uid && s.date === date)) conflictCount++;
+            if (planningEtab.some(s => s.userId === uid && s.date === date && shiftsOverlap(s.debut, s.fin, batchDebut, batchFin))) conflictCount++;
           });
         });
         const totalPairs = batchUserIds.size * dates.length;
@@ -1874,12 +1892,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 {conflictCount > 0 && (
                   <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
-                      ⚠ {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (employé déjà planifié sur une date)
+                      ⚠ {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (créneau qui en chevauche un autre)
                     </div>
                     <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>
                       {[
-                        { v: 'skip', label: 'Ignorer', desc: 'Ne crée pas sur les dates en conflit' },
-                        { v: 'replace', label: 'Écraser', desc: 'Remplace les horaires existants' },
+                        { v: 'skip', label: 'Ignorer', desc: 'Ne crée pas les créneaux qui se chevauchent' },
+                        { v: 'replace', label: 'Écraser', desc: 'Remplace seulement le créneau chevauché' },
                       ].map(opt => (
                         <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                           <input type="radio" name="batchConflictMode" value={opt.v} checked={batchConflictMode === opt.v} onChange={() => setBatchConflictMode(opt.v)} />
