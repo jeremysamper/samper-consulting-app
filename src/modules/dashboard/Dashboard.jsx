@@ -7,9 +7,11 @@ import { Btn, Card, KpiCard, SectionHeader } from '../../components/ui/index.jsx
 import { getDemoData } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
 
 const Dashboard = ({ user, etablissement, setPage }) => {
-  const today = new Date().toISOString().slice(0, 10);
+  // Jour courant à Zurich (et non la date UTC du device) → frontière de minuit correcte.
+  const today = zurichToday();
   const etabId = etablissement?.id || 'etab-1';
   const isConsultant = user.role === 'consultant';
   const legacySB = dbService.getBridge();
@@ -124,18 +126,42 @@ const Dashboard = ({ user, etablissement, setPage }) => {
   const dateLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const hourLabel = new Date().toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
 
+  // Pointage : maj optimiste immédiate (heure Zurich) → confirmation serveur via RPC
+  // (qui pose l'heure réelle) → rollback visuel si l'écriture échoue.
   const pointerArrivee = async (shift) => {
     setPointageError('');
     if (!legacySB) { setPointageError('Supabase non configuré'); return; }
-    try { await legacySB.db.pointerArrivee(shift.id); }
-    catch (err) { setPointageError('Erreur arrivée : ' + err.message); }
+    const prevShifts = shifts;
+    const optimisticTime = zurichClock();
+    setShifts(prev => prev.map(s => s.id === shift.id ? { ...s, pointageDebut: optimisticTime } : s));
+    try {
+      const row = await legacySB.db.pointerArrivee(shift.id);
+      const mapped = legacySB.db.mapShiftFromDB(row);
+      setShifts(prev => prev.map(s => s.id === mapped.id ? mapped : s));
+      notifyLegacy(`✓ Arrivée pointée à ${mapped.pointageDebut}`, 'success');
+    } catch (err) {
+      setShifts(prevShifts); // rollback
+      setPointageError('Erreur arrivée : ' + err.message);
+      notifyLegacy('Pointage refusé : ' + err.message, 'error');
+    }
   };
 
   const pointerDepart = async (shift) => {
     setPointageError('');
     if (!legacySB) { setPointageError('Supabase non configuré'); return; }
-    try { await legacySB.db.pointerDepart(shift.id); }
-    catch (err) { setPointageError('Erreur départ : ' + err.message); }
+    const prevShifts = shifts;
+    const optimisticTime = zurichClock();
+    setShifts(prev => prev.map(s => s.id === shift.id ? { ...s, pointageFin: optimisticTime } : s));
+    try {
+      const row = await legacySB.db.pointerDepart(shift.id);
+      const mapped = legacySB.db.mapShiftFromDB(row);
+      setShifts(prev => prev.map(s => s.id === mapped.id ? mapped : s));
+      notifyLegacy(`✓ Départ pointé à ${mapped.pointageFin}`, 'success');
+    } catch (err) {
+      setShifts(prevShifts); // rollback
+      setPointageError('Erreur départ : ' + err.message);
+      notifyLegacy('Pointage refusé : ' + err.message, 'error');
+    }
   };
 
   const saveMessage = async () => {
@@ -160,14 +186,6 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
   const goTo = (page) => {
     if (typeof setPage === 'function') setPage(page);
-  };
-
-  const isNowInRange = (debut, fin) => {
-    const [dh, dm] = (debut || '00:00').split(':').map(Number);
-    const [fh, fm] = (fin || '23:59').split(':').map(Number);
-    const n = new Date();
-    const nm = n.getHours() * 60 + n.getMinutes();
-    return nm >= (dh * 60 + dm - 30) && nm <= (fh * 60 + fm + 30);
   };
 
   if (loading) {
@@ -208,7 +226,8 @@ const Dashboard = ({ user, etablissement, setPage }) => {
               const enPoste = shift.pointageDebut && !shift.pointageFin;
               const termine = shift.pointageDebut && shift.pointageFin;
               const pasCommence = !shift.pointageDebut;
-              const inRange = isNowInRange(shift.debut, shift.fin);
+              const punct = pasCommence ? punctualityVsStart(shift.debut) : null;
+              const punctColor = punct?.key === 'retard' ? 'var(--warning-text)' : punct?.key === 'heure' ? 'var(--success-text)' : 'var(--text2)';
               const shiftLabel = shift.typeShift === 'midi' ? '☀ Service midi' : shift.typeShift === 'soir' ? '🌙 Service soir' : 'Service';
 
               const cardStyle = {
@@ -226,16 +245,16 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
                   {pasCommence && (
                     <div>
-                      <div style={ds.statusText}>En attente d'arrivée</div>
+                      <div style={ds.statusText}>
+                        En attente d'arrivée
+                        {punct && <span style={{ color: punctColor, fontWeight: 700 }}> · {punct.label}</span>}
+                      </div>
                       <button
-                        style={{ ...ds.bigActionBtn, background: inRange ? 'var(--success-strong)' : '#d1d5db', cursor: inRange ? 'pointer' : 'not-allowed' }}
-                        onClick={() => inRange && pointerArrivee(shift)}
-                        disabled={!inRange}
-                        title={inRange ? '' : 'Disponible dans la fenêtre de ±30 min autour du shift'}
+                        style={{ ...ds.bigActionBtn, background: 'var(--success-strong)', cursor: 'pointer' }}
+                        onClick={() => pointerArrivee(shift)}
                       >
                         ⏱ Pointer mon arrivée
                       </button>
-                      {!inRange && <div style={ds.hintText}>Disponible dès 30 min avant le début</div>}
                     </div>
                   )}
 
