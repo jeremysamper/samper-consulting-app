@@ -56,6 +56,16 @@ const pls = {
   fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   fieldInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
 
+  // Navigation temporelle du header (Refonte UI/UX)
+  weekNav: { display: 'flex', alignItems: 'center', gap: 4 },
+  navArrow: { width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 18, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  weekLabel: { fontSize: 13, fontWeight: 600, color: 'var(--text)', minWidth: 130, textAlign: 'center', textTransform: 'capitalize' },
+
+  // Menu overflow ⋯
+  overflowBackdrop: { position: 'fixed', inset: 0, zIndex: 40 },
+  overflowMenu: { position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 50, minWidth: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.16)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2 },
+  overflowItem: { textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderRadius: 6, fontSize: 13, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
+
   // Barre d'action sticky pour la sélection multiple (Axe 2)
   selectionBar: { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1100, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', boxShadow: '0 -6px 24px rgba(0,0,0,0.12)', flexWrap: 'wrap' },
   selectionCount: { fontSize: 13, fontWeight: 700, color: 'var(--text)' },

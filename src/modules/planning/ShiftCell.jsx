@@ -1,10 +1,10 @@
 import React from 'react';
 import { pls } from './Planning.styles.js';
 
-const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openNewShift, setSelectedShift, setShowDetailModal, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected }) => {
+const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected }) => {
   const shifts = getShiftsDay(userId, date);
   if (shifts.length === 0) return (
-    <div style={pls.emptyCell} onClick={() => !selectionMode && canWrite && openNewShift(userId, date)}>
+    <div style={pls.emptyCell} onClick={() => !selectionMode && canWrite && openAddPrefill(userId, date)}>
       {canWrite && !selectionMode && <span style={pls.addHint}>+</span>}
     </div>
   );
@@ -21,7 +21,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openNewShift, setSele
         const onClick = (e) => {
           e.stopPropagation();
           if (selectionMode) { toggleShiftSelected?.(shift.id); return; }
-          setSelectedShift(shift); setShowDetailModal(true);
+          if (canWrite) openEditShift(shift);
         };
         return (
           <div key={shift.id} style={{ ...pls.shiftCell, background: bg, cursor: 'pointer', padding: '3px 6px', border: selected ? '1px solid var(--accent)' : pls.shiftCell.border, display: 'flex', alignItems: 'flex-start', gap: 4 }} onClick={onClick}>
@@ -37,7 +37,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openNewShift, setSele
         );
       })}
       {canWrite && !selectionMode && shifts.length < 2 && (
-        <div style={{...pls.emptyCell, minHeight:16, padding:'2px', fontSize:9}} onClick={(e) => { e.stopPropagation(); openNewShift(userId, date, shifts[0]?.typeShift === 'midi' ? 'soir' : 'midi'); }}>
+        <div style={{...pls.emptyCell, minHeight:16, padding:'2px', fontSize:9}} onClick={(e) => { e.stopPropagation(); openAddPrefill(userId, date, shifts[0]?.typeShift === 'midi' ? 'soir' : 'midi'); }}>
           <span style={{...pls.addHint, fontSize:11}}>+ 2ème</span>
         </div>
       )}

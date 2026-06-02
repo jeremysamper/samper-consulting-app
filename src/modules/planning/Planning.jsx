@@ -6,7 +6,7 @@ import ShiftCell from './ShiftCell.jsx';
 import { ccntCell, pls } from './Planning.styles.js';
 import { dbService } from '../../services/dbService.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Copy, Files, FileDown, Plus, CalendarPlus } from 'lucide-react';
+import { Files, FileDown, Plus, CheckSquare, FileText, Printer } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -218,23 +218,27 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setShowDetailModal(false);
   };
 
-  const openNewShift = (userId = '', date = selectedDate, typeShift = 'simple') => {
-    const defaults = typeShift === 'midi' ? { debut: '10:00', fin: '15:00', pause: 0 }
-                   : typeShift === 'soir' ? { debut: '17:00', fin: '23:00', pause: 0 }
-                   : { debut: '09:00', fin: '17:00', pause: 30 };
-    setEditForm({
-      id: null,
-      userId: userId || employees[0]?.id || '',
-      etablissementId: etabId,
-      date: date || selectedDate,
-      typeShift,
-      ...defaults,
-      poste: '', statut: 'confirmé',
-      pointageDebut: null, pointageFin: null,
-    });
-    setShowEditModal(true);
+  // Manipulation directe : un clic sur une cellule vide ouvre « + Ajouter » (modale unifiée)
+  // pré-remplie pour cet employé + ce jour. Le single est le cas dégénéré du groupé.
+  const openAddPrefill = (userId = '', date = selectedDate, typeShift = 'simple') => {
+    const presets = typeShift === 'midi' ? { d: '10:00', f: '15:00', p: 0 }
+                  : typeShift === 'soir' ? { d: '17:00', f: '23:00', p: 0 }
+                  : { d: '09:00', f: '17:00', p: 30 };
+    const day = date || selectedDate;
+    setBatchUserIds(new Set(userId ? [userId] : []));
+    setBatchStart(day);
+    setBatchEnd(day);
+    setBatchWeekdays(new Set([0, 1, 2, 3, 4, 5, 6]));
+    setBatchTypeShift(typeShift);
+    setBatchDebut(presets.d);
+    setBatchFin(presets.f);
+    setBatchPause(presets.p);
+    setBatchPoste('');
+    setBatchConflictMode('skip');
+    setShowBatchModal(true);
   };
 
+  // Clic sur un shift existant → édition directe (plus de modale Détail intermédiaire côté planning).
   const openEditShift = (shift) => {
     setEditForm({ ...shift });
     setShowDetailModal(false);
@@ -397,21 +401,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [pointageEditForm, setPointageEditForm] = React.useState({ debut: '', fin: '' });
   const [pointageEditSaving, setPointageEditSaving] = React.useState(false);
 
-  // ─── État pour la duplication "journée vers plusieurs employés" ───
-  // Étend la duplication d'un jour pour cibler N employés sur 1 date OU une plage de dates
-  // filtrée par jours de semaine (lun/mer/ven uniquement par ex.).
-  const [dupTargetUserIds, setDupTargetUserIds] = React.useState(new Set());
-  const [dupUseRange, setDupUseRange] = React.useState(false);
-  const [dupRangeEnd, setDupRangeEnd] = React.useState('');
-  // Indices ISO : 0=lundi, 1=mardi, ..., 6=dimanche. Tous cochés par défaut.
-  const [dupRangeWeekdays, setDupRangeWeekdays] = React.useState(new Set([0, 1, 2, 3, 4, 5, 6]));
-  const [dupConflictMode, setDupConflictMode] = React.useState('replace'); // 'replace' | 'skip' | 'add'
-  const [dupSaving, setDupSaving] = React.useState(false);
-
-  // State pour la démultiplication d'un horaire vers plusieurs jours × employés
-  // Ouverte depuis la modale de détail d'un shift via le bouton "Démultiplier".
-  // sourceShift = shift original, targetDates = Set de dates, targetUserIds = Set d'ids users
-  const [demultModal, setDemultModal] = React.useState(null); // { sourceShift } | null
+  // State pour « Dupliquer vers… » (mode sélection) : copie des horaires sélectionnés
+  // vers plusieurs jours × employés. { sourceShifts } = horaires cochés.
+  const [demultModal, setDemultModal] = React.useState(null); // { sourceShifts } | null
   const [demultDates, setDemultDates] = React.useState(new Set());
   const [demultUserIds, setDemultUserIds] = React.useState(new Set());
   const [demultSaving, setDemultSaving] = React.useState(false);
@@ -424,6 +416,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [selectedIds, setSelectedIds] = React.useState(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = React.useState(false);
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
+
+  // Menu overflow ⋯ (utilitaires secondaires : CCNT, impression, export, dupliquer semaine)
+  const [showOverflow, setShowOverflow] = React.useState(false);
 
   // ─── État pour la saisie groupée d'horaires (Axe 3) ───
   // Crée des horaires pour plusieurs employés × une plage de dates (filtrée par jours
@@ -443,6 +438,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
+
+  // ─── Navigation temporelle (semaine précédente / suivante / aujourd'hui) ───
+  const shiftWeek = (delta) => {
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() + delta * 7);
+    setSelectedDate(d.toISOString().slice(0, 10));
+  };
+  const goToCurrentWeek = () => setSelectedDate(getMondayOfCurrentWeek());
+  // Libellé « Semaine du JJ mois » à partir du premier jour affiché
+  const weekRangeLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' });
 
   // ═══════════════ SUPPRESSION MULTIPLE (Axe 2) ═══════════════
 
@@ -607,52 +612,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
     }
   };
 
-  const openDuplicateDay = (presetUserId, presetSourceDate) => {
-    setDuplicateMode('day');
-    const defaultUid = presetUserId || employees[0]?.id || '';
-    const defaultSrc = presetSourceDate || todayStr;
-    // Date cible par défaut = lendemain (plus pratique que "aujourd'hui = aujourd'hui")
-    const tomorrow = new Date(defaultSrc + 'T12:00:00');
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const defaultTgt = tomorrow.toISOString().slice(0, 10);
-    setDuplicateSource({
-      userId: defaultUid,
-      sourceDate: defaultSrc,
-      targetDate: defaultTgt,
-    });
-    // Pré-coche l'employé source (décochable si on veut seulement vers d'autres)
-    setDupTargetUserIds(new Set(defaultUid ? [defaultUid] : []));
-    setDupUseRange(false);
-    setDupRangeEnd(defaultTgt);
-    setDupRangeWeekdays(new Set([0, 1, 2, 3, 4, 5, 6]));
-    setDupConflictMode('replace');
-  };
-
-  // ─── Helpers de duplication multi-employés ───
-  // Construit la liste des dates cibles selon le mode (single date OR range filtrée par jours de semaine).
-  // Indice weekday : 0=lundi, 1=mardi, ..., 6=dimanche (ordre ISO européen).
-  const buildDupTargetDates = () => {
-    if (!dupUseRange) {
-      return duplicateSource.targetDate ? [duplicateSource.targetDate] : [];
-    }
-    if (!duplicateSource.targetDate || !dupRangeEnd) return [];
-    const start = new Date(duplicateSource.targetDate + 'T12:00:00');
-    const end = new Date(dupRangeEnd + 'T12:00:00');
-    if (end < start) return [];
-    const dates = [];
-    const cursor = new Date(start);
-    // Garde-fou : max 366 jours
-    for (let i = 0; i < 366 && cursor <= end; i++) {
-      const jsDay = cursor.getDay(); // 0=dim, 1=lun, ..., 6=sam
-      const isoDay = jsDay === 0 ? 6 : jsDay - 1; // 0=lun, ..., 6=dim
-      if (dupRangeWeekdays.has(isoDay)) {
-        dates.push(cursor.toISOString().slice(0, 10));
-      }
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return dates;
-  };
-
   const openDuplicateWeek = () => {
     setDuplicateMode('week');
     // Source = lundi de la semaine courante, cible = lundi suivant
@@ -666,98 +625,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
 
   // Duplique tous les shifts d'un employé à une date source vers N employés sur 1 date OU une plage.
-  // Conflits gérés selon dupConflictMode : 'replace' / 'skip' / 'add'.
-  const doDuplicateDay = async () => {
-    const { userId, sourceDate } = duplicateSource;
-    if (!userId) { alertLegacy('Sélectionne un employé source.'); return; }
-    if (!sourceDate) { alertLegacy('Sélectionne la date source.'); return; }
-    if (dupTargetUserIds.size === 0) { alertLegacy('Sélectionne au moins un employé cible.'); return; }
-
-    const targetDates = buildDupTargetDates();
-    if (targetDates.length === 0) { alertLegacy('Aucune date cible valide (vérifie la plage et les jours sélectionnés).'); return; }
-
-    const shiftsToCopy = planningEtab.filter(s => s.userId === userId && s.date === sourceDate);
-    if (shiftsToCopy.length === 0) {
-      alertLegacy('Aucun horaire à dupliquer pour cet employé à la date source.');
-      return;
-    }
-
-    setDupSaving(true);
-    let created = 0, replaced = 0, skipped = 0;
-    const newShifts = [];
-    const idsToRemove = new Set();
-
-    try {
-      for (const targetUid of dupTargetUserIds) {
-        for (const targetDate of targetDates) {
-          // Skip la cellule source elle-même (même user + même date)
-          if (targetUid === userId && targetDate === sourceDate) continue;
-
-          const existing = planningEtab.filter(s => s.userId === targetUid && s.date === targetDate);
-          if (existing.length > 0) {
-            if (dupConflictMode === 'skip') {
-              skipped += existing.length;
-              continue;
-            }
-            if (dupConflictMode === 'replace') {
-              for (const ex of existing) {
-                if (legacySB) {
-                  try { await legacySB.db.deleteShift(ex.id); } catch (err) { console.error('[dup delete]', err); }
-                }
-                idsToRemove.add(ex.id);
-                replaced++;
-              }
-            }
-            // 'add' : ne supprime rien, on ajoute en plus
-          }
-
-          for (const src of shiftsToCopy) {
-            const copy = {
-              id: 's' + Date.now() + Math.floor(Math.random() * 10000) + '-' + created,
-              etablissementId: etabId,
-              userId: targetUid,
-              date: targetDate,
-              debut: src.debut,
-              fin: src.fin,
-              pause: src.pause,
-              poste: src.poste,
-              typeShift: src.typeShift,
-              statut: 'confirmé',
-              pointageDebut: null,
-              pointageFin: null,
-              note: src.note,
-            };
-            if (legacySB) {
-              try {
-                const saved = await legacySB.db.createShift(copy);
-                newShifts.push(legacySB.db.mapShiftFromDB(saved));
-                created++;
-              } catch (err) {
-                console.error('[dup create]', err);
-                notifyLegacy('Erreur création : ' + err.message, 'error');
-              }
-            } else {
-              newShifts.push(copy);
-              created++;
-            }
-          }
-        }
-      }
-
-      setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...newShifts]);
-
-      const empCount = dupTargetUserIds.size;
-      const dayCount = targetDates.length;
-      let msg = `✓ ${created} horaire${created > 1 ? 's' : ''} créé${created > 1 ? 's' : ''} vers ${empCount} employé${empCount > 1 ? 's' : ''} sur ${dayCount} jour${dayCount > 1 ? 's' : ''}`;
-      if (replaced > 0) msg += ` (${replaced} remplacé${replaced > 1 ? 's' : ''})`;
-      if (skipped > 0) msg += ` — ${skipped} ignoré${skipped > 1 ? 's' : ''}`;
-      notifyLegacy(msg, 'success');
-      setDuplicateMode(null);
-    } finally {
-      setDupSaving(false);
-    }
-  };
-
   // Duplique TOUTE la semaine (tous les employés) vers une autre semaine
   const doDuplicateWeek = async () => {
     const { sourceDate, targetDate } = duplicateSource;
@@ -829,13 +696,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
     alertLegacy(`✓ Semaine dupliquée : ${newShifts.length} horaire${newShifts.length > 1 ? 's' : ''} créé${newShifts.length > 1 ? 's' : ''}.`);
   };
 
-  // ─── Démultiplication d'un horaire vers plusieurs jours × plusieurs employés ───
-  // Ouvre la modale dédiée. Pré-coche l'employé source.
-  const openDemult = (shift) => {
-    setShowDetailModal(false);
-    setDemultModal({ sourceShift: shift });
-    setDemultDates(new Set()); // vide par défaut, l'utilisateur choisit
-    setDemultUserIds(new Set([shift.userId])); // employé source pré-coché
+  // ─── « Dupliquer vers… » depuis le mode sélection ───
+  // Duplique les horaires sélectionnés vers N employés × N jours cochés.
+  // Réutilise les méthodes batch (createShifts/deleteShifts) livrées aux axes 2/3.
+  const openDuplicateSelection = () => {
+    const sources = planningEtab.filter(s => selectedIds.has(s.id));
+    if (sources.length === 0) { notifyLegacy('Sélectionnez au moins un horaire.', 'warning'); return; }
+    setDemultModal({ sourceShifts: sources });
+    setDemultDates(new Set()); // l'utilisateur choisit les jours cibles
+    setDemultUserIds(new Set(sources.map(s => s.userId))); // employés d'origine pré-cochés
   };
 
   const closeDemult = () => {
@@ -844,77 +713,70 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setDemultUserIds(new Set());
   };
 
-  // Crée N nouveaux shifts (1 par couple date×employé) à partir du shift source.
-  // Comportement : "remplace" = supprime tout shift existant à la même date pour cet employé puis crée.
-  // C'est le comportement de la duplication journée existante, on garde la cohérence.
+  // Pour chaque couple (employé × jour) coché, recrée une copie de chaque horaire source.
+  // Conflits : on remplace systématiquement l'existant de la cellule (cohérent avec l'ancienne
+  // duplication journée). La cellule d'origine d'un horaire source est ignorée (pas de copie sur soi).
   const saveDemult = async () => {
-    if (!demultModal?.sourceShift) return;
+    const sources = demultModal?.sourceShifts || [];
+    if (sources.length === 0) return;
     if (demultDates.size === 0) { notifyLegacy('Sélectionnez au moins un jour cible.', 'warning'); return; }
     if (demultUserIds.size === 0) { notifyLegacy('Sélectionnez au moins un employé cible.', 'warning'); return; }
 
-    const src = demultModal.sourceShift;
     setDemultSaving(true);
-    let created = 0;
     let replaced = 0;
-    const newShifts = [];
+    const toCreate = [];
+    const idsToRemove = new Set();
 
     try {
       for (const userId of demultUserIds) {
         for (const date of demultDates) {
-          // Skip la cellule source elle-même (même user + même date)
-          if (userId === src.userId && date === src.date) continue;
-          // Supprimer les shifts existants à cette date pour cet employé (cohérent avec dupliquerJournee)
+          // Ne pas dupliquer une cellule sur elle-même (origine d'un horaire sélectionné)
+          if (sources.some(s => s.userId === userId && s.date === date)) continue;
           const existing = planningEtab.filter(s => s.userId === userId && s.date === date);
-          for (const ex of existing) {
-            if (legacySB) {
-              try { await legacySB.db.deleteShift(ex.id); replaced++; }
-              catch (err) { console.error('[demult delete]', err); }
-            }
-          }
-          const newShift = {
-            id: 'sh' + Date.now() + Math.random().toString(36).slice(2, 6),
-            userId,
-            etablissementId: etabId,
-            date,
-            debut: src.debut,
-            fin: src.fin,
-            pause: src.pause || 0,
-            poste: src.poste || '',
-            statut: 'confirmé',
-            typeShift: src.typeShift || 'simple',
-            pointageDebut: null,
-            pointageFin: null,
-          };
-          if (legacySB) {
-            try {
-              const saved = await legacySB.db.createShift(newShift);
-              newShifts.push(saved);
-              created++;
-            } catch (err) {
-              console.error('[demult create]', err);
-            }
-          } else {
-            newShifts.push(newShift);
-            created++;
+          existing.forEach(ex => { idsToRemove.add(ex.id); replaced++; });
+          for (const src of sources) {
+            toCreate.push({
+              etablissementId: etabId,
+              userId,
+              date,
+              debut: src.debut,
+              fin: src.fin,
+              pause: src.pause || 0,
+              poste: src.poste || '',
+              statut: 'confirmé',
+              typeShift: src.typeShift || 'simple',
+              pointageDebut: null,
+              pointageFin: null,
+            });
           }
         }
       }
-      // Mise à jour optimiste locale (le realtime fera aussi le boulot)
-      setPlanning(prev => {
-        const idsToRemove = new Set();
-        // On retire les anciens shifts qui ont été remplacés
-        demultDates.forEach(date => {
-          demultUserIds.forEach(uid => {
-            prev.filter(s => s.userId === uid && s.date === date).forEach(s => idsToRemove.add(s.id));
-          });
-        });
-        return [...prev.filter(s => !idsToRemove.has(s.id)), ...newShifts];
-      });
-      const msg = replaced > 0
-        ? `✓ ${created} horaire(s) créé(s), ${replaced} remplacé(s).`
-        : `✓ ${created} horaire(s) créé(s).`;
+
+      if (toCreate.length === 0) {
+        notifyLegacy('Aucun horaire à créer (vérifie les jours/employés cochés).', 'warning');
+        setDemultSaving(false);
+        return;
+      }
+
+      let createdShifts = [];
+      if (legacySB) {
+        if (idsToRemove.size > 0) await legacySB.db.deleteShifts(Array.from(idsToRemove));
+        const rows = await legacySB.db.createShifts(toCreate);
+        createdShifts = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
+      } else {
+        createdShifts = toCreate.map((s, i) => ({ ...s, id: 'sh' + Date.now() + '-' + i }));
+      }
+
+      setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...createdShifts]);
+
+      let msg = `✓ ${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''}`;
+      if (replaced > 0) msg += ` (${replaced} remplacé${replaced > 1 ? 's' : ''})`;
       notifyLegacy(msg, 'success');
       closeDemult();
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+    } catch (err) {
+      notifyLegacy('Erreur duplication : ' + err.message, 'error');
     } finally {
       setDemultSaving(false);
     }
@@ -1049,7 +911,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div key={d.date} style={pls.mobileDayBlock}>
               <div style={pls.mobileDayHeader}>
                 <span style={{ fontWeight: 700, fontSize: 13 }}>{new Date(d.date + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: '2-digit', month: '2-digit' })}</span>
-                {canWrite && <button style={pls.mobileDayAdd} onClick={() => openNewShift('', d.date)}>+</button>}
+                {canWrite && <button style={pls.mobileDayAdd} onClick={() => openAddPrefill('', d.date)}>+</button>}
               </div>
               {shiftsForDay.length === 0 ? (
                 <div style={{ padding: 12, fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucun horaire</div>
@@ -1060,7 +922,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const selected = selectionMode && selectedIds.has(shift.id);
                 const onCardClick = selectionMode
                   ? () => toggleShiftSelected(shift.id)
-                  : () => { setSelectedShift(shift); setShowDetailModal(true); };
+                  : () => { if (canWrite) openEditShift(shift); };
                 return (
                   <div key={shift.id} style={{ ...pls.mobileShiftCard, ...(selected ? { background: 'var(--accent-light)', borderColor: 'var(--accent)' } : {}) }} onClick={onCardClick}>
                     {selectionMode && (
@@ -1118,8 +980,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
               {canPointShift(shift) && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }} className="no-print">
-                  {!shift.pointageDebut && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerArrivee(shift)}>⏱ Arrivée</button>}
-                  {shift.pointageDebut && !shift.pointageFin && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerDepart(shift)}>⏱ Départ</button>}
+                  {!shift.pointageDebut && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
+                  {shift.pointageDebut && !shift.pointageFin && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerDepart(shift)}>Départ</button>}
                   {shift.pointageDebut && shift.pointageFin && <button style={{ ...pls.ghostBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => resetPointage(shift)}>Réinit.</button>}
                 </div>
               )}
@@ -1132,7 +994,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   return (
     <div style={pls.root}>
-      {/* Barre d'onglets + actions */}
+      {/* ─── Header : onglets + navigation temporelle ─── */}
       <div style={pls.tabs} className="no-print">
         {[{ id: 'planning', label: 'Planning' }, { id: 'pointage', label: 'Pointage' }].map(t => (
           <button key={t.id} style={{ ...pls.tab, ...(activeTab === t.id ? pls.tabActive : {}) }} onClick={() => setActiveTab(t.id)}>{t.label}</button>
@@ -1140,6 +1002,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
         <div style={{ flex: 1 }} />
         {activeTab === 'planning' ? (
           <>
+            <div style={pls.weekNav}>
+              <button style={pls.navArrow} onClick={() => shiftWeek(-1)} title="Semaine précédente" aria-label="Semaine précédente">‹</button>
+              {!isMobile && <span style={pls.weekLabel}>Semaine du {weekRangeLabel}</span>}
+              <button style={pls.navArrow} onClick={() => shiftWeek(1)} title="Semaine suivante" aria-label="Semaine suivante">›</button>
+            </div>
+            <button style={pls.smallBtn} onClick={goToCurrentWeek}>Aujourd'hui</button>
             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={pls.datePicker} />
             {!isMobile && [1, 2, 3].map(n => <button key={n} style={{ ...pls.smallBtn, ...(horizon === n ? pls.smallBtnActive : {}) }} onClick={() => setHorizon(n)}>{n} sem.</button>)}
           </>
@@ -1148,22 +1016,30 @@ const Planning = ({ user, etablissement, initialTab }) => {
         )}
       </div>
 
-      {/* Actions secondaires */}
+      {/* ─── Actions primaires (2 max) + menu overflow ─── */}
       <div style={pls.actionsBar} className="desktop-toolbar no-print">
-        {canWrite && <button style={pls.addBtn} onClick={() => openNewShift()}>+ Ajouter horaire</button>}
-        {canWrite && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openBatchModal}>Saisie groupée</button>}
+        {canWrite && activeTab === 'planning' && <button style={pls.addBtn} onClick={openBatchModal}>+ Ajouter</button>}
         {canWrite && activeTab === 'planning' && (
           <button
             style={{ ...pls.exportBtn, ...(selectionMode ? { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)' } : {}) }}
             onClick={toggleSelectionMode}
           >{selectionMode ? 'Quitter la sélection' : 'Sélectionner'}</button>
         )}
-        {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateDay}>📋 Dupliquer journée</button>}
-        {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>📅 Dupliquer semaine</button>}
         <div style={{ flex: 1 }} />
-        {canExport && <button style={{...pls.exportBtn, background:'var(--accent-light)', borderColor:'var(--accent-bd)', color:'var(--accent)'}} onClick={openCCNTModal}>📋 Relevé CCNT</button>}
-        {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>🖨 Imprimer</button>}
-        <button style={pls.exportBtn} onClick={() => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>⬇ PDF</button>
+        <div style={{ position: 'relative' }}>
+          <button style={pls.exportBtn} onClick={() => setShowOverflow(v => !v)} aria-label="Plus d'actions" title="Plus d'actions">⋯</button>
+          {showOverflow && (
+            <>
+              <div style={pls.overflowBackdrop} onClick={() => setShowOverflow(false)} />
+              <div style={pls.overflowMenu}>
+                {canExport && activeTab === 'planning' && <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); openDuplicateWeek(); }}>Dupliquer la semaine</button>}
+                {canExport && <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); openCCNTModal(); }}>Relevé CCNT</button>}
+                {canExport && <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' }); }}>Imprimer</button>}
+                <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' }); }}>Exporter en PDF</button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Contenu */}
@@ -1212,7 +1088,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           </div>
                         </div>
                       </div>
-                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openNewShift={openNewShift} setSelectedShift={setSelectedShift} setShowDetailModal={setShowDetailModal} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected}/></div>)}
+                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected}/></div>)}
                     </React.Fragment>
                   );
                 })}
@@ -1271,10 +1147,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
                   {canPointShift(selectedShift) && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                      {!selectedShift.pointageDebut && <button style={pls.pointBtn} onClick={() => pointerArrivee(selectedShift)}>⏱ Pointer arrivée</button>}
-                      {selectedShift.pointageDebut && !selectedShift.pointageFin && <button style={pls.pointBtn} onClick={() => pointerDepart(selectedShift)}>⏱ Pointer départ</button>}
+                      {!selectedShift.pointageDebut && <button style={pls.pointBtn} onClick={() => pointerArrivee(selectedShift)}>Pointer arrivée</button>}
+                      {selectedShift.pointageDebut && !selectedShift.pointageFin && <button style={pls.pointBtn} onClick={() => pointerDepart(selectedShift)}>Pointer départ</button>}
                       {(selectedShift.pointageDebut || selectedShift.pointageFin) && canWrite && <button style={pls.ghostBtn} onClick={() => resetPointage(selectedShift)}>Réinit.</button>}
-                      {canWrite && <button style={pls.ghostBtn} onClick={() => openPointageEdit(selectedShift)} title="Modifier manuellement les heures (oubli de pointage)">✎ Corriger manuellement</button>}
+                      {canWrite && <button style={pls.ghostBtn} onClick={() => openPointageEdit(selectedShift)} title="Modifier manuellement les heures (oubli de pointage)">Corriger manuellement</button>}
                     </div>
                   )}
                 </>
@@ -1305,20 +1181,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     </button>
                   </div>
                 </div>
-              )}
-
-              {canWrite && (
-                <>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button style={{ ...pls.addBtn, flex: 1 }} onClick={() => openEditShift(selectedShift)}>Modifier</button>
-                    <button style={{ ...pls.exportBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)', flex: 1 }} onClick={() => deleteShift(selectedShift.id)}>Supprimer</button>
-                  </div>
-                  <button
-                    style={{ ...pls.exportBtn, marginTop: 6 }}
-                    onClick={() => openDemult(selectedShift)}
-                    title="Copier cet horaire sur plusieurs jours et/ou plusieurs employés"
-                  >⚡ Démultiplier sur plusieurs jours/employés</button>
-                </>
               )}
             </div>
           </div>
@@ -1379,7 +1241,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
               <div><label style={pls.fieldLabel}>Poste / Tâche</label><input type="text" style={pls.fieldInput} value={editForm.poste} placeholder="Ex : Cuisine, Salle…" onChange={e => setEditForm({ ...editForm, poste: e.target.value })} /></div>
               <div style={{ fontSize: 12, color: 'var(--text2)' }}>Durée : <strong>{calcHeures(editForm.debut, editForm.fin, editForm.pause) || '—'}h</strong></div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', marginTop: 4 }}>
+                {/* Suppression contextuelle de l'horaire en cours d'édition (pas un raccourci grille) */}
+                {editForm.id && canWrite && (
+                  <button
+                    style={{ ...pls.exportBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)', marginRight: 'auto' }}
+                    onClick={() => { setShowEditModal(false); deleteShift(editForm.id); }}
+                  >Supprimer</button>
+                )}
                 <button style={pls.exportBtn} onClick={() => setShowEditModal(false)}>Annuler</button>
                 <button style={pls.addBtn} onClick={saveShift}>{editForm.id ? 'Enregistrer' : 'Créer'}</button>
               </div>
@@ -1421,232 +1290,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
           </div>
         </div>
       )}
-
-      {/* ═════════ MODALE DUPLIQUER JOURNÉE — Multi-employés × Multi-dates ═════════ */}
-      {duplicateMode === 'day' && (() => {
-        const srcEmp = employees.find(e => e.id === duplicateSource.userId);
-        const srcShiftsCount = duplicateSource.userId && duplicateSource.sourceDate
-          ? planningEtab.filter(s => s.userId === duplicateSource.userId && s.date === duplicateSource.sourceDate).length
-          : 0;
-        const targetDates = buildDupTargetDates();
-        // Conflits par paire (userId × date) pour affichage
-        const conflicts = [];
-        dupTargetUserIds.forEach(uid => {
-          targetDates.forEach(date => {
-            if (uid === duplicateSource.userId && date === duplicateSource.sourceDate) return;
-            const ex = planningEtab.filter(s => s.userId === uid && s.date === date);
-            if (ex.length > 0) {
-              const emp = employees.find(e => e.id === uid);
-              conflicts.push({ uid, date, count: ex.length, empName: emp ? `${emp.prenom} ${emp.nom}` : uid });
-            }
-          });
-        });
-        const allUsersSelected = employees.length > 0 && employees.every(e => dupTargetUserIds.has(e.id));
-        const toggleUser = (uid) => {
-          setDupTargetUserIds(prev => {
-            const next = new Set(prev);
-            if (next.has(uid)) next.delete(uid); else next.add(uid);
-            return next;
-          });
-        };
-        const toggleWeekday = (idx) => {
-          setDupRangeWeekdays(prev => {
-            const next = new Set(prev);
-            if (next.has(idx)) next.delete(idx); else next.add(idx);
-            return next;
-          });
-        };
-        // Compteur final = (couples (user, date) - exclusion source) × shifts source
-        const pairCount = Array.from(dupTargetUserIds).reduce((acc, uid) => {
-          return acc + targetDates.filter(d => !(uid === duplicateSource.userId && d === duplicateSource.sourceDate)).length;
-        }, 0);
-        const totalToCreate = pairCount * srcShiftsCount;
-        const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-
-        return (
-          <div className="modal-full-overlay" style={pls.overlay} onClick={() => !dupSaving && setDuplicateMode(null)}>
-            <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-              <div style={pls.modalHeader}>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📋 Dupliquer une journée vers plusieurs employés</div>
-                <button style={pls.closeBtn} onClick={() => !dupSaving && setDuplicateMode(null)}>✕</button>
-              </div>
-              <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-                {/* ── Source ── */}
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Journée source</div>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 200px' }}>
-                      <label style={pls.fieldLabel}>Employé source</label>
-                      <select style={pls.fieldInput} value={duplicateSource.userId}
-                        onChange={e => {
-                          const newUid = e.target.value;
-                          setDuplicateSource(prev => ({ ...prev, userId: newUid }));
-                          // Si l'ancien userId était pré-coché, on le déplace vers le nouveau
-                          setDupTargetUserIds(prev => {
-                            const next = new Set(prev);
-                            if (duplicateSource.userId) next.delete(duplicateSource.userId);
-                            if (newUid) next.add(newUid);
-                            return next;
-                          });
-                        }}>
-                        <option value="">— Sélectionner —</option>
-                        {employees.map(emp => (
-                          <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={{ flex: '1 1 150px' }}>
-                      <label style={pls.fieldLabel}>Date source</label>
-                      <input type="date" style={pls.fieldInput} value={duplicateSource.sourceDate}
-                        onChange={e => setDuplicateSource(prev => ({ ...prev, sourceDate: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12, color: srcShiftsCount > 0 ? 'var(--text)' : 'var(--text2)' }}>
-                    {srcEmp && srcShiftsCount > 0
-                      ? <>📌 <strong>{srcShiftsCount}</strong> horaire{srcShiftsCount > 1 ? 's' : ''} trouvé{srcShiftsCount > 1 ? 's' : ''} pour {srcEmp.prenom} {srcEmp.nom} à cette date.</>
-                      : <span style={{ fontStyle: 'italic' }}>Aucun horaire à dupliquer pour ce couple employé/date.</span>}
-                  </div>
-                </div>
-
-                {/* ── Date(s) cible(s) ── */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label style={pls.fieldLabel}>Date(s) cible(s) ({targetDates.length} jour{targetDates.length > 1 ? 's' : ''})</label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text2)', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={dupUseRange} onChange={e => setDupUseRange(e.target.checked)} />
-                      Plage de dates
-                    </label>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 150px' }}>
-                      <label style={{ ...pls.fieldLabel, fontSize: 10 }}>{dupUseRange ? 'Du' : 'Date'}</label>
-                      <input type="date" style={pls.fieldInput} value={duplicateSource.targetDate}
-                        onChange={e => setDuplicateSource(prev => ({ ...prev, targetDate: e.target.value }))} />
-                    </div>
-                    {dupUseRange && (
-                      <div style={{ flex: '1 1 150px' }}>
-                        <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Au</label>
-                        <input type="date" style={pls.fieldInput} value={dupRangeEnd}
-                          onChange={e => setDupRangeEnd(e.target.value)} />
-                      </div>
-                    )}
-                  </div>
-                  {dupUseRange && (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Jours concernés dans la plage :</div>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {WEEKDAY_LABELS.map((lbl, idx) => {
-                          const checked = dupRangeWeekdays.has(idx);
-                          return (
-                            <button key={lbl} type="button"
-                              onClick={() => toggleWeekday(idx)}
-                              style={{
-                                padding: '5px 10px', fontSize: 11, fontWeight: 700,
-                                border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
-                                background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                                color: checked ? 'var(--accent)' : 'var(--text2)',
-                                borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)',
-                              }}>
-                              {lbl}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Employés cibles ── */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label style={pls.fieldLabel}>Employés cibles ({dupTargetUserIds.size} sélectionné{dupTargetUserIds.size > 1 ? 's' : ''})</label>
-                    <button type="button" style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
-                      onClick={() => {
-                        if (allUsersSelected) setDupTargetUserIds(new Set());
-                        else setDupTargetUserIds(new Set(employees.map(e => e.id)));
-                      }}>
-                      {allUsersSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
-                    </button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
-                    {employees.map(emp => {
-                      const role = demoData.roles[emp.role];
-                      const isSrc = emp.id === duplicateSource.userId;
-                      const checked = dupTargetUserIds.has(emp.id);
-                      // Conflit pour cet employé sur au moins une date cible ?
-                      const hasConflict = conflicts.some(c => c.uid === emp.id);
-                      return (
-                        <label key={emp.id}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
-                            border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
-                            borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                            background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                          }}>
-                          <input type="checkbox" checked={checked} onChange={() => toggleUser(emp.id)} />
-                          <div style={{ ...pls.empAvatar, background: role?.couleur, width: 22, height: 22, fontSize: 9 }}>{emp.avatar}</div>
-                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {emp.prenom} {emp.nom}
-                            <span style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
-                          </span>
-                          {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)' }}>(src)</span>}
-                          {checked && hasConflict && <span title="Conflit détecté sur au moins une date cible" style={{ fontSize: 11, color: 'var(--warning-text)' }}>⚠</span>}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* ── Gestion des conflits ── */}
-                {conflicts.length > 0 && (
-                  <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
-                      ⚠ {conflicts.length} conflit{conflicts.length > 1 ? 's' : ''} détecté{conflicts.length > 1 ? 's' : ''}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text2)', maxHeight: 80, overflowY: 'auto', marginBottom: 10, lineHeight: 1.5 }}>
-                      {conflicts.slice(0, 8).map((c, i) => (
-                        <div key={i}>• <strong>{c.empName}</strong> a déjà {c.count} horaire(s) le {new Date(c.date + 'T12:00:00').toLocaleDateString('fr-CH')}</div>
-                      ))}
-                      {conflicts.length > 8 && <div>… et {conflicts.length - 8} autres</div>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>
-                      {[
-                        { v: 'replace', label: 'Écraser', desc: 'Remplace les horaires existants' },
-                        { v: 'skip', label: 'Ignorer', desc: 'Ne touche pas aux employés en conflit' },
-                        { v: 'add', label: 'Ajouter en plus', desc: 'Crée en plus des existants' },
-                      ].map(opt => (
-                        <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                          <input type="radio" name="dupConflictMode" value={opt.v}
-                            checked={dupConflictMode === opt.v}
-                            onChange={() => setDupConflictMode(opt.v)} />
-                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 11 }}>— {opt.desc}</span></span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Footer ── */}
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                  <span style={{ flex: 1, fontSize: 12, color: totalToCreate > 0 ? 'var(--text)' : 'var(--text2)' }}>
-                    {totalToCreate > 0
-                      ? <><strong>{totalToCreate}</strong> horaire{totalToCreate > 1 ? 's' : ''} vers <strong>{dupTargetUserIds.size}</strong> employé{dupTargetUserIds.size > 1 ? 's' : ''} sur <strong>{targetDates.length}</strong> jour{targetDates.length > 1 ? 's' : ''}</>
-                      : 'Configuration incomplète'}
-                  </span>
-                  <button style={pls.exportBtn} onClick={() => setDuplicateMode(null)} disabled={dupSaving}>Annuler</button>
-                  <button
-                    style={{ ...pls.addBtn, opacity: totalToCreate === 0 || dupSaving ? 0.5 : 1 }}
-                    onClick={doDuplicateDay}
-                    disabled={totalToCreate === 0 || dupSaving}>
-                    {dupSaving ? '⏳ Création…' : `Dupliquer (${totalToCreate})`}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ═════════ MODALE RELEVÉ CCNT ═════════ */}
       {showCCNTModal && (
@@ -1705,8 +1348,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
                 <button style={pls.exportBtn} onClick={() => setShowCCNTModal(false)}>Annuler</button>
-                <button style={pls.exportBtn} onClick={() => exportCCNT('print')}>🖨 Imprimer</button>
-                <button style={pls.addBtn} onClick={() => exportCCNT('pdf')}>⬇ Exporter en PDF</button>
+                <button style={pls.exportBtn} onClick={() => exportCCNT('print')}>Imprimer</button>
+                <button style={pls.addBtn} onClick={() => exportCCNT('pdf')}>Exporter en PDF</button>
               </div>
             </div>
           </div>
@@ -1848,15 +1491,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
         );
       })()}
 
-      {/* ═══ Modale Démultiplication d'un horaire (multi-jours × multi-employés) ═══ */}
+      {/* ═══ Modale « Dupliquer vers… » (depuis le mode sélection) ═══ */}
       {demultModal && (() => {
-        const src = demultModal.sourceShift;
-        const srcEmp = demoData.utilisateurs.find(u => u.id === src.userId);
-        const heuresSrc = calcHeures(src.debut, src.fin, src.pause);
-        const previewCount = demultDates.size * demultUserIds.size;
-        // On filtre l'auto-cible (même user + même date que la source) du compte
-        const autoExcluded = (demultUserIds.has(src.userId) && demultDates.has(src.date)) ? 1 : 0;
-        const realPreview = previewCount - autoExcluded;
+        const sources = demultModal.sourceShifts || [];
+        const srcUserIds = new Set(sources.map(s => s.userId));
+        const srcDates = new Set(sources.map(s => s.date));
+        // Aperçu = couples (employé × jour) cochés non-origine × nombre d'horaires sources
+        let targetCells = 0;
+        demultUserIds.forEach(uid => {
+          demultDates.forEach(date => {
+            if (!sources.some(s => s.userId === uid && s.date === date)) targetCells++;
+          });
+        });
+        const realPreview = targetCells * sources.length;
         const toggleDate = (date) => {
           setDemultDates(prev => {
             const next = new Set(prev);
@@ -1877,17 +1524,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <div className="modal-full-overlay" style={pls.overlay} onClick={closeDemult}>
             <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw' }} onClick={e => e.stopPropagation()}>
               <div style={pls.modalHeader}>
-                <div style={pls.modalTitle}>⚡ Démultiplier l'horaire</div>
+                <div style={pls.modalTitle}>Dupliquer vers…</div>
                 <button style={pls.closeBtn} onClick={closeDemult}>✕</button>
               </div>
               <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {/* Récapitulatif source */}
+                {/* Récapitulatif sélection */}
                 <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Horaire à démultiplier</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Horaires à dupliquer</div>
                   <div style={{ fontSize: 13 }}>
-                    <strong>{srcEmp ? `${srcEmp.prenom} ${srcEmp.nom}` : '—'}</strong> ·{' '}
-                    {src.date} · {src.debut}–{src.fin} · pause {src.pause || 0} min · <strong>{heuresSrc}h</strong>
-                    {src.poste && <span style={{ color: 'var(--text2)' }}> · {src.poste}</span>}
+                    <strong>{sources.length}</strong> horaire{sources.length > 1 ? 's' : ''} sélectionné{sources.length > 1 ? 's' : ''} · copié{sources.length > 1 ? 's' : ''} vers chaque employé × jour coché ci-dessous
                   </div>
                 </div>
 
@@ -1905,7 +1550,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 6 }}>
                     {DAYS.map(d => {
-                      const isSrc = d.date === src.date;
+                      const isSrc = srcDates.has(d.date);
                       const checked = demultDates.has(d.date);
                       return (
                         <label
@@ -1947,7 +1592,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
                     {employees.map(emp => {
                       const role = demoData.roles[emp.role];
-                      const isSrc = emp.id === src.userId;
+                      const isSrc = srcUserIds.has(emp.id);
                       const checked = demultUserIds.has(emp.id);
                       return (
                         <label
@@ -1993,7 +1638,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     onClick={saveDemult}
                     disabled={realPreview === 0 || demultSaving}
                   >
-                    {demultSaving ? '⏳ Création…' : `⚡ Démultiplier (${realPreview})`}
+                    {demultSaving ? '⏳ Création…' : `Dupliquer (${realPreview})`}
                   </button>
                 </div>
               </div>
@@ -2011,10 +1656,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <div style={{ flex: 1 }} />
           <button style={pls.selectionGhostBtn} onClick={toggleSelectionMode}>Annuler</button>
           <button
+            style={{ ...pls.selectionGhostBtn, opacity: selectedIds.size === 0 ? 0.5 : 1 }}
+            disabled={selectedIds.size === 0}
+            onClick={openDuplicateSelection}
+          >Dupliquer vers…</button>
+          <button
             style={{ ...pls.selectionDeleteBtn, opacity: selectedIds.size === 0 ? 0.5 : 1 }}
             disabled={selectedIds.size === 0}
             onClick={() => setShowBulkDeleteConfirm(true)}
-          >Supprimer la sélection ({selectedIds.size})</button>
+          >Supprimer ({selectedIds.size})</button>
         </div>
       )}
 
@@ -2192,15 +1842,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
         );
       })()}
 
-      <BottomActionBar
-        actions={[
-          canWrite && activeTab === 'planning' ? { label: 'Saisie group.', icon: CalendarPlus, onClick: openBatchModal } : null,
-          canExport && activeTab === 'planning' ? { label: 'Dupl. jour', icon: Copy, onClick: openDuplicateDay } : null,
-          canExport && activeTab === 'planning' ? { label: 'Dupl. sem.', icon: Files, onClick: openDuplicateWeek } : null,
-          canExport ? { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
-        ].filter(Boolean)}
-        primaryAction={canWrite ? { label: 'Ajouter horaire', icon: Plus, onClick: () => openNewShift() } : null}
-      />
+      {/* Barre mobile : masquée en mode sélection (la barre sticky de sélection prend le relais) */}
+      {!selectionMode && (
+        <BottomActionBar
+          actions={[
+            canWrite && activeTab === 'planning' ? { label: 'Sélectionner', icon: CheckSquare, onClick: toggleSelectionMode } : null,
+            canExport ? { label: 'Exporter PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
+            canExport && activeTab === 'planning' ? { label: 'Dupliquer sem.', icon: Files, onClick: openDuplicateWeek } : null,
+            canExport ? { label: 'Relevé CCNT', icon: FileText, onClick: openCCNTModal } : null,
+            canExport ? { label: 'Imprimer', icon: Printer, onClick: () => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: 'portrait' }) } : null,
+          ].filter(Boolean)}
+          primaryAction={canWrite && activeTab === 'planning' ? { label: 'Ajouter', icon: Plus, onClick: openBatchModal } : null}
+        />
+      )}
     </div>
   );
 };
