@@ -3,6 +3,7 @@ import { getDemoData } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 import { Calculator, Copy, ArrowLeft } from 'lucide-react';
 
@@ -11,7 +12,42 @@ import { Calculator, Copy, ArrowLeft } from 'lucide-react';
 // ─── ALLERGENES_MAP : constante globale (scope module) ───
 const ALLERGENES_MAP = { gluten:'Gluten', lactose:'Lactose', oeufs:'Œufs', poissons:'Poissons', sulfites:'Sulfites', crustaces:'Crustacés', fruits_coque:'Fruits à coque', arachides:'Arachides', soja:'Soja', celeri:'Céleri', moutarde:'Moutarde', sesame:'Sésame', mollusques:'Mollusques', lupin:'Lupin' };
 
+// slug pour nom de fichier PDF (sans accents, kebab-case)
+const slug = (s) => String(s || 'recette').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'recette';
+
 // ─── ScalingModal : modale de calculateur de quantités (portions OU grammage cible) ───
+// Construit l'objet fiche pour le générateur jsPDF natif (pdf.js).
+// La logique de rôle (food cost consultant-only) et la résolution des allergènes
+// vivent ici. `portions` permet de refléter une mise à l'échelle (vue détail) ;
+// par défaut, les portions de base de la recette.
+function buildRecettePdfData(recette, { isConsultant = false, portions } = {}) {
+  const p = portions != null ? portions : recette.portions;
+  const ratio = (p || 1) / (recette.portions || 1);
+  const fmtQty = (n) => (n % 1 === 0 ? n.toFixed(0) : n.toFixed(1));
+
+  const metaCells = [{ k: 'PORTIONS', v: String(p ?? '') }];
+  if (recette.tempsTotal) metaCells.push({ k: 'TEMPS TOTAL', v: `${recette.tempsTotal} min` });
+  if (isConsultant && recette.foodCost != null) metaCells.push({ k: 'FOOD COST', v: `${recette.foodCost.toFixed(1)}%` });
+
+  const notes = [];
+  if (recette.dressage) notes.push({ label: 'Dressage', text: recette.dressage });
+  if (recette.conservation) notes.push({ label: 'Conservation', text: recette.conservation });
+
+  return {
+    plat: recette.nom,
+    famille: recette.categorie,
+    metaCells,
+    ingredients: (recette.ingredients || []).map((i) => ({
+      qte: fmtQty((i.quantite || 0) * ratio),
+      unite: i.unite,
+      nom: i.nom,
+    })),
+    etapes: recette.etapes || [],
+    notes,
+    allergenesText: (recette.allergenesIds || []).map((a) => ALLERGENES_MAP[a] || a).join(', ') || 'Aucun',
+  };
+}
+
 const ScalingModal = ({ recette, onClose }) => {
   const [scalingPortions, setScalingPortions] = React.useState('');
   const [scalingTarget, setScalingTarget] = React.useState({ ingId: '', targetQty: '' });
@@ -34,7 +70,7 @@ const ScalingModal = ({ recette, onClose }) => {
   const candidateIngs = ings.filter(i => Number(i.quantite) > 0 && i.nom);
 
   const fmt = (q, unite) => {
-    if (q === 0) return '—';
+    if (q === 0) return '-';
     if (q >= 1000 && unite === 'g') return `${(q/1000).toFixed(q % 1000 === 0 ? 0 : 2)} kg`;
     if (q >= 1000 && unite === 'ml') return `${(q/1000).toFixed(q % 1000 === 0 ? 0 : 2)} L`;
     if (q % 1 === 0) return `${q} ${unite || ''}`;
@@ -55,7 +91,7 @@ const ScalingModal = ({ recette, onClose }) => {
 
         {/* Méthode 1 : par portions */}
         <div style={{ ...smStyle.method, background: useGramMode ? 'var(--bg)' : '#fefce8' }}>
-          <div style={smStyle.methodLabel}>Méthode 1 — Par nombre de portions</div>
+          <div style={smStyle.methodLabel}>Méthode 1 : Par nombre de portions</div>
           <div style={smStyle.methodInputs}>
             <span style={{ fontSize: 13, color: 'var(--text2)' }}>
               Base : <strong style={{ color: 'var(--text)' }}>{basePortions} portion{basePortions > 1 ? 's' : ''}</strong>
@@ -75,7 +111,7 @@ const ScalingModal = ({ recette, onClose }) => {
 
         {/* Méthode 2 : par quantité cible */}
         <div style={{ ...smStyle.method, background: useGramMode ? '#fefce8' : 'var(--bg)' }}>
-          <div style={smStyle.methodLabel}>Méthode 2 — Par quantité cible d'un ingrédient</div>
+          <div style={smStyle.methodLabel}>Méthode 2 : Par quantité cible d'un ingrédient</div>
           <div style={smStyle.methodInputs}>
             <span style={{ fontSize: 13, color: 'var(--text2)' }}>Avec</span>
             <select
@@ -83,7 +119,7 @@ const ScalingModal = ({ recette, onClose }) => {
               onChange={e => { setScalingTarget({ ingId: e.target.value, targetQty: '' }); setScalingPortions(''); }}
               style={smStyle.select}
             >
-              <option value="">— Choisir un ingrédient —</option>
+              <option value="">Choisir un ingrédient</option>
               {candidateIngs.map(i => <option key={i.id} value={i.id}>{i.nom} ({i.quantite} {i.unite})</option>)}
             </select>
             {scalingTarget.ingId && targetIng && (
@@ -121,7 +157,7 @@ const ScalingModal = ({ recette, onClose }) => {
           <div style={smStyle.tableHead}>
             <span>Ingrédient</span>
             <span style={{ textAlign: 'right' }}>Base ({basePortions} p.)</span>
-            <span style={{ textAlign: 'right', color: isScaled ? '#92400e' : 'var(--text2)' }}>{isScaled ? 'Recalculé' : '—'}</span>
+            <span style={{ textAlign: 'right', color: isScaled ? '#92400e' : 'var(--text2)' }}>{isScaled ? 'Recalculé' : '-'}</span>
           </div>
           {ings.map((ing, idx) => {
             const qBase = Number(ing.quantite) || 0;
@@ -131,11 +167,11 @@ const ScalingModal = ({ recette, onClose }) => {
               <div key={ing.id || idx}
                 style={{ ...smStyle.tableRow, background: isTargetIng ? '#fef3c7' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
                 <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: isTargetIng ? 700 : 500 }}>
-                  {isTargetIng && '🎯 '}{ing.nom || '—'}
+                  {isTargetIng && '🎯 '}{ing.nom || '-'}
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'right' }}>{fmt(qBase, ing.unite)}</span>
                 <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? '#92400e' : 'var(--text2)', textAlign: 'right' }}>
-                  {isScaled ? fmt(qCalc, ing.unite) : '—'}
+                  {isScaled ? fmt(qCalc, ing.unite) : '-'}
                 </span>
               </div>
             );
@@ -441,6 +477,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   const [portions, setPortions] = React.useState(recette.portions);
   const [showCalc, setShowCalc] = React.useState(false);
   const [showDuplicate, setShowDuplicate] = React.useState(false);
+  const isMobile = useIsMobile();
   const ratio = portions / (recette.portions || 1);
   const coutAdj = (recette.ingredients || []).reduce((s,i) => s + (i.quantite||0) * ratio * (i.prixUnit||0), 0);
 
@@ -448,23 +485,34 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
   const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
 
+  // Données fiche pour l'export jsPDF natif (helper module buildRecettePdfData).
+  // On reflète les portions affichées (quantités mises à l'échelle).
+  const pdfOpts = { isConsultant: user?.role === 'consultant', portions };
+
   const printRecipe = () => {
-    if (!pdfUtils?.printElement) {
+    if (!pdfUtils?.exportRecettePdf) {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    // noHeader : on retire la bannière Samper Consulting du PDF/print
-    // pour laisser uniquement la fiche recette propre.
-    pdfUtils.printElement('fiche-recette-print', 'Fiche recette - ' + recette.nom, { etablissement, noHeader: true });
+    // Génération jsPDF native → impression directe (autoPrint).
+    pdfUtils.exportRecettePdf(buildRecettePdfData(recette, pdfOpts), { etablissement, autoPrint: true });
   };
 
   const exportRecipePdf = () => {
-    if (!pdfUtils?.exportElementToPdf) {
+    if (!pdfUtils?.exportRecettePdf) {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.exportElementToPdf('fiche-recette-print', 'fiche-recette.pdf', { etablissement, title: 'Fiche recette - ' + recette.nom, noHeader: true });
+    pdfUtils.exportRecettePdf(buildRecettePdfData(recette, pdfOpts), { etablissement, filename: `Fiche_${slug(recette.nom)}.pdf` });
   };
+
+  // ─── Bloc 2 : lisibilité mobile (fiche à l'écran) ───
+  // Styles inline → pas de @media : on bascule via le hook useIsMobile.
+  // Grille 2 col → 1 col, en-tête empilé, colonnes ingrédients resserrées
+  // et police agrandie pour rester lisible sous 400 px.
+  const ingCols = isMobile ? '1fr 54px 38px 62px' : '1fr 80px 60px 80px';
+  const sIngName = { ...rs.ingName, ...(isMobile ? { fontSize: 15 } : null) };
+  const sIngQty = { ...rs.ingQty, ...(isMobile ? { fontSize: 15 } : null) };
 
   return (
     <div style={rs.detailRoot}>
@@ -498,7 +546,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
         primaryAction={{ label: 'Retour', icon: ArrowLeft, onClick: onBack }}
       />
       <div id='fiche-recette-print'>
-      <div style={rs.detailHeader}>
+      <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
         {recette.photoUrl && (
           <img src={recette.photoUrl} alt={recette.nom}
             style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
@@ -521,7 +569,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
         </div>
       </div>
 
-      <div style={rs.detailGrid}>
+      <div style={{...rs.detailGrid, gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr'}}>
         <div style={rs.detailCard}>
           <div style={rs.cardHeader}>
             <span style={rs.cardTitle}>Ingrédients</span>
@@ -534,17 +582,17 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
             </div>
           </div>
           <div style={rs.ingTable}>
-            <div style={rs.ingHead}><span>Ingrédient</span><span>Quantité</span><span>Unité</span>{user.role === 'consultant' && <span>Coût</span>}</div>
+            <div style={{...rs.ingHead, gridTemplateColumns: ingCols}}><span>Ingrédient</span><span>Quantité</span><span>Unité</span>{user.role === 'consultant' && <span>Coût</span>}</div>
             {(recette.ingredients || []).map(i => (
-              <div key={i.id} style={rs.ingRow}>
-                <span style={rs.ingName}>{i.nom}</span>
-                <span style={rs.ingQty}>{((i.quantite||0) * ratio % 1 === 0 ? ((i.quantite||0) * ratio).toFixed(0) : ((i.quantite||0) * ratio).toFixed(1))}</span>
-                <span style={{fontSize:13, color:'var(--text2)'}}>{i.unite}</span>
+              <div key={i.id} style={{...rs.ingRow, gridTemplateColumns: ingCols}}>
+                <span style={sIngName}>{i.nom}</span>
+                <span style={sIngQty}>{((i.quantite||0) * ratio % 1 === 0 ? ((i.quantite||0) * ratio).toFixed(0) : ((i.quantite||0) * ratio).toFixed(1))}</span>
+                <span style={{fontSize: isMobile ? 14 : 13, color:'var(--text2)'}}>{i.unite}</span>
                 {user.role === 'consultant' && <span style={{fontSize:12, color:'var(--text2)'}}>CHF {((i.quantite||0) * ratio * (i.prixUnit||0)).toFixed(2)}</span>}
               </div>
             ))}
             {user.role === 'consultant' && (
-              <div style={{...rs.ingRow, background:'var(--bg)', fontWeight:700}}>
+              <div style={{...rs.ingRow, gridTemplateColumns: ingCols, background:'var(--bg)', fontWeight:700}}>
                 <span>Total pour {portions} portions</span><span></span><span></span>
                 <span style={{color:'var(--accent)'}}>CHF {coutAdj.toFixed(2)}</span>
               </div>
@@ -557,9 +605,9 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
             <div style={rs.detailCard} className='no-print'>
               <div style={rs.cardHeader}><span style={rs.cardTitle}>Analyse économique</span></div>
               <div style={rs.kpiGrid}>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Coût matière / portion</span><strong style={{color:'var(--accent)'}}>CHF {portions > 0 ? (coutAdj/portions).toFixed(2) : '—'}</strong></div>
+                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Coût matière / portion</span><strong style={{color:'var(--accent)'}}>CHF {portions > 0 ? (coutAdj/portions).toFixed(2) : '-'}</strong></div>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Prix de vente</span><strong>CHF {(recette.prixVente || 0).toFixed(2)}</strong></div>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? '#16a34a' : recette.foodCost < 35 ? '#d97706' : '#dc2626'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '—'}</strong></div>
+                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? '#16a34a' : recette.foodCost < 35 ? '#d97706' : '#dc2626'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '-'}</strong></div>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Marge brute</span><strong>CHF {((recette.prixVente || 0) - (portions > 0 ? coutAdj/portions : 0)).toFixed(2)}</strong></div>
               </div>
             </div>
@@ -586,7 +634,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
             {(recette.etapes || []).map((e,i) => (
               <div key={i} style={rs.etapeRow}>
                 <div style={rs.etapeNum}>{i+1}</div>
-                <div style={rs.etapeTxt}>{e}</div>
+                <div style={{...rs.etapeTxt, ...(isMobile ? { fontSize: 15 } : null)}}>{e}</div>
               </div>
             ))}
           </div>
@@ -610,6 +658,153 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   );
 };
 
+// ─── Export multiple : choisir un plat (→ toutes ses recettes associées) ou des recettes ───
+const ExportMultipleModal = ({ plats, recettes, user, etablissement, onClose }) => {
+  const [mode, setMode] = React.useState('plat'); // 'plat' | 'recette'
+  const [selPlats, setSelPlats] = React.useState(() => new Set());
+  const [selRecettes, setSelRecettes] = React.useState(() => new Set());
+  const [busy, setBusy] = React.useState(false);
+
+  const recetteById = React.useMemo(() => {
+    const m = new Map();
+    (recettes || []).forEach(r => m.set(r.id, r));
+    return m;
+  }, [recettes]);
+
+  const platsList = (plats || []).filter(p => p.actif !== false);
+
+  const resolvePlatRecettes = (plat) =>
+    (plat.recettes || [])
+      .slice()
+      .sort((a, b) => (a.ordre || 0) - (b.ordre || 0))
+      .map(pr => recetteById.get(pr.recetteId))
+      .filter(Boolean);
+
+  const toggle = (set, setSet, id) => {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSet(next);
+  };
+
+  // Recettes résultantes (dédupliquées, ordre conservé)
+  const selectedRecettes = (() => {
+    if (mode === 'recette') return (recettes || []).filter(r => selRecettes.has(r.id));
+    const seen = new Set();
+    const out = [];
+    platsList.filter(p => selPlats.has(p.id)).forEach(p =>
+      resolvePlatRecettes(p).forEach(r => { if (!seen.has(r.id)) { seen.add(r.id); out.push(r); } })
+    );
+    return out;
+  })();
+
+  const count = selectedRecettes.length;
+
+  const handleExport = async () => {
+    if (!count || busy) return;
+    if (!pdfUtils?.exportRecettesPdf) { notifyLegacy('Export PDF indisponible pour le moment.', 'error'); return; }
+    const isConsultant = user?.role === 'consultant';
+    const data = selectedRecettes.map(r => buildRecettePdfData(r, { isConsultant }));
+
+    let filename = 'Fiches_recettes.pdf';
+    if (mode === 'plat') {
+      const ps = platsList.filter(p => selPlats.has(p.id));
+      filename = ps.length === 1 ? `Plat_${slug(ps[0].nom)}.pdf` : `Fiches_${ps.length}_plats.pdf`;
+    } else {
+      filename = count === 1 ? `Fiche_${slug(selectedRecettes[0].nom)}.pdf` : `Fiches_${count}_recettes.pdf`;
+    }
+
+    setBusy(true);
+    try {
+      await pdfUtils.exportRecettesPdf(data, { etablissement, filename });
+      notifyLegacy(`Export PDF généré (${count} fiche${count > 1 ? 's' : ''}).`, 'success');
+      onClose();
+    } catch (e) {
+      /* notify déjà géré dans le service */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
+      <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
+        <div style={smStyle.header}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⤓ Export multiple</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Une fiche par page A4, dans un seul PDF</div>
+          </div>
+          <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        <div style={ms.modeRow}>
+          <button style={{ ...ms.modeBtn, ...(mode === 'plat' ? ms.modeActive : {}) }} onClick={() => setMode('plat')}>Par plat</button>
+          <button style={{ ...ms.modeBtn, ...(mode === 'recette' ? ms.modeActive : {}) }} onClick={() => setMode('recette')}>Par recette</button>
+        </div>
+        <div style={ms.hint}>
+          {mode === 'plat'
+            ? 'Coche un ou plusieurs plats : toutes leurs recettes associées seront exportées.'
+            : 'Coche une ou plusieurs recettes à exporter.'}
+        </div>
+
+        <div style={ms.list}>
+          {mode === 'plat' ? (
+            platsList.length === 0
+              ? <div style={ms.empty}>Aucun plat disponible.</div>
+              : platsList.map(p => {
+                  const n = resolvePlatRecettes(p).length;
+                  return (
+                    <label key={p.id} style={{ ...ms.row, ...(n === 0 ? ms.rowDisabled : {}) }}>
+                      <input type="checkbox" checked={selPlats.has(p.id)} disabled={n === 0} onChange={() => toggle(selPlats, setSelPlats, p.id)} />
+                      <span style={ms.rowName}>{p.nom}</span>
+                      <span style={ms.rowMeta}>{n} recette{n > 1 ? 's' : ''}</span>
+                    </label>
+                  );
+                })
+          ) : (
+            (recettes || []).length === 0
+              ? <div style={ms.empty}>Aucune recette disponible.</div>
+              : (recettes || []).map(r => (
+                  <label key={r.id} style={ms.row}>
+                    <input type="checkbox" checked={selRecettes.has(r.id)} onChange={() => toggle(selRecettes, setSelRecettes, r.id)} />
+                    <span style={ms.rowName}>{r.nom}</span>
+                    <span style={ms.rowMeta}>{r.categorie}</span>
+                  </label>
+                ))
+          )}
+        </div>
+
+        <div style={ms.footer}>
+          <span style={ms.count}>{count} fiche{count > 1 ? 's' : ''} sélectionnée{count > 1 ? 's' : ''}</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={ms.btnGhost} onClick={onClose}>Annuler</button>
+            <button style={{ ...ms.btnPrimary, ...((count === 0 || busy) ? ms.btnDisabled : {}) }} onClick={handleExport} disabled={count === 0 || busy}>
+              {busy ? 'Génération…' : `Exporter le PDF${count ? ` (${count})` : ''}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ms = {
+  modeRow: { display: 'flex', gap: 8, padding: '14px 20px 0' },
+  modeBtn: { flex: 1, padding: '8px 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  modeActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
+  hint: { padding: '10px 20px 6px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
+  list: { flex: 1, overflowY: 'auto', padding: '4px 12px', margin: '0 8px', display: 'flex', flexDirection: 'column', gap: 2, minHeight: 120 },
+  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', borderBottom: '1px solid var(--border)' },
+  rowDisabled: { opacity: 0.45, cursor: 'not-allowed' },
+  rowName: { flex: 1, fontSize: 14, color: 'var(--text)', fontWeight: 500 },
+  rowMeta: { fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap' },
+  empty: { padding: '24px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)' },
+  footer: { padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  count: { fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
+  btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
+};
+
 const Recettes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
@@ -625,6 +820,7 @@ const Recettes = ({ user, etablissement }) => {
   const [cartes, setCartes] = React.useState([]);
   const [plats, setPlats] = React.useState([]);
   const [expandedPlats, setExpandedPlats] = React.useState(new Set());
+  const [showExportModal, setShowExportModal] = React.useState(false);
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -690,6 +886,15 @@ const Recettes = ({ user, etablissement }) => {
 
   return (
     <div style={rs.root}>
+      {showExportModal && (
+        <ExportMultipleModal
+          plats={plats}
+          recettes={recettesEtab}
+          user={user}
+          etablissement={etablissement}
+          onClose={() => setShowExportModal(false)}
+        />
+      )}
       {/* Tabs */}
       <div style={rs.tabs}>
         {[{id:'carte',label:'Carte active'},{id:'recettes',label:'Bibliothèque recettes'}].map(t => (
@@ -697,6 +902,7 @@ const Recettes = ({ user, etablissement }) => {
         ))}
         <div style={{flex:1}}/>
         <input style={rs.search} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">⤓ Export multiple</button>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
       </div>
 
@@ -705,7 +911,7 @@ const Recettes = ({ user, etablissement }) => {
           <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
             <div style={{fontSize:40, opacity:0.4}}>🍽</div>
             <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>Aucun plat sur la carte</div>
-            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>Créez des plats depuis le module "Outils consultant" — ils apparaîtront ici.</div>
+            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>Créez des plats depuis le module "Outils consultant". Ils apparaîtront ici.</div>
           </div>
         ) : (
         <div style={rs.carteWrap}>
@@ -771,7 +977,7 @@ const Recettes = ({ user, etablissement }) => {
                           </div>
                           <div style={rs.platFooter}>
                             <div style={rs.platPrix}>
-                              {plat.prixVente != null ? `CHF ${plat.prixVente.toFixed(2)}` : '—'}
+                              {plat.prixVente != null ? `CHF ${plat.prixVente.toFixed(2)}` : '-'}
                             </div>
                             {recettesPlat.length > 0 && (
                               <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -856,7 +1062,7 @@ const Recettes = ({ user, etablissement }) => {
                 {user.role === 'consultant' && (
                   <div style={rs.recetteKpis}>
                     <div style={rs.recetteKpi}><span>Coût/portion</span><strong>CHF {(r.coutPortion != null ? r.coutPortion : 0).toFixed(2)}</strong></div>
-                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? '#16a34a' : r.foodCost < 35 ? '#d97706' : '#dc2626'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '—'}</strong></div>
+                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? '#16a34a' : r.foodCost < 35 ? '#d97706' : '#dc2626'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
                   </div>
                 )}
                 <span style={{...rs.badge, background:'#dcfce7', color:'#15803d'}}>{r.statut}</span>

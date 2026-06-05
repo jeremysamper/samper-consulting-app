@@ -3,7 +3,7 @@ import { getBrowserWindow, notifyLegacy } from '../legacy/legacyApi.js';
 import { readJson } from '../utils/storage.js';
 
 // ─────────────────────────────────────────────────────
-// PDF & IMPRESSION — Mise en page A4 professionnelle
+// PDF & IMPRESSION - Mise en page A4 professionnelle
 // ─────────────────────────────────────────────────────
 
 export const pdfUtils = {
@@ -73,7 +73,7 @@ export const pdfUtils = {
 
   _getPrintStyles(orientation = 'portrait') {
     const isLandscape = orientation === 'landscape';
-    // ─── Palette Samper — DA sobre et éditoriale ───
+    // ─── Palette Samper - DA sobre et éditoriale ───
     // Crème (#fbf8f3) en fond, gris pierre (#2c2620) pour le texte,
     // beige doré (#b8985e) pour les filets et accents.
     // Titres en italique serif éditorial (Georgia en fallback web-safe).
@@ -264,7 +264,7 @@ export const pdfUtils = {
     let headerHTML = '';
     if (!noHeader) {
       headerHTML = noBrand
-        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:16pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:10pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' — ' + etab.adresse : ''}</div>` : ''}<div style="font-size:9pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:16pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:10pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' - ' + etab.adresse : ''}</div>` : ''}<div style="font-size:9pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
         : this._getHeaderHTML(title, etab);
     }
 
@@ -312,7 +312,7 @@ export const pdfUtils = {
     let headerHTML = '';
     if (!noHeader) {
       headerHTML = noBrand
-        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:15pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:9pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' — ' + etab.adresse : ''}</div>` : ''}<div style="font-size:8pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:15pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:9pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' - ' + etab.adresse : ''}</div>` : ''}<div style="font-size:8pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
         : this._getHeaderHTML(title, etab);
     }
 
@@ -420,7 +420,7 @@ export const pdfUtils = {
     let headerHTML = '';
     if (!noHeader) {
       headerHTML = noBrand
-        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:15pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:9pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' — ' + etab.adresse : ''}</div>` : ''}<div style="font-size:8pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:15pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:9pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' - ' + etab.adresse : ''}</div>` : ''}<div style="font-size:8pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
         : this._getHeaderHTML(title, etab);
     }
 
@@ -501,6 +501,350 @@ export const pdfUtils = {
       try { document.body.removeChild(container); } catch (e) { /* déjà retiré */ }
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // FICHE RECETTE - génération jsPDF NATIVE (vectorielle, 1 page A4)
+  // ───────────────────────────────────────────────────────────────
+  // Une fiche recette est un document texte à structure fixe : on la
+  // génère en vectoriel plutôt qu'en capture html2canvas. Bénéfices :
+  // net à l'impression, 1 page A4 garantie (fit-to-page), identique
+  // desktop/mobile (ne lit plus le DOM écran), insensible au crash
+  // oklch de html2canvas. jsPDF reste lazy-loaded (sans html2canvas).
+  // Réservé à la fiche recette individuelle - les autres exports
+  // (POS, J6b…) continuent d'utiliser exportElementToPdf.
+  // ═══════════════════════════════════════════════════════════════
+
+  async _loadJsPdf() {
+    const { jsPDF } = await import('jspdf');
+    return jsPDF;
+  },
+
+  // Logo établissement → dataURL pour doc.addImage (jsPDF n'accepte pas
+  // une URL distante directement). Échec silencieux : la fiche reste
+  // propre sans logo (seul le nom de l'établissement subsiste).
+  async _resolveLogoDataUrl(etablissement) {
+    const src = etablissement?.logo_url
+      || (() => { try { return readJson('sc_app_logo', null); } catch { return null; } })();
+    if (!src || typeof src !== 'string') return null;
+    if (src.startsWith('data:')) return src;
+    const win = getBrowserWindow();
+    if (!win || typeof win.Image === 'undefined') return null;
+    return new Promise((resolve) => {
+      try {
+        const img = new win.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = win.document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch { resolve(null); } // canvas « tainted » (CORS) → on abandonne le logo
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      } catch { resolve(null); }
+    });
+  },
+
+  // Point d'entrée public. `recette` est un objet déjà normalisé par le
+  // module appelant (plat, famille, metaCells, ingredients, etapes,
+  // notes, allergenesText) : la logique de rôle (food cost consultant)
+  // et la résolution des allergènes restent côté module.
+  // options : { etablissement, accent?, autoPrint?, filename?, logoDataUrl? }
+  async exportRecettePdf(recette, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = this._buildRecettePDF(jsPDF, recette, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'fiche-recette.pdf');
+      } else {
+        doc.save(options.filename || 'fiche-recette.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportRecettePdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  // Export GROUPÉ : plusieurs fiches recette dans un seul PDF (1 fiche = 1 page A4).
+  // Utilisé par « Export multiple » (un plat = toutes ses recettes, ou une sélection).
+  async exportRecettesPdf(recettes, options = {}) {
+    try {
+      const list = (recettes || []).filter(Boolean);
+      if (!list.length) { notifyLegacy('Aucune fiche à exporter.', 'warning'); return null; }
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      list.forEach((rec, i) => {
+        if (i > 0) doc.addPage();
+        this._renderRecettePage(doc, rec, { ...options, etablissement: etab, logoDataUrl, pageNum: i + 1, pageCount: list.length });
+      });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'fiches-recettes.pdf');
+      } else {
+        doc.save(options.filename || 'fiches-recettes.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportRecettesPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _buildRecettePDF(jsPDF, recette, options = {}) {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    this._renderRecettePage(doc, recette, options);
+    return doc;
+  },
+
+  // Rend UNE fiche recette sur la page courante de `doc`. Pour un export
+  // multi-fiches, l'appelant fait doc.addPage() entre chaque appel.
+  // options.pageNum / options.pageCount alimentent la pagination du pied.
+  _renderRecettePage(doc, recette, options = {}) {
+    const MM_PER_PT = 0.3528;
+    const {
+      logoDataUrl = null,
+      accent = [146, 112, 42], // Or Samper #92702A - charte app (défaut, hex/rgb jamais oklch)
+    } = options;
+    const etablissement = (options.etablissement?.nom || 'Samper Consulting').toString();
+    const pageNum = options.pageNum || 1;
+    const pageCount = options.pageCount || 1;
+
+    const plat       = (recette.plat || recette.nom || 'Recette').toString().trim();
+    const famille    = (recette.famille || recette.categorie || '').toString().trim();
+    const allergenes = (recette.allergenesText || recette.allergenes || 'Aucun').toString().trim() || 'Aucun';
+    const metaCells  = Array.isArray(recette.metaCells) ? recette.metaCells.filter(c => c && c.k && c.v) : [];
+    const notes      = Array.isArray(recette.notes)
+      ? recette.notes.filter(n => n && n.label && n.text && String(n.text).trim())
+      : [];
+
+    const ingredients = normalizeIngredients(recette.ingredients);
+    const etapes      = normalizeSteps(recette.etapes || recette.process || recette.steps);
+
+    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const contentW = PAGE_W - 2 * M;
+    const headerH = 12, footerH = 15;
+
+    const ACC  = accent;
+    const INK  = [26, 26, 28];
+    const MUTE = [122, 124, 122];
+    const HAIR = [216, 221, 217];
+
+    // ---- Géométrie verticale (sans collision) ----
+    const ruleTopY  = M + headerH;
+    const titleY    = ruleTopY + 10;
+    const tUnderY   = titleY + 2.6;
+    const familleY  = tUnderY + 5;
+    const metaTop   = familleY + 3.5;
+    const metaH     = 11;
+    const bodyTop   = metaTop + metaH + 5;
+    const bodyBottom = PAGE_H - M - footerH;
+    const bodyH = bodyBottom - bodyTop;
+
+    // ---- Colonnes : gauche 40 % (ingrédients + notes), droite 58 % (process) ----
+    const gutter = 7;
+    const colLW = contentW * 0.40;
+    const colRW = contentW - colLW - gutter;
+    const colLX = M;
+    const colRX = M + colLW + gutter;
+
+    // ---- Fit-to-page : corps 10 pt → -0,25 pt jusqu'à tenir, plancher 7 pt ----
+    const LINE_FACTOR = 1.28;
+    const BODY_MIN = 7;
+    let body = 10;
+    let geom = layoutGeom(body);
+    let L = measure(body, geom);
+    while (L.maxColH > bodyH && body > BODY_MIN) {
+      body -= 0.25;
+      geom = layoutGeom(body);
+      L = measure(body, geom);
+    }
+
+    function layoutGeom(fontPt) {
+      const lineMm = fontPt * MM_PER_PT * LINE_FACTOR;
+      const headPt = Math.min(fontPt + 1, 10.5);
+      const headMm = headPt * MM_PER_PT * 1.3 + 2.5;
+      const pastD  = Math.max(3.2, fontPt * 0.52);
+      const pastInset = pastD + 2.5;
+      const numPt  = Math.max(6, fontPt * 0.82);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(fontPt);
+      let qtyW = 0;
+      ingredients.forEach((ing) => {
+        const q = ing.qte ? `${ing.qte}${ing.unite ? ' ' + ing.unite : ''}` : '';
+        qtyW = Math.max(qtyW, doc.getTextWidth(q));
+      });
+      qtyW = Math.min(qtyW + 2.5, 22);
+      return { lineMm, headPt, headMm, pastD, pastInset, numPt, qtyW };
+    }
+
+    function measure(fontPt, g) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(fontPt);
+      // Colonne gauche : ingrédients (hanging indent) + notes (dressage/conservation)
+      let leftH = g.headMm;
+      ingredients.forEach((ing) => {
+        const nameLines = doc.splitTextToSize(ing.nom || '', colLW - g.qtyW);
+        leftH += Math.max(1, nameLines.length) * g.lineMm;
+      });
+      notes.forEach((n) => {
+        const t = doc.splitTextToSize(String(n.text), colLW);
+        leftH += 4 + g.headMm + t.length * g.lineMm;
+      });
+      // Colonne droite : étapes avec pastilles
+      let rightH = g.headMm;
+      etapes.forEach((s) => {
+        const lines = doc.splitTextToSize(s, colRW - g.pastInset);
+        const txtH = lines.length * g.lineMm;
+        rightH += Math.max(g.pastD, txtH) + 2.4;
+      });
+      return { fontPt, ...g, maxColH: Math.max(leftH, rightH) };
+    }
+
+    // ---------- RENDU ----------
+    // En-tete : logo + etablissement (accent, capitales espacees)
+    if (logoDataUrl) {
+      try {
+        const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+        doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
+      } catch (e) { /* logo illisible, ignore */ }
+    }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
+    doc.text(etablissement.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
+    doc.setDrawColor(...ACC); doc.setLineWidth(0.8);
+    doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
+
+    // Titre + soulignement accent, auto-reduit s'il est long
+    let tSize = 21;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(tSize);
+    while (doc.getTextWidth(plat) > contentW && tSize > 13) { tSize -= 0.5; doc.setFontSize(tSize); }
+    doc.setTextColor(...INK);
+    doc.text(plat, M, titleY);
+    doc.setDrawColor(...ACC); doc.setLineWidth(1.2);
+    doc.line(M, tUnderY, M + 26, tUnderY);
+    if (famille) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...MUTE);
+      doc.text(famille.toUpperCase(), M, familleY, { charSpace: 0.6 });
+    }
+
+    // Bandeau métadonnées - N cellules égales, séparateurs fins
+    if (metaCells.length) {
+      const cellW = contentW / metaCells.length;
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3);
+      doc.line(M, metaTop, M + contentW, metaTop);
+      doc.line(M, metaTop + metaH, M + contentW, metaTop + metaH);
+      metaCells.forEach((c, i) => {
+        const cx = M + i * cellW + 3;
+        if (i > 0) { doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M + i * cellW, metaTop + 1.5, M + i * cellW, metaTop + metaH - 1.5); }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...ACC);
+        doc.text(String(c.k), cx, metaTop + 4.3, { charSpace: 0.5 });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...INK);
+        doc.text(String(c.v), cx, metaTop + 9, { maxWidth: cellW - 5 });
+      });
+    }
+
+    // Helper titre de section : carré accent + label espacé + filet
+    function sectionHead(label, x, yy, w, g) {
+      doc.setFillColor(...ACC);
+      doc.rect(x, yy - 2.2, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(g.headPt); doc.setTextColor(...ACC);
+      doc.text(label, x + 3.4, yy, { charSpace: 0.5 });
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3);
+      doc.line(x, yy + 2, x + w, yy + 2);
+      return yy + g.headMm;
+    }
+
+    // Colonne gauche - INGRÉDIENTS (quantité accent gras + nom, hanging indent)
+    let ly = bodyTop + L.headPt * MM_PER_PT;
+    ly = sectionHead('INGRÉDIENTS', colLX, ly, colLW, L);
+    ingredients.forEach((ing) => {
+      const q = ing.qte ? `${ing.qte}${ing.unite ? ' ' + ing.unite : ''}` : '';
+      if (q) { doc.setFont('helvetica', 'bold'); doc.setFontSize(L.fontPt); doc.setTextColor(...ACC); doc.text(q, colLX, ly); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fontPt); doc.setTextColor(...INK);
+      const nameLines = doc.splitTextToSize(ing.nom || '', colLW - L.qtyW);
+      nameLines.forEach((line, k) => { doc.text(line, colLX + L.qtyW, ly + k * L.lineMm); });
+      ly += Math.max(1, nameLines.length) * L.lineMm;
+    });
+
+    // Notes (Dressage / Conservation) sous les ingrédients
+    notes.forEach((n) => {
+      ly += 4;
+      ly = sectionHead(String(n.label).toUpperCase(), colLX, ly, colLW, L);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fontPt); doc.setTextColor(...INK);
+      doc.splitTextToSize(String(n.text), colLW).forEach((line) => { doc.text(line, colLX, ly); ly += L.lineMm; });
+    });
+
+    // Colonne droite - PROCESS avec pastilles rondes numérotées
+    let ry = bodyTop + L.headPt * MM_PER_PT;
+    ry = sectionHead('PROCESS', colRX, ry, colRW, L);
+    etapes.forEach((s, i) => {
+      const lines = doc.splitTextToSize(s, colRW - L.pastInset);
+      const txtH = lines.length * L.lineMm;
+      const rowH = Math.max(L.pastD, txtH);
+      const cx = colRX + L.pastD / 2;
+      const cy = ry + L.pastD / 2 - 0.3;
+      doc.setFillColor(...ACC); doc.circle(cx, cy, L.pastD / 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(L.numPt); doc.setTextColor(255, 255, 255);
+      doc.text(String(i + 1), cx, cy + L.numPt * MM_PER_PT * 0.36, { align: 'center' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fontPt); doc.setTextColor(...INK);
+      lines.forEach((line, k) => { doc.text(line, colRX + L.pastInset, ry + L.lineMm * 0.78 + k * L.lineMm); });
+      ry += rowH + 2.4;
+    });
+
+    // Séparateur vertical entre colonnes
+    doc.setDrawColor(...HAIR); doc.setLineWidth(0.2);
+    doc.line(colRX - gutter / 2, bodyTop, colRX - gutter / 2, bodyBottom);
+
+    // Pied : filet accent + ALLERGENES + signature etablissement, date, page
+    const fRule = PAGE_H - M - footerH;
+    doc.setDrawColor(...ACC); doc.setLineWidth(0.8);
+    doc.line(M, fRule, PAGE_W - M, fRule);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(...ACC);
+    doc.text('ALLERGÈNES', M, fRule + 4.5, { charSpace: 0.5 });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...INK);
+    doc.text(allergenes, M + 22, fRule + 4.5, { maxWidth: contentW - 24 });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+    const dateStr = new Date().toLocaleDateString('fr-CH');
+    doc.text(etablissement, M, fRule + 10);
+    doc.text(`${dateStr}   ·   ${pageNum}/${pageCount}`, PAGE_W - M, fRule + 10, { align: 'right' });
+  },
 };
+
+// ─── Normalisation des entrées fiche recette ────────────────────────
+// Acceptent un tableau d'objets OU un texte multi-lignes (robustesse).
+function normalizeIngredients(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((it) =>
+      typeof it === 'string'
+        ? { nom: it }
+        : { qte: it.qte ?? it.quantite ?? '', unite: it.unite ?? '', nom: it.nom ?? it.libelle ?? '' }
+    );
+  }
+  return String(raw).split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => ({ nom: l }));
+}
+
+function normalizeSteps(raw) {
+  if (!raw) return [];
+  // Retire une éventuelle numérotation existante (régénérée dans les pastilles).
+  if (Array.isArray(raw)) return raw.map((s) => String(s).replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
+  return String(raw).split(/\r?\n/).map((l) => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
+}
 
 export default pdfUtils;
