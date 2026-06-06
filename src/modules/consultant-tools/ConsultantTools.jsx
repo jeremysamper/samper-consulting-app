@@ -27,6 +27,7 @@ import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
 import AlertRules from './AlertRules.jsx';
 
 const safeText = (value) => String(value ?? '').toLowerCase();
@@ -1220,8 +1221,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
               {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#15803d', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
               {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#dc2626', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.printElement('consultant-recette-print', 'Fiche recette ' + selected.nom)}><Printer size={14} /> Imprimer</button>
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportElementToPdf('consultant-recette-print', `recette-${selected.nom.replace(/[^a-z0-9]/gi,'_')}.pdf`)}><FileDown size={14} /> Export PDF</button>
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, autoPrint: true })}><Printer size={14} /> Imprimer</button>
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, filename: `Fiche_${slug(selected.nom)}.pdf` })}><FileDown size={14} /> Export PDF</button>
             </div>
           </div>
 
@@ -1319,7 +1320,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             </div>
           )}
 
-          <div id="consultant-recette-print" style={cts.printZone}>
+          <div style={cts.printZone}>
             {/* Header édition */}
             <div style={cts.header}>
               {/* Photo */}

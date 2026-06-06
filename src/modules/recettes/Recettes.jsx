@@ -6,48 +6,14 @@ import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 import { Calculator, Copy, ArrowLeft } from 'lucide-react';
+import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePdfData.js';
 
 
 // CARTES & RECETTES
-// ─── ALLERGENES_MAP : constante globale (scope module) ───
-const ALLERGENES_MAP = { gluten:'Gluten', lactose:'Lactose', oeufs:'Œufs', poissons:'Poissons', sulfites:'Sulfites', crustaces:'Crustacés', fruits_coque:'Fruits à coque', arachides:'Arachides', soja:'Soja', celeri:'Céleri', moutarde:'Moutarde', sesame:'Sésame', mollusques:'Mollusques', lupin:'Lupin' };
-
-// slug pour nom de fichier PDF (sans accents, kebab-case)
-const slug = (s) => String(s || 'recette').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'recette';
+// ALLERGENES_MAP, slug et buildRecettePdfData sont partagés avec le module
+// Consultant via src/utils/recettePdfData.js (source unique de l'export fiche).
 
 // ─── ScalingModal : modale de calculateur de quantités (portions OU grammage cible) ───
-// Construit l'objet fiche pour le générateur jsPDF natif (pdf.js).
-// La logique de rôle (food cost consultant-only) et la résolution des allergènes
-// vivent ici. `portions` permet de refléter une mise à l'échelle (vue détail) ;
-// par défaut, les portions de base de la recette.
-function buildRecettePdfData(recette, { isConsultant = false, portions } = {}) {
-  const p = portions != null ? portions : recette.portions;
-  const ratio = (p || 1) / (recette.portions || 1);
-  const fmtQty = (n) => (n % 1 === 0 ? n.toFixed(0) : n.toFixed(1));
-
-  const metaCells = [{ k: 'PORTIONS', v: String(p ?? '') }];
-  if (recette.tempsTotal) metaCells.push({ k: 'TEMPS TOTAL', v: `${recette.tempsTotal} min` });
-  if (isConsultant && recette.foodCost != null) metaCells.push({ k: 'FOOD COST', v: `${recette.foodCost.toFixed(1)}%` });
-
-  const notes = [];
-  if (recette.dressage) notes.push({ label: 'Dressage', text: recette.dressage });
-  if (recette.conservation) notes.push({ label: 'Conservation', text: recette.conservation });
-
-  return {
-    plat: recette.nom,
-    famille: recette.categorie,
-    metaCells,
-    ingredients: (recette.ingredients || []).map((i) => ({
-      qte: fmtQty((i.quantite || 0) * ratio),
-      unite: i.unite,
-      nom: i.nom,
-    })),
-    etapes: recette.etapes || [],
-    notes,
-    allergenesText: (recette.allergenesIds || []).map((a) => ALLERGENES_MAP[a] || a).join(', ') || 'Aucun',
-  };
-}
-
 const ScalingModal = ({ recette, onClose }) => {
   const [scalingPortions, setScalingPortions] = React.useState('');
   const [scalingTarget, setScalingTarget] = React.useState({ ingId: '', targetQty: '' });
