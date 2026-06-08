@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SectionHeader, TabBar } from '../../components/ui/index.jsx';
+import PosConnectionBar   from './components/PosConnectionBar.jsx';
 import MappingPlats       from './MappingPlats.jsx';
 import MiseEnPlace        from './views/MiseEnPlace.jsx';
 import TopFlop            from './views/TopFlop.jsx';
@@ -26,6 +27,8 @@ const ALL_TABS = [
 
 export default function VentesPos({ user, etablissement }) {
   const [tab, setTab] = useState('mise_en_place');
+  // Incremente apres une synchro pour forcer le rechargement des vues (refetch).
+  const [dataVersion, setDataVersion] = useState(0);
 
   // canEdit : accès à l'onglet Mapping + actions d'écriture (connexion, mapping)
   const canEdit = EDIT_ROLES.includes(user?.role);
@@ -49,11 +52,19 @@ export default function VentesPos({ user, etablissement }) {
         subtitle={`Synchronisation Lightspeed · ${etabNom}`}
       />
 
+      {/* ── Barre connexion / synchro (couplage + sync manuelle) ── */}
+      <PosConnectionBar
+        etablissement={etablissement}
+        user={user}
+        onSynced={() => setDataVersion((v) => v + 1)}
+      />
+
       <TabBar tabs={TABS} active={effectiveTab} onChange={setTab} />
 
       {/* ── Mise en place J+1 ── */}
       {effectiveTab === 'mise_en_place' && (
         <MiseEnPlace
+          key={dataVersion}
           etablissement={etablissement}
           onNavigateToMapping={handleNavigateToMapping}
         />
@@ -62,6 +73,7 @@ export default function VentesPos({ user, etablissement }) {
       {/* ── Top / Flop ── */}
       {effectiveTab === 'top_flop' && (
         <TopFlop
+          key={dataVersion}
           etablissement={etablissement}
           onNavigateToMapping={handleNavigateToMapping}
         />
@@ -70,6 +82,7 @@ export default function VentesPos({ user, etablissement }) {
       {/* ── Conso ingrédients ── */}
       {effectiveTab === 'conso' && (
         <ConsoIngredients
+          key={dataVersion}
           etablissement={etablissement}
           onNavigateToMapping={handleNavigateToMapping}
         />
@@ -77,7 +90,7 @@ export default function VentesPos({ user, etablissement }) {
 
       {/* ── Mapping plats POS ↔ Recettes (J3) — canEdit uniquement ── */}
       {effectiveTab === 'mapping' && canEdit && (
-        <MappingPlats user={user} etablissement={etablissement} />
+        <MappingPlats key={dataVersion} user={user} etablissement={etablissement} />
       )}
     </div>
   );

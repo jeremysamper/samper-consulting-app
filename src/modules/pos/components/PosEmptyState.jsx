@@ -65,7 +65,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
     no_connection: {
       icon:   '◑',
       title:  'Aucune caisse connectée',
-      desc:   'Connectez votre caisse Lightspeed dans Paramètres → Intégrations POS, puis lancez une synchronisation.',
+      desc:   'Connectez votre caisse Lightspeed avec le bouton en haut de cette page, puis lancez une synchronisation.',
       action: null,
     },
     no_mapping: {
