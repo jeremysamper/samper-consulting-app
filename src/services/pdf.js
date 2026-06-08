@@ -39,8 +39,8 @@ export const pdfUtils = {
         --text: #2c2620;
         --text2: #6b5d4a;
         --text3: #8a7d6a;
-        --accent: #92702A;
-        --accent2: #b8985e;
+        --accent: #588157;
+        --accent2: #6d9a6b;
         --accent-light: #f5efe4;
         --accent-bd: #d4c5a8;
         --nav: #2c2620;
@@ -75,7 +75,7 @@ export const pdfUtils = {
     const isLandscape = orientation === 'landscape';
     // ─── Palette Samper - DA sobre et éditoriale ───
     // Crème (#fbf8f3) en fond, gris pierre (#2c2620) pour le texte,
-    // beige doré (#b8985e) pour les filets et accents.
+    // vert sauge (#6d9a6b) pour les filets et accents.
     // Titres en italique serif éditorial (Georgia en fallback web-safe).
     return `
       ${this._getThemeVarOverrides()}
@@ -91,13 +91,13 @@ export const pdfUtils = {
       }
       .pdf-header {
         display: flex; justify-content: space-between; align-items: flex-start;
-        border-bottom: 1px solid #b8985e;
+        border-bottom: 1px solid #6d9a6b;
         padding-bottom: 14px; margin-bottom: 22px;
       }
       .pdf-brand { display: flex; align-items: center; gap: 14px; }
       .pdf-logo {
         width: 44px; height: 44px; border-radius: 8px;
-        background: #92702A; color: #fff;
+        background: #588157; color: #fff;
         display: flex; align-items: center; justify-content: center;
         font-weight: 700; font-size: 14pt; letter-spacing: 1.2px;
         overflow: hidden;
@@ -113,7 +113,7 @@ export const pdfUtils = {
         color: #2c2620; margin-bottom: 4px;
         letter-spacing: 0.2px;
       }
-      .pdf-meta-etab { font-weight: 600; color: #b8985e; margin-top: 6px; letter-spacing: 0.3px; }
+      .pdf-meta-etab { font-weight: 600; color: #6d9a6b; margin-top: 6px; letter-spacing: 0.3px; }
       h1, h2, h3 { color: #2c2620; margin: 0 0 10px 0; page-break-after: avoid; }
       h1 {
         font-family: Georgia, 'Cormorant Garamond', serif;
@@ -126,7 +126,7 @@ export const pdfUtils = {
         margin-top: 18px;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: #b8985e;
+        color: #6d9a6b;
         border-bottom: 0.5px solid #d4c5a8;
         padding-bottom: 4px;
       }
@@ -139,15 +139,15 @@ export const pdfUtils = {
       tr { page-break-inside: avoid; page-break-after: auto; }
       th {
         text-align: left; font-size: 8.5pt; font-weight: 700;
-        color: #b8985e; text-transform: uppercase; letter-spacing: 0.8px;
-        padding: 8px 8px 6px; border-bottom: 1px solid #b8985e;
+        color: #6d9a6b; text-transform: uppercase; letter-spacing: 0.8px;
+        padding: 8px 8px 6px; border-bottom: 1px solid #6d9a6b;
       }
       td { padding: 7px 8px; font-size: 10pt; border-bottom: 0.5px solid #e8dfcd; color: #2c2620; }
       .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 12px 0 18px; }
       .kpi-card { border: 0.5px solid #d4c5a8; border-radius: 4px; padding: 12px 14px; background: rgba(255,255,255,0.5); }
       .kpi-label { font-size: 7.5pt; font-weight: 700; color: #8a7d6a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
       .kpi-value { font-family: Georgia, serif; font-size: 15pt; font-weight: 600; color: #2c2620; }
-      .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(184,152,94,0.12); color: #8a6b2f; border: 0.5px solid #d4c5a8; }
+      .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(109,154,107,0.12); color: #456b44; border: 0.5px solid #d4c5a8; }
       .section { margin-bottom: 20px; page-break-inside: avoid; }
 
       /* ─── Sublimer les cartes / sections existantes du DOM cloné ────
@@ -161,7 +161,7 @@ export const pdfUtils = {
         background: rgba(255,255,255,0.6) !important;
       }
       /* Liens et accents : conserver l'or Samper */
-      .pdf-content a { color: #92702A; text-decoration: none; }
+      .pdf-content a { color: #588157; text-decoration: none; }
       ul, ol { margin: 4px 0 12px 20px; padding: 0; }
       li { margin-bottom: 4px; font-size: 10pt; }
       .no-print, button, .pls-tabs, [class*="no-print"] { display: none !important; }
@@ -622,7 +622,7 @@ export const pdfUtils = {
     const MM_PER_PT = 0.3528;
     const {
       logoDataUrl = null,
-      accent = [146, 112, 42], // Or Samper #92702A - charte app (défaut, hex/rgb jamais oklch)
+      accent = [88, 129, 87], // Vert Samper #588157 - charte app (défaut, hex/rgb jamais oklch)
     } = options;
     const etablissement = (options.etablissement?.nom || 'Samper Consulting').toString();
     const pageNum = options.pageNum || 1;

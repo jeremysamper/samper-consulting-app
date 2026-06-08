@@ -1,6 +1,6 @@
 /**
  * Génère les icônes PWA pour Samper Consulting.
- * Logo : initiales "SC" sur fond vert très foncé (#0f1a12), lettres ivoire (#e8e2d9).
+ * Logo : initiales "SC" sur fond vert très foncé (#0f1a12), lettres vert sauge (#82b27f).
  *
  * Usage : node scripts/gen-icons.mjs
  */
@@ -20,7 +20,7 @@ const MASKABLE = [192, 512];
 const ALL = [...REGULAR, ...MASKABLE];
 
 const BG    = '#0f1a12';
-const FG    = '#c87f3e'; // orange ambre Samper — signature couleur
+const FG    = '#82b27f'; // vert Samper, signature couleur
 
 /**
  * SVG pour icône classique (fond arrondi, adapté standalone).

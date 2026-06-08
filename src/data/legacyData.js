@@ -29,7 +29,7 @@ export const DEMO_DATA = {
   },
 
   roles: {
-    consultant:   { label: 'Consultant culinaire', couleur: '#92702A' },
+    consultant:   { label: 'Consultant culinaire', couleur: '#588157' },
     patron:       { label: 'Patron / Directeur',   couleur: '#1a5276' },
     resp_cuisine: { label: 'Responsable cuisine',  couleur: '#1e6b40' },
     cuisinier:    { label: 'Cuisinier',            couleur: '#6c3483' },

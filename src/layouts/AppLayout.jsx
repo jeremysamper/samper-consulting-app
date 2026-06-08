@@ -77,7 +77,7 @@ export default function AppLayout({
 
   // Permissions dynamiques (relues à chaque render depuis DEMO_DATA, hydraté depuis localStorage)
   const perms = permissionsOverride || DEMO_DATA.permissions[user.role] || {}; 
-  const roleInfo = DEMO_DATA.roles[user.role] || { label: user?.role || 'Utilisateur', couleur: '#92702A' };
+  const roleInfo = DEMO_DATA.roles[user.role] || { label: user?.role || 'Utilisateur', couleur: '#588157' };
 
   // Établissements accessibles à l'utilisateur — en state live synchronisé avec Supabase
   const [etabsAll, setEtabsAll] = React.useState(() => etablissements.length ? etablissements : (DEMO_DATA.etablissements || []));

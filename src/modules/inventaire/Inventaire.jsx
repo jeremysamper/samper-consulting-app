@@ -599,7 +599,7 @@ const Inventaire = ({ user, etablissement }) => {
               <span style={{
                 display: 'inline-block', fontSize: 9, fontWeight: 700, marginLeft: 6, padding: '2px 6px', borderRadius: 4, verticalAlign: 'middle',
                 background: l.type === 'sec' ? '#f3e8d6' : l.type === 'positif' ? 'var(--success-bg)' : 'var(--danger-bg)',
-                color: l.type === 'sec' ? '#92702a' : l.type === 'positif' ? 'var(--success-text)' : 'var(--danger-text)',
+                color: l.type === 'sec' ? '#588157' : l.type === 'positif' ? 'var(--success-text)' : 'var(--danger-text)',
                 textTransform: 'uppercase', letterSpacing: 0.5,
               }}>{l.type}</span>
             ) : null;

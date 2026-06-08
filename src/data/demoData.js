@@ -34,7 +34,7 @@ export function canManageModule(role, moduleId) {
 export function getRoleInfo(role) {
   return getDemoData()?.roles?.[role] || {
     label: role || 'Utilisateur',
-    couleur: '#92702A'
+    couleur: '#588157'
   };
 }
 

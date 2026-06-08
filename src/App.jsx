@@ -169,7 +169,7 @@ function BootScreen({ title = '' }) {
   return (
     <main style={bootScreenStyles.root}>
       <div style={bootScreenStyles.center}>
-        {/* Logo SC — identique à l'icône PWA : fond vert #0f1a12, lettres orange #c87f3e */}
+        {/* Logo SC : fond vert #0f1a12, lettres vert #82b27f (rebrand) */}
         <div style={bootScreenStyles.logoBox}>SC</div>
 
         <div style={bootScreenStyles.brand}>Samper Consulting</div>
@@ -206,7 +206,7 @@ const bootScreenStyles = {
     height: 56,
     borderRadius: 14,
     background: '#0f1a12',
-    color: '#c87f3e',
+    color: '#82b27f',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -239,7 +239,7 @@ const bootScreenStyles = {
   barFill: {
     height: '100%',
     width: '40%',
-    background: '#c87f3e',
+    background: 'var(--accent)',
     borderRadius: 1,
     animation: 'splashBar 1.2s ease-in-out infinite',
   },

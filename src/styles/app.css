@@ -16,10 +16,10 @@
   --text: oklch(18% 0.012 55);
   --text2: oklch(48% 0.010 55);
   --text3: oklch(60% 0.008 50);
-  --accent: oklch(54% 0.13 55);
-  --accent2: oklch(62% 0.14 52);
-  --accent-light: oklch(95% 0.04 75);
-  --accent-bd: oklch(82% 0.06 60);
+  --accent: #588157;
+  --accent2: #6d9a6b;
+  --accent-light: #eef3ed;
+  --accent-bd: #bcd0ba;
   --nav: oklch(14% 0.012 55);
   --nav-text: oklch(68% 0.007 50);
   --nav-active: rgba(255, 255, 255, 0.11);
@@ -80,10 +80,10 @@
     --text: oklch(93% 0.008 75);
     --text2: oklch(70% 0.010 75);
     --text3: oklch(48% 0.008 55);
-    --accent: oklch(68% 0.13 58);
-    --accent2: oklch(72% 0.12 55);
-    --accent-light: oklch(24% 0.045 58);
-    --accent-bd: oklch(35% 0.08 55);
+    --accent: #82b27f;
+    --accent2: #95c191;
+    --accent-light: #233026;
+    --accent-bd: #3f5a40;
     --nav: oklch(10% 0.010 55);
     --nav-text: oklch(55% 0.007 50);
     --nav-active: rgba(255, 255, 255, 0.09);
@@ -124,10 +124,10 @@ html[data-theme="dark"] {
   --text: oklch(93% 0.008 75);
   --text2: oklch(70% 0.010 75);
   --text3: oklch(48% 0.008 55);
-  --accent: oklch(68% 0.13 58);
-  --accent2: oklch(72% 0.12 55);
-  --accent-light: oklch(24% 0.045 58);
-  --accent-bd: oklch(35% 0.08 55);
+  --accent: #82b27f;
+  --accent2: #95c191;
+  --accent-light: #233026;
+  --accent-bd: #3f5a40;
   --nav: oklch(10% 0.010 55);
   --nav-text: oklch(55% 0.007 50);
   --nav-active: rgba(255, 255, 255, 0.09);
@@ -566,7 +566,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px oklch(54% 0.13 55 / 0.12);
+  box-shadow: 0 0 0 3px rgba(88, 129, 87, 0.12);
 }
 
 [style*="tableRow"]:hover,
@@ -606,7 +606,7 @@ a {
 
 .eyebrow {
   margin: 0 0 10px;
-  color: #8a5a18;
+  color: #456b44;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
@@ -676,7 +676,7 @@ h1 {
 }
 
 .step-list li {
-  border-left: 4px solid #b8842d;
+  border-left: 4px solid #588157;
   padding: 12px 0 12px 16px;
 }
 
@@ -725,7 +725,7 @@ h1 {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  background: #92702a;
+  background: #588157;
   color: #fff;
   font-weight: 800;
 }
@@ -815,7 +815,7 @@ h1 {
 
 .primary-action {
   border: 0;
-  background: #92702a;
+  background: #588157;
   color: #fff;
   font-weight: 800;
   padding: 0 16px;
@@ -835,7 +835,7 @@ h1 {
   margin: 18px auto 0;
   border: 0;
   background: transparent;
-  color: #92702a;
+  color: #588157;
   font-size: 13px;
   font-weight: 800;
 }
