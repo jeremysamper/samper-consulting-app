@@ -45,11 +45,11 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
     <div>
       <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
         <strong style={{ color: 'var(--text)' }}>{recipes.length}</strong> recette(s) détectée(s) ·{' '}
-        <strong style={{ color: validCount === recipes.length ? 'var(--success-text)' : '#d97706' }}>{validCount}</strong> valide(s)
+        <strong style={{ color: validCount === recipes.length ? 'var(--success-text)' : 'var(--warning-strong)' }}>{validCount}</strong> valide(s)
       </div>
 
       {unrecognizedUnits.length > 0 && (
-        <div style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid #fde68a', fontSize: 12, color: 'var(--warning-text)' }}>
+        <div style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', fontSize: 12, color: 'var(--warning-text)' }}>
           Unités non reconnues rencontrées : {unrecognizedUnits.join(', ')}. Les lignes concernées sont signalées en rouge — corrigez-les avant import.
         </div>
       )}
@@ -91,7 +91,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger-strong)' }}>⚠ non importable</span>
                 )}
                 {valid && flagged > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706' }}>⚠ {flagged} ligne(s) à vérifier</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>⚠ {flagged} ligne(s) à vérifier</span>
                 )}
                 <Btn small variant="ghost" onClick={() => toggleExpand(id)} style={{ marginLeft: 'auto' }}>
                   {open ? '▲ Réduire' : '▼ Détail'}

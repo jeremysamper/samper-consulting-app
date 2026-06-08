@@ -25,9 +25,9 @@ const BADGE_CONFIG = {
   manual: {
     dot:    '⚪',
     label:  'à mapper',
-    color:  '#6b7280',
-    bg:     '#f9fafb',
-    border: '#d1d5db',
+    color:  'var(--text2)',
+    bg:     'var(--surface2)',
+    border: 'var(--border)',
   },
 };
 

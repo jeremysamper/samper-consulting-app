@@ -29,6 +29,7 @@ const Catalogue = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const canWrite = ['consultant', 'patron'].includes(user.role);
+  const isConsultant = user.role === 'consultant';
 
   const [produits, setProduits] = React.useState([]);
   const [fournisseurs, setFournisseurs] = React.useState([]);
@@ -435,9 +436,11 @@ const Catalogue = ({ user, etablissement }) => {
         </div>
         {canWrite && (
           <div style={{ display: 'flex', gap: 8 }} className="desktop-toolbar">
-            <button style={{ ...cat.btn, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }} onClick={() => setShowAiImport(true)}>
+            {isConsultant && (
+            <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowAiImport(true)}>
               ✨ Import IA
             </button>
+            )}
             <label style={{ ...cat.btn, background: 'var(--surface)', border: '1px solid var(--border)', cursor: importing ? 'wait' : 'pointer', color: 'var(--text)' }}>
               {importing ? '⏳ Import…' : '📥 Importer Excel'}
               <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
@@ -729,7 +732,7 @@ const Catalogue = ({ user, etablissement }) => {
       {canWrite && (
         <BottomActionBar
           actions={[
-            { label: 'Import IA', icon: Sparkles, onClick: () => setShowAiImport(true) },
+            ...(isConsultant ? [{ label: 'Import IA', icon: Sparkles, onClick: () => setShowAiImport(true) }] : []),
             { label: 'Importer Excel', icon: FileSpreadsheet, onClick: () => fileRef.current?.click() },
           ]}
           primaryAction={
@@ -1064,9 +1067,9 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
             <div style={ipm.kpiLabel}>✓ Nouveaux</div>
             <div style={{ ...ipm.kpiValue, color: 'var(--success-strong)' }}>{newItems.length}</div>
           </div>
-          <div style={{ ...ipm.kpiBox, borderColor: duplicates.length > 0 ? '#d97706' : 'var(--border)' }}>
+          <div style={{ ...ipm.kpiBox, borderColor: duplicates.length > 0 ? 'var(--warning-strong)' : 'var(--border)' }}>
             <div style={ipm.kpiLabel}>⚠ Doublons</div>
-            <div style={{ ...ipm.kpiValue, color: duplicates.length > 0 ? '#d97706' : 'var(--text2)' }}>{duplicates.length}</div>
+            <div style={{ ...ipm.kpiValue, color: duplicates.length > 0 ? 'var(--warning-strong)' : 'var(--text2)' }}>{duplicates.length}</div>
           </div>
           <div style={{ ...ipm.kpiBox, borderColor: aberrants.length > 0 ? 'var(--danger-strong)' : 'var(--border)' }}>
             <div style={ipm.kpiLabel}>🚫 Prix suspects</div>
@@ -1106,7 +1109,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                 </div>
               </div>
               {duplicates.length > 0 && (
-                <div style={{ ...ipm.summaryItem, background: 'var(--warning-bg)', borderColor: '#fde68a' }}>
+                <div style={{ ...ipm.summaryItem, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)' }}>
                   <span style={{ fontSize: 22 }}>⚠</span>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--warning-text)' }}>{duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} détecté{duplicates.length > 1 ? 's' : ''}</div>
@@ -1134,7 +1137,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                     <div style={ipm.rowName}>{p.nom}</div>
                     <div style={ipm.rowMeta}>
                       {p.intraDup ? (
-                        <span style={{ color: '#d97706' }}>↔ Présent 2× dans le fichier</span>
+                        <span style={{ color: 'var(--warning-strong)' }}>↔ Présent 2× dans le fichier</span>
                       ) : (
                         <>↔ Doublon (par {p._matchReason}) — existant : <strong>{p._existing?.nom}</strong> {p._existing?.prixUnitaire ? `· ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
                       )}
@@ -1178,7 +1181,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
           <div style={{ flex: 1 }}/>
           {(duplicates.length > 0 || aberrants.length > 0) && (
             <button
-              style={{ ...ipm.ghostBtn, background: 'var(--warning-bg)', borderColor: '#fde68a', color: 'var(--warning-text)' }}
+              style={{ ...ipm.ghostBtn, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}
               onClick={onConfirmAll}
               disabled={importing}
               title="Importer aussi les doublons (écrasement) et les prix suspects"

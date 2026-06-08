@@ -338,7 +338,7 @@ const Roles = ({ user }) => {
                 <div style={{ ...ros.userAvatar, background: role?.couleur || '#888' }}>{u.avatar}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{u.prenom} {u.nom}
-                    {u.actif === false && <span style={{ ...ros.permBadge, background: '#f3f4f6', color: '#6b7280', marginLeft: 8 }}>Inactif</span>}
+                    {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{u.email}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>

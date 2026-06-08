@@ -155,7 +155,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
             <div style={{ fontSize: 32, opacity: 0.4, marginBottom: 6 }}>📅</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Pas de shift programmé</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Profitez de votre journée !</div>
-            <button style={{ ...dm.bigBtn, background: '#d1d5db', cursor: 'not-allowed', marginTop: 10 }} disabled>
+            <button style={{ ...dm.bigBtn, background: 'var(--border)', cursor: 'not-allowed', marginTop: 10 }} disabled>
               ⏱ Aucun pointage
             </button>
           </div>
@@ -166,8 +166,8 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
             const punct = pasCommence ? punctualityVsStart(shift.debut) : null;
             const punctColor = punct?.key === 'retard' ? 'var(--warning-text)' : punct?.key === 'heure' ? 'var(--success-text)' : 'var(--text2)';
             const label = shift.typeShift === 'midi' ? '☀ Midi' : shift.typeShift === 'soir' ? '🌙 Soir' : 'Service';
-            const cardBg = enPoste ? 'var(--success-bg)' : termine ? '#f3f4f6' : 'var(--warning-bg)';
-            const cardBorder = enPoste ? 'var(--success-strong)' : termine ? '#9ca3af' : 'var(--warning-strong)';
+            const cardBg = enPoste ? 'var(--success-bg)' : termine ? 'var(--surface2)' : 'var(--warning-bg)';
+            const cardBorder = enPoste ? 'var(--success-strong)' : termine ? 'var(--border2)' : 'var(--warning-strong)';
 
             return (
               <div key={shift.id} style={{ ...dm.pointageCard, background: cardBg, borderColor: cardBorder }}>
@@ -201,7 +201,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
                 )}
 
                 {termine && (
-                  <div style={{ ...dm.pointageStatus, color: '#6b7280' }}>
+                  <div style={{ ...dm.pointageStatus, color: 'var(--text2)' }}>
                     ✓ Journée terminée<br/>
                     <span style={{ fontSize: 12 }}>{shift.pointageDebut} → {shift.pointageFin}</span>
                   </div>
@@ -260,6 +260,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         </div>
       </div>
 
+      {isConsultant && (
       <Card style={dm.quickCard}>
         <SectionHeader title="Actions rapides" sub="Automatisations utiles maintenant" style={{ marginBottom: 10 }} />
         <div style={dm.quickGrid}>
@@ -285,6 +286,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
           <Btn variant="primary" small onClick={() => goTo('faq')} disabled={!canNavigate}>Ouvrir</Btn>
         </div>
       </Card>
+      )}
 
       {/* Planning du jour en liste simple */}
       <div style={dm.section}>
@@ -297,7 +299,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
               const enPoste = shift.pointageDebut && !shift.pointageFin;
               const termine = shift.pointageDebut && shift.pointageFin;
               const statut = enPoste ? { c: 'var(--success-text)', b: 'var(--success-bg)', t: 'En poste' }
-                          : termine ? { c: '#6b7280', b: '#f3f4f6', t: 'Terminé' }
+                          : termine ? { c: 'var(--text2)', b: 'var(--surface2)', t: 'Terminé' }
                           : { c: 'var(--warning-text)', b: 'var(--warning-bg)', t: 'À venir' };
               const typeLabel = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : '';
               return (
@@ -354,7 +356,7 @@ const dm = {
   pointageHead: { fontSize: 11, fontWeight: 700, color: 'var(--success-text)', letterSpacing: 0.5, marginBottom: 10 },
   errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
   pointageCard: { background: 'var(--surface)', border: '2px solid', borderRadius: 10, padding: 14, marginBottom: 8 },
-  noShiftCard: { background: 'var(--surface)', border: '2px dashed #d1d5db', borderRadius: 10, padding: '18px 14px', textAlign: 'center' },
+  noShiftCard: { background: 'var(--surface)', border: '2px dashed var(--border)', borderRadius: 10, padding: '18px 14px', textAlign: 'center' },
   pointageInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
   pointageLabel: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
   pointageTime: { fontSize: 13, fontWeight: 600, color: 'var(--text2)' },

@@ -19,7 +19,7 @@ const RULE_TYPE_LABELS = {
 const SEVERITY_CONFIG = {
   info:     { label: 'Info',      color: 'var(--color-info, var(--info-strong))',    bg: 'rgba(59,130,246,.1)' },
   warning:  { label: 'Attention', color: 'var(--color-warning, var(--warning-strong))', bg: 'rgba(245,158,11,.1)' },
-  critical: { label: 'Critique',  color: 'var(--color-error, #ef4444)',   bg: 'rgba(239,68,68,.1)'  },
+  critical: { label: 'Critique',  color: 'var(--color-error, var(--danger-strong))',   bg: 'rgba(239,68,68,.1)'  },
 };
 
 function formatRelativeTime(isoString) {

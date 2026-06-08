@@ -11,7 +11,7 @@ const SEUIL_ALERTE = 40;
 
 const SERVICES = [
   { key: 'couverts_midi',   label: 'Midi',   color: '#ea580c', bg: '#fff7ed' },
-  { key: 'couverts_soir',   label: 'Soir',   color: '#1d4ed8', bg: 'var(--info-bg-soft)' },
+  { key: 'couverts_soir',   label: 'Soir',   color: 'var(--info-text)', bg: 'var(--info-bg-soft)' },
   { key: 'couverts_brunch', label: 'Brunch', color: '#059669', bg: 'var(--success-bg-soft)' },
 ];
 
@@ -67,7 +67,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
           </div>
           <span style={{
             fontSize: 15, fontWeight: 800,
-            color: alerte ? '#b91c1c' : total > 0 ? 'var(--text)' : 'var(--text3)',
+            color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
             fontFamily: 'var(--font-serif)',
           }}>
             {total > 0 ? `${total} pax` : '—'}
@@ -90,7 +90,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
             {tags.slice(0, 3).map((t) => (
               <span key={t} style={{
                 padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-                background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)',
+                background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
                 fontFamily: 'var(--font)',
               }}>
                 {t}
@@ -139,7 +139,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
             <span key={key} style={{
               padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
               background: enAlerte ? 'var(--danger-bg)' : bg,
-              color:      enAlerte ? '#b91c1c' : color,
+              color:      enAlerte ? 'var(--danger-text)' : color,
               border: `1px solid ${enAlerte ? 'var(--danger-bd)' : 'transparent'}`,
               fontFamily: 'var(--font)',
             }}>
@@ -155,7 +155,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
         {tags.slice(0, 4).map((t) => (
           <span key={t} style={{
             padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-            background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)',
+            background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
             fontFamily: 'var(--font)',
           }}>
             {t}
@@ -170,7 +170,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
       <div style={{
         textAlign: 'right', fontSize: 16, fontWeight: 800,
         fontFamily: 'var(--font-serif)',
-        color: alerte ? '#b91c1c' : total > 0 ? 'var(--text)' : 'var(--text3)',
+        color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
       }}>
         {total > 0 ? total : '—'}
       </div>
@@ -225,7 +225,7 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
       {error && (
         <div style={{
           padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
-          border: '1px solid var(--danger-bd)', color: '#b91c1c', fontSize: 13,
+          border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>

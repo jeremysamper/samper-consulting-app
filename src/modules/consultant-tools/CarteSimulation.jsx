@@ -117,7 +117,7 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
           <span
             style={{
               ...cs.foodCostValue,
-              color: foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? '#d97706' : 'var(--danger-strong)',
+              color: foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)',
             }}
           >
             {foodCost.toFixed(1)}%

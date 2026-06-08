@@ -532,7 +532,7 @@ const st = {
   sheetStats: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   sheetItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: 'var(--text)' },
   sheetItemSkipped: { opacity: 0.55 },
-  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 8, background: '#ede9fe', color: '#5b21b6', fontSize: 10, fontWeight: 600 },
+  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 8, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', fontSize: 10, fontWeight: 600 },
 };
 
 export default CatalogueAiImporter;

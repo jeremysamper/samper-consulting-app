@@ -3,8 +3,8 @@ import { useState } from 'react';
 const TAG_GROUPS = [
   {
     label: 'Allergènes', type_tag: 'allergene',
-    color:       { bg: 'var(--danger-bg-soft)', text: '#b91c1c', border: 'var(--danger-bd)' },
-    colorActive: { bg: '#b91c1c', text: '#fff',    border: '#b91c1c' },
+    color:       { bg: 'var(--danger-bg-soft)', text: 'var(--danger-text)', border: 'var(--danger-bd)' },
+    colorActive: { bg: 'var(--danger-text)', text: '#fff',    border: 'var(--danger-text)' },
     tags: ['gluten', 'lactose', 'noix', 'fruits_de_mer'],
   },
   {
@@ -15,8 +15,8 @@ const TAG_GROUPS = [
   },
   {
     label: 'Occasions', type_tag: 'occasion',
-    color:       { bg: '#faf5ff', text: '#7c3aed', border: '#c4b5fd' },
-    colorActive: { bg: '#7c3aed', text: '#fff',    border: '#7c3aed' },
+    color:       { bg: 'var(--ai-bg-soft)', text: 'var(--ai-text)', border: 'var(--ai-bd)' },
+    colorActive: { bg: 'var(--ai-text)', text: '#fff',    border: 'var(--ai-text)' },
     tags: ['anniversaire', 'menu_fixe'],
   },
 ];

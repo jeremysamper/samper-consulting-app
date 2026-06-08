@@ -3,8 +3,8 @@ import React from 'react';
 const SCORE_COLORS = {
   1: 'var(--success-strong)',
   2: '#22c55e',
-  3: '#d97706',
-  4: '#ef4444',
+  3: 'var(--warning-strong)',
+  4: 'var(--danger-strong)',
   5: 'var(--danger-strong)',
 };
 
@@ -63,7 +63,7 @@ const cs = {
   scoreBars: { display: 'flex', gap: 3 },
   bar: { width: 14, height: 14, borderRadius: 3 },
   scoreNum: { fontSize: 13, fontWeight: 700, minWidth: 28, textAlign: 'right' },
-  alertIcon: { fontSize: 13, color: '#ef4444' },
+  alertIcon: { fontSize: 13, color: 'var(--danger-strong)' },
   justif: {
     fontSize: 11, color: 'var(--text2)',
     marginTop: 4, lineHeight: 1.45,

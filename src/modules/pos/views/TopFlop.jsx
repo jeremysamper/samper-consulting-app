@@ -34,7 +34,7 @@ function DeltaBadge({ delta, isNew }) {
     return (
       <span style={{
         fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
-        background: 'var(--info-bg)', color: '#1d4ed8',
+        background: 'var(--info-bg)', color: 'var(--info-text)',
       }}>
         Nouveau
       </span>

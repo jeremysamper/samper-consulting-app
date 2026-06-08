@@ -302,7 +302,7 @@ const Pertes = ({ user, etablissement }) => {
                 </div>
               </span>
               <span style={pts.cell}>
-                <span style={{...pts.badge, background:p.valide?'var(--success-bg)':'#fef9c3', color:p.valide?'var(--success-text)':'var(--warning-text)'}}>
+                <span style={{...pts.badge, background:p.valide?'var(--success-bg)':'var(--warning-bg)', color:p.valide?'var(--success-text)':'var(--warning-text)'}}>
                   {p.valide ? '✓ Validé' : '⏳ À valider'}
                 </span>
               </span>

@@ -56,7 +56,7 @@ const ScalingModal = ({ recette, onClose }) => {
         </div>
 
         {/* Méthode 1 : par portions */}
-        <div style={{ ...smStyle.method, background: useGramMode ? 'var(--bg)' : '#fefce8' }}>
+        <div style={{ ...smStyle.method, background: useGramMode ? 'var(--bg)' : 'var(--warning-bg-soft)' }}>
           <div style={smStyle.methodLabel}>Méthode 1 : Par nombre de portions</div>
           <div style={smStyle.methodInputs}>
             <span style={{ fontSize: 13, color: 'var(--text2)' }}>
@@ -76,7 +76,7 @@ const ScalingModal = ({ recette, onClose }) => {
         </div>
 
         {/* Méthode 2 : par quantité cible */}
-        <div style={{ ...smStyle.method, background: useGramMode ? '#fefce8' : 'var(--bg)' }}>
+        <div style={{ ...smStyle.method, background: useGramMode ? 'var(--warning-bg-soft)' : 'var(--bg)' }}>
           <div style={smStyle.methodLabel}>Méthode 2 : Par quantité cible d'un ingrédient</div>
           <div style={smStyle.methodInputs}>
             <span style={{ fontSize: 13, color: 'var(--text2)' }}>Avec</span>
@@ -112,7 +112,7 @@ const ScalingModal = ({ recette, onClose }) => {
             </div>
             <div style={{ fontSize: 12, color: 'var(--warning-text)' }}>→ {finalPortions} portion{finalPortions > 1 ? 's' : ''}</div>
             <button
-              style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
+              style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
               onClick={() => { setScalingPortions(''); setScalingTarget({ ingId: '', targetQty: '' }); }}
             >Réinitialiser</button>
           </div>
@@ -163,7 +163,7 @@ const smStyle = {
   methodInputs: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   numInput: { width: 80, padding: '7px 10px', border: '2px solid var(--border)', borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' },
   select: { padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 240, cursor: 'pointer' },
-  result: { padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  result: { padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid var(--warning-bd)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   tableHead: { display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '6px 20px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 },
   tableRow: { display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '9px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center' },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' },
@@ -531,7 +531,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
         </div>
         <div style={rs.detailBadges}>
           <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
-          {recette.foodCost && <span style={{...rs.badge, background: recette.foodCost < 30 ? 'var(--success-bg)' : recette.foodCost < 35 ? '#fef9c3' : 'var(--danger-bg)', color: recette.foodCost < 30 ? 'var(--success-text)' : recette.foodCost < 35 ? 'var(--warning-text)' : 'var(--danger-strong)'}}>FC {recette.foodCost.toFixed(1)}%</span>}
+          {recette.foodCost && <span style={{...rs.badge, background: recette.foodCost < 30 ? 'var(--success-bg)' : recette.foodCost < 35 ? 'var(--warning-bg)' : 'var(--danger-bg)', color: recette.foodCost < 30 ? 'var(--success-text)' : recette.foodCost < 35 ? 'var(--warning-text)' : 'var(--danger-strong)'}}>FC {recette.foodCost.toFixed(1)}%</span>}
         </div>
       </div>
 
@@ -573,7 +573,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
               <div style={rs.kpiGrid}>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Coût matière / portion</span><strong style={{color:'var(--accent)'}}>CHF {portions > 0 ? (coutAdj/portions).toFixed(2) : '-'}</strong></div>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Prix de vente</span><strong>CHF {(recette.prixVente || 0).toFixed(2)}</strong></div>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? 'var(--success-strong)' : recette.foodCost < 35 ? '#d97706' : 'var(--danger-strong)'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '-'}</strong></div>
+                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? 'var(--success-strong)' : recette.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '-'}</strong></div>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Marge brute</span><strong>CHF {((recette.prixVente || 0) - (portions > 0 ? coutAdj/portions : 0)).toFixed(2)}</strong></div>
               </div>
             </div>
@@ -971,7 +971,7 @@ const Recettes = ({ user, etablissement }) => {
                           )}
                           {user.role === 'consultant' && fcAgg != null && (
                             <div style={rs.fcLine}>
-                              Food cost agrégé : <strong style={{color: fcAgg < 30 ? 'var(--success-text)' : fcAgg < 35 ? '#d97706' : 'var(--danger-strong)'}}>{fcAgg.toFixed(1)}%</strong>
+                              Food cost agrégé : <strong style={{color: fcAgg < 30 ? 'var(--success-text)' : fcAgg < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{fcAgg.toFixed(1)}%</strong>
                               <span style={{ fontSize: 10, color: 'var(--text2)', marginLeft: 6 }}>(coût matière {coutTotalParPortion.toFixed(2)} / vente {plat.prixVente?.toFixed(2)})</span>
                             </div>
                           )}
@@ -1028,7 +1028,7 @@ const Recettes = ({ user, etablissement }) => {
                 {user.role === 'consultant' && (
                   <div style={rs.recetteKpis}>
                     <div style={rs.recetteKpi}><span>Coût/portion</span><strong>CHF {(r.coutPortion != null ? r.coutPortion : 0).toFixed(2)}</strong></div>
-                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? '#d97706' : 'var(--danger-strong)'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
+                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
                   </div>
                 )}
                 <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{r.statut}</span>
@@ -1125,7 +1125,7 @@ const rs = {
   recetteInfo: {flex:1,minWidth:0},
   thumb: { width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
   thumbPlaceholder: { width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 24, color: 'var(--text2)', flexShrink: 0 },
-  platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: '#fefce8', cursor: 'pointer' },
+  platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--warning-bg-soft)', cursor: 'pointer' },
   platName: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
   orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   recetteName: {fontSize:14,fontWeight:600,color:'var(--text)'},

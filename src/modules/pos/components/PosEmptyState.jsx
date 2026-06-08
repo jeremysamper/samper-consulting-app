@@ -23,7 +23,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
     return (
       <div style={{
         background:   'var(--danger-bg-soft)',
-        border:       '1px solid #fecaca',
+        border:       '1px solid var(--danger-bd)',
         borderRadius: 10,
         padding:      '20px 24px',
         display:      'flex',
@@ -32,7 +32,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
         gap: 12,
       }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#b91c1c', marginBottom: 2 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger-text)', marginBottom: 2 }}>
             Erreur de chargement
           </div>
           <div style={{ fontSize: 12, color: 'var(--danger-strong)' }}>{message ?? 'Une erreur est survenue.'}</div>

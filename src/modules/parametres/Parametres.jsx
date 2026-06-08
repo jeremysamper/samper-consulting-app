@@ -299,7 +299,7 @@ const Parametres = ({ user, etablissement }) => {
               <div style={ps.readField}>{user.poste}</div>
             </div>
           </div>
-          <div style={{ background:'var(--warning-bg-soft)', border:'1px solid #fde68a', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--warning-text)' }}>
+          <div style={{ background:'var(--warning-bg-soft)', border:'1px solid var(--warning-bd)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--warning-text)' }}>
             🔐 Mot de passe et identifiants gérés par l'administrateur Samper Consulting.
           </div>
         </div>
@@ -359,7 +359,7 @@ const Parametres = ({ user, etablissement }) => {
                       {isCustomised && (
                         <span style={{
                           fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:20,
-                          background:'var(--info-bg-soft)', color:'#1d4ed8', border:'1px solid #bfdbfe',
+                          background:'var(--info-bg-soft)', color:'var(--info-text)', border:'1px solid #bfdbfe',
                         }}>
                           personnalisé
                         </span>
@@ -383,7 +383,7 @@ const Parametres = ({ user, etablissement }) => {
                     </button>
                     {isCustomised && (
                       <button
-                        style={{ ...ps.ghostBtn, color:'var(--warning-text)', borderColor:'#fde68a' }}
+                        style={{ ...ps.ghostBtn, color:'var(--warning-text)', borderColor:'var(--warning-bd)' }}
                         onClick={() => resetLabelItem(item.id)}
                         title={`Rétablir "${item.label}"`}
                       >
@@ -462,7 +462,7 @@ const ps = {
   etabInfo: { flex:1, minWidth:200 },
   etabNom: { fontSize:14, fontWeight:600, color:'var(--text)', display:'flex', alignItems:'center', gap:8 },
   etabMeta: { fontSize:12, color:'var(--text2)', marginTop:2 },
-  inactifBadge: { fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10, background:'#f3f4f6', color:'#6b7280' },
+  inactifBadge: { fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10, background:'var(--surface2)', color:'var(--text2)' },
   ghostBtn: { padding:'7px 14px', background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'var(--font)' },
   field: { display:'flex', flexDirection:'column', gap:4 },
   fLabel: { fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4 },

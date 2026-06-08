@@ -547,7 +547,7 @@ const Documents = ({ user, etablissement }) => {
                 <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {previewing.doc.nom}
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: 'var(--border2)', marginTop: 2 }}>
                   {isPDF ? 'PDF' : isImage ? 'Image' : 'Fichier'} · Cliquez à l'extérieur pour fermer
                 </div>
               </div>

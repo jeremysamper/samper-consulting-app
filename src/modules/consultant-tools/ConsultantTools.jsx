@@ -974,7 +974,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           <div style={{ display: 'flex', gap: 6 }}>
             <button style={{ ...cts.newBtn, flex: 1 }} onClick={createNew}>+ Recette</button>
             <button
-              style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid #fde68a' }}
+              style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}
               onClick={() => { setEditPlat(null); setShowPlatForm(true); }}
             >+ Plat</button>
           </div>
@@ -1012,7 +1012,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             </div>
           )}
           <button
-            style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+            style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
             onClick={detecterAllergenesToutes}
             disabled={!!bulkAllergenProgress}
           >✨ Allergènes IA — toutes les recettes</button>
@@ -1069,7 +1069,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={cts.recItemMeta}>
                   {r.categorie} · {r.portions || '?'} p. · v{r.version || 1}
                   {r.foodCost && (
-                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? '#d97706' : 'var(--danger-strong)', fontWeight: 600 }}>
+                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 600 }}>
                       {' '}FC {r.foodCost.toFixed(1)}%
                     </span>
                   )}
@@ -1177,7 +1177,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           {pendingDrafts.length > 0 && (
             <div className="no-print" style={{
               margin: '0 0 10px', padding: '10px 14px', borderRadius: 8,
-              background: 'var(--warning-bg)', border: '1px solid #fde68a',
+              background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)',
               display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
               <span style={{ fontSize: 13, color: 'var(--warning-text)', flex: 1, minWidth: 200 }}>
@@ -1195,7 +1195,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={duplicate}><Copy size={14} /> Dupliquer</button>
               <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: '#fde68a' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' }}
                 onClick={() => setLinkPlatPickerForRecette(selected.id)}
               >
                 <UtensilsCrossed size={14} /> Rattacher à un plat
@@ -1206,12 +1206,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </button>
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
               <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
                 onClick={genererHaccpIA}
                 disabled={haccpAiBusy}
               ><ShieldCheck size={14} /> {haccpAiBusy ? 'Analyse HACCP…' : 'Analyse HACCP (IA)'}</button>
               <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
                 onClick={suggererIA}
                 disabled={suggestAiBusy}
               ><Sparkles size={14} /> {suggestAiBusy ? 'Suggestions…' : 'Suggestions (IA)'}</button>
@@ -1239,7 +1239,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <button onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
-                  <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
                     Généré par IA — à valider par un responsable avant utilisation.
                   </div>
                   {(haccpResult.points || []).length === 0 && (
@@ -1250,7 +1250,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '—'}</span>
                         <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '—'}</span>
-                        {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: '#b91c1c' }}>CCP</span>}
+                        {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>CCP</span>}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>⚠ {p.danger || '—'}</div>
                       {p.mesure && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Maîtrise : {p.mesure}</div>}
@@ -1364,7 +1364,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div style={{...cts.inlineField, marginLeft:'auto'}}>
                     <label style={{fontSize:11, fontWeight:600, color:'var(--success-text)'}}>Publier sur la carte active</label>
-                    <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'6px 10px', background: isRecetteActive(selected) ? 'var(--success-bg)' : '#f3f4f6', border:'1px solid', borderColor: isRecetteActive(selected) ? 'var(--success-bd)' : 'var(--border)', borderRadius:8}}>
+                    <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'6px 10px', background: isRecetteActive(selected) ? 'var(--success-bg)' : 'var(--surface2)', border:'1px solid', borderColor: isRecetteActive(selected) ? 'var(--success-bd)' : 'var(--border)', borderRadius:8}}>
                       <input type="checkbox"
                         checked={isRecetteActive(selected)}
                         onChange={e => toggleActifSurCarte(selected, e.target.checked)}
@@ -1421,7 +1421,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Food cost %</span>
-                    <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? '#d97706' : 'var(--danger-strong)' }}>
+                    <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)' }}>
                       {foodCost == null ? '—' : foodCost.toFixed(1) + ' %'}
                     </strong>
                   </div>
@@ -1443,7 +1443,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     style={{
                       padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
                       fontFamily: 'var(--font)', cursor: allergenAiBusy ? 'wait' : 'pointer',
-                      background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6',
+                      background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)',
                       opacity: allergenAiBusy ? 0.6 : 1,
                     }}
                   >{allergenAiBusy ? '✨ Analyse…' : '✨ Détecter (IA)'}</button>
@@ -1463,7 +1463,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         style={{
                           padding: '5px 12px',
                           borderRadius: 20,
-                          border: active ? '1px solid #d97706' : '1px solid var(--border)',
+                          border: active ? '1px solid var(--warning-strong)' : '1px solid var(--border)',
                           background: active ? 'var(--warning-bg)' : 'var(--surface)',
                           color: active ? 'var(--warning-text)' : 'var(--text2)',
                           fontSize: 12,
@@ -1486,7 +1486,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {(selected.ingredients || []).length > 0 && (
                       <button
-                        style={{ padding: '5px 12px', background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 7, color: 'var(--warning-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' }}
+                        style={{ padding: '5px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 7, color: 'var(--warning-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' }}
                         onClick={() => setShowScalingModal(true)}
                       >
                         ⚖ Calculer
@@ -1737,7 +1737,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 {/* Avertissement plats impactés */}
                 {platsImpactes.length > 0 && (
                   <div style={{
-                    background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 8,
+                    background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8,
                     padding: 12, marginBottom: 14,
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 6 }}>
@@ -2124,7 +2124,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </div>
 
               {/* ─── Mode 1 : par portions ─── */}
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? 'var(--bg)' : '#fefce8', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? 'var(--bg)' : 'var(--warning-bg-soft)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
                   Méthode 1 — Par nombre de portions
                 </div>
@@ -2146,7 +2146,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </div>
 
               {/* ─── Mode 2 : par grammage cible ─── */}
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? '#fefce8' : 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? 'var(--warning-bg-soft)' : 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
                   Méthode 2 — Par quantité cible d'un ingrédient
                 </div>
@@ -2180,7 +2180,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
               {/* Bandeau de résultat */}
               {isScaled && (
-                <div style={{ padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid var(--warning-bd)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)' }}>
                     Facteur appliqué : × {ratio < 1 ? ratio.toFixed(3) : Number.isInteger(ratio) ? ratio : ratio.toFixed(2)}
                   </div>
@@ -2188,7 +2188,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     → équivaut à {finalPortions} portion{finalPortions > 1 ? 's' : ''}
                   </div>
                   <button
-                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
+                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
                     onClick={() => { setScalingPortions(''); setScalingTarget({ ingId: '', targetQty: '' }); }}
                   >
                     Réinitialiser

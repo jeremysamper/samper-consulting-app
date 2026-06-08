@@ -158,7 +158,7 @@ const s = {
   td: { padding: '6px 10px', verticalAlign: 'middle' },
   inp: { padding: '5px 7px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
   issueBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)' },
-  confBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: 'var(--danger-bg)', color: '#b91c1c' },
+  confBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: 'var(--danger-bg)', color: 'var(--danger-text)' },
   okBadge: { fontSize: 11, fontWeight: 600, color: 'var(--success-text)' },
   dupBox: { display: 'flex', flexDirection: 'column', gap: 3, padding: '5px 7px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 7 },
   dupInfo: { fontSize: 10, color: '#9a3412', lineHeight: 1.35 },

@@ -25,7 +25,7 @@ export function SimulationResults({
   }
 
   const charge = Number(chargeBrigade) || 0;
-  const chargeColor = charge >= 85 ? 'var(--danger-strong)' : charge >= 65 ? '#d97706' : 'var(--success-strong)';
+  const chargeColor = charge >= 85 ? 'var(--danger-strong)' : charge >= 65 ? 'var(--warning-strong)' : 'var(--success-strong)';
   const scoreMoyenDisplay = typeof scoreMoyen === 'number' ? scoreMoyen.toFixed(1) : '—';
 
   return (

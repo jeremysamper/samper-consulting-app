@@ -510,7 +510,7 @@ const Inventaire = ({ user, etablissement }) => {
           <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
             {(inventaires || []).map(i => <option key={i.id} value={i.id}>Inventaire {i.date} — {i.statut}</option>)}
           </select>
-          <span style={{...invs.badge, background: inv.statut==='validé' ? 'var(--success-bg)' : '#fef9c3', color: inv.statut==='validé' ? 'var(--success-text)' : 'var(--warning-text)'}}>{inv.statut === 'validé' ? '✓ Validé' : '⏳ En cours'}</span>
+          <span style={{...invs.badge, background: inv.statut==='validé' ? 'var(--success-bg)' : 'var(--warning-bg)', color: inv.statut==='validé' ? 'var(--success-text)' : 'var(--warning-text)'}}>{inv.statut === 'validé' ? '✓ Validé' : '⏳ En cours'}</span>
         </div>
         <div style={invs.headerRight} className="desktop-toolbar">
           {canManage && <button style={invs.addBtn} onClick={() => setShowNew(true)}>+ Nouvel inventaire</button>}

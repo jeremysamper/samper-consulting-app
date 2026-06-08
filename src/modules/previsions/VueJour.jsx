@@ -9,13 +9,13 @@ import ReservationForm from './ReservationForm.jsx';
 const SERVICES_ORDER = ['midi', 'soir', 'brunch'];
 const SERVICE_META = {
   midi:   { label: 'Midi',   color: '#ea580c' },
-  soir:   { label: 'Soir',   color: '#1d4ed8' },
+  soir:   { label: 'Soir',   color: 'var(--info-text)' },
   brunch: { label: 'Brunch', color: '#059669' },
 };
 const TAG_COLORS = {
-  allergene: { bg: 'var(--danger-bg-soft)', color: '#b91c1c', border: 'var(--danger-bd)' },
+  allergene: { bg: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: 'var(--danger-bd)' },
   regime:    { bg: 'var(--success-bg-soft)', color: 'var(--success-text)', border: 'var(--success-bd)' },
-  occasion:  { bg: '#faf5ff', color: '#7c3aed', border: '#c4b5fd' },
+  occasion:  { bg: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: 'var(--ai-bd)' },
   autre:     { bg: 'var(--surface)', color: 'var(--text)', border: 'var(--border)' },
 };
 
@@ -59,7 +59,7 @@ function ResaCard({ resa, isMobile, onClick }) {
           {resa.est_groupe && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-              background: 'var(--info-bg-soft)', color: '#1d4ed8', border: '1px solid #bfdbfe',
+              background: 'var(--info-bg-soft)', color: 'var(--info-text)', border: '1px solid #bfdbfe',
             }}>
               Groupe
             </span>
@@ -157,7 +157,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
       {error && (
         <div style={{
           padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
-          border: '1px solid var(--danger-bd)', color: '#b91c1c', fontSize: 13,
+          border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>

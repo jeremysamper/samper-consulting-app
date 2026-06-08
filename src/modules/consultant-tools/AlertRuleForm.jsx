@@ -15,7 +15,7 @@ const RULE_TYPES = [
 const SEVERITIES = [
   { id: 'info',     label: 'Info',     color: 'var(--color-info, var(--info-strong))'    },
   { id: 'warning',  label: 'Attention',color: 'var(--color-warning, var(--warning-strong))' },
-  { id: 'critical', label: 'Critique', color: 'var(--color-error, #ef4444)'   },
+  { id: 'critical', label: 'Critique', color: 'var(--color-error, var(--danger-strong))'   },
 ];
 
 const DAYS = [
@@ -37,7 +37,7 @@ const TOTAL_STEPS = 4;
 function Field({ label, children, required }) {
   return (
     <div style={{ ...cts.field, marginBottom: 14 }}>
-      <label style={cts.label}>{label}{required && <span style={{ color: 'var(--color-error, #ef4444)' }}> *</span>}</label>
+      <label style={cts.label}>{label}{required && <span style={{ color: 'var(--color-error, var(--danger-strong))' }}> *</span>}</label>
       {children}
     </div>
   );
@@ -497,7 +497,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
                   ))}
                 </div>
                 {form.target_roles.length === 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--color-error, #ef4444)', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-error, var(--danger-strong))', marginTop: 4 }}>
                     Sélectionnez au moins un rôle.
                   </div>
                 )}

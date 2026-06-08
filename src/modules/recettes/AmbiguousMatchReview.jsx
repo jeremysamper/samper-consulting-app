@@ -37,7 +37,7 @@ const panel = {
 };
 const chip = (conf) => ({
   fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10,
-  background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : '#f3f4f6',
+  background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : 'var(--surface2)',
   color: conf >= 85 ? 'var(--success-text)' : conf >= 60 ? 'var(--warning-text)' : 'var(--text2)',
 });
 
@@ -201,7 +201,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                     style={{
                       padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
                       cursor: (busy || aiBusy) ? 'wait' : 'pointer',
-                      background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6', fontWeight: 700,
+                      background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)', fontWeight: 700,
                     }}
                   >✨ IA</button>
                   <button

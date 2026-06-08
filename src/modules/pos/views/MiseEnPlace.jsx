@@ -39,7 +39,7 @@ function ReliableBadge({ reliable, occurrences }) {
       fontWeight:   600,
       padding:      '2px 8px',
       borderRadius: 12,
-      background:   '#fef9c3',
+      background:   'var(--warning-bg)',
       color:        'var(--warning-text)',
       whiteSpace:   'nowrap',
       flexShrink:   0,

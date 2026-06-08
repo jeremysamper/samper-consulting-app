@@ -46,7 +46,7 @@ export const cts = {
   ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   ingRow: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', alignItems: 'center' },
   ingInput: { padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
-  scalingBar: { margin: '0 14px 8px', padding: '14px 16px', background: '#fefce8', border: '1px solid #fde68a', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 },
+  scalingBar: { margin: '0 14px 8px', padding: '14px 16px', background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 },
   scalingBlock: { display: 'flex', flexDirection: 'column', gap: 4 },
   scalingBlockLabel: { fontSize: 10, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   suggestions: { position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: '0 0 8px 8px', zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxHeight: 200, overflowY: 'auto' },

@@ -153,7 +153,7 @@ export default function LightspeedSetupGuide({ onClose }) {
               </div>
               <div style={{
                 fontSize: 12, color: 'var(--warning-text)',
-                background: '#fefce8', border: '1px solid #fde68a',
+                background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>
                 ⚠ Note le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création

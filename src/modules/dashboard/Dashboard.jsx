@@ -202,7 +202,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         </div>
         <div style={ds.headerRight}>
           <Btn variant="ghost" small onClick={() => goTo('documents')} disabled={!canNavigate}>Rapport</Btn>
-          <Btn variant="primary" small onClick={() => goTo('faq')} disabled={!canNavigate}>Assistant</Btn>
+          {isConsultant && <Btn variant="primary" small onClick={() => goTo('faq')} disabled={!canNavigate}>Assistant</Btn>}
           {etablissement && <div style={ds.etabBadge}>{etablissement.nom}</div>}
         </div>
       </div>
@@ -216,7 +216,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
             <div style={{ fontSize: 38, opacity: 0.4, marginBottom: 8 }}>📅</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Pas de shift programmé aujourd'hui</div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>Profitez bien de votre journée !</div>
-            <button style={{ ...ds.bigActionBtn, background: '#d1d5db', cursor: 'not-allowed', marginTop: 14 }} disabled>
+            <button style={{ ...ds.bigActionBtn, background: 'var(--border)', cursor: 'not-allowed', marginTop: 14 }} disabled>
               ⏱ Aucun pointage à effectuer
             </button>
           </div>
@@ -232,8 +232,8 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
               const cardStyle = {
                 ...ds.myShiftCard,
-                background: enPoste ? 'var(--success-bg)' : termine ? '#f3f4f6' : pasCommence ? 'var(--warning-bg)' : 'var(--surface)',
-                borderColor: enPoste ? 'var(--success-strong)' : termine ? '#9ca3af' : pasCommence ? 'var(--warning-strong)' : 'var(--border)',
+                background: enPoste ? 'var(--success-bg)' : termine ? 'var(--surface2)' : pasCommence ? 'var(--warning-bg)' : 'var(--surface)',
+                borderColor: enPoste ? 'var(--success-strong)' : termine ? 'var(--border2)' : pasCommence ? 'var(--warning-strong)' : 'var(--border)',
               };
 
               return (
@@ -354,6 +354,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         />
       </div>
 
+      {isConsultant && (
       <div style={ds.midGrid}>
         <Card>
           <SectionHeader
@@ -401,6 +402,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
           </div>
         </Card>
       </div>
+      )}
 
       {/* KPIs */}
       <div style={ds.kpiGrid}>
@@ -440,7 +442,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
               const enPoste = shift.pointageDebut && !shift.pointageFin;
               const termine = shift.pointageDebut && shift.pointageFin;
               const statut = enPoste ? { label: '✓ En poste', color: 'var(--success-text)', bg: 'var(--success-bg)' }
-                          : termine ? { label: 'Terminé', color: '#6b7280', bg: '#f3f4f6' }
+                          : termine ? { label: 'Terminé', color: 'var(--text2)', bg: 'var(--surface2)' }
                           : { label: 'À venir', color: 'var(--warning-text)', bg: 'var(--warning-bg)' };
               const typeLabel = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : '';
               return (
@@ -652,7 +654,7 @@ const ds = {
   pointageSectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--success-text)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 12 },
   errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
   myShiftsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 },
-  noShiftCard: { background: 'var(--surface)', border: '2px dashed #d1d5db', borderRadius: 10, padding: '22px 18px', textAlign: 'center' },
+  noShiftCard: { background: 'var(--surface)', border: '2px dashed var(--border)', borderRadius: 10, padding: '22px 18px', textAlign: 'center' },
   myShiftCard: { background: 'var(--surface)', border: '2px solid var(--border)', borderRadius: 10, padding: 16, transition: 'border 0.15s' },
   myShiftHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, flexWrap: 'wrap', gap: 6 },
   myShiftLabel: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },

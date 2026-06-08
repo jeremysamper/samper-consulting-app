@@ -20,8 +20,8 @@ const ALLERGENES_LABELS = {
   sesame:'Sésame', mollusques:'Mollusques', lupin:'Lupin',
 };
 const ALLERGENES_COLORS = {
-  gluten:'var(--warning-text)', lactose:'#0369a1', oeufs:'#d97706', poissons:'#0891b2',
-  crustaces:'var(--danger-strong)', fruits_coque:'#7c3aed', sulfites:'#4f7942',
+  gluten:'var(--warning-text)', lactose:'#0369a1', oeufs:'var(--warning-strong)', poissons:'#0891b2',
+  crustaces:'var(--danger-strong)', fruits_coque:'var(--ai-text)', sulfites:'#4f7942',
   arachides:'#c2410c', soja:'#059669', celeri:'#84cc16', moutarde:'#ca8a04',
   sesame:'#f97316', mollusques:'#8b5cf6', lupin:'#ec4899',
 };
@@ -140,6 +140,7 @@ const FichesSalle = ({ user, etablissement }) => {
   const sel = useSelection();
 
   const canEdit = canManageModule(user.role, 'fiches_salle');
+  const isConsultant = user.role === 'consultant';
   const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
 
@@ -366,9 +367,11 @@ const FichesSalle = ({ user, etablissement }) => {
             {fiches.length > 0 && (
               <button style={fss.selectBtn} onClick={sel.enter}>Sélectionner</button>
             )}
+            {isConsultant && (
             <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
               Générer fiches salle (IA)
             </button>
+            )}
             <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche salle</button>
           </div>
         )}
@@ -451,7 +454,7 @@ const FichesSalle = ({ user, etablissement }) => {
               {f.allergenes?.length > 0 && (
                 <div style={fss.allergenesRow}>
                   {(f.allergenes || []).map(a=>(
-                    <span key={a} style={{...fss.allergeneBadge, background:(ALLERGENES_COLORS[a]||'#6b7280')+'22', color:ALLERGENES_COLORS[a]||'#6b7280'}}>
+                    <span key={a} style={{...fss.allergeneBadge, background:(ALLERGENES_COLORS[a]||'var(--text2)')+'22', color:ALLERGENES_COLORS[a]||'var(--text2)'}}>
                       {ALLERGENES_LABELS[a]||a}
                     </span>
                   ))}
@@ -471,7 +474,7 @@ const FichesSalle = ({ user, etablissement }) => {
       {canEdit && !sel.active && (
         <BottomActionBar
           actions={[
-            { label: 'Générer IA', icon: Sparkles, onClick: genererFichesSalleIA, disabled: !!bulkProgress },
+            isConsultant ? { label: 'Générer IA', icon: Sparkles, onClick: genererFichesSalleIA, disabled: !!bulkProgress } : null,
             fiches.length > 0 ? { label: 'Sélection', icon: ListChecks, onClick: sel.enter } : null,
           ].filter(Boolean)}
           primaryAction={{ label: 'Nouvelle fiche', icon: Plus, onClick: () => openEdit(null) }}
@@ -542,7 +545,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
             </div>
           ) : <div style={{fontSize:13,color:'var(--success-text)',marginTop:8}}>✓ Aucun allergène majeur déclaré</div>}
           {fiche.infosService && (
-            <div style={{marginTop:14,padding:'10px 12px',background:'var(--warning-bg-soft)',border:'1px solid #fde68a',borderRadius:8,fontSize:12,color:'var(--warning-text)',lineHeight:1.5}}>
+            <div style={{marginTop:14,padding:'10px 12px',background:'var(--warning-bg-soft)',border:'1px solid var(--warning-bd)',borderRadius:8,fontSize:12,color:'var(--warning-text)',lineHeight:1.5}}>
               <strong>Info service :</strong> {fiche.infosService}
             </div>
           )}
@@ -742,7 +745,7 @@ const fss = {
   catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
-  aiBtn:{padding:'8px 16px',background:'#ede9fe',color:'#5b21b6',border:'1px solid #c4b5fd',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   serverBanner:{background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',gap:14},
   grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14},

@@ -33,7 +33,7 @@ export function Btn({
   const variants = {
     primary: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
     ghost: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
-    danger: { background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)' },
+    danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
     success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' },
     tab: { background: 'transparent', color: 'var(--text2)', border: 'none', borderBottom: '2px solid transparent', borderRadius: 0 },
     tabActive: { background: 'transparent', color: 'var(--accent)', border: 'none', borderBottom: '2px solid var(--accent)', borderRadius: 0 }
@@ -133,7 +133,7 @@ export function KpiCard({ label, value, sub, delta, color, chart, style = {} }) 
           {value}
         </div>
         {delta !== undefined ? (
-          <div style={{ fontSize: 12, fontWeight: 700, color: Number(delta) >= 0 ? 'var(--success-text)' : '#b91c1c', marginBottom: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: Number(delta) >= 0 ? 'var(--success-text)' : 'var(--danger-text)', marginBottom: 2 }}>
             {Number(delta) >= 0 ? '+' : ''}{delta}
           </div>
         ) : null}
