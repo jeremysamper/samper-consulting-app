@@ -20,8 +20,8 @@ const ALLERGENES_LABELS = {
   sesame:'Sésame', mollusques:'Mollusques', lupin:'Lupin',
 };
 const ALLERGENES_COLORS = {
-  gluten:'#92400e', lactose:'#0369a1', oeufs:'#d97706', poissons:'#0891b2',
-  crustaces:'#dc2626', fruits_coque:'#7c3aed', sulfites:'#4f7942',
+  gluten:'var(--warning-text)', lactose:'#0369a1', oeufs:'#d97706', poissons:'#0891b2',
+  crustaces:'var(--danger-strong)', fruits_coque:'#7c3aed', sulfites:'#4f7942',
   arachides:'#c2410c', soja:'#059669', celeri:'#84cc16', moutarde:'#ca8a04',
   sesame:'#f97316', mollusques:'#8b5cf6', lupin:'#ec4899',
 };
@@ -399,7 +399,7 @@ const FichesSalle = ({ user, etablissement }) => {
               <div style={{height:'100%',width:`${bulkProgress.total?(bulkProgress.done/bulkProgress.total)*100:0}%`,background:'var(--accent)',transition:'width 0.2s'}}/>
             </div>
             <div style={{display:'flex',justifyContent:'flex-end'}}>
-              <button style={{...fss.cancelBtn,color:'#dc2626',borderColor:'#fca5a5'}} onClick={()=>{bulkCancelRef.current=true;}}>Annuler</button>
+              <button style={{...fss.cancelBtn,color:'var(--danger-strong)',borderColor:'var(--danger-bd)'}} onClick={()=>{bulkCancelRef.current=true;}}>Annuler</button>
             </div>
           </div>
         </div>
@@ -459,7 +459,7 @@ const FichesSalle = ({ user, etablissement }) => {
               )}
               <div style={fss.cardFooter}>
                 <span style={fss.tempBadge}>⏱ {f.tempsPreparation}</span>
-                <span style={{...fss.statutBadge,background:f.statut==='active'?'#dcfce7':'#f1f5f9',color:f.statut==='active'?'#15803d':'var(--text2)'}}>{f.statut==='active'?'Active':'Brouillon'}</span>
+                <span style={{...fss.statutBadge,background:f.statut==='active'?'var(--success-bg)':'#f1f5f9',color:f.statut==='active'?'var(--success-text)':'var(--text2)'}}>{f.statut==='active'?'Active':'Brouillon'}</span>
                 <span style={fss.accordCount}>{f.accords?.length||0} accord{f.accords?.length!==1?'s':''}</span>
               </div>
             </div>
@@ -540,9 +540,9 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
                 </div>
               ))}
             </div>
-          ) : <div style={{fontSize:13,color:'#15803d',marginTop:8}}>✓ Aucun allergène majeur déclaré</div>}
+          ) : <div style={{fontSize:13,color:'var(--success-text)',marginTop:8}}>✓ Aucun allergène majeur déclaré</div>}
           {fiche.infosService && (
-            <div style={{marginTop:14,padding:'10px 12px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,fontSize:12,color:'#92400e',lineHeight:1.5}}>
+            <div style={{marginTop:14,padding:'10px 12px',background:'var(--warning-bg-soft)',border:'1px solid #fde68a',borderRadius:8,fontSize:12,color:'var(--warning-text)',lineHeight:1.5}}>
               <strong>Info service :</strong> {fiche.infosService}
             </div>
           )}
@@ -656,7 +656,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => 
                   {recettes.map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
                 </select>
                 {fiche?.recetteId && (
-                  <div style={{ fontSize: 11, color: '#15803d', marginTop: 4, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--success-text)', marginTop: 4, fontWeight: 600 }}>
                     ✓ Allergènes importés depuis la recette
                   </div>
                 )}
@@ -668,7 +668,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => 
               <label style={fss.fLabel}>
                 Allergènes
                 {fiche?.allergenes?.length > 0 && (
-                  <span style={{ marginLeft: 8, color: '#92400e', fontWeight: 700 }}>
+                  <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700 }}>
                     ⚠ {fiche.allergenes.length} actif{fiche.allergenes.length > 1 ? 's' : ''}
                   </span>
                 )}
@@ -767,7 +767,7 @@ const fss = {
   detailCat:{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
   detailTitre:{fontSize:22,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)',marginTop:2},
   editBtn:{padding:'6px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'6px 14px',background:'none',border:'1px solid #fca5a5',borderRadius:7,fontSize:12,fontWeight:600,color:'#dc2626',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{padding:'6px 14px',background:'none',border:'1px solid var(--danger-bd)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
   detailGrid:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14},
   detailCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'16px 18px'},
   detailCardTitle:{fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'},

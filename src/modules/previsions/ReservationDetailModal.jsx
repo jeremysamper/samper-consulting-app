@@ -106,7 +106,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
                     key={`${t.type_tag}-${t.valeur}`}
                     style={{
                       padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                      background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5',
+                      background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)',
                       fontFamily: 'var(--font)',
                     }}
                   >
@@ -141,7 +141,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
                   type="button" onClick={() => setShowConfirm(true)}
                   style={{
                     padding: '9px 18px', borderRadius: 8,
-                    border: '1px solid #fca5a5', background: '#fef2f2',
+                    border: '1px solid var(--danger-bd)', background: 'var(--danger-bg-soft)',
                     color: '#b91c1c', cursor: 'pointer',
                     fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
                   }}
@@ -168,8 +168,8 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
         {/* Footer — état confirmation */}
         {showConfirm && (
           <div style={{
-            padding: '14px 18px', borderTop: '1px solid #fca5a5',
-            background: '#fef2f2', display: 'flex', flexDirection: 'column', gap: 10,
+            padding: '14px 18px', borderTop: '1px solid var(--danger-bd)',
+            background: 'var(--danger-bg-soft)', display: 'flex', flexDirection: 'column', gap: 10,
             borderRadius: '0 0 14px 14px',
           }}>
             <div style={{ fontSize: 13, color: '#b91c1c', fontWeight: 600, lineHeight: 1.4 }}>
@@ -195,7 +195,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
                 style={{
                   padding: '8px 16px', borderRadius: 8,
                   border: '1px solid #b91c1c',
-                  background: deleting ? '#fca5a5' : '#b91c1c',
+                  background: deleting ? 'var(--danger-bd)' : '#b91c1c',
                   color: '#fff', cursor: deleting ? 'not-allowed' : 'pointer',
                   fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
                   opacity: deleting ? 0.7 : 1,

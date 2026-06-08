@@ -13,8 +13,8 @@ const SERVICE_META = {
   brunch: { label: 'Brunch', color: '#059669' },
 };
 const TAG_COLORS = {
-  allergene: { bg: '#fef2f2', color: '#b91c1c', border: '#fca5a5' },
-  regime:    { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
+  allergene: { bg: 'var(--danger-bg-soft)', color: '#b91c1c', border: 'var(--danger-bd)' },
+  regime:    { bg: 'var(--success-bg-soft)', color: 'var(--success-text)', border: 'var(--success-bd)' },
   occasion:  { bg: '#faf5ff', color: '#7c3aed', border: '#c4b5fd' },
   autre:     { bg: 'var(--surface)', color: 'var(--text)', border: 'var(--border)' },
 };
@@ -59,7 +59,7 @@ function ResaCard({ resa, isMobile, onClick }) {
           {resa.est_groupe && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-              background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
+              background: 'var(--info-bg-soft)', color: '#1d4ed8', border: '1px solid #bfdbfe',
             }}>
               Groupe
             </span>
@@ -156,8 +156,8 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
       {/* ── Erreur ── */}
       {error && (
         <div style={{
-          padding: '10px 14px', borderRadius: 8, background: '#fef2f2',
-          border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13,
+          padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
+          border: '1px solid var(--danger-bd)', color: '#b91c1c', fontSize: 13,
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>

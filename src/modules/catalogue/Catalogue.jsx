@@ -531,7 +531,7 @@ const Catalogue = ({ user, etablissement }) => {
                         {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                       </select>
                       <button
-                        style={{ ...cat.miniBtn, color: '#dc2626', borderColor: '#fca5a5' }}
+                        style={{ ...cat.miniBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
                         onClick={async () => {
                           if (!confirmLegacy(
                             `Supprimer définitivement ${selected.size} produit${selected.size > 1 ? 's' : ''} sélectionné${selected.size > 1 ? 's' : ''} ?\n\n` +
@@ -628,7 +628,7 @@ const Catalogue = ({ user, etablissement }) => {
                           {canWrite && (
                             <>
                               <button style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }}>✎</button>
-                              <button style={{ ...cat.miniBtn, color: '#dc2626' }} onClick={() => deleteProd(p.id)}>🗑</button>
+                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)' }} onClick={() => deleteProd(p.id)}>🗑</button>
                             </>
                           )}
                         </td>
@@ -672,7 +672,7 @@ const Catalogue = ({ user, etablissement }) => {
                         {canWrite && (
                           <>
                             <button style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }}>✎</button>
-                            <button style={{ ...cat.miniBtn, color: '#dc2626' }} onClick={() => deleteFourn(f.id)}>🗑</button>
+                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)' }} onClick={() => deleteFourn(f.id)}>🗑</button>
                           </>
                         )}
                       </td>
@@ -866,9 +866,9 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     style={{
                       padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600,
                       cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid',
-                      background: active ? '#fef3c7' : 'var(--bg)',
-                      borderColor: active ? '#f59e0b' : 'var(--border)',
-                      color: active ? '#92400e' : 'var(--text2)',
+                      background: active ? 'var(--warning-bg)' : 'var(--bg)',
+                      borderColor: active ? 'var(--warning-strong)' : 'var(--border)',
+                      color: active ? 'var(--warning-text)' : 'var(--text2)',
                     }}
                     onClick={() => up('allergenes', active
                       ? (form.allergenes || []).filter(x => x !== a.id)
@@ -881,7 +881,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               })}
             </div>
             {(form.allergenes || []).length > 0 && (
-              <div style={{ fontSize: 11, color: '#92400e', marginTop: 6, fontWeight: 600 }}>
+              <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6, fontWeight: 600 }}>
                 ⚠ {(form.allergenes || []).length} allergène{(form.allergenes || []).length > 1 ? 's' : ''} sélectionné{(form.allergenes || []).length > 1 ? 's' : ''}
               </div>
             )}
@@ -1060,17 +1060,17 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
 
         {/* KPIs */}
         <div style={ipm.kpisRow}>
-          <div style={{ ...ipm.kpiBox, borderColor: '#16a34a' }}>
+          <div style={{ ...ipm.kpiBox, borderColor: 'var(--success-strong)' }}>
             <div style={ipm.kpiLabel}>✓ Nouveaux</div>
-            <div style={{ ...ipm.kpiValue, color: '#16a34a' }}>{newItems.length}</div>
+            <div style={{ ...ipm.kpiValue, color: 'var(--success-strong)' }}>{newItems.length}</div>
           </div>
           <div style={{ ...ipm.kpiBox, borderColor: duplicates.length > 0 ? '#d97706' : 'var(--border)' }}>
             <div style={ipm.kpiLabel}>⚠ Doublons</div>
             <div style={{ ...ipm.kpiValue, color: duplicates.length > 0 ? '#d97706' : 'var(--text2)' }}>{duplicates.length}</div>
           </div>
-          <div style={{ ...ipm.kpiBox, borderColor: aberrants.length > 0 ? '#dc2626' : 'var(--border)' }}>
+          <div style={{ ...ipm.kpiBox, borderColor: aberrants.length > 0 ? 'var(--danger-strong)' : 'var(--border)' }}>
             <div style={ipm.kpiLabel}>🚫 Prix suspects</div>
-            <div style={{ ...ipm.kpiValue, color: aberrants.length > 0 ? '#dc2626' : 'var(--text2)' }}>{aberrants.length}</div>
+            <div style={{ ...ipm.kpiValue, color: aberrants.length > 0 ? 'var(--danger-strong)' : 'var(--text2)' }}>{aberrants.length}</div>
           </div>
         </div>
 
@@ -1106,19 +1106,19 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                 </div>
               </div>
               {duplicates.length > 0 && (
-                <div style={{ ...ipm.summaryItem, background: '#fef3c7', borderColor: '#fde68a' }}>
+                <div style={{ ...ipm.summaryItem, background: 'var(--warning-bg)', borderColor: '#fde68a' }}>
                   <span style={{ fontSize: 22 }}>⚠</span>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#92400e' }}>{duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} détecté{duplicates.length > 1 ? 's' : ''}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--warning-text)' }}>{duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} détecté{duplicates.length > 1 ? 's' : ''}</div>
                     <div style={ipm.summaryHint}>Ces produits existent déjà (même référence ou nom). Si vous importez "tout", ils seront <strong>écrasés</strong> par les nouvelles valeurs.</div>
                   </div>
                 </div>
               )}
               {aberrants.length > 0 && (
-                <div style={{ ...ipm.summaryItem, background: '#fef2f2', borderColor: '#fca5a5' }}>
+                <div style={{ ...ipm.summaryItem, background: 'var(--danger-bg-soft)', borderColor: 'var(--danger-bd)' }}>
                   <span style={{ fontSize: 22 }}>🚫</span>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#dc2626' }}>{aberrants.length} prix suspect{aberrants.length > 1 ? 's' : ''}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--danger-strong)' }}>{aberrants.length} prix suspect{aberrants.length > 1 ? 's' : ''}</div>
                     <div style={ipm.summaryHint}>Probablement un mauvais ratio prix/quantité dans la source. Vérifiez l'onglet "Prix suspects" avant d'importer.</div>
                   </div>
                 </div>
@@ -1142,7 +1142,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                     <div style={ipm.rowMeta}>
                       Nouveau prix : <strong>{p.prixUnitaire?.toFixed(4)} CHF/{p.uniteRef}</strong>
                       {p._existing?.prixUnitaire && p.prixUnitaire !== p._existing.prixUnitaire && (
-                        <span style={{ marginLeft: 6, color: p.prixUnitaire > p._existing.prixUnitaire ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                        <span style={{ marginLeft: 6, color: p.prixUnitaire > p._existing.prixUnitaire ? 'var(--danger-strong)' : 'var(--success-strong)', fontWeight: 600 }}>
                           {p.prixUnitaire > p._existing.prixUnitaire ? '↑' : '↓'} {Math.abs((p.prixUnitaire / p._existing.prixUnitaire - 1) * 100).toFixed(1)}%
                         </span>
                       )}
@@ -1156,10 +1156,10 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
           {activeTab === 'aberrants' && (
             <div style={ipm.list}>
               {aberrants.map((p, i) => (
-                <div key={i} style={{ ...ipm.row, background: '#fef2f2' }}>
+                <div key={i} style={{ ...ipm.row, background: 'var(--danger-bg-soft)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={ipm.rowName}>{p.nom}</div>
-                    <div style={{ ...ipm.rowMeta, color: '#dc2626' }}>🚫 {p._reason}</div>
+                    <div style={{ ...ipm.rowMeta, color: 'var(--danger-strong)' }}>🚫 {p._reason}</div>
                     <div style={ipm.rowMeta}>
                       Catégorie : {p.categorie}
                       {p.referenceFourn && ` · réf ${p.referenceFourn}`}
@@ -1178,7 +1178,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
           <div style={{ flex: 1 }}/>
           {(duplicates.length > 0 || aberrants.length > 0) && (
             <button
-              style={{ ...ipm.ghostBtn, background: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}
+              style={{ ...ipm.ghostBtn, background: 'var(--warning-bg)', borderColor: '#fde68a', color: 'var(--warning-text)' }}
               onClick={onConfirmAll}
               disabled={importing}
               title="Importer aussi les doublons (écrasement) et les prix suspects"
@@ -1214,7 +1214,7 @@ const ipm = {
   tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottom: '2px solid transparent' },
   tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
   body: { flex: 1, overflowY: 'auto', padding: '6px 20px' },
-  summaryItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, marginBottom: 8, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 },
+  summaryItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, marginBottom: 8, background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 8 },
   summaryHint: { fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 },
   list: { paddingTop: 4 },
   row: { padding: '10px 12px', borderBottom: '1px solid var(--border)' },

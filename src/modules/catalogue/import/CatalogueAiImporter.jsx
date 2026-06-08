@@ -444,10 +444,10 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 )}
                 {flaggedCount > 0
                   ? <span style={{ color: '#b45309' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
-                  : <span style={{ color: '#15803d' }}>aucune anomalie</span>}
+                  : <span style={{ color: 'var(--success-text)' }}>aucune anomalie</span>}
                 {fournisseurNom && <span> · Fournisseur : <strong>{fournisseurNom}</strong></span>}
                 {parseErrors > 0 && (
-                  <span style={{ color: '#dc2626' }}> · <strong>{parseErrors}</strong> lot(s) IA en erreur (voir console)</span>
+                  <span style={{ color: 'var(--danger-strong)' }}> · <strong>{parseErrors}</strong> lot(s) IA en erreur (voir console)</span>
                 )}
               </div>
               {/* Diagnostique par feuille — affiché seulement si plusieurs feuilles */}

@@ -54,7 +54,7 @@ export default function Previsions({ user, etablissement }) {
         <div style={{
           marginTop: 12, padding: '10px 14px', borderRadius: 8,
           background: '#fef9ec', border: '1px solid #fbbf24',
-          color: '#92400e', fontSize: 13, fontFamily: 'var(--font)',
+          color: 'var(--warning-text)', fontSize: 13, fontFamily: 'var(--font)',
         }}>
           ⚠️ Aucun établissement sélectionné. Sélectionne un établissement avant de saisir des réservations.
         </div>

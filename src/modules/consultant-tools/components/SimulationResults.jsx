@@ -25,7 +25,7 @@ export function SimulationResults({
   }
 
   const charge = Number(chargeBrigade) || 0;
-  const chargeColor = charge >= 85 ? '#dc2626' : charge >= 65 ? '#d97706' : '#16a34a';
+  const chargeColor = charge >= 85 ? 'var(--danger-strong)' : charge >= 65 ? '#d97706' : 'var(--success-strong)';
   const scoreMoyenDisplay = typeof scoreMoyen === 'number' ? scoreMoyen.toFixed(1) : '—';
 
   return (
@@ -91,8 +91,8 @@ const cs = {
   emptyText: { fontSize: 12, color: 'var(--text3)', textAlign: 'center' },
   alerte: {
     padding: '10px 14px', borderRadius: 8,
-    background: '#fef2f2', border: '1px solid #fca5a5',
-    color: '#dc2626', fontSize: 13, fontWeight: 600,
+    background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)',
+    color: 'var(--danger-strong)', fontSize: 13, fontWeight: 600,
   },
   kpisGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   kpi: {

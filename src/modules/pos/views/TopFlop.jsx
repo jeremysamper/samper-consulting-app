@@ -34,7 +34,7 @@ function DeltaBadge({ delta, isNew }) {
     return (
       <span style={{
         fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
-        background: '#dbeafe', color: '#1d4ed8',
+        background: 'var(--info-bg)', color: '#1d4ed8',
       }}>
         Nouveau
       </span>
@@ -45,10 +45,10 @@ function DeltaBadge({ delta, isNew }) {
   }
 
   let bg, color, arrow;
-  if (delta >= 10)       { bg = '#dcfce7'; color = '#15803d'; arrow = '↑'; }
+  if (delta >= 10)       { bg = 'var(--success-bg)'; color = 'var(--success-text)'; arrow = '↑'; }
   else if (delta > -10)  { bg = 'var(--bg)'; color = 'var(--text2)'; arrow = '→'; }
-  else if (delta > -25)  { bg = '#fef3c7'; color = '#92400e'; arrow = '↓'; }
-  else                   { bg = '#fee2e2'; color = '#dc2626'; arrow = '↓↓'; }
+  else if (delta > -25)  { bg = 'var(--warning-bg)'; color = 'var(--warning-text)'; arrow = '↓'; }
+  else                   { bg = 'var(--danger-bg)'; color = 'var(--danger-strong)'; arrow = '↓↓'; }
 
   return (
     <span style={{

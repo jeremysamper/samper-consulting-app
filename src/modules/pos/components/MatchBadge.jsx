@@ -11,16 +11,16 @@ const BADGE_CONFIG = {
   auto: {
     dot:    '🟢',
     label:  'auto',
-    color:  '#15803d',
-    bg:     '#f0fdf4',
-    border: '#86efac',
+    color:  'var(--success-text)',
+    bg:     'var(--success-bg-soft)',
+    border: 'var(--success-bd)',
   },
   suggested: {
     dot:    '🟡',
     label:  'suggestion',
-    color:  '#92400e',
-    bg:     '#fffbeb',
-    border: '#fcd34d',
+    color:  'var(--warning-text)',
+    bg:     'var(--warning-bg-soft)',
+    border: 'var(--warning-bd)',
   },
   manual: {
     dot:    '⚪',

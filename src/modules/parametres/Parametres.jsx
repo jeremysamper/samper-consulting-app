@@ -245,7 +245,7 @@ const Parametres = ({ user, etablissement }) => {
 
       <div style={ps.statsRow}>
         <div style={ps.statCard}><div style={ps.statLabel}>Établissements total</div><div style={ps.statVal}>{etablissements.length}</div></div>
-        <div style={ps.statCard}><div style={ps.statLabel}>Actifs</div><div style={{...ps.statVal,color:'#15803d'}}>{etablissements.filter(e=>e.actif!==false).length}</div></div>
+        <div style={ps.statCard}><div style={ps.statLabel}>Actifs</div><div style={{...ps.statVal,color:'var(--success-text)'}}>{etablissements.filter(e=>e.actif!==false).length}</div></div>
         <div style={ps.statCard}><div style={ps.statLabel}>En suivi consultant</div><div style={ps.statVal}>{etablissements.length}</div></div>
       </div>
 
@@ -269,7 +269,7 @@ const Parametres = ({ user, etablissement }) => {
             </div>
             <div style={{display:'flex',gap:8,flexShrink:0}}>
               <button style={ps.ghostBtn} onClick={()=>openEdit(etab)}>Modifier</button>
-              <button style={{...ps.ghostBtn,color:'#dc2626',borderColor:'#fca5a5'}} onClick={()=>setShowConfirm(etab.id)}>Supprimer</button>
+              <button style={{...ps.ghostBtn,color:'var(--danger-strong)',borderColor:'var(--danger-bd)'}} onClick={()=>setShowConfirm(etab.id)}>Supprimer</button>
             </div>
           </div>
         ))}
@@ -299,7 +299,7 @@ const Parametres = ({ user, etablissement }) => {
               <div style={ps.readField}>{user.poste}</div>
             </div>
           </div>
-          <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#92400e' }}>
+          <div style={{ background:'var(--warning-bg-soft)', border:'1px solid #fde68a', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--warning-text)' }}>
             🔐 Mot de passe et identifiants gérés par l'administrateur Samper Consulting.
           </div>
         </div>
@@ -359,7 +359,7 @@ const Parametres = ({ user, etablissement }) => {
                       {isCustomised && (
                         <span style={{
                           fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:20,
-                          background:'#eff6ff', color:'#1d4ed8', border:'1px solid #bfdbfe',
+                          background:'var(--info-bg-soft)', color:'#1d4ed8', border:'1px solid #bfdbfe',
                         }}>
                           personnalisé
                         </span>
@@ -383,7 +383,7 @@ const Parametres = ({ user, etablissement }) => {
                     </button>
                     {isCustomised && (
                       <button
-                        style={{ ...ps.ghostBtn, color:'#92400e', borderColor:'#fde68a' }}
+                        style={{ ...ps.ghostBtn, color:'var(--warning-text)', borderColor:'#fde68a' }}
                         onClick={() => resetLabelItem(item.id)}
                         title={`Rétablir "${item.label}"`}
                       >
@@ -407,11 +407,11 @@ const Parametres = ({ user, etablissement }) => {
           <div style={{ fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
             Réinitialiser toutes les données de l'application aux valeurs de démonstration : planning, recettes, inventaires, pertes, utilisateurs, établissements, permissions, HACCP, fiches salle. Le logo personnalisé sera également supprimé.
           </div>
-          <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#991b1b' }}>
+          <div style={{ background:'var(--danger-bg-soft)', border:'1px solid var(--danger-bd)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--danger-text)' }}>
             ⚠ <strong>Action irréversible.</strong> Toutes les données saisies seront effacées. Exportez vos documents importants avant de continuer.
           </div>
           <div>
-            <button style={{...ps.saveBtn, background:'#dc2626', width:'auto', padding:'10px 20px'}} onClick={handleReset}>
+            <button style={{...ps.saveBtn, background:'var(--danger-strong)', width:'auto', padding:'10px 20px'}} onClick={handleReset}>
               🔄 Réinitialiser toutes les données
             </button>
           </div>
@@ -430,11 +430,11 @@ const Parametres = ({ user, etablissement }) => {
             <div style={ps.modalBody}>
               <div style={{fontSize:14,color:'var(--text)',lineHeight:1.6,marginBottom:20}}>
                 Voulez-vous vraiment supprimer <strong>{etablissements.find(e=>e.id===showConfirm)?.nom}</strong> ?<br/>
-                <span style={{color:'#dc2626',fontSize:13}}>Cette action est irréversible. Les données associées (planning, recettes, inventaires) seront dissociées.</span>
+                <span style={{color:'var(--danger-strong)',fontSize:13}}>Cette action est irréversible. Les données associées (planning, recettes, inventaires) seront dissociées.</span>
               </div>
               <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
                 <button style={ps.cancelBtn} onClick={()=>setShowConfirm(null)}>Annuler</button>
-                <button style={{...ps.saveBtn,background:'#dc2626'}} onClick={()=>confirmDelete(showConfirm)}>Supprimer</button>
+                <button style={{...ps.saveBtn,background:'var(--danger-strong)'}} onClick={()=>confirmDelete(showConfirm)}>Supprimer</button>
               </div>
             </div>
           </div>

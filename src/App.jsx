@@ -163,19 +163,17 @@ export default function App() {
 }
 
 function BootScreen({ title = '' }) {
-  // Splash screen : logo SC (orange sur fond vert, cohérent avec l'icône PWA)
-  // + barre de progression animée + nom de l'app.
-  // Animation @keyframes spin + splashBar définis dans app.css.
+  // Splash screen : fond vert sombre degrade + halo doux, logo SC vert,
+  // nom de l'app et barre de progression animee (@keyframes splashBar dans app.css).
   return (
     <main style={bootScreenStyles.root}>
+      <div style={bootScreenStyles.glow} />
       <div style={bootScreenStyles.center}>
-        {/* Logo SC : fond vert #0f1a12, lettres vert #82b27f (rebrand) */}
         <div style={bootScreenStyles.logoBox}>SC</div>
 
         <div style={bootScreenStyles.brand}>Samper Consulting</div>
         {title && <div style={bootScreenStyles.subtitle}>{title}</div>}
 
-        {/* Barre de progression */}
         <div style={bootScreenStyles.barTrack}>
           <div style={bootScreenStyles.barFill} />
         </div>
@@ -191,56 +189,71 @@ const bootScreenStyles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'var(--bg)',
+    background: 'radial-gradient(125% 85% at 50% 12%, #21452f 0%, #15281b 48%, #0c160f 100%)',
     fontFamily: 'var(--font)',
     zIndex: 9999,
+    overflow: 'hidden',
+  },
+  glow: {
+    position: 'absolute',
+    top: '-22%',
+    left: '50%',
+    width: 560,
+    height: 560,
+    transform: 'translateX(-50%)',
+    background: 'radial-gradient(circle, rgba(130,178,127,0.22) 0%, rgba(130,178,127,0) 68%)',
+    pointerEvents: 'none',
   },
   center: {
+    position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 16,
+    gap: 18,
   },
   logoBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    background: '#0f1a12',
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    background: 'linear-gradient(155deg, #244a32 0%, #15281b 100%)',
     color: '#82b27f',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: 700,
-    fontSize: 20,
+    fontSize: 30,
     fontFamily: 'var(--font-serif)',
     letterSpacing: 1,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+    border: '1px solid rgba(130,178,127,0.28)',
+    boxShadow: '0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)',
   },
   brand: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: 700,
-    color: 'var(--text)',
+    color: '#ece7de',
     fontFamily: 'var(--font-serif)',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
   subtitle: {
-    fontSize: 11,
-    color: 'var(--text2)',
+    fontSize: 11.5,
+    color: 'rgba(236,231,222,0.5)',
     fontStyle: 'italic',
-    marginTop: -8,
+    marginTop: -10,
   },
   barTrack: {
-    width: 80,
-    height: 2,
-    background: 'var(--border)',
-    borderRadius: 1,
+    marginTop: 6,
+    width: 132,
+    height: 3,
+    background: 'rgba(255,255,255,0.09)',
+    borderRadius: 3,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    width: '40%',
-    background: 'var(--accent)',
-    borderRadius: 1,
+    width: '42%',
+    background: 'linear-gradient(90deg, #588157 0%, #9ec79a 100%)',
+    borderRadius: 3,
+    boxShadow: '0 0 12px rgba(130,178,127,0.5)',
     animation: 'splashBar 1.2s ease-in-out infinite',
   },
 };

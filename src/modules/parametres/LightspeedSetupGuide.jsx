@@ -31,9 +31,9 @@ function CopyBtn({ value }) {
       onClick={copy}
       style={{
         padding: '3px 10px', borderRadius: 6,
-        border: `1px solid ${copied ? '#86efac' : 'var(--border)'}`,
-        background: copied ? '#f0fdf4' : 'var(--surface)',
-        color: copied ? '#15803d' : 'var(--text2)',
+        border: `1px solid ${copied ? 'var(--success-bd)' : 'var(--border)'}`,
+        background: copied ? 'var(--success-bg-soft)' : 'var(--surface)',
+        color: copied ? 'var(--success-text)' : 'var(--text2)',
         fontSize: 11, fontWeight: 600, cursor: 'pointer',
         fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0,
         transition: 'all 0.15s',
@@ -152,7 +152,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 <CodeLine value={SCOPES} />
               </div>
               <div style={{
-                fontSize: 12, color: '#92400e',
+                fontSize: 12, color: 'var(--warning-text)',
                 background: '#fefce8', border: '1px solid #fde68a',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>

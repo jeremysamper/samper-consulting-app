@@ -11,8 +11,8 @@ const SEUIL_ALERTE = 40;
 
 const SERVICES = [
   { key: 'couverts_midi',   label: 'Midi',   color: '#ea580c', bg: '#fff7ed' },
-  { key: 'couverts_soir',   label: 'Soir',   color: '#1d4ed8', bg: '#eff6ff' },
-  { key: 'couverts_brunch', label: 'Brunch', color: '#059669', bg: '#f0fdf4' },
+  { key: 'couverts_soir',   label: 'Soir',   color: '#1d4ed8', bg: 'var(--info-bg-soft)' },
+  { key: 'couverts_brunch', label: 'Brunch', color: '#059669', bg: 'var(--success-bg-soft)' },
 ];
 
 // Injection de l'animation skeleton une seule fois dans le DOM
@@ -90,7 +90,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
             {tags.slice(0, 3).map((t) => (
               <span key={t} style={{
                 padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-                background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5',
+                background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)',
                 fontFamily: 'var(--font)',
               }}>
                 {t}
@@ -138,9 +138,9 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
           return (
             <span key={key} style={{
               padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-              background: enAlerte ? '#fee2e2' : bg,
+              background: enAlerte ? 'var(--danger-bg)' : bg,
               color:      enAlerte ? '#b91c1c' : color,
-              border: `1px solid ${enAlerte ? '#fca5a5' : 'transparent'}`,
+              border: `1px solid ${enAlerte ? 'var(--danger-bd)' : 'transparent'}`,
               fontFamily: 'var(--font)',
             }}>
               {label} {n}
@@ -155,7 +155,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
         {tags.slice(0, 4).map((t) => (
           <span key={t} style={{
             padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-            background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5',
+            background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)',
             fontFamily: 'var(--font)',
           }}>
             {t}
@@ -224,8 +224,8 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
       {/* ── Erreur ── */}
       {error && (
         <div style={{
-          padding: '10px 14px', borderRadius: 8, background: '#fef2f2',
-          border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13,
+          padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
+          border: '1px solid var(--danger-bd)', color: '#b91c1c', fontSize: 13,
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>

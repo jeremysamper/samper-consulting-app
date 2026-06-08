@@ -45,11 +45,11 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
     <div>
       <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
         <strong style={{ color: 'var(--text)' }}>{recipes.length}</strong> recette(s) détectée(s) ·{' '}
-        <strong style={{ color: validCount === recipes.length ? '#15803d' : '#d97706' }}>{validCount}</strong> valide(s)
+        <strong style={{ color: validCount === recipes.length ? 'var(--success-text)' : '#d97706' }}>{validCount}</strong> valide(s)
       </div>
 
       {unrecognizedUnits.length > 0 && (
-        <div style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 6, background: '#fef3c7', border: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
+        <div style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid #fde68a', fontSize: 12, color: 'var(--warning-text)' }}>
           Unités non reconnues rencontrées : {unrecognizedUnits.join(', ')}. Les lignes concernées sont signalées en rouge — corrigez-les avant import.
         </div>
       )}
@@ -88,7 +88,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                   {(r.ingredients || []).length} ingr. · {(r.etapes || []).length} étape(s)
                 </span>
                 {!valid && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626' }}>⚠ non importable</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger-strong)' }}>⚠ non importable</span>
                 )}
                 {valid && flagged > 0 && (
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706' }}>⚠ {flagged} ligne(s) à vérifier</span>
@@ -102,12 +102,12 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                 <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', margin: '8px 0 4px' }}>INGRÉDIENTS</div>
                   {(r.ingredients || []).length === 0 && (
-                    <div style={{ fontSize: 12, color: '#dc2626', fontStyle: 'italic' }}>Aucun ingrédient — recette non importable.</div>
+                    <div style={{ fontSize: 12, color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient — recette non importable.</div>
                   )}
                   {(r.ingredients || []).map((ing, iIdx) => {
                     const warn = ing._import && ing._import.warning;
                     return (
-                      <div key={ing.id} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center', padding: warn ? 4 : 0, background: warn ? '#fef2f2' : 'transparent', borderRadius: 6, border: warn ? '1px solid #fca5a5' : '1px solid transparent' }}>
+                      <div key={ing.id} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center', padding: warn ? 4 : 0, background: warn ? 'var(--danger-bg-soft)' : 'transparent', borderRadius: 6, border: warn ? '1px solid var(--danger-bd)' : '1px solid transparent' }}>
                         <input
                           value={ing.nom}
                           onChange={e => patchIngredient(rIdx, iIdx, { nom: e.target.value })}
@@ -124,9 +124,9 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                           {!UNITES_REC.includes(ing.unite) && <option value={ing.unite}>{ing.unite}</option>}
                         </select>
                         {warn && ing._import.originalText && (
-                          <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 11, color: '#dc2626', cursor: 'help' }}>⚠</span>
+                          <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 11, color: 'var(--danger-strong)', cursor: 'help' }}>⚠</span>
                         )}
-                        <button onClick={() => removeIngredient(rIdx, iIdx)} title="Supprimer" style={{ ...cell, cursor: 'pointer', color: '#dc2626', width: 28 }}>✕</button>
+                        <button onClick={() => removeIngredient(rIdx, iIdx)} title="Supprimer" style={{ ...cell, cursor: 'pointer', color: 'var(--danger-strong)', width: 28 }}>✕</button>
                       </div>
                     );
                   })}

@@ -37,8 +37,8 @@ const panel = {
 };
 const chip = (conf) => ({
   fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10,
-  background: conf >= 85 ? '#dcfce7' : conf >= 60 ? '#fef3c7' : '#f3f4f6',
-  color: conf >= 85 ? '#15803d' : conf >= 60 ? '#92400e' : 'var(--text2)',
+  background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : '#f3f4f6',
+  color: conf >= 85 ? 'var(--success-text)' : conf >= 60 ? 'var(--warning-text)' : 'var(--text2)',
 });
 
 // Écran de résolution des correspondances catalogue ambiguës (needsReview).

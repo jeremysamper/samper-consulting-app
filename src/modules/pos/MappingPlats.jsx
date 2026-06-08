@@ -82,8 +82,8 @@ function EmptyState({ type, onNavigate }) {
 function AllMappedState({ total }) {
   return (
     <div style={{
-      background:    '#f0fdf4',
-      border:        '1px solid #86efac',
+      background:    'var(--success-bg-soft)',
+      border:        '1px solid var(--success-bd)',
       borderRadius:  12,
       padding:       '40px 32px',
       display:       'flex',
@@ -93,7 +93,7 @@ function AllMappedState({ total }) {
       textAlign:     'center',
     }}>
       <div style={{ fontSize: 36 }}>🎉</div>
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: '#15803d' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--success-text)' }}>
         Tous les plats sont mappés !
       </div>
       <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
@@ -127,7 +127,7 @@ function LoadingState() {
 function ErrorState({ message, onRetry }) {
   return (
     <div style={{
-      background:    '#fef2f2',
+      background:    'var(--danger-bg-soft)',
       border:        '1px solid #fecaca',
       borderRadius:  10,
       padding:       '20px 24px',
@@ -140,7 +140,7 @@ function ErrorState({ message, onRetry }) {
         <div style={{ fontSize: 13, fontWeight: 700, color: '#b91c1c', marginBottom: 2 }}>
           Erreur de chargement
         </div>
-        <div style={{ fontSize: 12, color: '#dc2626' }}>{message}</div>
+        <div style={{ fontSize: 12, color: 'var(--danger-strong)' }}>{message}</div>
       </div>
       <Btn variant="ghost" onClick={onRetry} style={{ fontSize: 12 }}>Réessayer</Btn>
     </div>

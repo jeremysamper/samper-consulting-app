@@ -282,7 +282,7 @@ export default function AppLayout({
           📁 Changer le logo
         </button>
         {appLogo && (
-          <button style={{ ...ls.logoMenuBtn, color: '#dc2626' }} onClick={handleLogoRemove}>
+          <button style={{ ...ls.logoMenuBtn, color: 'var(--danger-strong)' }} onClick={handleLogoRemove}>
             🗑 Retirer le logo
           </button>
         )}
@@ -304,8 +304,8 @@ export default function AppLayout({
   const renderAlertPanel = (panelStyle, headerStyle, itemStyle) => {
     const severityColor = (sev) => {
       if (sev === 'critical') return '#ef4444';
-      if (sev === 'info') return '#3b82f6';
-      return '#f59e0b'; // warning (défaut)
+      if (sev === 'info') return 'var(--info-strong)';
+      return 'var(--warning-strong)'; // warning (défaut)
     };
     return (
       <div style={panelStyle}>
@@ -325,7 +325,7 @@ export default function AppLayout({
         )}
         {/* État vide */}
         {!alertsLoading && alerts.length === 0 && (
-          <div style={{ ...itemStyle, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid #16a34a' }}>
+          <div style={{ ...itemStyle, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid var(--success-strong)' }}>
             ✓ Aucune alerte active
           </div>
         )}

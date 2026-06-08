@@ -9,9 +9,9 @@ const suggestionPrompts = [
 ];
 
 const automationScopes = [
-  { id: 'pointage', title: 'Pointages', detail: 'Retards, arrivees manquantes et shifts sans depart.', page: 'planning', tone: '#f59e0b' },
-  { id: 'haccp', title: 'HACCP', detail: 'Controles du jour, temperatures hors plage et rappels.', page: 'haccp', tone: '#16a34a' },
-  { id: 'pertes', title: 'Pertes', detail: 'Pertes a valider, ecarts matiere et priorites stock.', page: 'pertes', tone: '#dc2626' },
+  { id: 'pointage', title: 'Pointages', detail: 'Retards, arrivees manquantes et shifts sans depart.', page: 'planning', tone: 'var(--warning-strong)' },
+  { id: 'haccp', title: 'HACCP', detail: 'Controles du jour, temperatures hors plage et rappels.', page: 'haccp', tone: 'var(--success-strong)' },
+  { id: 'pertes', title: 'Pertes', detail: 'Pertes a valider, ecarts matiere et priorites stock.', page: 'pertes', tone: 'var(--danger-strong)' },
   { id: 'sop', title: 'SOPs', detail: 'Routines a executer selon jour, role et service.', page: 'sop', tone: '#1a5276' },
   { id: 'factures', title: 'Factures', detail: 'Previsualisation, logo et preparation client.', page: 'factures', tone: '#588157' },
 ];
@@ -159,7 +159,7 @@ const fs = {
   avatar: { width: 44, height: 44, borderRadius: 10, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 },
   title: { fontSize: 18, fontWeight: 900, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   subtitle: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
-  status: { marginLeft: 'auto', padding: '5px 9px', borderRadius: 999, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' },
+  status: { marginLeft: 'auto', padding: '5px 9px', borderRadius: 999, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' },
   layout: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 },
   chatCard: { display: 'flex', flexDirection: 'column', minHeight: 520 },
   suggestions: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 },

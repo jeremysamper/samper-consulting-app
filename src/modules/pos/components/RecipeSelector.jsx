@@ -115,7 +115,7 @@ export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelec
                     width:          '100%',
                     textAlign:      'left',
                     padding:        '12px 20px',
-                    background:     isCurrent ? 'var(--nav-active, #eff6ff)' : 'transparent',
+                    background:     isCurrent ? 'var(--nav-active, var(--info-bg-soft))' : 'transparent',
                     border:         'none',
                     borderBottom:   '1px solid var(--border)',
                     cursor:         'pointer',
@@ -142,7 +142,7 @@ export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelec
                     {r.nom}
                   </span>
                   {isCurrent && (
-                    <span style={{ fontSize: 14, color: '#15803d', flexShrink: 0 }}>✓</span>
+                    <span style={{ fontSize: 14, color: 'var(--success-text)', flexShrink: 0 }}>✓</span>
                   )}
                 </button>
               );

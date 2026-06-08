@@ -262,7 +262,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
               {parsing && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--accent)' }}>⟳ {parsingMsg}</div>}
               {parseError && <div style={errBox}>{parseError}</div>}
               {scannedPdf && (
-                <div style={{ ...errBox, background: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}>
+                <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: '#fde68a', color: 'var(--warning-text)' }}>
                   Ce PDF semble être une image scannée (aucun texte sélectionnable).
                   Astuce : prends-en une photo et utilise l'option « Photo » ci-dessus
                   pour le faire lire par l'IA.
@@ -386,5 +386,5 @@ const tileLabel = { fontSize: 13, fontWeight: 700, color: 'var(--text)' };
 const tileSub = { fontSize: 11, color: 'var(--text2)' };
 const errBox = {
   marginTop: 12, padding: '8px 12px', borderRadius: 6, fontSize: 12,
-  background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c',
+  background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: '#b91c1c',
 };

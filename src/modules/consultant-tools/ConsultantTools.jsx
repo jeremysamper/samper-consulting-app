@@ -961,7 +961,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
-                style={{ ...cts.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }}
+                style={{ ...cts.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
                 onClick={() => { bulkAllergenCancelRef.current = true; }}
               >Annuler</button>
             </div>
@@ -974,7 +974,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           <div style={{ display: 'flex', gap: 6 }}>
             <button style={{ ...cts.newBtn, flex: 1 }} onClick={createNew}>+ Recette</button>
             <button
-              style={{ ...cts.newBtn, flex: 1, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
+              style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid #fde68a' }}
               onClick={() => { setEditPlat(null); setShowPlatForm(true); }}
             >+ Plat</button>
           </div>
@@ -1020,7 +1020,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
             return reviewCount > 0 ? (
               <button
-                style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: '#fef3c7', color: '#92400e', borderColor: '#fcd34d' }}
+                style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' }}
                 onClick={() => setShowMatchReview(true)}
               >⚠ Correspondances à valider ({reviewCount})</button>
             ) : null;
@@ -1069,7 +1069,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={cts.recItemMeta}>
                   {r.categorie} · {r.portions || '?'} p. · v{r.version || 1}
                   {r.foodCost && (
-                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? '#16a34a' : r.foodCost < 35 ? '#d97706' : '#dc2626', fontWeight: 600 }}>
+                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? '#d97706' : 'var(--danger-strong)', fontWeight: 600 }}>
                       {' '}FC {r.foodCost.toFixed(1)}%
                     </span>
                   )}
@@ -1177,14 +1177,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           {pendingDrafts.length > 0 && (
             <div className="no-print" style={{
               margin: '0 0 10px', padding: '10px 14px', borderRadius: 8,
-              background: '#fef3c7', border: '1px solid #fde68a',
+              background: 'var(--warning-bg)', border: '1px solid #fde68a',
               display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
-              <span style={{ fontSize: 13, color: '#92400e', flex: 1, minWidth: 200 }}>
+              <span style={{ fontSize: 13, color: 'var(--warning-text)', flex: 1, minWidth: 200 }}>
                 ⚠ {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) — des modifications locales n'ont pas été synchronisées.
               </span>
               <button
-                style={{ ...cts.ghostBtn, background: '#15803d', color: '#fff', borderColor: '#15803d' }}
+                style={{ ...cts.ghostBtn, background: 'var(--success-text)', color: '#fff', borderColor: 'var(--success-text)' }}
                 onClick={restoreDrafts}
               >Restaurer</button>
               <button style={cts.ghostBtn} onClick={dismissDrafts}>Ignorer</button>
@@ -1195,7 +1195,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={duplicate}><Copy size={14} /> Dupliquer</button>
               <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
+                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: '#fde68a' }}
                 onClick={() => setLinkPlatPickerForRecette(selected.id)}
               >
                 <UtensilsCrossed size={14} /> Rattacher à un plat
@@ -1204,7 +1204,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   return linkedCount > 0 ? ` (${linkedCount})` : '';
                 })()}
               </button>
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#dc2626', borderColor: '#fca5a5' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
+              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
               <button
                 style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' }}
                 onClick={genererHaccpIA}
@@ -1219,8 +1219,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
-              {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#15803d', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
-              {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#dc2626', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
+              {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--success-text)', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
+              {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--danger-strong)', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, autoPrint: true })}><Printer size={14} /> Imprimer</button>
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, filename: `Fiche_${slug(selected.nom)}.pdf` })}><FileDown size={14} /> Export PDF</button>
             </div>
@@ -1239,7 +1239,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <button onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
-                  <div style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
                     Généré par IA — à valider par un responsable avant utilisation.
                   </div>
                   {(haccpResult.points || []).length === 0 && (
@@ -1250,7 +1250,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '—'}</span>
                         <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '—'}</span>
-                        {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#fee2e2', color: '#b91c1c' }}>CCP</span>}
+                        {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: '#b91c1c' }}>CCP</span>}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>⚠ {p.danger || '—'}</div>
                       {p.mesure && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Maîtrise : {p.mesure}</div>}
@@ -1363,13 +1363,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <DebouncedField type="number" min="1" value={selected.version || 1} onCommit={v => updateSelected({ version: Number(v) || 1 })} style={{...cts.inlineInput, width: 60}} />
                   </div>
                   <div style={{...cts.inlineField, marginLeft:'auto'}}>
-                    <label style={{fontSize:11, fontWeight:600, color:'#15803d'}}>Publier sur la carte active</label>
-                    <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'6px 10px', background: isRecetteActive(selected) ? '#dcfce7' : '#f3f4f6', border:'1px solid', borderColor: isRecetteActive(selected) ? '#86efac' : 'var(--border)', borderRadius:8}}>
+                    <label style={{fontSize:11, fontWeight:600, color:'var(--success-text)'}}>Publier sur la carte active</label>
+                    <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'6px 10px', background: isRecetteActive(selected) ? 'var(--success-bg)' : '#f3f4f6', border:'1px solid', borderColor: isRecetteActive(selected) ? 'var(--success-bd)' : 'var(--border)', borderRadius:8}}>
                       <input type="checkbox"
                         checked={isRecetteActive(selected)}
                         onChange={e => toggleActifSurCarte(selected, e.target.checked)}
-                        style={{accentColor:'#15803d'}}/>
-                      <span style={{fontSize:12, fontWeight:600, color: isRecetteActive(selected) ? '#15803d' : 'var(--text2)'}}>
+                        style={{accentColor:'var(--success-text)'}}/>
+                      <span style={{fontSize:12, fontWeight:600, color: isRecetteActive(selected) ? 'var(--success-text)' : 'var(--text2)'}}>
                         {isRecetteActive(selected) ? '✓ Visible sur la carte' : 'Non publiée'}
                       </span>
                     </label>
@@ -1421,13 +1421,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Food cost %</span>
-                    <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? '#16a34a' : foodCost < 35 ? '#d97706' : '#dc2626' }}>
+                    <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? '#d97706' : 'var(--danger-strong)' }}>
                       {foodCost == null ? '—' : foodCost.toFixed(1) + ' %'}
                     </strong>
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Marge brute / portion</span>
-                    <strong style={{ color: margeBrute >= 0 ? '#16a34a' : '#dc2626' }}>CHF {margeBrute.toFixed(2)}</strong>
+                    <strong style={{ color: margeBrute >= 0 ? 'var(--success-strong)' : 'var(--danger-strong)' }}>CHF {margeBrute.toFixed(2)}</strong>
                   </div>
                 </div>
               </div>
@@ -1464,8 +1464,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           padding: '5px 12px',
                           borderRadius: 20,
                           border: active ? '1px solid #d97706' : '1px solid var(--border)',
-                          background: active ? '#fef3c7' : 'var(--surface)',
-                          color: active ? '#92400e' : 'var(--text2)',
+                          background: active ? 'var(--warning-bg)' : 'var(--surface)',
+                          color: active ? 'var(--warning-text)' : 'var(--text2)',
                           fontSize: 12,
                           fontWeight: active ? 700 : 500,
                           cursor: 'pointer',
@@ -1486,7 +1486,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {(selected.ingredients || []).length > 0 && (
                       <button
-                        style={{ padding: '5px 12px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 7, color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' }}
+                        style={{ padding: '5px 12px', background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 7, color: 'var(--warning-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' }}
                         onClick={() => setShowScalingModal(true)}
                       >
                         ⚖ Calculer
@@ -1510,7 +1510,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <span>
                       Qté
                       {parseFloat(scalingPortions) > 0 && parseFloat(scalingPortions) !== Number(selected.portions) && (
-                        <span style={{ fontSize: 10, color: '#92400e', marginLeft: 4 }}>(recalculé)</span>
+                        <span style={{ fontSize: 10, color: 'var(--warning-text)', marginLeft: 4 }}>(recalculé)</span>
                       )}
                     </span>
                     <span>Unité</span>
@@ -1539,14 +1539,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       <div style={{ position: 'relative', flex: 2, display: 'flex', alignItems: 'stretch', gap: 4 }}>
                         {isLinked && (
                           <span
-                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 5, fontSize: 11, color: '#15803d', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 5, fontSize: 11, color: 'var(--success-text)', cursor: 'pointer' }}
                             title="Lié au catalogue (matching automatique) · clic pour délier"
                             onClick={() => updateIngredient(idx, 'produitId', null)}
                           >⛓</span>
                         )}
                         {!isLinked && ing.needsReview && (
                           <span
-                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 5, fontSize: 11, color: '#92400e', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 5, fontSize: 11, color: 'var(--warning-text)', cursor: 'pointer' }}
                             title="Correspondance catalogue incertaine · cliquer pour choisir"
                             onClick={() => { setPickerSearch(ing.nom || ''); setCatalogPicker(ing.id); }}
                           >⚠</span>
@@ -1737,20 +1737,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 {/* Avertissement plats impactés */}
                 {platsImpactes.length > 0 && (
                   <div style={{
-                    background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8,
+                    background: 'var(--warning-bg)', border: '1px solid #fde68a', borderRadius: 8,
                     padding: 12, marginBottom: 14,
                   }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 6 }}>
                       ⚠ Cette recette est utilisée dans {platsImpactes.length} plat{platsImpactes.length > 1 ? 's' : ''}
                     </div>
-                    <div style={{ fontSize: 11, color: '#92400e', marginBottom: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 11, color: 'var(--warning-text)', marginBottom: 8, lineHeight: 1.5 }}>
                       Si vous supprimez la recette, ces plats perdront leur composante (les autres recettes liées resteront en place) :
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#78350f' }}>
                       {platsImpactes.slice(0, 8).map(p => (
                         <li key={p.id} style={{ marginBottom: 2 }}>
                           <strong>{p.nom}</strong>
-                          <span style={{ color: '#92400e', fontSize: 11 }}> — {p.categorie}</span>
+                          <span style={{ color: 'var(--warning-text)', fontSize: 11 }}> — {p.categorie}</span>
                         </li>
                       ))}
                       {platsImpactes.length > 8 && (
@@ -1762,7 +1762,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
                 <div style={{display: 'flex', gap: 8, justifyContent: 'flex-end'}}>
                   <button style={cts.ghostBtn} onClick={() => setShowDeleteConfirm(false)}>Annuler</button>
-                  <button style={{...cts.newBtn, background: '#dc2626'}} onClick={deleteRecette}>
+                  <button style={{...cts.newBtn, background: 'var(--danger-strong)'}} onClick={deleteRecette}>
                     {platsImpactes.length > 0 ? 'Supprimer quand même' : 'Supprimer'}
                   </button>
                 </div>
@@ -1873,7 +1873,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </div>
               <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'space-between' }}>
                 {p.id && (
-                  <button style={{ ...cts.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }} onClick={deletePlat}>🗑 Supprimer</button>
+                  <button style={{ ...cts.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={deletePlat}>🗑 Supprimer</button>
                 )}
                 <div style={{ flex: 1 }} />
                 <button style={cts.ghostBtn} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>Annuler</button>
@@ -1912,7 +1912,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
                           borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                          background: isLinked ? '#dcfce7' : 'transparent',
+                          background: isLinked ? 'var(--success-bg)' : 'transparent',
                         }}
                         onClick={async () => {
                           try {
@@ -2125,7 +2125,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
               {/* ─── Mode 1 : par portions ─── */}
               <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? 'var(--bg)' : '#fefce8', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
                   Méthode 1 — Par nombre de portions
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text2)' }}>
@@ -2139,7 +2139,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     value={scalingPortions}
                     onChange={e => { setScalingPortions(e.target.value); setScalingTarget({ ingId: '', targetQty: '' }); }}
                     placeholder={String(basePortions)}
-                    style={{ width: 70, padding: '7px 10px', border: '2px solid ' + (useGramMode ? 'var(--border)' : 'var(--accent)'), borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: '#fff', color: 'var(--text)' }}
+                    style={{ width: 70, padding: '7px 10px', border: '2px solid ' + (useGramMode ? 'var(--border)' : 'var(--accent)'), borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' }}
                   />
                   <span style={{ fontSize: 13, color: 'var(--text2)' }}>portions</span>
                 </div>
@@ -2147,7 +2147,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
               {/* ─── Mode 2 : par grammage cible ─── */}
               <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? '#fefce8' : 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
                   Méthode 2 — Par quantité cible d'un ingrédient
                 </div>
                 <span style={{ fontSize: 13, color: 'var(--text2)' }}>Avec</span>
@@ -2171,7 +2171,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       value={scalingTarget.targetQty}
                       onChange={e => { setScalingTarget(prev => ({ ...prev, targetQty: e.target.value })); setScalingPortions(''); }}
                       placeholder={String(targetIng.quantite)}
-                      style={{ width: 90, padding: '7px 10px', border: '2px solid ' + (useGramMode ? 'var(--accent)' : 'var(--border)'), borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: '#fff', color: 'var(--text)' }}
+                      style={{ width: 90, padding: '7px 10px', border: '2px solid ' + (useGramMode ? 'var(--accent)' : 'var(--border)'), borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' }}
                     />
                     <span style={{ fontSize: 13, color: 'var(--text2)' }}>{targetIng.unite}</span>
                   </>
@@ -2180,15 +2180,15 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
               {/* Bandeau de résultat */}
               {isScaled && (
-                <div style={{ padding: '10px 20px', background: '#fef3c7', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                <div style={{ padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)' }}>
                     Facteur appliqué : × {ratio < 1 ? ratio.toFixed(3) : Number.isInteger(ratio) ? ratio : ratio.toFixed(2)}
                   </div>
-                  <div style={{ fontSize: 12, color: '#92400e' }}>
+                  <div style={{ fontSize: 12, color: 'var(--warning-text)' }}>
                     → équivaut à {finalPortions} portion{finalPortions > 1 ? 's' : ''}
                   </div>
                   <button
-                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: '#92400e', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
+                    style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
                     onClick={() => { setScalingPortions(''); setScalingTarget({ ingId: '', targetQty: '' }); }}
                   >
                     Réinitialiser
@@ -2201,7 +2201,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '6px 20px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                   <span>Ingrédient</span>
                   <span style={{ textAlign: 'right' }}>Base ({basePortions} p.)</span>
-                  <span style={{ textAlign: 'right', color: isScaled ? '#92400e' : 'var(--text2)' }}>
+                  <span style={{ textAlign: 'right', color: isScaled ? 'var(--warning-text)' : 'var(--text2)' }}>
                     {isScaled ? `Recalculé` : '—'}
                   </span>
                 </div>
@@ -2218,12 +2218,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   };
                   const isTargetIng = useGramMode && ing.id === scalingTarget.ingId;
                   return (
-                    <div key={ing.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '9px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: isTargetIng ? '#fef3c7' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
+                    <div key={ing.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '9px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: isTargetIng ? 'var(--warning-bg)' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
                       <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: isTargetIng ? 700 : 500 }}>
                         {isTargetIng && '🎯 '}{ing.nom || '—'}
                       </span>
                       <span style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'right' }}>{fmt(qBase)}</span>
-                      <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? '#92400e' : 'var(--text2)', textAlign: 'right' }}>
+                      <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? 'var(--warning-text)' : 'var(--text2)', textAlign: 'right' }}>
                         {isScaled ? fmt(qCalc) : '—'}
                       </span>
                     </div>

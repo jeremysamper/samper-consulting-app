@@ -3,14 +3,14 @@ import { useState } from 'react';
 const TAG_GROUPS = [
   {
     label: 'Allergènes', type_tag: 'allergene',
-    color:       { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' },
+    color:       { bg: 'var(--danger-bg-soft)', text: '#b91c1c', border: 'var(--danger-bd)' },
     colorActive: { bg: '#b91c1c', text: '#fff',    border: '#b91c1c' },
     tags: ['gluten', 'lactose', 'noix', 'fruits_de_mer'],
   },
   {
     label: 'Régimes', type_tag: 'regime',
-    color:       { bg: '#f0fdf4', text: '#15803d', border: '#86efac' },
-    colorActive: { bg: '#15803d', text: '#fff',    border: '#15803d' },
+    color:       { bg: 'var(--success-bg-soft)', text: 'var(--success-text)', border: 'var(--success-bd)' },
+    colorActive: { bg: 'var(--success-text)', text: '#fff',    border: 'var(--success-text)' },
     tags: ['vegetarien', 'vegan'],
   },
   {

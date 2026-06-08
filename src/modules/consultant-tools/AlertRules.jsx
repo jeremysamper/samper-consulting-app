@@ -17,8 +17,8 @@ const RULE_TYPE_LABELS = {
 };
 
 const SEVERITY_CONFIG = {
-  info:     { label: 'Info',      color: 'var(--color-info, #3b82f6)',    bg: 'rgba(59,130,246,.1)' },
-  warning:  { label: 'Attention', color: 'var(--color-warning, #f59e0b)', bg: 'rgba(245,158,11,.1)' },
+  info:     { label: 'Info',      color: 'var(--color-info, var(--info-strong))',    bg: 'rgba(59,130,246,.1)' },
+  warning:  { label: 'Attention', color: 'var(--color-warning, var(--warning-strong))', bg: 'rgba(245,158,11,.1)' },
   critical: { label: 'Critique',  color: 'var(--color-error, #ef4444)',   bg: 'rgba(239,68,68,.1)'  },
 };
 
@@ -94,13 +94,13 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
           ✏ Éditer
         </button>
         <button
-          style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: rule.is_active ? '#f59e0b' : '#16a34a' }}
+          style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: rule.is_active ? 'var(--warning-strong)' : 'var(--success-strong)' }}
           onClick={onToggle}
         >
           {rule.is_active ? 'Désactiver' : 'Activer'}
         </button>
         <button
-          style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: '#dc2626', borderColor: '#fca5a5' }}
+          style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
           onClick={onDelete}
         >
           ✕

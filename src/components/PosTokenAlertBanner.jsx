@@ -37,7 +37,7 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
           width: 34,
           height: 34,
           borderRadius: '50%',
-          background: 'var(--danger-strong, #dc2626)',
+          background: 'var(--danger-strong, var(--danger-strong))',
           color: '#fff',
           border: 'none',
           cursor: 'pointer',
@@ -62,15 +62,15 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
         justifyContent: 'space-between',
         gap: 12,
         padding: '9px 20px',
-        background: 'var(--danger-soft, #fef2f2)',
-        borderBottom: '2px solid var(--danger-strong, #dc2626)',
+        background: 'var(--danger-soft, var(--danger-bg-soft))',
+        borderBottom: '2px solid var(--danger-strong, var(--danger-strong))',
         flexShrink: 0,
       }}
     >
       <span style={{
         fontSize: 13,
         fontWeight: 600,
-        color: 'var(--danger-strong, #991b1b)',
+        color: 'var(--danger-strong, var(--danger-text))',
         fontFamily: 'var(--font)',
         lineHeight: 1.4,
       }}>
@@ -82,9 +82,9 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
         style={{
           padding: '5px 14px',
           borderRadius: 6,
-          border: '1.5px solid var(--danger-strong, #dc2626)',
+          border: '1.5px solid var(--danger-strong, var(--danger-strong))',
           background: 'transparent',
-          color: 'var(--danger-strong, #dc2626)',
+          color: 'var(--danger-strong, var(--danger-strong))',
           fontSize: 12,
           fontWeight: 700,
           cursor: 'pointer',

@@ -107,12 +107,12 @@ const ScalingModal = ({ recette, onClose }) => {
         {/* Résultat */}
         {isScaled && (
           <div style={smStyle.result}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)' }}>
               Facteur : × {ratio < 1 ? ratio.toFixed(3) : Number.isInteger(ratio) ? ratio : ratio.toFixed(2)}
             </div>
-            <div style={{ fontSize: 12, color: '#92400e' }}>→ {finalPortions} portion{finalPortions > 1 ? 's' : ''}</div>
+            <div style={{ fontSize: 12, color: 'var(--warning-text)' }}>→ {finalPortions} portion{finalPortions > 1 ? 's' : ''}</div>
             <button
-              style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: '#92400e', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
+              style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
               onClick={() => { setScalingPortions(''); setScalingTarget({ ingId: '', targetQty: '' }); }}
             >Réinitialiser</button>
           </div>
@@ -123,7 +123,7 @@ const ScalingModal = ({ recette, onClose }) => {
           <div style={smStyle.tableHead}>
             <span>Ingrédient</span>
             <span style={{ textAlign: 'right' }}>Base ({basePortions} p.)</span>
-            <span style={{ textAlign: 'right', color: isScaled ? '#92400e' : 'var(--text2)' }}>{isScaled ? 'Recalculé' : '-'}</span>
+            <span style={{ textAlign: 'right', color: isScaled ? 'var(--warning-text)' : 'var(--text2)' }}>{isScaled ? 'Recalculé' : '-'}</span>
           </div>
           {ings.map((ing, idx) => {
             const qBase = Number(ing.quantite) || 0;
@@ -131,12 +131,12 @@ const ScalingModal = ({ recette, onClose }) => {
             const isTargetIng = useGramMode && ing.id === scalingTarget.ingId;
             return (
               <div key={ing.id || idx}
-                style={{ ...smStyle.tableRow, background: isTargetIng ? '#fef3c7' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
+                style={{ ...smStyle.tableRow, background: isTargetIng ? 'var(--warning-bg)' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
                 <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: isTargetIng ? 700 : 500 }}>
                   {isTargetIng && '🎯 '}{ing.nom || '-'}
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'right' }}>{fmt(qBase, ing.unite)}</span>
-                <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? '#92400e' : 'var(--text2)', textAlign: 'right' }}>
+                <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? 'var(--warning-text)' : 'var(--text2)', textAlign: 'right' }}>
                   {isScaled ? fmt(qCalc, ing.unite) : '-'}
                 </span>
               </div>
@@ -159,11 +159,11 @@ const smStyle = {
   header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
   method: { padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
-  methodLabel: { fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: 0.4 },
+  methodLabel: { fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   methodInputs: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  numInput: { width: 80, padding: '7px 10px', border: '2px solid var(--border)', borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: '#fff', color: 'var(--text)' },
+  numInput: { width: 80, padding: '7px 10px', border: '2px solid var(--border)', borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' },
   select: { padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 240, cursor: 'pointer' },
-  result: { padding: '10px 20px', background: '#fef3c7', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  result: { padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   tableHead: { display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '6px 20px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 },
   tableRow: { display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '9px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center' },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' },
@@ -530,8 +530,8 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
           )}
         </div>
         <div style={rs.detailBadges}>
-          <span style={{...rs.badge, background:'#dcfce7', color:'#15803d'}}>{recette.statut}</span>
-          {recette.foodCost && <span style={{...rs.badge, background: recette.foodCost < 30 ? '#dcfce7' : recette.foodCost < 35 ? '#fef9c3' : '#fee2e2', color: recette.foodCost < 30 ? '#15803d' : recette.foodCost < 35 ? '#92400e' : '#dc2626'}}>FC {recette.foodCost.toFixed(1)}%</span>}
+          <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
+          {recette.foodCost && <span style={{...rs.badge, background: recette.foodCost < 30 ? 'var(--success-bg)' : recette.foodCost < 35 ? '#fef9c3' : 'var(--danger-bg)', color: recette.foodCost < 30 ? 'var(--success-text)' : recette.foodCost < 35 ? 'var(--warning-text)' : 'var(--danger-strong)'}}>FC {recette.foodCost.toFixed(1)}%</span>}
         </div>
       </div>
 
@@ -573,7 +573,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
               <div style={rs.kpiGrid}>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Coût matière / portion</span><strong style={{color:'var(--accent)'}}>CHF {portions > 0 ? (coutAdj/portions).toFixed(2) : '-'}</strong></div>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Prix de vente</span><strong>CHF {(recette.prixVente || 0).toFixed(2)}</strong></div>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? '#16a34a' : recette.foodCost < 35 ? '#d97706' : '#dc2626'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '-'}</strong></div>
+                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? 'var(--success-strong)' : recette.foodCost < 35 ? '#d97706' : 'var(--danger-strong)'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '-'}</strong></div>
                 <div style={rs.kpiItem}><span style={rs.kpiLabel}>Marge brute</span><strong>CHF {((recette.prixVente || 0) - (portions > 0 ? coutAdj/portions : 0)).toFixed(2)}</strong></div>
               </div>
             </div>
@@ -582,7 +582,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
             <div style={rs.cardHeader}><span style={rs.cardTitle}>Allergènes</span></div>
             <div style={{padding:'12px 16px', display:'flex', flexWrap:'wrap', gap:6}}>
               {(recette.allergenesIds || []).map(a => (
-                <span key={a} style={{...rs.badge, background:'#fef3c7', color:'#92400e'}}>{ALLERGENES_MAP[a] || a}</span>
+                <span key={a} style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)'}}>{ALLERGENES_MAP[a] || a}</span>
               ))}
             </div>
           </div>
@@ -890,7 +890,7 @@ const Recettes = ({ user, etablissement }) => {
                 {carte?.dateDebut && ` · Du ${carte.dateDebut} au ${carte.dateFin}`}
               </div>
             </div>
-            <span style={{...rs.badge, background:'#dcfce7', color:'#15803d', padding:'6px 16px', fontSize:12}}>● Active</span>
+            <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
           </div>
 
           {/* Cat filter */}
@@ -971,7 +971,7 @@ const Recettes = ({ user, etablissement }) => {
                           )}
                           {user.role === 'consultant' && fcAgg != null && (
                             <div style={rs.fcLine}>
-                              Food cost agrégé : <strong style={{color: fcAgg < 30 ? '#15803d' : fcAgg < 35 ? '#d97706' : '#dc2626'}}>{fcAgg.toFixed(1)}%</strong>
+                              Food cost agrégé : <strong style={{color: fcAgg < 30 ? 'var(--success-text)' : fcAgg < 35 ? '#d97706' : 'var(--danger-strong)'}}>{fcAgg.toFixed(1)}%</strong>
                               <span style={{ fontSize: 10, color: 'var(--text2)', marginLeft: 6 }}>(coût matière {coutTotalParPortion.toFixed(2)} / vente {plat.prixVente?.toFixed(2)})</span>
                             </div>
                           )}
@@ -1028,10 +1028,10 @@ const Recettes = ({ user, etablissement }) => {
                 {user.role === 'consultant' && (
                   <div style={rs.recetteKpis}>
                     <div style={rs.recetteKpi}><span>Coût/portion</span><strong>CHF {(r.coutPortion != null ? r.coutPortion : 0).toFixed(2)}</strong></div>
-                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? '#16a34a' : r.foodCost < 35 ? '#d97706' : '#dc2626'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
+                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? '#d97706' : 'var(--danger-strong)'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
                   </div>
                 )}
-                <span style={{...rs.badge, background:'#dcfce7', color:'#15803d'}}>{r.statut}</span>
+                <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{r.statut}</span>
                 <span style={{color:'var(--text2)', fontSize:18}}>›</span>
               </div>
             );
@@ -1112,7 +1112,7 @@ const rs = {
   platBody: {padding:'12px'},
   platCardName: {fontSize:13,fontWeight:700,color:'var(--text)',lineHeight:1.3,marginBottom:6},
   platAllergenes: {display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'},
-  allergeneDot: {fontSize:10,fontWeight:700,background:'#fef3c7',color:'#92400e',padding:'2px 5px',borderRadius:4},
+  allergeneDot: {fontSize:10,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
   platFooter: {display:'flex',alignItems:'center',justifyContent:'space-between'},
   platPrix: {fontSize:16,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
   recetteLink: {background:'none',border:'none',color:'var(--accent)',fontSize:11,fontWeight:600,cursor:'pointer',padding:0,fontFamily:'var(--font)'},

@@ -117,7 +117,7 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
           <span
             style={{
               ...cs.foodCostValue,
-              color: foodCost < 30 ? '#16a34a' : foodCost < 35 ? '#d97706' : '#dc2626',
+              color: foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? '#d97706' : 'var(--danger-strong)',
             }}
           >
             {foodCost.toFixed(1)}%
@@ -225,8 +225,8 @@ const cs = {
   },
 
   errorBox: {
-    padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5',
-    color: '#dc2626', borderRadius: 10, fontSize: 13, fontWeight: 600, marginBottom: 14,
+    padding: '12px 16px', background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)',
+    color: 'var(--danger-strong)', borderRadius: 10, fontSize: 13, fontWeight: 600, marginBottom: 14,
   },
 };
 

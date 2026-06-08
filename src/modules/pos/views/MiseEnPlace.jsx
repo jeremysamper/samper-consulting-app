@@ -24,8 +24,8 @@ function ReliableBadge({ reliable, occurrences }) {
         fontWeight:   600,
         padding:      '2px 8px',
         borderRadius: 12,
-        background:   '#dcfce7',
-        color:        '#15803d',
+        background:   'var(--success-bg)',
+        color:        'var(--success-text)',
         whiteSpace:   'nowrap',
         flexShrink:   0,
       }}>
@@ -40,7 +40,7 @@ function ReliableBadge({ reliable, occurrences }) {
       padding:      '2px 8px',
       borderRadius: 12,
       background:   '#fef9c3',
-      color:        '#92400e',
+      color:        'var(--warning-text)',
       whiteSpace:   'nowrap',
       flexShrink:   0,
     }}>

@@ -290,7 +290,7 @@ const Roles = ({ user }) => {
                     <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
                       <input type="checkbox" checked={val} onChange={() => togglePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
                       <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
-                      <span style={{ ...ros.permBadge, background: val ? '#dcfce7' : '#fee2e2', color: val ? '#15803d' : '#dc2626' }}>
+                      <span style={{ ...ros.permBadge, background: val ? 'var(--success-bg)' : 'var(--danger-bg)', color: val ? 'var(--success-text)' : 'var(--danger-strong)' }}>
                         {val ? '✓ Autorisé' : '✕ Interdit'}
                       </span>
                     </label>
@@ -317,7 +317,7 @@ const Roles = ({ user }) => {
                     <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
                       <input type="checkbox" checked={val} onChange={() => toggleManagePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
                       <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
-                      <span style={{ ...ros.permBadge, background: val ? '#dcfce7' : '#fee2e2', color: val ? '#15803d' : '#dc2626' }}>
+                      <span style={{ ...ros.permBadge, background: val ? 'var(--success-bg)' : 'var(--danger-bg)', color: val ? 'var(--success-text)' : 'var(--danger-strong)' }}>
                         {val ? '✓ Peut gérer' : '✕ Lecture seule'}
                       </span>
                     </label>
@@ -349,7 +349,7 @@ const Roles = ({ user }) => {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button style={ros.smallGhost} onClick={() => toggleUserActif(u)}>{u.actif === false ? 'Activer' : 'Désactiver'}</button>
                     <button style={ros.smallGhost} onClick={() => openEditUser(u)}>Modifier</button>
-                    <button style={{ ...ros.smallGhost, color: '#dc2626', borderColor: '#fca5a5' }} onClick={() => deleteUser(u)}>Supprimer</button>
+                    <button style={{ ...ros.smallGhost, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => deleteUser(u)}>Supprimer</button>
                   </div>
                 )}
               </div>

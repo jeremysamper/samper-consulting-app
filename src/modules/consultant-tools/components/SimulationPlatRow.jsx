@@ -1,11 +1,11 @@
 import React from 'react';
 
 const SCORE_COLORS = {
-  1: '#16a34a',
+  1: 'var(--success-strong)',
   2: '#22c55e',
   3: '#d97706',
   4: '#ef4444',
-  5: '#dc2626',
+  5: 'var(--danger-strong)',
 };
 
 export function SimulationPlatRow({ plat }) {
@@ -69,11 +69,11 @@ const cs = {
     marginTop: 4, lineHeight: 1.45,
   },
   suggestion: {
-    marginTop: 6, fontSize: 11, color: '#92400e',
-    background: '#fffbeb', border: '1px solid #fcd34d',
+    marginTop: 6, fontSize: 11, color: 'var(--warning-text)',
+    background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
     padding: '5px 10px', borderRadius: 6,
     lineHeight: 1.45, display: 'flex', alignItems: 'flex-start', gap: 6,
   },
   suggestionIcon: { flexShrink: 0, marginTop: 1 },
-  impact: { fontWeight: 700, color: '#16a34a' },
+  impact: { fontWeight: 700, color: 'var(--success-strong)' },
 };

@@ -176,7 +176,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
     <div style={{
       margin: '10px 20px 14px',
       padding: '12px 16px',
-      background: '#eff6ff',
+      background: 'var(--info-bg-soft)',
       border: '1px solid #bfdbfe',
       borderRadius: 10,
     }}>
@@ -185,7 +185,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>
             {hasData ? 'Données partielles' : 'Aucune donnée historique importée'}
           </div>
-          <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--info-strong)', marginTop: 2 }}>
             {running && progress
               ? `Backfill en cours… ${progress.done}/${progress.total} jours`
               : `Les 3 vues cuisine nécessitent 14 jours d'historique`}
@@ -202,7 +202,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
           disabled={running}
           style={{
             padding: '8px 16px', borderRadius: 8,
-            background: running ? '#93c5fd' : '#2563eb',
+            background: running ? 'var(--info-bd)' : '#2563eb',
             color: '#fff', border: 'none',
             fontSize: 13, fontWeight: 600,
             cursor: running ? 'wait' : 'pointer',
@@ -224,7 +224,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
   // Indicateur visuel de l'étape 2 (secrets Supabase)
   let step2Icon, step2Color;
   if (checking)        { step2Icon = '⌛'; step2Color = 'var(--text3)'; }
-  else if (configured) { step2Icon = '✅'; step2Color = '#15803d'; }
+  else if (configured) { step2Icon = '✅'; step2Color = 'var(--success-text)'; }
   else                 { step2Icon = '⚠️'; step2Color = '#c2410c'; }
 
   const steps = [
@@ -472,8 +472,8 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{provider.label}</span>
               {loading && <span style={{ fontSize: 11, color: 'var(--text3)' }}>Chargement…</span>}
-              {!loading && isConnected    && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' }}>Connecté</span>}
-              {!loading && isError        && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5' }}>Erreur</span>}
+              {!loading && isConnected    && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' }}>Connecté</span>}
+              {!loading && isError        && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--danger-bg-soft)', color: '#b91c1c', border: '1px solid var(--danger-bd)' }}>Erreur</span>}
               {!loading && needsLocation  && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>Sélection requise</span>}
             </div>
             {isConnected && (
@@ -483,7 +483,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
               </div>
             )}
             {isError && status?.last_error && (
-              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4, background: '#fef2f2', padding: '5px 9px', borderRadius: 6 }}>⚠ {status.last_error}</div>
+              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4, background: 'var(--danger-bg-soft)', padding: '5px 9px', borderRadius: 6 }}>⚠ {status.last_error}</div>
             )}
             {needsLocation && (
               <div style={{ fontSize: 12, color: '#c2410c', marginTop: 3 }}>
@@ -516,7 +516,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
                     </button>
                   )}
                   <button type="button" onClick={handleDisconnect} disabled={busy}
-                    style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                    style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--danger-bd)', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
                     {action === 'disconnecting' ? 'Déconnexion…' : 'Déconnecter'}
                   </button>
                 </>

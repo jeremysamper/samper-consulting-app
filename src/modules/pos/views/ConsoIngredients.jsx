@@ -191,7 +191,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
         <div style={{ fontSize: 12, color: 'var(--text2)' }}>
           Basé sur {mappedWithSalesCount} / {totalMappedCount} plat{totalMappedCount !== 1 ? 's' : ''} mappé{totalMappedCount !== 1 ? 's' : ''}
           {excludedNoPortions > 0 && (
-            <span style={{ color: '#92400e', marginLeft: 6 }}>
+            <span style={{ color: 'var(--warning-text)', marginLeft: 6 }}>
               · {excludedNoPortions} exclu{excludedNoPortions !== 1 ? 's' : ''} (sans portions définies)
             </span>
           )}

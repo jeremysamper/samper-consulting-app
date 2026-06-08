@@ -33,9 +33,9 @@ export function MappingStats({ total, mapped, auto: autoCount, suggested, manual
         <span style={{ fontSize: 13, color: 'var(--text2)' }}>/ {total} plats mappés</span>
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 8,
-          background: pct === 100 ? '#f0fdf4' : '#eff6ff',
-          color:      pct === 100 ? '#15803d' : '#1d4ed8',
-          border:     `1px solid ${pct === 100 ? '#86efac' : '#bfdbfe'}`,
+          background: pct === 100 ? 'var(--success-bg-soft)' : 'var(--info-bg-soft)',
+          color:      pct === 100 ? 'var(--success-text)' : '#1d4ed8',
+          border:     `1px solid ${pct === 100 ? 'var(--success-bd)' : '#bfdbfe'}`,
         }}>{pct}%</span>
       </div>
 
@@ -44,8 +44,8 @@ export function MappingStats({ total, mapped, auto: autoCount, suggested, manual
 
       {/* Détail par statut */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <Pill color="#15803d" bg="#f0fdf4" border="#86efac" icon="🟢" label="auto" count={autoCount} />
-        <Pill color="#92400e" bg="#fffbeb" border="#fcd34d" icon="🟡" label="suggestions" count={suggested} />
+        <Pill color="var(--success-text)" bg="var(--success-bg-soft)" border="var(--success-bd)" icon="🟢" label="auto" count={autoCount} />
+        <Pill color="var(--warning-text)" bg="var(--warning-bg-soft)" border="var(--warning-bd)" icon="🟡" label="suggestions" count={suggested} />
         <Pill color="#6b7280" bg="#f9fafb" border="#d1d5db" icon="⚪" label="à mapper" count={manual} />
       </div>
     </div>

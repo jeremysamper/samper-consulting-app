@@ -13,8 +13,8 @@ const RULE_TYPES = [
 ];
 
 const SEVERITIES = [
-  { id: 'info',     label: 'Info',     color: 'var(--color-info, #3b82f6)'    },
-  { id: 'warning',  label: 'Attention',color: 'var(--color-warning, #f59e0b)' },
+  { id: 'info',     label: 'Info',     color: 'var(--color-info, var(--info-strong))'    },
+  { id: 'warning',  label: 'Attention',color: 'var(--color-warning, var(--warning-strong))' },
   { id: 'critical', label: 'Critique', color: 'var(--color-error, #ef4444)'   },
 ];
 
