@@ -824,6 +824,151 @@ export const pdfUtils = {
     doc.text(etablissement, M, fRule + 10);
     doc.text(`${dateStr}   ·   ${pageNum}/${pageCount}`, PAGE_W - M, fRule + 10, { align: 'right' });
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // LISTE DE COMMANDE — génération jsPDF native (vectorielle, DA Samper)
+  // Bon de commande propre, multi-pages, dans la charte (vert #588157,
+  // titre serif, sections par catégorie, cases à cocher). Cohérent avec
+  // la fiche recette plutôt qu'une capture html2canvas de l'écran.
+  // payload : { groups:[{categorie, items:[{nom, besoinText, qtyText, coche}]}], totalCount, cocheCount }
+  // options : { etablissement, autoPrint, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportCommandePdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      this._renderCommande(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'liste-commande.pdf');
+      } else {
+        doc.save(options.filename || 'liste-commande.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportCommandePdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderCommande(doc, payload, options = {}) {
+    const ACC = [88, 129, 87];   // vert Samper
+    const INK = [26, 26, 28];
+    const MUTE = [122, 124, 122];
+    const HAIR = [216, 221, 217];
+    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const contentW = PAGE_W - 2 * M;
+    const headerH = 12;
+    const etabName = (options.etablissement?.nom || 'Samper Consulting').toString();
+    const logoDataUrl = options.logoDataUrl || null;
+    const groups = Array.isArray(payload.groups) ? payload.groups : [];
+    const totalCount = payload.totalCount != null ? payload.totalCount : groups.reduce((s, g) => s + (g.items?.length || 0), 0);
+    const cocheCount = payload.cocheCount || 0;
+    const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Colonnes
+    const checkX = M;
+    const nomX = M + 7;
+    const qtyRight = PAGE_W - M;        // « à commander »
+    const besoinRight = qtyRight - 38;  // « besoin »
+    const nomMaxW = besoinRight - nomX - 6;
+    const bodyBottom = PAGE_H - M - 12;
+
+    const drawHeader = () => {
+      if (logoDataUrl) {
+        try {
+          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
+        } catch (e) { /* logo illisible */ }
+      }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
+      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
+      const ruleTopY = M + headerH;
+      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
+      doc.text('Liste de commande', M, ruleTopY + 9);
+      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+      doc.text(`${dateStr}  ·  ${totalCount} produit${totalCount > 1 ? 's' : ''}  ·  ${cocheCount} coché${cocheCount > 1 ? 's' : ''}`, M, ruleTopY + 17);
+      return ruleTopY + 25;
+    };
+    const drawFooter = () => {
+      const fy = PAGE_H - M - 4;
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text('Samper Consulting', M, fy);
+      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
+    };
+
+    let y = drawHeader();
+    const ensureSpace = (h) => {
+      if (y + h > bodyBottom) { drawFooter(); doc.addPage(); y = drawHeader(); }
+    };
+    const colLabels = () => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...MUTE);
+      doc.text('PRODUIT', nomX, y, { charSpace: 0.4 });
+      doc.text('BESOIN', besoinRight, y, { align: 'right', charSpace: 0.4 });
+      doc.text('À COMMANDER', qtyRight, y, { align: 'right', charSpace: 0.4 });
+      y += 4;
+    };
+
+    if (!groups.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      doc.text('Aucun produit dans la liste.', M, y + 4);
+    }
+
+    groups.forEach((group) => {
+      ensureSpace(16);
+      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
+      doc.text(String(group.categorie || 'Autres').toUpperCase(), M + 3.4, y, { charSpace: 0.5 });
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
+      y += 7;
+      colLabels();
+
+      (group.items || []).forEach((it) => {
+        const nameLines = doc.splitTextToSize(String(it.nom || ''), nomMaxW);
+        const rowH = Math.max(6, nameLines.length * 4.6 + 1.6);
+        ensureSpace(rowH);
+        const boxY = y - 3;
+        if (it.coche) {
+          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
+          doc.rect(checkX, boxY, 3.6, 3.6, 'F');
+          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
+          doc.line(checkX + 0.8, boxY + 1.9, checkX + 1.5, boxY + 2.8);
+          doc.line(checkX + 1.5, boxY + 2.8, checkX + 2.9, boxY + 1.0);
+        } else {
+          doc.setDrawColor(...MUTE); doc.setLineWidth(0.3); doc.rect(checkX, boxY, 3.6, 3.6, 'S');
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        nameLines.forEach((line, k) => doc.text(line, nomX, y + k * 4.6));
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTE);
+        doc.text(it.besoinText || '—', besoinRight, y, { align: 'right' });
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        doc.text(it.qtyText || '—', qtyRight, y, { align: 'right' });
+        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
+        doc.line(nomX, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
+        y += rowH;
+      });
+      y += 3;
+    });
+
+    drawFooter();
+    // Pagination centrée, ajoutée une fois le nombre total de pages connu.
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
+    }
+  },
 };
 
 // ─── Normalisation des entrées fiche recette ────────────────────────

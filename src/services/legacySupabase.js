@@ -1529,6 +1529,99 @@ export function installLegacySupabase() {
       };
     },
 
+    // ─── COMMANDE (liste de produits a commander, partagee par etablissement) ───
+    async listCommandeItems(etabId) {
+      let q = client.from('commande_items').select('*')
+        .order('categorie', { ascending: true })
+        .order('nom', { ascending: true });
+      if (etabId) q = q.eq('etablissement_id', etabId);
+      const { data, error } = await q;
+      if (error) { console.error('[listCommandeItems]', error); return []; }
+      return (data || []).map(this.mapCommandeItemFromDB);
+    },
+
+    async upsertCommandeItem(item) {
+      const payload = {
+        id: item.id || ('cmd-' + Date.now() + Math.floor(Math.random() * 1000)),
+        etablissement_id: item.etablissementId,
+        cle: item.cle,
+        produit_id: item.produitId || null,
+        nom: item.nom,
+        categorie: item.categorie || 'Autres',
+        unite: item.unite || '',
+        besoin: item.besoin != null ? Number(item.besoin) : 0,
+        quantite: item.quantite === '' || item.quantite == null ? null : Number(item.quantite),
+        coche: !!item.coche,
+        source: item.source || 'manual',
+        ordre: item.ordre || 0,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await client.from('commande_items').upsert(payload).select().single();
+      if (error) throw error;
+      return this.mapCommandeItemFromDB(data);
+    },
+
+    async deleteCommandeItem(id) {
+      const { error } = await client.from('commande_items').delete().eq('id', id);
+      if (error) throw error;
+    },
+
+    // Genere / regenere les lignes « auto » a partir d'une liste calculee, sans
+    // ecraser les cases cochees ni les quantites saisies (colonnes absentes du
+    // payload upsert => preservees sur les lignes existantes). Les lignes « auto »
+    // qui ne sont plus necessaires sont supprimees ; les lignes « manual » sont
+    // toujours conservees.
+    async generateCommande(etabId, computedItems) {
+      const items = Array.isArray(computedItems) ? computedItems : [];
+      const { data: existing, error: readErr } = await client
+        .from('commande_items').select('id, cle, source').eq('etablissement_id', etabId);
+      if (readErr) throw readErr;
+
+      if (items.length) {
+        const payload = items.map(it => ({
+          etablissement_id: etabId,
+          cle: it.cle,
+          produit_id: it.produitId || null,
+          nom: it.nom,
+          categorie: it.categorie || 'Autres',
+          unite: it.unite || '',
+          besoin: Number(it.besoin) || 0,
+          source: 'auto',
+          ordre: it.ordre || 0,
+          updated_at: new Date().toISOString(),
+        }));
+        const { error: upErr } = await client
+          .from('commande_items').upsert(payload, { onConflict: 'etablissement_id,cle' });
+        if (upErr) throw upErr;
+      }
+
+      const wanted = new Set(items.map(it => it.cle));
+      const stale = (existing || []).filter(r => r.source === 'auto' && !wanted.has(r.cle)).map(r => r.id);
+      if (stale.length) {
+        const { error: delErr } = await client.from('commande_items').delete().in('id', stale);
+        if (delErr) throw delErr;
+      }
+      return items.length;
+    },
+
+    mapCommandeItemFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id,
+        etablissementId: row.etablissement_id,
+        cle: row.cle,
+        produitId: row.produit_id || null,
+        nom: row.nom,
+        categorie: row.categorie || 'Autres',
+        unite: row.unite || '',
+        besoin: row.besoin != null ? Number(row.besoin) : 0,
+        quantite: row.quantite != null ? Number(row.quantite) : null,
+        coche: !!row.coche,
+        source: row.source || 'manual',
+        ordre: row.ordre || 0,
+      };
+    },
+
     // ─── FOURNISSEURS ───
     async listFournisseurs(etabId) {
       let q = client.from('fournisseurs').select('*').order('nom');

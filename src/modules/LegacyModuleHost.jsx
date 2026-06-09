@@ -4,6 +4,7 @@ import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 
 const Catalogue = lazy(() => import('./catalogue/Catalogue.jsx'));
+const Commande = lazy(() => import('./commande/Commande.jsx'));
 const ConsultantTools = lazy(() => import('./consultant-tools/ConsultantTools.jsx'));
 const Dashboard = lazy(() => import('./dashboard/Dashboard.jsx'));
 const DashboardMobile = lazy(() => import('./dashboard/DashboardMobile.jsx'));
@@ -155,6 +156,12 @@ export default function LegacyModuleHost({
       const VentesPosComponent = VentesPos;
       return permissions.pos !== false
         ? wrap('Ventes POS', <VentesPosComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'commande': {
+      const CommandeComponent = Commande;
+      return permissions.commande !== false
+        ? wrap('Commande', <CommandeComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     default:
