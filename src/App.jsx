@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { ToastContainer, installToastGlobals, notify } from './components/toast/index.js';
 import AppLayout from './layouts/AppLayout.jsx';
 import Auth from './modules/auth/Auth.jsx';
@@ -21,6 +21,12 @@ function readInitialPage() {
 
 export default function App() {
   const [page, setPageState] = useState(readInitialPage);
+  // Transition douce entre modules : la nav (highlight) suit `page` immédiatement,
+  // mais le CONTENU suit `deferredPage`. Pendant le chargement d'un module non
+  // encore en cache, React garde le module précédent affiché (pas de flash du
+  // fallback Suspense) ; quand c'est prêt, le nouveau module apparaît en fondu.
+  const deferredPage = useDeferredValue(page);
+  const isModuleSwitching = page !== deferredPage;
   const [legacyState, setLegacyState] = useState({ loading: true, error: null });
   const [legacyVersion, setLegacyVersion] = useState(0);
   const auth = useAuth();
@@ -133,6 +139,7 @@ export default function App() {
       <AppLayout
         user={auth.profile}
         currentPage={page}
+        contentKey={deferredPage}
         setPage={setPage}
         onLogout={handleLogout}
         etablissements={currentEtablissement.etablissements}
@@ -141,7 +148,7 @@ export default function App() {
         permissions={getPermissionsForRole(auth.profile.role)}
       >
         <LegacyModuleHost
-          page={page}
+          page={deferredPage}
           user={auth.profile}
           etablissement={currentEtablissement.current}
           isMobile={isMobile}
@@ -156,6 +163,7 @@ export default function App() {
 
   return (
     <>
+      {isModuleSwitching && <div className="route-progress" aria-hidden="true" />}
       {content}
       <ToastContainer />
     </>
