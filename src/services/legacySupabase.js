@@ -1815,7 +1815,12 @@ export function installLegacySupabase() {
     // À utiliser pour les callbacks qui rechargent toute une liste. NE PAS
     // utiliser quand le callback a besoin de chaque payload.new/old individuel
     // (ex. Planning) : utiliser subscribe() dans ce cas.
-    subscribeReload(tables, reloadFn, { debounceMs = 300 } = {}) {
+    //
+    // debounceMs = 500 : fenêtre de coalescence. Sous édition concurrente
+    // (plusieurs utilisateurs), une rafale d'events est regroupée en UN seul
+    // refetch → réduit les « tempêtes de rechargement ». 500 ms reste
+    // imperceptible à l'usage tout en divisant la charge sous forte activité.
+    subscribeReload(tables, reloadFn, { debounceMs = 500 } = {}) {
       const list = Array.isArray(tables) ? tables : [tables];
       let timer = null;
       let cancelled = false;
