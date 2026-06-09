@@ -615,37 +615,27 @@ export function installLegacySupabase() {
     // Retourne une URL publique permanente (pas de signed URL qui expire).
     async uploadRecettePhoto({ etabId, type, id, file }) {
       if (!file) throw new Error('Aucun fichier');
-      // Upload via fetch direct avec le token user EXPLICITE. Le client storage
-      // partage peut conserver son entete Authorization sur la cle anon (quirk
-      // supabase-js) : la requete part alors en anonyme et la RLS storage refuse
-      // l'INSERT (new row violates RLS policy) meme avec une session valide.
+      // Upload cote serveur via l'Edge Function upload-recette-photo. Le client
+      // storage de supabase-js n'attache pas toujours le token user a la requete
+      // storage (-> auth.uid() null -> la RLS refuse "new row violates RLS policy"),
+      // meme avec une session valide. Ici la fonction valide le JWT et ecrit dans
+      // le bucket avec la cle service. Canal JWT fiable (meme principe que le POS).
       const { data: { session } } = await client.auth.getSession();
       if (!session) throw new Error('Session expiree. Reconnectez-vous puis reessayez.');
-      const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${etabId}/${type}-${id}-${Date.now()}.${ext}`;
       const { url: supabaseUrl, anonKey } = getSupabaseConfig();
-      // multipart/form-data identique au format supabase-js (champ cacheControl +
-      // fichier en champ vide), MAIS avec le token user attache explicitement.
-      // On laisse fetch poser lui-meme le Content-Type multipart (avec sa frontiere).
       const form = new FormData();
-      form.append('cacheControl', '31536000');
-      form.append('', file);
-      const res = await fetch(`${supabaseUrl}/storage/v1/object/recette-photos/${path}`, {
+      form.append('file', file);
+      form.append('etabId', etabId || '');
+      form.append('type', type || 'plat');
+      form.append('id', String(id ?? ''));
+      const res = await fetch(`${supabaseUrl}/functions/v1/upload-recette-photo`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: anonKey,
-          'x-upsert': 'true',
-        },
+        headers: { Authorization: `Bearer ${session.access_token}`, apikey: anonKey },
         body: form,
       });
-      if (!res.ok) {
-        let msg = `Erreur ${res.status}`;
-        try { const j = await res.json(); msg = j.message || j.error || msg; } catch { /* corps non-JSON */ }
-        throw new Error(msg);
-      }
-      const { data } = client.storage.from('recette-photos').getPublicUrl(path);
-      return { path, url: data.publicUrl };
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      return { path: data.path, url: data.url };
     },
 
     mapPlatFromDB(row) {
