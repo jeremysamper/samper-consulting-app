@@ -6,6 +6,8 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 import { Sparkles, ListChecks, Plus } from 'lucide-react';
+import { useCartes } from '../../hooks/useCartes.js';
+import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -139,7 +141,13 @@ const FichesSalle = ({ user, etablissement }) => {
   const [selBusy, setSelBusy] = React.useState(false);
   const sel = useSelection();
 
+  // Cartes (menus) — onglets de filtrage. '__all__' = toutes les fiches.
+  const ALL_TAB = '__all__';
+  const { cartes, addCarte, renameCarte, deleteCarte } = useCartes(etabId);
+  const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
+
   const canEdit = canManageModule(user.role, 'fiches_salle');
+  const canManageCartes = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
   const isConsultant = user.role === 'consultant';
   const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
@@ -178,13 +186,25 @@ const FichesSalle = ({ user, etablissement }) => {
     };
     unsubs.push(legacySB.realtime.subscribeReload('plats', reloadPlats));
     unsubs.push(legacySB.realtime.subscribeReload('plat_recettes', reloadPlats));
+    unsubs.push(legacySB.realtime.subscribeReload('carte_fiches_salle', async () => {
+      try { const rows = await legacySB.db.listFichesSalle(etabId); if (mounted) setFiches(rows); }
+      catch (e) {}
+    }));
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
+
+  // Garde un onglet de carte valide quand les cartes changent.
+  React.useEffect(() => {
+    if (activeCarteTab !== ALL_TAB && !cartes.some(c => c.id === activeCarteTab)) {
+      setActiveCarteTab(ALL_TAB);
+    }
+  }, [cartes]);
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
   const filtered = fiches.filter(f =>
     (catFilter === 'Tous' || f.categorie === catFilter) &&
+    (activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab)) &&
     (search === '' || f.nom.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -194,6 +214,7 @@ const FichesSalle = ({ user, etablissement }) => {
       id: null, nom: '', categorie: 'Plats', statut: 'active',
       descriptionService: '', temperatureService: '', dressageNotes: '',
       allergenes: [], accords: [], accordsGeneraux: [], infosService: '', tempsPreparation: '',
+      carteIds: activeCarteTab !== ALL_TAB ? [activeCarteTab] : [],
       etablissementId: etabId, modifiePar: user.id, modifie: todayStr,
     });
     setShowForm(true);
@@ -209,8 +230,12 @@ const FichesSalle = ({ user, etablissement }) => {
     if (legacySB) {
       try {
         const saved = await legacySB.db.upsertFicheSalle(payload);
-        setFiches(prev => prev.find(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved]);
-        if (selected?.id === saved.id) setSelected(saved);
+        // Affectation aux cartes (M2M). upsertFicheSalle ne renvoie pas la jointure,
+        // on réinjecte donc carteIds localement (le realtime confirmera).
+        await legacySB.db.setFicheCartes(saved.id, f.carteIds || []);
+        const savedWithCartes = { ...saved, carteIds: f.carteIds || [] };
+        setFiches(prev => prev.find(x => x.id === savedWithCartes.id) ? prev.map(x => x.id === savedWithCartes.id ? savedWithCartes : x) : [...prev, savedWithCartes]);
+        if (selected?.id === savedWithCartes.id) setSelected(savedWithCartes);
       } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
     } else {
       setFiches(prev => prev.find(x=>x.id===f.id) ? prev.map(x=>x.id===f.id?f:x) : [...prev,f]);
@@ -351,10 +376,21 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (selected) return <FicheDetail fiche={selected} user={user} canEdit={canEdit} onBack={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes}/>;
+  if (selected) return <FicheDetail fiche={selected} user={user} canEdit={canEdit} onBack={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
 
   return (
     <div style={fss.root}>
+      {/* Onglets de carte (menus) — filtrage des fiches */}
+      <CarteTabBar
+        cartes={cartes}
+        activeId={activeCarteTab}
+        onSelect={setActiveCarteTab}
+        extraTabs={[{ id: ALL_TAB, label: 'Toutes' }]}
+        canManage={canManageCartes}
+        onAddCarte={addCarte}
+        onRenameCarte={renameCarte}
+        onDeleteCarte={deleteCarte}
+      />
       <div style={fss.toolbar}>
         <div style={fss.left}>
           <input style={fss.search} placeholder="Rechercher un plat…" value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -481,13 +517,13 @@ const FichesSalle = ({ user, etablissement }) => {
         />
       )}
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
     </div>
   );
 };
 
 // ── Détail d'une fiche ──
-const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [] }) => {
+const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], cartes = [] }) => {
   const [accordTab, setAccordTab] = React.useState('vin');
   const vins = fiche.accords?.filter(a=>a.type==='vin')||[];
   const sansAlcool = fiche.accords?.filter(a=>a.type==='sans_alcool')||[];
@@ -587,13 +623,13 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
         </div>
       </div>
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
     </div>
   );
 };
 
 // ── Formulaire création/édition ──
-const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => {
+const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [] }) => {
   const allAllergs = Object.keys(ALLERGENES_LABELS);
   const toggleAllerg = (a) => setFiche(f=>({...f,allergenes:(f.allergenes || []).includes(a)?f.allergenes.filter(x=>x!==a):[...f.allergenes,a]}));
   const addAccord = (type) => setFiche(f=>({...f,accords:[...(f.accords||[]),{type,nom:'',region:'',alternative:'',notes:''}]}));
@@ -665,6 +701,41 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [] }) => 
                 )}
               </div>
             )}
+
+            {/* Cartes (menus) où figure cette fiche */}
+            <div style={fss.field}>
+              <label style={fss.fLabel}>Cartes (menus)</label>
+              {cartes.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+                  Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher cette fiche.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {cartes.map(c => {
+                    const checked = (fiche?.carteIds || []).includes(c.id);
+                    return (
+                      <label key={c.id}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                          border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                          background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                          color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 11, cursor: 'pointer', fontWeight: checked ? 700 : 400,
+                        }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setFiche(f => {
+                            const cur = f.carteIds || [];
+                            return { ...f, carteIds: checked ? cur.filter(id => id !== c.id) : [...cur, c.id] };
+                          })}
+                        />
+                        {c.nom}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Allergènes */}
             <div style={fss.field}>

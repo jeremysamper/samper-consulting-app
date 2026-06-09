@@ -14,7 +14,10 @@ export const cts = {
   leftList: { flex: 1, overflowY: 'auto' },
   recetteItem: { padding: '11px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' },
   recetteItemActive: { background: 'var(--accent-light)', borderLeft: '3px solid var(--accent)' },
-  // ─── Hiérarchie plats ───
+  // ─── Hiérarchie cartes > plats ───
+  carteHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer' },
+  carteFolderName: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  carteCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 8px', flexShrink: 0 },
   platHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 8px 8px 6px', borderBottom: '1px solid var(--border)' },
   platToggle: { width: 22, height: 22, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, color: 'var(--text2)', flexShrink: 0 },
   platName: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },

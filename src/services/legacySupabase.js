@@ -546,7 +546,7 @@ export function installLegacySupabase() {
     async listPlats(etabId) {
       const { data, error } = await client
         .from('plats')
-        .select('*, plat_recettes(id, recette_id, role, ordre)')
+        .select('*, plat_recettes(id, recette_id, role, ordre), carte_plats(carte_id)')
         .eq('etablissement_id', etabId)
         .order('ordre', { ascending: true })
         .order('nom', { ascending: true });
@@ -656,6 +656,7 @@ export function installLegacySupabase() {
           role: pr.role || 'composant',
           ordre: pr.ordre || 0,
         })),
+        carteIds: (row.carte_plats || []).map(cp => cp.carte_id),
       };
     },
 
@@ -930,7 +931,7 @@ export function installLegacySupabase() {
 
     // ─── CARTES ───
     async listCartes(etabId) {
-      let q = client.from('cartes').select('*');
+      let q = client.from('cartes').select('*').order('created_at', { ascending: true });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
       if (error) { console.error('[listCartes]', error); return []; }
@@ -949,6 +950,57 @@ export function installLegacySupabase() {
       const { data, error } = await client.from('cartes').upsert(payload).select().single();
       if (error) throw error;
       return this.mapCarteFromDB(data);
+    },
+
+    async deleteCarte(id) {
+      // Les liaisons carte_plats / carte_fiches_salle sont supprimées en cascade.
+      // Les plats, recettes et fiches restent intacts.
+      const { error } = await client.from('cartes').delete().eq('id', id);
+      if (error) throw error;
+    },
+
+    // Remplace l'ensemble des cartes auxquelles un plat est rattaché.
+    async setPlatCartes(platId, carteIds) {
+      if (!platId) return;
+      const wanted = [...new Set((carteIds || []).filter(Boolean))];
+      const { data: existing, error: readErr } = await client
+        .from('carte_plats').select('carte_id').eq('plat_id', platId);
+      if (readErr) throw readErr;
+      const current = (existing || []).map(r => r.carte_id);
+      const toAdd = wanted.filter(id => !current.includes(id));
+      const toRemove = current.filter(id => !wanted.includes(id));
+      if (toAdd.length) {
+        const { error } = await client.from('carte_plats')
+          .upsert(toAdd.map(carte_id => ({ carte_id, plat_id: platId })), { onConflict: 'carte_id,plat_id' });
+        if (error) throw error;
+      }
+      if (toRemove.length) {
+        const { error } = await client.from('carte_plats')
+          .delete().eq('plat_id', platId).in('carte_id', toRemove);
+        if (error) throw error;
+      }
+    },
+
+    // Remplace l'ensemble des cartes auxquelles une fiche salle est rattachée.
+    async setFicheCartes(ficheId, carteIds) {
+      if (!ficheId) return;
+      const wanted = [...new Set((carteIds || []).filter(Boolean))];
+      const { data: existing, error: readErr } = await client
+        .from('carte_fiches_salle').select('carte_id').eq('fiche_salle_id', ficheId);
+      if (readErr) throw readErr;
+      const current = (existing || []).map(r => r.carte_id);
+      const toAdd = wanted.filter(id => !current.includes(id));
+      const toRemove = current.filter(id => !wanted.includes(id));
+      if (toAdd.length) {
+        const { error } = await client.from('carte_fiches_salle')
+          .upsert(toAdd.map(carte_id => ({ carte_id, fiche_salle_id: ficheId })), { onConflict: 'carte_id,fiche_salle_id' });
+        if (error) throw error;
+      }
+      if (toRemove.length) {
+        const { error } = await client.from('carte_fiches_salle')
+          .delete().eq('fiche_salle_id', ficheId).in('carte_id', toRemove);
+        if (error) throw error;
+      }
     },
 
     mapCarteFromDB(row) {
@@ -1424,7 +1476,7 @@ export function installLegacySupabase() {
 
     // ─── FICHES SALLE ───
     async listFichesSalle(etabId) {
-      let q = client.from('fiches_salle').select('*').order('nom');
+      let q = client.from('fiches_salle').select('*, carte_fiches_salle(carte_id)').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
       if (error) { console.error('[listFichesSalle]', error); return []; }
@@ -1473,6 +1525,7 @@ export function installLegacySupabase() {
         tempsPreparation: row.temps_preparation || '',
         modifiePar: row.modifie_par,
         modifie: row.updated_at ? row.updated_at.slice(0, 10) : null,
+        carteIds: (row.carte_fiches_salle || []).map(cf => cf.carte_id),
       };
     },
 

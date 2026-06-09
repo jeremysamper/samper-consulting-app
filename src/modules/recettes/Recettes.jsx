@@ -7,6 +7,8 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
 import { Calculator, Copy, ArrowLeft } from 'lucide-react';
 import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePdfData.js';
+import { useCartes } from '../../hooks/useCartes.js';
+import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 
 
 // CARTES & RECETTES
@@ -775,15 +777,22 @@ const Recettes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
-  const [activeTab, setActiveTab] = React.useState('carte');
+  // Onglet actif : id d'une carte, ou 'recettes' (bibliothèque).
+  // Démarre vide → l'effet ci-dessous bascule sur la 1re carte une fois chargée
+  // (comportement historique : on atterrit sur la carte, pas la bibliothèque).
+  const LIBRARY_TAB = 'recettes';
+  const [activeTab, setActiveTab] = React.useState('');
   const [selectedRecette, setSelectedRecette] = React.useState(null);
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
   const perms = demoData.permissions[user.role] || {};
+  const canManageCartes = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+
+  // Cartes (menus) de l'établissement — source unique partagée + realtime.
+  const { cartes, addCarte, renameCarte, deleteCarte } = useCartes(etabId);
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)
   const [recettes, setRecettes] = React.useState([]);
-  const [cartes, setCartes] = React.useState([]);
   const [plats, setPlats] = React.useState([]);
   const [expandedPlats, setExpandedPlats] = React.useState(new Set());
   const [showExportModal, setShowExportModal] = React.useState(false);
@@ -791,21 +800,18 @@ const Recettes = ({ user, etablissement }) => {
   React.useEffect(() => {
     if (!legacySB) {
       setRecettes(readLegacyStorage('sc_recettes', demoData.recettes));
-      setCartes(readLegacyStorage('sc_cartes', demoData.cartes));
       return;
     }
-    let unsubRec = null, unsubCart = null, unsubPlats = null, unsubPR = null, mounted = true;
+    let unsubRec = null, unsubPlats = null, unsubPR = null, unsubCP = null, mounted = true;
 
     (async () => {
       try {
-        const [recs, crts, pls] = await Promise.all([
+        const [recs, pls] = await Promise.all([
           legacySB.db.listRecettes(etabId),
-          legacySB.db.listCartes(etabId),
           legacySB.db.listPlats(etabId),
         ]);
         if (!mounted) return;
         setRecettes(recs);
-        setCartes(crts);
         setPlats(pls);
       } catch (err) { console.error('[Recettes load]', err); }
     })();
@@ -813,23 +819,20 @@ const Recettes = ({ user, etablissement }) => {
     const refreshRec = async () => {
       try { const r = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(r); } catch(e) {}
     };
-    const refreshCart = async () => {
-      try { const c = await legacySB.db.listCartes(etabId); if (mounted) setCartes(c); } catch(e) {}
-    };
     const refreshPlats = async () => {
       try { const p = await legacySB.db.listPlats(etabId); if (mounted) setPlats(p); } catch(e) {}
     };
     unsubRec = legacySB.realtime.subscribeReload('recettes', refreshRec);
-    unsubCart = legacySB.realtime.subscribeReload('cartes', refreshCart);
     unsubPlats = legacySB.realtime.subscribeReload('plats', refreshPlats);
     unsubPR = legacySB.realtime.subscribeReload('plat_recettes', refreshPlats);
+    unsubCP = legacySB.realtime.subscribeReload('carte_plats', refreshPlats);
 
     return () => {
       mounted = false;
       unsubRec && unsubRec();
-      unsubCart && unsubCart();
       unsubPlats && unsubPlats();
       unsubPR && unsubPR();
+      unsubCP && unsubCP();
     };
   }, [etabId]);
 
@@ -837,12 +840,23 @@ const Recettes = ({ user, etablissement }) => {
 
   // Filtrer par établissement courant (déjà filtré par Supabase mais on garde le filtre côté client pour le fallback)
   const recettesEtab = recettes.filter(r => (r.etablissementId || 'etab-1') === etabId);
-  const cartesEtab = cartes.filter(c => (c.etablissementId || 'etab-1') === etabId);
-  const carte = cartesEtab[0];
 
-  // Plats : on utilise désormais la nouvelle table `plats` (M2M avec recettes)
-  // Les plats sans recette rattachée s'affichent quand même sur la carte
-  const filteredPlats = (plats || []).filter(p =>
+  // Onglet carte actif (ou bibliothèque). On garde toujours un onglet valide.
+  const isLibrary = activeTab === LIBRARY_TAB;
+  const activeCarte = cartes.find(c => c.id === activeTab) || null;
+  React.useEffect(() => {
+    if (activeTab === LIBRARY_TAB) return;
+    if (!cartes.some(c => c.id === activeTab)) {
+      setActiveTab(cartes[0]?.id || LIBRARY_TAB);
+    }
+  }, [cartes]);
+
+  // Plats de la carte active (M2M via carteIds). Les plats sans recette
+  // rattachée s'affichent quand même sur la carte.
+  const platsCarte = activeCarte
+    ? (plats || []).filter(p => (p.carteIds || []).includes(activeCarte.id))
+    : [];
+  const filteredPlats = platsCarte.filter(p =>
     p.actif !== false &&
     (catFilter === 'Tous' || p.categorie === catFilter) &&
     (search === '' || p.nom.toLowerCase().includes(search.toLowerCase()))
@@ -861,33 +875,48 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowExportModal(false)}
         />
       )}
-      {/* Tabs */}
+      {/* Onglets : une carte par menu + bibliothèque recettes */}
       <div style={rs.tabs}>
-        {[{id:'carte',label:'Carte active'},{id:'recettes',label:'Bibliothèque recettes'}].map(t => (
-          <button key={t.id} style={{...rs.tab, ...(activeTab===t.id?rs.tabActive:{})}} onClick={() => setActiveTab(t.id)}>{t.label}</button>
-        ))}
+        <CarteTabBar
+          cartes={cartes}
+          activeId={activeTab}
+          onSelect={setActiveTab}
+          extraTabs={[{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }]}
+          canManage={canManageCartes}
+          onAddCarte={addCarte}
+          onRenameCarte={renameCarte}
+          onDeleteCarte={deleteCarte}
+        />
         <div style={{flex:1}}/>
         <input style={rs.search} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
         <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">⤓ Export multiple</button>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
       </div>
 
-      {activeTab === 'carte' ? (
-        plats.length === 0 ? (
+      {!isLibrary ? (
+        !activeCarte ? (
           <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
             <div style={{fontSize:40, opacity:0.4}}>🍽</div>
-            <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>Aucun plat sur la carte</div>
-            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>Créez des plats depuis le module "Outils consultant". Ils apparaîtront ici.</div>
+            <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>Aucune carte</div>
+            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>
+              {canManageCartes ? 'Créez une carte avec le bouton « + Carte ».' : 'Aucune carte définie pour cet établissement.'}
+            </div>
+          </div>
+        ) : platsCarte.length === 0 ? (
+          <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
+            <div style={{fontSize:40, opacity:0.4}}>🍽</div>
+            <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>Aucun plat sur « {activeCarte.nom} »</div>
+            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>Rattachez des plats à cette carte depuis le module "Outils consultant".</div>
           </div>
         ) : (
         <div style={rs.carteWrap}>
           {/* Carte header */}
           <div style={rs.carteHeader}>
             <div>
-              <div style={rs.carteName}>{carte?.nom || 'Carte ' + (etablissement?.nom || '')}</div>
+              <div style={rs.carteName}>{activeCarte.nom}</div>
               <div style={{fontSize:13, color:'var(--text2)'}}>
-                {plats.length} plat{plats.length > 1 ? 's' : ''}
-                {carte?.dateDebut && ` · Du ${carte.dateDebut} au ${carte.dateFin}`}
+                {platsCarte.length} plat{platsCarte.length > 1 ? 's' : ''}
+                {activeCarte.dateDebut && ` · Du ${activeCarte.dateDebut}${activeCarte.dateFin ? ` au ${activeCarte.dateFin}` : ''}`}
               </div>
             </div>
             <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>

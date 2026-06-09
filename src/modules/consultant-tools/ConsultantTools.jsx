@@ -130,6 +130,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // ─── Plats (hiérarchie) ───
   const [plats, setPlats] = React.useState([]);
   const [expandedPlats, setExpandedPlats] = React.useState(new Set());
+  // Dossiers cartes repliés (vide = toutes dépliées par défaut).
+  const [collapsedCartes, setCollapsedCartes] = React.useState(new Set());
   const [showPlatForm, setShowPlatForm] = React.useState(false);
   const [editPlat, setEditPlat] = React.useState(null);
   const [linkPlatPickerForRecette, setLinkPlatPickerForRecette] = React.useState(null);
@@ -174,7 +176,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     const unsub2 = legacySB.realtime.subscribeReload('plat_recettes', async () => {
       try { const ps = await legacySB.db.listPlats(etabId); if (mounted) setPlats(Array.isArray(ps) ? ps : []); } catch(e) {}
     });
-    return () => { mounted = false; unsub1 && unsub1(); unsub2 && unsub2(); };
+    const unsub3 = legacySB.realtime.subscribeReload('carte_plats', async () => {
+      try { const ps = await legacySB.db.listPlats(etabId); if (mounted) setPlats(Array.isArray(ps) ? ps : []); } catch(e) {}
+    });
+    return () => { mounted = false; unsub1 && unsub1(); unsub2 && unsub2(); unsub3 && unsub3(); };
   }, [etabId]);
 
   const [recettes, setRecettes] = React.useState(() => legacySB ? [] : readLegacyStorage('sc_recettes', demoData.recettes));
@@ -1028,22 +1033,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         </div>
         <div style={cts.leftList}>
           {(() => {
-            // Construction de l'arborescence : pour chaque plat, trouver ses recettes
+            // Arborescence : Carte ▸ Plat ▸ Recettes (+ « Non classés » et orphelines)
             const recettesParPlat = {};
-            const recettesOrphelines = [...filtered];
             (plats || []).forEach(p => {
               const ids = (p.recettes || []).map(pr => pr.recetteId);
               recettesParPlat[p.id] = filtered.filter(r => ids.includes(r.id));
-              // Retirer ces recettes des orphelines (mais sans déduplication car une recette peut être dans plusieurs plats)
             });
             // Une recette est orpheline SEULEMENT si elle n'apparaît dans aucun plat
             const allLinkedRecetteIds = new Set();
             (plats || []).forEach(p => (p.recettes || []).forEach(pr => allLinkedRecetteIds.add(pr.recetteId)));
             const orphelines = filtered.filter(r => !allLinkedRecetteIds.has(r.id));
 
-            const renderRecetteItem = (r, indent = 0) => (
+            const renderRecetteItem = (r, indent = 0, keyPrefix = '') => (
               <div
-                key={r.id + '-' + indent}
+                key={keyPrefix + r.id + '-' + indent}
                 style={{
                   ...cts.recetteItem,
                   ...(selectedId === r.id ? cts.recetteItemActive : {}),
@@ -1077,66 +1080,91 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </div>
             );
 
-            const visiblePlats = (plats || []).filter(p =>
-              searchValue === '' ||
-              safeText(p.nom).includes(searchValue) ||
-              recettesParPlat[p.id]?.length > 0
-            );
+            // Un plat est visible si son nom matche ou s'il a une recette filtrée.
+            const platMatches = (p) => searchValue === '' || safeText(p.nom).includes(searchValue) || (recettesParPlat[p.id]?.length > 0);
+
+            const renderPlatBlock = (plat, keyPrefix) => {
+              const platRecettes = recettesParPlat[plat.id] || [];
+              const isExpanded = expandedPlats.has(plat.id);
+              return (
+                <div key={keyPrefix + plat.id}>
+                  <div style={{ ...cts.platHeader, paddingLeft: 16, background: isExpanded ? 'var(--bg)' : 'transparent' }}>
+                    <button
+                      style={cts.platToggle}
+                      onClick={() => {
+                        const next = new Set(expandedPlats);
+                        isExpanded ? next.delete(plat.id) : next.add(plat.id);
+                        setExpandedPlats(next);
+                      }}
+                      title={isExpanded ? 'Réduire' : 'Développer'}
+                    >{isExpanded ? '▼' : '▶'}</button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={cts.platName}>🍽 {plat.nom}</div>
+                      <div style={cts.platMeta}>
+                        {plat.categorie}
+                        {plat.prixVente != null && ` · CHF ${plat.prixVente.toFixed(2)}`}
+                        {' · '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <button
+                      style={cts.platEditBtn}
+                      onClick={() => { setEditPlat(plat); setShowPlatForm(true); }}
+                      title="Modifier le plat"
+                    >✎</button>
+                  </div>
+                  {isExpanded && (platRecettes.length === 0 ? (
+                    <div style={{ padding: '8px 14px 8px 56px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
+                      Aucune recette rattachée
+                    </div>
+                  ) : (
+                    platRecettes.map(r => renderRecetteItem(r, 2, keyPrefix))
+                  ))}
+                </div>
+              );
+            };
+
+            // Dossiers : une carte par menu + « Non classés » (plats sans carte)
+            const folders = [
+              ...(cartesLocal || []).map(c => ({
+                id: c.id, nom: c.nom,
+                plats: (plats || []).filter(p => (p.carteIds || []).includes(c.id) && platMatches(p)),
+              })),
+              { id: '__none__', nom: 'Non classés', plats: (plats || []).filter(p => (p.carteIds || []).length === 0 && platMatches(p)) },
+            ];
 
             return (
               <>
-                {/* ─── Plats avec leurs recettes ─── */}
-                {visiblePlats.length === 0 && plats.length === 0 && (
+                {plats.length === 0 && (
                   <div style={{ padding: '12px 14px', fontSize: 11, color: 'var(--text2)', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
                     Aucun plat. Cliquez "+ Plat" pour créer une hiérarchie.
                   </div>
                 )}
-                {visiblePlats.map(plat => {
-                  const platRecettes = recettesParPlat[plat.id] || [];
-                  const isExpanded = expandedPlats.has(plat.id);
+
+                {/* ─── Cartes ▸ Plats ▸ Recettes ─── */}
+                {folders.map(folder => {
+                  // En recherche, on masque les dossiers vides ; sinon « Non classés » n'apparaît que s'il a des plats.
+                  if (folder.plats.length === 0 && (searchValue !== '' || folder.id === '__none__')) return null;
+                  const collapsed = collapsedCartes.has(folder.id);
                   return (
-                    <div key={plat.id}>
+                    <div key={folder.id}>
                       <div
-                        style={{
-                          ...cts.platHeader,
-                          background: isExpanded ? 'var(--bg)' : 'transparent',
+                        style={cts.carteHeader}
+                        onClick={() => {
+                          const next = new Set(collapsedCartes);
+                          collapsed ? next.delete(folder.id) : next.add(folder.id);
+                          setCollapsedCartes(next);
                         }}
+                        title={collapsed ? 'Développer' : 'Réduire'}
                       >
-                        <button
-                          style={cts.platToggle}
-                          onClick={() => {
-                            const next = new Set(expandedPlats);
-                            isExpanded ? next.delete(plat.id) : next.add(plat.id);
-                            setExpandedPlats(next);
-                          }}
-                          title={isExpanded ? 'Réduire' : 'Développer'}
-                        >
-                          {isExpanded ? '▼' : '▶'}
-                        </button>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={cts.platName}>🍽 {plat.nom}</div>
-                          <div style={cts.platMeta}>
-                            {plat.categorie}
-                            {plat.prixVente != null && ` · CHF ${plat.prixVente.toFixed(2)}`}
-                            {' · '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
-                          </div>
-                        </div>
-                        <button
-                          style={cts.platEditBtn}
-                          onClick={() => { setEditPlat(plat); setShowPlatForm(true); }}
-                          title="Modifier le plat"
-                        >✎</button>
+                        <span style={{ fontSize: 10, color: 'var(--text2)' }}>{collapsed ? '▶' : '▼'}</span>
+                        <span style={cts.carteFolderName}>{folder.id === '__none__' ? '🗂' : '📋'} {folder.nom}</span>
+                        <span style={cts.carteCount}>{folder.plats.length}</span>
                       </div>
-                      {isExpanded && (
-                        <>
-                          {platRecettes.length === 0 ? (
-                            <div style={{ padding: '8px 14px 8px 38px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
-                              Aucune recette rattachée
-                            </div>
-                          ) : (
-                            platRecettes.map(r => renderRecetteItem(r, 1))
-                          )}
-                        </>
+                      {!collapsed && folder.plats.map(plat => renderPlatBlock(plat, folder.id + '-'))}
+                      {!collapsed && folder.plats.length === 0 && (
+                        <div style={{ padding: '8px 14px 8px 30px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
+                          Aucun plat sur cette carte
+                        </div>
                       )}
                     </div>
                   );
@@ -1150,7 +1178,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         Recettes sans plat ({orphelines.length})
                       </div>
                     )}
-                    {orphelines.map(r => renderRecetteItem(r, 0))}
+                    {orphelines.map(r => renderRecetteItem(r, 0, 'orph-'))}
                   </>
                 )}
 
@@ -1780,11 +1808,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         const savePlat = async () => {
           if (!p.nom?.trim()) { alertLegacy('Le nom du plat est obligatoire.'); return; }
           try {
-            await legacySB.db.upsertPlat({
+            const saved = await legacySB.db.upsertPlat({
               ...p,
               etablissementId: etabId,
               prixVente: p.prixVente === '' ? null : Number(p.prixVente),
             });
+            // Affectation aux cartes (M2M) — l'id existe désormais (création ou édition).
+            const platId = saved?.id || p.id;
+            if (platId) await legacySB.db.setPlatCartes(platId, p.carteIds || []);
             setShowPlatForm(false);
             setEditPlat(null);
           } catch (err) {
@@ -1869,6 +1900,40 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     rows={2}
                     style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', marginTop: 4, resize: 'vertical' }}
                   />
+                </div>
+                {/* ─── Cartes (menus) où figure ce plat ─── */}
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Cartes (menus)</label>
+                  {(cartesLocal || []).length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, fontStyle: 'italic' }}>
+                      Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher ce plat.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                      {(cartesLocal || []).map(c => {
+                        const checked = (p.carteIds || []).includes(c.id);
+                        return (
+                          <label key={c.id}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px',
+                              border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                              background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                              color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 500,
+                            }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const cur = p.carteIds || [];
+                                setP({ carteIds: checked ? cur.filter(id => id !== c.id) : [...cur, c.id] });
+                              }}
+                            />
+                            {c.nom}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'space-between' }}>
