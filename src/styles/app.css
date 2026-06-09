@@ -196,12 +196,15 @@ html[data-theme="dark"] {
    changement de page (la zone <main> est remontée via une `key`). Couplé à
    useDeferredValue côté App : le module précédent reste affiché tant que le
    nouveau n'est pas prêt → pas de flash du fallback Suspense. */
+/* Entrée douce SANS fondu d'opacité : un fondu 0→1 laisse une trame de contenu
+   quasi vide juste après le swap (= « flash »). On garde donc l'opacité pleine
+   et on se contente d'un léger glissement, imperceptible mais qui adoucit. */
 @keyframes moduleFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(6px); }
+  to   { transform: translateY(0); }
 }
 .module-transition {
-  animation: moduleFadeIn 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: moduleFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Fine barre de progression en haut pendant le chargement d'un module non
