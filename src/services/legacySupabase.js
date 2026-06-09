@@ -615,12 +615,31 @@ export function installLegacySupabase() {
     // Retourne une URL publique permanente (pas de signed URL qui expire).
     async uploadRecettePhoto({ etabId, type, id, file }) {
       if (!file) throw new Error('Aucun fichier');
+      // Upload via fetch direct avec le token user EXPLICITE. Le client storage
+      // partage peut conserver son entete Authorization sur la cle anon (quirk
+      // supabase-js) : la requete part alors en anonyme et la RLS storage refuse
+      // l'INSERT (new row violates RLS policy) meme avec une session valide.
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) throw new Error('Session expiree. Reconnectez-vous puis reessayez.');
       const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
       const path = `${etabId}/${type}-${id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await client.storage.from('recette-photos').upload(path, file, {
-        cacheControl: '31536000', contentType: file.type || undefined, upsert: true,
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const res = await fetch(`${supabaseUrl}/storage/v1/object/recette-photos/${path}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          'Content-Type': file.type || 'image/jpeg',
+          'cache-control': '31536000',
+          'x-upsert': 'true',
+        },
+        body: file,
       });
-      if (upErr) throw upErr;
+      if (!res.ok) {
+        let msg = `Erreur ${res.status}`;
+        try { const j = await res.json(); msg = j.message || j.error || msg; } catch { /* corps non-JSON */ }
+        throw new Error(msg);
+      }
       const { data } = client.storage.from('recette-photos').getPublicUrl(path);
       return { path, url: data.publicUrl };
     },
