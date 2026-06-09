@@ -624,16 +624,20 @@ export function installLegacySupabase() {
       const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
       const path = `${etabId}/${type}-${id}-${Date.now()}.${ext}`;
       const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      // multipart/form-data identique au format supabase-js (champ cacheControl +
+      // fichier en champ vide), MAIS avec le token user attache explicitement.
+      // On laisse fetch poser lui-meme le Content-Type multipart (avec sa frontiere).
+      const form = new FormData();
+      form.append('cacheControl', '31536000');
+      form.append('', file);
       const res = await fetch(`${supabaseUrl}/storage/v1/object/recette-photos/${path}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           apikey: anonKey,
-          'Content-Type': file.type || 'image/jpeg',
-          'cache-control': '31536000',
           'x-upsert': 'true',
         },
-        body: file,
+        body: form,
       });
       if (!res.ok) {
         let msg = `Erreur ${res.status}`;
