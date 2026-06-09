@@ -610,28 +610,19 @@ export function installLegacySupabase() {
     },
 
     // ─── Upload de photo (recette ou plat) ───
-    // Stocke dans bucket 'documents' sous /recettes-photos/{etabId}/{type}-{id}.{ext}
-    // Retourne une URL signée (1h) directement utilisable
+    // Bucket public dédié 'recette-photos'. Path = <etabId>/<type>-<id>-<ts>.<ext>
+    // (1er segment = etab pour que la RLS storage autorise l'écriture).
+    // Retourne une URL publique permanente (pas de signed URL qui expire).
     async uploadRecettePhoto({ etabId, type, id, file }) {
       if (!file) throw new Error('Aucun fichier');
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `recettes-photos/${etabId}/${type}-${id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await client.storage.from('documents').upload(path, file, {
-        cacheControl: '3600', upsert: true,
+      const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${etabId}/${type}-${id}-${Date.now()}.${ext}`;
+      const { error: upErr } = await client.storage.from('recette-photos').upload(path, file, {
+        cacheControl: '31536000', contentType: file.type || undefined, upsert: true,
       });
       if (upErr) throw upErr;
-      // URL publique-style via signed URL longue durée (1 an)
-      const { data, error } = await client.storage.from('documents').createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (error) throw error;
-      return { path, url: data.signedUrl };
-    },
-
-    async refreshSignedUrl(path) {
-      // Réobtenir une URL signée valide pour une photo existante
-      if (!path || !path.startsWith('recettes-photos/')) return null;
-      const { data, error } = await client.storage.from('documents').createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (error) return null;
-      return data.signedUrl;
+      const { data } = client.storage.from('recette-photos').getPublicUrl(path);
+      return { path, url: data.publicUrl };
     },
 
     mapPlatFromDB(row) {
