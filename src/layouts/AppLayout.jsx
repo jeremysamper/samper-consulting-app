@@ -28,7 +28,6 @@ function formatRelativeTime(isoString) {
 export default function AppLayout({
   user,
   currentPage,
-  contentKey,
   setPage,
   onLogout,
   children,
@@ -489,7 +488,7 @@ export default function AppLayout({
         </aside>
 
         {/* ─── Contenu principal ─── */}
-        <main key={contentKey} style={mls.content} className="mobile-module-content module-transition" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+        <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
           {children}
         </main>
       </div>
@@ -602,7 +601,7 @@ export default function AppLayout({
           </div>
         </header>
 
-        <main key={contentKey} style={ls.content} className="module-transition">{children}</main>
+        <main style={ls.content}>{children}</main>
       </div>
     </div>
   );

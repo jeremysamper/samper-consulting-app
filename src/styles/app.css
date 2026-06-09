@@ -192,24 +192,14 @@ html[data-theme="dark"] {
 }
 
 /* ─── Transition entre modules ──────────────────────────────────────────────
-   Apparition en fondu + léger glissement du contenu de module à chaque
-   changement de page (la zone <main> est remontée via une `key`). Couplé à
-   useDeferredValue côté App : le module précédent reste affiché tant que le
-   nouveau n'est pas prêt → pas de flash du fallback Suspense. */
-/* Entrée douce SANS fondu d'opacité : un fondu 0→1 laisse une trame de contenu
-   quasi vide juste après le swap (= « flash »). On garde donc l'opacité pleine
-   et on se contente d'un léger glissement, imperceptible mais qui adoucit. */
-@keyframes moduleFadeIn {
-  from { transform: translateY(6px); }
-  to   { transform: translateY(0); }
-}
-.module-transition {
-  animation: moduleFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
+   Le lissage des transitions repose sur le keep-alive (App.jsx) : les modules
+   récemment visités restent montés (display:none) → un retour est instantané,
+   sans réécran de chargement. Pas d'animation de contenu (un fondu d'opacité
+   laissait une trame vide perçue comme un flash). */
 
-/* Fine barre de progression en haut pendant le chargement d'un module non
-   encore en cache. Délai de 120 ms : un changement instantané (module déjà
-   chargé) ne la fait jamais apparaître. */
+/* Fine barre de progression en haut pendant le chargement d'un module jamais
+   visité (chunk + données à charger). Délai de 120 ms : un changement
+   instantané (module déjà monté) ne la fait jamais apparaître. */
 @keyframes routeProgressSlide {
   0%   { left: -45%; width: 45%; }
   60%  { left: 35%;  width: 55%; }
@@ -237,7 +227,6 @@ html[data-theme="dark"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .module-transition { animation: none; }
   .route-progress { display: none; }
 }
 

@@ -19,6 +19,12 @@ function readInitialPage() {
   return normalizePage(readText(UI_STORAGE_KEYS.page, 'dashboard'));
 }
 
+// Keep-alive : nombre maximum de modules gardés montés simultanément.
+// Revenir sur un module récent est alors instantané (données déjà chargées,
+// pas de réécran « Chargement… »). Plafonné pour borner les abonnements
+// realtime restés actifs en arrière-plan.
+const KEEP_ALIVE_MAX = 3;
+
 export default function App() {
   const [page, setPageState] = useState(readInitialPage);
   // Transition douce entre modules : la nav (highlight) suit `page` immédiatement,
@@ -27,6 +33,19 @@ export default function App() {
   // fallback Suspense) ; quand c'est prêt, le nouveau module apparaît en fondu.
   const deferredPage = useDeferredValue(page);
   const isModuleSwitching = page !== deferredPage;
+  // Ensemble des pages gardées montées (LRU plafonné). Le module visible est
+  // celui de `deferredPage` ; les autres restent montés mais en display:none.
+  const [mountedPages, setMountedPages] = useState(() => [readInitialPage()]);
+  useEffect(() => {
+    setMountedPages(prev => (prev[0] === page
+      ? prev
+      : [page, ...prev.filter(p => p !== page)].slice(0, KEEP_ALIVE_MAX)));
+  }, [page]);
+  // Garantit que la page actuellement visible (deferredPage) est toujours rendue,
+  // même pendant le bref décalage avant que l'effet ci-dessus ne l'ajoute.
+  const pagesToRender = mountedPages.includes(deferredPage)
+    ? mountedPages
+    : [deferredPage, ...mountedPages];
   const [legacyState, setLegacyState] = useState({ loading: true, error: null });
   const [legacyVersion, setLegacyVersion] = useState(0);
   const auth = useAuth();
@@ -139,7 +158,6 @@ export default function App() {
       <AppLayout
         user={auth.profile}
         currentPage={page}
-        contentKey={deferredPage}
         setPage={setPage}
         onLogout={handleLogout}
         etablissements={currentEtablissement.etablissements}
@@ -147,16 +165,24 @@ export default function App() {
         onSelectEtablissement={handleSelectEtablissement}
         permissions={getPermissionsForRole(auth.profile.role)}
       >
-        <LegacyModuleHost
-          page={deferredPage}
-          user={auth.profile}
-          etablissement={currentEtablissement.current}
-          isMobile={isMobile}
-          loadingEtablissement={currentEtablissement.loading}
-          error={currentEtablissement.error}
-          setPage={setPage}
-          legacyVersion={legacyVersion}
-        />
+        {/* Keep-alive : chaque module visité reste monté ; seul le module actif
+            (deferredPage) est affiché. display:contents préserve la mise en page
+            (le module reste enfant direct de <main>). Revenir sur un module
+            récent est instantané, sans réécran de chargement. */}
+        {pagesToRender.map((p) => (
+          <div key={p} style={{ display: p === deferredPage ? 'contents' : 'none' }}>
+            <LegacyModuleHost
+              page={p}
+              user={auth.profile}
+              etablissement={currentEtablissement.current}
+              isMobile={isMobile}
+              loadingEtablissement={currentEtablissement.loading}
+              error={currentEtablissement.error}
+              setPage={setPage}
+              legacyVersion={legacyVersion}
+            />
+          </div>
+        ))}
       </AppLayout>
     );
   }
