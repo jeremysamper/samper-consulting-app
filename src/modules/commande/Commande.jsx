@@ -3,7 +3,7 @@ import { dbService } from '../../services/dbService.js';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, formatBesoin } from './computeBesoins.js';
-import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown } from 'lucide-react';
+import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMANDE — liste de produits a commander, partagee par etablissement.
@@ -27,6 +27,9 @@ const Commande = ({ user, etablissement }) => {
   const [showAdd, setShowAdd] = React.useState(false);
   // Saisie locale des quantites (persistee au blur) pour ne pas perdre le focus.
   const [draftQty, setDraftQty] = React.useState({});
+  // Renommage en ligne d'un produit : id de la ligne en cours d'edition + brouillon du nom.
+  const [editingId, setEditingId] = React.useState(null);
+  const [draftName, setDraftName] = React.useState('');
 
   // ── Chargement + realtime (liste partagee) ──
   React.useEffect(() => {
@@ -103,6 +106,18 @@ const Commande = ({ user, etablissement }) => {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantite: val } : i));
     if (legacySB) {
       try { await legacySB.db.upsertCommandeItem({ ...item, quantite: val }); }
+      catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+    }
+  };
+
+  const startRename = (item) => { setEditingId(item.id); setDraftName(item.nom || ''); };
+  const renameItem = async (item, newNom) => {
+    const nom = String(newNom || '').trim();
+    setEditingId(null);
+    if (!nom || nom === item.nom) return;
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, nom } : i));
+    if (legacySB) {
+      try { await legacySB.db.upsertCommandeItem({ ...item, nom }); }
       catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
     }
   };
@@ -258,10 +273,25 @@ const Commande = ({ user, etablissement }) => {
                       style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ ...s.rowName, ...(item.coche ? { textDecoration: 'line-through', color: 'var(--text2)' } : {}) }}>
-                        {item.nom}
-                        {item.source === 'manual' && <span style={s.manualTag}>ajouté</span>}
-                      </div>
+                      {editingId === item.id ? (
+                        <input
+                          autoFocus
+                          value={draftName}
+                          onChange={e => setDraftName(e.target.value)}
+                          onBlur={() => renameItem(item, draftName)}
+                          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setEditingId(null); }}
+                          style={s.nameInput}
+                        />
+                      ) : (
+                        <div
+                          style={{ ...s.rowName, ...(item.coche ? { textDecoration: 'line-through', color: 'var(--text2)' } : {}) }}
+                          onDoubleClick={() => startRename(item)}
+                          title="Double-cliquer pour renommer"
+                        >
+                          {item.nom}
+                          {item.source === 'manual' && <span style={s.manualTag}>ajouté</span>}
+                        </div>
+                      )}
                       {item.besoin > 0 && <div style={s.besoin}>Besoin {formatBesoin(item.besoin, item.unite)}</div>}
                     </div>
                     <div style={s.qtyWrap}>
@@ -276,6 +306,7 @@ const Commande = ({ user, etablissement }) => {
                       />
                       <span style={s.qtyUnit}>{item.unite}</span>
                     </div>
+                    <button style={s.delBtn} className="no-print" onClick={() => startRename(item)} title="Renommer"><Pencil size={14} /></button>
                     <button style={s.delBtn} className="no-print" onClick={() => removeItem(item)} title="Retirer"><Trash2 size={14} /></button>
                   </div>
                 ))}
@@ -374,7 +405,8 @@ const s = {
   sectionCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 8px' },
   row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)' },
   rowChecked: { background: 'var(--success-bg)' },
-  rowName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' },
+  rowName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
+  nameInput: { width: '100%', padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   besoin: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   manualTag: { marginLeft: 8, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, padding: '1px 6px' },
   qtyWrap: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },

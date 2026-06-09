@@ -1083,7 +1083,21 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             // Un plat est visible si son nom matche ou s'il a une recette filtrée.
             const platMatches = (p) => searchValue === '' || safeText(p.nom).includes(searchValue) || (recettesParPlat[p.id]?.length > 0);
 
-            const renderPlatBlock = (plat, keyPrefix) => {
+            // Retire le plat d'UNE carte (lien carte↔plat) sans supprimer le plat
+            // ni ses recettes : il reste dans l'établissement et sur les autres cartes.
+            const retirerPlatDeCarte = async (plat, carte) => {
+              if (!confirmLegacy(`Retirer « ${plat.nom} » de la carte « ${carte.nom} » ?\n\nLe plat n'est pas supprimé : il reste dans l'établissement et sur les autres cartes.`)) return;
+              try {
+                if (legacySB) await legacySB.db.removePlatFromCarte(carte.id, plat.id);
+                setPlats(prev => prev.map(p => p.id === plat.id
+                  ? { ...p, carteIds: (p.carteIds || []).filter(id => id !== carte.id) }
+                  : p));
+              } catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+            };
+
+            const renderPlatBlock = (plat, folder) => {
+              const keyPrefix = folder.id + '-';
+              const inCarte = folder.id !== '__none__';
               const platRecettes = recettesParPlat[plat.id] || [];
               const isExpanded = expandedPlats.has(plat.id);
               return (
@@ -1106,6 +1120,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         {' · '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
                       </div>
                     </div>
+                    {inCarte && (
+                      <button
+                        style={{ ...cts.platEditBtn, color: 'var(--text3)' }}
+                        onClick={(e) => { e.stopPropagation(); retirerPlatDeCarte(plat, { id: folder.id, nom: folder.nom }); }}
+                        title={`Retirer de la carte « ${folder.nom} » (ne supprime pas le plat)`}
+                      >⊖</button>
+                    )}
                     <button
                       style={cts.platEditBtn}
                       onClick={() => { setEditPlat(plat); setShowPlatForm(true); }}
@@ -1160,7 +1181,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         <span style={cts.carteFolderName}>{folder.id === '__none__' ? '🗂' : '📋'} {folder.nom}</span>
                         <span style={cts.carteCount}>{folder.plats.length}</span>
                       </div>
-                      {!collapsed && folder.plats.map(plat => renderPlatBlock(plat, folder.id + '-'))}
+                      {!collapsed && folder.plats.map(plat => renderPlatBlock(plat, folder))}
                       {!collapsed && folder.plats.length === 0 && (
                         <div style={{ padding: '8px 14px 8px 30px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
                           Aucun plat sur cette carte

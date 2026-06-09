@@ -981,6 +981,21 @@ export function installLegacySupabase() {
       }
     },
 
+    // Retire un plat d'UNE carte précise (sans supprimer le plat ni ses recettes).
+    // Le plat reste dans l'établissement et sur les autres cartes auxquelles il est lié.
+    async removePlatFromCarte(carteId, platId) {
+      const { error } = await client.from('carte_plats')
+        .delete().match({ carte_id: carteId, plat_id: platId });
+      if (error) throw error;
+    },
+
+    // Ajoute un plat à une carte (lien M2M, idempotent).
+    async addPlatToCarte(carteId, platId) {
+      const { error } = await client.from('carte_plats')
+        .upsert({ carte_id: carteId, plat_id: platId }, { onConflict: 'carte_id,plat_id' });
+      if (error) throw error;
+    },
+
     // Remplace l'ensemble des cartes auxquelles une fiche salle est rattachée.
     async setFicheCartes(ficheId, carteIds) {
       if (!ficheId) return;
@@ -1574,22 +1589,27 @@ export function installLegacySupabase() {
     async generateCommande(etabId, computedItems) {
       const items = Array.isArray(computedItems) ? computedItems : [];
       const { data: existing, error: readErr } = await client
-        .from('commande_items').select('id, cle, source').eq('etablissement_id', etabId);
+        .from('commande_items').select('id, cle, source, nom').eq('etablissement_id', etabId);
       if (readErr) throw readErr;
+      const existingByCle = new Map((existing || []).map(r => [r.cle, r]));
 
       if (items.length) {
-        const payload = items.map(it => ({
-          etablissement_id: etabId,
-          cle: it.cle,
-          produit_id: it.produitId || null,
-          nom: it.nom,
-          categorie: it.categorie || 'Autres',
-          unite: it.unite || '',
-          besoin: Number(it.besoin) || 0,
-          source: 'auto',
-          ordre: it.ordre || 0,
-          updated_at: new Date().toISOString(),
-        }));
+        const payload = items.map(it => {
+          const ex = existingByCle.get(it.cle);
+          return {
+            etablissement_id: etabId,
+            cle: it.cle,
+            produit_id: it.produitId || null,
+            // Préserve le nom existant (y compris renommé à la main) ; nomme les nouvelles lignes.
+            nom: ex ? ex.nom : it.nom,
+            categorie: it.categorie || 'Autres',
+            unite: it.unite || '',
+            besoin: Number(it.besoin) || 0,
+            source: 'auto',
+            ordre: it.ordre || 0,
+            updated_at: new Date().toISOString(),
+          };
+        });
         const { error: upErr } = await client
           .from('commande_items').upsert(payload, { onConflict: 'etablissement_id,cle' });
         if (upErr) throw upErr;
