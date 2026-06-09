@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ToastContainer, installToastGlobals, notify } from './components/toast/index.js';
 import AppLayout from './layouts/AppLayout.jsx';
 import Auth from './modules/auth/Auth.jsx';
@@ -31,21 +31,44 @@ export default function App() {
   // mais le CONTENU suit `deferredPage`. Pendant le chargement d'un module non
   // encore en cache, React garde le module précédent affiché (pas de flash du
   // fallback Suspense) ; quand c'est prêt, le nouveau module apparaît en fondu.
-  const deferredPage = useDeferredValue(page);
-  const isModuleSwitching = page !== deferredPage;
-  // Ensemble des pages gardées montées (LRU plafonné). Le module visible est
-  // celui de `deferredPage` ; les autres restent montés mais en display:none.
+  // Transition sans écran « Chargement… » : le module cible est monté tout de
+  // suite mais MASQUÉ (display:none), le temps qu'il charge chunk + données en
+  // arrière-plan ; on ne l'affiche (`visiblePage`) qu'une fois prêt. Un module
+  // déjà chargé (revisité, gardé monté) s'affiche instantanément.
+  const [visiblePage, setVisiblePage] = useState(readInitialPage);
+  const readyPagesRef = useRef(new Set([readInitialPage()]));
   const [mountedPages, setMountedPages] = useState(() => [readInitialPage()]);
+  const isModuleSwitching = page !== visiblePage;
+
+  // Monte la page cible (chargement en arrière-plan, masqué). Plafond + 1 pour
+  // tolérer la cible en cours de chargement en plus des modules gardés.
   useEffect(() => {
-    setMountedPages(prev => (prev[0] === page
-      ? prev
-      : [page, ...prev.filter(p => p !== page)].slice(0, KEEP_ALIVE_MAX)));
+    setMountedPages(prev => (prev.includes(page) ? prev : [page, ...prev].slice(0, KEEP_ALIVE_MAX + 1)));
   }, [page]);
-  // Garantit que la page actuellement visible (deferredPage) est toujours rendue,
-  // même pendant le bref décalage avant que l'effet ci-dessus ne l'ajoute.
-  const pagesToRender = mountedPages.includes(deferredPage)
-    ? mountedPages
-    : [deferredPage, ...mountedPages];
+
+  // Bascule l'affichage : immédiate si le module est déjà chargé, sinon après un
+  // court délai pendant lequel il charge ses données (masqué) → aucun « Chargement… ».
+  useEffect(() => {
+    if (page === visiblePage) return undefined;
+    if (readyPagesRef.current.has(page)) { setVisiblePage(page); return undefined; }
+    const timer = setTimeout(() => { readyPagesRef.current.add(page); setVisiblePage(page); }, 300);
+    return () => clearTimeout(timer);
+  }, [page, visiblePage]);
+
+  // Promeut la page affichée en tête du LRU et resserre au plafond (libère les
+  // abonnements realtime des modules les plus anciens).
+  useEffect(() => {
+    setMountedPages(prev => [visiblePage, ...prev.filter(p => p !== visiblePage)].slice(0, KEEP_ALIVE_MAX));
+  }, [visiblePage]);
+
+  // Garde l'ensemble « prêt » en phase avec les modules réellement montés : un
+  // module évincé du LRU est démonté → il devra recharger à la prochaine visite.
+  useEffect(() => {
+    const ready = readyPagesRef.current;
+    ready.forEach(p => { if (!mountedPages.includes(p)) ready.delete(p); });
+  }, [mountedPages]);
+
+  const pagesToRender = Array.from(new Set([page, visiblePage, ...mountedPages]));
   const [legacyState, setLegacyState] = useState({ loading: true, error: null });
   const [legacyVersion, setLegacyVersion] = useState(0);
   const auth = useAuth();
@@ -165,12 +188,12 @@ export default function App() {
         onSelectEtablissement={handleSelectEtablissement}
         permissions={getPermissionsForRole(auth.profile.role)}
       >
-        {/* Keep-alive : chaque module visité reste monté ; seul le module actif
-            (deferredPage) est affiché. display:contents préserve la mise en page
-            (le module reste enfant direct de <main>). Revenir sur un module
-            récent est instantané, sans réécran de chargement. */}
+        {/* Keep-alive : chaque module visité reste monté ; seul le module prêt
+            (visiblePage) est affiché. display:contents préserve la mise en page
+            (le module reste enfant direct de <main>). Les modules en cours de
+            chargement sont montés mais masqués → pas d'écran « Chargement… ». */}
         {pagesToRender.map((p) => (
-          <div key={p} style={{ display: p === deferredPage ? 'contents' : 'none' }}>
+          <div key={p} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
             <LegacyModuleHost
               page={p}
               user={auth.profile}

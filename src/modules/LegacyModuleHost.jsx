@@ -44,9 +44,12 @@ export default function LegacyModuleHost({
   }
 
   const accessDenied = <AccessDenied />;
+  // Fallback Suspense volontairement vide : pendant le chargement du chunk, le
+  // module est de toute façon monté masqué (cf. keep-alive dans App.jsx), donc
+  // aucun « Chargement… » ne doit s'afficher pendant les transitions.
   const wrap = (name, element) => (
     <SafeModule name={name}>
-      <Suspense fallback={<ModulePlaceholder page={page} message={`Chargement ${name}...`} />}>
+      <Suspense fallback={null}>
         {element}
       </Suspense>
     </SafeModule>
