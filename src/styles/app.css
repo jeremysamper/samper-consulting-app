@@ -538,6 +538,31 @@ html[data-theme="dark"] {
   }
 }
 
+/* ─── Tables en grid (lignes display:grid) : scroll horizontal sur mobile ──
+   Pour les listes-tableaux construites en display:grid avec colonnes fixes :
+   .grid-table-scroll sur le conteneur, .grid-table-row sur l'entête et chaque
+   ligne. Desktop inchangé ; sur mobile les lignes gardent une largeur lisible
+   et le conteneur défile horizontalement (pas d'écrasement ni de débordement). */
+@media (max-width: 767px) {
+  .grid-table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .grid-table-scroll .grid-table-row {
+    min-width: 640px;
+  }
+
+  /* Grilles 2 colonnes desktop : empilement sur mobile */
+  .stack-mobile {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+}
+
 /* ─── Tableaux responsive : scroll horizontal sur mobile ─────────────────── */
 .table-container {
   overflow-x: auto;

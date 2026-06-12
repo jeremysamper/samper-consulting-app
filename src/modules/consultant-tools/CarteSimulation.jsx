@@ -127,7 +127,7 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
       )}
 
       {/* Simulation brigade : params + résultats côte à côte */}
-      <div style={cs.simGrid}>
+      <div style={cs.simGrid} className="stack-mobile">
         <div style={cs.simCard}>
           <div style={cs.sectionTitle}>PARAMÈTRES BRIGADE</div>
           <SimulationParams

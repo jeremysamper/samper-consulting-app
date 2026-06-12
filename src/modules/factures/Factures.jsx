@@ -877,7 +877,8 @@ const fac = {
   title: { fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: 0 },
   sub: { fontSize: 13, color: 'var(--text2)', marginTop: 4 },
 
-  layout: { display: 'grid', gridTemplateColumns: 'minmax(380px, 1fr) minmax(420px, 1fr)', gap: 18 },
+  // min(380px, 100%) : 2 colonnes sur desktop, empilement naturel sur mobile
+  layout: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: 18 },
 
   formCol: { display: 'flex', flexDirection: 'column', gap: 14 },
   previewCol: { display: 'flex', flexDirection: 'column', gap: 8 },

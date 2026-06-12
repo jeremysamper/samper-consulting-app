@@ -250,11 +250,13 @@ const Pertes = ({ user, etablissement }) => {
       )}
 
       {/* Liste */}
-      <div style={pts.tableWrap} id="pertes-print">
-        <div style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px' }}>
+      <div style={pts.tableWrap} id="pertes-print" className="grid-table-scroll">
+        {/* Colonnes dynamiques : les 2 colonnes d'action n'existent que pour les
+            rôles gestionnaires, sinon les cellules débordent sur une ligne implicite. */}
+        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : '') }}>
           {sel.active && <span className="no-print" />}
           <span>Date</span>
-          <span style={{flex:2}}>Produit</span>
+          <span>Produit</span>
           <span>Motif</span>
           <span>Catégorie</span>
           <span style={{textAlign:'right'}}>Quantité</span>
@@ -271,9 +273,9 @@ const Pertes = ({ user, etablissement }) => {
           const valeur = (p.quantite * p.valeurUnit).toFixed(2);
           const canVal = canManage && !p.valide;
           return (
-            <div key={p.id} style={{
+            <div key={p.id} className="grid-table-row" style={{
               ...pts.tableRow,
-              gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',
+              gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : ''),
               ...(sel.active && sel.isSelected(p.id) ? { background: 'var(--bg)' } : {}),
             }}>
               {sel.active && (
@@ -306,12 +308,16 @@ const Pertes = ({ user, etablissement }) => {
                   {p.valide ? '✓ Validé' : '⏳ À valider'}
                 </span>
               </span>
-              <span>
-                {canVal ? <button style={pts.valBtn} onClick={()=>valider(p.id)}>Valider</button> : canManage ? <span/> : null}
-              </span>
-              <span>
-                {canManage ? <button style={pts.deleteBtn} onClick={()=>supprimer(p.id)}>Supprimer</button> : null}
-              </span>
+              {canManage && (
+                <span>
+                  {canVal && <button style={pts.valBtn} onClick={()=>valider(p.id)}>Valider</button>}
+                </span>
+              )}
+              {canManage && (
+                <span>
+                  <button style={pts.deleteBtn} onClick={()=>supprimer(p.id)}>Supprimer</button>
+                </span>
+              )}
             </div>
           );
         })}

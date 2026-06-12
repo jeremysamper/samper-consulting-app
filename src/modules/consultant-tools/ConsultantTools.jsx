@@ -1553,8 +1553,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                 </div>
 
-                <div style={{padding: 14}}>
-                  <div style={cts.ingHead}>
+                <div style={{padding: 14}} className="grid-table-scroll">
+                  <div style={cts.ingHead} className="grid-table-row">
                     <span>Nom</span>
                     <span>
                       Qté
@@ -1583,7 +1583,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     const isLinked = !!ing.produitId;
 
                     return (
-                    <div key={ing.id} style={{ ...cts.ingRow, position: 'relative' }}>
+                    <div key={ing.id} className="grid-table-row" style={{ ...cts.ingRow, position: 'relative' }}>
                       {/* Champ nom */}
                       <div style={{ position: 'relative', flex: 2, display: 'flex', alignItems: 'stretch', gap: 4 }}>
                         {isLinked && (

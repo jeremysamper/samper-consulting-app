@@ -587,8 +587,8 @@ const Inventaire = ({ user, etablissement }) => {
           />
         )}
 
-        <div style={invs.tableWrap}>
-          <div style={{...invs.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr')}}>
+        <div style={invs.tableWrap} className="grid-table-scroll">
+          <div className="grid-table-row" style={{...invs.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr')}}>
             {sel.active && <span className="no-print"/>}
             <span>Produit</span><span>Catégorie</span><span style={{textAlign:'right'}}>Stock théorique</span><span style={{textAlign:'right'}}>Stock réel</span><span style={{textAlign:'right'}}>Écart</span><span style={{textAlign:'right'}}>Valeur (CHF)</span><span style={{textAlign:'right'}}>Écart valeur</span>{canManage && <span className="no-print"/>}
           </div>
@@ -604,7 +604,7 @@ const Inventaire = ({ user, etablissement }) => {
               }}>{l.type}</span>
             ) : null;
             return (
-              <div key={l.id} style={{
+              <div key={l.id} className="grid-table-row" style={{
                 ...invs.tableRow,
                 gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr'),
                 ...(sel.active && sel.isSelected(l.id) ? { background: 'var(--bg)' } : {}),
