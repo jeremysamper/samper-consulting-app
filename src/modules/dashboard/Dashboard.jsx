@@ -68,10 +68,11 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         setHaccpReleves(haccpRelevesRows || []);
         setSops(sopRows || []);
         setSopExecutions(sopExecutionRows || []);
-        if (msgRow) {
-          setMessage(msgRow);
-          setMessageDraft(msgRow.message);
-        }
+        // Toujours setter le message, même null : sinon l'ancien message
+        // reste affiché quand le nouvel établissement n'en a pas.
+        const nextMsg = msgRow || { message: '', updatedBy: null, updatedAt: null };
+        setMessage(nextMsg);
+        if (!editingMessageRef.current) setMessageDraft(nextMsg.message);
       } catch (err) { console.error('[Dashboard load]', err); }
       finally { if (mounted) setLoading(false); }
     })();
@@ -85,7 +86,11 @@ const Dashboard = ({ user, etablissement, setPage }) => {
     unsubs.push(legacySB.realtime.subscribeReload('consultant_messages', async () => {
       try {
         const m = await legacySB.db.getConsultantMessage(etabId);
-        if (mounted && m) { setMessage(m); if (!editingMessageRef.current) setMessageDraft(m.message); }
+        if (mounted) {
+          const next = m || { message: '', updatedBy: null, updatedAt: null };
+          setMessage(next);
+          if (!editingMessageRef.current) setMessageDraft(next.message);
+        }
       } catch (e) {}
     }));
 
@@ -168,6 +173,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
     if (!legacySB || !isConsultant) return;
     try {
       await legacySB.db.setConsultantMessage(etabId, messageDraft, user.id);
+      setMessage({ message: messageDraft, updatedBy: user.id, updatedAt: new Date().toISOString() });
       editingMessageRef.current = false;
       setEditingMessage(false);
     } catch (err) { notifyLegacy('Erreur sauvegarde message : ' + err.message, 'error'); }

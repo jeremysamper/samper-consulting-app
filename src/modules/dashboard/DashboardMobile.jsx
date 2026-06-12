@@ -23,6 +23,8 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
   const [inventaires, setInventaires] = React.useState([]);
   const [message, setMessage] = React.useState({ message: '', updatedBy: null, updatedAt: null });
   const [editingMessage, setEditingMessage] = React.useState(false);
+  // Ref pour éviter une stale closure dans le callback realtime
+  const editingMessageRef = React.useRef(false);
   const [messageDraft, setMessageDraft] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [pointageError, setPointageError] = React.useState('');
@@ -49,7 +51,11 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         setShifts((shiftRows || []).map(r => legacySB.db.mapShiftFromDB(r)));
         setPertes(pertesRows || []);
         setInventaires(invRows || []);
-        if (msgRow) { setMessage(msgRow); setMessageDraft(msgRow.message); }
+        // Toujours setter le message, même null : sinon l'ancien message
+        // reste affiché quand le nouvel établissement n'en a pas.
+        const nextMsg = msgRow || { message: '', updatedBy: null, updatedAt: null };
+        setMessage(nextMsg);
+        if (!editingMessageRef.current) setMessageDraft(nextMsg.message);
       } catch (err) { console.error('[DashboardMobile]', err); }
       finally { if (mounted) setLoading(false); }
     })();
@@ -60,7 +66,14 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
       try { const rows = await legacySB.db.listPertes(etabId); if (mounted) setPertes(rows || []); } catch (e) {}
     }));
     unsubs.push(legacySB.realtime.subscribeReload('consultant_messages', async () => {
-      try { const m = await legacySB.db.getConsultantMessage(etabId); if (mounted && m) { setMessage(m); if (!editingMessage) setMessageDraft(m.message); } } catch (e) {}
+      try {
+        const m = await legacySB.db.getConsultantMessage(etabId);
+        if (mounted) {
+          const next = m || { message: '', updatedBy: null, updatedAt: null };
+          setMessage(next);
+          if (!editingMessageRef.current) setMessageDraft(next.message);
+        }
+      } catch (e) {}
     }));
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
@@ -120,10 +133,15 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
 
   const saveMessage = async () => {
     if (!legacySB || !isConsultant) return;
-    try { await legacySB.db.setConsultantMessage(etabId, messageDraft, user.id); setEditingMessage(false); }
+    try {
+      await legacySB.db.setConsultantMessage(etabId, messageDraft, user.id);
+      setMessage({ message: messageDraft, updatedBy: user.id, updatedAt: new Date().toISOString() });
+      editingMessageRef.current = false;
+      setEditingMessage(false);
+    }
     catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
   };
-  const cancelEdit = () => { setMessageDraft(message.message); setEditingMessage(false); };
+  const cancelEdit = () => { setMessageDraft(message.message); editingMessageRef.current = false; setEditingMessage(false); };
 
   const goTo = (page) => {
     if (typeof setPage === 'function') setPage(page);
@@ -216,7 +234,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         <div style={dm.messageHead}>
           <span>💬 Message du consultant</span>
           {isConsultant && !editingMessage && (
-            <button style={dm.editMsgBtn} onClick={() => setEditingMessage(true)}>
+            <button style={dm.editMsgBtn} onClick={() => { editingMessageRef.current = true; setEditingMessage(true); }}>
               {message.message ? '✎' : '+'}
             </button>
           )}
