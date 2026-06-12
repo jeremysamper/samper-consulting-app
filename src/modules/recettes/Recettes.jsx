@@ -880,7 +880,11 @@ const is = {
   results: { flex: 1, overflowY: 'auto', padding: '6px 12px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 120 },
   hint: { padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
   countLine: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
-  row: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  // flexShrink:0 IMPÉRATIF : la règle globale mobile « button:not(.mini){min-height:44px} »
+  // écrase le min-height:auto des flex-items → sans ça, flexbox comprime chaque ligne
+  // à 44px dans la liste à hauteur contrainte (clavier ouvert) et le contenu déborde
+  // par-dessus les lignes voisines (résultats superposés, illisibles).
+  row: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', flexShrink: 0, textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', fontFamily: 'var(--font)' },
   rowName: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
   rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   matchRow: { display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 },
