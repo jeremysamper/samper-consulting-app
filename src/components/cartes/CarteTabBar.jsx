@@ -22,6 +22,9 @@ export default function CarteTabBar({
   onAddCarte,
   onRenameCarte,
   onDeleteCarte,
+  // Optionnel : id de la carte « d'accueil » → préfixe ★ sur l'onglet.
+  // Additif : les autres usages (Fiches salle) ne passent rien → aucun marqueur.
+  homeId = null,
 }) {
   // modal: null | { mode: 'create' } | { mode: 'edit', carte }
   const [modal, setModal] = React.useState(null);
@@ -67,7 +70,7 @@ export default function CarteTabBar({
         const active = activeId === carte.id;
         return (
           <div key={carte.id} style={{ ...s.tab, ...(active ? s.tabActive : {}) }} onClick={() => onSelect?.(carte.id)}>
-            <span style={s.tabLabel}>{carte.nom}</span>
+            <span style={s.tabLabel}>{carte.id === homeId && '★ '}{carte.nom}</span>
             {canManage && active && (
               <button
                 style={s.editBtn}

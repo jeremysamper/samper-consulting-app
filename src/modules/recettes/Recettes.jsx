@@ -773,6 +773,121 @@ const ms = {
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
 };
 
+// Normalisation recherche : minuscules + sans accents (poivre = poivré).
+const normalizeSearch = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+// ─── IngredientSearchModal : « où se trouve cet ingrédient / allergène ? » ───
+// Cherche un terme (ex. « poivre », « gluten ») dans TOUTES les recettes de
+// l'établissement et liste précisément lesquelles le contiennent (ingrédient
+// matché + allergènes déclarés + plat(s) de rattachement).
+const QUICK_ALLERGENES = ['Gluten', 'Lactose', 'Œufs', 'Fruits à coque', 'Arachides', 'Soja', 'Sésame', 'Moutarde'];
+
+const IngredientSearchModal = ({ recettes, plats, onPick, onClose }) => {
+  const [query, setQuery] = React.useState('');
+
+  // plat(s) contenant chaque recette → contexte d'affichage
+  const platsByRecette = React.useMemo(() => {
+    const m = new Map();
+    (plats || []).forEach(p => (p.recettes || []).forEach(pr => {
+      if (!m.has(pr.recetteId)) m.set(pr.recetteId, []);
+      m.get(pr.recetteId).push(p.nom);
+    }));
+    return m;
+  }, [plats]);
+
+  const q = normalizeSearch(query.trim());
+  const results = React.useMemo(() => {
+    if (q.length < 2) return [];
+    return (recettes || []).map(r => {
+      const matchedIngs = (r.ingredients || []).filter(i => normalizeSearch(i.nom).includes(q));
+      const matchedAllerg = (r.allergenesIds || []).filter(a => normalizeSearch(ALLERGENES_MAP[a] || a).includes(q));
+      if (!matchedIngs.length && !matchedAllerg.length) return null;
+      return { recette: r, matchedIngs, matchedAllerg };
+    }).filter(Boolean);
+  }, [q, recettes]);
+
+  return (
+    <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
+      <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
+        <div style={smStyle.header}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🔎 Recherche allergène / ingrédient</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Trouvez dans quelles recettes un produit apparaît</div>
+          </div>
+          <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{ padding: '14px 20px 8px' }}>
+          <input
+            autoFocus
+            style={is.input}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Ex : poivre, gluten, noisette, crème…"
+          />
+          <div style={is.chips}>
+            {QUICK_ALLERGENES.map(a => (
+              <button key={a} style={is.chip} onClick={() => setQuery(a)}>{a}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={is.results}>
+          {q.length < 2 ? (
+            <div style={is.hint}>Tapez au moins 2 lettres. La recherche ignore les accents et la casse.</div>
+          ) : results.length === 0 ? (
+            <div style={is.hint}>Aucune recette ne contient « {query.trim()} ».</div>
+          ) : (
+            <>
+              <div style={is.countLine}>
+                {results.length} recette{results.length > 1 ? 's' : ''} contien{results.length > 1 ? 'nent' : 't'} « {query.trim()} »
+              </div>
+              {results.map(({ recette, matchedIngs, matchedAllerg }) => {
+                const inPlats = platsByRecette.get(recette.id) || [];
+                return (
+                  <button key={recette.id} style={is.row} onClick={() => { onPick(recette); onClose(); }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={is.rowName}>{recette.nom}</div>
+                      <div style={is.rowMeta}>
+                        {recette.categorie}
+                        {inPlats.length > 0 && ` · ${inPlats.join(', ')}`}
+                      </div>
+                      <div style={is.matchRow}>
+                        {matchedIngs.map(i => (
+                          <span key={i.id} style={is.matchIng}>{i.nom}{i.quantite ? ` · ${i.quantite}${i.unite || ''}` : ''}</span>
+                        ))}
+                        {matchedAllerg.map(a => (
+                          <span key={a} style={is.matchAllerg}>⚠ {ALLERGENES_MAP[a] || a}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <span style={{ color: 'var(--text2)', fontSize: 18, flexShrink: 0 }}>›</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const is = {
+  input: { width: '100%', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  chip: { padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 99, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  results: { flex: 1, overflowY: 'auto', padding: '6px 12px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 120 },
+  hint: { padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
+  countLine: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
+  row: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  rowName: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
+  rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
+  matchRow: { display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 },
+  matchIng: { fontSize: 11, fontWeight: 600, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', padding: '2px 7px', borderRadius: 99 },
+  matchAllerg: { fontSize: 11, fontWeight: 600, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', padding: '2px 7px', borderRadius: 99 },
+};
+
 const Recettes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
@@ -796,6 +911,23 @@ const Recettes = ({ user, etablissement }) => {
   const [plats, setPlats] = React.useState([]);
   const [expandedPlats, setExpandedPlats] = React.useState(new Set());
   const [showExportModal, setShowExportModal] = React.useState(false);
+  const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
+  // Carte d'accueil = préférence utilisateur par établissement (user_settings,
+  // synchro multi-device, cache hydraté au login → lecture instantanée).
+  const [defaultCarteId, setDefaultCarteId] = React.useState(null);
+
+  React.useEffect(() => {
+    setDefaultCarteId(legacySB?.db?.getUserSettingSync?.('cartes_default:' + etabId, null) || null);
+  }, [etabId]);
+
+  const toggleDefaultCarte = async (carteId) => {
+    const next = defaultCarteId === carteId ? null : carteId;
+    setDefaultCarteId(next);
+    try {
+      await legacySB?.db?.setUserSetting?.('cartes_default:' + etabId, next);
+      notifyLegacy(next ? '★ Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
+    } catch (e) { notifyLegacy('Erreur enregistrement : ' + (e.message || e), 'error'); }
+  };
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -844,12 +976,15 @@ const Recettes = ({ user, etablissement }) => {
   // Onglet carte actif (ou bibliothèque). On garde toujours un onglet valide.
   const isLibrary = activeTab === LIBRARY_TAB;
   const activeCarte = cartes.find(c => c.id === activeTab) || null;
+  // Atterrissage : à l'ouverture (activeTab vide) ou si la carte courante a
+  // disparu, on bascule sur la carte d'accueil définie par l'utilisateur, sinon
+  // la 1re carte. Un choix explicite déjà valide (carte ou bibliothèque) est respecté.
   React.useEffect(() => {
-    if (activeTab === LIBRARY_TAB) return;
-    if (!cartes.some(c => c.id === activeTab)) {
-      setActiveTab(cartes[0]?.id || LIBRARY_TAB);
-    }
-  }, [cartes]);
+    if (!cartes.length) return;
+    if (activeTab === LIBRARY_TAB || cartes.some(c => c.id === activeTab)) return;
+    const saved = legacySB?.db?.getUserSettingSync?.('cartes_default:' + etabId, null);
+    setActiveTab(saved && cartes.some(c => c.id === saved) ? saved : cartes[0].id);
+  }, [cartes, etabId]);
 
   // Plats de la carte active (M2M via carteIds). Les plats sans recette
   // rattachée s'affichent quand même sur la carte.
@@ -875,8 +1010,18 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowExportModal(false)}
         />
       )}
-      {/* Onglets : une carte par menu + bibliothèque recettes */}
-      <div style={rs.tabs}>
+      {showIngredientSearch && (
+        <IngredientSearchModal
+          recettes={recettesEtab}
+          plats={plats}
+          onPick={(r) => setSelectedRecette(r)}
+          onClose={() => setShowIngredientSearch(false)}
+        />
+      )}
+      {/* Barre d'outils : onglets cartes (wrap interne) + actions groupées à droite.
+          Le conteneur wrappe : sur mobile les actions passent sous les onglets au
+          lieu de déborder / flotter hors de l'écran. */}
+      <div style={rs.toolbar}>
         <CarteTabBar
           cartes={cartes}
           activeId={activeTab}
@@ -886,10 +1031,13 @@ const Recettes = ({ user, etablissement }) => {
           onAddCarte={addCarte}
           onRenameCarte={renameCarte}
           onDeleteCarte={deleteCarte}
+          homeId={defaultCarteId}
         />
-        <div style={{flex:1}}/>
-        <input style={rs.search} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
-        <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">⤓ Export multiple</button>
+        <div style={rs.toolbarActions} className="no-print">
+          <input style={rs.search} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">🔎 Allergènes</button>
+          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">⤓ Export multiple</button>
+        </div>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
       </div>
 
@@ -919,7 +1067,18 @@ const Recettes = ({ user, etablissement }) => {
                 {activeCarte.dateDebut && ` · Du ${activeCarte.dateDebut}${activeCarte.dateFin ? ` au ${activeCarte.dateFin}` : ''}`}
               </div>
             </div>
-            <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
+            <div style={rs.carteHeaderRight} className="no-print">
+              {canManageCartes && (
+                <button
+                  style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
+                  onClick={() => toggleDefaultCarte(activeCarte.id)}
+                  title={defaultCarteId === activeCarte.id ? 'Carte d\'accueil — clic pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
+                >
+                  {defaultCarteId === activeCarte.id ? '★ Carte d\'accueil' : '☆ Définir par défaut'}
+                </button>
+              )}
+              <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
+            </div>
           </div>
 
           {/* Cat filter */}
@@ -1121,13 +1280,15 @@ const Recettes = ({ user, etablissement }) => {
 
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
-  tabs: {display:'flex',gap:4,alignItems:'center'},
-  tab: {padding:'8px 18px',border:'1px solid var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  tabActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
-  search: {padding:'8px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',width:180},
+  toolbar: {display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'},
+  toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
+  search: {padding:'8px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',flex:'1 1 160px',minWidth:140,maxWidth:240,boxSizing:'border-box'},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
-  carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between'},
+  carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
+  carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
+  homeBtn: {padding:'6px 12px',border:'1px solid var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
   carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   catFilter: {display:'flex',gap:6},
   catBtn: {padding:'6px 16px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
