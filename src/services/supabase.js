@@ -12,13 +12,22 @@ function readEnvConfig() {
   };
 }
 
+// Fallback public — mêmes valeurs que components/config.js (la clé anon est
+// publique par design, la sécurité repose sur la RLS). Sans lui, l'app Vite
+// jette au chargement du module sur toute machine sans .env → écran blanc
+// silencieux. Un .env local reste prioritaire pour pointer ailleurs.
+const FALLBACK_CONFIG = {
+  url: 'https://ppmtoiqgajwcdkbnrcll.supabase.co',
+  anonKey: 'sb_publishable_Vp4K1VX34PBe4lID0qFS1w_JD2sc5Ov'
+};
+
 export function getSupabaseConfig() {
   const env = readEnvConfig();
   const legacy = readLegacyConfig();
 
-  const url = env.url || legacy.url || '';
-  const anonKey = env.anonKey || legacy.anonKey || '';
-  const source = env.url && env.anonKey ? 'env' : legacy.url && legacy.anonKey ? 'legacy' : 'missing';
+  const url = env.url || legacy.url || FALLBACK_CONFIG.url;
+  const anonKey = env.anonKey || legacy.anonKey || FALLBACK_CONFIG.anonKey;
+  const source = env.url && env.anonKey ? 'env' : legacy.url && legacy.anonKey ? 'legacy' : 'fallback';
 
   return { url, anonKey, source };
 }
@@ -34,12 +43,8 @@ export function getSupabaseConfigState() {
 
 const config = getSupabaseConfig();
 
-if (config.source === 'missing') {
-  throw new Error(
-    '[Supabase] Configuration manquante.\n' +
-    'VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont requis.\n' +
-    'Copiez .env.example en .env et renseignez vos valeurs.'
-  );
+if (config.source === 'fallback') {
+  console.info('[Supabase] Config fallback utilisée (pas de .env ni window.SUPABASE_CONFIG).');
 }
 
 export const supabase = createClient(config.url, config.anonKey, {
