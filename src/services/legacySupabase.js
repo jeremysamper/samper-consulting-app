@@ -1316,9 +1316,74 @@ export function installLegacySupabase() {
         etablissement_id: etabId,
         message,
         updated_by: userId,
+        // Le default now() ne joue qu'à l'insert — sans ça, la date reste figée à la création.
+        updated_at: new Date().toISOString(),
       }).select().single();
       if (error) throw error;
       return data;
+    },
+
+    // ─── MESSAGES PRIVÉS (sens unique : consultant → utilisateur) ───
+    mapPrivateMessageFromDB(row) {
+      return {
+        id: row.id,
+        recipientId: row.recipient_id,
+        senderId: row.sender_id,
+        message: row.message,
+        createdAt: row.created_at,
+        readAt: row.read_at,
+      };
+    },
+
+    async listPrivateMessages(recipientId) {
+      const { data, error } = await client.from('private_messages')
+        .select('*')
+        .eq('recipient_id', recipientId)
+        .order('created_at', { ascending: false });
+      if (error) { console.error('[listPrivateMessages]', error); return []; }
+      return (data || []).map(r => this.mapPrivateMessageFromDB(r));
+    },
+
+    // Vue consultant : derniers messages tous destinataires confondus
+    // (RLS : seuls le consultant et chaque destinataire voient leurs lignes).
+    async listAllPrivateMessages() {
+      const { data, error } = await client.from('private_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) { console.error('[listAllPrivateMessages]', error); return []; }
+      return (data || []).map(r => this.mapPrivateMessageFromDB(r));
+    },
+
+    async countUnreadPrivateMessages(recipientId) {
+      const { count, error } = await client.from('private_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('recipient_id', recipientId)
+        .is('read_at', null);
+      if (error) { console.error('[countUnreadPrivateMessages]', error); return 0; }
+      return count || 0;
+    },
+
+    async sendPrivateMessage(recipientId, message, senderId) {
+      const { data, error } = await client.from('private_messages').insert({
+        recipient_id: recipientId,
+        sender_id: senderId,
+        message,
+      }).select().single();
+      if (error) throw error;
+      return this.mapPrivateMessageFromDB(data);
+    },
+
+    async markPrivateMessagesRead(recipientId) {
+      const { error } = await client.from('private_messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('recipient_id', recipientId)
+        .is('read_at', null);
+      if (error) console.error('[markPrivateMessagesRead]', error);
+    },
+
+    async deletePrivateMessage(id) {
+      const { error } = await client.from('private_messages').delete().eq('id', id);
+      if (error) throw error;
     },
 
     // ─── HACCP — Zones ───

@@ -5,6 +5,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
+import { useUnreadPrivateMessages } from '../hooks/useUnreadPrivateMessages.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import { navigateToPage } from '../services/navigationService.js';
@@ -161,6 +162,18 @@ export default function AppLayout({
   React.useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [currentPage, isMobile]);
+
+  // Badge messages privés non lus (consultant → utilisateur) sur l'item de nav
+  const unreadMessages = useUnreadPrivateMessages(user?.id);
+  const renderNavBadge = (itemId) => (
+    itemId === 'messages' && unreadMessages > 0 ? (
+      <span style={{
+        background: 'var(--danger-strong)', color: '#fff', fontSize: 10, fontWeight: 700,
+        padding: '2px 7px', borderRadius: 99, minWidth: 14, textAlign: 'center',
+        lineHeight: 1.4, flexShrink: 0,
+      }}>{unreadMessages}</span>
+    ) : null
+  );
 
   const handleSetPage = (p) => { setPage(p); if (isMobile) setSidebarOpen(false); };
 
@@ -471,6 +484,7 @@ export default function AppLayout({
                       onClick={() => handleSetPage(item.id)}
                     >
                       <span style={{ flex: 1, textAlign: 'left' }}>{getLabelForModule(item.id, item.label)}</span>
+                      {renderNavBadge(item.id)}
                       {active && <span style={{ color: 'var(--accent)', fontSize: 16 }}>●</span>}
                     </button>
                   );
@@ -539,7 +553,8 @@ export default function AppLayout({
                     style={{ ...ls.navItem, ...(active ? ls.navActive : {}), justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
                     onClick={() => handleSetPage(item.id)} title={!sidebarOpen ? getLabelForModule(item.id, item.label) : ''}>
                     {!sidebarOpen && <span style={{ ...ls.navIcon, opacity: active ? 1 : 0.72 }}>{item.icon || '•'}</span>}
-                    {sidebarOpen && <span style={ls.navLabel}>{getLabelForModule(item.id, item.label)}</span>}
+                    {sidebarOpen && <span style={{ ...ls.navLabel, flex: 1 }}>{getLabelForModule(item.id, item.label)}</span>}
+                    {sidebarOpen && renderNavBadge(item.id)}
                     {active && sidebarOpen && <div style={ls.navActiveLine} />}
                   </button>
                 );

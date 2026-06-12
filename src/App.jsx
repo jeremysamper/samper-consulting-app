@@ -203,6 +203,7 @@ export default function App() {
               error={currentEtablissement.error}
               setPage={setPage}
               legacyVersion={legacyVersion}
+              isActivePage={p === visiblePage}
             />
           </div>
         ))}

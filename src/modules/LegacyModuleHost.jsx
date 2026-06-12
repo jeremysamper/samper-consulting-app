@@ -14,6 +14,7 @@ const FAQAssistant = lazy(() => import('./faq/FAQAssistant.jsx'));
 const FichesSalle = lazy(() => import('./fiches-salle/FichesSalle.jsx'));
 const HACCP = lazy(() => import('./haccp/HACCP.jsx'));
 const Inventaire = lazy(() => import('./inventaire/Inventaire.jsx'));
+const Messages = lazy(() => import('./messages/Messages.jsx'));
 const Parametres = lazy(() => import('./parametres/Parametres.jsx'));
 const Pertes = lazy(() => import('./pertes/Pertes.jsx'));
 const Planning = lazy(() => import('./planning/Planning.jsx'));
@@ -31,7 +32,11 @@ export default function LegacyModuleHost({
   loadingEtablissement,
   error,
   setPage,
-  legacyVersion
+  legacyVersion,
+  // Keep-alive : true seulement pour le module réellement affiché. Permet aux
+  // modules gardés montés en arrière-plan de suspendre leurs effets « visibles »
+  // (ex. marquage lu des messages privés).
+  isActivePage = true
 }) {
   const permissions = getPermissionsForRole(user.role);
 
@@ -69,6 +74,11 @@ export default function LegacyModuleHost({
       const PlanningComponent = Planning;
       return permissions.planning !== false
         ? wrap('Pointage', <PlanningComponent user={user} etablissement={etablissement} initialTab="pointage" />)
+        : accessDenied;
+    }
+    case 'messages': {
+      return permissions.messages !== false
+        ? wrap('Messages privés', <Messages user={user} etablissement={etablissement} setPage={setPage} isActive={isActivePage} />)
         : accessDenied;
     }
     case 'cartes': {
