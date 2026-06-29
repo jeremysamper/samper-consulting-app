@@ -624,20 +624,22 @@ export const pdfUtils = {
       logoDataUrl = null,
       accent = [88, 129, 87], // Vert Samper #588157 - charte app (défaut, hex/rgb jamais oklch)
     } = options;
-    const etablissement = (options.etablissement?.nom || 'Samper Consulting').toString();
+    const etablissement = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
     const pageNum = options.pageNum || 1;
     const pageCount = options.pageCount || 1;
 
-    const plat       = (recette.plat || recette.nom || 'Recette').toString().trim();
-    const famille    = (recette.famille || recette.categorie || '').toString().trim();
-    const allergenes = (recette.allergenesText || recette.allergenes || 'Aucun').toString().trim() || 'Aucun';
-    const metaCells  = Array.isArray(recette.metaCells) ? recette.metaCells.filter(c => c && c.k && c.v) : [];
-    const notes      = Array.isArray(recette.notes)
+    const plat       = pdfSafeText((recette.plat || recette.nom || 'Recette').toString().trim());
+    const famille    = pdfSafeText((recette.famille || recette.categorie || '').toString().trim());
+    const allergenes = pdfSafeText((recette.allergenesText || recette.allergenes || 'Aucun').toString().trim()) || 'Aucun';
+    const metaCells  = (Array.isArray(recette.metaCells) ? recette.metaCells.filter(c => c && c.k && c.v) : [])
+      .map(c => ({ k: pdfSafeText(c.k), v: pdfSafeText(c.v) }));
+    const notes      = (Array.isArray(recette.notes)
       ? recette.notes.filter(n => n && n.label && n.text && String(n.text).trim())
-      : [];
+      : []).map(n => ({ label: pdfSafeText(n.label), text: pdfSafeText(n.text) }));
 
-    const ingredients = normalizeIngredients(recette.ingredients);
-    const etapes      = normalizeSteps(recette.etapes || recette.process || recette.steps);
+    const ingredients = normalizeIngredients(recette.ingredients)
+      .map(ing => ({ ...ing, nom: pdfSafeText(ing.nom), unite: pdfSafeText(ing.unite), qte: pdfSafeText(ing.qte) }));
+    const etapes      = normalizeSteps(recette.etapes || recette.process || recette.steps).map(pdfSafeText);
 
     const PAGE_W = 210, PAGE_H = 297, M = 15;
     const contentW = PAGE_W - 2 * M;
@@ -871,6 +873,7 @@ export const pdfUtils = {
     const groups = Array.isArray(payload.groups) ? payload.groups : [];
     const totalCount = payload.totalCount != null ? payload.totalCount : groups.reduce((s, g) => s + (g.items?.length || 0), 0);
     const cocheCount = payload.cocheCount || 0;
+    const cartesLabel = (payload.cartesLabel || '').toString().trim();
     const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
 
     // Colonnes
@@ -897,6 +900,12 @@ export const pdfUtils = {
       doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
       doc.text(`${dateStr}  ·  ${totalCount} produit${totalCount > 1 ? 's' : ''}  ·  ${cocheCount} coché${cocheCount > 1 ? 's' : ''}`, M, ruleTopY + 17);
+      if (cartesLabel) {
+        const line = doc.splitTextToSize(`Cartes : ${cartesLabel}`, contentW)[0];
+        doc.setFontSize(7.5); doc.setTextColor(...ACC);
+        doc.text(line, M, ruleTopY + 21.5);
+        return ruleTopY + 29;
+      }
       return ruleTopY + 25;
     };
     const drawFooter = () => {
@@ -970,6 +979,40 @@ export const pdfUtils = {
     }
   },
 };
+
+// ─── Assainissement texte pour jsPDF ────────────────────────────────
+// jsPDF + police standard helvetica n'encode que le jeu cp1252 (Latin-1 + extras
+// Windows). Les symboles hors de ce jeu (≈, ≤, ≥, flèches, fractions Unicode…)
+// ressortent en charabia (ex. « ≈ » affiché « "H »). On les remplace par un
+// équivalent ASCII lisible, et on translittère le reste plutôt que de corrompre.
+const PDF_CHAR_REPLACEMENTS = {
+  '≈': '~', '≃': '~', '≅': '~', '∼': '~',
+  '≤': '<=', '≥': '>=', '≠': '#', '≡': '=',
+  '√': 'racine', '∞': 'infini', '∑': 'somme', '∆': 'delta', '∂': 'd',
+  '→': '->', '←': '<-', '↔': '<->', '↑': 'haut', '↓': 'bas', '⇒': '=>',
+  '⅓': '1/3', '⅔': '2/3', '⅕': '1/5', '⅖': '2/5', '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8',
+  '′': "'", '″': '"', '‴': "'''",
+  '−': '-', '‐': '-', '‑': '-', '‒': '-', '⁄': '/',
+  '✓': 'v', '✔': 'v', '✗': 'x', '✘': 'x', '★': '*', '☆': '*', '●': '-', '◦': '-',
+};
+
+// Codepoints Unicode > 0xFF mais représentables en cp1252 (à conserver tels quels).
+const CP1252_EXTRA = new Set([
+  0x20AC, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160,
+  0x2039, 0x0152, 0x017D, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+  0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x017E, 0x0178,
+]);
+
+function pdfSafeText(value) {
+  if (value == null) return '';
+  return String(value).replace(/[^\x00-\x7F]/g, (ch) => {
+    if (Object.prototype.hasOwnProperty.call(PDF_CHAR_REPLACEMENTS, ch)) return PDF_CHAR_REPLACEMENTS[ch];
+    const cp = ch.codePointAt(0);
+    if (cp <= 0xFF || CP1252_EXTRA.has(cp)) return ch; // accents FR & extras cp1252 : OK
+    const stripped = ch.normalize('NFKD').replace(/[̀-ͯ]/g, '');
+    return /^[\x20-\x7E]*$/.test(stripped) ? stripped : '';
+  });
+}
 
 // ─── Normalisation des entrées fiche recette ────────────────────────
 // Acceptent un tableau d'objets OU un texte multi-lignes (robustesse).
