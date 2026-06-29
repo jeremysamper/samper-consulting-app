@@ -64,88 +64,127 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
   const [mapping, setMapping] = React.useState({});
   const [parseStats, setParseStats] = React.useState(null);
   const [progress, setProgress] = React.useState({ done: 0, total: 0, imported: 0, failed: 0 });
+  // Récap par fichier après un import multiple (fichiers ignorés / en échec).
+  const [fileNotes, setFileNotes] = React.useState([]);
+  const [dragOver, setDragOver] = React.useState(false);
+  const fileInputRef = React.useRef(null);
   const cancelRef = React.useRef(false);
 
   const reset = () => {
     setStep('choose'); setParseError(''); setScannedPdf(false);
     setRecipes([]); setMappingData(null); setMapping({}); setParseStats(null);
+    setFileNotes([]);
   };
 
-  // ── Parsing fichier ──
-  const handleExcelFile = async (file) => {
+  // Détecte le type d'un fichier à partir de son extension / type MIME.
+  const detectKind = (file) => {
+    const name = String(file.name || '').toLowerCase();
+    const type = String(file.type || '').toLowerCase();
+    if (type.startsWith('image/') || /\.(png|jpe?g|webp|heic|heif|gif|bmp|tiff?)$/.test(name)) return 'photo';
+    if (type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+    if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')
+        || type.includes('spreadsheet') || type.includes('excel') || type === 'text/csv') return 'excel';
+    return 'unknown';
+  };
+
+  // ── Parsing : détection automatique du type + plusieurs fichiers d'un coup ──
+  // Chaque fichier est lu selon son type, les recettes sont agrégées dans un
+  // seul aperçu. Les fichiers en échec sont listés sans bloquer les autres.
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
     setParsing(true); setParseError(''); setScannedPdf(false);
     resetUnrecognizedUnits();
-    try {
-      const buf = await file.arrayBuffer();
-      const result = await parseWorkbook(buf);
-      if (result.stats) setParseStats(result.stats);
-      if (result.needsMapping) {
-        setMappingData(result);
-        setMapping(result.detected || {});
-        setStep('mapping');
-      } else if (result.recipes && result.recipes.length) {
-        setRecipes(result.recipes);
-        setStep('preview');
-      } else {
-        setParseError('Aucune recette détectée dans ce fichier.');
+
+    const aggregated = [];
+    const notes = [];
+    let needsMappingResult = null; // Excel à mapper (seulement si fichier unique)
+    let firstStats = null;
+    let scannedCount = 0;
+    const many = files.length > 1;
+
+    for (let idx = 0; idx < files.length; idx += 1) {
+      const file = files[idx];
+      const kind = detectKind(file);
+      setParsingMsg(
+        many ? `Lecture ${idx + 1}/${files.length} · ${file.name}…`
+          : (kind === 'photo' ? 'Analyse de la photo par l\'IA, quelques secondes…' : 'Lecture du fichier…'),
+      );
+      try {
+        if (kind === 'excel') {
+          const buf = await file.arrayBuffer();
+          const result = await parseWorkbook(buf);
+          if (result.stats && !firstStats) firstStats = result.stats;
+          if (result.needsMapping) {
+            if (!many) needsMappingResult = result;
+            else notes.push(`${file.name} : colonnes non reconnues, à importer seul pour le mappage manuel.`);
+          } else if (result.recipes && result.recipes.length) {
+            aggregated.push(...result.recipes);
+          } else {
+            notes.push(`${file.name} : aucune recette détectée.`);
+          }
+        } else if (kind === 'pdf') {
+          const { parsePdf } = await import('./PdfImporter.js'); // chargement à la demande
+          const buf = await file.arrayBuffer();
+          const result = await parsePdf(buf);
+          if (result.scanned) {
+            scannedCount += 1;
+            notes.push(`${file.name} : PDF scanné (image), prends-en une photo pour la lecture IA.`);
+          } else if (result.recipes && result.recipes.length) {
+            aggregated.push(...result.recipes);
+          } else {
+            notes.push(`${file.name} : aucune recette détectée.`);
+          }
+        } else if (kind === 'photo') {
+          const { ocrRecipe } = await import('../../../services/aiService.js');
+          const result = await ocrRecipe(file);
+          if (result.recipes && result.recipes.length) {
+            aggregated.push(...result.recipes);
+          } else {
+            notes.push(`${file.name} : aucune recette détectée sur la photo.`);
+          }
+        } else {
+          notes.push(`${file.name} : format non pris en charge.`);
+        }
+      } catch (err) {
+        notes.push(`${file.name} : ${err.message || err}`);
       }
-    } catch (err) {
-      setParseError('Lecture impossible : ' + (err.message || err));
-    } finally {
-      setParsing(false);
+    }
+
+    setParsing(false);
+    setParsingMsg('Lecture du fichier…');
+
+    // Fichier Excel unique sans recette exploitable mais avec colonnes à mapper.
+    if (needsMappingResult && !aggregated.length) {
+      if (firstStats) setParseStats(firstStats);
+      setMappingData(needsMappingResult);
+      setMapping(needsMappingResult.detected || {});
+      setStep('mapping');
+      return;
+    }
+
+    if (aggregated.length) {
+      if (!many && firstStats) setParseStats(firstStats);
+      setFileNotes(notes);
+      setRecipes(aggregated);
+      setStep('preview');
+    } else {
+      if (!many && scannedCount > 0) setScannedPdf(true);
+      setParseError(notes.length ? notes.join('\n') : 'Aucune recette détectée.');
     }
   };
 
-  const handlePdfFile = async (file) => {
-    setParsing(true); setParseError(''); setScannedPdf(false);
-    resetUnrecognizedUnits();
-    try {
-      const { parsePdf } = await import('./PdfImporter.js'); // chargement à la demande
-      const buf = await file.arrayBuffer();
-      const result = await parsePdf(buf);
-      if (result.scanned) {
-        setScannedPdf(true);
-      } else if (result.recipes && result.recipes.length) {
-        setRecipes(result.recipes);
-        setStep('preview');
-      } else {
-        setParseError('Aucune recette détectée dans ce PDF.');
-      }
-    } catch (err) {
-      setParseError('Lecture du PDF impossible : ' + (err.message || err));
-    } finally {
-      setParsing(false);
-    }
-  };
-
-  // ── OCR photo via l'IA ──
-  const handlePhotoFile = async (file) => {
-    setParsing(true); setParsingMsg('Analyse de la photo par l\'IA — quelques secondes…');
-    setParseError(''); setScannedPdf(false);
-    try {
-      const { ocrRecipe } = await import('../../../services/aiService.js');
-      const result = await ocrRecipe(file);
-      if (result.recipes && result.recipes.length) {
-        setRecipes(result.recipes);
-        setStep('preview');
-      } else {
-        setParseError('Aucune recette détectée dans cette photo. Réessaie avec une image plus nette.');
-      }
-    } catch (err) {
-      setParseError('Analyse IA impossible : ' + (err.message || err));
-    } finally {
-      setParsing(false);
-      setParsingMsg('Lecture du fichier…');
-    }
-  };
-
-  const onPick = (kind) => (e) => {
-    const file = e.target.files && e.target.files[0];
+  const onInputChange = (e) => {
+    const files = e.target.files;
     e.target.value = '';
-    if (!file) return;
-    if (kind === 'pdf') handlePdfFile(file);
-    else if (kind === 'photo') handlePhotoFile(file);
-    else handleExcelFile(file);
+    if (files && files.length) handleFiles(files);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) handleFiles(files);
   };
 
   // ── Mapping de colonnes ──
@@ -235,26 +274,35 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {step === 'choose' && (
             <div>
               <p style={{ fontSize: 13, color: 'var(--text2)', marginTop: 0 }}>
-                Importez plusieurs recettes en une fois depuis un fichier. Les recettes
-                sont créées en brouillon sur l'établissement courant.
+                Glissez une ou plusieurs fiches recettes : le type de chaque fichier
+                est détecté automatiquement. Les recettes sont créées en brouillon
+                sur l'établissement courant.
               </p>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <label style={{ flex: '1 1 200px' }}>
-                  <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={onPick('excel')} />
-                  <div style={tile}>📊<div style={tileLabel}>Excel</div><div style={tileSub}>.xlsx / .xls</div></div>
-                </label>
-                <label style={{ flex: '1 1 200px' }}>
-                  <input type="file" accept=".csv" style={{ display: 'none' }} onChange={onPick('excel')} />
-                  <div style={tile}>📋<div style={tileLabel}>CSV</div><div style={tileSub}>texte tabulé</div></div>
-                </label>
-                <label style={{ flex: '1 1 200px' }}>
-                  <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onPick('pdf')} />
-                  <div style={tile}>📄<div style={tileLabel}>PDF</div><div style={tileSub}>recettes texte</div></div>
-                </label>
-                <label style={{ flex: '1 1 200px' }}>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick('photo')} />
-                  <div style={tile}>📷<div style={tileLabel}>Photo</div><div style={tileSub}>recette papier — lecture par IA</div></div>
-                </label>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current && fileInputRef.current.click(); } }}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                style={{ ...dropZone, ...(dragOver ? dropZoneActive : {}) }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".xlsx,.xls,.csv,.pdf,image/*"
+                  style={{ display: 'none' }}
+                  onChange={onInputChange}
+                />
+                <div style={{ fontSize: 40, lineHeight: 1 }}>📥</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                  Glissez vos fiches ici, ou cliquez pour parcourir
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                  Excel, CSV, PDF ou photos · plusieurs fichiers à la fois
+                </div>
               </div>
               <div style={{ marginTop: 14 }}>
                 <Btn variant="ghost" small onClick={downloadTemplate}>⬇ Télécharger le template Excel</Btn>
@@ -325,6 +373,14 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   )}
                 </div>
               )}
+              {fileNotes.length > 0 && (
+                <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)', marginTop: 0, marginBottom: 10 }}>
+                  <strong>{fileNotes.length} fichier(s) non importé(s) :</strong>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                    {fileNotes.map((n, i) => <li key={i} style={{ marginBottom: 2 }}>{n}</li>)}
+                  </ul>
+                </div>
+              )}
               <ImportPreview recipes={recipes} onChange={setRecipes} unrecognizedUnits={getUnrecognizedUnits()} />
               <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                 <Btn variant="ghost" onClick={reset}>← Autre fichier</Btn>
@@ -377,13 +433,15 @@ const statsBanner = {
   marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
   background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', lineHeight: 1.6,
 };
-const tile = {
-  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer',
-  border: '1px solid var(--border)', borderRadius: 10, padding: '18px 12px', fontSize: 30,
-  background: 'var(--bg)', textAlign: 'center',
+const dropZone = {
+  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+  cursor: 'pointer', textAlign: 'center', padding: '34px 18px',
+  border: '2px dashed var(--border)', borderRadius: 12, background: 'var(--bg)',
+  transition: 'border-color 0.15s, background 0.15s',
 };
-const tileLabel = { fontSize: 13, fontWeight: 700, color: 'var(--text)' };
-const tileSub = { fontSize: 11, color: 'var(--text2)' };
+const dropZoneActive = {
+  borderColor: 'var(--accent)', background: 'var(--surface)',
+};
 const errBox = {
   marginTop: 12, padding: '8px 12px', borderRadius: 6, fontSize: 12,
   background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)',
