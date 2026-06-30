@@ -256,8 +256,28 @@ export async function parseCatalogue(rawText) {
   return { produits };
 }
 
+// Dédup sémantique de la liste de commande : l'IA regroupe les noms de produits
+// qui désignent le même produit à l'achat (singulier/pluriel, accents,
+// synonymes, fautes), sans toucher aux quantités. Renvoie { groupes: [{
+// canonique, variantes: string[] }] } — uniquement les groupes contenant un
+// vrai doublon (≥ 2 variantes).
+export async function dedupeCommande(produits) {
+  const list = (produits || []).map(s => String(s || '').trim()).filter(Boolean);
+  if (list.length < 2) return { groupes: [] };
+  const data = await callAi('dedupe-commande', { produits: list.slice(0, 300) });
+  const r = (data && data.result) || {};
+  const groupes = (Array.isArray(r.groupes) ? r.groupes : [])
+    .map(g => ({
+      canonique: String((g && g.canonique) || '').trim(),
+      variantes: (Array.isArray(g && g.variantes) ? g.variantes : [])
+        .map(v => String(v || '').trim()).filter(Boolean),
+    }))
+    .filter(g => g.canonique && g.variantes.length >= 2);
+  return { groupes };
+}
+
 export const aiService = {
   ocrRecipe, detectAllergens, generateHaccp, suggestRecipe, matchProductSemantic,
-  generateFicheSalle, parseCatalogue,
+  generateFicheSalle, parseCatalogue, dedupeCommande,
 };
 export default aiService;

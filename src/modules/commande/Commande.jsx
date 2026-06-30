@@ -2,7 +2,8 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
-import { computeBesoins, appendStaples, formatBesoin } from './computeBesoins.js';
+import { computeBesoins, appendStaples, applyDedupeGroups, formatBesoin } from './computeBesoins.js';
+import { dedupeCommande } from '../../services/aiService.js';
 import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,12 +88,26 @@ const Commande = ({ user, etablissement }) => {
         recettes: genData.recettes,
         catalogue: genData.catalogue,
       });
+      // Dédup sémantique par l'IA : regroupe les noms qui désignent le même
+      // produit (singulier/pluriel, accents, synonymes) que la fusion exacte
+      // ne rattrape pas. L'IA ne renomme que ; la fusion reste déterministe.
+      // Confort : si l'IA échoue, on conserve la liste déterministe.
+      let deduped = recipeItems;
+      try {
+        const noms = [...new Set(recipeItems.map(i => i.nom).filter(Boolean))];
+        if (noms.length > 1) {
+          const { groupes } = await dedupeCommande(noms);
+          if (groupes.length) deduped = applyDedupeGroups(recipeItems, groupes);
+        }
+      } catch (e) {
+        console.warn('[commande] dédup IA indisponible:', e?.message || e);
+      }
       // Ajoute toujours les fonds de cuisine (secs + hygiène), sans doublon avec
       // les produits issus des recettes ni ceux déjà saisis à la main. On ne
       // déduplique que contre les lignes manuelles : sinon, à la régénération,
       // les staples auto déjà en base seraient « présents » donc supprimés.
       const manualNames = items.filter(i => i.source === 'manual').map(i => i.nom);
-      const computed = appendStaples(recipeItems, manualNames);
+      const computed = appendStaples(deduped, manualNames);
       if (!computed.length) {
         notifyLegacy('Aucun produit à générer.', 'info');
         setBusy(false);

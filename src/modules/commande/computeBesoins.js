@@ -87,7 +87,7 @@ export function computeBesoins({ cartes = [], plats = [], recettes = [], catalog
 
 // Fusionne les lignes de même nom normalisé et même unité ; somme les besoins,
 // conserve le produitId et la catégorie la plus précise rencontrés.
-function mergeByName(list) {
+export function mergeByName(list) {
   const map = new Map();
   for (const it of list) {
     const key = `${slug(it.nom)}|${it.unite || ''}`;
@@ -101,6 +101,33 @@ function mergeByName(list) {
     }
   }
   return [...map.values()];
+}
+
+// Applique les regroupements de doublons proposés par l'IA : renomme chaque
+// variante par son nom canonique, puis refusionne par nom + unité. L'IA ne
+// touche qu'aux NOMS ; la fusion (et donc les quantités) reste déterministe,
+// et les unités incompatibles ne sont jamais additionnées. En l'absence de
+// groupe, la liste est renvoyée inchangée.
+export function applyDedupeGroups(items = [], groupes = []) {
+  if (!Array.isArray(groupes) || !groupes.length) return items;
+  const alias = new Map(); // slug(variante) -> canonique
+  for (const g of groupes) {
+    const canon = String((g && g.canonique) || '').trim();
+    if (!canon) continue;
+    for (const v of (g && g.variantes) || []) {
+      const sv = slug(v);
+      if (sv) alias.set(sv, canon);
+    }
+  }
+  if (!alias.size) return items;
+  const remapped = items.map(it => {
+    const canon = alias.get(slug(it.nom));
+    return canon ? { ...it, nom: canon } : it;
+  });
+  return mergeByName(remapped).map(it => ({
+    ...it,
+    besoin: Math.round(it.besoin * 1000) / 1000,
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

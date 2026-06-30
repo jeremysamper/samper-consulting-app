@@ -15,7 +15,7 @@
 //
 // Tâches : 'ocr-recipe' (vision), 'detect-allergens', 'generate-haccp',
 //          'suggest-recipe', 'match-product', 'generate-fiche-salle',
-//          'parse-catalogue' (texte).
+//          'parse-catalogue', 'dedupe-commande' (texte).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -186,6 +186,21 @@ Règles :
 - ne renvoie aucun produit inventé : uniquement ce qui est réellement dans le fichier
 - si aucun produit exploitable, renvoie {"produits":[]}`;
 
+const DEDUPE_SYSTEM = `Tu nettoies une liste de produits à commander pour une cuisine professionnelle. Plusieurs lignes désignent souvent le MÊME produit écrit différemment (singulier/pluriel, accents, casse, ordre des mots, synonyme courant, faute de frappe). Tu regroupes uniquement ces vrais doublons.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"groupes":[{"canonique":"Tomate","variantes":["Tomate","Tomates","tomate"]}]}
+Règles STRICTES :
+- "variantes" : au moins 2 chaînes, reprises EXACTEMENT (caractère pour caractère) de la liste fournie
+- "canonique" : le nom le plus clair et standard du produit (français, au singulier), de préférence l'une des variantes
+- ne regroupe QUE des produits réellement identiques à l'achat. NE REGROUPE JAMAIS :
+  · des variétés ou qualités différentes (tomate cerise ≠ tomate grappe ; citron ≠ citron vert ; farine ≠ farine complète)
+  · des découpes ou parties différentes (cuisse de poulet ≠ blanc de poulet, et aucun des deux avec "poulet")
+  · des préparations ou états différents (tomate fraîche ≠ tomate séchée ≠ concentré de tomate ; crème ≠ crème fouettée ; ail ≠ ail en poudre)
+  · un produit frais et sa version sèche/transformée
+- synonymes acceptés car même produit : "blanc de poulet" ↔ "escalope de poulet" ; "fécule de maïs" ↔ "maïzena" ; "huile d'olive" ↔ "huile olive" ; "St-Marcellin" ↔ "Saint-Marcellin"
+- dans le doute, NE REGROUPE PAS (mieux vaut un doublon qu'une fusion erronée)
+- n'inclus que les groupes contenant un vrai doublon (≥ 2 variantes). Si aucun doublon, renvoie {"groupes":[]}`;
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
@@ -195,6 +210,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'generate-fiche-salle':       { system: FICHE_SALLE_SYSTEM,  maxTokens: 2048 },
   'analyse-simulation-carte':   { system: SIMULATION_SYSTEM,   maxTokens: 2048 },
   'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
+  'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -294,6 +310,11 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     // Garde-fou : on borne la taille du texte transmis à l'IA.
     const text = rows.length > 32000 ? rows.slice(0, 32000) : rows;
     return [{ kind: 'text', text: `Lignes brutes du fichier fournisseur :\n${text}` }];
+  }
+  if (task === 'dedupe-commande') {
+    const produits = Array.isArray(payload.produits) ? (payload.produits as string[]) : [];
+    if (!produits.length) throw new Error('Liste de produits vide.');
+    return [{ kind: 'text', text: `Liste de produits :\n- ${produits.join('\n- ')}` }];
   }
   throw new Error(`Tâche inconnue : ${task}`);
 }
