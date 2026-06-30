@@ -2,7 +2,7 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
-import { computeBesoins, formatBesoin } from './computeBesoins.js';
+import { computeBesoins, appendStaples, formatBesoin } from './computeBesoins.js';
 import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,14 +81,20 @@ const Commande = ({ user, etablissement }) => {
     if (items.length && !confirmLegacy('Régénérer la liste à partir des cartes sélectionnées ?\n\nLes produits déjà cochés et les quantités saisies sont conservés. Les produits ajoutés à la main ne sont pas touchés.')) return;
     setBusy(true);
     try {
-      const computed = computeBesoins({
+      const recipeItems = computeBesoins({
         cartes: selCartes,
         plats: genData.plats,
         recettes: genData.recettes,
         catalogue: genData.catalogue,
       });
+      // Ajoute toujours les fonds de cuisine (secs + hygiène), sans doublon avec
+      // les produits issus des recettes ni ceux déjà saisis à la main. On ne
+      // déduplique que contre les lignes manuelles : sinon, à la régénération,
+      // les staples auto déjà en base seraient « présents » donc supprimés.
+      const manualNames = items.filter(i => i.source === 'manual').map(i => i.nom);
+      const computed = appendStaples(recipeItems, manualNames);
       if (!computed.length) {
-        notifyLegacy('Aucun produit trouvé : vérifiez que des plats avec recettes sont rattachés aux cartes sélectionnées.', 'info');
+        notifyLegacy('Aucun produit à générer.', 'info');
         setBusy(false);
         return;
       }

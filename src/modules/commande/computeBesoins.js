@@ -76,10 +76,78 @@ export function computeBesoins({ cartes = [], plats = [], recettes = [], catalog
     });
   });
 
-  return [...acc.values()].map(it => ({
+  // Dédup finale par nom + unité : collapse les entrées qui désignent le même
+  // produit écrit de deux façons (lié au catalogue d'un côté, texte libre de
+  // l'autre). Mêmes nom et unité ⇒ même produit pour la commande.
+  return mergeByName([...acc.values()]).map(it => ({
     ...it,
     besoin: Math.round(it.besoin * 1000) / 1000,
   }));
+}
+
+// Fusionne les lignes de même nom normalisé et même unité ; somme les besoins,
+// conserve le produitId et la catégorie la plus précise rencontrés.
+function mergeByName(list) {
+  const map = new Map();
+  for (const it of list) {
+    const key = `${slug(it.nom)}|${it.unite || ''}`;
+    const prev = map.get(key);
+    if (prev) {
+      prev.besoin += it.besoin;
+      if (!prev.produitId && it.produitId) prev.produitId = it.produitId;
+      if ((!prev.categorie || prev.categorie === 'Autres') && it.categorie && it.categorie !== 'Autres') prev.categorie = it.categorie;
+    } else {
+      map.set(key, { ...it });
+    }
+  }
+  return [...map.values()];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fonds de cuisine ajoutés systématiquement à chaque génération : les matières
+// premières sèches « classiques » et une section d'hygiène / consommables à
+// part. Pas de besoin chiffré (case à cocher selon le stock), juste un rappel
+// pour ne rien oublier à la commande.
+// ─────────────────────────────────────────────────────────────────────────────
+export const STAPLES_SECS = [
+  'Sel fin', 'Gros sel', 'Poivre noir', 'Poivre blanc', 'Sucre', 'Sucre glace',
+  'Cassonade', 'Farine', 'Fécule de maïs', 'Levure chimique', 'Bicarbonate',
+  "Huile d'olive", 'Huile de tournesol', 'Vinaigre', 'Moutarde', 'Miel',
+  'Riz', 'Pâtes', 'Fond / bouillon', 'Concentré de tomate',
+].map(nom => ({ nom, categorie: 'Épicerie sèche', unite: '' }));
+
+export const STAPLES_HYGIENE = [
+  'Éponges', 'Tampons à récurer', "Paille de fer (laine d'acier)", 'Liquide vaisselle',
+  'Dégraissant', 'Désinfectant surfaces', 'Nettoyant multi-usage', 'Détartrant',
+  'Film alimentaire', 'Papier cuisson', 'Papier aluminium', 'Poches sous vide',
+  'Gants jetables', 'Essuie-tout', 'Sacs poubelle',
+].map(nom => ({ nom, categorie: 'Hygiène & consommables', unite: '' }));
+
+// Ajoute les fonds de cuisine à une liste de besoins, en sautant ceux dont le
+// nom est déjà présent (issu des recettes ou ajouté à la main) pour ne jamais
+// créer de doublon. `extraPresentNames` = noms déjà dans la liste de commande.
+export function appendStaples(items = [], extraPresentNames = []) {
+  const present = new Set([
+    ...items.map(it => slug(it.nom)),
+    ...extraPresentNames.map(n => slug(n)),
+  ]);
+  let ordre = 10000;
+  const extra = [];
+  for (const st of [...STAPLES_SECS, ...STAPLES_HYGIENE]) {
+    const sg = slug(st.nom);
+    if (present.has(sg)) continue;
+    present.add(sg);
+    extra.push({
+      cle: 'staple:' + sg,
+      produitId: null,
+      nom: st.nom,
+      categorie: st.categorie,
+      unite: st.unite || '',
+      besoin: 0,
+      ordre: ordre++,
+    });
+  }
+  return [...items, ...extra];
 }
 
 // Formatage lisible d'un besoin (g≥1000 → kg, ml≥1000 → L). Indicatif.
