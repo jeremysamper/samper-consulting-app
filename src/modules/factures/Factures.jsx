@@ -604,8 +604,8 @@ const Factures = ({ user, etablissement }) => {
       {showEmailModal && emailDraft && (
         // L'overlay ne ferme PAS la modale au clic (UX trop fragile pour une zone de saisie).
         // Fermeture uniquement via : bouton ✕, bouton "Fermer", ou touche Échap.
-        <div style={fac.overlay}>
-          <div style={{ ...fac.modal, width: 600, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-full-overlay" style={fac.overlay}>
+          <div className="modal-full" style={{ ...fac.modal, width: 600, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div style={fac.modalHeader}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📧 Notifier le client</div>
@@ -715,8 +715,8 @@ const Factures = ({ user, etablissement }) => {
       {showTemplateEditor && (
         // Overlay non-cliquable pour fermer (cohérent avec la modale email).
         // Fermeture via : ✕, "Annuler", ou Échap.
-        <div style={fac.overlay}>
-          <div style={{ ...fac.modal, width: 580, maxWidth: '94vw' }}>
+        <div className="modal-full-overlay" style={fac.overlay}>
+          <div className="modal-full" style={{ ...fac.modal, width: 580, maxWidth: '94vw' }}>
             <div style={fac.modalHeader}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>✎ Template d'email</div>

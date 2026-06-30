@@ -1773,8 +1773,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           (p.recettes || []).some(pr => pr.recetteId === selected?.id)
         );
         return (
-          <div style={cts.overlay} onClick={() => setShowDeleteConfirm(false)}>
-            <div style={cts.modal} onClick={e => e.stopPropagation()}>
+          <div className="modal-sheet-overlay" style={cts.overlay} onClick={() => setShowDeleteConfirm(false)}>
+            <div className="modal-sheet" style={cts.modal} onClick={e => e.stopPropagation()}>
               <div style={{padding: 20, maxWidth: 480}}>
                 <div style={{fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', marginBottom: 10}}>
                   Supprimer cette recette ?
@@ -1853,8 +1853,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
         };
         return (
-          <div style={cts.overlay} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>
-            <div style={{ ...cts.modal, width: 480, maxWidth: '94vw' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-full-overlay" style={cts.overlay} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>
+            <div className="modal-full" style={{ ...cts.modal, width: 480, maxWidth: '94vw' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>
                   🍽 {p.id ? 'Modifier le plat' : 'Nouveau plat'}
@@ -1976,8 +1976,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           plats.filter(p => p.recettes.some(pr => pr.recetteId === selected.id)).map(p => p.id)
         );
         return (
-          <div style={cts.overlay} onClick={() => setLinkPlatPickerForRecette(null)}>
-            <div style={{ ...cts.modal, width: 460, maxWidth: '94vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-full-overlay" style={cts.overlay} onClick={() => setLinkPlatPickerForRecette(null)}>
+            <div className="modal-full" style={{ ...cts.modal, width: 460, maxWidth: '94vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🍽 Rattacher à un plat</div>
@@ -2060,8 +2060,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         };
 
         return (
-          <div style={cts.overlay} onClick={() => setCatalogPicker(null)}>
-            <div style={{ ...cts.modal, width: 700, maxWidth: '94vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-full-overlay" style={cts.overlay} onClick={() => setCatalogPicker(null)}>
+            <div className="modal-full" style={{ ...cts.modal, width: 700, maxWidth: '94vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>
@@ -2198,8 +2198,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         const candidateIngs = ings.filter(i => Number(i.quantite) > 0 && i.nom);
 
         return (
-          <div style={cts.overlay} onClick={() => setShowScalingModal(false)}>
-            <div style={{ ...cts.modal, width: 620, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-full-overlay" style={cts.overlay} onClick={() => setShowScalingModal(false)}>
+            <div className="modal-full" style={{ ...cts.modal, width: 620, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>

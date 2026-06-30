@@ -25,6 +25,12 @@ const Commande = ({ user, etablissement }) => {
   const [collapsed, setCollapsed] = React.useState(new Set());
   const [busy, setBusy] = React.useState(false);
   const [showAdd, setShowAdd] = React.useState(false);
+  // Modale de generation : selection des cartes a agreger.
+  const [showGen, setShowGen] = React.useState(false);
+  const [genData, setGenData] = React.useState(null); // { cartes, plats, recettes, catalogue }
+  const [genLoading, setGenLoading] = React.useState(false);
+  // Libelle des cartes retenues a la derniere generation (affiche dans le PDF).
+  const [cartesLabel, setCartesLabel] = React.useState('');
   // Saisie locale des quantites (persistee au blur) pour ne pas perdre le focus.
   const [draftQty, setDraftQty] = React.useState({});
   // Renommage en ligne d'un produit : id de la ligne en cours d'edition + brouillon du nom.
@@ -45,11 +51,12 @@ const Commande = ({ user, etablissement }) => {
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId]);
 
-  // ── Generation depuis toutes les cartes (consultant only) ──
-  const genererListe = async () => {
+  // ── Generation depuis les cartes (consultant only) ──
+  // Etape 1 : charger les cartes + dependances et ouvrir la modale de selection.
+  const openGenModal = async () => {
     if (!isConsultant || !legacySB) return;
-    if (items.length && !confirmLegacy('Régénérer la liste à partir des cartes ?\n\nLes produits déjà cochés et les quantités saisies sont conservés. Les produits ajoutés à la main ne sont pas touchés.')) return;
-    setBusy(true);
+    setShowGen(true);
+    setGenLoading(true);
     try {
       const [cartes, plats, recettes, catalogue] = await Promise.all([
         legacySB.db.listCartes(etabId),
@@ -57,16 +64,40 @@ const Commande = ({ user, etablissement }) => {
         legacySB.db.listRecettes(etabId),
         legacySB.db.listProduits(etabId),
       ]);
-      const computed = computeBesoins({ cartes, plats, recettes, catalogue });
+      setGenData({ cartes: cartes || [], plats: plats || [], recettes: recettes || [], catalogue: catalogue || [] });
+    } catch (err) {
+      notifyLegacy('Chargement des cartes impossible : ' + (err.message || err), 'error');
+      setShowGen(false);
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  // Etape 2 : agreger (sans doublons) les produits des cartes cochees et persister.
+  const confirmGen = async (selectedIds) => {
+    if (!genData || !legacySB) return;
+    const selCartes = genData.cartes.filter(c => selectedIds.includes(c.id));
+    if (!selCartes.length) { notifyLegacy('Sélectionnez au moins une carte.', 'info'); return; }
+    if (items.length && !confirmLegacy('Régénérer la liste à partir des cartes sélectionnées ?\n\nLes produits déjà cochés et les quantités saisies sont conservés. Les produits ajoutés à la main ne sont pas touchés.')) return;
+    setBusy(true);
+    try {
+      const computed = computeBesoins({
+        cartes: selCartes,
+        plats: genData.plats,
+        recettes: genData.recettes,
+        catalogue: genData.catalogue,
+      });
       if (!computed.length) {
-        notifyLegacy('Aucun produit trouvé : vérifiez que des plats avec recettes sont rattachés à vos cartes.', 'info');
+        notifyLegacy('Aucun produit trouvé : vérifiez que des plats avec recettes sont rattachés aux cartes sélectionnées.', 'info');
         setBusy(false);
         return;
       }
       const n = await legacySB.db.generateCommande(etabId, computed);
       const rows = await legacySB.db.listCommandeItems(etabId);
       setItems(Array.isArray(rows) ? rows : []);
-      notifyLegacy(`Liste générée : ${n} produit(s) nécessaires pour les cartes.`, 'success');
+      setCartesLabel(selCartes.map(c => c.nom).filter(Boolean).join(' · '));
+      setShowGen(false);
+      notifyLegacy(`Liste générée : ${n} produit(s) pour ${selCartes.length} carte${selCartes.length > 1 ? 's' : ''}.`, 'success');
     } catch (err) {
       notifyLegacy('Génération impossible : ' + (err.message || err), 'error');
     } finally {
@@ -174,6 +205,7 @@ const Commande = ({ user, etablissement }) => {
     return {
       totalCount: items.length,
       cocheCount: items.filter(i => i.coche).length,
+      cartesLabel,
       groups: groupByCategorie(items).map(g => ({
         categorie: g.categorie,
         items: g.items.map(it => ({
@@ -221,8 +253,8 @@ const Commande = ({ user, etablissement }) => {
           {isConsultant && (
             <>
               {totalCount > 0 && <button style={s.ghostBtn} onClick={viderAuto} disabled={busy}>Vider</button>}
-              <button style={s.aiBtn} onClick={genererListe} disabled={busy}>
-                {busy ? <Loader2 size={14} /> : <Sparkles size={14} />} {busy ? 'Génération…' : 'Générer la liste'}
+              <button style={s.aiBtn} onClick={openGenModal} disabled={busy}>
+                {busy ? <Loader2 size={14} /> : <Sparkles size={14} />} {busy ? 'Génération…' : 'Générer depuis les cartes'}
               </button>
             </>
           )}
@@ -317,9 +349,116 @@ const Commande = ({ user, etablissement }) => {
       </div>
 
       {showAdd && <AddProductModal onClose={() => setShowAdd(false)} onAdd={addManual} />}
+      {showGen && (
+        <GenerateModal
+          loading={genLoading}
+          busy={busy}
+          cartes={genData?.cartes || []}
+          plats={genData?.plats || []}
+          onClose={() => setShowGen(false)}
+          onConfirm={confirmGen}
+        />
+      )}
     </div>
   );
 };
+
+// ── Modale de selection des cartes pour la generation ──
+// Coche les cartes a agreger ; la liste produite est dedupliquee par computeBesoins.
+const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => {
+  const [selected, setSelected] = React.useState(() => new Set());
+  const [touched, setTouched] = React.useState(false);
+
+  // Par defaut : toutes les cartes cochees une fois chargees.
+  React.useEffect(() => {
+    if (!loading && !touched && cartes.length) setSelected(new Set(cartes.map(c => c.id)));
+  }, [loading, cartes, touched]);
+
+  // Nombre de plats rattaches a chaque carte (indicatif).
+  const platCount = React.useMemo(() => {
+    const m = new Map();
+    (plats || []).forEach(p => (p.carteIds || []).forEach(cid => m.set(cid, (m.get(cid) || 0) + 1)));
+    return m;
+  }, [plats]);
+
+  const toggle = (id) => {
+    setTouched(true);
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const allOn = cartes.length > 0 && selected.size === cartes.length;
+  const toggleAll = () => {
+    setTouched(true);
+    setSelected(allOn ? new Set() : new Set(cartes.map(c => c.id)));
+  };
+
+  return (
+    <div className="modal-full-overlay" style={s.overlay} onClick={onClose}>
+      <div className="modal-full" style={s.modal} onClick={e => e.stopPropagation()}>
+        <div style={s.modalHead}>
+          <div style={s.modalTitle}>Générer depuis les cartes</div>
+          <button style={s.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        <div style={s.genBody}>
+          <div style={s.genHint}>
+            Cochez les cartes à inclure. Les produits sont regroupés sans doublon pour faciliter la commande.
+          </div>
+          {loading ? (
+            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>Chargement des cartes…</div>
+          ) : cartes.length === 0 ? (
+            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+              Aucune carte trouvée pour cet établissement.
+            </div>
+          ) : (
+            <>
+              <button style={s.selectAllBtn} onClick={toggleAll}>
+                {allOn ? 'Tout décocher' : 'Tout cocher'}
+              </button>
+              <div style={s.carteList}>
+                {cartes.map(c => {
+                  const on = selected.has(c.id);
+                  const cnt = platCount.get(c.id) || 0;
+                  return (
+                    <label key={c.id} style={{ ...s.carteRow, ...(on ? s.carteRowOn : {}) }}>
+                      <input
+                        type="checkbox" checked={on} onChange={() => toggle(c.id)}
+                        style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={s.carteName}>{c.nom || 'Carte sans nom'}</div>
+                        <div style={s.carteMeta}>
+                          {cnt} plat{cnt > 1 ? 's' : ''}{formatCartePeriode(c) ? ' · ' + formatCartePeriode(c) : ''}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        <div style={s.modalFooter}>
+          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
+          <button
+            style={{ ...s.primaryBtn, opacity: (selected.size && !busy) ? 1 : 0.5 }}
+            disabled={!selected.size || busy}
+            onClick={() => onConfirm([...selected])}
+          >
+            {busy ? 'Génération…' : `Générer${selected.size ? ` (${selected.size})` : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Periode d'une carte, format court fr-CH, si renseignee.
+function formatCartePeriode(c) {
+  const fmt = (d) => { try { return new Date(d).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return ''; } };
+  if (c.dateDebut && c.dateFin) return `${fmt(c.dateDebut)} – ${fmt(c.dateFin)}`;
+  if (c.dateDebut) return `dès le ${fmt(c.dateDebut)}`;
+  if (c.dateFin) return `jusqu'au ${fmt(c.dateFin)}`;
+  return '';
+}
 
 // ── Modale d'ajout manuel ──
 const AddProductModal = ({ onClose, onAdd }) => {
@@ -329,8 +468,8 @@ const AddProductModal = ({ onClose, onAdd }) => {
   const CATS = ['Viandes', 'Poissons', 'Légumes', 'Fruits', 'Crémerie', 'Épicerie', 'Boissons', 'Surgelés', 'Autres'];
   const UNITES = ['', 'g', 'kg', 'ml', 'L', 'pcs'];
   return (
-    <div style={s.overlay} onClick={onClose}>
-      <div style={s.modal} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={s.overlay} onClick={onClose}>
+      <div className="modal-full" style={s.modal} onClick={e => e.stopPropagation()}>
         <div style={s.modalHead}>
           <div style={s.modalTitle}>Ajouter un produit</div>
           <button style={s.closeBtn} onClick={onClose}>✕</button>
@@ -423,6 +562,15 @@ const s = {
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   modalFooter: { display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--border)' },
   primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
+  // Modale de generation
+  genBody: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
+  genHint: { fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 },
+  selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  carteList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '46vh', overflowY: 'auto' },
+  carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer' },
+  carteRowOn: { borderColor: 'var(--accent)', background: 'var(--success-bg)' },
+  carteName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  carteMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
 };
 
 export default Commande;

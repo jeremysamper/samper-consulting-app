@@ -26,8 +26,8 @@ const EtabForm = ({ etab, onSave, onCancel }) => {
   };
 
   return (
-    <div style={ps.overlay} onClick={onCancel}>
-      <div style={ps.modal} onClick={e => e.stopPropagation()}>
+    <div className="modal-full-overlay" style={ps.overlay} onClick={onCancel}>
+      <div className="modal-full" style={ps.modal} onClick={e => e.stopPropagation()}>
         <div style={ps.modalHeader}>
           <div style={ps.modalTitle}>{etab?.id ? 'Modifier l\'établissement' : 'Ajouter un établissement'}</div>
           <button style={ps.closeBtn} onClick={onCancel}>✕</button>
@@ -421,8 +421,8 @@ const Parametres = ({ user, etablissement }) => {
       {showForm && <EtabForm etab={editEtab} onSave={save} onCancel={()=>setShowForm(false)}/>}
 
       {showConfirm && (
-        <div style={ps.overlay} onClick={()=>setShowConfirm(null)}>
-          <div style={{...ps.modal, width:420}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-sheet-overlay" style={ps.overlay} onClick={()=>setShowConfirm(null)}>
+          <div className="modal-sheet" style={{...ps.modal, width:420}} onClick={e=>e.stopPropagation()}>
             <div style={ps.modalHeader}>
               <div style={ps.modalTitle}>Confirmer la suppression</div>
               <button style={ps.closeBtn} onClick={()=>setShowConfirm(null)}>✕</button>

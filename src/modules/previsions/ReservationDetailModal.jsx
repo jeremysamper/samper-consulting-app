@@ -42,6 +42,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
 
   return (
     <div
+      className="modal-sheet-overlay"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -50,6 +51,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
       onClick={onClose}
     >
       <div
+        className="modal-sheet"
         style={{
           background: 'var(--surface)', borderRadius: 14,
           width: 400, maxWidth: '100%', maxHeight: '85vh',

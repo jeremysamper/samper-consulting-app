@@ -359,8 +359,8 @@ const Roles = ({ user }) => {
       )}
 
       {showUserForm && editingUser && (
-        <div style={ros.overlay} onClick={() => setShowUserForm(false)}>
-          <div style={ros.modal} onClick={e => e.stopPropagation()}>
+        <div className="modal-full-overlay" style={ros.overlay} onClick={() => setShowUserForm(false)}>
+          <div className="modal-full" style={ros.modal} onClick={e => e.stopPropagation()}>
             <div style={ros.modalHeader}>
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>{editingUser.id ? 'Modifier utilisateur' : 'Nouvel utilisateur'}</div>
               <button style={ros.closeBtn} onClick={() => setShowUserForm(false)}>✕</button>

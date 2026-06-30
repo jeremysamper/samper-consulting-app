@@ -156,6 +156,7 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
       }}
       onClick={onClose}>
       <div
+        className="modal-sheet"
         style={{
           background: 'var(--surface)', width: isMobile ? '100%' : 520, maxWidth: '100%',
           maxHeight: isMobile ? '95vh' : '90vh',

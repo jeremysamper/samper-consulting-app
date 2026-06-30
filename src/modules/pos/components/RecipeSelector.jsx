@@ -40,6 +40,7 @@ export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelec
 
   return (
     <div
+      className="modal-sheet-overlay"
       onClick={handleOverlayClick}
       style={{
         position:       'fixed',
@@ -52,7 +53,7 @@ export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelec
         padding:        16,
       }}
     >
-      <div style={{
+      <div className="modal-sheet" style={{
         background:    'var(--surface)',
         border:        '1px solid var(--border)',
         borderRadius:  16,

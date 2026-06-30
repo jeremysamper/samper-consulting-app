@@ -83,12 +83,12 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
   }
 
   return (
-    <div style={{
+    <div className="modal-sheet-overlay" style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 1100, padding: 16,
     }} onClick={onCancel}>
-      <div style={{
+      <div className="modal-sheet" style={{
         background: 'var(--surface)', borderRadius: 14, width: 460,
         maxWidth: '100%', maxHeight: '80vh', overflow: 'auto',
         boxShadow: '0 20px 60px rgba(0,0,0,0.25)',

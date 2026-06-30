@@ -25,6 +25,10 @@ export default function CarteTabBar({
   // Optionnel : id de la carte « d'accueil » → préfixe ★ sur l'onglet.
   // Additif : les autres usages (Fiches salle) ne passent rien → aucun marqueur.
   homeId = null,
+  // Optionnel : true → onglets en bande horizontale scrollable (1 ligne) au lieu
+  // de wrapper. Utilisé sur mobile par Cartes & Recettes pour ne pas empiler les
+  // onglets sur plusieurs lignes. Les autres usages gardent le wrap par défaut.
+  scroll = false,
 }) {
   // modal: null | { mode: 'create' } | { mode: 'edit', carte }
   const [modal, setModal] = React.useState(null);
@@ -65,7 +69,7 @@ export default function CarteTabBar({
   };
 
   return (
-    <div style={s.bar} className="no-print">
+    <div style={{ ...s.bar, ...(scroll ? s.barScroll : {}) }} className={'no-print' + (scroll ? ' carte-tab-bar--scroll' : '')}>
       {cartes.map(carte => {
         const active = activeId === carte.id;
         return (
@@ -142,6 +146,10 @@ export default function CarteTabBar({
 
 const s = {
   bar: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
+  // Mode bande scrollable (mobile) : 1 ligne, défilement horizontal contenu.
+  // Le détail anti-rétrécissement des onglets + masquage scrollbar est en CSS
+  // (.carte-tab-bar--scroll dans app.css) car non exprimable en style inline.
+  barScroll: { flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%' },
   tab: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   tabBtnReset: { outline: 'none' },
   tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },

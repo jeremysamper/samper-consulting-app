@@ -19,8 +19,8 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
   };
 
   return (
-    <div style={hs.overlay} onClick={onCancel}>
-      <div style={{...hs.modal, width:520}} onClick={e=>e.stopPropagation()}>
+    <div className="modal-full-overlay" style={hs.overlay} onClick={onCancel}>
+      <div className="modal-full" style={{...hs.modal, width:520}} onClick={e=>e.stopPropagation()}>
         <div style={hs.modalHeader}>
           <div style={hs.modalTitle}>{zone?.id ? 'Modifier la zone' : 'Ajouter une zone'}</div>
           <button style={hs.closeBtn} onClick={onCancel}>✕</button>
@@ -121,8 +121,8 @@ export const CtrlForm = ({ ctrl, onSave, onCancel }) => {
   };
 
   return (
-    <div style={hs.overlay} onClick={onCancel}>
-      <div style={{...hs.modal,width:480}} onClick={e=>e.stopPropagation()}>
+    <div className="modal-full-overlay" style={hs.overlay} onClick={onCancel}>
+      <div className="modal-full" style={{...hs.modal,width:480}} onClick={e=>e.stopPropagation()}>
         <div style={hs.modalHeader}>
           <div style={hs.modalTitle}>{ctrl?.id ? 'Modifier le contrôle' : 'Ajouter un contrôle'}</div>
           <button style={hs.closeBtn} onClick={onCancel}>✕</button>

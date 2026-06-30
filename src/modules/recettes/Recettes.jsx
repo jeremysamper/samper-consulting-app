@@ -896,6 +896,7 @@ const Recettes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
+  const isMobile = useIsMobile();
   // Onglet actif : id d'une carte, ou 'recettes' (bibliothèque).
   // Démarre vide → l'effet ci-dessous bascule sur la 1re carte une fois chargée
   // (comportement historique : on atterrit sur la carte, pas la bibliothèque).
@@ -1022,25 +1023,28 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowIngredientSearch(false)}
         />
       )}
-      {/* Barre d'outils : onglets cartes (wrap interne) + actions groupées à droite.
-          Le conteneur wrappe : sur mobile les actions passent sous les onglets au
-          lieu de déborder / flotter hors de l'écran. */}
+      {/* Barre d'outils. Mobile : onglets en bande scrollable (1 ligne) + actions
+          compactes (icônes) sur une 2e ligne → pas de pavé qui mange l'écran.
+          Desktop : onglets + actions groupées à droite. */}
       <div style={rs.toolbar}>
-        <CarteTabBar
-          cartes={cartes}
-          activeId={activeTab}
-          onSelect={setActiveTab}
-          extraTabs={[{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }]}
-          canManage={canManageCartes}
-          onAddCarte={addCarte}
-          onRenameCarte={renameCarte}
-          onDeleteCarte={deleteCarte}
-          homeId={defaultCarteId}
-        />
-        <div style={rs.toolbarActions} className="no-print">
+        <div style={isMobile ? rs.tabsWrapMobile : rs.tabsWrap}>
+          <CarteTabBar
+            cartes={cartes}
+            activeId={activeTab}
+            onSelect={setActiveTab}
+            extraTabs={[{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }]}
+            canManage={canManageCartes}
+            onAddCarte={addCarte}
+            onRenameCarte={renameCarte}
+            onDeleteCarte={deleteCarte}
+            homeId={defaultCarteId}
+            scroll={isMobile}
+          />
+        </div>
+        <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
           <input style={rs.search} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
-          <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">🔎 Allergènes</button>
-          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">⤓ Export multiple</button>
+          <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">{isMobile ? '🔎' : '🔎 Allergènes'}</button>
+          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
         </div>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
       </div>
@@ -1078,7 +1082,9 @@ const Recettes = ({ user, etablissement }) => {
                   onClick={() => toggleDefaultCarte(activeCarte.id)}
                   title={defaultCarteId === activeCarte.id ? 'Carte d\'accueil — clic pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
                 >
-                  {defaultCarteId === activeCarte.id ? '★ Carte d\'accueil' : '☆ Définir par défaut'}
+                  {defaultCarteId === activeCarte.id
+                    ? (isMobile ? '★ Accueil' : '★ Carte d\'accueil')
+                    : (isMobile ? '☆ Par défaut' : '☆ Définir par défaut')}
                 </button>
               )}
               <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
@@ -1217,7 +1223,7 @@ const Recettes = ({ user, etablissement }) => {
                 <div style={rs.recetteBadges}>
                   {(r.allergenesIds||[]).map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
                 </div>
-                {user.role === 'consultant' && (
+                {user.role === 'consultant' && !isMobile && (
                   <div style={rs.recetteKpis}>
                     <div style={rs.recetteKpi}><span>Coût/portion</span><strong>CHF {(r.coutPortion != null ? r.coutPortion : 0).toFixed(2)}</strong></div>
                     <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
@@ -1285,7 +1291,10 @@ const Recettes = ({ user, etablissement }) => {
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
   toolbar: {display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'},
+  tabsWrap: {minWidth:0},
+  tabsWrapMobile: {width:'100%',minWidth:0},
   toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
+  toolbarActionsMobile: {width:'100%',marginLeft:0},
   search: {padding:'8px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',flex:'1 1 160px',minWidth:140,maxWidth:240,boxSizing:'border-box'},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
@@ -1294,7 +1303,7 @@ const rs = {
   homeBtn: {padding:'6px 12px',border:'1px solid var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
   carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
-  catFilter: {display:'flex',gap:6},
+  catFilter: {display:'flex',gap:6,flexWrap:'wrap'},
   catBtn: {padding:'6px 16px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   catSection: {display:'flex',flexDirection:'column',gap:12},
