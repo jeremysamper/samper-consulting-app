@@ -667,7 +667,7 @@ const ls = {
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   topbarDivider: { width: 1, height: 20, background: 'var(--border)' },
   logoutBtn: { background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
-  content: { flex: 1, overflowY: 'auto', padding: '24px' },
+  content: { flex: 1, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%', padding: '24px' },
 
   // Mobile
   mobileRoot: { display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)' },
@@ -806,5 +806,5 @@ const mls = {
     fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
   },
 
-  content: { flex: 1, padding: '16px 14px 24px', overflowY: 'auto' },
+  content: { flex: 1, padding: '16px 14px 24px', overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%' },
 };

@@ -5,6 +5,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups, formatBesoin } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
 import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMANDE — liste de produits a commander, partagee par etablissement.
@@ -254,16 +255,17 @@ const Commande = ({ user, etablissement }) => {
   return (
     <div style={s.root}>
       {/* Barre d'actions */}
-      <div style={s.toolbar} className="no-print">
+      <div className="module-toolbar no-print">
         <div style={s.left}>
           <input style={s.search} placeholder="Rechercher un produit…" value={search} onChange={e => setSearch(e.target.value)} />
-          <div style={s.cats}>
-            {categories.map(c => (
-              <button key={c} style={{ ...s.catBtn, ...(catFilter === c ? s.catActive : {}) }} onClick={() => setCatFilter(c)}>{c}</button>
-            ))}
-          </div>
+          <SegmentedTabs
+            size="sm"
+            active={catFilter}
+            onChange={setCatFilter}
+            tabs={categories.map(c => ({ id: c, label: c }))}
+          />
         </div>
-        <div style={s.actions}>
+        <div className="module-actions">
           {totalCount > 0 && (
             <>
               <button style={s.ghostBtn} onClick={printList} title="Imprimer"><Printer size={14} /> Imprimer</button>

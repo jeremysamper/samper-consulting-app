@@ -459,6 +459,37 @@ html[data-theme="dark"] {
   .module-actions > * { flex: 0 0 auto; }
 }
 
+/* ─── Normalisation des boutons de barre d'actions ─────────────────────────
+   Les modules déclarent leurs boutons avec des styles inline hétérogènes
+   (hauteurs, rayons, polices, alignements différents) → rendu « en bazar ».
+   On harmonise ici la GÉOMÉTRIE (pas les couleurs, qui portent la hiérarchie
+   primaire/ghost) pour que tout s'aligne proprement sur une même ligne.
+   Cible : boutons, labels-boutons et inputs directement dans une barre. */
+.module-actions > button,
+.module-actions > label,
+.module-actions > input,
+.module-actions > select,
+.module-toolbar > button,
+.module-toolbar > label {
+  min-height: 38px;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.module-actions > button,
+.module-actions > label,
+.module-toolbar > button,
+.module-toolbar > label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 /* ─── Tableaux responsive : scroll horizontal sur mobile ─────────────────── */
 .table-container {
   overflow-x: auto;
@@ -482,6 +513,16 @@ html,
 body {
   /* PWA — évite le rebond de scroll iOS ("rubber band") en mode standalone */
   overscroll-behavior: none;
+  /* Écran cadré : jamais de défilement horizontal de la page entière
+     (mobile/tablette). Les zones larges — tableaux, barres d'onglets et
+     d'actions — gèrent leur propre défilement horizontal en interne. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {

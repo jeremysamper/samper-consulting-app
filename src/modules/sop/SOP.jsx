@@ -321,15 +321,12 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             </button>
           )}
           {!onboardingMode && (
-            <>
-              <button style={{ ...ss.chip, ...(filterFreq === 'all' ? ss.chipActive : {}) }} onClick={() => setFilterFreq('all')}>Toutes</button>
-              {SOP_FREQUENCES.map(f => (
-                <button key={f.id}
-                  style={{ ...ss.chip, ...(filterFreq === f.id ? ss.chipActive : {}) }}
-                  onClick={() => setFilterFreq(f.id)}
-                >{f.label}</button>
-              ))}
-            </>
+            <SegmentedTabs
+              size="sm"
+              active={filterFreq}
+              onChange={setFilterFreq}
+              tabs={[{ id: 'all', label: 'Toutes' }, ...SOP_FREQUENCES.map(f => ({ id: f.id, label: f.label }))]}
+            />
           )}
           {canManage && !sel.active && (
             <button style={ss.chip} onClick={sel.enter} title="Sélectionner plusieurs SOP">☑ Sélectionner</button>
