@@ -12,7 +12,8 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { FileDown, Plus } from 'lucide-react';
+import Tracabilite from './Tracabilite.jsx';
+import { FileDown, Plus, Camera } from 'lucide-react';
 
 
 // ─────────────────────────────────────────────────────
@@ -52,6 +53,12 @@ const HACCP = ({ user, etablissement }) => {
   const [showQuickReleves, setShowQuickReleves] = React.useState(false);
   const [quickReleves, setQuickReleves] = React.useState({});
   const [quickSaving, setQuickSaving] = React.useState(false);
+
+  // ─── Traçabilité : trigger de capture enregistré par le sous-composant ───
+  // (ref stable pour éviter une boucle de re-render : Tracabilite ré-enregistre
+  // sa fonction à chaque changement de référence de registerCaptureTrigger)
+  const [triggerCapture, setTriggerCapture] = React.useState(null);
+  const registerCaptureTrigger = React.useCallback(fn => setTriggerCapture(() => fn), []);
 
   const isConsultant = user.role === 'consultant';
   const canWrite = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'].includes(user.role);
@@ -401,9 +408,10 @@ const HACCP = ({ user, etablissement }) => {
   };
 
   const tabs = [
-    {id:'tableau',   l:'Tableau de bord'},
-    {id:'releves',   l:'Relevés température'},
-    {id:'controles', l:'Contrôles hygiène'},
+    {id:'tableau',     l:'Tableau de bord'},
+    {id:'releves',     l:'Relevés température'},
+    {id:'controles',   l:'Contrôles hygiène'},
+    {id:'tracabilite', l:'Traçabilité'},
     ...(isConsultant ? [{id:'config', l:'✦ Paramètres'}] : []),
   ];
 
@@ -417,17 +425,18 @@ const HACCP = ({ user, etablissement }) => {
           ))}
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}} className="desktop-toolbar">
-          {activeTab!=='config' && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
+          {activeTab!=='config' && activeTab!=='tracabilite' && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>setShowReleve(true)}>+ Nouveau relevé</button>}
           {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>setShowControl(true)}>+ Enregistrer contrôle</button>}
+          {activeTab==='tracabilite' && canWrite && <button style={hs.addBtn} onClick={()=>triggerCapture && triggerCapture()}>+ Prendre une photo</button>}
           {activeTab==='config' && isConsultant && (
             <>
               <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>+ Ajouter zone</button>
               <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>+ Ajouter contrôle</button>
             </>
           )}
-          <button style={hs.exportBtn} onClick={()=>pdfUtils?.printElement(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>
-          <button style={hs.exportBtn} onClick={()=>pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>
+          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=>pdfUtils?.printElement(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>}
+          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=>pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
         </div>
       </div>
 
@@ -591,6 +600,19 @@ const HACCP = ({ user, etablissement }) => {
             })}
           </div>
         </div>
+      )}
+
+      {/* ── TRAÇABILITÉ ── */}
+      {activeTab==='tracabilite' && (
+        <Tracabilite
+          etabId={etabId}
+          legacySB={legacySB}
+          user={user}
+          demoData={demoData}
+          canWrite={canWrite}
+          canManage={canManage}
+          registerCaptureTrigger={registerCaptureTrigger}
+        />
       )}
 
       {/* ── CONFIG CONSULTANT ── */}
@@ -835,12 +857,15 @@ const HACCP = ({ user, etablissement }) => {
       )}
 
       <BottomActionBar
-        actions={[
-          { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
-        ]}
+        actions={
+          activeTab==='tracabilite' ? [] : [
+            { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
+          ]
+        }
         primaryAction={
           activeTab==='releves'   ? { label: 'Nouveau relevé', icon: Plus, onClick: () => setShowReleve(true) } :
           activeTab==='controles' ? { label: 'Enregistrer contrôle', icon: Plus, onClick: () => setShowControl(true) } :
+          activeTab==='tracabilite' && canWrite ? { label: 'Prendre une photo', icon: Camera, onClick: () => triggerCapture && triggerCapture() } :
           activeTab==='config' && isConsultant ? { label: 'Ajouter zone', icon: Plus, onClick: () => setZoneModal('new') } :
           null
         }

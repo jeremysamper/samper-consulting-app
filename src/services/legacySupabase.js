@@ -1575,6 +1575,69 @@ export function installLegacySupabase() {
       };
     },
 
+    // ─── HACCP — Traçabilité (photos d'étiquettes, classées Année/Mois/Jour) ───
+    async listHaccpTracabilite(etabId) {
+      let q = client.from('haccp_tracabilite').select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
+      if (etabId) q = q.eq('etablissement_id', etabId);
+      const { data, error } = await q;
+      if (error) { console.error('[listHaccpTracabilite]', error); return []; }
+      return (data || []).map(this.mapHaccpTracabiliteFromDB);
+    },
+    async createHaccpTracabilite(entry) {
+      const payload = {
+        id: entry.id || ('tr-' + Date.now() + Math.floor(Math.random() * 1000)),
+        etablissement_id: entry.etablissementId,
+        date: entry.date,
+        produit: entry.produit || null,
+        photo_url: entry.photoUrl,
+        storage_path: entry.storagePath,
+        operateur: entry.operateur || null,
+        notes: entry.notes || null,
+      };
+      const { data, error } = await client.from('haccp_tracabilite').insert(payload).select().single();
+      if (error) throw error;
+      return this.mapHaccpTracabiliteFromDB(data);
+    },
+    async deleteHaccpTracabilite(id) {
+      const { error } = await client.from('haccp_tracabilite').delete().eq('id', id);
+      if (error) throw error;
+    },
+    mapHaccpTracabiliteFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id,
+        etablissementId: row.etablissement_id,
+        date: row.date,
+        produit: row.produit || '',
+        photoUrl: row.photo_url,
+        storagePath: row.storage_path,
+        operateur: row.operateur,
+        notes: row.notes || '',
+        createdAt: row.created_at,
+      };
+    },
+    // Upload cote serveur via l'Edge Function upload-haccp-photo. Meme principe
+    // que uploadRecettePhoto : le client storage n'attache pas toujours le token
+    // user a la requete storage, donc la fonction valide le JWT et ecrit avec la
+    // cle service. Le path (Annee/Mois/Jour) est construit cote serveur.
+    async uploadHaccpPhoto({ etabId, file }) {
+      if (!file) throw new Error('Aucun fichier');
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) throw new Error('Session expiree. Reconnectez-vous puis reessayez.');
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const form = new FormData();
+      form.append('file', file);
+      form.append('etabId', etabId || '');
+      const res = await fetch(`${supabaseUrl}/functions/v1/upload-haccp-photo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, apikey: anonKey },
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      return { path: data.path, url: data.url, date: data.date };
+    },
+
     // ─── FICHES SALLE ───
     async listFichesSalle(etabId) {
       let q = client.from('fiches_salle').select('*, carte_fiches_salle(carte_id)').order('nom');
