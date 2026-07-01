@@ -7,6 +7,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePdfData.js';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 
 // CARTES & RECETTES
@@ -1082,9 +1083,12 @@ const Recettes = ({ user, etablissement }) => {
           </div>
 
           {/* Cat filter */}
-          <div style={rs.catFilter}>
-            {cats.map(c => <button key={c} style={{...rs.catBtn, ...(catFilter===c?rs.catActive:{})}} onClick={()=>setCatFilter(c)}>{c}</button>)}
-          </div>
+          <SegmentedTabs
+            size="sm"
+            active={catFilter}
+            onChange={setCatFilter}
+            tabs={cats.map(c => ({ id: c, label: c }))}
+          />
 
           {/* Plats by category */}
           {cats.filter(c => c !== 'Tous').map(cat => {

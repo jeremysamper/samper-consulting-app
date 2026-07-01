@@ -465,13 +465,12 @@ const Catalogue = ({ user, etablissement }) => {
           {/* Filtres */}
           <div style={cat.filters}>
             <input style={cat.search} placeholder="🔍 Rechercher produit ou fournisseur…" value={search} onChange={e => setSearch(e.target.value)} />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {cats.map(c => (
-                <button key={c} style={{ ...cat.filterBtn, ...(catFilter === c ? cat.filterActive : {}) }} onClick={() => setCatFilter(c)}>
-                  {c === 'Tous' ? `Tous (${produits.length})` : c}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs
+              size="sm"
+              active={catFilter}
+              onChange={setCatFilter}
+              tabs={cats.map(c => ({ id: c, label: c === 'Tous' ? `Tous (${produits.length})` : c }))}
+            />
           </div>
 
           {/* Table produits */}

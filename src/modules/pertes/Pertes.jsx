@@ -6,6 +6,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -190,13 +191,12 @@ const Pertes = ({ user, etablissement }) => {
       <div style={pts.header}>
         <div style={pts.headerLeft}>
           <input style={pts.search} placeholder="Rechercher un produit…" value={search} onChange={e=>setSearch(e.target.value)}/>
-          <div style={pts.motifTabs}>
-            {MOTIFS.slice(0,5).map(m => (
-              <button key={m} style={{...pts.motifBtn, ...(motifFilter===m?pts.motifActive:{})}} onClick={()=>setMotifFilter(m)}>
-                {m}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            size="sm"
+            active={motifFilter}
+            onChange={setMotifFilter}
+            tabs={MOTIFS.map(m => ({ id: m, label: m }))}
+          />
         </div>
         <div className="module-actions">
           {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>+ Déclarer une perte</button>}

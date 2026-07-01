@@ -6,6 +6,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -392,9 +393,12 @@ const FichesSalle = ({ user, etablissement }) => {
       <div style={fss.toolbar}>
         <div style={fss.left}>
           <input style={fss.search} placeholder="Rechercher un plat…" value={search} onChange={e=>setSearch(e.target.value)}/>
-          <div style={fss.cats}>
-            {cats.map(c=><button key={c} style={{...fss.catBtn,...(catFilter===c?fss.catActive:{})}} onClick={()=>setCatFilter(c)}>{c}</button>)}
-          </div>
+          <SegmentedTabs
+            size="sm"
+            active={catFilter}
+            onChange={setCatFilter}
+            tabs={cats.map(c => ({ id: c, label: c }))}
+          />
         </div>
         {canEdit && !sel.active && (
           <div className="module-actions">

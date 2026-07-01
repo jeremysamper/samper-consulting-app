@@ -6,6 +6,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // INVENTAIRE MENSUEL
 const Inventaire = ({ user, etablissement }) => {
@@ -559,13 +560,21 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
 
         <div style={invs.filters} className="no-print">
-          <div style={invs.catTabs}>{cats.map(c => <button key={c} style={{...invs.catBtn, ...(catFilter===c?invs.catActive:{})}} onClick={()=>setCatFilter(c)}>{c}</button>)}</div>
+          <SegmentedTabs
+            size="sm"
+            active={catFilter}
+            onChange={setCatFilter}
+            tabs={cats.map(c => ({ id: c, label: c }))}
+          />
           {hasTypes && (
-            <div style={{display:'flex', gap:4, alignItems:'center', marginLeft:8}}>
-              <span style={{fontSize:11, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', letterSpacing:0.4, marginRight:4}}>Type :</span>
-              {['Tous', 'sec', 'positif', 'negatif'].map(t => (
-                <button key={t} style={{...invs.catBtn, ...(typeFilter===t?invs.catActive:{}), textTransform:'capitalize'}} onClick={()=>setTypeFilter(t)}>{t === 'Tous' ? 'Tous' : t === 'negatif' ? 'Négatif' : t}</button>
-              ))}
+            <div style={{display:'flex', gap:6, alignItems:'center'}}>
+              <span style={{fontSize:11, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', letterSpacing:0.4}}>Type :</span>
+              <SegmentedTabs
+                size="sm"
+                active={typeFilter}
+                onChange={setTypeFilter}
+                tabs={['Tous', 'sec', 'positif', 'negatif'].map(t => ({ id: t, label: t === 'negatif' ? 'Négatif' : t === 'sec' ? 'Sec' : t === 'positif' ? 'Positif' : 'Tous' }))}
+              />
             </div>
           )}
           <input style={invs.search} placeholder="Rechercher un produit…" value={search} onChange={e=>setSearch(e.target.value)}/>
