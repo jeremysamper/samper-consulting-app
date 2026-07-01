@@ -499,6 +499,27 @@ export function installLegacySupabase() {
       return { success: true, method: 'db_fallback', message: 'Profil supprimé. Le compte Auth reste présent (à supprimer manuellement dans Supabase Dashboard > Authentication si souhaité).' };
     },
 
+    // Modifier l'e-mail et/ou le mot de passe d'un compte auth existant.
+    // Réservé au consultant (contrôlé côté Edge Function via le rôle du caller).
+    // payload = { user_id, email?, password? } — champs vides = inchangés.
+    async updateUserAuthViaEdge(payload) {
+      try {
+        const { data, error } = await client.functions.invoke('update-user', { body: payload });
+        if (error) {
+          let detail = error.message || String(error);
+          if (error.context && typeof error.context.text === 'function') {
+            try { const txt = await error.context.text(); if (txt) detail += ' | ' + txt; } catch (e) {}
+          }
+          throw new Error(detail);
+        }
+        if (data?.error) throw new Error(data.error);
+        return data;
+      } catch (err) {
+        console.error('[updateUserAuthViaEdge]', err);
+        throw err;
+      }
+    },
+
     // ─── RECETTES ───
     async listRecettes(etabId) {
       let q = client.from('recettes').select('*').order('nom');

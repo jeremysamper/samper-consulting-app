@@ -155,7 +155,7 @@ const Roles = ({ user }) => {
     setShowUserForm(true);
   };
 
-  const openEditUser = (u) => { setEditingUser({ ...u, password: '' }); setShowUserForm(true); };
+  const openEditUser = (u) => { setEditingUser({ ...u, password: '', _originalEmail: u.email || '' }); setShowUserForm(true); };
 
   const saveUser = async () => {
     const u = editingUser;
@@ -166,13 +166,45 @@ const Roles = ({ user }) => {
     if (legacySB) {
       if (u.id) {
         // Mise à jour d'un profil existant
+        const newEmail = u.email.trim().toLowerCase();
+        const emailChanged = newEmail !== (u._originalEmail || '').trim().toLowerCase();
+        const wantsPassword = !!(u.password && u.password.length);
+
+        if (wantsPassword && u.password.length < 6) {
+          alertLegacy('Le mot de passe doit contenir au moins 6 caractères.');
+          return;
+        }
+
+        // 1. Changement d'identifiants auth (e-mail / mot de passe) via Edge Function.
+        //    Fait en premier : si ça échoue, on n'altère pas le profil.
+        if (emailChanged || wantsPassword) {
+          try {
+            await legacySB.db.updateUserAuthViaEdge({
+              user_id: u.id,
+              email: emailChanged ? newEmail : undefined,
+              password: wantsPassword ? u.password : undefined,
+            });
+          } catch (err) {
+            notifyLegacy('Erreur mise à jour des identifiants : ' + err.message + '\n\nVérifiez que l\'Edge Function "update-user" est déployée.', 'error');
+            return;
+          }
+        }
+
+        // 2. Mise à jour des champs de profil.
         try {
           await legacySB.db.updateProfile(u.id, {
-            prenom: u.prenom, nom: u.nom, email: u.email,
+            prenom: u.prenom, nom: u.nom, email: newEmail,
             role: u.role, poste: u.poste, avatar,
             etablissement_ids: u.etablissementIds, actif: u.actif !== false,
           });
         } catch (err) { notifyLegacy('Erreur mise à jour : ' + err.message, 'error'); return; }
+
+        if (emailChanged || wantsPassword) {
+          const parts = [];
+          if (emailChanged) parts.push('Email : ' + newEmail);
+          if (wantsPassword) parts.push('Mot de passe : ' + u.password);
+          alertLegacy(`✓ Identifiants de ${u.prenom} ${u.nom} mis à jour.\n\nTransmettez-lui :\n• ${parts.join('\n• ')}`);
+        }
       } else {
         // Nouveau compte : créer via Edge Function
         if (!u.password || u.password.length < 6) {
@@ -370,22 +402,30 @@ const Roles = ({ user }) => {
                 <div><label style={ros.fieldLabel}>Prénom</label><input type="text" style={ros.fieldInput} value={editingUser.prenom} onChange={e => setEditingUser({ ...editingUser, prenom: e.target.value })} /></div>
                 <div><label style={ros.fieldLabel}>Nom</label><input type="text" style={ros.fieldInput} value={editingUser.nom} onChange={e => setEditingUser({ ...editingUser, nom: e.target.value })} /></div>
               </div>
-              <div><label style={ros.fieldLabel}>E-mail</label><input type="email" style={ros.fieldInput} value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} disabled={!!editingUser.id}/></div>
-              {!editingUser.id && (
-                <div>
-                  <label style={ros.fieldLabel}>Mot de passe temporaire *</label>
-                  <div style={{display:'flex', gap:8}}>
-                    <input type="text" style={{...ros.fieldInput, flex:1, fontFamily:'monospace'}} value={editingUser.password || ''} placeholder="Min. 6 caractères"
-                      onChange={e => setEditingUser({ ...editingUser, password: e.target.value })}/>
-                    <button type="button" style={{...ros.smallGhost, whiteSpace:'nowrap'}} onClick={() => {
-                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-                      const pwd = Array.from({length:10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-                      setEditingUser({ ...editingUser, password: pwd });
-                    }}>🎲 Générer</button>
-                  </div>
-                  <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>Vous devrez transmettre ce mot de passe à l'utilisateur. Il pourra le changer après sa première connexion.</div>
+              <div>
+                <label style={ros.fieldLabel}>E-mail</label>
+                <input type="email" style={ros.fieldInput} value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} />
+                {editingUser.id && (
+                  <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>Modifier l'e-mail change aussi l'identifiant de connexion de l'utilisateur.</div>
+                )}
+              </div>
+              <div>
+                <label style={ros.fieldLabel}>{editingUser.id ? 'Nouveau mot de passe' : 'Mot de passe temporaire *'}</label>
+                <div style={{display:'flex', gap:8}}>
+                  <input type="text" style={{...ros.fieldInput, flex:1, fontFamily:'monospace'}} value={editingUser.password || ''} placeholder={editingUser.id ? 'Laisser vide pour ne pas changer' : 'Min. 6 caractères'}
+                    onChange={e => setEditingUser({ ...editingUser, password: e.target.value })}/>
+                  <button type="button" style={{...ros.smallGhost, whiteSpace:'nowrap'}} onClick={() => {
+                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+                    const pwd = Array.from({length:10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+                    setEditingUser({ ...editingUser, password: pwd });
+                  }}>🎲 Générer</button>
                 </div>
-              )}
+                <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>
+                  {editingUser.id
+                    ? 'Renseignez un mot de passe uniquement pour le réinitialiser, puis transmettez-le à l\'utilisateur.'
+                    : 'Vous devrez transmettre ce mot de passe à l\'utilisateur. Il pourra le changer après sa première connexion.'}
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={ros.fieldLabel}>Rôle</label>
