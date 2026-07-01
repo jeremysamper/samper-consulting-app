@@ -4,8 +4,6 @@ import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Calculator, Copy, ArrowLeft } from 'lucide-react';
 import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePdfData.js';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
@@ -493,26 +491,18 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
           onClose={() => setShowDuplicate(false)}
         />
       )}
-      <div style={{display:'flex',gap:8,marginBottom:16, flexWrap: 'wrap'}} className='no-print'>
+      <div className="module-actions no-print" style={{ marginBottom: 16 }}>
         <button style={rs.backBtn} onClick={onBack}>← Retour</button>
         <button
-          className="desktop-toolbar"
           style={{ ...rs.printBtn, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}
           onClick={() => setShowCalc(true)}
         >Calculer</button>
         <button style={rs.printBtn} onClick={printRecipe}>Imprimer</button>
         <button style={rs.printBtn} onClick={exportRecipePdf}>Export PDF</button>
         {canDuplicate && (
-          <button className="desktop-toolbar" style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
+          <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
         )}
       </div>
-      <BottomActionBar
-        actions={[
-          { label: 'Calculer', icon: Calculator, onClick: () => setShowCalc(true) },
-          canDuplicate ? { label: 'Dupliquer vers…', icon: Copy, onClick: () => setShowDuplicate(true) } : null,
-        ].filter(Boolean)}
-        primaryAction={{ label: 'Retour', icon: ArrowLeft, onClick: onBack }}
-      />
       <div id='fiche-recette-print'>
       <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
         {recette.photoUrl && (

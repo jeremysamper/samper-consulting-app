@@ -5,8 +5,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { LayoutTemplate, Plus } from 'lucide-react';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING — MODULE SOP & CHECKLISTS
@@ -126,7 +125,7 @@ const SOP = ({ user, etablissement }) => {
             {' · '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
           </div>
         </div>
-        <div className="desktop-toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="module-actions">
           {canManage && (
             <>
               <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>Templates</button>
@@ -137,14 +136,14 @@ const SOP = ({ user, etablissement }) => {
       </div>
 
       {/* Tabs */}
-      <div style={ss.tabs}>
-        <button style={{ ...ss.tab, ...(activeTab === 'liste' ? ss.tabActive : {}) }} onClick={() => setActiveTab('liste')}>
-          Mes procédures
-        </button>
-        <button style={{ ...ss.tab, ...(activeTab === 'historique' ? ss.tabActive : {}) }} onClick={() => setActiveTab('historique')}>
-          Historique
-        </button>
-      </div>
+      <SegmentedTabs
+        active={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { id: 'liste', label: 'Mes procédures' },
+          { id: 'historique', label: 'Historique' },
+        ]}
+      />
 
       {activeTab === 'liste' ? (
         <SopList
@@ -168,13 +167,6 @@ const SOP = ({ user, etablissement }) => {
         />
       ) : (
         <SopHistory executions={executions} sops={sops} user={user} canManage={canManage} />
-      )}
-
-      {canManage && (
-        <BottomActionBar
-          actions={[{ label: 'Templates', icon: LayoutTemplate, onClick: () => setShowTemplates(true) }]}
-          primaryAction={{ label: 'Nouvelle SOP', icon: Plus, onClick: () => setSelectedSop({}) }}
-        />
       )}
 
       {/* Modale templates */}

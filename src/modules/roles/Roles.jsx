@@ -3,6 +3,7 @@ import { getDemoData } from '../../data/demoData.js';
 import { manageableModules, defaultManageRoles } from '../moduleConfig.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ─────────────────────────────────────────────────────
 // RÔLES & ACCÈS + GESTION DES UTILISATEURS (CRUD)
@@ -279,9 +280,15 @@ const Roles = ({ user }) => {
   return (
     <div style={ros.root}>
       <div style={ros.tabs} className="no-print">
-        <button style={{ ...ros.tab, ...(activeTab === 'permissions' ? ros.tabActive : {}) }} onClick={() => setActiveTab('permissions')}>Permissions par rôle</button>
-        <button style={{ ...ros.tab, ...(activeTab === 'actions' ? ros.tabActive : {}) }} onClick={() => setActiveTab('actions')}>Droits d'action</button>
-        <button style={{ ...ros.tab, ...(activeTab === 'users' ? ros.tabActive : {}) }} onClick={() => setActiveTab('users')}>Utilisateurs ({utilisateurs.length})</button>
+        <SegmentedTabs
+          active={activeTab}
+          onChange={setActiveTab}
+          tabs={[
+            { id: 'permissions', label: 'Permissions par rôle' },
+            { id: 'actions', label: "Droits d'action" },
+            { id: 'users', label: `Utilisateurs (${utilisateurs.length})` },
+          ]}
+        />
         <div style={{ flex: 1 }} />
         {canEdit && activeTab === 'permissions' && <button style={ros.ghostBtn} onClick={resetDefaults}>↻ Réinitialiser</button>}
         {canEdit && activeTab === 'users' && <button style={ros.addBtn} onClick={openNewUser}>+ Nouvel utilisateur</button>}

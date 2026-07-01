@@ -2,8 +2,7 @@ import React from 'react';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Sparkles, FileSpreadsheet, Plus } from 'lucide-react';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE — Base de données produits & fournisseurs
@@ -435,7 +434,7 @@ const Catalogue = ({ user, etablissement }) => {
           <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''} · {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
         {canWrite && (
-          <div style={{ display: 'flex', gap: 8 }} className="desktop-toolbar">
+          <div className="module-actions">
             {isConsultant && (
             <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowAiImport(true)}>
               ✨ Import IA
@@ -452,13 +451,14 @@ const Catalogue = ({ user, etablissement }) => {
       </div>
 
       {/* Tabs */}
-      <div style={cat.tabs}>
-        {['produits', 'fournisseurs'].map(t => (
-          <button key={t} style={{ ...cat.tab, ...(activeTab === t ? cat.tabActive : {}) }} onClick={() => setActiveTab(t)}>
-            {t === 'produits' ? `🛒 Produits (${produits.length})` : `🏭 Fournisseurs (${fournisseurs.length})`}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs
+        active={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { id: 'produits', label: `🛒 Produits (${produits.length})` },
+          { id: 'fournisseurs', label: `🏭 Fournisseurs (${fournisseurs.length})` },
+        ]}
+      />
 
       {activeTab === 'produits' && (
         <>
@@ -729,19 +729,6 @@ const Catalogue = ({ user, etablissement }) => {
         />
       )}
 
-      {canWrite && (
-        <BottomActionBar
-          actions={[
-            ...(isConsultant ? [{ label: 'Import IA', icon: Sparkles, onClick: () => setShowAiImport(true) }] : []),
-            { label: 'Importer Excel', icon: FileSpreadsheet, onClick: () => fileRef.current?.click() },
-          ]}
-          primaryAction={
-            activeTab === 'produits'
-              ? { label: 'Nouveau produit', icon: Plus, onClick: () => { setEditProd(null); setShowProdForm(true); } }
-              : { label: 'Nouveau fournisseur', icon: Plus, onClick: () => { setEditFourn(null); setShowFournForm(true); } }
-          }
-        />
-      )}
     </div>
   );
 };

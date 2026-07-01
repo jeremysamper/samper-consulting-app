@@ -11,9 +11,8 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import Tracabilite from './Tracabilite.jsx';
-import { FileDown, Plus, Camera } from 'lucide-react';
 
 
 // ─────────────────────────────────────────────────────
@@ -417,14 +416,10 @@ const HACCP = ({ user, etablissement }) => {
 
   return (
     <div style={hs.root}>
-      {/* Toolbar */}
-      <div style={hs.toolbar}>
-        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-          {tabs.map(t=>(
-            <button key={t.id} style={{...hs.tab, ...(activeTab===t.id?hs.tabActive:{}), ...(t.id==='config'?{color:activeTab==='config'?'#fff':'var(--accent)',borderColor:'var(--accent)'}:{})}} onClick={()=>setActiveTab(t.id)}>{t.l}</button>
-          ))}
-        </div>
-        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}} className="desktop-toolbar">
+      {/* Toolbar : onglets compacts + actions posées (mobile = 1 ligne scrollable) */}
+      <div className="module-toolbar">
+        <SegmentedTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        <div className="module-actions">
           {activeTab!=='config' && activeTab!=='tracabilite' && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>setShowReleve(true)}>+ Nouveau relevé</button>}
           {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>setShowControl(true)}>+ Enregistrer contrôle</button>}
@@ -856,20 +851,6 @@ const HACCP = ({ user, etablissement }) => {
         </div>
       )}
 
-      <BottomActionBar
-        actions={
-          activeTab==='tracabilite' ? [] : [
-            { label: 'Export PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
-          ]
-        }
-        primaryAction={
-          activeTab==='releves'   ? { label: 'Nouveau relevé', icon: Plus, onClick: () => setShowReleve(true) } :
-          activeTab==='controles' ? { label: 'Enregistrer contrôle', icon: Plus, onClick: () => setShowControl(true) } :
-          activeTab==='tracabilite' && canWrite ? { label: 'Prendre une photo', icon: Camera, onClick: () => triggerCapture && triggerCapture() } :
-          activeTab==='config' && isConsultant ? { label: 'Ajouter zone', icon: Plus, onClick: () => setZoneModal('new') } :
-          null
-        }
-      />
     </div>
   );
 };

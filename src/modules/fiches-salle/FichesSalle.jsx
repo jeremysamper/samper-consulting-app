@@ -4,8 +4,6 @@ import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Sparkles, ListChecks, Plus } from 'lucide-react';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 
@@ -399,7 +397,7 @@ const FichesSalle = ({ user, etablissement }) => {
           </div>
         </div>
         {canEdit && !sel.active && (
-          <div className="desktop-toolbar" style={{display:'flex',gap:8,flexShrink:0,flexWrap:'wrap'}}>
+          <div className="module-actions">
             {fiches.length > 0 && (
               <button style={fss.selectBtn} onClick={sel.enter}>Sélectionner</button>
             )}
@@ -506,16 +504,6 @@ const FichesSalle = ({ user, etablissement }) => {
         ))}
         {filtered.length===0&&<div style={fss.empty}>Aucune fiche pour ces critères.</div>}
       </div>
-
-      {canEdit && !sel.active && (
-        <BottomActionBar
-          actions={[
-            isConsultant ? { label: 'Générer IA', icon: Sparkles, onClick: genererFichesSalleIA, disabled: !!bulkProgress } : null,
-            fiches.length > 0 ? { label: 'Sélection', icon: ListChecks, onClick: sel.enter } : null,
-          ].filter(Boolean)}
-          primaryAction={{ label: 'Nouvelle fiche', icon: Plus, onClick: () => openEdit(null) }}
-        />
-      )}
 
       {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
     </div>

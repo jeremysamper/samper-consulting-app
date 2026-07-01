@@ -5,8 +5,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import ShiftCell from './ShiftCell.jsx';
 import { ccntCell, pls } from './Planning.styles.js';
 import { dbService } from '../../services/dbService.js';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Files, FileDown, Plus, CheckSquare, FileText, Printer } from 'lucide-react';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -441,8 +440,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = React.useState(false);
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
 
-  // Menu overflow ⋯ (utilitaires secondaires : CCNT, impression, export, dupliquer semaine)
-  const [showOverflow, setShowOverflow] = React.useState(false);
 
   // ─── État pour la saisie groupée d'horaires (Axe 3) ───
   // Crée des horaires pour plusieurs employés × une plage de dates (filtrée par jours
@@ -1087,9 +1084,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
     <div style={pls.root}>
       {/* ─── Header : onglets + navigation temporelle ─── */}
       <div style={pls.tabs} className="no-print">
-        {[{ id: 'planning', label: 'Planning' }, { id: 'pointage', label: 'Pointage' }].map(t => (
-          <button key={t.id} style={{ ...pls.tab, ...(activeTab === t.id ? pls.tabActive : {}) }} onClick={() => setActiveTab(t.id)}>{t.label}</button>
-        ))}
+        <SegmentedTabs
+          active={activeTab}
+          onChange={setActiveTab}
+          tabs={[{ id: 'planning', label: 'Planning' }, { id: 'pointage', label: 'Pointage' }]}
+        />
         <div style={{ flex: 1 }} />
         {activeTab === 'planning' ? (!isMobile && (
           <>
@@ -1107,8 +1106,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
         )}
       </div>
 
-      {/* ─── Actions primaires (2 max) + menu overflow ─── */}
-      <div style={pls.actionsBar} className="desktop-toolbar no-print">
+      {/* ─── Actions du module (posées, jamais flottantes ; scroll horizontal sur mobile) ─── */}
+      <div className="module-actions no-print">
         {canWrite && activeTab === 'planning' && <button style={pls.addBtn} onClick={openBatchModal}>+ Ajouter</button>}
         {canWrite && activeTab === 'planning' && (
           <button
@@ -1117,20 +1116,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
           >{selectionMode ? 'Quitter la sélection' : 'Sélectionner'}</button>
         )}
         <div style={{ flex: 1 }} />
-        <div style={{ position: 'relative' }}>
-          <button style={pls.exportBtn} onClick={() => setShowOverflow(v => !v)} aria-label="Plus d'actions" title="Plus d'actions">⋯</button>
-          {showOverflow && (
-            <>
-              <div style={pls.overflowBackdrop} onClick={() => setShowOverflow(false)} />
-              <div style={pls.overflowMenu}>
-                {canExport && activeTab === 'planning' && <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); openDuplicateWeek(); }}>Dupliquer la semaine</button>}
-                {canExport && <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); openCCNTModal(); }}>Relevé CCNT</button>}
-                {canExport && <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' }); }}>Imprimer</button>}
-                <button style={pls.overflowItem} onClick={() => { setShowOverflow(false); pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' }); }}>Exporter en PDF</button>
-              </div>
-            </>
-          )}
-        </div>
+        {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>Dupliquer la semaine</button>}
+        {canExport && <button style={pls.exportBtn} onClick={openCCNTModal}>Relevé CCNT</button>}
+        {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>Imprimer</button>}
+        {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>Exporter en PDF</button>}
       </div>
 
       {/* Contenu */}
@@ -1933,20 +1922,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
           </div>
         );
       })()}
-
-      {/* Barre mobile : masquée en mode sélection (la barre sticky de sélection prend le relais) */}
-      {!selectionMode && (
-        <BottomActionBar
-          actions={[
-            canWrite && activeTab === 'planning' ? { label: 'Sélectionner', icon: CheckSquare, onClick: toggleSelectionMode } : null,
-            canExport ? { label: 'Exporter PDF', icon: FileDown, onClick: () => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: 'portrait' }) } : null,
-            canExport && activeTab === 'planning' ? { label: 'Dupliquer sem.', icon: Files, onClick: openDuplicateWeek } : null,
-            canExport ? { label: 'Relevé CCNT', icon: FileText, onClick: openCCNTModal } : null,
-            canExport ? { label: 'Imprimer', icon: Printer, onClick: () => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: 'portrait' }) } : null,
-          ].filter(Boolean)}
-          primaryAction={canWrite && activeTab === 'planning' ? { label: 'Ajouter', icon: Plus, onClick: openBatchModal } : null}
-        />
-      )}
     </div>
   );
 };

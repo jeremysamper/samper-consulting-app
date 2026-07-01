@@ -5,8 +5,6 @@ import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { FolderPlus, Upload } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS — Partage hiérarchique de PDFs
@@ -287,7 +285,7 @@ const Documents = ({ user, etablissement }) => {
           ))}
         </div>
 
-        <div style={doc_s.headerRight} className="desktop-toolbar">
+        <div className="module-actions">
           <input
             style={doc_s.search}
             placeholder="🔍 Rechercher…"
@@ -604,14 +602,6 @@ const Documents = ({ user, etablissement }) => {
         );
       })()}
 
-      {canWrite && (
-        <BottomActionBar
-          actions={[
-            { label: 'Nouveau dossier', icon: FolderPlus, onClick: () => setShowNewFolder(true) },
-          ]}
-          primaryAction={{ label: uploading ? 'Upload en cours…' : 'Importer PDF', icon: Upload, onClick: () => fileInputRef.current?.click(), disabled: uploading }}
-        />
-      )}
     </div>
   );
 };

@@ -11,6 +11,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { CarteSimulation } from './CarteSimulation.jsx';
 import { CarteCreator } from './CarteCreator.jsx';
 import { dbService } from '../../services/dbService.js';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ─────────────────────────────────────────────────────
 // OUTILS CONSULTANT — Création et édition de recettes
@@ -859,36 +860,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Barre d'onglets — espace admin consultant */}
-      <div style={cts.tabsBar} className="no-print">
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'recettes' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('recettes')}
-        >📖 Plats & Recettes</button>
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'creation_carte' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('creation_carte')}
-        >Création carte</button>
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'simulation' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('simulation')}
-        >📊 Simulation carte</button>
-        <div style={cts.tabsDivider} />
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'roles' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('roles')}
-        >🔐 Rôles & accès</button>
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'etablissements' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('etablissements')}
-        >🏛 Établissements</button>
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'factures' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('factures')}
-        >€ Factures</button>
-        <button
-          style={{ ...cts.tabBtn, ...(activeTab === 'alertes' ? cts.tabBtnActive : {}) }}
-          onClick={() => setActiveTab('alertes')}
-        >🔔 Alertes</button>
+      <div className="no-print" style={{ marginBottom: 14 }}>
+        <SegmentedTabs
+          active={activeTab}
+          onChange={setActiveTab}
+          tabs={[
+            { id: 'recettes', label: '📖 Plats & Recettes' },
+            { id: 'creation_carte', label: 'Création carte' },
+            { id: 'simulation', label: '📊 Simulation carte' },
+            { id: 'roles', label: '🔐 Rôles & accès' },
+            { id: 'etablissements', label: '🏛 Établissements' },
+            { id: 'factures', label: '€ Factures' },
+            { id: 'alertes', label: '🔔 Alertes' },
+          ]}
+        />
       </div>
 
       {/* Routage des onglets — reutilise les composants migres via imports.

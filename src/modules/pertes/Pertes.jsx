@@ -6,8 +6,6 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
-import BottomActionBar from '../../components/mobile/BottomActionBar.jsx';
-import { Download, Plus } from 'lucide-react';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -200,7 +198,7 @@ const Pertes = ({ user, etablissement }) => {
             ))}
           </div>
         </div>
-        <div style={pts.headerRight} className="desktop-toolbar">
+        <div className="module-actions">
           {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>+ Déclarer une perte</button>}
           {canManage && !sel.active && (
             <button style={pts.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>
@@ -512,13 +510,6 @@ const Pertes = ({ user, etablissement }) => {
           </div>
         </div>
       )}
-
-      <BottomActionBar
-        actions={[
-          { label: 'Exporter', icon: Download, onClick: exportPertes },
-        ]}
-        primaryAction={perms.pertes ? { label: 'Déclarer une perte', icon: Plus, onClick: () => setShowForm(true) } : null}
-      />
     </div>
   );
 };

@@ -1,4 +1,7 @@
 import React from 'react';
+import SegmentedTabs from './SegmentedTabs.jsx';
+
+export { SegmentedTabs };
 
 export function Card({ children, style = {}, onClick }) {
   return (
@@ -92,22 +95,10 @@ export function Input({ value, onChange, placeholder, type = 'text', style = {},
   );
 }
 
+// TabBar délègue désormais au SegmentedTabs (bande compacte 1 ligne scrollable)
+// pour que tous les usages existants profitent du rendu mobile compact.
 export function TabBar({ tabs, active, onChange, style = {} }) {
-  return (
-    <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', ...style }}>
-      {(Array.isArray(tabs) ? tabs : []).map((tab) => (
-        <Btn
-          key={tab.id}
-          variant={active === tab.id ? 'tabActive' : 'tab'}
-          onClick={() => onChange(tab.id)}
-          style={{ padding: '10px 14px' }}
-        >
-          {tab.icon ? <span>{tab.icon}</span> : null}
-          {tab.label}
-        </Btn>
-      ))}
-    </div>
-  );
+  return <SegmentedTabs tabs={tabs} active={active} onChange={onChange} style={style} />;
 }
 
 export function SectionHeader({ title, sub, action, style = {} }) {
