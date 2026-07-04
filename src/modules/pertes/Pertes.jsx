@@ -517,7 +517,7 @@ const Pertes = ({ user, etablissement }) => {
 const pts = {
   root:{display:'flex',flexDirection:'column',gap:16},
   header:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
-  headerLeft:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'},
+  headerLeft:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',minWidth:0},
   headerRight:{display:'flex',gap:8},
   search:{padding:'7px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',width:180},
   motifTabs:{display:'flex',gap:4,flexWrap:'wrap'},

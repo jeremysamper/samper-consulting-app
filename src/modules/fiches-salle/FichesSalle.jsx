@@ -802,7 +802,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
 const fss = {
   root:{display:'flex',flexDirection:'column',gap:14},
   toolbar:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'},
-  left:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'},
+  left:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',minWidth:0},
   search:{padding:'7px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',width:200},
   cats:{display:'flex',gap:4,flexWrap:'wrap'},
   catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},

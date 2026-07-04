@@ -378,6 +378,9 @@ html[data-theme="dark"] {
   border-radius: var(--r);
   overflow-x: auto;
   max-width: 100%;
+  /* Permet à la barre de rétrécir (donc de coulisser) même imbriquée dans un
+     parent flex : sans ça, min-width:auto la fait déborder hors cadre. */
+  min-width: 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   scroll-snap-type: x proximity;

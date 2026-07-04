@@ -306,7 +306,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
           onChange={e => setSearch(e.target.value)}
           style={ss.searchInput}
         />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
           {/* Mode nouveau cuisinier — toggle dédié */}
           {essentialCount > 0 && (
             <button
