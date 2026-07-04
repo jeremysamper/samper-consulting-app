@@ -1029,7 +1029,6 @@ const Recettes = ({ user, etablissement }) => {
             onRenameCarte={renameCarte}
             onDeleteCarte={deleteCarte}
             homeId={defaultCarteId}
-            scroll={isMobile}
           />
         </div>
         <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">

@@ -407,10 +407,10 @@ const FichesSalle = ({ user, etablissement }) => {
             )}
             {isConsultant && (
             <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
-              Générer fiches salle (IA)
+              Générer (IA)
             </button>
             )}
-            <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche salle</button>
+            <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle</button>
           </div>
         )}
       </div>

@@ -25,10 +25,6 @@ export default function CarteTabBar({
   // Optionnel : id de la carte « d'accueil » → préfixe ★ sur l'onglet.
   // Additif : les autres usages (Fiches salle) ne passent rien → aucun marqueur.
   homeId = null,
-  // Optionnel : true → onglets en bande horizontale scrollable (1 ligne) au lieu
-  // de wrapper. Utilisé sur mobile par Cartes & Recettes pour ne pas empiler les
-  // onglets sur plusieurs lignes. Les autres usages gardent le wrap par défaut.
-  scroll = false,
 }) {
   // modal: null | { mode: 'create' } | { mode: 'edit', carte }
   const [modal, setModal] = React.useState(null);
@@ -69,14 +65,20 @@ export default function CarteTabBar({
   };
 
   return (
-    <div style={{ ...s.bar, ...(scroll ? s.barScroll : {}) }} className={'no-print' + (scroll ? ' carte-tab-bar--scroll' : '')}>
+    <div className="segmented-tabs no-print">
       {cartes.map(carte => {
         const active = activeId === carte.id;
         return (
-          <div key={carte.id} style={{ ...s.tab, ...(active ? s.tabActive : {}) }} onClick={() => onSelect?.(carte.id)}>
-            <span style={s.tabLabel}>{carte.id === homeId && '★ '}{carte.nom}</span>
+          <div
+            key={carte.id}
+            role="button"
+            className={'segmented-tab' + (active ? ' is-active' : '')}
+            onClick={() => onSelect?.(carte.id)}
+          >
+            <span>{carte.id === homeId && '★ '}{carte.nom}</span>
             {canManage && active && (
               <button
+                className="mini"
                 style={s.editBtn}
                 title="Modifier la carte"
                 onClick={(e) => { e.stopPropagation(); openEdit(carte); }}
@@ -86,18 +88,17 @@ export default function CarteTabBar({
         );
       })}
 
-      {canManage && (
-        <button style={s.addBtn} onClick={openCreate} title="Ajouter une carte">+ Carte</button>
-      )}
-
-      {extraTabs.length > 0 && <div style={s.divider} />}
       {extraTabs.map(t => (
         <button
           key={t.id}
-          style={{ ...s.tab, ...s.tabBtnReset, ...(activeId === t.id ? s.tabActive : {}) }}
+          className={'segmented-tab' + (activeId === t.id ? ' is-active' : '')}
           onClick={() => onSelect?.(t.id)}
         >{t.label}</button>
       ))}
+
+      {canManage && (
+        <button className="segmented-tab" style={s.addBtn} onClick={openCreate} title="Ajouter une carte">+ Carte</button>
+      )}
 
       {modal && (
         <div style={s.overlay} onClick={close}>
@@ -154,8 +155,8 @@ const s = {
   tabBtnReset: { outline: 'none' },
   tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
   tabLabel: { whiteSpace: 'nowrap' },
-  editBtn: { background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 5, color: 'inherit', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: '2px 5px', fontFamily: 'var(--font)' },
-  addBtn: { padding: '8px 12px', border: '1px dashed var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  editBtn: { background: 'transparent', border: 'none', borderRadius: 5, color: 'var(--accent)', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: '0 2px', marginLeft: 2, fontFamily: 'var(--font)' },
+  addBtn: { color: 'var(--accent)', border: '1px dashed var(--accent-bd)', fontWeight: 700 },
   divider: { width: 1, height: 24, background: 'var(--border)', margin: '0 4px' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
   modal: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 460, maxWidth: '94vw', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
