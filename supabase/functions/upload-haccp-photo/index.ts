@@ -9,6 +9,11 @@
 //      sous <etabId>/<YYYY>/<MM>/<DD>/<timestamp>.<ext> (heure Zurich)
 //   4. renvoie l'URL publique permanente
 //
+// Supporte aussi la SUPPRESSION (body JSON { action: 'delete', id }) : la ligne
+// haccp_tracabilite ET le fichier storage sont supprimes ensemble — la
+// suppression cote client ne pouvait effacer que la ligne DB (bucket en
+// ecriture service-only), ce qui laissait des fichiers orphelins.
+//
 // Meme pattern que upload-recette-photo (verify_jwt=false, auth geree manuellement).
 // ================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -42,6 +47,40 @@ Deno.serve(async (req: Request) => {
   });
   const { data: { user }, error: uErr } = await userClient.auth.getUser();
   if (uErr || !user) return json({ error: 'Session invalide ou expiree. Reconnectez-vous.' }, 401);
+
+  // ─── Suppression (body JSON) : ligne DB + fichier storage ───
+  const contentType = req.headers.get('Content-Type') ?? '';
+  if (contentType.includes('application/json')) {
+    let body: { action?: string; id?: string };
+    try { body = await req.json(); } catch { return json({ error: 'Body JSON invalide' }, 400); }
+    if (body.action !== 'delete' || !body.id) return json({ error: 'Action inconnue' }, 400);
+
+    const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
+
+    const { data: row, error: rErr } = await admin
+      .from('haccp_tracabilite')
+      .select('id, etablissement_id, storage_path')
+      .eq('id', body.id)
+      .maybeSingle();
+    if (rErr) return json({ error: `Lecture impossible : ${rErr.message}` }, 500);
+    if (!row) return json({ ok: true, alreadyDeleted: true });
+
+    const { data: profile, error: pErr } = await admin
+      .from('profiles').select('etablissement_ids').eq('id', user.id).maybeSingle();
+    if (pErr) return json({ error: `Profil illisible : ${pErr.message}` }, 500);
+    const etabs: string[] = Array.isArray(profile?.etablissement_ids) ? profile!.etablissement_ids : [];
+    if (!etabs.includes(row.etablissement_id)) return json({ error: 'Acces refuse pour cet etablissement' }, 403);
+
+    // Fichier d'abord : si le storage echoue on garde la ligne (retentable) ;
+    // l'inverse laisserait un orphelin definitif dans le bucket.
+    if (row.storage_path) {
+      const { error: sErr } = await admin.storage.from('haccp-photos').remove([row.storage_path]);
+      if (sErr) return json({ error: `Suppression fichier echouee : ${sErr.message}` }, 500);
+    }
+    const { error: dErr } = await admin.from('haccp_tracabilite').delete().eq('id', row.id);
+    if (dErr) return json({ error: `Suppression echouee : ${dErr.message}` }, 500);
+    return json({ ok: true });
+  }
 
   // 2) Lire le formulaire multipart
   let form: FormData;
