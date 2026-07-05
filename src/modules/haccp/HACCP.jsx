@@ -421,8 +421,11 @@ const HACCP = ({ user, etablissement }) => {
         <SegmentedTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
         <div className="module-actions">
           {activeTab!=='config' && activeTab!=='tracabilite' && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
-          {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>setShowReleve(true)}>+ Nouveau relevé</button>}
-          {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>setShowControl(true)}>+ Enregistrer contrôle</button>}
+          {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
+              première option mais le state reste vide → « Cible : undefined » et
+              validation bloquée alors qu'une zone semble choisie. */}
+          {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>{setFormRel(f=>({...f, zoneId: f.zoneId || activeZones[0]?.id || ''}));setShowReleve(true);}}>+ Nouveau relevé</button>}
+          {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>{setFormCtrl(f=>({...f, templateId: f.templateId || activeTpls[0]?.id || ''}));setShowControl(true);}}>+ Enregistrer contrôle</button>}
           {activeTab==='tracabilite' && canWrite && <button style={hs.addBtn} onClick={()=>triggerCapture && triggerCapture()}>+ Prendre une photo</button>}
           {activeTab==='config' && isConsultant && (
             <>
