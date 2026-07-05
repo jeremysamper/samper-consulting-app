@@ -616,7 +616,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       }
 
       if (toCreate.length === 0) {
-        notifyLegacy(skipped > 0 ? `Aucun horaire créé — ${skipped} conflit(s) ignoré(s).` : 'Aucun horaire à créer.', 'warning');
+        notifyLegacy(skipped > 0 ? `Aucun horaire créé - ${skipped} conflit(s) ignoré(s).` : 'Aucun horaire à créer.', 'warning');
         setBatchSaving(false);
         return;
       }
@@ -636,7 +636,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       const empCount = batchUserIds.size;
       let msg = `✓ ${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''} pour ${empCount} employé${empCount > 1 ? 's' : ''} sur ${dates.length} jour${dates.length > 1 ? 's' : ''}`;
       if (idsToRemove.size > 0) msg += ` (${idsToRemove.size} remplacé${idsToRemove.size > 1 ? 's' : ''})`;
-      if (skipped > 0) msg += ` — ${skipped} conflit${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}`;
+      if (skipped > 0) msg += ` - ${skipped} conflit${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}`;
       notifyLegacy(msg, 'success');
       setShowBatchModal(false);
     } catch (err) {
@@ -933,7 +933,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     const data = buildCCNTData();
     if (!data) { alertLegacy('Sélectionnez un employé.'); return; }
     const filename = `releve-ccnt-${data.emp.nom}-${data.mois}.pdf`;
-    const title = `Relevé mensuel CCNT — ${data.emp.prenom} ${data.emp.nom} — ${data.moisLabel}`;
+    const title = `Relevé mensuel CCNT - ${data.emp.prenom} ${data.emp.nom} - ${data.moisLabel}`;
     setTimeout(() => {
       if (action === 'print') pdfUtils?.printElement('ccnt-print', title, { etablissement, orientation: 'portrait', noBrandHeader: true });
       else pdfUtils?.exportElementToPdf('ccnt-print', filename, { etablissement, title, orientation: 'portrait', noBrandHeader: true, fitOnePage: true });
@@ -990,7 +990,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
           {dayShifts.length === 0 ? (
             <div style={pls.mobileEmptyDay}>
-              <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos — aucun horaire planifié.</span>
+              <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos - aucun horaire planifié.</span>
               {canWrite && <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>+ Ajouter un horaire</button>}
             </div>
           ) : (
@@ -1018,7 +1018,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
                           : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
-                      <div style={pls.mobileName}>{emp ? `${emp.prenom} ${emp.nom}` : '—'}</div>
+                      <div style={pls.mobileName}>{emp ? `${emp.prenom} ${emp.nom}` : '-'}</div>
                       <div style={pls.mobileMeta}>
                         <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{shift.poste || role?.label || 'Poste'}{typeLabel ? ` · ${typeLabel}` : ''}</span>
                         {shift.pause > 0 && <span style={pls.mobilePause}>Pause {shift.pause} min</span>}
@@ -1041,7 +1041,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const renderMobilePointage = () => {
     return (
       <div style={pls.mobilePlanList} id="pointage-print">
-        <div style={pls.mobileTitle}>Pointages — {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        <div style={pls.mobileTitle}>Pointages - {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         {allShifts.length === 0 && <div style={{ padding: 20, fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>Aucun horaire ce jour.</div>}
         {(allShifts || []).map(shift => {
           const emp = demoData.utilisateurs.find(u => u.id === shift.userId);
@@ -1062,9 +1062,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 11 }}>
-                <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 600 }}>{shift.pointageDebut || '—'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 600 }}>{shift.pointageFin || '—'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 600 }}>{heuresReel ? heuresReel + 'h' : '—'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 600 }}>{shift.pointageDebut || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 600 }}>{shift.pointageFin || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 600 }}>{heuresReel ? heuresReel + 'h' : '-'}</div></div>
               </div>
               {canPointShift(shift) && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }} className="no-print">
@@ -1194,9 +1194,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
                     <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: role?.couleur }}>{emp?.avatar}</div><div><div style={pls.ptName}>{emp?.prenom} {emp?.nom}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
                     <span style={pls.ptCell}>{shift.debut}–{shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev}h prévues</span></span>
-                    <span style={pls.ptCell}>{shift.pointageDebut || '—'}</span>
-                    <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '—')}</span>
-                    <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '—'}</span>
+                    <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
+                    <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
+                    <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '-'}</span>
                     <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                   </div>
                 );
@@ -1214,16 +1214,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
                 const emp = demoData.utilisateurs.find(u => u.id === selectedShift.userId);
-                return <div><strong>Employé :</strong> {emp ? `${emp.prenom} ${emp.nom}` : '—'}</div>;
+                return <div><strong>Employé :</strong> {emp ? `${emp.prenom} ${emp.nom}` : '-'}</div>;
               })()}
               <div><strong>Date :</strong> {selectedShift.date}</div>
               <div><strong>Horaire :</strong> {selectedShift.debut}–{selectedShift.fin}</div>
-              <div><strong>Poste :</strong> {selectedShift.poste || '—'}</div>
+              <div><strong>Poste :</strong> {selectedShift.poste || '-'}</div>
               <div><strong>Pause :</strong> {selectedShift.pause} min</div>
               {!pointageEditMode ? (
                 <>
-                  <div><strong>Arrivée :</strong> {selectedShift.pointageDebut || '—'}</div>
-                  <div><strong>Départ :</strong> {selectedShift.pointageFin || '—'}</div>
+                  <div><strong>Arrivée :</strong> {selectedShift.pointageDebut || '-'}</div>
+                  <div><strong>Départ :</strong> {selectedShift.pointageFin || '-'}</div>
 
                   {canPointShift(selectedShift) && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
@@ -1276,8 +1276,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div>
                 <label style={pls.fieldLabel}>Employé</label>
                 <select style={pls.fieldInput} value={editForm.userId} onChange={e => setEditForm({ ...editForm, userId: e.target.value })}>
-                  <option value="">— Sélectionner —</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.prenom} {e.nom} — {demoData.roles[e.role]?.label}</option>)}
+                  <option value="">Sélectionner…</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.prenom} {e.nom} - {demoData.roles[e.role]?.label}</option>)}
                 </select>
               </div>
               <div>
@@ -1320,7 +1320,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </select></div>
               </div>
               <div><label style={pls.fieldLabel}>Poste / Tâche</label><input type="text" style={pls.fieldInput} value={editForm.poste} placeholder="Ex : Cuisine, Salle…" onChange={e => setEditForm({ ...editForm, poste: e.target.value })} /></div>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>Durée : <strong>{calcHeures(editForm.debut, editForm.fin, editForm.pause) || '—'}h</strong></div>
+              <div style={{ fontSize: 12, color: 'var(--text2)' }}>Durée : <strong>{calcHeures(editForm.debut, editForm.fin, editForm.pause) || '-'}h</strong></div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', marginTop: 4 }}>
                 {/* Suppression contextuelle de l'horaire en cours d'édition (pas un raccourci grille) */}
                 {editForm.id && canWrite && (
@@ -1387,7 +1387,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <div>
                   <label style={pls.fieldLabel}>Collaborateur</label>
                   <select style={pls.fieldInput} value={ccntEmployeeId || ''} onChange={e => setCcntEmployeeId(e.target.value)}>
-                    <option value="">— Choisir —</option>
+                    <option value="">Choisir…</option>
                     {employees.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
                   </select>
                 </div>
@@ -1451,10 +1451,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 Conformément aux articles 15 &amp; 21 CCNT hôtellerie-restauration suisse
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 10 }}>
-                <div><strong>Établissement :</strong> {data.etab?.nom || '—'}</div>
-                <div><strong>Adresse :</strong> {data.etab?.adresse || '—'}</div>
+                <div><strong>Établissement :</strong> {data.etab?.nom || '-'}</div>
+                <div><strong>Adresse :</strong> {data.etab?.adresse || '-'}</div>
                 <div><strong>Collaborateur :</strong> {data.emp.prenom} {data.emp.nom}</div>
-                <div><strong>Fonction :</strong> {data.emp.poste || demoData.roles[data.emp.role]?.label || '—'}</div>
+                <div><strong>Fonction :</strong> {data.emp.poste || demoData.roles[data.emp.role]?.label || '-'}</div>
                 <div><strong>Mois :</strong> {data.moisLabel}</div>
                 <div><strong>Durée hebdomadaire contractuelle :</strong> {data.heuresHebdo} h</div>
               </div>
@@ -1512,7 +1512,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <tr key={i}>
                       <td style={ccntCell}>Du {s.debut} au {s.fin}</td>
                       <td style={{ ...ccntCell, textAlign: 'right' }}>{s.heures.toFixed(2)} h</td>
-                      <td style={{ ...ccntCell, textAlign: 'right', color: s.depassement > 0 ? '#c00' : '#000', fontWeight: s.depassement > 0 ? 700 : 400 }}>{s.depassement > 0 ? '+' + s.depassement.toFixed(2) + ' h' : '—'}</td>
+                      <td style={{ ...ccntCell, textAlign: 'right', color: s.depassement > 0 ? '#c00' : '#000', fontWeight: s.depassement > 0 ? 700 : 400 }}>{s.depassement > 0 ? '+' + s.depassement.toFixed(2) + ' h' : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1536,8 +1536,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <td style={ccntCell}>Solde cumulé à fin {data.moisLabel}</td>
                     <td style={{ ...ccntCell, textAlign: 'right' }}>{data.soldeCumule} h</td>
                   </tr>
-                  <tr><td style={ccntCell}>Vacances — solde dû</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.vacances.solde} j</td></tr>
-                  <tr><td style={ccntCell}>Vacances — prises ce mois</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.vacances.pris} j</td></tr>
+                  <tr><td style={ccntCell}>Vacances - solde dû</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.vacances.solde} j</td></tr>
+                  <tr><td style={ccntCell}>Vacances - prises ce mois</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.vacances.pris} j</td></tr>
                   <tr><td style={ccntCell}>Jours de repos dus / pris</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.joursRepos.dus} j / {data.joursRepos.pris} j</td></tr>
                   <tr><td style={ccntCell}>Jours fériés dus / pris</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.joursFeries.dus} j / {data.joursFeries.pris} j</td></tr>
                 </tbody>
@@ -1565,7 +1565,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
 
             <div style={{ fontSize: 8, color: '#666', marginTop: 8, textAlign: 'center' }}>
-              Document à conserver 5 ans minimum — Art. 73 OLT 1 / Art. 21 CCNT
+              Document à conserver 5 ans minimum - Art. 73 OLT 1 / Art. 21 CCNT
             </div>
           </div>
         );
@@ -1882,7 +1882,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Poste / Tâche (optionnel)</label>
                     <input type="text" style={pls.fieldInput} value={batchPoste} placeholder="Ex : Cuisine, Salle…" onChange={e => setBatchPoste(e.target.value)} />
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau || '—'}h</strong></div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau || '-'}h</strong></div>
                 </div>
 
                 {/* ── Gestion des conflits ── */}
@@ -1898,7 +1898,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       ].map(opt => (
                         <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                           <input type="radio" name="batchConflictMode" value={opt.v} checked={batchConflictMode === opt.v} onChange={() => setBatchConflictMode(opt.v)} />
-                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 11 }}>— {opt.desc}</span></span>
+                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 11 }}>- {opt.desc}</span></span>
                         </label>
                       ))}
                     </div>

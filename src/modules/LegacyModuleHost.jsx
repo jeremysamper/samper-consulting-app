@@ -200,7 +200,8 @@ export default function LegacyModuleHost({
     }
     case 'consultant_tools': {
       const ConsultantToolsComponent = ConsultantTools;
-      return permissions.consultant_tools !== false
+      // Outils IA : réservés au consultant culinaire (garde dure, indépendante de la BDD).
+      return user.role === 'consultant' && permissions.consultant_tools !== false
         ? wrap('Outils consultant', <ConsultantToolsComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }

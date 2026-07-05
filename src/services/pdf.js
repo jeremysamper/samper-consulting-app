@@ -959,9 +959,9 @@ export const pdfUtils = {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
         nameLines.forEach((line, k) => doc.text(line, nomX, y + k * 4.6));
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTE);
-        doc.text(it.besoinText || '—', besoinRight, y, { align: 'right' });
+        doc.text(it.besoinText || '-', besoinRight, y, { align: 'right' });
         doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        doc.text(it.qtyText || '—', qtyRight, y, { align: 'right' });
+        doc.text(it.qtyText || '-', qtyRight, y, { align: 'right' });
         doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
         doc.line(nomX, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
         y += rowH;

@@ -87,7 +87,7 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
               {f.cible !== '' && (
                 <div style={{marginTop:10,padding:'8px 12px',background:'var(--surface)',borderRadius:8,fontSize:12,color:'var(--text2)',display:'flex',gap:16}}>
                   <span>Cible : <strong style={{color:'var(--accent)'}}>{f.cible}{f.unite}</strong></span>
-                  <span>Plage : <strong>[{f.min!==''?f.min:'—'} ; {f.max!==''?f.max:'+∞'}]{f.unite}</strong></span>
+                  <span>Plage : <strong>[{f.min!==''?f.min:'-'} ; {f.max!==''?f.max:'+∞'}]{f.unite}</strong></span>
                 </div>
               )}
             </div>

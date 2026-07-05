@@ -257,10 +257,10 @@ export const DEMO_DATA = {
   pertes: [
     { id:'pt1', date:'2026-04-20', produit:'Saumon Label Rouge',   quantite:0.8, unite:'kg',     valeurUnit:24,   motif:'DLC dépassée',         categorie:'Poissons',      commentaire:'Oublié en chambre froide positive', declarePar:'u3', valide:true  },
     { id:'pt2', date:'2026-04-19', produit:'Risotto (portions)',   quantite:3,   unite:'portions',valeurUnit:8.40, motif:'Surproduction',        categorie:'Préparations',  commentaire:'Service soir moins fréquenté que prévu', declarePar:'u4', valide:true  },
-    { id:'pt3', date:'2026-04-18', produit:'Sauce beurre blanc',  quantite:0.5, unite:'L',       valeurUnit:17,   motif:'Erreur de préparation',categorie:'Préparations',  commentaire:'Sauce tournée — trop chauffée', declarePar:'u4', valide:false },
+    { id:'pt3', date:'2026-04-18', produit:'Sauce beurre blanc',  quantite:0.5, unite:'L',       valeurUnit:17,   motif:'Erreur de préparation',categorie:'Préparations',  commentaire:'Sauce tournée - trop chauffée', declarePar:'u4', valide:false },
     { id:'pt4', date:'2026-04-17', produit:'Asperges vertes',     quantite:1.2, unite:'kg',      valeurUnit:12,   motif:'DLC dépassée',         categorie:'Légumes',       commentaire:'', declarePar:'u3', valide:true  },
     { id:'pt5', date:'2026-04-15', produit:'Fond de veau',        quantite:2,   unite:'L',       valeurUnit:5.50, motif:'Surproduction',        categorie:'Fonds & sauces',commentaire:'Excédent non conservé', declarePar:'u3', valide:true  },
-    { id:'pt6', date:'2026-04-12', produit:'Filet de cabillaud',  quantite:0.6, unite:'kg',      valeurUnit:22,   motif:'Retour client',        categorie:'Poissons',      commentaire:'Client allergique — plat renvoyé', declarePar:'u5', valide:true  },
+    { id:'pt6', date:'2026-04-12', produit:'Filet de cabillaud',  quantite:0.6, unite:'kg',      valeurUnit:22,   motif:'Retour client',        categorie:'Poissons',      commentaire:'Client allergique - plat renvoyé', declarePar:'u5', valide:true  },
     { id:'pt7', date:'2026-04-10', produit:'Champignons sauvages',quantite:0.4, unite:'kg',      valeurUnit:28,   motif:'DLC dépassée',         categorie:'Légumes',       commentaire:'', declarePar:'u4', valide:true  },
   ],
 

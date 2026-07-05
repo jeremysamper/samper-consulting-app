@@ -156,7 +156,7 @@ export function useMiseEnPlace(etablissement) {
         result.push({
           posItemId,
           name:       item?.name ?? posItemId,
-          recipeName: recetteById[recipeId] ?? '—',
+          recipeName: recetteById[recipeId] ?? '-',
           qty,
           reliable,
           occurrences,

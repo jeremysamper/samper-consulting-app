@@ -199,7 +199,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
         {hasData && (
           <PosExportButton
             printId={PRINT_ID}
-            title={`Conso ingrédients — ${periodLabel}`}
+            title={`Conso ingrédients - ${periodLabel}`}
             etablissement={etablissement}
             label="📥 Exporter PDF"
           />
@@ -217,7 +217,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
           <div style={{
             fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)',
           }}>
-            Conso ingrédients — {periodLabel}
+            Conso ingrédients - {periodLabel}
           </div>
           {etabNom && (
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{etabNom}</div>

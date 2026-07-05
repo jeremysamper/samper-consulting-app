@@ -131,6 +131,9 @@ export default function AppLayout({
   // Si la permission n'existe pas (undefined) → on suit la valeur par défaut du rôle dans DEMO_DATA.
   // Si la valeur par défaut est aussi absente → on affiche par défaut (nouveau module ajouté côté code).
   const visibleNav = React.useMemo(() => NAV_ITEMS.filter(item => {
+    // IA / assistant / outils consultant : réservés au consultant culinaire,
+    // même si la table permissions accorde le module à un autre rôle.
+    if ((item.id === 'faq' || item.id === 'consultant_tools') && user.role !== 'consultant') return false;
     const permVal = perms[item.permKey];
     if (permVal === false) return false;
     if (permVal === true) return true;

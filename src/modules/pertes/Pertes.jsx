@@ -7,6 +7,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -190,7 +191,7 @@ const Pertes = ({ user, etablissement }) => {
       {/* Header */}
       <div style={pts.header}>
         <div style={pts.headerLeft}>
-          <input style={pts.search} placeholder="Rechercher un produit…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
           <SegmentedTabs
             size="sm"
             active={motifFilter}
@@ -366,7 +367,7 @@ const Pertes = ({ user, etablissement }) => {
                     Produit *
                     {catalogue.length > 0 && (
                       <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text2)', fontWeight: 400, fontStyle: 'italic' }}>
-                        ({catalogue.length} produits dans le catalogue — tapez pour rechercher)
+                        ({catalogue.length} produits dans le catalogue - tapez pour rechercher)
                       </span>
                     )}
                   </label>
@@ -517,9 +518,9 @@ const Pertes = ({ user, etablissement }) => {
 const pts = {
   root:{display:'flex',flexDirection:'column',gap:16},
   header:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
-  headerLeft:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',minWidth:0},
+  // Une seule ligne : loupe + onglets de motifs qui coulissent (pas d'empilement).
+  headerLeft:{display:'flex',alignItems:'center',gap:8,minWidth:0,maxWidth:'100%'},
   headerRight:{display:'flex',gap:8},
-  search:{padding:'7px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',width:180},
   motifTabs:{display:'flex',gap:4,flexWrap:'wrap'},
   motifBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   motifActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},

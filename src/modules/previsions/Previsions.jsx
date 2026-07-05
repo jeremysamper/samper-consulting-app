@@ -47,7 +47,7 @@ export default function Previsions({ user, etablissement }) {
       <div className="module-toolbar">
         <SectionHeader
           title="Prévisions"
-          sub={selectedDate ? null : 'Vue semaine cuisine — couverts et particularités par jour'}
+          sub={selectedDate ? null : 'Vue semaine cuisine - couverts et particularités par jour'}
         />
         {canEdit && (
           <div className="module-actions">

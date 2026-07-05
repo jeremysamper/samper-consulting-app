@@ -381,7 +381,7 @@ const Roles = ({ user }) => {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{u.email}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                    {role?.label} · {u.poste || '—'} · {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
+                    {role?.label} · {u.poste || '-'} · {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
                   </div>
                 </div>
                 {canEdit && (
@@ -449,7 +449,7 @@ const Roles = ({ user }) => {
                     <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
                       <input type="checkbox" checked={editingUser.etablissementIds?.includes(e.id)} onChange={() => toggleEtabForUser(e.id)} style={{ accentColor: 'var(--accent)' }} />
                       <span style={{ fontSize: 13 }}>{e.nom}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text2)' }}>— {e.type}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text2)' }}>- {e.type}</span>
                     </label>
                   ))}
                 </div>

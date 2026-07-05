@@ -337,7 +337,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                       onChange={e => setMapping(m => ({ ...m, [field]: e.target.value === '' ? null : Number(e.target.value) }))}
                       style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', fontSize: 12 }}
                     >
-                      <option value="">— ignorer —</option>
+                      <option value="">ignorer</option>
                       {mappingData.headers.map(h => <option key={h.index} value={h.index}>{h.label}</option>)}
                     </select>
                   </label>
@@ -363,7 +363,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   <strong>{recipes.reduce((s, r) => s + (r.ingredients || []).length, 0)}</strong> ingrédient(s)
                   {parseStats.sheetsRead.length > 0 && (
                     <span style={{ color: 'var(--text2)' }}>
-                      {' '}— {parseStats.sheetsRead.map(s => `${s.name} (${s.count})`).join(', ')}
+                      {' '}- {parseStats.sheetsRead.map(s => `${s.name} (${s.count})`).join(', ')}
                     </span>
                   )}
                   {parseStats.sheetsSkipped.length > 0 && (

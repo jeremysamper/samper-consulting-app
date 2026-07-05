@@ -19,8 +19,8 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
 
   const n = unhealthy.length;
   const message = n === 1
-    ? `⚠ Lightspeed déconnecté pour ${unhealthy[0].nom} — la sync des ventes est en pause.`
-    : `⚠ Lightspeed déconnecté pour ${n} établissements — la sync est en pause.`;
+    ? `⚠ Lightspeed déconnecté pour ${unhealthy[0].nom} - la sync des ventes est en pause.`
+    : `⚠ Lightspeed déconnecté pour ${n} établissements - la sync est en pause.`;
 
   // ── Pastille mobile ──────────────────────────────────────────────
   if (variant === 'pill') {

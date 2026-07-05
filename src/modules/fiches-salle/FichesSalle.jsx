@@ -7,6 +7,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ const INITIAL_FICHES = [
     id:'fs1', platId:'p1', nom:'Velouté d\'asperges vertes, crème de chèvre',
     categorie:'Entrées', statut:'active',
     descriptionService:'Velouté onctueux d\'asperges vertes du printemps, servi chaud avec une quenelle de crème de chèvre frais montée, ciboulette ciselée et quelques pointes d\'asperges en décoration. Texture lisse, goût végétal prononcé.',
-    temperatureService:'Chaud — servir immédiatement',
+    temperatureService:'Chaud - servir immédiatement',
     dressageNotes:'Assiette creuse préchauffée. Verser le velouté en salle si possible (effet théâtral).',
     allergenes:['lactose'],
     accords:[
@@ -60,12 +61,12 @@ const INITIAL_FICHES = [
     id:'fs2', platId:'p2', nom:'Tartare de saumon Label Rouge, condiments',
     categorie:'Entrées', statut:'active',
     descriptionService:'Tartare de saumon Label Rouge coupé au couteau, assaisonné citron-aneth, accompagné de câpres, échalotes confites, crème acidulée et blinis maison tièdes. Servi frais en verrine ou à l\'assiette.',
-    temperatureService:'Froid — sortir du réfrigérateur au moment du service.',
+    temperatureService:'Froid - sortir du réfrigérateur au moment du service.',
     dressageNotes:'Dresser à la dernière minute. Ne pas laisser en salle plus de 5 minutes.',
     allergenes:['poissons','gluten','oeufs','lactose'],
     accords:[
       { type:'vin', nom:'Sancerre blanc 2023', region:'Loire', notes:'Sauvignon minéral, frais, classique avec le saumon.' },
-      { type:'vin', nom:'Chablis Premier Cru', region:'Bourgogne', notes:'Iodé et tendu — sublime le poisson cru.' },
+      { type:'vin', nom:'Chablis Premier Cru', region:'Bourgogne', notes:'Iodé et tendu - sublime le poisson cru.' },
       { type:'sans_alcool', nom:'Kombucha gingembre-citron', region:'', notes:'Acidité complémentaire.' },
     ],
     infosService:'Contient poisson cru. Préciser au client en cas de doute. Femmes enceintes : déconseillé.',
@@ -76,7 +77,7 @@ const INITIAL_FICHES = [
     id:'fs3', platId:'p3', nom:'Risotto aux champignons sauvages',
     categorie:'Plats', statut:'active',
     descriptionService:'Risotto mantecato à base de riz Arborio, champignons sauvages sautés à vif (cèpes, girolles, pleurotes selon arrivage). Lié au parmesan AOP et beurre. Crémeux, al dente, parfumé. Plat signature de la maison.',
-    temperatureService:'Chaud — service immédiat après dressage. Ne pas faire attendre.',
+    temperatureService:'Chaud - service immédiat après dressage. Ne pas faire attendre.',
     dressageNotes:'Assiette creuse préchauffée obligatoire. Copeaux de parmesan + huile de truffe blanche en finition.',
     allergenes:['lactose','gluten','sulfites'],
     accords:[
@@ -85,19 +86,19 @@ const INITIAL_FICHES = [
       { type:'vin', nom:'Barbera d\'Asti', region:'Piémont', notes:'Plus accessible, fruité et équilibré.' },
       { type:'sans_alcool', nom:'Jus de raisin Muscat pétillant', region:'', notes:'Douceur et effervescence légère.' },
     ],
-    infosService:'Végétarien. Plat signature — ne pas modifier sans accord chef. Informer le client de la composition exacte (champignons sauvages variables selon saison).',
+    infosService:'Végétarien. Plat signature - ne pas modifier sans accord chef. Informer le client de la composition exacte (champignons sauvages variables selon saison).',
     tempsPreparation:'20 min',
     modifiePar:'u1', modifie:'2026-04-18',
   },
   {
     id:'fs4', platId:'p4', nom:'Pavé de bœuf Simmental, jus corsé',
     categorie:'Plats', statut:'active',
-    descriptionService:'Pavé de bœuf Simmental (race AOP Suisse) grillé en poêle fonte, reposé, servi avec jus de veau corsé monté au beurre. Cuisson proposée : saignant, rosé ou à point — demander impérativement au client.',
-    temperatureService:'Chaud — assiette chaude. Servir dans les 2 minutes après dressage.',
+    descriptionService:'Pavé de bœuf Simmental (race AOP Suisse) grillé en poêle fonte, reposé, servi avec jus de veau corsé monté au beurre. Cuisson proposée : saignant, rosé ou à point - demander impérativement au client.',
+    temperatureService:'Chaud - assiette chaude. Servir dans les 2 minutes après dressage.',
     dressageNotes:'Dresser le pavé légèrement en biais. Saucer en salle si possible. Accompagnement selon menu du soir.',
     allergenes:['lactose'],
     accords:[
-      { type:'vin', nom:'Saint-Émilion Grand Cru 2018', region:'Bordeaux', notes:'Merlot charnu, tanins soyeux — accord classique avec le bœuf.' },
+      { type:'vin', nom:'Saint-Émilion Grand Cru 2018', region:'Bordeaux', notes:'Merlot charnu, tanins soyeux - accord classique avec le bœuf.' },
       { type:'vin', nom:'Châteauneuf-du-Pape 2019', region:'Rhône', notes:'Puissance et épices pour les amateurs de vins de caractère.' },
       { type:'vin', nom:'Amarone della Valpolicella', region:'Vénétie', notes:'Pour les grandes occasions.' },
     ],
@@ -117,7 +118,7 @@ const INITIAL_FICHES = [
       { type:'vin', nom:'Muscat de Beaumes-de-Venise', region:'Rhône', notes:'Floral et agrumes, plus accessible.' },
       { type:'sans_alcool', nom:'Thé vert Gyokuro infusé froid', region:'Japon', notes:'Umami et fraîcheur, contraste élégant.' },
     ],
-    infosService:'Dessert signature — ne jamais proposer de modification. Peut être servi sans meringue pour allergie aux œufs (crème citron seule). Contient gluten.',
+    infosService:'Dessert signature - ne jamais proposer de modification. Peut être servi sans meringue pour allergie aux œufs (crème citron seule). Contient gluten.',
     tempsPreparation:'3 min',
     modifiePar:'u1', modifie:'2026-03-22',
   },
@@ -311,7 +312,7 @@ const FichesSalle = ({ user, etablissement }) => {
     if (!confirmLegacy(
       `Générer ${targets.length} fiche(s) salle par IA ?\n\n`
       + `Une fiche par plat fini${useRecettesDirect ? '' : ' de la carte'}. `
-      + `Cela effectue ${targets.length} appel(s) à l'IA. Les fiches sont créées en statut « Brouillon » — à relire avant publication.`
+      + `Cela effectue ${targets.length} appel(s) à l'IA. Les fiches sont créées en statut « Brouillon » - à relire avant publication.`
     )) return;
     bulkCancelRef.current = false;
     setBulkProgress({ done: 0, total: targets.length, created: 0 });
@@ -327,7 +328,7 @@ const FichesSalle = ({ user, etablissement }) => {
           // Agrège les composants du plat pour donner le contexte à l'IA.
           const ingredients = u.recettes.flatMap(r => r.ingredients || []);
           const etapes = u.recettes.flatMap(r => (multi
-            ? [`— ${r.nom} —`, ...((r.etapes) || [])]
+            ? [`- ${r.nom} -`, ...((r.etapes) || [])]
             : (r.etapes || [])));
           const allergIds = [...new Set(u.recettes.flatMap(r => r.allergenesIds || []))];
           const allergLabels = allergIds.map(id => ALLERGENES_LABELS[id] || id);
@@ -392,7 +393,7 @@ const FichesSalle = ({ user, etablissement }) => {
       />
       <div style={fss.toolbar}>
         <div style={fss.left}>
-          <input style={fss.search} placeholder="Rechercher un plat…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat…" />
           <SegmentedTabs
             size="sm"
             active={catFilter}
@@ -452,7 +453,7 @@ const FichesSalle = ({ user, etablissement }) => {
           <div style={{fontSize:20}}>🍽</div>
           <div>
             <div style={{fontWeight:700,fontSize:14,color:'var(--text)'}}>Fiches techniques salle</div>
-            <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>Descriptions plats, allergènes et accords mets & vins — pour vous aider à conseiller les clients avec assurance.</div>
+            <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>Descriptions plats, allergènes et accords mets & vins - pour vous aider à conseiller les clients avec assurance.</div>
           </div>
         </div>
       )}
@@ -668,7 +669,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
             </div>
             <div style={fss.field}><label style={fss.fLabel}>Description pour l'équipe salle *</label><textarea style={{...fss.fInput,minHeight:80,resize:'vertical'}} value={fiche?.descriptionService||''} onChange={e=>setFiche(f=>({...f,descriptionService:e.target.value}))}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div style={fss.field}><label style={fss.fLabel}>Température de service</label><input style={fss.fInput} placeholder="ex. Chaud — servir immédiatement" value={fiche?.temperatureService||''} onChange={e=>setFiche(f=>({...f,temperatureService:e.target.value}))}/></div>
+              <div style={fss.field}><label style={fss.fLabel}>Température de service</label><input style={fss.fInput} placeholder="ex. Chaud - servir immédiatement" value={fiche?.temperatureService||''} onChange={e=>setFiche(f=>({...f,temperatureService:e.target.value}))}/></div>
               <div style={fss.field}><label style={fss.fLabel}>Temps préparation</label><input style={fss.fInput} placeholder="ex. 12 min" value={fiche?.tempsPreparation||''} onChange={e=>setFiche(f=>({...f,tempsPreparation:e.target.value}))}/></div>
             </div>
             <div style={fss.field}><label style={fss.fLabel}>Notes de dressage / service en salle</label><textarea style={{...fss.fInput,minHeight:56,resize:'vertical'}} placeholder="À compléter manuellement" value={fiche?.dressageNotes||''} onChange={e=>setFiche(f=>({...f,dressageNotes:e.target.value}))}/></div>
@@ -683,7 +684,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                   value={fiche?.recetteId || ''}
                   onChange={e => importFromRecette(e.target.value)}
                 >
-                  <option value="">— Sélectionner une recette (optionnel) —</option>
+                  <option value="">Sélectionner une recette (optionnel)</option>
                   {recettes.map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
                 </select>
                 {fiche?.recetteId && (
@@ -776,10 +777,10 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
 
             {/* Accords généraux — familles de boissons recommandées */}
             <div style={fss.field}>
-              <label style={fss.fLabel}>Accords généraux — familles recommandées</label>
+              <label style={fss.fLabel}>Accords généraux - familles recommandées</label>
               <textarea
                 style={{...fss.fInput,minHeight:56,resize:'vertical'}}
-                placeholder={'Une famille par ligne — ex. :\nVin rouge corsé\nVin blanc sec\nVin blanc moelleux'}
+                placeholder={'Une famille par ligne - ex. :\nVin rouge corsé\nVin blanc sec\nVin blanc moelleux'}
                 value={(fiche?.accordsGeneraux||[]).join('\n')}
                 onChange={e=>setFiche(f=>({...f,accordsGeneraux:e.target.value.split('\n')}))}
               />
@@ -802,8 +803,8 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
 const fss = {
   root:{display:'flex',flexDirection:'column',gap:14},
   toolbar:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'},
-  left:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',minWidth:0},
-  search:{padding:'7px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',width:200},
+  // Une seule ligne : loupe + onglets de catégories qui coulissent.
+  left:{display:'flex',alignItems:'center',gap:8,minWidth:0,maxWidth:'100%'},
   cats:{display:'flex',gap:4,flexWrap:'wrap'},
   catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},

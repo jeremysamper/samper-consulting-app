@@ -123,7 +123,7 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
                 'error'
               );
             } else {
-              notify(eTags || 'Erreur tags — réservation annulée.', 'error');
+              notify(eTags || 'Erreur tags - réservation annulée.', 'error');
             }
             return;
           }

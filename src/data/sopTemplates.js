@@ -222,8 +222,8 @@ export const SOP_TEMPLATES = [
       {
         id: 's2', titre: 'Contrôle qualité produits',
         etapes: [
-          { id: 'e3', label: 'Température produits frais ≤ 4°C (sonde)', critique: true, info: 'HACCP — refuser si > 4°C' },
-          { id: 'e4', label: 'Température surgelés ≤ -18°C', critique: true, info: 'HACCP — refuser si > -15°C' },
+          { id: 'e3', label: 'Température produits frais ≤ 4°C (sonde)', critique: true, info: 'HACCP - refuser si > 4°C' },
+          { id: 'e4', label: 'Température surgelés ≤ -18°C', critique: true, info: 'HACCP - refuser si > -15°C' },
           { id: 'e5', label: 'Aspect visuel (pas de rupture chaîne du froid)', critique: true },
           { id: 'e6', label: 'DLC/DDM acceptables (vérifier dates)', critique: true },
           { id: 'e7', label: 'Emballage intact, pas de produit endommagé', critique: false },

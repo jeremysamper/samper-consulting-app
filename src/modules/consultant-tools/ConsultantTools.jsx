@@ -12,6 +12,7 @@ import { CarteSimulation } from './CarteSimulation.jsx';
 import { CarteCreator } from './CarteCreator.jsx';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ─────────────────────────────────────────────────────
 // OUTILS CONSULTANT — Création et édition de recettes
@@ -784,9 +785,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Insère l'analyse HACCP générée dans les notes consultant de la recette.
   const insererHaccpDansNotes = () => {
     if (!haccpResult || !selected) return;
-    const lines = ['── Analyse HACCP (générée par IA — à valider par un responsable) ──'];
+    const lines = ['── Analyse HACCP (générée par IA - à valider par un responsable) ──'];
     (haccpResult.points || []).forEach(p => {
-      lines.push(`• ${p.etape || '—'} — ${p.danger || '—'} [${p.type || '—'}]${p.ccp ? ' (CCP)' : ''}`);
+      lines.push(`• ${p.etape || '-'} - ${p.danger || '-'} [${p.type || '-'}]${p.ccp ? ' (CCP)' : ''}`);
       if (p.mesure) lines.push(`  Maîtrise : ${p.mesure}`);
       if (p.limiteCritique) lines.push(`  Limite critique : ${p.limiteCritique}`);
       if (p.surveillance) lines.push(`  Surveillance : ${p.surveillance}`);
@@ -812,7 +813,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       const { suggestRecipe } = await import('../../services/aiService.js');
       const res = await suggestRecipe(selected, (catalogue || []).map(p => p.nom));
       if (!res.ingredients.length && !res.etapes.length) {
-        notifyLegacy('L\'IA n\'a pas de suggestion — la recette semble complète.', 'info');
+        notifyLegacy('L\'IA n\'a pas de suggestion - la recette semble complète.', 'info');
       } else {
         setSuggestResult(res);
       }
@@ -961,19 +962,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {/* Colonne gauche : liste */}
       <div style={cts.leftCol} className="no-print">
         <div style={cts.leftHeader}>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <button style={{ ...cts.newBtn, flex: 1 }} onClick={createNew}>+ Recette</button>
             <button
               style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}
               onClick={() => { setEditPlat(null); setShowPlatForm(true); }}
             >+ Plat</button>
+            <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
           </div>
-          <input
-            style={cts.search}
-            placeholder="Rechercher…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
           <div style={{display:'flex', gap:6, marginTop:8}}>
             <button
               style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}}
@@ -1005,7 +1001,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
             onClick={detecterAllergenesToutes}
             disabled={!!bulkAllergenProgress}
-          >✨ Allergènes IA — toutes les recettes</button>
+          >✨ Allergènes IA - toutes les recettes</button>
           {(() => {
             const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
             return reviewCount > 0 ? (
@@ -1215,7 +1211,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
               <span style={{ fontSize: 13, color: 'var(--warning-text)', flex: 1, minWidth: 200 }}>
-                ⚠ {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) — des modifications locales n'ont pas été synchronisées.
+                ⚠ {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) - des modifications locales n'ont pas été synchronisées.
               </span>
               <button
                 style={{ ...cts.ghostBtn, background: 'var(--success-text)', color: '#fff', borderColor: 'var(--success-text)' }}
@@ -1269,12 +1265,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(760px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>🛡 Analyse HACCP — {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>🛡 Analyse HACCP - {selected.nom}</div>
                   <button onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
                   <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
-                    Généré par IA — à valider par un responsable avant utilisation.
+                    Généré par IA - à valider par un responsable avant utilisation.
                   </div>
                   {(haccpResult.points || []).length === 0 && (
                     <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucun point de maîtrise identifié.</div>
@@ -1282,11 +1278,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   {(haccpResult.points || []).map((p, i) => (
                     <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8, background: 'var(--bg)' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '—'}</span>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '—'}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '-'}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '-'}</span>
                         {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>CCP</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>⚠ {p.danger || '—'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>⚠ {p.danger || '-'}</div>
                       {p.mesure && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Maîtrise : {p.mesure}</div>}
                       {p.limiteCritique && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Limite critique : {p.limiteCritique}</div>}
                       {p.surveillance && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Surveillance : {p.surveillance}</div>}
@@ -1319,7 +1315,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(680px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>✨ Suggestions IA — {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>✨ Suggestions IA - {selected.nom}</div>
                   <button onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
@@ -1456,7 +1452,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Food cost %</span>
                     <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)' }}>
-                      {foodCost == null ? '—' : foodCost.toFixed(1) + ' %'}
+                      {foodCost == null ? '-' : foodCost.toFixed(1) + ' %'}
                     </strong>
                   </div>
                   <div style={cts.kpiItem}>
@@ -1784,7 +1780,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       {platsImpactes.slice(0, 8).map(p => (
                         <li key={p.id} style={{ marginBottom: 2 }}>
                           <strong>{p.nom}</strong>
-                          <span style={{ color: 'var(--warning-text)', fontSize: 11 }}> — {p.categorie}</span>
+                          <span style={{ color: 'var(--warning-text)', fontSize: 11 }}> - {p.categorie}</span>
                         </li>
                       ))}
                       {platsImpactes.length > 8 && (
@@ -2125,7 +2121,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
                               CHF {p.prixUnitaire.toFixed(4)}
                             </div>
-                          ) : <span style={{ color: 'var(--text2)', fontSize: 12 }}>—</span>}
+                          ) : <span style={{ color: 'var(--text2)', fontSize: 12 }}>-</span>}
                           <div style={{ fontSize: 10, color: 'var(--text2)' }}>/{p.uniteRef}</div>
                         </div>
                       </div>
@@ -2197,7 +2193,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               {/* ─── Mode 1 : par portions ─── */}
               <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? 'var(--bg)' : 'var(--warning-bg-soft)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
-                  Méthode 1 — Par nombre de portions
+                  Méthode 1 - Par nombre de portions
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text2)' }}>
                   Base : <strong style={{ color: 'var(--text)' }}>{basePortions} portion{basePortions > 1 ? 's' : ''}</strong>
@@ -2219,7 +2215,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               {/* ─── Mode 2 : par grammage cible ─── */}
               <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: useGramMode ? 'var(--warning-bg-soft)' : 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4, width: '100%' }}>
-                  Méthode 2 — Par quantité cible d'un ingrédient
+                  Méthode 2 - Par quantité cible d'un ingrédient
                 </div>
                 <span style={{ fontSize: 13, color: 'var(--text2)' }}>Avec</span>
                 <select
@@ -2227,7 +2223,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   onChange={e => { setScalingTarget({ ingId: e.target.value, targetQty: '' }); setScalingPortions(''); }}
                   style={{ padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 240, cursor: 'pointer' }}
                 >
-                  <option value="">— Choisir un ingrédient —</option>
+                  <option value="">Choisir un ingrédient…</option>
                   {candidateIngs.map(i => (
                     <option key={i.id} value={i.id}>
                       {i.nom} ({i.quantite} {i.unite})
@@ -2273,14 +2269,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <span>Ingrédient</span>
                   <span style={{ textAlign: 'right' }}>Base ({basePortions} p.)</span>
                   <span style={{ textAlign: 'right', color: isScaled ? 'var(--warning-text)' : 'var(--text2)' }}>
-                    {isScaled ? `Recalculé` : '—'}
+                    {isScaled ? `Recalculé` : '-'}
                   </span>
                 </div>
                 {ings.map((ing, idx) => {
                   const qBase = Number(ing.quantite) || 0;
                   const qCalc = qBase * ratio;
                   const fmt = (q) => {
-                    if (q === 0) return '—';
+                    if (q === 0) return '-';
                     if (q >= 1000 && ing.unite === 'g') return `${(q/1000).toFixed(q % 1000 === 0 ? 0 : 2)} kg`;
                     if (q >= 1000 && ing.unite === 'ml') return `${(q/1000).toFixed(q % 1000 === 0 ? 0 : 2)} L`;
                     if (q % 1 === 0) return `${q} ${ing.unite}`;
@@ -2291,11 +2287,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   return (
                     <div key={ing.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '9px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', background: isTargetIng ? 'var(--warning-bg)' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
                       <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: isTargetIng ? 700 : 500 }}>
-                        {isTargetIng && '🎯 '}{ing.nom || '—'}
+                        {isTargetIng && '🎯 '}{ing.nom || '-'}
                       </span>
                       <span style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'right' }}>{fmt(qBase)}</span>
                       <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? 'var(--warning-text)' : 'var(--text2)', textAlign: 'right' }}>
-                        {isScaled ? fmt(qCalc) : '—'}
+                        {isScaled ? fmt(qCalc) : '-'}
                       </span>
                     </div>
                   );

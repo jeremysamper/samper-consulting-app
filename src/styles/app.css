@@ -441,6 +441,10 @@ html[data-theme="dark"] {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  /* Jamais plus large que son conteneur : sinon la barre déborde sous le
+     cadre (overflow-x hidden global) et son scroll interne ne s'active pas. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 767px) {
@@ -448,6 +452,14 @@ html[data-theme="dark"] {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+  }
+
+  /* Chrome clampe les enfants flex à leur largeur de contenu (min-content)
+     malgré align-items:stretch : une rangée nowrap devient plus large que
+     l'écran et « ne coulisse pas ». On plafonne explicitement. */
+  .module-toolbar > * {
+    min-width: 0;
+    max-width: 100%;
   }
 
   /* Les actions ne s'empilent pas : 1 ligne qui défile horizontalement. */
@@ -491,6 +503,74 @@ html[data-theme="dark"] {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+/* ─── SearchToggle : loupe qui déplie la recherche (gain de place) ──────────
+   Replié : bouton carré loupe. Déplié : champ + croix, il prend l'espace
+   disponible de la ligne (flex 1). Fermer efface le filtre (SearchToggle.jsx). */
+.search-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+}
+.search-toggle-btn:hover { color: var(--text); }
+
+.search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  height: 36px;
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 320px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text2);
+}
+.search-toggle:focus-within { border-color: var(--accent); }
+
+.search-toggle-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+}
+.search-toggle-input:focus {
+  border-color: transparent !important;
+  box-shadow: none;
+}
+
+.search-toggle-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 4px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .search-toggle-btn { width: 44px; min-height: 44px; }
+  .search-toggle { min-height: 44px; }
+  .search-toggle-input { font-size: 16px; } /* évite le zoom auto iOS */
 }
 
 /* ─── Tableaux responsive : scroll horizontal sur mobile ─────────────────── */

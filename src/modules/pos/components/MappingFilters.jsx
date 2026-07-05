@@ -2,7 +2,7 @@
  * MappingFilters — Onglets de filtre + barre de recherche
  */
 
-import { Input } from '../../../components/ui/index.jsx';
+import SearchToggle from '../../../components/ui/SearchToggle.jsx';
 
 /**
  * @param {{
@@ -23,8 +23,8 @@ export function MappingFilters({ filter, onFilter, search, onSearch, counts }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Onglets */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {/* Onglets + loupe (la recherche dépliée prend l'espace restant) */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {tabs.map((tab) => {
           const active = filter === tab.id;
           return (
@@ -48,20 +48,7 @@ export function MappingFilters({ filter, onFilter, search, onSearch, counts }) {
             </button>
           );
         })}
-      </div>
-
-      {/* Recherche */}
-      <div style={{ position: 'relative' }}>
-        <span style={{
-          position:  'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-          fontSize:  14, color: 'var(--text3)', pointerEvents: 'none',
-        }}>🔍</span>
-        <Input
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          placeholder="Rechercher un plat POS…"
-          style={{ paddingLeft: 36 }}
-        />
+        <SearchToggle value={search} onChange={onSearch} placeholder="Rechercher un plat POS…" />
       </div>
     </div>
   );

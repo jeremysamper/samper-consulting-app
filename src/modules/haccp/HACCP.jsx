@@ -464,7 +464,7 @@ const HACCP = ({ user, etablissement }) => {
                 }}
                 title="Saisir rapidement les températures de toutes les zones"
               >
-                ✓ Tout conforme — saisie rapide
+                ✓ Tout conforme - saisie rapide
               </button>
             )}
           </div>
@@ -539,7 +539,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-serif)'}}>{r.valeur}{zone?.unite}</span>
                   <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
                   <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
-                  <span style={{...hs.cell,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'—'}</span>
+                  <span style={{...hs.cell,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'-'}</span>
                   {canManage && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
                 </div>
               );
@@ -552,7 +552,7 @@ const HACCP = ({ user, etablissement }) => {
       {activeTab==='controles' && (
         <div style={{display:'flex',flexDirection:'column',gap:12}} id="haccp-controls-print">
           <div style={hs.tableCard}>
-            <div style={hs.tableCardHeader}>Contrôles — {new Date(dateFilter+'T12:00:00').toLocaleDateString('fr-CH',{weekday:'long',day:'numeric',month:'long'})}</div>
+            <div style={hs.tableCardHeader}>Contrôles - {new Date(dateFilter+'T12:00:00').toLocaleDateString('fr-CH',{weekday:'long',day:'numeric',month:'long'})}</div>
             <div style={{padding:'12px 18px',display:'flex',flexDirection:'column',gap:8}}>
               {(activeTpls || []).map(tpl=>{
                 const done=todayControls.find(c=>c.templateId===tpl.id);
@@ -591,7 +591,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={hs.cell}>{c.heure}</span>
                   <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
                   <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'✓ Conforme':'✕ Non conforme'}</span></span>
-                  <span style={{...hs.cell,fontSize:12,color:'var(--text2)'}}>{c.notes||'—'}</span>
+                  <span style={{...hs.cell,fontSize:12,color:'var(--text2)'}}>{c.notes||'-'}</span>
                   {canManage && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
                 </div>
               );
@@ -620,7 +620,7 @@ const HACCP = ({ user, etablissement }) => {
           <div style={{background:'linear-gradient(135deg,var(--nav) 0%,#1a0f00 100%)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <span style={{fontSize:28}}>⚙</span>
             <div style={{flex:1,minWidth:220}}>
-              <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP — Réservé au consultant</div>
+              <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP - Réservé au consultant</div>
               <div style={{color:'rgba(255,255,255,0.5)',fontSize:12,marginTop:3}}>Gérez les zones de contrôle et les contrôles d'hygiène de l'établissement. Ces paramètres s'appliquent à toute l'équipe.</div>
             </div>
           </div>
@@ -644,7 +644,7 @@ const HACCP = ({ user, etablissement }) => {
                       {!z.actif && <span style={{fontSize:10,fontWeight:600,background:'#f1f5f9',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
-                      {ZONE_TYPES.find(t=>t.id===z.type)?.label} · Cible : {z.cible}{z.unite} · Plage : [{z.min??'—'} ; {z.max??'+∞'}]{z.unite}
+                      {ZONE_TYPES.find(t=>t.id===z.type)?.label} · Cible : {z.cible}{z.unite} · Plage : [{z.min??'-'} ; {z.max??'+∞'}]{z.unite}
                     </div>
                   </div>
                   {/* Toggle actif */}
@@ -721,7 +721,7 @@ const HACCP = ({ user, etablissement }) => {
                     const zone=zones.find(z=>z.id===formRel.zoneId);
                     const ok=isConforme(zone,formRel.valeur);
                     return<div style={{marginTop:8,padding:'8px 12px',borderRadius:8,background:ok?'var(--success-bg)':'var(--danger-bg)',color:ok?'var(--success-text)':'var(--danger-strong)',fontSize:13,fontWeight:600,textAlign:'center'}}>
-                      {ok?`✓ Conforme — plage autorisée : [${zone.min??'—'} ; ${zone.max??'+∞'}]${zone.unite}`:`✕ Hors plage — [${zone.min??'—'} ; ${zone.max??'+∞'}]${zone.unite}`}
+                      {ok?`✓ Conforme - plage autorisée : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`:`✕ Hors plage - [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`}
                     </div>;
                   })()}
                 </div>
@@ -786,7 +786,7 @@ const HACCP = ({ user, etablissement }) => {
               <div>
                 <div style={hs.qrTitle}>✓ Saisie rapide des relevés</div>
                 <div style={hs.qrSubtitle}>
-                  Saisissez les températures pour toutes les zones d'un coup. Les valeurs cibles sont pré-remplies — modifiez ce qui doit l'être, laissez vide pour ignorer.
+                  Saisissez les températures pour toutes les zones d'un coup. Les valeurs cibles sont pré-remplies - modifiez ce qui doit l'être, laissez vide pour ignorer.
                 </div>
               </div>
               <button style={hs.qrCloseBtn} onClick={() => !quickSaving && setShowQuickReleves(false)}>✕</button>
@@ -831,7 +831,7 @@ const HACCP = ({ user, etablissement }) => {
                            : conf ? 'var(--success-text)'
                            : 'var(--danger-strong)',
                     }}>
-                      {!hasVal ? '—' : conf ? '✓' : '⚠'}
+                      {!hasVal ? '-' : conf ? '✓' : '⚠'}
                     </span>
                   </div>
                 );

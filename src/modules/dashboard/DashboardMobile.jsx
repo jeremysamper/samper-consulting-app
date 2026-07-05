@@ -251,7 +251,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         ) : message.message ? (
           <div>
             <div style={dm.messageBody}>{message.message}</div>
-            <div style={dm.messageSig}>— Jérémy Samper</div>
+            <div style={dm.messageSig}>- Jérémy Samper</div>
           </div>
         ) : (
           <div style={dm.messageEmpty}>Aucun message.</div>

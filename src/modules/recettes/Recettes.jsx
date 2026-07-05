@@ -8,6 +8,7 @@ import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePd
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 
 // CARTES & RECETTES
@@ -1032,7 +1033,7 @@ const Recettes = ({ user, etablissement }) => {
           />
         </div>
         <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
-          <input style={rs.search} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
           <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">{isMobile ? '🔎' : '🔎 Allergènes'}</button>
           <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
         </div>
@@ -1070,7 +1071,7 @@ const Recettes = ({ user, etablissement }) => {
                 <button
                   style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
                   onClick={() => toggleDefaultCarte(activeCarte.id)}
-                  title={defaultCarteId === activeCarte.id ? 'Carte d\'accueil — clic pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
+                  title={defaultCarteId === activeCarte.id ? 'Carte d\'accueil - clic pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
                 >
                   {defaultCarteId === activeCarte.id
                     ? (isMobile ? '★ Accueil' : '★ Carte d\'accueil')
@@ -1288,7 +1289,6 @@ const rs = {
   tabsWrapMobile: {width:'100%',minWidth:0},
   toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
   toolbarActionsMobile: {width:'100%',marginLeft:0},
-  search: {padding:'8px 14px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',outline:'none',fontFamily:'var(--font)',flex:'1 1 160px',minWidth:140,maxWidth:240,boxSizing:'border-box'},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},

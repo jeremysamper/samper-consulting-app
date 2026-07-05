@@ -1,5 +1,6 @@
 import React from 'react';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
+import { readText, writeText } from '../../utils/storage.js';
 import { hs } from './HACCP.styles.js';
 import {
   ACCEPTED_MIME, HEIC_EXTENSIONS, MAX_FILE_SIZE_MB, COMPRESSION_THRESHOLD_MB,
@@ -9,6 +10,10 @@ import { Camera, ChevronLeft, Trash2, X } from 'lucide-react';
 
 const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const todayStr = () => new Date().toISOString().slice(0, 10);
+
+// Une fois l'explication caméra acceptée sur cet appareil, on ne la remontre
+// plus : la demande d'autorisation système suffit ensuite.
+const CAMERA_ACK_KEY = 'sc_haccp_camera_ack';
 
 // ─── Regroupe les entrées par Année > Mois > Jour ───
 function groupByDate(items) {
@@ -54,6 +59,8 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
   const [busy, setBusy] = React.useState(false);
   const [busyLabel, setBusyLabel] = React.useState('');
   const [lightbox, setLightbox] = React.useState(null);
+  // Pop-up d'explication avant le tout premier accès caméra de l'appareil.
+  const [showCameraInfo, setShowCameraInfo] = React.useState(false);
 
   const fileRef = React.useRef(null);
 
@@ -73,10 +80,24 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId, legacySB]);
 
-  const openPicker = React.useCallback(() => fileRef.current?.click(), []);
+  // Premier usage sur l'appareil : on explique d'abord pourquoi la caméra est
+  // sollicitée (pop-up), et c'est le bouton du pop-up qui ouvre la capture
+  // (même geste utilisateur, donc le click programmé reste autorisé).
+  const openPicker = React.useCallback(() => {
+    if (readText(CAMERA_ACK_KEY) !== '1') { setShowCameraInfo(true); return; }
+    fileRef.current?.click();
+  }, []);
+  const acceptCameraInfo = () => {
+    writeText(CAMERA_ACK_KEY, '1');
+    setShowCameraInfo(false);
+    fileRef.current?.click();
+  };
   React.useEffect(() => {
     if (!canWrite) return;
-    registerCaptureTrigger && registerCaptureTrigger(() => openPicker);
+    // openPicker directement : registerCaptureTrigger enveloppe déjà la
+    // fonction pour setState. L'ancien « () => openPicker » faisait que le
+    // clic du bouton renvoyait la fonction au lieu de l'exécuter.
+    registerCaptureTrigger && registerCaptureTrigger(openPicker);
   }, [registerCaptureTrigger, openPicker, canWrite]);
 
   const handleFile = async (e) => {
@@ -311,6 +332,40 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
                   <Camera size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />Reprendre la photo
                 </button>
                 <button style={hs.saveBtn} onClick={savePending} disabled={busy}>{busy ? (busyLabel || '…') : '✓ Valider et enregistrer'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pop-up explication caméra (premier usage) ── */}
+      {showCameraInfo && (
+        <div style={hs.overlay} onClick={() => setShowCameraInfo(false)}>
+          <div className="modal-sheet" style={hs.modal} onClick={e => e.stopPropagation()}>
+            <div style={hs.modalHeader}>
+              <span style={hs.modalTitle}>Accès à la caméra</span>
+              <button style={hs.closeBtn} onClick={() => setShowCameraInfo(false)}><X size={18} /></button>
+            </div>
+            <div style={hs.modalBody}>
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 14px' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Camera size={26} />
+                </div>
+              </div>
+              <div style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.55, textAlign: 'center' }}>
+                Pour la traçabilité HACCP, l'application utilise l'appareil photo afin de
+                photographier les étiquettes des produits.
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.55, textAlign: 'center', marginTop: 10 }}>
+                La caméra n'est sollicitée que lorsque vous prenez une photo depuis ce module,
+                jamais en arrière-plan. Votre appareil peut vous demander d'autoriser l'accès :
+                acceptez pour continuer.
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+                <button style={hs.cancelBtn} onClick={() => setShowCameraInfo(false)}>Annuler</button>
+                <button style={hs.saveBtn} onClick={acceptCameraInfo}>
+                  <Camera size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} />Autoriser et prendre une photo
+                </button>
               </div>
             </div>
           </div>

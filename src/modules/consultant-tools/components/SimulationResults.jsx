@@ -26,13 +26,13 @@ export function SimulationResults({
 
   const charge = Number(chargeBrigade) || 0;
   const chargeColor = charge >= 85 ? 'var(--danger-strong)' : charge >= 65 ? 'var(--warning-strong)' : 'var(--success-strong)';
-  const scoreMoyenDisplay = typeof scoreMoyen === 'number' ? scoreMoyen.toFixed(1) : '—';
+  const scoreMoyenDisplay = typeof scoreMoyen === 'number' ? scoreMoyen.toFixed(1) : '-';
 
   return (
     <div style={cs.root}>
       {alerte && (
         <div style={cs.alerte}>
-          ⚠ Charge élevée — risque en coup de feu
+          ⚠ Charge élevée - risque en coup de feu
         </div>
       )}
 
@@ -47,7 +47,7 @@ export function SimulationResults({
         <div style={cs.kpi}>
           <div style={cs.kpiLabel}>Couverts réalisables</div>
           <div style={cs.kpiValue}>
-            {couvertsMin != null ? `${couvertsMin}–${couvertsMax}` : '—'}
+            {couvertsMin != null ? `${couvertsMin}–${couvertsMax}` : '-'}
           </div>
         </div>
       </div>

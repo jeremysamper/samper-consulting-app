@@ -41,7 +41,7 @@ function DeltaBadge({ delta, isNew }) {
     );
   }
   if (delta === null) {
-    return <span style={{ fontSize: 12, color: 'var(--text3)' }}>—</span>;
+    return <span style={{ fontSize: 12, color: 'var(--text3)' }}>-</span>;
   }
 
   let bg, color, arrow;
@@ -150,7 +150,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
         </div>
         <PosExportButton
           printId={PRINT_ID}
-          title={`Top/Flop — ${filter === 'top10' ? 'Top 10 · ' : filter === 'flop10' ? 'Flop 10 · ' : ''}Semaine ${periodLabel}`}
+          title={`Top/Flop - ${filter === 'top10' ? 'Top 10 · ' : filter === 'flop10' ? 'Flop 10 · ' : ''}Semaine ${periodLabel}`}
           etablissement={etablissement}
         />
       </div>
@@ -236,7 +236,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
 
               {/* Qty B */}
               <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--text2)' }}>
-                {item.qty_B > 0 ? item.qty_B : '—'}
+                {item.qty_B > 0 ? item.qty_B : '-'}
               </div>
 
               {/* Delta */}

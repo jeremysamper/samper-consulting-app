@@ -6,6 +6,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING — MODULE SOP & CHECKLISTS
@@ -299,13 +300,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
     <div>
       {/* Filtres */}
       <div style={ss.filtersBar}>
-        <input
-          type="text"
-          placeholder="Rechercher…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={ss.searchInput}
-        />
+        <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
           {/* Mode nouveau cuisinier — toggle dédié */}
           {essentialCount > 0 && (
@@ -355,7 +350,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
           padding:'10px 14px', background:'#fef3c7', border:'1px solid #fde68a',
           borderRadius:8, marginBottom:12, fontSize:12, color:'#78350f', lineHeight:1.5,
         }}>
-          <strong>🆕 Mode "Nouveau cuisinier"</strong> — Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
+          <strong>🆕 Mode "Nouveau cuisinier"</strong> - Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
         </div>
       )}
 
@@ -409,7 +404,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                       {doneToday && (
                         <span
                           style={{ ...ss.miniBadge, background: '#16a34a', color: '#fff' }}
-                          title={`Validée à ${new Date(doneToday.heureFin || doneToday.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })} par ${doneToday.operateurNom || '—'}`}
+                          title={`Validée à ${new Date(doneToday.heureFin || doneToday.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })} par ${doneToday.operateurNom || '-'}`}
                         >✓ Fait aujourd'hui</span>
                       )}
                     </div>
@@ -636,7 +631,7 @@ const SopHistory = ({ executions, sops, user, canManage }) => {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
     const heureDebut = new Date(exec.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
-    const heureFin = exec.heureFin ? new Date(exec.heureFin).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const heureFin = exec.heureFin ? new Date(exec.heureFin).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' }) : '-';
 
     // Compter étapes / cochées
     const allEtapes = sections.flatMap(s => s.etapes || []);
@@ -671,7 +666,7 @@ const SopHistory = ({ executions, sops, user, canManage }) => {
         <div>
           <div><strong>Date :</strong> ${dateLabel}</div>
           <div><strong>Horaire :</strong> ${heureDebut} → ${heureFin}</div>
-          <div><strong>Opérateur :</strong> ${escapeHtml(exec.operateurNom || '—')}</div>
+          <div><strong>Opérateur :</strong> ${escapeHtml(exec.operateurNom || '-')}</div>
         </div>
         <div style="text-align:right;">
           <div><strong>Statut :</strong> ${statutLabel}</div>
@@ -1125,7 +1120,6 @@ const ss = {
   tab: { padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text2)', borderBottom: '2px solid transparent' },
   tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
   filtersBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
-  searchInput: { flex: 1, minWidth: 180, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' },
   chip: { padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text2)' },
   chipActive: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 },

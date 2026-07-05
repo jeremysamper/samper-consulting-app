@@ -46,7 +46,7 @@ export const INITIAL_RELEVES = [
   { id:'r2', zoneId:'z2', date:'2026-04-21', heure:'07:15', valeur:4.2,   operateur:'u6', conforme:true,  commentaire:'' },
   { id:'r3', zoneId:'z3', date:'2026-04-21', heure:'07:15', valeur:-19.1, operateur:'u6', conforme:true,  commentaire:'' },
   { id:'r4', zoneId:'z5', date:'2026-04-21', heure:'11:45', valeur:67.0,  operateur:'u3', conforme:true,  commentaire:'' },
-  { id:'r5', zoneId:'z1', date:'2026-04-20', heure:'07:10', valeur:7.2,   operateur:'u6', conforme:false, commentaire:'Alerte — porte mal fermée, corrigé immédiatement' },
+  { id:'r5', zoneId:'z1', date:'2026-04-20', heure:'07:10', valeur:7.2,   operateur:'u6', conforme:false, commentaire:'Alerte - porte mal fermée, corrigé immédiatement' },
   { id:'r6', zoneId:'z2', date:'2026-04-20', heure:'07:10', valeur:5.1,   operateur:'u6', conforme:true,  commentaire:'' },
   { id:'r7', zoneId:'z3', date:'2026-04-20', heure:'07:10', valeur:-18.3, operateur:'u6', conforme:true,  commentaire:'' },
   { id:'r8', zoneId:'z5', date:'2026-04-20', heure:'18:30', valeur:64.0,  operateur:'u4', conforme:true,  commentaire:'' },
@@ -54,10 +54,10 @@ export const INITIAL_RELEVES = [
 ];
 
 export const INITIAL_CONTROLS = [
-  { id:'ct1', templateId:'c1', date:'2026-04-21', heure:'08:00', operateur:'u3', statut:'conforme',     notes:'Livraison Metro — températures OK à réception' },
+  { id:'ct1', templateId:'c1', date:'2026-04-21', heure:'08:00', operateur:'u3', statut:'conforme',     notes:'Livraison Metro - températures OK à réception' },
   { id:'ct2', templateId:'c3', date:'2026-04-21', heure:'14:00', operateur:'u6', statut:'conforme',     notes:'' },
   { id:'ct3', templateId:'c4', date:'2026-04-21', heure:'07:30', operateur:'u3', statut:'conforme',     notes:'' },
-  { id:'ct4', templateId:'c2', date:'2026-04-20', heure:'11:30', operateur:'u4', statut:'non-conforme', notes:'Bain-marie à 61°C — réglage effectué, refait le contrôle à 12h (OK)' },
+  { id:'ct4', templateId:'c2', date:'2026-04-20', heure:'11:30', operateur:'u4', statut:'non-conforme', notes:'Bain-marie à 61°C - réglage effectué, refait le contrôle à 12h (OK)' },
   { id:'ct5', templateId:'c5', date:'2026-04-20', heure:'07:15', operateur:'u6', statut:'conforme',     notes:'' },
   { id:'ct6', templateId:'c6', date:'2026-04-21', heure:'09:00', operateur:'u3', statut:'conforme',     notes:'' },
 ];

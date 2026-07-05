@@ -3,6 +3,7 @@ import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi
 import { dbService } from '../../services/dbService.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE — Base de données produits & fournisseurs
@@ -64,13 +65,13 @@ const Catalogue = ({ user, etablissement }) => {
     // Pour g et ml : le prix raisonnable est entre 0.0001 CHF/g et 5 CHF/g
     // (en dessous = facteur 1000 manquant ; au-dessus = unité pcs traitée comme g)
     if (uniteRef === 'g' || uniteRef === 'ml') {
-      if (prix < 0.00001) return `prix très bas (${prix.toFixed(6)} CHF/${uniteRef}) — vérifier l'unité`;
-      if (prix > 10) return `prix très élevé (${prix.toFixed(2)} CHF/${uniteRef}) — vérifier l'unité`;
+      if (prix < 0.00001) return `prix très bas (${prix.toFixed(6)} CHF/${uniteRef}) - vérifier l'unité`;
+      if (prix > 10) return `prix très élevé (${prix.toFixed(2)} CHF/${uniteRef}) - vérifier l'unité`;
     }
     // Pour pcs : entre 0.05 CHF et 10000 CHF
     if (uniteRef === 'pcs') {
-      if (prix < 0.05) return `prix très bas (${prix.toFixed(4)} CHF/pcs) — vérifier`;
-      if (prix > 10000) return `prix très élevé (${prix.toFixed(2)} CHF/pcs) — vérifier`;
+      if (prix < 0.05) return `prix très bas (${prix.toFixed(4)} CHF/pcs) - vérifier`;
+      if (prix > 10000) return `prix très élevé (${prix.toFixed(2)} CHF/pcs) - vérifier`;
     }
     return null;
   };
@@ -464,7 +465,7 @@ const Catalogue = ({ user, etablissement }) => {
         <>
           {/* Filtres */}
           <div style={cat.filters}>
-            <input style={cat.search} placeholder="🔍 Rechercher produit ou fournisseur…" value={search} onChange={e => setSearch(e.target.value)} />
+            <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher produit ou fournisseur…" />
             <SegmentedTabs
               size="sm"
               active={catFilter}
@@ -529,7 +530,7 @@ const Catalogue = ({ user, etablissement }) => {
                           alertLegacy(`✓ ${ok} produit${ok > 1 ? 's' : ''} mis à jour.`);
                         }}
                       >
-                        <option value="">— Choisir —</option>
+                        <option value="">Choisir…</option>
                         {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                       </select>
                       <button
@@ -600,7 +601,7 @@ const Catalogue = ({ user, etablissement }) => {
                           </td>
                         )}
                         <td style={{ ...cat.td, fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
-                        <td style={{ ...cat.td, fontFamily: 'monospace', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '—'}</td>
+                        <td style={{ ...cat.td, fontFamily: 'monospace', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
                         <td style={cat.td}><span style={cat.catBadge}>{p.categorie}</span></td>
                         {/* Sélecteur fournisseur inline */}
                         <td style={cat.td}>
@@ -615,15 +616,15 @@ const Catalogue = ({ user, etablissement }) => {
                               }}
                               style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font)', background: 'var(--bg)', color: p.fournisseurId ? 'var(--text)' : 'var(--text2)', maxWidth: 160, cursor: 'pointer' }}
                             >
-                              <option value="">— Aucun —</option>
+                              <option value="">Aucun</option>
                               {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                             </select>
                           ) : (
-                            p.fournisseurNom || <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>—</span>
+                            p.fournisseurNom || <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>-</span>
                           )}
                         </td>
                         <td style={{ ...cat.td, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
-                          {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>—</span>}
+                          {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>-</span>}
                         </td>
                         <td style={{ ...cat.td, color: 'var(--text2)' }}>/{p.uniteRef}</td>
                         <td style={cat.tdAction}>
@@ -666,9 +667,9 @@ const Catalogue = ({ user, etablissement }) => {
                   return (
                     <tr key={f.id} style={cat.tr}>
                       <td style={{ ...cat.td, fontWeight: 600 }}>{f.nom}</td>
-                      <td style={cat.td}>{f.contact || '—'}</td>
-                      <td style={cat.td}>{f.tel || '—'}</td>
-                      <td style={cat.td}>{f.email || '—'}</td>
+                      <td style={cat.td}>{f.contact || '-'}</td>
+                      <td style={cat.td}>{f.tel || '-'}</td>
+                      <td style={cat.td}>{f.email || '-'}</td>
                       <td style={cat.td}><span style={cat.catBadge}>{nbProd} produit{nbProd > 1 ? 's' : ''}</span></td>
                       <td style={cat.tdAction}>
                         {canWrite && (
@@ -828,7 +829,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
             <div>
               <label style={cat.lbl}>Fournisseur principal</label>
               <select style={cat.inp} value={form.fournisseurId} onChange={e => up('fournisseurId', e.target.value)}>
-                <option value="">— Aucun —</option>
+                <option value="">Aucun</option>
                 {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
               </select>
             </div>
@@ -895,9 +896,9 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                       <tr key={pf.id} style={cat.tr}>
                         <td style={cat.td}>{pf.fournisseurNom}</td>
                         <td style={cat.td}>CHF {pf.prixAchat}</td>
-                        <td style={cat.td}>{pf.conditionnement || '—'}</td>
+                        <td style={cat.td}>{pf.conditionnement || '-'}</td>
                         <td style={{ ...cat.td, fontWeight: 600, color: 'var(--accent)' }}>
-                          {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '—'}
+                          {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '-'}
                         </td>
                         <td style={cat.td}>{pf.estPrincipal ? '⭐' : ''}</td>
                       </tr>
@@ -911,7 +912,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     <div>
                       <label style={cat.lbl}>Fournisseur</label>
                       <select style={cat.inp} value={newPF.fournisseurId} onChange={e => setNewPF(p => ({ ...p, fournisseurId: e.target.value }))}>
-                        <option value="">— Choisir —</option>
+                        <option value="">Choisir…</option>
                         {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                       </select>
                     </div>
@@ -1004,8 +1005,8 @@ const cat = {
   tabs: { display: 'flex', gap: 6, borderBottom: '2px solid var(--border)', paddingBottom: 0 },
   tab: { padding: '8px 16px', background: 'none', border: 'none', borderBottom: '2px solid transparent', marginBottom: -2, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
   tabActive: { borderBottomColor: 'var(--accent)', color: 'var(--accent)' },
-  filters: { display: 'flex', flexDirection: 'column', gap: 8 },
-  search: { padding: '9px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', width: '100%', boxSizing: 'border-box' },
+  // Une seule ligne : loupe + onglets de catégories qui coulissent.
+  filters: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
   filterBtn: { padding: '5px 12px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
   tableWrap: { overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 },
@@ -1125,7 +1126,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                       {p.intraDup ? (
                         <span style={{ color: 'var(--warning-strong)' }}>↔ Présent 2× dans le fichier</span>
                       ) : (
-                        <>↔ Doublon (par {p._matchReason}) — existant : <strong>{p._existing?.nom}</strong> {p._existing?.prixUnitaire ? `· ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
+                        <>↔ Doublon (par {p._matchReason}) - existant : <strong>{p._existing?.nom}</strong> {p._existing?.prixUnitaire ? `· ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
                       )}
                     </div>
                     <div style={ipm.rowMeta}>

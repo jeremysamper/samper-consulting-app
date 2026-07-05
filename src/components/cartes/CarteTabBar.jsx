@@ -56,7 +56,7 @@ export default function CarteTabBar({
   const remove = async () => {
     if (modal?.mode !== 'edit') return;
     const carte = modal.carte;
-    if (!confirmLegacy(`Supprimer la carte « ${carte.nom} » ?\n\nLes plats, recettes et fiches ne sont pas supprimés — ils ne seront simplement plus rattachés à cette carte.`)) return;
+    if (!confirmLegacy(`Supprimer la carte « ${carte.nom} » ?\n\nLes plats, recettes et fiches ne sont pas supprimés - ils ne seront simplement plus rattachés à cette carte.`)) return;
     await onDeleteCarte?.(carte.id);
     // Bascule vers une autre carte / le 1er onglet supplémentaire
     const fallback = cartes.find(c => c.id !== carte.id)?.id || extraTabs[0]?.id || null;

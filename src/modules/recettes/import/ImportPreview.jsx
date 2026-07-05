@@ -50,7 +50,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
 
       {unrecognizedUnits.length > 0 && (
         <div style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', fontSize: 12, color: 'var(--warning-text)' }}>
-          Unités non reconnues rencontrées : {unrecognizedUnits.join(', ')}. Les lignes concernées sont signalées en rouge — corrigez-les avant import.
+          Unités non reconnues rencontrées : {unrecognizedUnits.join(', ')}. Les lignes concernées sont signalées en rouge - corrigez-les avant import.
         </div>
       )}
 
@@ -102,7 +102,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                 <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', margin: '8px 0 4px' }}>INGRÉDIENTS</div>
                   {(r.ingredients || []).length === 0 && (
-                    <div style={{ fontSize: 12, color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient — recette non importable.</div>
+                    <div style={{ fontSize: 12, color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient - recette non importable.</div>
                   )}
                   {(r.ingredients || []).map((ing, iIdx) => {
                     const warn = ing._import && ing._import.warning;

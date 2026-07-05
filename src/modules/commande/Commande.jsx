@@ -6,6 +6,7 @@ import { computeBesoins, appendStaples, applyDedupeGroups, formatBesoin } from '
 import { dedupeCommande } from '../../services/aiService.js';
 import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMANDE — liste de produits a commander, partagee par etablissement.
@@ -257,7 +258,7 @@ const Commande = ({ user, etablissement }) => {
       {/* Barre d'actions */}
       <div className="module-toolbar no-print">
         <div style={s.left}>
-          <input style={s.search} placeholder="Rechercher un produit…" value={search} onChange={e => setSearch(e.target.value)} />
+          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
           <SegmentedTabs
             size="sm"
             active={catFilter}
@@ -513,7 +514,7 @@ const AddProductModal = ({ onClose, onAdd }) => {
             <div style={{ width: 110 }}>
               <label style={s.label}>Unité</label>
               <select style={s.input} value={unite} onChange={e => setUnite(e.target.value)}>
-                {UNITES.map(u => <option key={u} value={u}>{u || '—'}</option>)}
+                {UNITES.map(u => <option key={u} value={u}>{u || '-'}</option>)}
               </select>
             </div>
           </div>
@@ -549,8 +550,9 @@ function groupByCategorie(list) {
 const s = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
   toolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
-  left: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 },
-  search: { padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', outline: 'none', fontFamily: 'var(--font)', width: 200 },
+  // Une seule ligne (pas de wrap) : la loupe reste à gauche et les onglets de
+  // catégories coulissent dans l'espace restant au lieu de s'empiler.
+  left: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
   cats: { display: 'flex', gap: 4, flexWrap: 'wrap' },
   catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' },
   catActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },

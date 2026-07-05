@@ -100,12 +100,12 @@ const detectAberrantPrice = (prix, uniteRef) => {
   if (prix == null || isNaN(prix)) return 'prix manquant';
   if (prix <= 0) return 'prix nul';
   if (uniteRef === 'g' || uniteRef === 'ml') {
-    if (prix < 0.00001) return 'prix très bas — vérifier l\'unité';
-    if (prix > 10) return 'prix très élevé — vérifier l\'unité';
+    if (prix < 0.00001) return 'prix très bas - vérifier l\'unité';
+    if (prix > 10) return 'prix très élevé - vérifier l\'unité';
   }
   if (uniteRef === 'pcs') {
-    if (prix < 0.05) return 'prix très bas — vérifier';
-    if (prix > 10000) return 'prix très élevé — vérifier';
+    if (prix < 0.05) return 'prix très bas - vérifier';
+    if (prix > 10000) return 'prix très élevé - vérifier';
   }
   return null;
 };
@@ -147,7 +147,7 @@ async function fileToChunks(file) {
     const { pdfToText } = await import('./pdfText.js');
     const { text, scanned } = await pdfToText(await file.arrayBuffer());
     if (scanned) {
-      throw new Error('PDF scanné (image) — sélectionnez un PDF avec du texte sélectionnable, ou un fichier Excel/CSV.');
+      throw new Error('PDF scanné (image) - sélectionnez un PDF avec du texte sélectionnable, ou un fichier Excel/CSV.');
     }
     const lines = text.split(/\r?\n/);
     const chunks = chunkLines('', lines);
@@ -263,7 +263,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       const { chunks, stats } = await fileToChunks(file);
       setFileStats(stats || []);
       if (!chunks.length) {
-        notifyLegacy('Fichier vide ou illisible — aucune donnée détectée.', 'error');
+        notifyLegacy('Fichier vide ou illisible - aucune donnée détectée.', 'error');
         setStep('pick');
         return;
       }
@@ -303,7 +303,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
         return;
       }
       if (cancelRef.current) {
-        notifyLegacy(`Analyse interrompue — ${all.length} produit(s) déjà détecté(s).`, 'info');
+        notifyLegacy(`Analyse interrompue - ${all.length} produit(s) déjà détecté(s).`, 'info');
       }
       setProduits(all.map((p, i) => annotate(p, i)));
       setStep('preview');
@@ -377,7 +377,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 Choisir un fichier fournisseur
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', maxWidth: 440 }}>
-                Excel (.xlsx, .xls), CSV ou PDF — quel que soit le format des colonnes.
+                Excel (.xlsx, .xls), CSV ou PDF - quel que soit le format des colonnes.
                 Les gros fichiers sont analysés par lots pour traiter toutes les lignes.
               </div>
 
@@ -389,7 +389,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                   value={fournisseurId}
                   onChange={e => setFournisseurId(e.target.value)}
                 >
-                  <option value="">— Aucun fournisseur —</option>
+                  <option value="">Aucun fournisseur</option>
                   {(fournisseurs || []).map(f => (
                     <option key={f.id} value={f.id}>{f.nom}</option>
                   ))}
@@ -457,7 +457,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                     <div key={s.sheet} style={{ ...st.sheetItem, ...(s.skipped ? st.sheetItemSkipped : {}) }}>
                       <span style={{ fontWeight: 600 }}>📄 {s.sheet}</span>
                       {s.skipped
-                        ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide — ignorée</span>
+                        ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide - ignorée</span>
                         : <>
                             <span style={{ color: 'var(--text2)' }}>
                               {s.rowsData} ligne{s.rowsData !== 1 ? 's' : ''} · {s.chunks} lot{s.chunks !== 1 ? 's' : ''} IA

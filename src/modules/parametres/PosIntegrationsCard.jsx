@@ -260,7 +260,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
               {step.icon}
             </span>
             <span style={{ fontSize: 13, color: step.color }}>
-              <strong>Étape {i + 1}</strong> — {step.label}
+              <strong>Étape {i + 1}</strong> - {step.label}
             </span>
           </div>
         ))}
@@ -379,7 +379,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
       const { url: authUrl } = await callEdgeFn(POS_OAUTH_FN, 'get_auth_url', { etablissementId, providerId: provider.id });
       const popup = window.open(authUrl, 'lightspeed_oauth', 'width=600,height=700,left=200,top=100,toolbar=no,menubar=no');
       if (!popup) {
-        notify('Popup bloqué — autorisez les popups pour ce site.', 'warning');
+        notify('Popup bloqué - autorisez les popups pour ce site.', 'warning');
         setAction(null);
       }
       // Le résultat vient via postMessage (géré dans useEffect ci-dessus)
@@ -418,7 +418,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
   }
 
   function formatDate(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     return new Date(iso).toLocaleString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
@@ -487,7 +487,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             )}
             {needsLocation && (
               <div style={{ fontSize: 12, color: '#c2410c', marginTop: 3 }}>
-                Plusieurs restaurants détectés — choisissez la location ci-dessous.
+                Plusieurs restaurants détectés - choisissez la location ci-dessous.
               </div>
             )}
           </div>

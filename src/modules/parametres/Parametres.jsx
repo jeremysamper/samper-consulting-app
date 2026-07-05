@@ -207,7 +207,7 @@ const Parametres = ({ user, etablissement }) => {
         } catch (e) { console.warn('[Parametres] reload fail', e); }
       } catch (err) {
         console.error('[Parametres save]', err);
-        notifyLegacy("Erreur enregistrement : " + err.message + (err.code === '42501' ? "\n\n(Erreur de permissions RLS — vérifiez votre rôle)" : ''), 'error');
+        notifyLegacy("Erreur enregistrement : " + err.message + (err.code === '42501' ? "\n\n(Erreur de permissions RLS - vérifiez votre rôle)" : ''), 'error');
         return;
       }
     } else {
@@ -315,7 +315,7 @@ const Parametres = ({ user, etablissement }) => {
             <div>
               <div style={ps.listTitle}>Personnalisation des modules</div>
               <div style={{ fontSize:12, color:'var(--text2)', marginTop:4, fontWeight:400, textTransform:'none', letterSpacing:0 }}>
-                Renommez les modules dans la navigation — s'applique globalement à tous les établissements. Les clés techniques ne changent pas.
+                Renommez les modules dans la navigation - s'applique globalement à tous les établissements. Les clés techniques ne changent pas.
               </div>
             </div>
           </div>

@@ -317,7 +317,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
           <div>
             <div style={ds.messageBody}>{message.message}</div>
             <div style={ds.messageMeta}>
-              — Jérémy Samper · {message.updatedAt ? new Date(message.updatedAt).toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
+              - Jérémy Samper · {message.updatedAt ? new Date(message.updatedAt).toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
             </div>
           </div>
         ) : (
@@ -464,7 +464,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
                   </div>
                   {(shift.pointageDebut || shift.pointageFin) && (
                     <div style={ds.shiftPointage}>
-                      ⏱ Arrivée : {shift.pointageDebut || '—'}
+                      ⏱ Arrivée : {shift.pointageDebut || '-'}
                       {shift.pointageFin && ` · Départ : ${shift.pointageFin}`}
                     </div>
                   )}
@@ -485,13 +485,13 @@ const Dashboard = ({ user, etablissement, setPage }) => {
             {(manquants || []).slice(0, 3).map(s => (
               <div key={s.id} style={ds.alertItem}>
                 <span style={{ color: 'var(--warning-text)', fontWeight: 700 }}>Pointage manquant</span>
-                <span style={{ color: 'var(--text2)' }}> — {getUserName(s.userId)} devait commencer à {s.debut}</span>
+                <span style={{ color: 'var(--text2)' }}> - {getUserName(s.userId)} devait commencer à {s.debut}</span>
               </div>
             ))}
             {(pertesNonVal || []).slice(0, 3).map(p => (
               <div key={p.id} style={ds.alertItem}>
                 <span style={{ color: 'var(--danger-text)', fontWeight: 700 }}>Perte à valider</span>
-                <span style={{ color: 'var(--text2)' }}> — {p.produit} ({p.quantite} {p.unite}, {((p.quantite || 0) * (p.valeurUnit || 0)).toFixed(2)} CHF)</span>
+                <span style={{ color: 'var(--text2)' }}> - {p.produit} ({p.quantite} {p.unite}, {((p.quantite || 0) * (p.valeurUnit || 0)).toFixed(2)} CHF)</span>
               </div>
             ))}
           </div>

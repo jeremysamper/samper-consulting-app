@@ -312,7 +312,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
             <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
               {isEdit ? 'Modifier la règle' : 'Nouvelle règle d\'alerte'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Étape {step} / {TOTAL_STEPS} — {stepTitles[step - 1]}</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Étape {step} / {TOTAL_STEPS} - {stepTitles[step - 1]}</div>
           </div>
           <button
             style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', padding: 4 }}

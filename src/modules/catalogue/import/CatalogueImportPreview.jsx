@@ -20,7 +20,7 @@ const CATS = [
 const UNITES = ['g', 'ml', 'pcs'];
 
 const fmtPrix = (v, u) => (v == null || isNaN(Number(v))
-  ? '—'
+  ? '-'
   : `${Number(v).toFixed(4)} CHF/${u || 'g'}`);
 
 const CatalogueImportPreview = ({ produits, onChange }) => {

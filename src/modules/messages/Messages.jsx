@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { Btn, SectionHeader } from '../../components/ui/index.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { roles as roleConfig } from '../moduleConfig.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -121,12 +122,7 @@ function ConsultantView({ user, legacySB, isMobile }) {
 
   const listPanel = (
     <div style={ms.listPanel}>
-      <input
-        style={ms.searchInput}
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Rechercher un compte…"
-      />
+      <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un compte…" />
       <div style={ms.recipientList}>
         {recipients.length === 0 && (
           <div style={ms.emptyHint}>Aucun compte trouvé.</div>
@@ -319,7 +315,6 @@ const ms = {
 
   // Liste destinataires
   listPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
-  searchInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   recipientList: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '62vh', overflowY: 'auto' },
   recipientRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56 },
   recipientRowActive: { border: '1px solid var(--accent)', background: 'var(--accent-light)' },

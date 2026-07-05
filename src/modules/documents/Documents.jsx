@@ -5,6 +5,7 @@ import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS — Partage hiérarchique de PDFs
@@ -286,12 +287,7 @@ const Documents = ({ user, etablissement }) => {
         </div>
 
         <div className="module-actions">
-          <input
-            style={doc_s.search}
-            placeholder="🔍 Rechercher…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
           {canWrite && !sel.active && docsInFolder.length > 0 && (
             <button style={doc_s.ghostBtn} onClick={sel.enter}>☑ Sélectionner</button>
           )}
@@ -613,7 +609,6 @@ const doc_s = {
   crumbBtn: { background: 'none', border: 'none', color: 'var(--accent)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', padding: '4px 6px', borderRadius: 4 },
   crumbSep: { color: 'var(--text2)', fontSize: 14 },
   headerRight: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  search: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', width: 220 },
   addBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   ghostBtn: { padding: '8px 14px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
 

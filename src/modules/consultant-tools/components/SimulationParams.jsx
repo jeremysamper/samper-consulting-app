@@ -32,7 +32,7 @@ export function SimulationParams({
           />
           <span style={cs.sliderValue}>{nbCuisiniers}</span>
         </div>
-        <div style={cs.sliderHint}>1 — 10 cuisiniers</div>
+        <div style={cs.sliderHint}>1 - 10 cuisiniers</div>
       </div>
 
       <div style={cs.block}>

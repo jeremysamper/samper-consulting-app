@@ -145,7 +145,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
         </div>
         <PosExportButton
           printId={PRINT_ID}
-          title={`Mise en place — ${tomorrowLabel}`}
+          title={`Mise en place - ${tomorrowLabel}`}
           etablissement={etablissement}
         />
       </div>
@@ -165,7 +165,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
             fontFamily: 'var(--font-serif)',
             color:      'var(--text)',
           }}>
-            Mise en place — {tomorrowLabel}
+            Mise en place - {tomorrowLabel}
           </div>
           {etabNom && (
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>

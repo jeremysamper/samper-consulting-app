@@ -70,7 +70,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
             color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
             fontFamily: 'var(--font-serif)',
           }}>
-            {total > 0 ? `${total} pax` : '—'}
+            {total > 0 ? `${total} pax` : '-'}
           </span>
         </div>
         {total > 0 && (
@@ -172,7 +172,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
         fontFamily: 'var(--font-serif)',
         color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
       }}>
-        {total > 0 ? total : '—'}
+        {total > 0 ? total : '-'}
       </div>
     </div>
   );
