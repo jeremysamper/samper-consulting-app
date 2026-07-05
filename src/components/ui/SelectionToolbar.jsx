@@ -14,9 +14,10 @@ import { Btn } from './index.jsx';
 //   exportLabel  : libellé du bouton d'export (défaut « Exporter »)
 //   onCancel     : () => void — quitter le mode sélection
 //   busy         : booléen — désactive les actions pendant un traitement
+//   children     : actions supplémentaires propres au module, rendues avant Exporter
 export function SelectionToolbar({
   count = 0, total = 0, allSelected = false, onToggleAll,
-  onDelete, onExport, exportLabel = 'Exporter', onCancel, busy = false,
+  onDelete, onExport, exportLabel = 'Exporter', onCancel, busy = false, children,
 }) {
   return (
     <div
@@ -37,6 +38,7 @@ export function SelectionToolbar({
         </Btn>
       )}
       <div style={{ flex: 1 }} />
+      {children}
       {onExport && (
         <Btn small variant="primary" onClick={onExport} disabled={count === 0 || busy}>
           {exportLabel} ({count})

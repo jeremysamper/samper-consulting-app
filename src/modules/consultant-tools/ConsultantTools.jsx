@@ -27,6 +27,7 @@ import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
+import { Btn } from '../../components/ui/index.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
@@ -137,6 +138,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [showPlatForm, setShowPlatForm] = React.useState(false);
   const [editPlat, setEditPlat] = React.useState(null);
   const [linkPlatPickerForRecette, setLinkPlatPickerForRecette] = React.useState(null);
+  // Rattachement groupé : les recettes cochées en mode sélection vers un plat.
+  const [bulkLinkPlatOpen, setBulkLinkPlatOpen] = React.useState(false);
   // ─── Onglet actif ───
   // Onglets dispo : 'recettes' | 'creation_carte' | 'simulation' | 'roles' | 'etablissements' | 'factures'
   // Si on arrive ici via une redirection (ancien lien /factures par ex.),
@@ -509,6 +512,37 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       notifyLegacy('Erreur export : ' + err.message, 'error');
     }
     setRecBulkBusy(false);
+  };
+
+  // Rattache toutes les recettes sélectionnées à un plat en une fois.
+  // linkRecetteToPlat est un upsert (plat_id, recette_id) : les doublons sont
+  // impossibles, on saute quand même les recettes déjà liées pour le compteur.
+  const rattacherSelectionAuPlat = async (plat) => {
+    const ids = Array.from(recSel.ids);
+    if (!ids.length || !legacySB) return;
+    setRecBulkBusy(true);
+    const dejaLiees = new Set((plat.recettes || []).map(pr => pr.recetteId));
+    const liees = [];
+    let deja = 0, ko = 0;
+    for (const rid of ids) {
+      if (dejaLiees.has(rid)) { deja += 1; continue; }
+      try { await legacySB.db.linkRecetteToPlat(plat.id, rid, 'composant', 0); liees.push(rid); }
+      catch (err) { console.error('[linkRecetteToPlat]', err); ko += 1; }
+    }
+    // Mise à jour optimiste ; le realtime plat_recettes reste la source de vérité.
+    if (liees.length) {
+      setPlats(prev => prev.map(p => p.id === plat.id
+        ? { ...p, recettes: [...p.recettes, ...liees.map(rid => ({ recetteId: rid, role: 'composant', ordre: 0 }))] }
+        : p));
+    }
+    setRecBulkBusy(false);
+    setBulkLinkPlatOpen(false);
+    recSel.exit();
+    const parts = [];
+    if (liees.length) parts.push(`${liees.length} recette${liees.length > 1 ? 's' : ''} rattachée${liees.length > 1 ? 's' : ''} à « ${plat.nom} »`);
+    if (deja) parts.push(`${deja} déjà liée${deja > 1 ? 's' : ''}`);
+    if (ko) parts.push(`${ko} en erreur`);
+    notifyLegacy(parts.join(' · ') || 'Aucune recette à rattacher.', ko ? 'warning' : 'success');
   };
 
   // ═══ Synchronisation carte active ═══
@@ -994,7 +1028,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 exportLabel="⬇ Exporter Excel"
                 onCancel={recSel.exit}
                 busy={recBulkBusy}
-              />
+              >
+                <Btn small variant="ghost" onClick={() => setBulkLinkPlatOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
+                  🍽 Rattacher à un plat ({recSel.count})
+                </Btn>
+              </SelectionToolbar>
             </div>
           )}
           <button
@@ -2003,6 +2041,74 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </div>
               <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button style={cts.ghostBtn} onClick={() => setLinkPlatPickerForRecette(null)}>Fermer</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─── Modale rattacher la sélection (multi-recettes) à un plat ─── */}
+      {bulkLinkPlatOpen && (() => {
+        const selIds = Array.from(recSel.ids);
+        return (
+          <div className="modal-full-overlay" style={cts.overlay} onClick={() => { if (!recBulkBusy) setBulkLinkPlatOpen(false); }}>
+            <div className="modal-full" style={{ ...cts.modal, width: 460, maxWidth: '94vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🍽 Rattacher la sélection à un plat</div>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                    {selIds.length} recette{selIds.length > 1 ? 's' : ''} sélectionnée{selIds.length > 1 ? 's' : ''} : choisissez le plat qui les recevra comme composants.
+                  </div>
+                </div>
+                <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => setBulkLinkPlatOpen(false)} disabled={recBulkBusy}>✕</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+                {plats.length === 0 ? (
+                  <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+                    Aucun plat. Créez-en d'abord avec "+ Nouveau plat" ci-dessous.
+                  </div>
+                ) : (
+                  plats.map(p => {
+                    const dejaCount = selIds.filter(rid => (p.recettes || []).some(pr => pr.recetteId === rid)).length;
+                    const toutesLiees = dejaCount === selIds.length && selIds.length > 0;
+                    return (
+                      <div key={p.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
+                          borderBottom: '1px solid var(--border)',
+                          cursor: recBulkBusy || toutesLiees ? 'default' : 'pointer',
+                          background: toutesLiees ? 'var(--success-bg)' : 'transparent',
+                          opacity: recBulkBusy ? 0.6 : 1,
+                        }}
+                        onClick={() => { if (!recBulkBusy && !toutesLiees) rattacherSelectionAuPlat(p); }}
+                      >
+                        <span style={{ fontSize: 14 }}>{toutesLiees ? '✓' : '○'}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.nom}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+                            {p.categorie}{p.prixVente != null ? ` · CHF ${p.prixVente.toFixed(2)}` : ''} · {(p.recettes || []).length} composant{(p.recettes || []).length > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                        {dejaCount > 0 && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-text)', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
+                            {toutesLiees ? 'déjà toutes liées' : `${dejaCount}/${selIds.length} déjà liée${dejaCount > 1 ? 's' : ''}`}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <button
+                  style={cts.ghostBtn}
+                  disabled={recBulkBusy}
+                  onClick={() => { setBulkLinkPlatOpen(false); setEditPlat(null); setShowPlatForm(true); }}
+                  title="Créer le plat puis relancer le rattachement : la sélection est conservée"
+                >+ Nouveau plat</button>
+                <button style={cts.ghostBtn} onClick={() => setBulkLinkPlatOpen(false)} disabled={recBulkBusy}>
+                  {recBulkBusy ? 'Rattachement…' : 'Fermer'}
+                </button>
               </div>
             </div>
           </div>
