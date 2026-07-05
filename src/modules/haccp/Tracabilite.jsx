@@ -184,6 +184,15 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
   const grouped = React.useMemo(() => groupByDate(items), [items]);
   const years = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
+  // Si la branche affichée disparaît (suppression de la dernière photo du
+  // jour/mois/année, localement ou via realtime), on remonte d'un niveau au
+  // lieu de rendre grouped[...] undefined (crash du module).
+  React.useEffect(() => {
+    if (year && !grouped[year]) { setYear(null); setMonth(null); setDay(null); return; }
+    if (year && month && !grouped[year][month]) { setMonth(null); setDay(null); return; }
+    if (year && month && day && !grouped[year][month][day]) setDay(null);
+  }, [grouped, year, month, day]);
+
   if (loading) return <div style={hs.empty}>Chargement…</div>;
 
   return (
@@ -235,7 +244,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
       {/* ── Niveau Mois ── */}
       {year && !month && (
         <div style={gStyles.tileGrid}>
-          {Object.keys(grouped[year]).sort((a, b) => b.localeCompare(a)).map(m => {
+          {Object.keys(grouped[year] || {}).sort((a, b) => b.localeCompare(a)).map(m => {
             const count = Object.values(grouped[year][m]).reduce((s, arr) => s + arr.length, 0);
             return (
               <div key={m} style={gStyles.tile} onClick={() => setMonth(m)}>
@@ -250,7 +259,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
       {/* ── Niveau Jour ── */}
       {year && month && !day && (
         <div style={gStyles.tileGrid}>
-          {Object.keys(grouped[year][month]).sort((a, b) => b.localeCompare(a)).map(d => (
+          {Object.keys(grouped[year]?.[month] || {}).sort((a, b) => b.localeCompare(a)).map(d => (
             <div key={d} style={gStyles.tile} onClick={() => setDay(d)}>
               {d} {MOIS[Number(month) - 1]}
               <div style={gStyles.tileCount}>{grouped[year][month][d].length} photo{grouped[year][month][d].length > 1 ? 's' : ''}</div>
@@ -262,7 +271,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
       {/* ── Grille de photos du jour ── */}
       {year && month && day && (
         <div style={gStyles.photoGrid}>
-          {grouped[year][month][day].map(entry => (
+          {(grouped[year]?.[month]?.[day] || []).map(entry => (
             <div key={entry.id} style={gStyles.photoTile} onClick={() => setLightbox(entry)}>
               <img src={entry.photoUrl} alt={entry.produit || 'Photo traçabilité'} style={gStyles.photoImg} />
               {entry.produit && <div style={gStyles.photoLabel}>{entry.produit}</div>}
