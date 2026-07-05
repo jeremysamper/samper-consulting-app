@@ -614,9 +614,9 @@ const HACCP = ({ user, etablissement }) => {
       {activeTab==='config' && isConsultant && (
         <div style={{display:'flex',flexDirection:'column',gap:20}}>
           {/* Banner */}
-          <div style={{background:'linear-gradient(135deg,var(--nav) 0%,#1a0f00 100%)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14}}>
+          <div style={{background:'linear-gradient(135deg,var(--nav) 0%,#1a0f00 100%)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <span style={{fontSize:28}}>⚙</span>
-            <div>
+            <div style={{flex:1,minWidth:220}}>
               <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP — Réservé au consultant</div>
               <div style={{color:'rgba(255,255,255,0.5)',fontSize:12,marginTop:3}}>Gérez les zones de contrôle et les contrôles d'hygiène de l'établissement. Ces paramètres s'appliquent à toute l'équipe.</div>
             </div>

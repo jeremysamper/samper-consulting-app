@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { SectionHeader, TabBar } from '../../components/ui/index.jsx';
+import { SectionHeader } from '../../components/ui/index.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import PosConnectionBar   from './components/PosConnectionBar.jsx';
 import MappingPlats       from './MappingPlats.jsx';
 import MiseEnPlace        from './views/MiseEnPlace.jsx';
@@ -59,7 +60,7 @@ export default function VentesPos({ user, etablissement }) {
         onSynced={() => setDataVersion((v) => v + 1)}
       />
 
-      <TabBar tabs={TABS} active={effectiveTab} onChange={setTab} />
+      <SegmentedTabs tabs={TABS} active={effectiveTab} onChange={setTab} />
 
       {/* ── Mise en place J+1 ── */}
       {effectiveTab === 'mise_en_place' && (

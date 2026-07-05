@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ToastContainer, installToastGlobals, notify } from './components/toast/index.js';
 import AppLayout from './layouts/AppLayout.jsx';
 import Auth from './modules/auth/Auth.jsx';
-import LegacyModuleHost from './modules/LegacyModuleHost.jsx';
+import LegacyModuleHost, { prefetchCommonModules } from './modules/LegacyModuleHost.jsx';
 import { useAuth } from './hooks/useAuth.js';
 import { useCurrentEtablissement } from './hooks/useCurrentEtablissement.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
@@ -98,6 +98,9 @@ export default function App() {
           hydrateFromSupabase ? hydrateFromSupabase() : null,
         ]);
         if (mounted) setLegacyVersion((version) => version + 1);
+        // La synchro critique est terminée : on précharge les chunks des
+        // modules courants en idle pour des navigations instantanées.
+        prefetchCommonModules();
       } catch (err) {
         console.warn('[Vite legacy] Synchronisation post-login echouee', err);
       }

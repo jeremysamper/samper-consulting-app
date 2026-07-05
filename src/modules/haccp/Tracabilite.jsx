@@ -35,7 +35,10 @@ const gStyles = {
   photoImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   photoLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, padding: '4px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   lightboxImg: { width: '100%', maxHeight: '55vh', objectFit: 'contain', background: 'var(--bg)', borderRadius: 8 },
-  preview: { width: 140, height: 140, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block', margin: '0 auto 14px' },
+  // Aperçu de VALIDATION : grand format pour juger la netteté de l'étiquette
+  // avant d'enregistrer (un 140px ne permettait pas de voir si c'était flou).
+  preview: { width: '100%', maxHeight: '42vh', objectFit: 'contain', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', display: 'block', margin: '0 auto 10px' },
+  previewHint: { fontSize: 12, color: 'var(--text2)', textAlign: 'center', marginBottom: 14 },
 };
 
 export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite, canManage, registerCaptureTrigger }) {
@@ -128,13 +131,21 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
     setPending(null);
   };
 
+  // Photo ratée (floue, mal cadrée) : on jette l'actuelle et on rouvre la
+  // caméra dans la foulée — même geste utilisateur, donc le click programmé
+  // sur l'input file reste autorisé par le navigateur.
+  const retakePending = () => {
+    cancelPending();
+    fileRef.current?.click();
+  };
+
   const savePending = async () => {
     if (!pending) return;
     setBusy(true);
     setBusyLabel('Envoi…');
     try {
       const { path, url } = await legacySB.db.uploadHaccpPhoto({ etabId, file: pending.file });
-      await legacySB.db.createHaccpTracabilite({
+      const created = await legacySB.db.createHaccpTracabilite({
         etablissementId: etabId,
         date: form.date || todayStr(),
         produit: form.produit.trim(),
@@ -143,6 +154,9 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
         operateur: user?.id || null,
         notes: form.notes.trim(),
       });
+      // Mise à jour optimiste : la photo apparaît tout de suite, sans attendre
+      // l'aller-retour realtime (qui reste la source de vérité en cas d'écart).
+      if (created) setItems(prev => [created, ...prev.filter(x => x.id !== created.id)]);
       notifyLegacy('Photo enregistrée', 'success');
       cancelPending();
     } catch (err) {
@@ -157,7 +171,8 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
   const deleteEntry = async (entry) => {
     if (!window.confirm('Supprimer cette photo de traçabilité ?')) return;
     try {
-      await legacySB.db.deleteHaccpTracabilite(entry.id);
+      await legacySB.db.deleteHaccpTracabilite(entry.id, entry.storagePath);
+      setItems(prev => prev.filter(x => x.id !== entry.id));
       setLightbox(null);
       notifyLegacy('Photo supprimée', 'success');
     } catch (err) {
@@ -265,7 +280,8 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
               <button style={hs.closeBtn} onClick={cancelPending} disabled={busy}><X size={18} /></button>
             </div>
             <div style={hs.modalBody}>
-              <img src={pending.previewUrl} alt="" style={gStyles.preview} />
+              <img src={pending.previewUrl} alt="Aperçu de la photo à valider" style={gStyles.preview} />
+              <div style={gStyles.previewHint}>Vérifiez que l'étiquette est nette et lisible avant d'enregistrer.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={hs.field}>
                   <label style={hs.fLabel}>Date</label>
@@ -280,9 +296,12 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
                   <input type="text" style={hs.fInput} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} disabled={busy} />
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
                 <button style={hs.cancelBtn} onClick={cancelPending} disabled={busy}>Annuler</button>
-                <button style={hs.saveBtn} onClick={savePending} disabled={busy}>{busy ? (busyLabel || '…') : 'Enregistrer'}</button>
+                <button style={hs.cancelBtn} onClick={retakePending} disabled={busy}>
+                  <Camera size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />Reprendre la photo
+                </button>
+                <button style={hs.saveBtn} onClick={savePending} disabled={busy}>{busy ? (busyLabel || '…') : '✓ Valider et enregistrer'}</button>
               </div>
             </div>
           </div>

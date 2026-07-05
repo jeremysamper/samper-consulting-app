@@ -1598,7 +1598,36 @@ export function installLegacySupabase() {
       if (error) throw error;
       return this.mapHaccpTracabiliteFromDB(data);
     },
+    // Suppression via l'Edge Function (ligne DB + fichier storage ensemble —
+    // le bucket est en écriture service-only, le client ne peut pas y toucher).
+    // Repli sur la suppression DB directe si la fonction déployée est une
+    // ancienne version qui ne connaît pas encore l'action delete.
     async deleteHaccpTracabilite(id) {
+      const { data: { session } } = await client.auth.getSession();
+      if (session) {
+        const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+        let res = null;
+        try {
+          res = await fetch(`${supabaseUrl}/functions/v1/upload-haccp-photo`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: anonKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ action: 'delete', id }),
+          });
+        } catch (err) {
+          console.warn('[deleteHaccpTracabilite] Edge Function injoignable, repli DB direct', err);
+        }
+        if (res) {
+          if (res.ok) return;
+          const data = await res.json().catch(() => ({}));
+          // 403 = vrai refus d'accès : ne pas le contourner par le repli
+          if (res.status === 403) throw new Error(data.error || 'Accès refusé pour cet établissement');
+          console.warn('[deleteHaccpTracabilite] Edge Function indisponible, repli DB direct', data.error || res.status);
+        }
+      }
       const { error } = await client.from('haccp_tracabilite').delete().eq('id', id);
       if (error) throw error;
     },

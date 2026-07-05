@@ -3,26 +3,83 @@ import { navItems } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 
-const Catalogue = lazy(() => import('./catalogue/Catalogue.jsx'));
-const Commande = lazy(() => import('./commande/Commande.jsx'));
-const ConsultantTools = lazy(() => import('./consultant-tools/ConsultantTools.jsx'));
-const Dashboard = lazy(() => import('./dashboard/Dashboard.jsx'));
-const DashboardMobile = lazy(() => import('./dashboard/DashboardMobile.jsx'));
-const Documents = lazy(() => import('./documents/Documents.jsx'));
-const Factures = lazy(() => import('./factures/Factures.jsx'));
-const FAQAssistant = lazy(() => import('./faq/FAQAssistant.jsx'));
-const FichesSalle = lazy(() => import('./fiches-salle/FichesSalle.jsx'));
-const HACCP = lazy(() => import('./haccp/HACCP.jsx'));
-const Inventaire = lazy(() => import('./inventaire/Inventaire.jsx'));
-const Messages = lazy(() => import('./messages/Messages.jsx'));
-const Parametres = lazy(() => import('./parametres/Parametres.jsx'));
-const Pertes = lazy(() => import('./pertes/Pertes.jsx'));
-const Planning = lazy(() => import('./planning/Planning.jsx'));
-const Recettes = lazy(() => import('./recettes/Recettes.jsx'));
-const Roles = lazy(() => import('./roles/Roles.jsx'));
-const Previsions = lazy(() => import('./previsions/Previsions.jsx'));
-const VentesPos = lazy(() => import('./pos/VentesPos.jsx'));
-const SOP = lazy(() => import('./sop/SOP.jsx'));
+// Loaders nommés : partagés entre lazy() et le préchargement idle ci-dessous.
+// Un même import() est dédupliqué par Vite → précharger ne coûte qu'un fetch.
+const loadCatalogue = () => import('./catalogue/Catalogue.jsx');
+const loadCommande = () => import('./commande/Commande.jsx');
+const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
+const loadDashboard = () => import('./dashboard/Dashboard.jsx');
+const loadDashboardMobile = () => import('./dashboard/DashboardMobile.jsx');
+const loadDocuments = () => import('./documents/Documents.jsx');
+const loadFactures = () => import('./factures/Factures.jsx');
+const loadFAQAssistant = () => import('./faq/FAQAssistant.jsx');
+const loadFichesSalle = () => import('./fiches-salle/FichesSalle.jsx');
+const loadHACCP = () => import('./haccp/HACCP.jsx');
+const loadInventaire = () => import('./inventaire/Inventaire.jsx');
+const loadMessages = () => import('./messages/Messages.jsx');
+const loadParametres = () => import('./parametres/Parametres.jsx');
+const loadPertes = () => import('./pertes/Pertes.jsx');
+const loadPlanning = () => import('./planning/Planning.jsx');
+const loadRecettes = () => import('./recettes/Recettes.jsx');
+const loadRoles = () => import('./roles/Roles.jsx');
+const loadPrevisions = () => import('./previsions/Previsions.jsx');
+const loadVentesPos = () => import('./pos/VentesPos.jsx');
+const loadSOP = () => import('./sop/SOP.jsx');
+
+const Catalogue = lazy(loadCatalogue);
+const Commande = lazy(loadCommande);
+const ConsultantTools = lazy(loadConsultantTools);
+const Dashboard = lazy(loadDashboard);
+const DashboardMobile = lazy(loadDashboardMobile);
+const Documents = lazy(loadDocuments);
+const Factures = lazy(loadFactures);
+const FAQAssistant = lazy(loadFAQAssistant);
+const FichesSalle = lazy(loadFichesSalle);
+const HACCP = lazy(loadHACCP);
+const Inventaire = lazy(loadInventaire);
+const Messages = lazy(loadMessages);
+const Parametres = lazy(loadParametres);
+const Pertes = lazy(loadPertes);
+const Planning = lazy(loadPlanning);
+const Recettes = lazy(loadRecettes);
+const Roles = lazy(loadRoles);
+const Previsions = lazy(loadPrevisions);
+const VentesPos = lazy(loadVentesPos);
+const SOP = lazy(loadSOP);
+
+// Modules du quotidien, préchargés en idle après le login pour que la première
+// navigation soit instantanée (le chunk est déjà en cache navigateur).
+// Ordre = priorité métier : brigade d'abord, consultant ensuite.
+const PREFETCH_LOADERS = [
+  loadDashboardMobile,
+  loadDashboard,
+  loadPlanning,
+  loadHACCP,
+  loadRecettes,
+  loadInventaire,
+  loadPertes,
+  loadSOP,
+  loadCommande,
+];
+
+let prefetchStarted = false;
+
+export function prefetchCommonModules() {
+  if (prefetchStarted || typeof window === 'undefined') return;
+  prefetchStarted = true;
+
+  // File séquentielle en idle : un chunk à la fois, jamais en concurrence avec
+  // une interaction utilisateur ni avec l'hydratation post-login.
+  const queue = [...PREFETCH_LOADERS];
+  const idle = window.requestIdleCallback || ((fn) => window.setTimeout(fn, 800));
+
+  const next = () => {
+    const loader = queue.shift();
+    if (!loader) return;
+    loader().catch(() => {}).finally(() => idle(next));
+  };
+  idle(next);
+}
 
 export default function LegacyModuleHost({
   page,
