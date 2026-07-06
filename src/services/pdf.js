@@ -39,8 +39,8 @@ export const pdfUtils = {
         --text: #2c2620;
         --text2: #6b5d4a;
         --text3: #8a7d6a;
-        --accent: #588157;
-        --accent2: #6d9a6b;
+        --accent: #003042;
+        --accent2: #2e6d84;
         --accent-light: #f5efe4;
         --accent-bd: #d4c5a8;
         --nav: #2c2620;
@@ -75,7 +75,7 @@ export const pdfUtils = {
     const isLandscape = orientation === 'landscape';
     // ─── Palette Samper - DA sobre et éditoriale ───
     // Crème (#fbf8f3) en fond, gris pierre (#2c2620) pour le texte,
-    // vert sauge (#6d9a6b) pour les filets et accents.
+    // bleu petrole (#2e6d84) pour les filets et accents.
     // Titres en italique serif éditorial (Georgia en fallback web-safe).
     return `
       ${this._getThemeVarOverrides()}
@@ -91,13 +91,13 @@ export const pdfUtils = {
       }
       .pdf-header {
         display: flex; justify-content: space-between; align-items: flex-start;
-        border-bottom: 1px solid #6d9a6b;
+        border-bottom: 1px solid #2e6d84;
         padding-bottom: 14px; margin-bottom: 22px;
       }
       .pdf-brand { display: flex; align-items: center; gap: 14px; }
       .pdf-logo {
         width: 44px; height: 44px; border-radius: 8px;
-        background: #588157; color: #fff;
+        background: #003042; color: #fff;
         display: flex; align-items: center; justify-content: center;
         font-weight: 700; font-size: 14pt; letter-spacing: 1.2px;
         overflow: hidden;
@@ -113,7 +113,7 @@ export const pdfUtils = {
         color: #2c2620; margin-bottom: 4px;
         letter-spacing: 0.2px;
       }
-      .pdf-meta-etab { font-weight: 600; color: #6d9a6b; margin-top: 6px; letter-spacing: 0.3px; }
+      .pdf-meta-etab { font-weight: 600; color: #2e6d84; margin-top: 6px; letter-spacing: 0.3px; }
       h1, h2, h3 { color: #2c2620; margin: 0 0 10px 0; page-break-after: avoid; }
       h1 {
         font-family: Georgia, 'Cormorant Garamond', serif;
@@ -126,7 +126,7 @@ export const pdfUtils = {
         margin-top: 18px;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: #6d9a6b;
+        color: #2e6d84;
         border-bottom: 0.5px solid #d4c5a8;
         padding-bottom: 4px;
       }
@@ -139,15 +139,15 @@ export const pdfUtils = {
       tr { page-break-inside: avoid; page-break-after: auto; }
       th {
         text-align: left; font-size: 8.5pt; font-weight: 700;
-        color: #6d9a6b; text-transform: uppercase; letter-spacing: 0.8px;
-        padding: 8px 8px 6px; border-bottom: 1px solid #6d9a6b;
+        color: #2e6d84; text-transform: uppercase; letter-spacing: 0.8px;
+        padding: 8px 8px 6px; border-bottom: 1px solid #2e6d84;
       }
       td { padding: 7px 8px; font-size: 10pt; border-bottom: 0.5px solid #e8dfcd; color: #2c2620; }
       .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 12px 0 18px; }
       .kpi-card { border: 0.5px solid #d4c5a8; border-radius: 4px; padding: 12px 14px; background: rgba(255,255,255,0.5); }
       .kpi-label { font-size: 7.5pt; font-weight: 700; color: #8a7d6a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
       .kpi-value { font-family: Georgia, serif; font-size: 15pt; font-weight: 600; color: #2c2620; }
-      .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(109,154,107,0.12); color: #456b44; border: 0.5px solid #d4c5a8; }
+      .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(46,109,132,0.12); color: #1e4d63; border: 0.5px solid #d4c5a8; }
       .section { margin-bottom: 20px; page-break-inside: avoid; }
 
       /* ─── Sublimer les cartes / sections existantes du DOM cloné ────
@@ -160,8 +160,8 @@ export const pdfUtils = {
         border-color: #d4c5a8 !important;
         background: rgba(255,255,255,0.6) !important;
       }
-      /* Liens et accents : conserver l'or Samper */
-      .pdf-content a { color: #588157; text-decoration: none; }
+      /* Liens et accents : conserver la couleur Samper */
+      .pdf-content a { color: #003042; text-decoration: none; }
       ul, ol { margin: 4px 0 12px 20px; padding: 0; }
       li { margin-bottom: 4px; font-size: 10pt; }
       .no-print, button, .pls-tabs, [class*="no-print"] { display: none !important; }
@@ -622,7 +622,7 @@ export const pdfUtils = {
     const MM_PER_PT = 0.3528;
     const {
       logoDataUrl = null,
-      accent = [88, 129, 87], // Vert Samper #588157 - charte app (défaut, hex/rgb jamais oklch)
+      accent = [0, 48, 66], // Bleu petrole Samper #003042 - charte app (défaut, hex/rgb jamais oklch)
     } = options;
     const etablissement = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
     const pageNum = options.pageNum || 1;
@@ -647,8 +647,8 @@ export const pdfUtils = {
 
     const ACC  = accent;
     const INK  = [26, 26, 28];
-    const MUTE = [122, 124, 122];
-    const HAIR = [216, 221, 217];
+    const MUTE = [121, 124, 126];
+    const HAIR = [215, 220, 224];
 
     // ---- Géométrie verticale (sans collision) ----
     const ruleTopY  = M + headerH;
@@ -829,7 +829,7 @@ export const pdfUtils = {
 
   // ═══════════════════════════════════════════════════════════════
   // LISTE DE COMMANDE — génération jsPDF native (vectorielle, DA Samper)
-  // Bon de commande propre, multi-pages, dans la charte (vert #588157,
+  // Bon de commande propre, multi-pages, dans la charte (bleu petrole #003042,
   // titre serif, sections par catégorie, cases à cocher). Cohérent avec
   // la fiche recette plutôt qu'une capture html2canvas de l'écran.
   // payload : { groups:[{categorie, items:[{nom, besoinText, qtyText, coche}]}], totalCount, cocheCount }
@@ -861,10 +861,10 @@ export const pdfUtils = {
   },
 
   _renderCommande(doc, payload, options = {}) {
-    const ACC = [88, 129, 87];   // vert Samper
+    const ACC = [0, 48, 66];   // bleu petrole Samper
     const INK = [26, 26, 28];
-    const MUTE = [122, 124, 122];
-    const HAIR = [216, 221, 217];
+    const MUTE = [121, 124, 126];
+    const HAIR = [215, 220, 224];
     const PAGE_W = 210, PAGE_H = 297, M = 15;
     const contentW = PAGE_W - 2 * M;
     const headerH = 12;

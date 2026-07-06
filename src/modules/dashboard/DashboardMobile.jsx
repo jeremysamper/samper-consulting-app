@@ -87,7 +87,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
   const canNavigate = typeof setPage === 'function';
   const quickActions = [
     { id: 'pointage', label: myTodayShifts.length ? 'Pointer' : 'Planning', sub: myTodayShifts.length ? 'Arrivee / depart' : 'Voir mes horaires', page: 'planning', tone: 'var(--success-strong)' },
-    { id: 'haccp', label: 'HACCP', sub: 'Controle rapide', page: 'haccp', tone: '#588157' },
+    { id: 'haccp', label: 'HACCP', sub: 'Controle rapide', page: 'haccp', tone: 'var(--accent)' },
     { id: 'sop', label: 'SOPs', sub: 'Procedures du jour', page: 'sop', tone: '#1a5276' },
     { id: 'assistant', label: 'Assistant', sub: 'FAQ metier', page: 'faq', tone: '#6c3483' },
   ];

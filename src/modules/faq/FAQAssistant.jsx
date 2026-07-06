@@ -13,7 +13,7 @@ const automationScopes = [
   { id: 'haccp', title: 'HACCP', detail: 'Controles du jour, temperatures hors plage et rappels.', page: 'haccp', tone: 'var(--success-strong)' },
   { id: 'pertes', title: 'Pertes', detail: 'Pertes a valider, ecarts matiere et priorites stock.', page: 'pertes', tone: 'var(--danger-strong)' },
   { id: 'sop', title: 'SOPs', detail: 'Routines a executer selon jour, role et service.', page: 'sop', tone: '#1a5276' },
-  { id: 'factures', title: 'Factures', detail: 'Previsualisation, logo et preparation client.', page: 'factures', tone: '#588157' },
+  { id: 'factures', title: 'Factures', detail: 'Previsualisation, logo et preparation client.', page: 'factures', tone: 'var(--accent)' },
 ];
 
 const starterMessages = [

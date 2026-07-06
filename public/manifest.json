@@ -4,8 +4,8 @@
   "description": "Application de gestion pour restaurants et hôtels",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1a12",
-  "theme_color": "#1a3a26",
+  "background_color": "#021620",
+  "theme_color": "#003042",
   "orientation": "any",
   "icons": [
     {

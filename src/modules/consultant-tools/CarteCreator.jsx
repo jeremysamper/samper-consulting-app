@@ -458,8 +458,8 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
             </div>
             <div style={{ padding: 16, overflow: 'auto' }}>
               <div id="carte-allergenes-print" style={{ background: '#fff', color: '#1f2933', padding: '24px 28px' }}>
-                <div style={{ borderBottom: '2px solid #588157', paddingBottom: 12, marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#588157', fontWeight: 700 }}>{etablissement?.nom || 'Samper Consulting'}</div>
+                <div style={{ borderBottom: '2px solid #003042', paddingBottom: 12, marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#003042', fontWeight: 700 }}>{etablissement?.nom || 'Samper Consulting'}</div>
                   <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, margin: '4px 0 0', color: '#111827' }}>Tableau des allergènes</h1>
                   <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{title} · {items.length} plat{items.length > 1 ? 's' : ''}</div>
                 </div>
@@ -469,9 +469,9 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
                     <thead>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '2px solid #588157', color: '#111827' }}>Plat</th>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '2px solid #003042', color: '#111827' }}>Plat</th>
                         {ALLERGENES_OPTIONS.map((a) => (
-                          <th key={a.id} style={{ padding: '6px 3px', borderBottom: '2px solid #588157', color: '#111827', width: 58, fontSize: 9, lineHeight: 1.15 }}>{a.label}</th>
+                          <th key={a.id} style={{ padding: '6px 3px', borderBottom: '2px solid #003042', color: '#111827', width: 58, fontSize: 9, lineHeight: 1.15 }}>{a.label}</th>
                         ))}
                       </tr>
                     </thead>
@@ -479,7 +479,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                       {groupedItems.map((group) => (
                         <React.Fragment key={group.category}>
                           <tr>
-                            <td colSpan={ALLERGENES_OPTIONS.length + 1} style={{ padding: '8px 8px 3px', fontFamily: 'Georgia, serif', fontSize: 13, color: '#588157', fontWeight: 700 }}>{group.category}</td>
+                            <td colSpan={ALLERGENES_OPTIONS.length + 1} style={{ padding: '8px 8px 3px', fontFamily: 'Georgia, serif', fontSize: 13, color: '#003042', fontWeight: 700 }}>{group.category}</td>
                           </tr>
                           {group.items.map((item) => {
                             const al = allergenesOf(item);
@@ -487,7 +487,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                               <tr key={item.id}>
                                 <td style={{ padding: '5px 8px', borderBottom: '1px solid #f0ece4', color: '#111827', fontWeight: 600 }}>{item.name || 'Ligne sans nom'}</td>
                                 {ALLERGENES_OPTIONS.map((a) => (
-                                  <td key={a.id} style={{ padding: '5px 3px', borderBottom: '1px solid #f0ece4', textAlign: 'center', color: al.includes(a.id) ? '#588157' : '#d1d5db', fontWeight: 700 }}>
+                                  <td key={a.id} style={{ padding: '5px 3px', borderBottom: '1px solid #f0ece4', textAlign: 'center', color: al.includes(a.id) ? '#003042' : '#d1d5db', fontWeight: 700 }}>
                                     {al.includes(a.id) ? '●' : '·'}
                                   </td>
                                 ))}
@@ -551,18 +551,18 @@ const mcs = {
   previewHeader: { display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 12, alignItems: 'start', marginBottom: 10 },
   noteInput: { width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', resize: 'vertical', boxSizing: 'border-box' },
   printSheet: { background: '#fff', color: '#1f2933', border: '1px solid var(--border)', borderRadius: 10, padding: '34px 44px', maxWidth: 860, margin: '0 auto', boxShadow: '0 8px 26px rgba(0,0,0,0.06)' },
-  printTop: { display: 'flex', justifyContent: 'space-between', gap: 20, borderBottom: '2px solid #588157', paddingBottom: 18, marginBottom: 24 },
-  printEyebrow: { fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#588157', fontWeight: 700 },
+  printTop: { display: 'flex', justifyContent: 'space-between', gap: 20, borderBottom: '2px solid #003042', paddingBottom: 18, marginBottom: 24 },
+  printEyebrow: { fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#003042', fontWeight: 700 },
   printTitle: { fontFamily: 'Georgia, serif', fontSize: 34, margin: '4px 0 0', color: '#111827', lineHeight: 1.05 },
   printSubtitle: { fontSize: 14, color: '#6b7280', marginTop: 8 },
   printDate: { fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', paddingTop: 6 },
   printGroup: { marginBottom: 24, pageBreakInside: 'avoid' },
-  printGroupTitle: { fontFamily: 'Georgia, serif', fontSize: 19, color: '#588157', margin: '0 0 10px', borderBottom: '1px solid #e7dfcf', paddingBottom: 5 },
+  printGroupTitle: { fontFamily: 'Georgia, serif', fontSize: 19, color: '#003042', margin: '0 0 10px', borderBottom: '1px solid #e7dfcf', paddingBottom: 5 },
   printItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 100px', gap: 16, padding: '10px 0', borderBottom: '1px solid #f0ece4', alignItems: 'start' },
   printItemMain: { minWidth: 0 },
   printItemName: { fontSize: 15, fontWeight: 700, color: '#111827' },
   printItemDesc: { fontSize: 12, color: '#6b7280', marginTop: 3, lineHeight: 1.45 },
-  printAllergenes: { fontSize: 10, color: '#588157', marginTop: 4, fontWeight: 600 },
+  printAllergenes: { fontSize: 10, color: '#003042', marginTop: 4, fontWeight: 600 },
   printPrice: { fontSize: 14, fontWeight: 700, color: '#111827', textAlign: 'right', whiteSpace: 'nowrap' },
   printNote: { marginTop: 18, paddingTop: 12, borderTop: '1px solid #e7dfcf', fontSize: 12, color: '#6b7280', lineHeight: 1.5, fontStyle: 'italic' },
   printEmpty: { padding: 30, textAlign: 'center', color: '#6b7280' },

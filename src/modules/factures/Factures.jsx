@@ -802,7 +802,7 @@ const FactureRender = ({ form, etablissement }) => {
           )}
           <tr style={{ background: '#f5f0e1' }}>
             <td style={{ ...fr.detailLabel, fontSize: 13, fontWeight: 700 }}>Montant total :</td>
-            <td style={{ ...fr.detailVal, fontSize: 14, fontWeight: 700, color: '#588157' }}>
+            <td style={{ ...fr.detailVal, fontSize: 14, fontWeight: 700, color: '#003042' }}>
               {form.devise} {montantFormat} {form.htOuTtc}
             </td>
           </tr>
@@ -916,16 +916,16 @@ const fac = {
 // Styles facture imprimable (FR = facture render)
 const fr = {
   page: { background: '#fff', padding: '30px 36px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#222', maxWidth: 720, margin: '0 auto', fontSize: 11 },
-  titleBar: { textAlign: 'center', fontSize: 16, fontWeight: 700, padding: '10px 0', borderBottom: '2px solid #588157', marginBottom: 18, letterSpacing: 0.5, color: '#588157', fontFamily: 'Arial, Helvetica, sans-serif' },
+  titleBar: { textAlign: 'center', fontSize: 16, fontWeight: 700, padding: '10px 0', borderBottom: '2px solid #003042', marginBottom: 18, letterSpacing: 0.5, color: '#003042', fontFamily: 'Arial, Helvetica, sans-serif' },
   twoColTop: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 },
-  partyBox: { padding: '10px 12px', background: '#fafaf6', borderLeft: '3px solid #588157', borderRadius: 4 },
-  partyLabel: { fontSize: 10, fontWeight: 700, color: '#588157', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: 'Arial, Helvetica, sans-serif' },
+  partyBox: { padding: '10px 12px', background: '#fafaf6', borderLeft: '3px solid #003042', borderRadius: 4 },
+  partyLabel: { fontSize: 10, fontWeight: 700, color: '#003042', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: 'Arial, Helvetica, sans-serif' },
   partyText: { fontSize: 11, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' },
   detailTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 18, fontSize: 11, fontFamily: 'Arial, Helvetica, sans-serif' },
   detailLabel: { padding: '7px 12px', borderBottom: '1px solid #e8e0c8', fontWeight: 600, width: '38%', verticalAlign: 'top' },
   detailVal: { padding: '7px 12px', borderBottom: '1px solid #e8e0c8' },
   section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#588157', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #d4c8a0', fontFamily: 'Arial, Helvetica, sans-serif' },
+  sectionTitle: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#003042', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #d4c8a0', fontFamily: 'Arial, Helvetica, sans-serif' },
   bankTable: { width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'Arial, Helvetica, sans-serif' },
   bankLabel: { padding: '4px 12px', fontWeight: 600, width: '38%', color: '#555' },
   bankVal: { padding: '4px 12px', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 11 },

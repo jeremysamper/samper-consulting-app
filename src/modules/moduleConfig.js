@@ -1,5 +1,5 @@
 export const roles = {
-  consultant:   { label: 'Consultant culinaire',  color: '#588157' },
+  consultant:   { label: 'Consultant culinaire',  color: '#003042' },
   patron:       { label: 'Patron / Directeur',    color: '#1a5276' },
   resp_cuisine: { label: 'Responsable cuisine',   color: '#1e6b40' },
   cuisinier:    { label: 'Cuisinier',             color: '#6c3483' },

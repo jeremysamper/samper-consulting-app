@@ -1,11 +1,11 @@
 /**
  * Génère les icônes PWA pour Samper Consulting.
- * Logo : initiales "SC" sur fond vert très foncé (#0f1a12), lettres vert sauge (#82b27f).
+ * Logo : initiales "SC" blanches sur fond bleu pétrole #003042 (couleur carte de visite).
  *
  * Usage : node scripts/gen-icons.mjs
  */
 import sharp from 'sharp';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -19,8 +19,8 @@ const REGULAR = [72, 96, 128, 144];
 const MASKABLE = [192, 512];
 const ALL = [...REGULAR, ...MASKABLE];
 
-const BG    = '#0f1a12';
-const FG    = '#82b27f'; // vert Samper, signature couleur
+const BG    = '#003042'; // bleu pétrole Samper, signature couleur (carte de visite)
+const FG    = '#ffffff';
 
 /**
  * SVG pour icône classique (fond arrondi, adapté standalone).
@@ -66,4 +66,33 @@ for (const size of ALL) {
   console.log(`✓ icon-${size}.png  [${isMaskable ? 'maskable' : 'regular'}]`);
 }
 
-console.log(`\nDone — ${ALL.length} icons in public/icons/`);
+// ─── favicon.ico (racine) : conteneur ICO avec PNG embarqués (16/32/48) ───
+// Format Vista+ : ICONDIR + ICONDIRENTRY[n] + blobs PNG bruts.
+const ICO_SIZES = [16, 32, 48];
+const pngs = [];
+for (const size of ICO_SIZES) {
+  pngs.push(await sharp(Buffer.from(makeSvgRegular(size))).png({ compressionLevel: 9 }).toBuffer());
+}
+const header = Buffer.alloc(6);
+header.writeUInt16LE(0, 0); // réservé
+header.writeUInt16LE(1, 2); // type 1 = icône
+header.writeUInt16LE(ICO_SIZES.length, 4);
+const entries = [];
+let offset = 6 + 16 * ICO_SIZES.length;
+ICO_SIZES.forEach((size, i) => {
+  const e = Buffer.alloc(16);
+  e.writeUInt8(size >= 256 ? 0 : size, 0); // largeur
+  e.writeUInt8(size >= 256 ? 0 : size, 1); // hauteur
+  e.writeUInt8(0, 2);  // palette
+  e.writeUInt8(0, 3);  // réservé
+  e.writeUInt16LE(1, 4);  // plans
+  e.writeUInt16LE(32, 6); // bits/pixel
+  e.writeUInt32LE(pngs[i].length, 8);
+  e.writeUInt32LE(offset, 12);
+  offset += pngs[i].length;
+  entries.push(e);
+});
+writeFileSync(path.join(__dirname, '..', 'favicon.ico'), Buffer.concat([header, ...entries, ...pngs]));
+console.log('✓ favicon.ico  [16+32+48]');
+
+console.log(`\nDone — ${ALL.length} icons in public/icons/ + favicon.ico`);

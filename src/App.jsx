@@ -224,8 +224,9 @@ export default function App() {
 }
 
 function BootScreen({ title = '' }) {
-  // Splash screen : fond vert sombre degrade + halo doux, logo SC vert,
+  // Splash screen : fond bleu petrole sombre degrade + halo doux, logo SC,
   // nom de l'app et barre de progression animee (@keyframes splashBar dans app.css).
+  // Charte #003042 (carte de visite) declinee en camaieu sombre.
   return (
     <main style={bootScreenStyles.root}>
       <div style={bootScreenStyles.glow} />
@@ -250,7 +251,7 @@ const bootScreenStyles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'radial-gradient(125% 85% at 50% 12%, #21452f 0%, #15281b 48%, #0c160f 100%)',
+    background: 'radial-gradient(125% 85% at 50% 12%, #0d4258 0%, #062839 48%, #02141c 100%)',
     fontFamily: 'var(--font)',
     zIndex: 9999,
     overflow: 'hidden',
@@ -262,7 +263,7 @@ const bootScreenStyles = {
     width: 560,
     height: 560,
     transform: 'translateX(-50%)',
-    background: 'radial-gradient(circle, rgba(130,178,127,0.22) 0%, rgba(130,178,127,0) 68%)',
+    background: 'radial-gradient(circle, rgba(116,174,195,0.22) 0%, rgba(116,174,195,0) 68%)',
     pointerEvents: 'none',
   },
   center: {
@@ -276,8 +277,8 @@ const bootScreenStyles = {
     width: 76,
     height: 76,
     borderRadius: 22,
-    background: 'linear-gradient(155deg, #244a32 0%, #15281b 100%)',
-    color: '#82b27f',
+    background: 'linear-gradient(155deg, #0d3c51 0%, #062839 100%)',
+    color: '#74aec3',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -285,19 +286,19 @@ const bootScreenStyles = {
     fontSize: 30,
     fontFamily: 'var(--font-serif)',
     letterSpacing: 1,
-    border: '1px solid rgba(130,178,127,0.28)',
+    border: '1px solid rgba(116,174,195,0.28)',
     boxShadow: '0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)',
   },
   brand: {
     fontSize: 18,
     fontWeight: 700,
-    color: '#ece7de',
+    color: '#e7edf0',
     fontFamily: 'var(--font-serif)',
     letterSpacing: 0.4,
   },
   subtitle: {
     fontSize: 11.5,
-    color: 'rgba(236,231,222,0.5)',
+    color: 'rgba(231,237,240,0.5)',
     fontStyle: 'italic',
     marginTop: -10,
   },
@@ -312,9 +313,9 @@ const bootScreenStyles = {
   barFill: {
     height: '100%',
     width: '42%',
-    background: 'linear-gradient(90deg, #588157 0%, #9ec79a 100%)',
+    background: 'linear-gradient(90deg, #2e6d84 0%, #8ec9de 100%)',
     borderRadius: 3,
-    boxShadow: '0 0 12px rgba(130,178,127,0.5)',
+    boxShadow: '0 0 12px rgba(116,174,195,0.5)',
     animation: 'splashBar 1.2s ease-in-out infinite',
   },
 };

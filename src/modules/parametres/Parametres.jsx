@@ -14,11 +14,11 @@ import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 const EtabForm = ({ etab, onSave, onCancel }) => {
   const [f, setF] = React.useState(etab || {
     id:'', nom:'', type:'Restaurant', adresse:'', tel:'', email:'',
-    couleur:'#588157', actif:true, notes:''
+    couleur:'#003042', actif:true, notes:''
   });
 
   const TYPES = ['Restaurant gastronomique','Brasserie','Bistrot','Hôtel-Restaurant','Hôtel','Café-Restaurant','Traiteur','Collectivité','Autre'];
-  const COULEURS = ['#588157','#1a5276','#1e6b40','#6c3483','#2e7ab8','#c0392b','#16a085','#7f8c8d'];
+  const COULEURS = ['#003042','#1a5276','#1e6b40','#6c3483','#2e7ab8','#c0392b','#16a085','#7f8c8d'];
 
   const handleSave = () => {
     if (!f.nom.trim()) { alertLegacy('Le nom est obligatoire.'); return; }
@@ -182,7 +182,7 @@ const Parametres = ({ user, etablissement }) => {
       adresse: etab.adresse || null,
       tel: etab.tel || null,
       email: etab.email || null,
-      couleur: etab.couleur || '#588157',
+      couleur: etab.couleur || '#003042',
       actif: etab.actif !== false,
       notes: etab.notes || null,
       ccnt_heures_semaine: etab.ccntHeuresSemaine || 42,

@@ -645,7 +645,7 @@ const SopHistory = ({ executions, sops, user, canManage }) => {
     // Construire le HTML des sections
     let sectionsHtml = '';
     sections.forEach(sec => {
-      sectionsHtml += `<h3 style="margin:14px 0 6px 0;font-size:12pt;color:#588157;border-bottom:1px solid #d4c8a0;padding-bottom:3px;">${escapeHtml(sec.titre || 'Étapes')}</h3>`;
+      sectionsHtml += `<h3 style="margin:14px 0 6px 0;font-size:12pt;color:#003042;border-bottom:1px solid #d4c8a0;padding-bottom:3px;">${escapeHtml(sec.titre || 'Étapes')}</h3>`;
       sectionsHtml += '<ul style="list-style:none;padding-left:0;margin:0;">';
       (sec.etapes || []).forEach(et => {
         const checked = !!stepStates[et.id];

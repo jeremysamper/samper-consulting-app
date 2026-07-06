@@ -16,10 +16,10 @@
   --text: oklch(18% 0.012 55);
   --text2: oklch(48% 0.010 55);
   --text3: oklch(60% 0.008 50);
-  --accent: #588157;
-  --accent2: #6d9a6b;
-  --accent-light: #eef3ed;
-  --accent-bd: #bcd0ba;
+  --accent: #003042;
+  --accent2: #2e6d84;
+  --accent-light: #eaf2f5;
+  --accent-bd: #afcad4;
   --nav: oklch(14% 0.012 55);
   --nav-text: oklch(68% 0.007 50);
   --nav-active: rgba(255, 255, 255, 0.11);
@@ -84,10 +84,10 @@
     --text: oklch(89% 0.009 75);
     --text2: oklch(70% 0.010 75);
     --text3: oklch(48% 0.008 55);
-    --accent: #82b27f;
-    --accent2: #95c191;
-    --accent-light: #233026;
-    --accent-bd: #3f5a40;
+    --accent: #74aec3;
+    --accent2: #90bfd0;
+    --accent-light: #192b34;
+    --accent-bd: #335c6b;
     --nav: oklch(10% 0.010 55);
     --nav-text: oklch(55% 0.007 50);
     --nav-active: rgba(255, 255, 255, 0.09);
@@ -132,10 +132,10 @@ html[data-theme="dark"] {
   --text: oklch(89% 0.009 75);
   --text2: oklch(70% 0.010 75);
   --text3: oklch(48% 0.008 55);
-  --accent: #82b27f;
-  --accent2: #95c191;
-  --accent-light: #233026;
-  --accent-bd: #3f5a40;
+  --accent: #74aec3;
+  --accent2: #90bfd0;
+  --accent-light: #192b34;
+  --accent-bd: #335c6b;
   --nav: oklch(10% 0.010 55);
   --nav-text: oklch(55% 0.007 50);
   --nav-active: rgba(255, 255, 255, 0.09);
@@ -662,7 +662,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(88, 129, 87, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 48, 66, 0.12);
 }
 
 [style*="tableRow"]:hover,
@@ -772,7 +772,7 @@ h1 {
 }
 
 .step-list li {
-  border-left: 4px solid #588157;
+  border-left: 4px solid #003042;
   padding: 12px 0 12px 16px;
 }
 
@@ -821,7 +821,7 @@ h1 {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  background: #588157;
+  background: #003042;
   color: #fff;
   font-weight: 800;
 }
@@ -911,7 +911,7 @@ h1 {
 
 .primary-action {
   border: 0;
-  background: #588157;
+  background: #003042;
   color: #fff;
   font-weight: 800;
   padding: 0 16px;
@@ -931,7 +931,7 @@ h1 {
   margin: 18px auto 0;
   border: 0;
   background: transparent;
-  color: #588157;
+  color: #003042;
   font-size: 13px;
   font-weight: 800;
 }
