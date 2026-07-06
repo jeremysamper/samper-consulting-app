@@ -67,7 +67,13 @@ const Commande = ({ user, etablissement }) => {
         legacySB.db.listRecettes(etabId),
         legacySB.db.listProduits(etabId),
       ]);
-      setGenData({ cartes: cartes || [], plats: plats || [], recettes: recettes || [], catalogue: catalogue || [] });
+      // Cartes et recettes archivées exclues : elles ne pilotent plus les achats.
+      setGenData({
+        cartes: (cartes || []).filter(c => !c.archive),
+        plats: plats || [],
+        recettes: (recettes || []).filter(r => r.statut !== 'archivée'),
+        catalogue: catalogue || [],
+      });
     } catch (err) {
       notifyLegacy('Chargement des cartes impossible : ' + (err.message || err), 'error');
       setShowGen(false);

@@ -901,7 +901,7 @@ const Recettes = ({ user, etablissement }) => {
   const canManageCartes = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
 
   // Cartes (menus) de l'établissement — source unique partagée + realtime.
-  const { cartes, addCarte, renameCarte, deleteCarte } = useCartes(etabId);
+  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)
   const [recettes, setRecettes] = React.useState([]);
@@ -967,8 +967,13 @@ const Recettes = ({ user, etablissement }) => {
 
   const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
 
-  // Filtrer par établissement courant (déjà filtré par Supabase mais on garde le filtre côté client pour le fallback)
-  const recettesEtab = recettes.filter(r => (r.etablissementId || 'etab-1') === etabId);
+  // Filtrer par établissement courant (déjà filtré par Supabase mais on garde le
+  // filtre côté client pour le fallback). Les recettes archivées (statut géré
+  // dans Outils consultant) sortent de la bibliothèque, des plats, des exports
+  // et de la recherche allergènes.
+  const recettesEtab = recettes.filter(r =>
+    (r.etablissementId || 'etab-1') === etabId && r.statut !== 'archivée'
+  );
 
   // Onglet carte actif (ou bibliothèque). On garde toujours un onglet valide.
   const isLibrary = activeTab === LIBRARY_TAB;
@@ -1029,6 +1034,8 @@ const Recettes = ({ user, etablissement }) => {
             onAddCarte={addCarte}
             onRenameCarte={renameCarte}
             onDeleteCarte={deleteCarte}
+            archivedCartes={archivedCartes}
+            onArchiveCarte={archiveCarte}
             homeId={defaultCarteId}
           />
         </div>

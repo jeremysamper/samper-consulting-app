@@ -22,7 +22,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, convertFactor } from './ConsultantTools.constants.js';
 import PhotoUploader from './PhotoUploader.jsx';
 import { cts } from './ConsultantTools.styles.js';
-import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown } from 'lucide-react';
+import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
@@ -194,6 +194,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   // Filtrer par établissement
   const recettesEtab = recettes.filter(r => (r.etablissementId || 'etab-1') === etabId);
+  // Archivage : statut 'archivée' → hors de l'arborescence, des simulations et
+  // des analyses IA groupées. Les archivées restent éditables via leur section.
+  const recettesActives = recettesEtab.filter(r => r.statut !== 'archivée');
+  const recettesArchivees = recettesEtab.filter(r => r.statut === 'archivée');
 
   // Chargement initial + realtime depuis Supabase
   React.useEffect(() => {
@@ -205,7 +209,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         if (mounted) {
           const safeRecs = Array.isArray(recs) ? recs : [];
           setRecettes(safeRecs);
-          if (!selectedId && safeRecs[0]) setSelectedId(safeRecs[0].id);
+          const firstOpen = safeRecs.find(r => r.statut !== 'archivée') || safeRecs[0];
+          if (!selectedId && firstOpen) setSelectedId(firstOpen.id);
           // Détection des brouillons localStorage non sauvegardés (crash / hors-ligne)
           const drafts = [];
           for (const r of safeRecs) {
@@ -249,7 +254,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Si changement d'établissement rend selectedId invalide
   React.useEffect(() => {
     if (selectedId && !recettesEtab.find(r => r.id === selectedId)) {
-      setSelectedId(recettesEtab[0]?.id || null);
+      setSelectedId((recettesActives[0] || recettesEtab[0])?.id || null);
     }
   }, [etabId, recettes.length]);
 
@@ -270,7 +275,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   const selected = recettes.find(r => r.id === selectedId);
   const searchValue = safeText(search);
-  const filtered = recettesEtab.filter(r => searchValue === '' || safeText(r.nom).includes(searchValue));
+  const filtered = recettesActives.filter(r => searchValue === '' || safeText(r.nom).includes(searchValue));
+  const archiveesFiltrees = recettesArchivees.filter(r => searchValue === '' || safeText(r.nom).includes(searchValue));
+  // Section « Archivées » de la liste : repliée par défaut.
+  const [showArchivees, setShowArchivees] = React.useState(false);
 
   // ═══ Sauvegarde différée + stabilité de la saisie ═══
   const saveTimerRef = React.useRef(null);
@@ -470,6 +478,42 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setShowDeleteConfirm(false);
   };
 
+  // Archive / restaure la recette sélectionnée. Réversible : la recette sort de
+  // la bibliothèque et des plats côté app, mais garde ses liaisons plat_recettes.
+  const archiverSelected = (archived) => {
+    if (!selected) return;
+    updateSelected({ statut: archived ? 'archivée' : 'brouillon' });
+    if (archived) setShowArchivees(true);
+    notifyLegacy(
+      archived
+        ? `« ${selected.nom} » archivée. Retrouvez-la dans la section Archivées de la liste.`
+        : `« ${selected.nom} » restaurée en brouillon.`,
+      'success',
+    );
+  };
+
+  // Archivage en lot des recettes sélectionnées (mode sélection).
+  const archiverRecettesSelection = async () => {
+    if (recSel.count === 0) return;
+    if (!confirmLegacy(`Archiver ${recSel.count} recette(s) sélectionnée(s) ?\n\nLes recettes sortent de la bibliothèque et des plats, sans être supprimées. Restaurables depuis la section Archivées.`)) return;
+    setRecBulkBusy(true);
+    const ids = Array.from(recSel.ids);
+    let ok = 0;
+    for (const id of ids) {
+      const r = recettesRef.current.find(x => x.id === id);
+      if (!r || r.statut === 'archivée') continue;
+      if (legacySB) {
+        try { await legacySB.db.upsertRecette({ ...r, statut: 'archivée' }); ok += 1; }
+        catch (err) { console.error('[archiverRecette]', err); }
+      } else { ok += 1; }
+    }
+    setRecettes(prev => prev.map(r => (recSel.ids.has(r.id) ? { ...r, statut: 'archivée' } : r)));
+    setRecBulkBusy(false);
+    recSel.exit();
+    setShowArchivees(true);
+    notifyLegacy(`${ok} recette(s) archivée(s).`, 'success');
+  };
+
   // ─── Mode sélection : suppression et export Excel de recettes en lot ───
   const supprimerRecettesSelection = async () => {
     if (recSel.count === 0) return;
@@ -561,10 +605,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId]);
 
+  // Cartes non archivées : seules visibles comme dossiers, cases de rattachement
+  // et cibles de publication. Les archivées gardent leurs liaisons en base.
+  const cartesActivesLocal = (cartesLocal || []).filter(c => !c.archive);
+
   const toggleActifSurCarte = async (recette, actif) => {
     if (!recette) return;
     const source = legacySB ? cartesLocal : readLegacyStorage('sc_cartes', demoData.cartes);
-    let carteEtab = source.find(c => (c.etablissementId || 'etab-1') === etabId);
+    let carteEtab = source.find(c => (c.etablissementId || 'etab-1') === etabId && !c.archive);
 
     // Créer une carte par défaut si aucune n'existe
     if (!carteEtab) {
@@ -618,7 +666,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const isRecetteActive = (recette) => {
     if (!recette) return false;
     const source = legacySB ? cartesLocal : readLegacyStorage('sc_cartes', demoData.cartes);
-    const carteEtab = source.find(c => (c.etablissementId || 'etab-1') === etabId);
+    const carteEtab = source.find(c => (c.etablissementId || 'etab-1') === etabId && !c.archive);
     return carteEtab?.plats?.some(p => p.recetteId === recette.id) || false;
   };
 
@@ -747,7 +795,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   // ── Détection groupée des allergènes sur toutes les recettes ──
   const detecterAllergenesToutes = async () => {
-    const targets = recettesEtab.filter(r => (r.ingredients || []).length > 0);
+    // Les recettes archivées sont exclues de l'analyse groupée (appels IA inutiles).
+    const targets = recettesActives.filter(r => (r.ingredients || []).length > 0);
     if (!targets.length) { notifyLegacy('Aucune recette avec des ingrédients à analyser.', 'info'); return; }
     if (!confirmLegacy(
       `Détecter les allergènes de ${targets.length} recette(s) ?\n\n`
@@ -915,12 +964,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           Chaque onglet est isolé dans un SafeModule pour qu'un crash n'affecte pas les autres. */}
       {activeTab === 'creation_carte' ? (
         SafeModule
-          ? <SafeModule name="Création de carte"><CarteCreator plats={plats} recettes={recettesEtab} etablissement={etablissement} legacySB={legacySB} etabId={etabId} user={user}/></SafeModule>
-          : <CarteCreator plats={plats} recettes={recettesEtab} etablissement={etablissement} legacySB={legacySB} etabId={etabId} user={user}/>
+          ? <SafeModule name="Création de carte"><CarteCreator plats={plats} recettes={recettesActives} etablissement={etablissement} legacySB={legacySB} etabId={etabId} user={user}/></SafeModule>
+          : <CarteCreator plats={plats} recettes={recettesActives} etablissement={etablissement} legacySB={legacySB} etabId={etabId} user={user}/>
       ) : activeTab === 'simulation' ? (
         SafeModule
-          ? <SafeModule name="Simulation carte"><CarteSimulation plats={plats} recettes={recettesEtab} etablissement={etablissement}/></SafeModule>
-          : <CarteSimulation plats={plats} recettes={recettesEtab} etablissement={etablissement}/>
+          ? <SafeModule name="Simulation carte"><CarteSimulation plats={plats} recettes={recettesActives} etablissement={etablissement}/></SafeModule>
+          : <CarteSimulation plats={plats} recettes={recettesActives} etablissement={etablissement}/>
       ) : activeTab === 'roles' ? (
         Roles
           ? (SafeModule
@@ -1031,6 +1080,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               >
                 <Btn small variant="ghost" onClick={() => setBulkLinkPlatOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
                   🍽 Rattacher à un plat ({recSel.count})
+                </Btn>
+                <Btn small variant="ghost" onClick={archiverRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
+                  🗄 Archiver ({recSel.count})
                 </Btn>
               </SelectionToolbar>
             </div>
@@ -1163,13 +1215,16 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               );
             };
 
-            // Dossiers : une carte par menu + « Non classés » (plats sans carte)
+            // Dossiers : une carte active par menu + « Non classés » (plats sans
+            // carte active — inclut les plats dont toutes les cartes sont archivées,
+            // pour qu'ils ne disparaissent pas de la liste).
+            const activeCarteIds = new Set(cartesActivesLocal.map(c => c.id));
             const folders = [
-              ...(cartesLocal || []).map(c => ({
+              ...cartesActivesLocal.map(c => ({
                 id: c.id, nom: c.nom,
                 plats: (plats || []).filter(p => (p.carteIds || []).includes(c.id) && platMatches(p)),
               })),
-              { id: '__none__', nom: 'Non classés', plats: (plats || []).filter(p => (p.carteIds || []).length === 0 && platMatches(p)) },
+              { id: '__none__', nom: 'Non classés', plats: (plats || []).filter(p => !(p.carteIds || []).some(id => activeCarteIds.has(id)) && platMatches(p)) },
             ];
 
             return (
@@ -1222,7 +1277,26 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </>
                 )}
 
-                {filtered.length === 0 && (
+                {/* ─── Recettes archivées (repliées par défaut) ─── */}
+                {archiveesFiltrees.length > 0 && (
+                  <>
+                    <div
+                      style={{ ...cts.orphelinHeader, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                      onClick={() => setShowArchivees(v => !v)}
+                      title={showArchivees ? 'Réduire' : 'Développer'}
+                    >
+                      <span style={{ fontSize: 10 }}>{showArchivees ? '▼' : '▶'}</span>
+                      <span>🗄 Archivées ({archiveesFiltrees.length})</span>
+                    </div>
+                    {showArchivees && archiveesFiltrees.map(r => (
+                      <div key={'arch-' + r.id} style={{ opacity: 0.6 }}>
+                        {renderRecetteItem(r, 0, 'arch-')}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {filtered.length === 0 && archiveesFiltrees.length === 0 && (
                   <div style={{padding: 16, fontSize: 12, color: 'var(--text2)'}}>Aucune recette.</div>
                 )}
               </>
@@ -1272,6 +1346,22 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   return linkedCount > 0 ? ` (${linkedCount})` : '';
                 })()}
               </button>
+              {/* borderColor explicite dans les deux branches : React réutilise le
+                  nœud <button> au toggle et retirer borderColor sur un border
+                  shorthand déclenche un warning de conflit de styles. */}
+              {selected.statut === 'archivée' ? (
+                <button
+                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent)', borderColor: 'var(--accent-bd)' }}
+                  onClick={() => archiverSelected(false)}
+                  title="Restaurer la recette (repasse en brouillon)"
+                ><ArchiveRestore size={14} /> Désarchiver</button>
+              ) : (
+                <button
+                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: 'var(--border)' }}
+                  onClick={() => archiverSelected(true)}
+                  title="Sortir la recette de la bibliothèque et des plats, sans la supprimer"
+                ><Archive size={14} /> Archiver</button>
+              )}
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
               <button
                 style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
@@ -1944,13 +2034,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 {/* ─── Cartes (menus) où figure ce plat ─── */}
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Cartes (menus)</label>
-                  {(cartesLocal || []).length === 0 ? (
+                  {cartesActivesLocal.length === 0 ? (
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, fontStyle: 'italic' }}>
                       Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher ce plat.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                      {(cartesLocal || []).map(c => {
+                      {cartesActivesLocal.map(c => {
                         const checked = (p.carteIds || []).includes(c.id);
                         return (
                           <label key={c.id}

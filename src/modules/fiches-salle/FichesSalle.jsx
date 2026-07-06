@@ -143,7 +143,7 @@ const FichesSalle = ({ user, etablissement }) => {
 
   // Cartes (menus) — onglets de filtrage. '__all__' = toutes les fiches.
   const ALL_TAB = '__all__';
-  const { cartes, addCarte, renameCarte, deleteCarte } = useCartes(etabId);
+  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
   const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
 
   const canEdit = canManageModule(user.role, 'fiches_salle');
@@ -390,6 +390,8 @@ const FichesSalle = ({ user, etablissement }) => {
         onAddCarte={addCarte}
         onRenameCarte={renameCarte}
         onDeleteCarte={deleteCarte}
+        archivedCartes={archivedCartes}
+        onArchiveCarte={archiveCarte}
       />
       <div style={fss.toolbar}>
         <div style={fss.left}>
@@ -685,7 +687,8 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                   onChange={e => importFromRecette(e.target.value)}
                 >
                   <option value="">Sélectionner une recette (optionnel)</option>
-                  {recettes.map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
+                  {/* Les recettes archivées sont masquées, sauf celle déjà liée (select contrôlé). */}
+                  {recettes.filter(r => r.statut !== 'archivée' || r.id === fiche?.recetteId).map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
                 </select>
                 {fiche?.recetteId && (
                   <div style={{ fontSize: 11, color: 'var(--success-text)', marginTop: 4, fontWeight: 600 }}>

@@ -6,8 +6,12 @@ import { notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/l
 // ─────────────────────────────────────────────────────────────────────────────
 // useCartes — source unique pour la liste des cartes (menus) d'un établissement.
 // Charge depuis Supabase + abonnement realtime ; repli localStorage en mode démo.
-// Expose les opérations de gestion (ajout / renommage / suppression) partagées
-// par « Cartes & Recettes » et « Fiches salle ».
+// Expose les opérations de gestion (ajout / renommage / archivage / suppression)
+// partagées par « Cartes & Recettes » et « Fiches salle ».
+//
+// `cartes` ne contient que les cartes actives ; les archivées sont dans
+// `archivedCartes` (restaurables via archiveCarte(id, false)). L'archivage ne
+// touche à aucune liaison carte_plats / carte_fiches_salle.
 //
 // La suppression d'une carte n'efface AUCUN plat / recette / fiche : seules les
 // liaisons carte_plats / carte_fiches_salle sont retirées (ON DELETE CASCADE).
@@ -16,24 +20,27 @@ import { notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/l
 export function useCartes(etabId) {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
-  const [cartes, setCartes] = React.useState(() =>
+  const [allCartes, setAllCartes] = React.useState(() =>
     legacySB ? [] : (readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId)
   );
 
   React.useEffect(() => {
     if (!legacySB) {
-      setCartes((readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId));
+      setAllCartes((readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId));
       return undefined;
     }
     let mounted = true;
     const reload = async () => {
-      try { const c = await legacySB.db.listCartes(etabId); if (mounted) setCartes(Array.isArray(c) ? c : []); }
+      try { const c = await legacySB.db.listCartes(etabId); if (mounted) setAllCartes(Array.isArray(c) ? c : []); }
       catch (e) { /* le realtime relancera */ }
     };
     reload();
     const unsub = legacySB.realtime.subscribeReload('cartes', reload);
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId, legacySB, demoData]);
+
+  const cartes = React.useMemo(() => allCartes.filter(c => !c.archive), [allCartes]);
+  const archivedCartes = React.useMemo(() => allCartes.filter(c => c.archive === true), [allCartes]);
 
   // Crée une nouvelle carte ; renvoie la carte créée (ou null en cas d'échec).
   const addCarte = React.useCallback(async (nom) => {
@@ -49,7 +56,7 @@ export function useCartes(etabId) {
     if (legacySB) {
       try {
         const saved = await legacySB.db.upsertCarte(carte);
-        setCartes(prev => (prev.some(c => c.id === saved.id) ? prev : [...prev, saved]));
+        setAllCartes(prev => (prev.some(c => c.id === saved.id) ? prev : [...prev, saved]));
         return saved;
       } catch (err) { notifyLegacy('Erreur création de carte : ' + (err.message || err), 'error'); return null; }
     }
@@ -57,27 +64,45 @@ export function useCartes(etabId) {
     all.push(carte);
     demoData.cartes = all;
     writeLegacyStorage('sc_cartes', all);
-    setCartes(prev => [...prev, carte]);
+    setAllCartes(prev => [...prev, carte]);
     return carte;
   }, [etabId, legacySB, demoData]);
 
   // Renomme / met à jour les dates d'une carte existante.
   const renameCarte = React.useCallback(async (id, patch) => {
-    const current = cartes.find(c => c.id === id);
+    const current = allCartes.find(c => c.id === id);
     if (!current) return;
     const next = { ...current, ...patch };
     if (legacySB) {
       try {
         const saved = await legacySB.db.upsertCarte(next);
-        setCartes(prev => prev.map(c => (c.id === id ? saved : c)));
+        setAllCartes(prev => prev.map(c => (c.id === id ? saved : c)));
       } catch (err) { notifyLegacy('Erreur mise à jour de carte : ' + (err.message || err), 'error'); }
       return;
     }
     const all = (readLegacyStorage('sc_cartes', demoData.cartes) || []).map(c => (c.id === id ? next : c));
     demoData.cartes = all;
     writeLegacyStorage('sc_cartes', all);
-    setCartes(prev => prev.map(c => (c.id === id ? next : c)));
-  }, [cartes, legacySB, demoData]);
+    setAllCartes(prev => prev.map(c => (c.id === id ? next : c)));
+  }, [allCartes, legacySB, demoData]);
+
+  // Archive (archived=true) ou restaure (archived=false) une carte.
+  // Aucun plat / recette / fiche n'est touché : la carte sort simplement des
+  // onglets. Renvoie false si l'écriture a échoué (l'appelant garde alors l'onglet).
+  const archiveCarte = React.useCallback(async (id, archived) => {
+    const flag = archived !== false;
+    if (legacySB) {
+      try { await legacySB.db.setCarteArchive(id, flag); }
+      catch (err) { notifyLegacy('Erreur archivage de carte : ' + (err.message || err), 'error'); return false; }
+    } else {
+      const all = (readLegacyStorage('sc_cartes', demoData.cartes) || []).map(c => (c.id === id ? { ...c, archive: flag } : c));
+      demoData.cartes = all;
+      writeLegacyStorage('sc_cartes', all);
+    }
+    setAllCartes(prev => prev.map(c => (c.id === id ? { ...c, archive: flag } : c)));
+    notifyLegacy(flag ? 'Carte archivée. Retrouvez-la via le bouton « Archives ».' : 'Carte restaurée.', 'success');
+    return true;
+  }, [legacySB, demoData]);
 
   const deleteCarte = React.useCallback(async (id) => {
     if (legacySB) {
@@ -88,8 +113,8 @@ export function useCartes(etabId) {
       demoData.cartes = all;
       writeLegacyStorage('sc_cartes', all);
     }
-    setCartes(prev => prev.filter(c => c.id !== id));
+    setAllCartes(prev => prev.filter(c => c.id !== id));
   }, [legacySB, demoData]);
 
-  return { cartes, addCarte, renameCarte, deleteCarte };
+  return { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte };
 }

@@ -980,6 +980,16 @@ export function installLegacySupabase() {
       if (error) throw error;
     },
 
+    // Archive / restaure une carte. Update ciblé (pas d'upsert complet) :
+    // upsertCarte n'envoie jamais la colonne archive, elle est donc préservée
+    // par les renommages et syncs de plats.
+    async setCarteArchive(id, archive) {
+      const { error } = await client.from('cartes')
+        .update({ archive: archive === true })
+        .eq('id', id);
+      if (error) throw error;
+    },
+
     // Remplace l'ensemble des cartes auxquelles un plat est rattaché.
     async setPlatCartes(platId, carteIds) {
       if (!platId) return;
@@ -1048,6 +1058,7 @@ export function installLegacySupabase() {
         dateDebut: row.date_debut,
         dateFin: row.date_fin,
         plats: row.plats || [],
+        archive: row.archive === true,
       };
     },
 
