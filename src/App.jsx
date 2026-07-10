@@ -194,9 +194,13 @@ export default function App() {
         {/* Keep-alive : chaque module visité reste monté ; seul le module prêt
             (visiblePage) est affiché. display:contents préserve la mise en page
             (le module reste enfant direct de <main>). Les modules en cours de
-            chargement sont montés mais masqués → pas d'écran « Chargement… ». */}
+            chargement sont montés mais masqués → pas d'écran « Chargement… ».
+            La clé inclut l'établissement courant : en changer REMONTE tous les
+            modules à neuf (états internes compris — fiche ouverte, onglet,
+            sélection…). Sans ça, un module gardé monté rechargeait ses données
+            mais conservait l'état de l'ancien établissement à l'écran. */}
         {pagesToRender.map((p) => (
-          <div key={p} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
+          <div key={`${p}::${currentEtablissement.currentId || 'boot'}`} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
             <LegacyModuleHost
               page={p}
               user={auth.profile}

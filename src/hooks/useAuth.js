@@ -49,6 +49,19 @@ export function useAuth() {
   const profileRef = useRef(null);
   useEffect(() => { profileRef.current = profile; }, [profile]);
 
+  // Pose le profil en PRÉSERVANT l'identité de l'objet si le contenu n'a pas
+  // changé. Supabase ré-émet SIGNED_IN à chaque retour sur l'onglet : sans
+  // cette garde, chaque refocus fabrique un nouvel objet profil → tous les
+  // useEffect qui dépendent de `auth.profile` repartent (re-hydratation
+  // DEMO_DATA, re-résolution de l'établissement courant qui peut écraser un
+  // changement d'établissement en cours…).
+  const applyProfile = (next) => {
+    setProfile(prev => {
+      if (prev && next && JSON.stringify(prev) === JSON.stringify(next)) return prev;
+      return next;
+    });
+  };
+
   // Vrai pendant signIn() : empêche le handler SIGNED_IN de recharger le profil
   // que signIn charge déjà (évite un second getProfile au login = dédup à la source).
   const signingInRef = useRef(false);
@@ -140,7 +153,7 @@ export function useAuth() {
           return;
         }
 
-        setProfile(nextProfile);
+        applyProfile(nextProfile);
       });
     } catch (err) {
       console.warn('[Auth] Ecoute auth indisponible', err);
