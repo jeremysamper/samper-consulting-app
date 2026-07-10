@@ -19,6 +19,9 @@ import Tracabilite from './Tracabilite.jsx';
 // MODULE HACCP — Relevés · Contrôles hygiène · Config consultant
 // ─────────────────────────────────────────────────────
 
+// toLocaleDateString('fr-CH') rend les libellés en minuscules ("jeudi 10 juillet")
+const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
 const HACCP = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
@@ -52,6 +55,11 @@ const HACCP = ({ user, etablissement }) => {
   const [showQuickReleves, setShowQuickReleves] = React.useState(false);
   const [quickReleves, setQuickReleves] = React.useState({});
   const [quickSaving, setQuickSaving] = React.useState(false);
+
+  // ─── Export des relevés : choix de période (journalier / mensuel) ───
+  // 'print' | 'pdf' = action demandée ; null = modale fermée.
+  const [exportRelevesMode, setExportRelevesMode] = React.useState(null);
+  const [exportRelevesBusy, setExportRelevesBusy] = React.useState(false);
 
   // ─── Traçabilité : trigger de capture enregistré par le sous-composant ───
   // (ref stable pour éviter une boucle de re-render : Tracabilite ré-enregistre
@@ -155,6 +163,13 @@ const HACCP = ({ user, etablissement }) => {
   const tauxConf    = releves.length > 0 ? Math.round(releves.filter(r=>r.conforme).length/releves.length*100) : 100;
   const todayReleves  = releves.filter(r=>r.date===dateFilter);
   const todayControls = controls.filter(c=>c.date===dateFilter);
+
+  // ─── Périodes d'export des relevés : jour sélectionné / mois du jour sélectionné ───
+  const monthKey = dateFilter.slice(0, 7); // 'YYYY-MM'
+  const monthReleves = releves.filter(r => (r.date || '').startsWith(monthKey));
+  const fmtJour = (d, withYear = true) => new Date(d + 'T12:00:00')
+    .toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}) });
+  const moisLabel = new Date(dateFilter + 'T12:00:00').toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
 
   const latestByZone = {};
   (zones || []).forEach(z=>{
@@ -305,6 +320,54 @@ const HACCP = ({ user, etablissement }) => {
     }
     setBulkBusy(false);
   };
+
+  // ─── Export/impression des relevés en registre PDF natif (journalier ou mensuel) ───
+  // Le document est généré en vectoriel par pdfUtils.exportHaccpRelevesPdf :
+  // relevés groupés par jour, anomalies en rouge, stats de conformité en tête.
+  const runRelevesExport = async (period) => {
+    const source = period === 'jour' ? todayReleves : monthReleves;
+    if (!source.length) { notifyLegacy('Aucun relevé pour cette période.', 'warning'); return; }
+    const rows = source.slice().sort((a, b) =>
+      (a.date || '').localeCompare(b.date || '') || (a.heure || '').localeCompare(b.heure || ''));
+    const byDate = new Map();
+    rows.forEach(r => { if (!byDate.has(r.date)) byDate.set(r.date, []); byDate.get(r.date).push(r); });
+    const days = [...byDate.entries()].map(([date, list]) => ({
+      dateLabel: capitalize(fmtJour(date, period === 'jour')),
+      rows: list.map(r => {
+        const zone = zones.find(z => z.id === r.zoneId);
+        const op = demoData.utilisateurs.find(u => u.id === r.operateur);
+        return {
+          zone: zone ? zone.nom : (r.zoneId || ''),
+          heure: r.heure || '',
+          valeur: `${r.valeur}${zone?.unite || ''}`,
+          operateur: op ? `${op.prenom || ''} ${op.nom || ''}`.trim() : (r.operateur || ''),
+          conforme: !!r.conforme,
+          commentaire: r.commentaire || '',
+        };
+      }),
+    }));
+    const nbAnomalies = rows.filter(r => !r.conforme).length;
+    const payload = {
+      periodeLabel: period === 'jour' ? capitalize(fmtJour(dateFilter)) : capitalize(moisLabel),
+      stats: {
+        total: rows.length,
+        conformes: rows.length - nbAnomalies,
+        anomalies: nbAnomalies,
+        taux: Math.round((rows.length - nbAnomalies) / rows.length * 100),
+      },
+      days,
+    };
+    setExportRelevesBusy(true);
+    try {
+      await pdfUtils.exportHaccpRelevesPdf(payload, {
+        etablissement,
+        autoPrint: exportRelevesMode === 'print',
+        filename: `releves-haccp-${period === 'jour' ? dateFilter : monthKey}.pdf`,
+      });
+      setExportRelevesMode(null);
+    } catch (e) { /* notify déjà géré dans le service */ }
+    finally { setExportRelevesBusy(false); }
+  };
   const deleteControlRecord = async (id) => {
     if (!canManage) return;
     if (!confirmLegacy('Supprimer ce contrôle enregistré ?')) return;
@@ -433,8 +496,10 @@ const HACCP = ({ user, etablissement }) => {
               <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>+ Ajouter contrôle</button>
             </>
           )}
-          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=>pdfUtils?.printElement(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>}
-          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=>pdfUtils?.exportElementToPdf(activeTab==='releves' ? 'haccp-releves-print' : activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
+          {/* Onglet relevés : choix de période (journalier / mensuel) avant génération.
+              Autres onglets : impression/export de la vue affichée, comme avant. */}
+          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>}
+          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
         </div>
       </div>
 
@@ -777,6 +842,41 @@ const HACCP = ({ user, etablissement }) => {
       {/* Zone add/edit */}
       {zoneModal && <ZoneForm zone={zoneModal==='new'?null:zoneModal} onSave={saveZone} onCancel={()=>setZoneModal(null)}/>}
       {ctrlModal && <CtrlForm ctrl={ctrlModal==='new'?null:ctrlModal} onSave={saveCtrl} onCancel={()=>setCtrlModal(null)}/>}
+
+      {/* ─── Modale export relevés : période journalière ou mensuelle ─── */}
+      {exportRelevesMode && (
+        <div className="modal-sheet-overlay" style={hs.overlay} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>
+          <div className="modal-sheet" style={{...hs.modal, width: 460}} onClick={e=>e.stopPropagation()}>
+            <div style={hs.modalHeader}>
+              <div style={hs.modalTitle}>{exportRelevesMode==='print' ? '🖨 Imprimer les relevés' : '⬇ Exporter les relevés en PDF'}</div>
+              <button style={hs.closeBtn} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>✕</button>
+            </div>
+            <div style={hs.modalBody}>
+              <div style={{fontSize:12, color:'var(--text2)', marginBottom:14, lineHeight:1.5}}>
+                Choisissez la période du registre. Elle se base sur la date sélectionnée dans la barre d'outils.
+              </div>
+              <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                {[
+                  { id:'jour', icon:'📄', label:'Journalier', sub:capitalize(fmtJour(dateFilter)), count:todayReleves.length },
+                  { id:'mois', icon:'📅', label:'Mensuel', sub:capitalize(moisLabel), count:monthReleves.length },
+                ].map(opt=>(
+                  <button key={opt.id} disabled={exportRelevesBusy}
+                    style={{...hs.periodBtn, opacity:(opt.count===0 || exportRelevesBusy) ? 0.55 : 1}}
+                    onClick={()=>runRelevesExport(opt.id)}>
+                    <span style={{fontSize:22, flexShrink:0}}>{opt.icon}</span>
+                    <span style={{flex:1, minWidth:0}}>
+                      <span style={{display:'block', fontSize:14, fontWeight:700, color:'var(--text)'}}>{opt.label}</span>
+                      <span style={{display:'block', fontSize:11, color:'var(--text2)', marginTop:2}}>{opt.sub} · {opt.count} relevé{opt.count>1?'s':''}</span>
+                    </span>
+                    <span style={{color:'var(--text2)', fontSize:18, flexShrink:0}}>›</span>
+                  </button>
+                ))}
+              </div>
+              {exportRelevesBusy && <div style={{marginTop:12, fontSize:12, color:'var(--text2)', textAlign:'center'}}>⏳ Génération du document…</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Modale "Tout conforme" — saisie groupée des relevés ─── */}
       {showQuickReleves && (

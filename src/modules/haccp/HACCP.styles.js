@@ -43,21 +43,14 @@ export const hs = {
   fInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
   cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-};
 
-export const hcfg = {
-  section:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
-  sectionHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'var(--bg)'},
-  sectionTitle:{fontSize:14,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
-  sectionSub:{fontSize:12,color:'var(--text2)',marginTop:2},
-  row:{display:'flex',alignItems:'center',gap:12,padding:'12px 18px',borderBottom:'1px solid var(--border)',transition:'background .12s'},
-  rowIcon:{width:36,height:36,borderRadius:8,background:'var(--accent-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0},
-  toggle:{width:40,height:22,borderRadius:11,position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0},
-  toggleThumb:{position:'absolute',top:2,width:18,height:18,borderRadius:9,background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'},
-  editBtn:{padding:'5px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'5px 12px',background:'none',border:'1px solid var(--danger-bd)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
+  // ─── Modale d'export des relevés : options de période (journalier / mensuel) ───
+  periodBtn:{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'12px 14px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,cursor:'pointer',fontFamily:'var(--font)',textAlign:'left'},
 
   // ─── Bouton "Tout conforme" + modale de saisie groupée ───
+  // (dans hs, PAS hcfg : HACCP.jsx les référence via hs.* ; définis dans hcfg
+  // ils valaient undefined et la modale n'était positionnée qu'en mobile via
+  // la classe CSS modal-full-overlay)
   quickBtn: { padding:'8px 14px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
   qrOverlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:12 },
   qrModal: { background:'var(--surface)', borderRadius:12, width:560, maxWidth:'94vw', maxHeight:'92vh', display:'flex', flexDirection:'column', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' },
@@ -71,4 +64,17 @@ export const hcfg = {
   qrFooter: { padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' },
   qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
   qrGhostBtn: { padding:'8px 14px', background:'none', color:'var(--text)', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', fontFamily:'var(--font)', fontSize:13 },
+};
+
+export const hcfg = {
+  section:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
+  sectionHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'var(--bg)'},
+  sectionTitle:{fontSize:14,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
+  sectionSub:{fontSize:12,color:'var(--text2)',marginTop:2},
+  row:{display:'flex',alignItems:'center',gap:12,padding:'12px 18px',borderBottom:'1px solid var(--border)',transition:'background .12s'},
+  rowIcon:{width:36,height:36,borderRadius:8,background:'var(--accent-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0},
+  toggle:{width:40,height:22,borderRadius:11,position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0},
+  toggleThumb:{position:'absolute',top:2,width:18,height:18,borderRadius:9,background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'},
+  editBtn:{padding:'5px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{padding:'5px 12px',background:'none',border:'1px solid var(--danger-bd)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
 };

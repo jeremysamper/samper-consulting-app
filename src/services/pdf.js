@@ -978,6 +978,199 @@ export const pdfUtils = {
       doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // REGISTRE HACCP — relevés de température (jsPDF natif, vectoriel)
+  // Journalier ou mensuel : le payload arrive déjà groupé par jour.
+  // Généré en vectoriel (pas de capture html2canvas) : lignes jamais
+  // coupées entre deux pages, en-têtes répétés, anomalies en rouge —
+  // document présentable lors d'un contrôle d'hygiène. Même DA que la
+  // fiche recette et la liste de commande (bleu pétrole #003042).
+  // payload : { periodeLabel, stats:{total,conformes,anomalies,taux},
+  //   days:[{ dateLabel, rows:[{zone,heure,valeur,operateur,conforme,commentaire}] }] }
+  // options : { etablissement, autoPrint, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportHaccpRelevesPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      this._renderHaccpReleves(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'releves-haccp.pdf');
+      } else {
+        doc.save(options.filename || 'releves-haccp.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportHaccpRelevesPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderHaccpReleves(doc, payload, options = {}) {
+    const ACC = [0, 48, 66];      // bleu pétrole Samper
+    const INK = [26, 26, 28];
+    const MUTE = [121, 124, 126];
+    const HAIR = [215, 220, 224];
+    const OK = [21, 128, 61];     // conforme (--success-text)
+    const KO = [220, 38, 38];     // anomalie (--danger-strong)
+    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const contentW = PAGE_W - 2 * M;
+    const headerH = 12;
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
+    const logoDataUrl = options.logoDataUrl || null;
+    const periodeLabel = pdfSafeText((payload.periodeLabel || '').toString());
+    const stats = payload.stats || null;
+    const days = (Array.isArray(payload.days) ? payload.days : []).map(d => ({
+      dateLabel: pdfSafeText((d.dateLabel || '').toString()),
+      rows: (d.rows || []).map(r => ({
+        zone: pdfSafeText((r.zone || '').toString()),
+        heure: pdfSafeText((r.heure || '').toString()),
+        valeur: pdfSafeText((r.valeur || '').toString()),
+        operateur: pdfSafeText((r.operateur || '').toString()),
+        conforme: !!r.conforme,
+        commentaire: pdfSafeText((r.commentaire || '').toString()),
+      })),
+    }));
+    const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Colonnes : Zone | Heure | Valeur (droite) | Opérateur | Statut | Commentaire
+    const zoneX = M,        zoneW = 40;
+    const heureX = M + 43;
+    const valRight = M + 71;
+    const opX = M + 75,     opW = 27;
+    const statutX = M + 105;
+    const commX = M + 126,  commW = contentW - 126;
+    const bodyBottom = PAGE_H - M - 12;
+    const LINE_H = 4.3;
+
+    const drawHeader = () => {
+      if (logoDataUrl) {
+        try {
+          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
+        } catch (e) { /* logo illisible */ }
+      }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
+      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
+      const ruleTopY = M + headerH;
+      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
+      doc.text('Relevés de température', M, ruleTopY + 9);
+      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
+      doc.text(periodeLabel, M, ruleTopY + 17);
+      if (stats && stats.total != null) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+        doc.text(
+          `${stats.total} relevé${stats.total > 1 ? 's' : ''}  ·  ${stats.conformes} conforme${stats.conformes > 1 ? 's' : ''}  ·  ${stats.anomalies} anomalie${stats.anomalies > 1 ? 's' : ''}  ·  taux de conformité ${stats.taux}%`,
+          M, ruleTopY + 21.5,
+        );
+        return ruleTopY + 28;
+      }
+      return ruleTopY + 23;
+    };
+    const drawFooter = () => {
+      const fy = PAGE_H - M - 4;
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text('Registre HACCP - Samper Consulting', M, fy);
+      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
+    };
+
+    let y = drawHeader();
+    const ensureSpace = (h, onNewPage) => {
+      if (y + h > bodyBottom) {
+        drawFooter(); doc.addPage(); y = drawHeader();
+        if (onNewPage) onNewPage();
+      }
+    };
+    const colLabels = () => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...MUTE);
+      doc.text('ZONE', zoneX, y, { charSpace: 0.4 });
+      doc.text('HEURE', heureX, y, { charSpace: 0.4 });
+      doc.text('VALEUR', valRight, y, { align: 'right', charSpace: 0.4 });
+      doc.text('OPÉRATEUR', opX, y, { charSpace: 0.4 });
+      doc.text('STATUT', statutX, y, { charSpace: 0.4 });
+      doc.text('COMMENTAIRE', commX, y, { charSpace: 0.4 });
+      y += 4;
+    };
+    // En-tête de journée (répété avec « (suite) » quand un jour continue sur la page suivante)
+    const dayHead = (label, suite = false) => {
+      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
+      doc.text((label + (suite ? ' (suite)' : '')).toUpperCase(), M + 3.4, y, { charSpace: 0.5 });
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
+      y += 7;
+      colLabels();
+    };
+
+    if (!days.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      doc.text('Aucun relevé pour cette période.', M, y + 4);
+    }
+
+    days.forEach((day) => {
+      ensureSpace(20);
+      dayHead(day.dateLabel);
+      day.rows.forEach((r) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        const zoneLines = doc.splitTextToSize(r.zone || '-', zoneW);
+        doc.setFontSize(8.5);
+        const opLines = doc.splitTextToSize(r.operateur || '-', opW);
+        const commLines = doc.splitTextToSize(r.commentaire || '-', commW);
+        const nLines = Math.max(zoneLines.length, opLines.length, commLines.length, 1);
+        const rowH = Math.max(6, nLines * LINE_H + 1.7);
+        ensureSpace(rowH, () => dayHead(day.dateLabel, true));
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        zoneLines.forEach((l, k) => doc.text(l, zoneX, y + k * LINE_H));
+        doc.setFontSize(9); doc.setTextColor(...MUTE);
+        doc.text(r.heure || '-', heureX, y);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+        doc.setTextColor(...(r.conforme ? OK : KO));
+        doc.text(r.valeur || '-', valRight, y, { align: 'right' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTE);
+        opLines.forEach((l, k) => doc.text(l, opX, y + k * LINE_H));
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+        doc.setTextColor(...(r.conforme ? OK : KO));
+        doc.text(r.conforme ? 'Conforme' : 'Anomalie', statutX, y);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+        doc.setTextColor(...(r.commentaire ? (r.conforme ? INK : KO) : MUTE));
+        commLines.forEach((l, k) => doc.text(l, commX, y + k * LINE_H));
+        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
+        doc.line(M, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
+        y += rowH;
+      });
+      y += 4;
+    });
+
+    // Visa du responsable : attendu sur un registre officiel présenté en contrôle
+    if (days.length) {
+      ensureSpace(18);
+      y += 6;
+      doc.setDrawColor(...MUTE); doc.setLineWidth(0.3);
+      doc.line(PAGE_W - M - 60, y, PAGE_W - M, y);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text('Date et visa du responsable', PAGE_W - M, y + 3.5, { align: 'right' });
+    }
+
+    drawFooter();
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
+    }
+  },
 };
 
 // ─── Assainissement texte pour jsPDF ────────────────────────────────
