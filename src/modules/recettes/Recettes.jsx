@@ -765,8 +765,13 @@ const ms = {
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
 };
 
-// Normalisation recherche : minuscules + sans accents (poivre = poivré).
-const normalizeSearch = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// Normalisation recherche : minuscules + sans accents (poivre = poivré) +
+// ligatures repliées (bœuf = boeuf). Utilisée par la recherche principale
+// (plats/recettes) ET par la modale allergènes/ingrédients.
+const normalizeSearch = (s) => String(s || '')
+  .toLowerCase()
+  .replace(/œ/g, 'oe').replace(/æ/g, 'ae')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 // ─── IngredientSearchModal : « où se trouve cet ingrédient / allergène ? » ───
 // Cherche un terme (ex. « poivre », « gluten ») dans TOUTES les recettes de
@@ -803,7 +808,7 @@ const IngredientSearchModal = ({ recettes, plats, onPick, onClose }) => {
       <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
         <div style={smStyle.header}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🔎 Recherche allergène / ingrédient</div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⚠ Recherche allergène / ingrédient</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Trouvez dans quelles recettes un produit apparaît</div>
           </div>
           <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
@@ -993,10 +998,13 @@ const Recettes = ({ user, etablissement }) => {
   const platsCarte = activeCarte
     ? (plats || []).filter(p => (p.carteIds || []).includes(activeCarte.id))
     : [];
+  // Recherche insensible aux accents, à la casse et aux espaces parasites
+  // (« creme » trouve « Crème brûlée »).
+  const q = normalizeSearch(search.trim());
   const filteredPlats = platsCarte.filter(p =>
     p.actif !== false &&
     (catFilter === 'Tous' || p.categorie === catFilter) &&
-    (search === '' || p.nom.toLowerCase().includes(search.toLowerCase()))
+    (q === '' || normalizeSearch(p.nom).includes(q))
   );
 
   if (selectedRecette) return <RecetteDetail recette={selectedRecette} user={user} etablissement={etablissement} onBack={() => setSelectedRecette(null)}/>;
@@ -1040,8 +1048,10 @@ const Recettes = ({ user, etablissement }) => {
           />
         </div>
         <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
-          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
-          <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">{isMobile ? '🔎' : '🔎 Allergènes'}</button>
+          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />
+          {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
+              en icône seule, la loupe 🔎 se confondait avec la loupe de recherche. */}
+          <button style={{...rs.printBtn, background:'var(--warning-bg)', borderColor:'var(--warning-bd)', color:'var(--warning-text)', fontWeight:600}} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">⚠ Allergènes</button>
           <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
         </div>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
@@ -1200,12 +1210,12 @@ const Recettes = ({ user, etablissement }) => {
             const allLinkedRecetteIds = new Set();
             (plats || []).forEach(p => (p.recettes || []).forEach(pr => allLinkedRecetteIds.add(pr.recetteId)));
             const orphelines = recettesEtab.filter(r =>
-              !allLinkedRecetteIds.has(r.id) && (search === '' || r.nom.toLowerCase().includes(search.toLowerCase()))
+              !allLinkedRecetteIds.has(r.id) && (q === '' || normalizeSearch(r.nom).includes(q))
             );
             const visiblePlats = (plats || []).filter(p =>
-              search === '' ||
-              p.nom.toLowerCase().includes(search.toLowerCase()) ||
-              recettesParPlat[p.id]?.some(r => r.nom.toLowerCase().includes(search.toLowerCase()))
+              q === '' ||
+              normalizeSearch(p.nom).includes(q) ||
+              recettesParPlat[p.id]?.some(r => normalizeSearch(r.nom).includes(q))
             );
 
             const renderRecetteCard = (r, isSubItem = false) => (
