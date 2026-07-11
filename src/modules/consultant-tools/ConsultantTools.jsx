@@ -304,6 +304,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [scalingTarget, setScalingTarget] = React.useState({ ingId: '', targetQty: '' });
   // Picker catalogue : null = fermé, 'multi' = ajout en masse, ID ligne = remplacement d'une ligne précise
   const [catalogPicker, setCatalogPicker] = React.useState(null);
+  // ID de l'ingrédient dont le champ nom a le focus : seules ses suggestions catalogue
+  // sont affichées, sinon les panneaux recouvrent les lignes suivantes
+  const [focusedIngId, setFocusedIngId] = React.useState(null);
   const [pickerSearch, setPickerSearch] = React.useState('');
   const [pickerCat, setPickerCat] = React.useState('Tous');
   const [pickerSelected, setPickerSelected] = React.useState(new Set());
@@ -730,6 +733,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       }
     }
     updateSelected(patch);
+    // Le champ nom est remonté (nouvelle key) après le lien : son blur ne fire plus,
+    // on retire donc le focus suggestions à la main pour éviter un panneau fantôme au déliage.
+    setFocusedIngId(null);
   };
 
   // ── Actions étapes
@@ -1682,8 +1688,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     </div>
                   )}
                   {(selected.ingredients || []).map((ing, idx) => {
-                    // Suggestions discrètes (3+ chars, max 5 résultats)
-                    const showSugg = (ing.nom || '').length >= 3 && catalogue.length > 0 && !ing.produitId;
+                    // Suggestions discrètes (3+ chars, max 5 résultats),
+                    // uniquement pour la ligne en cours d'édition : le panneau est
+                    // en position absolue et recouvrirait les lignes suivantes.
+                    const showSugg = focusedIngId === ing.id && (ing.nom || '').length >= 3 && catalogue.length > 0 && !ing.produitId;
                     const suggestions = showSugg
                       ? catalogue
                           .filter(p => safeText(p.nom).includes(safeText(ing.nom)))
@@ -1734,6 +1742,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           placeholder="Ingrédient"
                           style={{ ...cts.ingInput, flex: 1, width: 'auto' }}
                           autoComplete="off"
+                          onFocus={() => setFocusedIngId(ing.id)}
+                          onBlur={() => setFocusedIngId(cur => (cur === ing.id ? null : cur))}
                         />
                         <button
                           type="button"

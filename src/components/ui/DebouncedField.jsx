@@ -15,8 +15,9 @@ import { useDebouncedCallback } from '../../hooks/useDebounce.js';
 //   delay     : délai de debounce en ms (défaut 400)
 //   as        : 'input' (défaut) | 'textarea'
 //   parse     : transforme la chaîne saisie avant `onCommit` (ex: Number)
+//   onFocus / onBlur : chaînés après la gestion interne du focus
 //   ...rest   : props passées telles quelles à l'élément (style, placeholder, type…)
-export function DebouncedField({ value, onCommit, delay = 400, as = 'input', parse, ...rest }) {
+export function DebouncedField({ value, onCommit, delay = 400, as = 'input', parse, onFocus, onBlur, ...rest }) {
   const [local, setLocal] = React.useState(value ?? '');
   const localRef = React.useRef(local);
   localRef.current = local;
@@ -41,12 +42,16 @@ export function DebouncedField({ value, onCommit, delay = 400, as = 'input', par
     debouncedEmit(raw);
   };
 
-  const handleFocus = () => { focusedRef.current = true; };
+  const handleFocus = (e) => {
+    focusedRef.current = true;
+    if (onFocus) onFocus(e);
+  };
 
-  const handleBlur = () => {
+  const handleBlur = (e) => {
     focusedRef.current = false;
     cancelEmit();
     emit(localRef.current);
+    if (onBlur) onBlur(e);
   };
 
   const Tag = as;
