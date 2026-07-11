@@ -618,12 +618,28 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   );
 };
 
-// ─── Export multiple : choisir un plat (→ toutes ses recettes associées) ou des recettes ───
-const ExportMultipleModal = ({ plats, recettes, user, etablissement, onClose }) => {
-  const [mode, setMode] = React.useState('plat'); // 'plat' | 'recette'
+// ─── Export multiple : une carte entière, des plats ou des recettes, rangés par catégories ───
+// Les trois onglets alimentent UNE même sélection (cumulable) ; les doublons
+// sont retirés à l'export : une recette cochée ET présente via une carte ou un
+// plat sélectionné ne sort qu'une seule fois. L'ordre des pages du PDF suit le
+// rangement affiché : cartes (catégorie > ordre du plat > ordre des recettes),
+// puis plats, puis recettes individuelles.
+const EXPORT_CATS = ['Entrées', 'Plats', 'Desserts', 'Fromages'];
+const exportCatRank = (c) => {
+  const i = EXPORT_CATS.indexOf(c);
+  return i === -1 ? EXPORT_CATS.length : i;
+};
+
+const ExportMultipleModal = ({ cartes, plats, recettes, user, etablissement, onClose }) => {
+  const [tab, setTab] = React.useState('cartes'); // 'cartes' | 'plats' | 'recettes'
+  const [query, setQuery] = React.useState('');
+  const [selCartes, setSelCartes] = React.useState(() => new Set());
   const [selPlats, setSelPlats] = React.useState(() => new Set());
   const [selRecettes, setSelRecettes] = React.useState(() => new Set());
+  const [expandedCartes, setExpandedCartes] = React.useState(() => new Set());
   const [busy, setBusy] = React.useState(false);
+
+  const q = normalizeSearch(query.trim());
 
   const recetteById = React.useMemo(() => {
     const m = new Map();
@@ -631,46 +647,134 @@ const ExportMultipleModal = ({ plats, recettes, user, etablissement, onClose }) 
     return m;
   }, [recettes]);
 
-  const platsList = (plats || []).filter(p => p.actif !== false);
+  const platsActifs = React.useMemo(() => (plats || []).filter(p => p.actif !== false), [plats]);
 
-  const resolvePlatRecettes = (plat) =>
-    (plat.recettes || [])
-      .slice()
-      .sort((a, b) => (a.ordre || 0) - (b.ordre || 0))
-      .map(pr => recetteById.get(pr.recetteId))
-      .filter(Boolean);
+  // Recettes d'un plat, dans l'ordre de composition (les archivées sont déjà exclues en amont).
+  const recettesDuPlat = React.useMemo(() => {
+    const m = new Map();
+    platsActifs.forEach(p => m.set(p.id,
+      (p.recettes || [])
+        .slice()
+        .sort((a, b) => (a.ordre || 0) - (b.ordre || 0))
+        .map(pr => recetteById.get(pr.recetteId))
+        .filter(Boolean)
+    ));
+    return m;
+  }, [platsActifs, recetteById]);
 
-  const toggle = (set, setSet, id) => {
-    const next = new Set(set);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSet(next);
+  // Plats d'une carte, rangés par catégorie puis ordre : c'est aussi l'ordre des pages du PDF.
+  const platsDeCarte = React.useMemo(() => {
+    const m = new Map();
+    (cartes || []).forEach(c => m.set(c.id,
+      platsActifs
+        .filter(p => (p.carteIds || []).includes(c.id))
+        .sort((a, b) =>
+          exportCatRank(a.categorie) - exportCatRank(b.categorie) ||
+          (a.ordre || 0) - (b.ordre || 0) ||
+          (a.nom || '').localeCompare(b.nom || ''))
+    ));
+    return m;
+  }, [cartes, platsActifs]);
+
+  const fichesDeCarte = (carteId) => {
+    const seen = new Set();
+    (platsDeCarte.get(carteId) || []).forEach(p => (recettesDuPlat.get(p.id) || []).forEach(r => seen.add(r.id)));
+    return seen.size;
   };
 
-  // Recettes résultantes (dédupliquées, ordre conservé)
-  const selectedRecettes = (() => {
-    if (mode === 'recette') return (recettes || []).filter(r => selRecettes.has(r.id));
+  // Ce que les cartes / plats cochés couvrent déjà : alimente les badges « déjà inclus ».
+  const couverture = React.useMemo(() => {
+    const platIds = new Set();
+    const recetteIds = new Set();
+    (cartes || []).filter(c => selCartes.has(c.id)).forEach(c =>
+      (platsDeCarte.get(c.id) || []).forEach(p => {
+        platIds.add(p.id);
+        (recettesDuPlat.get(p.id) || []).forEach(r => recetteIds.add(r.id));
+      }));
+    platsActifs.filter(p => selPlats.has(p.id)).forEach(p =>
+      (recettesDuPlat.get(p.id) || []).forEach(r => recetteIds.add(r.id)));
+    return { platIds, recetteIds };
+  }, [cartes, platsActifs, selCartes, selPlats, platsDeCarte, recettesDuPlat]);
+
+  const toggleSet = (setter, id) => setter(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  // ── Sélection effective → liste ordonnée et dédupliquée des fiches à exporter ──
+  const selectedCartesList = (cartes || []).filter(c => selCartes.has(c.id));
+  const selectedPlatsList = platsActifs
+    .filter(p => selPlats.has(p.id))
+    .sort((a, b) => exportCatRank(a.categorie) - exportCatRank(b.categorie) || (a.ordre || 0) - (b.ordre || 0));
+  const selectedRecettesList = (recettes || [])
+    .filter(r => selRecettes.has(r.id))
+    .sort((a, b) => exportCatRank(a.categorie) - exportCatRank(b.categorie) || (a.nom || '').localeCompare(b.nom || ''));
+
+  const fichesFinales = (() => {
     const seen = new Set();
     const out = [];
-    platsList.filter(p => selPlats.has(p.id)).forEach(p =>
-      resolvePlatRecettes(p).forEach(r => { if (!seen.has(r.id)) { seen.add(r.id); out.push(r); } })
-    );
+    const push = (r) => { if (r && !seen.has(r.id)) { seen.add(r.id); out.push(r); } };
+    selectedCartesList.forEach(c => (platsDeCarte.get(c.id) || []).forEach(p => (recettesDuPlat.get(p.id) || []).forEach(push)));
+    selectedPlatsList.forEach(p => (recettesDuPlat.get(p.id) || []).forEach(push));
+    selectedRecettesList.forEach(push);
     return out;
   })();
+  const count = fichesFinales.length;
+  const hasSelection = selectedCartesList.length + selectedPlatsList.length + selectedRecettesList.length > 0;
 
-  const count = selectedRecettes.length;
+  // ── Listes affichées : filtrées par la recherche (sans accents), groupées par catégorie ──
+  const groupByCat = (items) => {
+    const m = new Map();
+    items.forEach(it => {
+      const cat = it.categorie || 'Autres';
+      if (!m.has(cat)) m.set(cat, []);
+      m.get(cat).push(it);
+    });
+    return [...m.entries()].sort((a, b) => exportCatRank(a[0]) - exportCatRank(b[0]) || a[0].localeCompare(b[0]));
+  };
+
+  const cartesVisibles = (cartes || []).filter(c => q === '' || normalizeSearch(c.nom).includes(q));
+  const platGroups = groupByCat(platsActifs
+    .filter(p => q === '' || normalizeSearch(p.nom).includes(q))
+    .slice()
+    .sort((a, b) => (a.ordre || 0) - (b.ordre || 0) || (a.nom || '').localeCompare(b.nom || '')));
+  const recetteGroups = groupByCat((recettes || [])
+    .filter(r => q === '' || normalizeSearch(r.nom).includes(q))
+    .slice()
+    .sort((a, b) => (a.nom || '').localeCompare(b.nom || '')));
+
+  const toggleAllPlats = (items) => {
+    const eligibles = items.filter(p => (recettesDuPlat.get(p.id) || []).length > 0);
+    const allOn = eligibles.length > 0 && eligibles.every(p => selPlats.has(p.id));
+    setSelPlats(prev => {
+      const next = new Set(prev);
+      eligibles.forEach(p => { if (allOn) next.delete(p.id); else next.add(p.id); });
+      return next;
+    });
+  };
+  const toggleAllRecettes = (items) => {
+    const allOn = items.length > 0 && items.every(r => selRecettes.has(r.id));
+    setSelRecettes(prev => {
+      const next = new Set(prev);
+      items.forEach(r => { if (allOn) next.delete(r.id); else next.add(r.id); });
+      return next;
+    });
+  };
 
   const handleExport = async () => {
     if (!count || busy) return;
     if (!pdfUtils?.exportRecettesPdf) { notifyLegacy('Export PDF indisponible pour le moment.', 'error'); return; }
     const isConsultant = user?.role === 'consultant';
-    const data = selectedRecettes.map(r => buildRecettePdfData(r, { isConsultant }));
+    const data = fichesFinales.map(r => buildRecettePdfData(r, { isConsultant }));
 
-    let filename = 'Fiches_recettes.pdf';
-    if (mode === 'plat') {
-      const ps = platsList.filter(p => selPlats.has(p.id));
-      filename = ps.length === 1 ? `Plat_${slug(ps[0].nom)}.pdf` : `Fiches_${ps.length}_plats.pdf`;
-    } else {
-      filename = count === 1 ? `Fiche_${slug(selectedRecettes[0].nom)}.pdf` : `Fiches_${count}_recettes.pdf`;
+    let filename = `Fiches_${count}_recettes.pdf`;
+    if (selectedCartesList.length === 1 && !selectedPlatsList.length && !selectedRecettesList.length) {
+      filename = `Carte_${slug(selectedCartesList[0].nom)}.pdf`;
+    } else if (!selectedCartesList.length && selectedPlatsList.length === 1 && !selectedRecettesList.length) {
+      filename = `Plat_${slug(selectedPlatsList[0].nom)}.pdf`;
+    } else if (count === 1) {
+      filename = `Fiche_${slug(fichesFinales[0].nom)}.pdf`;
     }
 
     setBusy(true);
@@ -685,58 +789,188 @@ const ExportMultipleModal = ({ plats, recettes, user, etablissement, onClose }) 
     }
   };
 
+  const recap = [
+    selectedCartesList.length ? `${selectedCartesList.length} carte${selectedCartesList.length > 1 ? 's' : ''}` : null,
+    selectedPlatsList.length ? `${selectedPlatsList.length} plat${selectedPlatsList.length > 1 ? 's' : ''}` : null,
+    selectedRecettesList.length ? `${selectedRecettesList.length} recette${selectedRecettesList.length > 1 ? 's' : ''}` : null,
+  ].filter(Boolean).join(' + ');
+
+  const hints = {
+    cartes: 'Coche une carte pour exporter toutes les fiches recette de ses plats, rangées par catégorie.',
+    plats: 'Coche des plats : toutes leurs recettes associées seront exportées.',
+    recettes: 'Coche des recettes individuelles. La sélection se cumule avec les onglets Cartes et Plats.',
+  };
+
   return (
-    <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
-      <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
-        <div style={smStyle.header}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⤓ Export multiple</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Une fiche par page A4, dans un seul PDF</div>
+    <div className="modal-full-overlay" style={smStyle.overlay} onClick={() => !busy && onClose()}>
+      <div className="modal-full" style={ms.modal} onClick={e => e.stopPropagation()}>
+
+        {/* ── Zone fixe : titre, onglets, recherche ── */}
+        <div style={ms.sticky}>
+          <div style={ms.header}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⤓ Export multiple</div>
+              <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Une fiche par page A4, dans un seul PDF</div>
+            </div>
+            <button style={smStyle.closeBtn} onClick={() => !busy && onClose()}>✕</button>
           </div>
-          <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
+          <div style={ms.controls}>
+            <SegmentedTabs
+              size="sm"
+              active={tab}
+              onChange={setTab}
+              tabs={[
+                { id: 'cartes', label: `Cartes${selCartes.size ? ` (${selCartes.size})` : ''}` },
+                { id: 'plats', label: `Plats${selPlats.size ? ` (${selPlats.size})` : ''}` },
+                { id: 'recettes', label: `Recettes${selRecettes.size ? ` (${selRecettes.size})` : ''}` },
+              ]}
+            />
+            <input
+              type="text"
+              style={ms.search}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={tab === 'cartes' ? 'Rechercher une carte…' : tab === 'plats' ? 'Rechercher un plat…' : 'Rechercher une recette…'}
+            />
+            <div style={ms.hint}>{hints[tab]}</div>
+          </div>
         </div>
 
-        <div style={ms.modeRow}>
-          <button style={{ ...ms.modeBtn, ...(mode === 'plat' ? ms.modeActive : {}) }} onClick={() => setMode('plat')}>Par plat</button>
-          <button style={{ ...ms.modeBtn, ...(mode === 'recette' ? ms.modeActive : {}) }} onClick={() => setMode('recette')}>Par recette</button>
-        </div>
-        <div style={ms.hint}>
-          {mode === 'plat'
-            ? 'Coche un ou plusieurs plats : toutes leurs recettes associées seront exportées.'
-            : 'Coche une ou plusieurs recettes à exporter.'}
-        </div>
-
+        {/* ── Liste ── */}
         <div style={ms.list}>
-          {mode === 'plat' ? (
-            platsList.length === 0
-              ? <div style={ms.empty}>Aucun plat disponible.</div>
-              : platsList.map(p => {
-                  const n = resolvePlatRecettes(p).length;
+          {tab === 'cartes' && (
+            cartesVisibles.length === 0
+              ? <div style={ms.empty}>{q ? `Aucune carte ne correspond à « ${query.trim()} ».` : 'Aucune carte pour cet établissement.'}</div>
+              : cartesVisibles.map(c => {
+                  const platsC = platsDeCarte.get(c.id) || [];
+                  const nFiches = fichesDeCarte(c.id);
+                  const checked = selCartes.has(c.id);
+                  const disabled = nFiches === 0;
+                  const expanded = expandedCartes.has(c.id);
                   return (
-                    <label key={p.id} style={{ ...ms.row, ...(n === 0 ? ms.rowDisabled : {}) }}>
-                      <input type="checkbox" checked={selPlats.has(p.id)} disabled={n === 0} onChange={() => toggle(selPlats, setSelPlats, p.id)} />
-                      <span style={ms.rowName}>{p.nom}</span>
-                      <span style={ms.rowMeta}>{n} recette{n > 1 ? 's' : ''}</span>
-                    </label>
+                    <div key={c.id}>
+                      <div style={{ ...ms.row, ...(checked ? ms.rowChecked : {}) }}>
+                        <label style={{ ...ms.rowMain, ...(disabled ? ms.rowDisabled : {}) }}>
+                          <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggleSet(setSelCartes, c.id)} />
+                          <span style={ms.rowName}>{c.nom}</span>
+                          <span style={ms.rowMeta}>
+                            {platsC.length} plat{platsC.length > 1 ? 's' : ''} · {nFiches} fiche{nFiches > 1 ? 's' : ''}
+                          </span>
+                        </label>
+                        {platsC.length > 0 && (
+                          <button type="button" className="mini" style={ms.expandBtn}
+                            title={expanded ? 'Masquer le contenu' : 'Voir le contenu'}
+                            onClick={() => toggleSet(setExpandedCartes, c.id)}>
+                            {expanded ? '▼' : '▶'}
+                          </button>
+                        )}
+                      </div>
+                      {expanded && (
+                        <div style={ms.cartePreview}>
+                          {groupByCat(platsC).map(([cat, items]) => (
+                            <div key={cat}>
+                              <div style={ms.previewCat}>{cat}</div>
+                              {items.map(p => {
+                                const recs = recettesDuPlat.get(p.id) || [];
+                                return (
+                                  <div key={p.id} style={ms.previewLine}>
+                                    <strong style={{ color: 'var(--text)' }}>{p.nom}</strong>
+                                    {recs.length
+                                      ? <> : {recs.map(r => r.nom).join(', ')}</>
+                                      : <span style={{ fontStyle: 'italic' }}> : aucune fiche recette</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })
-          ) : (
-            (recettes || []).length === 0
-              ? <div style={ms.empty}>Aucune recette disponible.</div>
-              : (recettes || []).map(r => (
-                  <label key={r.id} style={ms.row}>
-                    <input type="checkbox" checked={selRecettes.has(r.id)} onChange={() => toggle(selRecettes, setSelRecettes, r.id)} />
-                    <span style={ms.rowName}>{r.nom}</span>
-                    <span style={ms.rowMeta}>{r.categorie}</span>
-                  </label>
-                ))
+          )}
+
+          {tab === 'plats' && (
+            platGroups.length === 0
+              ? <div style={ms.empty}>{q ? `Aucun plat ne correspond à « ${query.trim()} ».` : 'Aucun plat disponible.'}</div>
+              : platGroups.map(([cat, items]) => {
+                  const eligibles = items.filter(p => (recettesDuPlat.get(p.id) || []).length > 0);
+                  const allOn = eligibles.length > 0 && eligibles.every(p => selPlats.has(p.id));
+                  return (
+                    <div key={cat}>
+                      <div style={ms.groupHead}>
+                        <span>{cat}</span>
+                        <span style={ms.groupCount}>· {items.length}</span>
+                        {eligibles.length > 0 && (
+                          <button type="button" className="mini" style={ms.groupAllBtn} onClick={() => toggleAllPlats(items)}>
+                            {allOn ? 'Tout retirer' : 'Tout sélectionner'}
+                          </button>
+                        )}
+                      </div>
+                      {items.map(p => {
+                        const n = (recettesDuPlat.get(p.id) || []).length;
+                        const checked = selPlats.has(p.id);
+                        return (
+                          <label key={p.id} style={{ ...ms.row, ...(checked ? ms.rowChecked : {}), ...(n === 0 ? ms.rowDisabled : {}) }}>
+                            <input type="checkbox" checked={checked} disabled={n === 0} onChange={() => toggleSet(setSelPlats, p.id)} />
+                            <span style={ms.rowName}>{p.nom}</span>
+                            {couverture.platIds.has(p.id) && <span style={ms.tagInclus}>déjà via carte</span>}
+                            <span style={ms.rowMeta}>{n} fiche{n > 1 ? 's' : ''}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })
+          )}
+
+          {tab === 'recettes' && (
+            recetteGroups.length === 0
+              ? <div style={ms.empty}>{q ? `Aucune recette ne correspond à « ${query.trim()} ».` : 'Aucune recette disponible.'}</div>
+              : recetteGroups.map(([cat, items]) => {
+                  const allOn = items.length > 0 && items.every(r => selRecettes.has(r.id));
+                  return (
+                    <div key={cat}>
+                      <div style={ms.groupHead}>
+                        <span>{cat}</span>
+                        <span style={ms.groupCount}>· {items.length}</span>
+                        <button type="button" className="mini" style={ms.groupAllBtn} onClick={() => toggleAllRecettes(items)}>
+                          {allOn ? 'Tout retirer' : 'Tout sélectionner'}
+                        </button>
+                      </div>
+                      {items.map(r => {
+                        const checked = selRecettes.has(r.id);
+                        return (
+                          <label key={r.id} style={{ ...ms.row, ...(checked ? ms.rowChecked : {}) }}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleSet(setSelRecettes, r.id)} />
+                            <span style={ms.rowName}>{r.nom}</span>
+                            {couverture.recetteIds.has(r.id) && <span style={ms.tagInclus}>déjà incluse</span>}
+                            {r.portions ? <span style={ms.rowMeta}>{r.portions} port.</span> : null}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })
           )}
         </div>
 
+        {/* ── Pied : récapitulatif + export ── */}
         <div style={ms.footer}>
-          <span style={ms.count}>{count} fiche{count > 1 ? 's' : ''} sélectionnée{count > 1 ? 's' : ''}</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={ms.btnGhost} onClick={onClose}>Annuler</button>
+          <div style={ms.footerInfo}>
+            {hasSelection
+              ? <>
+                  {recap} → <strong style={{ color: 'var(--text)' }}>{count} fiche{count > 1 ? 's' : ''}</strong>
+                  {' '}
+                  <button type="button" className="mini" style={ms.clearBtn}
+                    onClick={() => { setSelCartes(new Set()); setSelPlats(new Set()); setSelRecettes(new Set()); }}>
+                    Tout effacer
+                  </button>
+                </>
+              : 'Aucune sélection pour le moment.'}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button style={ms.btnGhost} onClick={() => !busy && onClose()} disabled={busy}>Annuler</button>
             <button style={{ ...ms.btnPrimary, ...((count === 0 || busy) ? ms.btnDisabled : {}) }} onClick={handleExport} disabled={count === 0 || busy}>
               {busy ? 'Génération…' : `Exporter le PDF${count ? ` (${count})` : ''}`}
             </button>
@@ -748,18 +982,36 @@ const ExportMultipleModal = ({ plats, recettes, user, etablissement, onClose }) 
 };
 
 const ms = {
-  modeRow: { display: 'flex', gap: 8, padding: '14px 20px 0' },
-  modeBtn: { flex: 1, padding: '8px 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  modeActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
-  hint: { padding: '10px 20px 6px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
-  list: { flex: 1, overflowY: 'auto', padding: '4px 12px', margin: '0 8px', display: 'flex', flexDirection: 'column', gap: 2, minHeight: 120 },
-  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', borderBottom: '1px solid var(--border)' },
+  // Le conteneur scrolle en bloc (pas de double zone de scroll) : l'en-tête
+  // (titre + onglets + recherche) et le pied (récap + export) sont sticky pour
+  // rester visibles pendant qu'on parcourt les listes.
+  modal: { background: 'var(--surface)', borderRadius: 12, width: 720, maxWidth: '94vw', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
+  sticky: { position: 'sticky', top: 0, zIndex: 3, background: 'var(--surface)', borderBottom: '1px solid var(--border)', borderRadius: '12px 12px 0 0' },
+  header: { padding: '16px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  controls: { padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 10 },
+  search: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
+  hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
+  list: { padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', minHeight: 160 },
+  groupHead: { display: 'flex', alignItems: 'center', gap: 6, padding: '14px 6px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  groupCount: { fontWeight: 600, color: 'var(--text3)' },
+  groupAllBtn: { marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', textTransform: 'none', letterSpacing: 0, flexShrink: 0 },
+  row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', marginBottom: 6, flexShrink: 0 },
+  // Shorthand `border` complet (pas `borderColor`) : ms.row pose déjà le
+  // shorthand, mélanger les deux fait retirer borderColor au re-render (warning React).
+  rowChecked: { border: '1px solid var(--accent)', background: 'var(--accent-light)' },
   rowDisabled: { opacity: 0.45, cursor: 'not-allowed' },
-  rowName: { flex: 1, fontSize: 14, color: 'var(--text)', fontWeight: 500 },
-  rowMeta: { fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap' },
-  empty: { padding: '24px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)' },
-  footer: { padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  count: { fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
+  rowMain: { display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' },
+  rowName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflowWrap: 'anywhere' },
+  rowMeta: { fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0 },
+  tagInclus: { fontSize: 10, fontWeight: 700, background: 'var(--success-bg)', color: 'var(--success-text)', padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
+  expandBtn: { background: 'none', border: 'none', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', padding: '4px 6px', fontFamily: 'var(--font)', flexShrink: 0 },
+  cartePreview: { margin: '-2px 0 8px 14px', padding: '6px 12px 8px', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 },
+  previewCat: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  previewLine: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
+  empty: { padding: '28px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)' },
+  footer: { position: 'sticky', bottom: 0, zIndex: 3, background: 'var(--surface)', borderTop: '1px solid var(--border)', borderRadius: '0 0 12px 12px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  footerInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
+  clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
   btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
   btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
@@ -1013,6 +1265,7 @@ const Recettes = ({ user, etablissement }) => {
     <div style={rs.root}>
       {showExportModal && (
         <ExportMultipleModal
+          cartes={cartes}
           plats={plats}
           recettes={recettesEtab}
           user={user}
@@ -1052,7 +1305,7 @@ const Recettes = ({ user, etablissement }) => {
           {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
               en icône seule, la loupe 🔎 se confondait avec la loupe de recherche. */}
           <button style={{...rs.printBtn, background:'var(--warning-bg)', borderColor:'var(--warning-bd)', color:'var(--warning-text)', fontWeight:600}} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">⚠ Allergènes</button>
-          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter plusieurs fiches recette dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
+          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
         </div>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
       </div>
