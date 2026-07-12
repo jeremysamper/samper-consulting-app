@@ -1,0 +1,28 @@
+-- ============================================================================
+-- C1 STRUCTUREL — suppression définitive de la vue SECURITY DEFINER
+-- public.v_produits_avec_fourn (brief 3).
+--
+-- Le Bloc 0 (20260712_hotfix_revoke_v_produits_avec_fourn) avait révoqué les
+-- grants (tourniquet). On supprime ici la vue : inutilisée (grep dépôt = 0) et
+-- confirmée sans aucune requête REST sur ~80 jours (pg_stat_statements), née
+-- hors versioning. Le DROP la fait quitter le schéma et ramène repo == prod.
+--
+-- Idempotent : IF EXISTS (rejouable, no-op si déjà supprimée).
+--
+-- ROLLBACK — NE JAMAIS recréer en SECURITY DEFINER ni re-grant anon (c'était la
+-- faille). Si un réel besoin réapparaît, recréer en security_invoker pour que la
+-- RLS de l'appelant s'applique :
+--   create view public.v_produits_avec_fourn with (security_invoker = true) as
+--    select p.id, p.etablissement_id, p.nom, p.categorie, p.sous_categorie,
+--           p.unite_ref, p.prix_unitaire, p.fournisseur_id, p.reference_fourn,
+--           p.conditionnement, p.actif, p.notes, p.created_at, p.updated_at,
+--           pf.prix_achat, pf.conditionnement as cond_principal, pf.quantite_cond,
+--           pf.unite_cond, pf.prix_unitaire as prix_unit_calc,
+--           f.nom as fourn_nom, f.tel as fourn_tel
+--      from produits p
+--      left join produit_fournisseurs pf on pf.produit_id = p.id and pf.est_principal = true
+--      left join fournisseurs f on f.id = pf.fournisseur_id;
+--   -- puis grants explicites au strict besoin (authenticated), jamais anon.
+-- ============================================================================
+
+drop view if exists public.v_produits_avec_fourn;
