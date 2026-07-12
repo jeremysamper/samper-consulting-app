@@ -338,13 +338,19 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  // Ping — aucune auth requise, vérifie uniquement la présence des secrets
+  // Ping — réservé au consultant authentifié, vérifie la présence des secrets
   useEffect(() => {
-    const { url: supabaseUrl } = getSupabaseConfig();
-    fetch(`${supabaseUrl}/functions/v1/${POS_OAUTH_FN}?action=ping`)
-      .then(r => r.json())
-      .then(data => setSecrets(data.configured === true))
-      .catch(() => setSecrets(null)); // silencieux si edge function inaccessible
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setSecrets(null); return; }
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      fetch(`${supabaseUrl}/functions/v1/${POS_OAUTH_FN}?action=ping`, {
+        headers: { Authorization: `Bearer ${session.access_token}`, apikey: anonKey },
+      })
+        .then(r => r.json())
+        .then(data => setSecrets(data.configured === true))
+        .catch(() => setSecrets(null)); // silencieux si edge function inaccessible
+    })();
   }, []);
 
   // Écoute les messages postMessage du popup OAuth

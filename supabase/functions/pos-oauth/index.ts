@@ -153,8 +153,14 @@ Deno.serve(async (req: Request) => {
   // ── GET : callback OAuth2 + utilitaires ─────────────────────────
   if (req.method === 'GET') {
 
-    // ── ping — vérifie la présence des secrets (aucune auth requise) ──
+    // ── ping — présence des secrets (consultant authentifié uniquement) ──
     if (url.searchParams.get('action') === 'ping') {
+      // Gate : ne pas révéler la configuration des secrets à un appelant anonyme.
+      const { data: { user: pingUser } } = await userClient(req.headers.get('Authorization') ?? '').auth.getUser();
+      if (!pingUser) return json({ error: 'Non authentifié' }, 401);
+      const { data: pingProf } = await adminClient()
+        .from('profiles').select('role').eq('id', pingUser.id).maybeSingle();
+      if (pingProf?.role !== 'consultant') return json({ error: 'Accès refusé' }, 403);
       const configured = !!(
         Deno.env.get('LS_CLIENT_ID') &&
         Deno.env.get('LS_CLIENT_SECRET') &&
