@@ -11,6 +11,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import Tracabilite from './Tracabilite.jsx';
 
@@ -304,11 +305,10 @@ const HACCP = ({ user, etablissement }) => {
     const headers = ['Zone', 'Date', 'Heure', 'Valeur', 'Opérateur', 'Statut', 'Commentaire'];
     const data = rows.map(r => {
       const zone = zones.find(z => z.id === r.zoneId);
-      const op = demoData.utilisateurs.find(u => u.id === r.operateur);
       return [
         zone ? zone.nom : r.zoneId, r.date, r.heure,
         `${r.valeur}${zone ? (zone.unite || '') : ''}`,
-        op ? `${op.prenom || ''} ${op.nom || ''}`.trim() : (r.operateur || ''),
+        userDisplay(r.operateur).name,
         r.conforme ? 'Conforme' : 'Anomalie', r.commentaire || '',
       ];
     });
@@ -335,12 +335,11 @@ const HACCP = ({ user, etablissement }) => {
       dateLabel: capitalize(fmtJour(date, period === 'jour')),
       rows: list.map(r => {
         const zone = zones.find(z => z.id === r.zoneId);
-        const op = demoData.utilisateurs.find(u => u.id === r.operateur);
         return {
           zone: zone ? zone.nom : (r.zoneId || ''),
           heure: r.heure || '',
           valeur: `${r.valeur}${zone?.unite || ''}`,
-          operateur: op ? `${op.prenom || ''} ${op.nom || ''}`.trim() : (r.operateur || ''),
+          operateur: userDisplay(r.operateur).name,
           conforme: !!r.conforme,
           commentaire: r.commentaire || '',
         };
@@ -539,13 +538,13 @@ const HACCP = ({ user, etablissement }) => {
               <div style={hs.anomHeader}>⚠ Anomalies enregistrées</div>
               {(anomalies || []).map(a=>{
                 const zone=zones.find(z=>z.id===a.zoneId);
-                const op=demoData.utilisateurs.find(u=>u.id===a.operateur);
+                const op=userDisplay(a.operateur);
                 return(
                   <div key={a.id} style={hs.anomRow}>
                     <div style={hs.anomIcon}>{zone?.icone}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{zone?.nom}</div>
-                      <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure} · {op?.prenom} {op?.nom}</div>
+                      <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure} · {op.name}</div>
                       {a.commentaire&&<div style={{fontSize:12,color:'var(--danger-strong)',marginTop:2}}>{a.commentaire}</div>}
                     </div>
                     <div style={{fontSize:20,fontWeight:700,color:'var(--danger-strong)',fontFamily:'var(--font-serif)'}}>{a.valeur}{zone?.unite}</div>
@@ -591,7 +590,7 @@ const HACCP = ({ user, etablissement }) => {
             <div className="grid-table-row" style={{...hs.relHead, gridTemplateColumns: (sel.active ? '28px ' : '') + '2fr 60px 90px 120px 110px 2fr' + (canManage ? ' 90px' : '')}}>{sel.active && <span className="no-print" />}<span>Zone</span><span>Heure</span><span style={{textAlign:'right'}}>Valeur</span><span>Opérateur</span><span>Statut</span><span>Commentaire</span>{canManage && <span className="no-print">Action</span>}</div>
             {(todayReleves || []).map(r=>{
               const zone=zones.find(z=>z.id===r.zoneId);
-              const op=demoData.utilisateurs.find(u=>u.id===r.operateur);
+              const op=userDisplay(r.operateur);
               return(
                 <div key={r.id} className="grid-table-row" style={{...hs.relRow, gridTemplateColumns: (sel.active ? '28px ' : '') + '2fr 60px 90px 120px 110px 2fr' + (canManage ? ' 90px' : ''), ...(sel.active && sel.isSelected(r.id) ? { background: 'var(--bg)' } : {})}}>
                   {sel.active && (
@@ -602,7 +601,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={{fontSize:13,fontWeight:600}}>{zone?.icone} {zone?.nom}</span>
                   <span style={hs.cell}>{r.heure}</span>
                   <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-serif)'}}>{r.valeur}{zone?.unite}</span>
-                  <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
+                  <span style={hs.cell}>{op.name}</span>
                   <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
                   <span style={{...hs.cell,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'-'}</span>
                   {canManage && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
@@ -648,13 +647,13 @@ const HACCP = ({ user, etablissement }) => {
             <div className="grid-table-row" style={{...hs.relHead, gridTemplateColumns: '2fr 80px 60px 120px 110px 2fr' + (canManage ? ' 90px' : '')}}><span>Contrôle</span><span>Date</span><span>Heure</span><span>Opérateur</span><span>Statut</span><span>Notes</span>{canManage && <span className='no-print'>Action</span>}</div>
             {controls.map(c=>{
               const tpl=ctrlTpls.find(t=>t.id===c.templateId);
-              const op=demoData.utilisateurs.find(u=>u.id===c.operateur);
+              const op=userDisplay(c.operateur);
               return(
                 <div key={c.id} className="grid-table-row" style={{...hs.relRow, gridTemplateColumns: '2fr 80px 60px 120px 110px 2fr' + (canManage ? ' 90px' : '')}}>
                   <span style={{...hs.cell,fontWeight:600}}>{tpl?.label}</span>
                   <span style={hs.cell}>{c.date}</span>
                   <span style={hs.cell}>{c.heure}</span>
-                  <span style={hs.cell}>{op?.prenom} {op?.nom}</span>
+                  <span style={hs.cell}>{op.name}</span>
                   <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'✓ Conforme':'✕ Non conforme'}</span></span>
                   <span style={{...hs.cell,fontSize:12,color:'var(--text2)'}}>{c.notes||'-'}</span>
                   {canManage && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}

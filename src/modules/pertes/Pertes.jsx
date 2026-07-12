@@ -6,6 +6,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
+import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
@@ -267,8 +268,8 @@ const Pertes = ({ user, etablissement }) => {
         </div>
         {filtered.length === 0 && <div style={{padding:'20px 18px', color:'var(--text2)', fontSize:13}}>Aucune perte pour ces critères.</div>}
         {(filtered || []).map(p => {
-          const emp = demoData.utilisateurs.find(u=>u.id===p.declarePar);
-          const role = emp ? demoData.roles[emp.role] : null;
+          const emp = userDisplay(p.declarePar);
+          const role = emp.role ? demoData.roles[emp.role] : null;
           const valeur = (p.quantite * p.valeurUnit).toFixed(2);
           const canVal = canManage && !p.valide;
           return (
@@ -298,8 +299,8 @@ const Pertes = ({ user, etablissement }) => {
               <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight:600}}>−CHF {valeur}</span>
               <span style={pts.cell}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <div style={{...pts.empDot, background:role?.couleur}}>{emp?.avatar}</div>
-                  <span style={{fontSize:12}}>{emp?.prenom}</span>
+                  <div style={{...pts.empDot, background:role?.couleur}}>{emp.avatar}</div>
+                  <span style={{fontSize:12}}>{emp.found ? emp.prenom : emp.name}</span>
                 </div>
               </span>
               <span style={pts.cell}>

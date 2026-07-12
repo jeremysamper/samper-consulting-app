@@ -4,6 +4,7 @@ import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyS
 import { pdfUtils } from '../../services/pdf.js';
 import ShiftCell from './ShiftCell.jsx';
 import { ccntCell, pls } from './Planning.styles.js';
+import { userDisplay } from '../../utils/userDisplay.js';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
@@ -996,8 +997,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
           ) : (
             <>
               {dayShifts.map(shift => {
-                const emp = demoData.utilisateurs.find(u => u.id === shift.userId);
-                const role = emp ? demoData.roles[emp.role] : null;
+                const emp = userDisplay(shift.userId);
+                const role = emp.role ? demoData.roles[emp.role] : null;
                 const roleColor = role?.couleur || 'var(--text3)';
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 const selected = selectionMode && selectedIds.has(shift.id);
@@ -1018,7 +1019,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
                           : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
-                      <div style={pls.mobileName}>{emp ? `${emp.prenom} ${emp.nom}` : '-'}</div>
+                      <div style={pls.mobileName}>{emp.name}</div>
                       <div style={pls.mobileMeta}>
                         <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{shift.poste || role?.label || 'Poste'}{typeLabel ? ` · ${typeLabel}` : ''}</span>
                         {shift.pause > 0 && <span style={pls.mobilePause}>Pause {shift.pause} min</span>}
@@ -1044,17 +1045,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
         <div style={pls.mobileTitle}>Pointages - {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         {allShifts.length === 0 && <div style={{ padding: 20, fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>Aucun horaire ce jour.</div>}
         {(allShifts || []).map(shift => {
-          const emp = demoData.utilisateurs.find(u => u.id === shift.userId);
-          const role = emp ? demoData.roles[emp.role] : null;
+          const emp = userDisplay(shift.userId);
+          const role = emp.role ? demoData.roles[emp.role] : null;
           const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
           const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
           const enPoste = shift.pointageDebut && !shift.pointageFin;
           return (
             <div key={shift.id} style={{ ...pls.mobileShiftCard, flexDirection: 'column', alignItems: 'stretch' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp?.avatar || '?'}</div>
+                <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp.avatar}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{emp?.prenom} {emp?.nom}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{emp.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste} · prévu {shift.debut}–{shift.fin}</div>
                 </div>
                 <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
@@ -1184,15 +1185,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={pls.ptHead}><span>Employé</span><span>Prévu</span><span>Arrivée</span><span>Départ</span><span>Durée</span><span>Statut</span></div>
               {allShifts.length === 0 && <div style={{ padding: 20, color: 'var(--text2)', fontSize: 13 }}>Aucun horaire pour cette date.</div>}
               {(allShifts || []).map(shift => {
-                const emp = demoData.utilisateurs.find(u => u.id === shift.userId);
-                const role = emp ? demoData.roles[emp.role] : null;
+                const emp = userDisplay(shift.userId);
+                const role = emp.role ? demoData.roles[emp.role] : null;
                 const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
                 const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
                 const ecart = heuresPrev && heuresReel ? (parseFloat(heuresReel) - parseFloat(heuresPrev)).toFixed(1) : null;
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
-                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: role?.couleur }}>{emp?.avatar}</div><div><div style={pls.ptName}>{emp?.prenom} {emp?.nom}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
+                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: role?.couleur }}>{emp.avatar}</div><div><div style={pls.ptName}>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
                     <span style={pls.ptCell}>{shift.debut}–{shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev}h prévues</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
@@ -1213,8 +1214,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button style={pls.closeBtn} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>✕</button></div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
-                const emp = demoData.utilisateurs.find(u => u.id === selectedShift.userId);
-                return <div><strong>Employé :</strong> {emp ? `${emp.prenom} ${emp.nom}` : '-'}</div>;
+                const emp = userDisplay(selectedShift.userId);
+                return <div><strong>Employé :</strong> {emp.name}</div>;
               })()}
               <div><strong>Date :</strong> {selectedShift.date}</div>
               <div><strong>Horaire :</strong> {selectedShift.debut}–{selectedShift.fin}</div>

@@ -7,6 +7,7 @@ import {
   getExtension, convertHeicToJpeg, maybeCompress,
 } from '../consultant-tools/photoProcessing.js';
 import { Camera, ChevronLeft, Trash2, X } from 'lucide-react';
+import { userDisplayName } from '../../utils/userDisplay.js';
 
 const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -384,10 +385,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
               <img src={lightbox.photoUrl} alt="" style={gStyles.lightboxImg} />
               <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span>Date : {lightbox.date}</span>
-                {lightbox.operateur && (() => {
-                  const op = demoData?.utilisateurs?.find(u => u.id === lightbox.operateur);
-                  return <span>Opérateur : {op ? `${op.prenom || ''} ${op.nom || ''}`.trim() : lightbox.operateur}</span>;
-                })()}
+                {lightbox.operateur && <span>Opérateur : {userDisplayName(lightbox.operateur)}</span>}
                 {lightbox.notes && <span>Notes : {lightbox.notes}</span>}
               </div>
               {canManage && (
