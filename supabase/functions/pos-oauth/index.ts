@@ -308,6 +308,14 @@ ${errMsg.replace(/</g, '&lt;')}</p></div>
 
     const admin = adminClient();
 
+    // Verifier que le caller a acces a l'etablissement cible (evite l'IDOR cross-tenant :
+    // toutes les actions ci-dessous operent via le client service-role, qui bypass la RLS).
+    const { data: callerProfile, error: profErr } = await admin
+      .from('profiles').select('etablissement_ids').eq('id', user.id).maybeSingle();
+    if (profErr) return json({ error: `Profil illisible : ${profErr.message}` }, 500);
+    const callerEtabs: string[] = Array.isArray(callerProfile?.etablissement_ids) ? callerProfile!.etablissement_ids : [];
+    if (!callerEtabs.includes(etablissementId)) return json({ error: 'Acces refuse pour cet etablissement' }, 403);
+
     // ── get_auth_url ─────────────────────────────────────────────
     if (action === 'get_auth_url') {
       try {
