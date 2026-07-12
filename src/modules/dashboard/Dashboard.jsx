@@ -8,6 +8,7 @@ import { getDemoData } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
+import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 
 const Dashboard = ({ user, etablissement, setPage }) => {
   // Jour courant à Zurich (et non la date UTC du device) → frontière de minuit correcte.
@@ -133,41 +134,40 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
   // Pointage : maj optimiste immédiate (heure Zurich) → confirmation serveur via RPC
   // (qui pose l'heure réelle) → rollback visuel si l'écriture échoue.
-  const pointerArrivee = async (shift) => {
+  // Défaillance RÉSEAU : pas de rollback, le punch part en file hors-ligne
+  // (punchOnlineOrQueue) et sera rejoué au retour du réseau. Ne JAMAIS bloquer.
+  const pointer = async (shift, type) => {
     setPointageError('');
     if (!legacySB) { setPointageError('Supabase non configuré'); return; }
     const prevShifts = shifts;
     const optimisticTime = zurichClock();
-    setShifts(prev => prev.map(s => s.id === shift.id ? { ...s, pointageDebut: optimisticTime } : s));
+    const field = type === 'arrivee' ? 'pointageDebut' : 'pointageFin';
+    const label = type === 'arrivee' ? 'arrivée' : 'départ';
+    setShifts(prev => prev.map(s => s.id === shift.id ? { ...s, [field]: optimisticTime } : s));
     try {
-      const row = await legacySB.db.pointerArrivee(shift.id);
-      const mapped = legacySB.db.mapShiftFromDB(row);
-      setShifts(prev => prev.map(s => s.id === mapped.id ? mapped : s));
-      notifyLegacy(`✓ Arrivée pointée à ${mapped.pointageDebut}`, 'success');
+      const res = await punchOnlineOrQueue({
+        call: () => (type === 'arrivee' ? legacySB.db.pointerArrivee(shift.id) : legacySB.db.pointerDepart(shift.id)),
+        shiftId: shift.id,
+        type,
+        userId: user?.id || null,
+        etablissementId: shift.etablissementId || null,
+      });
+      if (res.mode === 'online') {
+        const mapped = legacySB.db.mapShiftFromDB(res.row);
+        setShifts(prev => prev.map(s => s.id === mapped.id ? mapped : s));
+        notifyLegacy(type === 'arrivee' ? `✓ Arrivée pointée à ${mapped.pointageDebut}` : `✓ Départ pointé à ${mapped.pointageFin}`, 'success');
+      } else {
+        notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
+      }
     } catch (err) {
-      setShifts(prevShifts); // rollback
-      setPointageError('Erreur arrivée : ' + err.message);
+      setShifts(prevShifts); // rollback (erreur métier uniquement)
+      setPointageError(`Erreur ${label} : ` + err.message);
       notifyLegacy('Pointage refusé : ' + err.message, 'error');
     }
   };
 
-  const pointerDepart = async (shift) => {
-    setPointageError('');
-    if (!legacySB) { setPointageError('Supabase non configuré'); return; }
-    const prevShifts = shifts;
-    const optimisticTime = zurichClock();
-    setShifts(prev => prev.map(s => s.id === shift.id ? { ...s, pointageFin: optimisticTime } : s));
-    try {
-      const row = await legacySB.db.pointerDepart(shift.id);
-      const mapped = legacySB.db.mapShiftFromDB(row);
-      setShifts(prev => prev.map(s => s.id === mapped.id ? mapped : s));
-      notifyLegacy(`✓ Départ pointé à ${mapped.pointageFin}`, 'success');
-    } catch (err) {
-      setShifts(prevShifts); // rollback
-      setPointageError('Erreur départ : ' + err.message);
-      notifyLegacy('Pointage refusé : ' + err.message, 'error');
-    }
-  };
+  const pointerArrivee = (shift) => pointer(shift, 'arrivee');
+  const pointerDepart = (shift) => pointer(shift, 'depart');
 
   const saveMessage = async () => {
     if (!legacySB || !isConsultant) return;

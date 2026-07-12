@@ -164,6 +164,26 @@ export async function syncPendingPunches() {
   }
 }
 
+// Flux de pointage partagé (Planning, Dashboard, DashboardMobile) : tente le
+// pointage online (RPC inchangée, `call` est une fabrique de promesse) sous
+// timeout ; en cas de défaillance RÉSEAU uniquement, bascule en file hors-ligne.
+// Retourne { mode: 'online', row } ou { mode: 'queued', queued } ; relance
+// l'erreur telle quelle pour une erreur MÉTIER (déjà pointé, non autorisé...)
+// afin que l'appelant garde son affichage d'erreur habituel.
+export async function punchOnlineOrQueue({ call, shiftId, type, userId, etablissementId }) {
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    try {
+      const row = await withPunchTimeout(call());
+      if (getPendingPunchCount() > 0) syncPendingPunches();
+      return { mode: 'online', row };
+    } catch (err) {
+      if (!isNetworkPunchError(err)) throw err;
+    }
+  }
+  const queued = await queuePunch({ shiftId, type, userId, etablissementId });
+  return { mode: 'queued', queued };
+}
+
 // Compteur d'attente : abonnement pour l'UI (bandeau hors-ligne).
 // Compatible useSyncExternalStore (le listener est rappelé à chaque variation).
 export function subscribePendingPunches(listener) {

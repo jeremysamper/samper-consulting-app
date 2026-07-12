@@ -7,13 +7,7 @@ import { ccntCell, pls } from './Planning.styles.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import {
-  getPendingPunchCount,
-  isNetworkPunchError,
-  queuePunch,
-  syncPendingPunches,
-  withPunchTimeout,
-} from '../../services/offline/punchSync.js';
+import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -325,19 +319,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setSelectedShift(prev => prev && prev.id === shiftId ? { ...prev, ...patch } : prev);
   };
 
-  const queueOfflinePunch = async (shift, type) => {
-    const queued = await queuePunch({
-      shiftId: shift.id,
-      type,
-      userId: user?.id || null,
-      etablissementId: shift.etablissementId || etabId || null,
-    });
-    applyPunchPatch(shift.id, type === 'arrivee'
-      ? { pointageDebut: queued.optimisticTime }
-      : { pointageFin: queued.optimisticTime });
-    notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
-  };
-
   const pointer = async (shift, type) => {
     const label = type === 'arrivee' ? 'arrivée' : 'départ';
     if (!legacySB) {
@@ -346,33 +327,27 @@ const Planning = ({ user, etablissement, initialTab }) => {
       applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t });
       return;
     }
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      try {
-        await queueOfflinePunch(shift, type);
-      } catch (err) {
-        notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
-      }
-      return;
-    }
     try {
-      const call = type === 'arrivee'
-        ? legacySB.db.pointerArrivee(shift.id)
-        : legacySB.db.pointerDepart(shift.id);
-      const row = await withPunchTimeout(call);
-      const mapped = legacySB.db.mapShiftFromDB(row);
-      setPlanning(prev => prev.map(s => s.id === shift.id ? mapped : s));
-      setSelectedShift(mapped);
-      if (getPendingPunchCount() > 0) syncPendingPunches();
+      const res = await punchOnlineOrQueue({
+        call: () => (type === 'arrivee' ? legacySB.db.pointerArrivee(shift.id) : legacySB.db.pointerDepart(shift.id)),
+        shiftId: shift.id,
+        type,
+        userId: user?.id || null,
+        etablissementId: shift.etablissementId || etabId || null,
+      });
+      if (res.mode === 'online') {
+        const mapped = legacySB.db.mapShiftFromDB(res.row);
+        setPlanning(prev => prev.map(s => s.id === shift.id ? mapped : s));
+        setSelectedShift(mapped);
+      } else {
+        // Hors-ligne : heure optimiste affichée, punch en file (rejeu auto).
+        applyPunchPatch(shift.id, type === 'arrivee'
+          ? { pointageDebut: res.queued.optimisticTime }
+          : { pointageFin: res.queued.optimisticTime });
+        notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
+      }
     } catch (err) {
-      if (!isNetworkPunchError(err)) {
-        notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
-        return;
-      }
-      try {
-        await queueOfflinePunch(shift, type);
-      } catch (queueErr) {
-        notifyLegacy(`Erreur pointage ${label} : ` + queueErr.message, 'error');
-      }
+      notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
     }
   };
 
