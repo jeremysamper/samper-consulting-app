@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import { initPwa } from './pwa/registerPwa.js';
 import './styles/app.css';
 
 class RootErrorBoundary extends React.Component {
@@ -35,3 +36,6 @@ createRoot(document.getElementById('root')).render(
     <App />
   </RootErrorBoundary>
 );
+
+// Service worker PWA : app shell hors-ligne + stratégie de mise à jour 'prompt'.
+initPwa();
