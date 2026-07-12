@@ -35,7 +35,8 @@ export function useAlertInstances(etablissementId) {
 
     const load = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user ?? null; // session locale (0 réseau), l'id suffit, la RLS impose user_id côté serveur
 
         const [instancesRes, readsRes] = await Promise.all([
           supabase
@@ -128,7 +129,8 @@ export function useAlertInstances(etablissementId) {
     const unread = alerts.filter((a) => !reads.has(a.id));
     if (!unread.length) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null; // session locale (0 réseau), l'id suffit, la RLS impose user_id côté serveur
     if (!user) return;
 
     const { error: upsertErr } = await supabase
@@ -148,7 +150,8 @@ export function useAlertInstances(etablissementId) {
   // ─── dismiss ─────────────────────────────────────────────────────
   // Passe une alerte individuelle en 'dismissed'.
   const dismiss = useCallback(async (id) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null; // session locale (0 réseau), l'id suffit, la RLS impose user_id côté serveur
     const { error: updateErr } = await supabase
       .from('alert_instances')
       .update({
@@ -171,7 +174,8 @@ export function useAlertInstances(etablissementId) {
   const dismissAll = useCallback(async () => {
     if (!alerts.length) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null; // session locale (0 réseau), l'id suffit, la RLS impose user_id côté serveur
     const ids = alerts.map((a) => a.id);
 
     const { error: updateErr } = await supabase

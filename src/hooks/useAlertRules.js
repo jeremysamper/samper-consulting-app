@@ -52,7 +52,8 @@ export function useAlertRules(etablissementId) {
 
   // ─── createRule ───────────────────────────────────────────────────
   const createRule = useCallback(async (ruleData) => {
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    const { data: { session }, error: authErr } = await supabase.auth.getSession();
+    const user = session?.user ?? null; // session locale (0 réseau), l'id suffit, la RLS impose created_by côté serveur
     if (authErr || !user) return { data: null, error: 'Utilisateur non authentifié.' };
 
     const { data, error: insertErr } = await supabase
