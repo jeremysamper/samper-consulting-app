@@ -213,6 +213,24 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
 };
 
+// Contrôle d'accès par rôle, appliqué côté serveur (le gate client ne suffit pas :
+// n'importe quel utilisateur connecté pouvait appeler ai-proxy directement).
+// - Authoring recette : rôles qui peuvent écrire une recette (canManageCartes).
+// - Outils consultant : réservé au consultant.
+const AUTHORING_ROLES = ['consultant', 'patron', 'resp_cuisine'];
+const CONSULTANT_ONLY = ['consultant'];
+const TASK_ROLES: Record<string, string[]> = {
+  'ocr-recipe':               AUTHORING_ROLES,
+  'detect-allergens':         AUTHORING_ROLES,
+  'generate-haccp':           AUTHORING_ROLES,
+  'suggest-recipe':           AUTHORING_ROLES,
+  'match-product':            AUTHORING_ROLES,
+  'generate-fiche-salle':     CONSULTANT_ONLY,
+  'analyse-simulation-carte': CONSULTANT_ONLY,
+  'parse-catalogue':          CONSULTANT_ONLY,
+  'dedupe-commande':          CONSULTANT_ONLY,
+};
+
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
 
 // Construit le contenu utilisateur (texte + image) selon la tâche.
@@ -399,6 +417,16 @@ Deno.serve(async (req: Request) => {
   }
   const cfg = TASKS[task];
   if (!cfg) return json({ error: `Tâche IA inconnue : ${task}` }, 400);
+
+  // ── Contrôle d'accès par rôle ──
+  // L'utilisateur peut lire sa propre ligne profiles via RLS (id = auth.uid()::text).
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).maybeSingle();
+  const role = profile?.role ?? '';
+  const allowedRoles = TASK_ROLES[task] ?? CONSULTANT_ONLY;
+  if (!allowedRoles.includes(role)) {
+    return json({ error: 'Accès refusé : rôle non autorisé pour cette tâche IA.' }, 403);
+  }
 
   let parts: Part[];
   try {
