@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { authService, profileService } from '../services/supabase.js';
+import { readJson, removeStorageKeys, writeJson } from '../utils/storage.js';
 
 // ─── withTimeout : course Promise vs setTimeout ───
 // Retourne le fallback si la promesse n'a pas résolu avant `delay` ms.
@@ -20,6 +21,24 @@ function withTimeout(promise, fallback, delay = 8000) {
 // Cela permet, sur un TOKEN_REFRESHED, de PRÉSERVER l'ancien profil au lieu
 // de le nullifier (bug historique : déconnexion intempestive).
 const PROFILE_LOAD_FAILED = Symbol('profile-load-failed');
+
+// ─── Snapshot local du profil (boot hors-ligne) ───
+// Si le fetch profil échoue au DÉMARRAGE (réseau absent) alors qu'une session
+// existe, on restaure le dernier profil connu de CE user au lieu d'afficher le
+// login : sans profil, pas d'app shell, donc pas de pointage hors-ligne.
+// Filet de sécurité derrière le cache SW des lectures de boot (sb-boot) ; le
+// snapshot n'est jamais servi pour un autre user.id et il est effacé à la
+// déconnexion explicite. Aucun changement de comportement online.
+const PROFILE_SNAPSHOT_KEY = 'sc_profile_snapshot';
+
+function readProfileSnapshot(userId) {
+  const snapshot = readJson(PROFILE_SNAPSHOT_KEY, null);
+  return snapshot && snapshot.id === userId ? snapshot : null;
+}
+
+function writeProfileSnapshot(profile) {
+  if (profile && profile.id) writeJson(PROFILE_SNAPSHOT_KEY, profile);
+}
 
 async function loadProfileSafe(authUser) {
   if (!authUser) return null;
@@ -100,7 +119,13 @@ export function useAuth() {
             if (!mounted) return;
             setSession(nextSession);
             setUser(nextSession.user);
-            setProfile(nextProfile === PROFILE_LOAD_FAILED ? null : nextProfile);
+            if (nextProfile === PROFILE_LOAD_FAILED) {
+              // Boot hors-ligne : dernier profil connu de ce user (sinon login).
+              setProfile(readProfileSnapshot(nextSession.user.id));
+            } else {
+              setProfile(nextProfile);
+              writeProfileSnapshot(nextProfile);
+            }
           } else {
             // Pas de session → état propre. Login s'affichera après loading = false.
             setSession(null);
@@ -154,6 +179,7 @@ export function useAuth() {
         }
 
         applyProfile(nextProfile);
+        writeProfileSnapshot(nextProfile);
       });
     } catch (err) {
       console.warn('[Auth] Ecoute auth indisponible', err);
@@ -198,6 +224,7 @@ export function useAuth() {
       setSession(data.session);
       setUser(data.user);
       setProfile(nextProfile);
+      writeProfileSnapshot(nextProfile);
       return nextProfile;
     } finally {
       // Laisse un court délai avant de relâcher le garde : l'event SIGNED_IN
@@ -208,6 +235,7 @@ export function useAuth() {
 
   async function signOut() {
     await authService.signOut();
+    removeStorageKeys([PROFILE_SNAPSHOT_KEY]);
     setSession(null);
     setUser(null);
     setProfile(null);

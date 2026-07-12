@@ -4,6 +4,7 @@ import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePdfData.js';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
@@ -1146,6 +1147,7 @@ const Recettes = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   const isMobile = useIsMobile();
+  const online = useOnlineStatus();
   // Onglet actif : id d'une carte, ou 'recettes' (bibliothèque).
   // Démarre vide → l'effet ci-dessous bascule sur la 1re carte une fois chargée
   // (comportement historique : on atterrit sur la carte, pas la bibliothèque).
@@ -1450,7 +1452,10 @@ const Recettes = ({ user, etablissement }) => {
       ) : (
         <div style={rs.recettesWrap}>
           {recettesEtab.length === 0 && plats.length === 0 && (
-            <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucune recette pour cet établissement. Créez-en depuis "Outils consultant".</div>
+            online
+              ? <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucune recette pour cet établissement. Créez-en depuis "Outils consultant".</div>
+              // Hors-ligne sans cache : état vide propre, pas de chargement infini.
+              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Hors ligne : les recettes de cet établissement n'ont pas encore été chargées sur cet appareil. Elles s'afficheront au retour du réseau.</div>
           )}
 
           {/* ─── Hiérarchie plats avec leurs recettes ─── */}

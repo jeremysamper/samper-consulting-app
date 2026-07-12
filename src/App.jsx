@@ -14,6 +14,8 @@ import { getConsultantToolsTabForPage, normalizePage } from './modules/moduleCon
 import { readText, UI_STORAGE_KEYS, writeText } from './utils/storage.js';
 import { dbService } from './services/dbService.js';
 import { setNavigationHandler } from './services/navigationService.js';
+import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
+import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 
 function readInitialPage() {
   return normalizePage(readText(UI_STORAGE_KEYS.page, 'dashboard'));
@@ -78,6 +80,8 @@ export default function App() {
   useEffect(() => {
     installToastGlobals();
     writeLegacyGlobal('SafeModule', SafeModule);
+    // File de punches hors-ligne : rejeu au retour du réseau + compteur global.
+    startPunchSync();
   }, []);
 
   useEffect(() => {
@@ -149,10 +153,18 @@ export default function App() {
 
   async function handleLogout() {
     try {
+      const pendingPunches = getPendingPunchCount();
       await auth.signOut();
       dbService.getDb()?.clearUserSettingsCache?.();
+      // Purge des caches SW de données : un autre utilisateur de cet appareil
+      // ne doit rien pouvoir relire hors-ligne. La file de punches (IndexedDB)
+      // est conservée : elle repartira à la prochaine session de ce compte.
+      purgeAllDataCaches();
       setPage('dashboard');
       notify('Deconnexion effectuee', 'info');
+      if (pendingPunches > 0) {
+        notify(`${pendingPunches} pointage(s) non synchronise(s) : ils partiront a la prochaine connexion de ce compte`, 'warning');
+      }
     } catch (err) {
       notify(err?.message || 'Erreur pendant la deconnexion', 'error');
     }
@@ -161,6 +173,9 @@ export default function App() {
   async function handleSelectEtablissement(id) {
     try {
       await currentEtablissement.selectEtablissement(id);
+      // Purge des caches de données scopés établissement (défense en profondeur,
+      // les clés d'URL portent déjà etablissement_id).
+      purgeEtabDataCaches();
       notify('Etablissement mis a jour', 'info');
     } catch (err) {
       notify(err?.message || "Impossible de changer d'etablissement", 'error');

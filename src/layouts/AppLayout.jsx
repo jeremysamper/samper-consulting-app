@@ -8,6 +8,7 @@ import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useUnreadPrivateMessages } from '../hooks/useUnreadPrivateMessages.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
+import OfflineBanner from '../components/OfflineBanner.jsx';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
@@ -419,6 +420,9 @@ export default function AppLayout({
           </div>
         </header>
 
+        {/* ─── Bandeau d'état hors-ligne / sync pointages / mise à jour ─── */}
+        <OfflineBanner />
+
         {/* ─── Overlay sombre (visible seulement quand le drawer est ouvert) ─── */}
         {sidebarOpen && <div style={mls.overlay} onClick={() => setSidebarOpen(false)} />}
 
@@ -613,6 +617,8 @@ export default function AppLayout({
             onReconnect={handleReconnect}
           />
         )}
+        {/* Bandeau d'état hors-ligne / sync pointages / mise à jour */}
+        <OfflineBanner />
         <header style={ls.topbar}>
           <div style={ls.topbarLeft}>
             <div style={ls.titleBlock}>
