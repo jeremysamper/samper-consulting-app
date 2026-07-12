@@ -7,6 +7,13 @@ import { ccntCell, pls } from './Planning.styles.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import {
+  getPendingPunchCount,
+  isNetworkPunchError,
+  queuePunch,
+  syncPendingPunches,
+  withPunchTimeout,
+} from '../../services/offline/punchSync.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE — Module unifié, par établissement, responsive
@@ -306,39 +313,71 @@ const Planning = ({ user, etablissement, initialTab }) => {
     return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
   };
 
-  const pointerArrivee = async (shift) => {
-    if (legacySB) {
-      try {
-        const row = await legacySB.db.pointerArrivee(shift.id);
-        const mapped = legacySB.db.mapShiftFromDB(row);
-        setPlanning(prev => prev.map(s => s.id === shift.id ? mapped : s));
-        setSelectedShift(mapped);
-      } catch (err) {
-        notifyLegacy('Erreur pointage arrivée : ' + err.message, 'error');
-      }
-    } else {
+  // ─── Pointage arrivée/départ : ne JAMAIS bloquer un punch ───
+  // Online : RPC serveur inchangée (heure Zurich générée côté base, anti-double).
+  // Hors-ligne ou réseau défaillant (timeout 8 s) : le punch part en file
+  // IndexedDB, horodaté au moment du geste, puis rejoué au retour du réseau via
+  // la RPC idempotente pointer_offline (zéro doublon même si l'appel online
+  // avait abouti côté serveur malgré le timeout). Une erreur MÉTIER (déjà
+  // pointé...) reste affichée : seule une défaillance réseau bascule sur la file.
+  const applyPunchPatch = (shiftId, patch) => {
+    setPlanning(prev => prev.map(s => s.id === shiftId ? { ...s, ...patch } : s));
+    setSelectedShift(prev => prev && prev.id === shiftId ? { ...prev, ...patch } : prev);
+  };
+
+  const queueOfflinePunch = async (shift, type) => {
+    const queued = await queuePunch({
+      shiftId: shift.id,
+      type,
+      userId: user?.id || null,
+      etablissementId: shift.etablissementId || etabId || null,
+    });
+    applyPunchPatch(shift.id, type === 'arrivee'
+      ? { pointageDebut: queued.optimisticTime }
+      : { pointageFin: queued.optimisticTime });
+    notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
+  };
+
+  const pointer = async (shift, type) => {
+    const label = type === 'arrivee' ? 'arrivée' : 'départ';
+    if (!legacySB) {
+      // Mode démo sans bridge : comportement historique conservé.
       const t = nowTime();
-      setPlanning(prev => prev.map(s => s.id === shift.id ? { ...s, pointageDebut: t } : s));
-      setSelectedShift(prev => prev ? { ...prev, pointageDebut: t } : prev);
+      applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t });
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      try {
+        await queueOfflinePunch(shift, type);
+      } catch (err) {
+        notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
+      }
+      return;
+    }
+    try {
+      const call = type === 'arrivee'
+        ? legacySB.db.pointerArrivee(shift.id)
+        : legacySB.db.pointerDepart(shift.id);
+      const row = await withPunchTimeout(call);
+      const mapped = legacySB.db.mapShiftFromDB(row);
+      setPlanning(prev => prev.map(s => s.id === shift.id ? mapped : s));
+      setSelectedShift(mapped);
+      if (getPendingPunchCount() > 0) syncPendingPunches();
+    } catch (err) {
+      if (!isNetworkPunchError(err)) {
+        notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
+        return;
+      }
+      try {
+        await queueOfflinePunch(shift, type);
+      } catch (queueErr) {
+        notifyLegacy(`Erreur pointage ${label} : ` + queueErr.message, 'error');
+      }
     }
   };
 
-  const pointerDepart = async (shift) => {
-    if (legacySB) {
-      try {
-        const row = await legacySB.db.pointerDepart(shift.id);
-        const mapped = legacySB.db.mapShiftFromDB(row);
-        setPlanning(prev => prev.map(s => s.id === shift.id ? mapped : s));
-        setSelectedShift(mapped);
-      } catch (err) {
-        notifyLegacy('Erreur pointage départ : ' + err.message, 'error');
-      }
-    } else {
-      const t = nowTime();
-      setPlanning(prev => prev.map(s => s.id === shift.id ? { ...s, pointageFin: t } : s));
-      setSelectedShift(prev => prev ? { ...prev, pointageFin: t } : prev);
-    }
-  };
+  const pointerArrivee = (shift) => pointer(shift, 'arrivee');
+  const pointerDepart = (shift) => pointer(shift, 'depart');
 
   const resetPointage = async (shift) => {
     if (!confirmLegacy('Réinitialiser le pointage ?')) return;
