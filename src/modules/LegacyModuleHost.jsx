@@ -16,6 +16,7 @@ const loadFAQAssistant = () => import('./faq/FAQAssistant.jsx');
 const loadFichesSalle = () => import('./fiches-salle/FichesSalle.jsx');
 const loadHACCP = () => import('./haccp/HACCP.jsx');
 const loadInventaire = () => import('./inventaire/Inventaire.jsx');
+const loadMep = () => import('./mep/MiseEnPlace.jsx');
 const loadMessages = () => import('./messages/Messages.jsx');
 const loadParametres = () => import('./parametres/Parametres.jsx');
 const loadPertes = () => import('./pertes/Pertes.jsx');
@@ -37,6 +38,7 @@ const FAQAssistant = lazy(loadFAQAssistant);
 const FichesSalle = lazy(loadFichesSalle);
 const HACCP = lazy(loadHACCP);
 const Inventaire = lazy(loadInventaire);
+const Mep = lazy(loadMep);
 const Messages = lazy(loadMessages);
 const Parametres = lazy(loadParametres);
 const Pertes = lazy(loadPertes);
@@ -60,6 +62,7 @@ const PREFETCH_LOADERS = [
   loadPertes,
   loadSOP,
   loadCommande,
+  loadMep,
 ];
 
 let prefetchStarted = false;
@@ -233,6 +236,12 @@ export default function LegacyModuleHost({
       const CommandeComponent = Commande;
       return permissions.commande !== false
         ? wrap('Commande', <CommandeComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'mep': {
+      const MepComponent = Mep;
+      return permissions.mep !== false
+        ? wrap('Mise en place', <MepComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     default:

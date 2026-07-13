@@ -2,7 +2,7 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
-import { computeBesoins, appendStaples, applyDedupeGroups, formatBesoin } from './computeBesoins.js';
+import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
 import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -239,7 +239,6 @@ const Commande = ({ user, etablissement }) => {
         categorie: g.categorie,
         items: g.items.map(it => ({
           nom: it.nom,
-          besoinText: it.besoin > 0 ? formatBesoin(it.besoin, it.unite) : '',
           qtyText: it.quantite != null ? `${fmtQty(it.quantite)}${it.unite ? ' ' + it.unite : ''}` : '',
           coche: it.coche,
         })),
@@ -354,7 +353,6 @@ const Commande = ({ user, etablissement }) => {
                           {item.source === 'manual' && <span style={s.manualTag}>ajouté</span>}
                         </div>
                       )}
-                      {item.besoin > 0 && <div style={s.besoin}>Besoin {formatBesoin(item.besoin, item.unite)}</div>}
                     </div>
                     <div style={s.qtyWrap}>
                       <input
@@ -577,7 +575,6 @@ const s = {
   rowChecked: { background: 'var(--success-bg)' },
   rowName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
   nameInput: { width: '100%', padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  besoin: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   manualTag: { marginLeft: 8, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, padding: '1px 6px' },
   qtyWrap: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   qtyInput: { width: 70, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' },

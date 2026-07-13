@@ -550,6 +550,11 @@ export function installLegacySupabase() {
         etapes: recette.etapes || [],
         modifie_par: recette.modifiePar || null,
         photo_url: recette.photoUrl || null,
+        // Flag congelation : true=grosse prod, false=urgent, null="a qualifier".
+        // On ne l'envoie que s'il est explicitement qualifie (true/false) : evite de
+        // dependre de la colonne tant que la migration n'est pas appliquee, et laisse
+        // la valeur existante intacte pour un upsert qui ne touche pas a ce champ.
+        ...(recette.congelable === true || recette.congelable === false ? { congelable: recette.congelable } : {}),
       };
       const { data, error } = await client.from('recettes').upsert(payload).select().single();
       if (error) throw error;
@@ -559,6 +564,129 @@ export function installLegacySupabase() {
     async deleteRecette(id) {
       const { error } = await client.from('recettes').delete().eq('id', id);
       if (error) throw error;
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // MISE EN PLACE (mep_listes + mep_items)
+    // Listes de production : grosse prod (congelable) vs urgent (non congelable).
+    // ═══════════════════════════════════════════════════════════════
+    async listMepListes(etabId) {
+      let q = client
+        .from('mep_listes')
+        .select('*, mep_items(id, fait)')
+        .order('date_service', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false });
+      if (etabId) q = q.eq('etablissement_id', etabId);
+      const { data, error } = await q;
+      if (error) { console.error('[listMepListes]', error); return []; }
+      return (data || []).map(this.mapMepListeFromDB);
+    },
+
+    async upsertMepListe(liste) {
+      const row = {
+        etablissement_id: liste.etablissementId,
+        nom: liste.nom,
+        date_service: liste.dateService || null,
+      };
+      let result;
+      if (liste.id) {
+        const { data, error } = await client.from('mep_listes').update(row).eq('id', liste.id).select('*, mep_items(id, fait)').single();
+        if (error) throw error;
+        result = data;
+      } else {
+        row.created_by = liste.createdBy || null;
+        const { data, error } = await client.from('mep_listes').insert(row).select('*, mep_items(id, fait)').single();
+        if (error) throw error;
+        result = data;
+      }
+      return this.mapMepListeFromDB(result);
+    },
+
+    async deleteMepListe(id) {
+      const { error } = await client.from('mep_listes').delete().eq('id', id);
+      if (error) throw error;
+    },
+
+    async listMepItems(listeId) {
+      const { data, error } = await client
+        .from('mep_items')
+        .select('*')
+        .eq('liste_id', listeId)
+        .order('ordre', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (error) { console.error('[listMepItems]', error); return []; }
+      return (data || []).map(this.mapMepItemFromDB);
+    },
+
+    async upsertMepItem(item) {
+      const row = {
+        liste_id: item.listeId,
+        recette_id: item.recetteId || null,
+        label: item.label || null,
+        quantite: item.quantite != null && item.quantite !== '' ? Number(item.quantite) : null,
+        unite: item.unite || null,
+        congelable: item.congelable ?? null,
+        ordre: item.ordre ?? 0,
+      };
+      let result;
+      if (item.id) {
+        const { data, error } = await client.from('mep_items').update(row).eq('id', item.id).select().single();
+        if (error) throw error;
+        result = data;
+      } else {
+        const { data, error } = await client.from('mep_items').insert(row).select().single();
+        if (error) throw error;
+        result = data;
+      }
+      return this.mapMepItemFromDB(result);
+    },
+
+    async deleteMepItem(id) {
+      const { error } = await client.from('mep_items').delete().eq('id', id);
+      if (error) throw error;
+    },
+
+    // Coche / decoche un item. fait_at en UTC (now()), fait_par = auteur.
+    async setMepItemFait(id, fait, userId) {
+      const row = fait
+        ? { fait: true, fait_par: userId || null, fait_at: new Date().toISOString() }
+        : { fait: false, fait_par: null, fait_at: null };
+      const { data, error } = await client.from('mep_items').update(row).eq('id', id).select().single();
+      if (error) throw error;
+      return this.mapMepItemFromDB(data);
+    },
+
+    mapMepListeFromDB(row) {
+      if (!row) return null;
+      const items = row.mep_items || [];
+      return {
+        id: row.id,
+        etablissementId: row.etablissement_id,
+        nom: row.nom,
+        dateService: row.date_service || null,
+        createdBy: row.created_by || null,
+        createdAt: row.created_at || null,
+        itemsCount: items.length,
+        itemsFaits: items.filter(i => i.fait).length,
+      };
+    },
+
+    mapMepItemFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id,
+        listeId: row.liste_id,
+        recetteId: row.recette_id || null,
+        label: row.label || null,
+        quantite: row.quantite != null ? Number(row.quantite) : null,
+        unite: row.unite || null,
+        congelable: row.congelable ?? null,
+        fait: row.fait === true,
+        faitPar: row.fait_par || null,
+        faitAt: row.fait_at || null,
+        ordre: row.ordre || 0,
+        createdAt: row.created_at || null,
+      };
     },
 
     // ═══════════════════════════════════════════════════════════════
@@ -708,6 +836,8 @@ export function installLegacySupabase() {
         modifiePar: row.modifie_par,
         modifie: row.updated_at ? row.updated_at.slice(0, 10) : null,
         photoUrl: row.photo_url || null,
+        // null volontairement preserve (= « a qualifier », traite comme non congelable).
+        congelable: row.congelable ?? null,
         coutMatiere, coutPortion, foodCost,
         margeGrossePct: row.prix_vente ? ((row.prix_vente - coutPortion) / row.prix_vente * 100) : null,
       };

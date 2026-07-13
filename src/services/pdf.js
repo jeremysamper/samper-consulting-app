@@ -876,12 +876,15 @@ export const pdfUtils = {
     const cartesLabel = (payload.cartesLabel || '').toString().trim();
     const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    // Colonnes
-    const checkX = M;
-    const nomX = M + 7;
-    const qtyRight = PAGE_W - M;        // « à commander »
-    const besoinRight = qtyRight - 38;  // « besoin »
-    const nomMaxW = besoinRight - nomX - 6;
+    // Colonnes calquees sur la liste de reference : ingredient a gauche, colonne
+    // « Commande » a droite (case a cocher + espace pour ecrire la quantite a la
+    // main). Aucun grammage recommande : ce sont les cuisiniers qui saisissent.
+    const boxSize = 3.8;
+    const checkRight = PAGE_W - M;         // bord droit de la case a cocher
+    const checkX = checkRight - boxSize;   // coin gauche de la case
+    const qtyRight = checkX - 4;           // quantite saisie, alignee a droite de la case
+    const nomX = M;
+    const nomMaxW = qtyRight - nomX - 20;  // laisse la place a la quantite manuscrite
     const bodyBottom = PAGE_H - M - 12;
 
     const drawHeader = () => {
@@ -922,9 +925,8 @@ export const pdfUtils = {
     };
     const colLabels = () => {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...MUTE);
-      doc.text('PRODUIT', nomX, y, { charSpace: 0.4 });
-      doc.text('BESOIN', besoinRight, y, { align: 'right', charSpace: 0.4 });
-      doc.text('À COMMANDER', qtyRight, y, { align: 'right', charSpace: 0.4 });
+      doc.text('INGRÉDIENT', nomX, y, { charSpace: 0.4 });
+      doc.text('COMMANDE', checkRight, y, { align: 'right', charSpace: 0.4 });
       y += 4;
     };
 
@@ -936,34 +938,37 @@ export const pdfUtils = {
     groups.forEach((group) => {
       ensureSpace(16);
       doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
-      doc.text(String(group.categorie || 'Autres').toUpperCase(), M + 3.4, y, { charSpace: 0.5 });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...ACC);
+      doc.text(String(group.categorie || 'Autres'), M + 3.4, y);
       doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
       y += 7;
       colLabels();
 
       (group.items || []).forEach((it) => {
         const nameLines = doc.splitTextToSize(String(it.nom || ''), nomMaxW);
-        const rowH = Math.max(6, nameLines.length * 4.6 + 1.6);
+        const rowH = Math.max(7, nameLines.length * 4.6 + 2.4);
         ensureSpace(rowH);
         const boxY = y - 3;
-        if (it.coche) {
-          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
-          doc.rect(checkX, boxY, 3.6, 3.6, 'F');
-          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
-          doc.line(checkX + 0.8, boxY + 1.9, checkX + 1.5, boxY + 2.8);
-          doc.line(checkX + 1.5, boxY + 2.8, checkX + 2.9, boxY + 1.0);
-        } else {
-          doc.setDrawColor(...MUTE); doc.setLineWidth(0.3); doc.rect(checkX, boxY, 3.6, 3.6, 'S');
-        }
+        // Nom de l'ingredient a gauche
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
         nameLines.forEach((line, k) => doc.text(line, nomX, y + k * 4.6));
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTE);
-        doc.text(it.besoinText || '-', besoinRight, y, { align: 'right' });
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        doc.text(it.qtyText || '-', qtyRight, y, { align: 'right' });
+        // Quantite saisie (si renseignee) a gauche de la case ; sinon espace vierge a remplir
+        if (it.qtyText) {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+          doc.text(String(it.qtyText), qtyRight, y, { align: 'right' });
+        }
+        // Case a cocher a droite (colonne « Commande »)
+        if (it.coche) {
+          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
+          doc.rect(checkX, boxY, boxSize, boxSize, 'F');
+          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
+          doc.line(checkX + 0.9, boxY + 2.0, checkX + 1.6, boxY + 2.9);
+          doc.line(checkX + 1.6, boxY + 2.9, checkX + 3.1, boxY + 1.1);
+        } else {
+          doc.setDrawColor(...MUTE); doc.setLineWidth(0.3); doc.rect(checkX, boxY, boxSize, boxSize, 'S');
+        }
         doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
-        doc.line(nomX, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
+        doc.line(nomX, y + rowH - 3.2, checkRight, y + rowH - 3.2);
         y += rowH;
       });
       y += 3;
@@ -971,6 +976,163 @@ export const pdfUtils = {
 
     drawFooter();
     // Pagination centrée, ajoutée une fois le nombre total de pages connu.
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // MISE EN PLACE — liste de production (jsPDF natif, vectoriel, DA Samper)
+  // Deux sections : Urgent (non congelable) en PREMIER, puis Grosse production.
+  // Cases a cocher imprimees, multi-pages A4. Document lisible comme ecrit a la
+  // main : pas de capitales criardes sur les titres de section, pas de tirets
+  // cadratins, pas de marqueur genere.
+  // payload : { titre, sousTitre, sections:[{ titre, hint, items:[{label, qtyText, aQualifier, fait}] }] }
+  // options : { etablissement, autoPrint, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportMepPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      this._renderMep(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'mise-en-place.pdf');
+      } else {
+        doc.save(options.filename || 'mise-en-place.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportMepPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderMep(doc, payload, options = {}) {
+    const ACC = [0, 48, 66];    // bleu petrole Samper
+    const INK = [26, 26, 28];
+    const MUTE = [121, 124, 126];
+    const HAIR = [215, 220, 224];
+    const WARN = [176, 96, 0];  // ambre discret pour « a qualifier »
+    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const contentW = PAGE_W - 2 * M;
+    const headerH = 12;
+    const etabName = (options.etablissement?.nom || 'Samper Consulting').toString();
+    const logoDataUrl = options.logoDataUrl || null;
+    const sections = Array.isArray(payload.sections) ? payload.sections : [];
+    const totalCount = sections.reduce((s, g) => s + (g.items?.length || 0), 0);
+    const faitCount = sections.reduce((s, g) => s + (g.items || []).filter(i => i.fait).length, 0);
+    const titre = (payload.titre || 'Liste de mise en place').toString();
+    const sousTitre = (payload.sousTitre || '').toString().trim();
+    const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Meme visuel que la liste de commande : preparation a gauche, colonne « fait »
+    // (case a cocher) a droite, quantite cible juste a gauche de la case.
+    const boxSize = 3.8;
+    const checkRight = PAGE_W - M;
+    const checkX = checkRight - boxSize;
+    const qtyRight = checkX - 4;
+    const nomX = M;
+    const nomMaxW = qtyRight - nomX - 24;
+    const bodyBottom = PAGE_H - M - 12;
+
+    const drawHeader = () => {
+      if (logoDataUrl) {
+        try {
+          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
+        } catch (e) { /* logo illisible */ }
+      }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
+      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
+      const ruleTopY = M + headerH;
+      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
+      doc.text(titre, M, ruleTopY + 9);
+      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+      const meta = `${sousTitre ? sousTitre + '  ·  ' : ''}${totalCount} préparation${totalCount > 1 ? 's' : ''}  ·  ${faitCount} faite${faitCount > 1 ? 's' : ''}`;
+      doc.text(meta, M, ruleTopY + 17);
+      return ruleTopY + 25;
+    };
+    const drawFooter = () => {
+      const fy = PAGE_H - M - 4;
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text('Samper Consulting', M, fy);
+      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
+    };
+
+    let y = drawHeader();
+    const ensureSpace = (h) => {
+      if (y + h > bodyBottom) { drawFooter(); doc.addPage(); y = drawHeader(); }
+    };
+
+    if (!totalCount) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      doc.text('Aucune préparation dans cette liste.', M, y + 4);
+    }
+
+    sections.forEach((section) => {
+      if (!(section.items || []).length) return;
+      ensureSpace(18);
+      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...ACC);
+      doc.text(String(section.titre || ''), M + 3.4, y);
+      y += 4.5;
+      if (section.hint) {
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(...MUTE);
+        doc.text(String(section.hint), M + 3.4, y);
+        y += 2.5;
+      }
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y, M + contentW, y);
+      y += 5;
+
+      (section.items || []).forEach((it) => {
+        const nameLines = doc.splitTextToSize(String(it.label || ''), nomMaxW);
+        const rowH = Math.max(7, nameLines.length * 4.6 + 2.4);
+        ensureSpace(rowH);
+        const boxY = y - 3;
+        // Nom de la preparation a gauche
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        nameLines.forEach((line, k) => doc.text(line, nomX, y + k * 4.6));
+        if (it.aQualifier) {
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(...WARN);
+          doc.text('à qualifier', nomX + doc.getTextWidth(nameLines[0]) + 3, y);
+        }
+        // Quantite cible (si renseignee) a gauche de la case
+        if (it.qtyText) {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+          doc.text(String(it.qtyText), qtyRight, y, { align: 'right' });
+        }
+        // Case a cocher a droite
+        if (it.fait) {
+          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
+          doc.rect(checkX, boxY, boxSize, boxSize, 'F');
+          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
+          doc.line(checkX + 0.9, boxY + 2.0, checkX + 1.6, boxY + 2.9);
+          doc.line(checkX + 1.6, boxY + 2.9, checkX + 3.1, boxY + 1.1);
+        } else {
+          doc.setDrawColor(...MUTE); doc.setLineWidth(0.3); doc.rect(checkX, boxY, boxSize, boxSize, 'S');
+        }
+        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
+        doc.line(nomX, y + rowH - 3.2, checkRight, y + rowH - 3.2);
+        y += rowH;
+      });
+      y += 4;
+    });
+
+    drawFooter();
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);

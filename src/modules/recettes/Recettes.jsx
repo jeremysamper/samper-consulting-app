@@ -266,6 +266,8 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
       notesConsultant: recette.notesConsultant || '',
       dressage: recette.dressage || '',
       conservation: recette.conservation || '',
+      // Flag congélation : suit la recette source (null = à qualifier).
+      congelable: recette.congelable ?? null,
       // Ingrédients : si opts.prix désactivé, on remet prixUnit à 0 sur chaque ingrédient
       ingredients: opts.ingredients
         ? (recette.ingredients || []).map(i => ({ ...i, prixUnit: opts.prix ? (i.prixUnit || 0) : 0 }))
@@ -450,6 +452,29 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   const ratio = portions / (recette.portions || 1);
   const coutAdj = (recette.ingredients || []).reduce((s,i) => s + (i.quantite||0) * ratio * (i.prixUnit||0), 0);
 
+  // ─── Flag congelation (utilise par le module Mise en place) ───
+  // Editable par consultant/patron uniquement ; les autres roles voient le statut.
+  // null = « a qualifier » (traite comme non congelable, choix prudent).
+  const canEditCongelable = ['consultant', 'patron'].includes(user?.role);
+  const [congelable, setCongelable] = React.useState(recette.congelable ?? null);
+  const [savingCong, setSavingCong] = React.useState(false);
+  const saveCongelable = async (val) => {
+    const legacySB = dbService.getBridge();
+    if (!legacySB) { notifyLegacy('Base de données indisponible.', 'error'); return; }
+    const prev = congelable;
+    setCongelable(val);
+    setSavingCong(true);
+    try {
+      await legacySB.db.upsertRecette({ ...recette, congelable: val, modifiePar: user?.id || null });
+      notifyLegacy('Qualification congélation enregistrée.', 'success');
+    } catch (err) {
+      console.error('[saveCongelable]', err);
+      setCongelable(prev);
+      notifyLegacy('Erreur : ' + (err?.message || 'enregistrement impossible'), 'error');
+    }
+    setSavingCong(false);
+  };
+
   // Qui peut dupliquer ? consultant + patron + responsable cuisine
   // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
   const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
@@ -573,6 +598,43 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
               </div>
             </div>
           )}
+          <div style={rs.detailCard}>
+            <div style={rs.cardHeader}><span style={rs.cardTitle}>Congélation</span></div>
+            <div style={{padding:'12px 16px', display:'flex', flexDirection:'column', gap:10}}>
+              <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                {congelable === true && <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>Congelable · grosse production</span>}
+                {congelable === false && <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)'}}>Non congelable · urgent</span>}
+                {congelable == null && <span style={{...rs.badge, background:'var(--bg)', color:'var(--text2)', border:'1px solid var(--border)'}}>À qualifier</span>}
+              </div>
+              {canEditCongelable ? (
+                <div className="no-print" style={{display:'flex', flexDirection:'column', gap:8}}>
+                  <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                    <button
+                      type="button"
+                      disabled={savingCong}
+                      onClick={() => saveCongelable(true)}
+                      style={{...rs.congBtn, ...(congelable === true ? rs.congBtnActive : null)}}
+                    >Congelable</button>
+                    <button
+                      type="button"
+                      disabled={savingCong}
+                      onClick={() => saveCongelable(false)}
+                      style={{...rs.congBtn, ...(congelable === false ? rs.congBtnActive : null)}}
+                    >Non congelable</button>
+                  </div>
+                  <div style={{fontSize:11, color:'var(--text2)', lineHeight:1.5}}>
+                    Jamais congelable : gels agar, tzatziki, œufs mollets panés, meringue italienne, laitages frais, herbes fraîches, légumes crus, œufs.
+                  </div>
+                </div>
+              ) : (
+                congelable == null && (
+                  <div className="no-print" style={{fontSize:11, color:'var(--text2)', fontStyle:'italic'}}>
+                    Non qualifiée : à faire renseigner par le consultant ou le patron.
+                  </div>
+                )
+              )}
+            </div>
+          </div>
           <div style={rs.detailCard}>
             <div style={rs.cardHeader}><span style={rs.cardTitle}>Allergènes</span></div>
             <div style={{padding:'12px 16px', display:'flex', flexWrap:'wrap', gap:6}}>
@@ -1590,6 +1652,8 @@ const rs = {
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   fcLine: {fontSize:11,color:'var(--text2)',marginTop:6},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
+  congBtn: {padding:'7px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'#fff'},
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
   recetteRow: {display:'flex',alignItems:'center',gap:14,padding:'14px 18px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .12s'},
