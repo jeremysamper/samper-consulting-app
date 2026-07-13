@@ -1,6 +1,7 @@
 import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
+import { useCartes } from '../../hooks/useCartes.js';
 import { s } from './MiseEnPlace.styles.js';
 
 let _tmpSeq = 0;
@@ -15,9 +16,12 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
   const legacySB = dbService.getBridge();
   const isEdit = Boolean(liste?.id);
 
+  const { cartes } = useCartes(etabId);
   const [nom, setNom] = React.useState(liste?.nom || '');
   const [dateService, setDateService] = React.useState(liste?.dateService ? String(liste.dateService).slice(0, 10) : '');
   const [recettes, setRecettes] = React.useState([]);
+  const [plats, setPlats] = React.useState([]);
+  const [carteId, setCarteId] = React.useState('');
   const [items, setItems] = React.useState([]);        // { key, id?, recetteId|null, label, quantite, unite, congelable }
   const [removedIds, setRemovedIds] = React.useState([]);
   const [search, setSearch] = React.useState('');
@@ -25,14 +29,17 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
   const [saving, setSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
-  // Chargement des recettes de l'etab + (si edition) des items existants.
+  // Chargement des recettes + plats de l'etab + (si edition) des items existants.
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       if (!legacySB) { setLoading(false); return; }
       try {
-        const recs = await legacySB.db.listRecettes(etabId);
-        if (mounted) setRecettes(recs || []);
+        const [recs, pls] = await Promise.all([
+          legacySB.db.listRecettes(etabId),
+          legacySB.db.listPlats(etabId),
+        ]);
+        if (mounted) { setRecettes(recs || []); setPlats(pls || []); }
         if (isEdit) {
           const existing = await legacySB.db.listMepItems(liste.id);
           if (mounted) {
@@ -52,6 +59,47 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
   }, [legacySB, etabId, isEdit, liste?.id]);
 
   const selectedRecetteIds = new Set(items.filter(i => i.recetteId).map(i => i.recetteId));
+
+  const recetteById = React.useMemo(() => {
+    const m = new Map();
+    (recettes || []).forEach(r => m.set(r.id, r));
+    return m;
+  }, [recettes]);
+
+  // Recettes composant une carte : plats de la carte -> recettes (ordre de
+  // composition), dedupliquees. Meme relation M2M que « Cartes & Recettes ».
+  const recettesForCarte = React.useCallback((cid) => {
+    const seen = new Set();
+    const out = [];
+    (plats || [])
+      .filter(p => p.actif !== false && (p.carteIds || []).includes(cid))
+      .forEach(p => {
+        (p.recettes || [])
+          .slice()
+          .sort((a, b) => (a.ordre || 0) - (b.ordre || 0))
+          .forEach(pr => {
+            const rec = recetteById.get(pr.recetteId);
+            if (rec && !seen.has(rec.id)) { seen.add(rec.id); out.push(rec); }
+          });
+      });
+    return out;
+  }, [plats, recetteById]);
+
+  const addFromCarte = () => {
+    if (!carteId) { notifyLegacy('Choisis une carte à générer.', 'warning'); return; }
+    const recs = recettesForCarte(carteId);
+    if (recs.length === 0) { notifyLegacy('Cette carte ne contient aucune recette liée.', 'info'); return; }
+    const already = new Set(items.filter(i => i.recetteId).map(i => i.recetteId));
+    const toAdd = recs.filter(r => !already.has(r.id));
+    if (toAdd.length === 0) { notifyLegacy('Toutes les recettes de cette carte sont déjà dans la liste.', 'info'); return; }
+    setItems(prev => [...prev, ...toAdd.map(r => ({
+      key: tmpKey(), recetteId: r.id, label: r.nom,
+      quantite: '', unite: '', congelable: r.congelable ?? null,
+    }))]);
+    const carte = (cartes || []).find(c => c.id === carteId);
+    if (!nom.trim() && carte?.nom) setNom(`Mise en place ${carte.nom}`);
+    notifyLegacy(`${toAdd.length} recette${toAdd.length > 1 ? 's' : ''} ajoutée${toAdd.length > 1 ? 's' : ''} depuis « ${carte?.nom || 'la carte'} ».`, 'success');
+  };
 
   const toggleRecette = (rec) => {
     if (selectedRecetteIds.has(rec.id)) {
@@ -153,6 +201,23 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
             <label style={s.fieldLabel}>Date de service</label>
             <input type="date" style={s.input} value={dateService} onChange={e => setDateService(e.target.value)} />
           </div>
+        </div>
+      </div>
+
+      {/* Generer depuis une carte */}
+      <div style={s.editorCard}>
+        <div style={s.fieldLabel}>Générer depuis une carte</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ ...s.field, flex: 1, minWidth: 180 }}>
+            <select style={s.input} value={carteId} onChange={e => setCarteId(e.target.value)}>
+              <option value="">Choisir une carte…</option>
+              {(cartes || []).map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            </select>
+          </div>
+          <button type="button" style={s.addBtn} onClick={addFromCarte} disabled={!carteId}>Ajouter les recettes de la carte</button>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
+          Ajoute toutes les recettes des plats de la carte, sans doublon. Tu peux ensuite compléter à la main.
         </div>
       </div>
 
