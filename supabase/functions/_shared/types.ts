@@ -67,3 +67,72 @@ export interface LightspeedLocation {
   locationId: string;
   locationName: string;
 }
+
+// ══════════════════════════════════════════════════════════════════
+// KDS (Kitchen Display System) — ingestion getCheck (Order API)
+// ══════════════════════════════════════════════════════════════════
+
+/** Modifier d'une ligne (getCheck salesEntries[].modifiers[]) */
+export interface OpenCheckModifier {
+  name: string;
+  quantity: number;
+}
+
+/** Ligne de vente d'un check ouvert (getCheck salesEntries[]) */
+export interface OpenCheckLine {
+  /** Identité STABLE de la ligne (clé de diff). À confirmer par sonde. */
+  uuid: string;
+  id?: string;
+  itemName: string;
+  itemSku: string | null;
+  quantity: number;
+  modifiers: OpenCheckModifier[];
+  timeOfTransactionUtc: string | null;
+  /** false = ligne annulée (reste affichée, barrée) */
+  active: boolean;
+}
+
+/** Un check (table) ouvert renvoyé par getCheck */
+export interface OpenCheck {
+  uuid: string;
+  tableNumber: string | null;
+  clientCount: number | null;
+  openDate: string | null;
+  salesEntries: OpenCheckLine[];
+}
+
+/** Snapshot minimal d'une ligne déjà en base (pour le diff) */
+export interface ExistingItem {
+  ls_line_key: string;
+  content_hash: string | null;
+  bump_status: string;
+  active: boolean;
+}
+
+/** Ligne prête à être upsertée dans kds_order_items */
+export interface KdsItemUpsert {
+  ls_line_key: string;
+  nom: string | null;
+  sku: string | null;
+  qty: number | null;
+  modifiers: OpenCheckModifier[];
+  fired_at: string | null;
+  active: boolean;
+  content_hash: string;
+  /** true = re-fire : la ligne a changé alors qu'elle était bumpée → repasse pending */
+  reset_bump: boolean;
+}
+
+/** Résultat du diff d'un check contre le snapshot en base */
+export interface CheckDiff {
+  order: {
+    ls_check_uuid: string;
+    table_no: string | null;
+    couverts: number | null;
+    opened_at: string | null;
+  };
+  /** lignes nouvelles ou modifiées à upserter */
+  upserts: KdsItemUpsert[];
+  /** ls_line_key des lignes disparues du check → active=false */
+  voidedLineKeys: string[];
+}

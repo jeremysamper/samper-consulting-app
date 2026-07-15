@@ -1,0 +1,63 @@
+{
+  "_note": "Fixture getCheck (dry-run + tests). Forme d'enveloppe et champs calques sur la doc Order API 'Get All Open Checks'. A REALIGNER sur la sortie reelle de la sonde (scratchpad/kds-getcheck-probe.ts) : enveloppe exacte, presence de line.uuid, semantique de timeOfTransactionUtc et de active.",
+  "checks": [
+    {
+      "uuid": "chk-1111-aaaa",
+      "tableNumber": "12",
+      "clientCount": 2,
+      "staffName": "Marie",
+      "openDate": "2026-07-15T11:32:00Z",
+      "salesEntries": [
+        {
+          "uuid": "line-a1",
+          "id": "1",
+          "itemName": "Entrecote 250g",
+          "itemSku": "PLAT-ENT-250",
+          "quantity": 1,
+          "modifiers": [{ "name": "Saignant", "quantity": 1 }],
+          "timeOfTransactionUtc": "2026-07-15T11:33:10Z",
+          "active": true
+        },
+        {
+          "uuid": "line-a2",
+          "id": "2",
+          "itemName": "Salade Cesar",
+          "itemSku": "ENT-CES",
+          "quantity": 2,
+          "modifiers": [],
+          "timeOfTransactionUtc": "2026-07-15T11:33:12Z",
+          "active": true
+        }
+      ]
+    },
+    {
+      "uuid": "chk-2222-bbbb",
+      "tableNumber": "7",
+      "clientCount": 4,
+      "staffName": "Luc",
+      "openDate": "2026-07-15T11:40:05Z",
+      "salesEntries": [
+        {
+          "uuid": "line-b1",
+          "id": "1",
+          "itemName": "Risotto champignons",
+          "itemSku": "PLAT-RIS",
+          "quantity": 2,
+          "modifiers": [{ "name": "Sans parmesan", "quantity": 1 }],
+          "timeOfTransactionUtc": "2026-07-15T11:41:00Z",
+          "active": true
+        },
+        {
+          "uuid": "line-b2",
+          "id": "2",
+          "itemName": "Frites maison",
+          "itemSku": "GARN-FRI",
+          "quantity": 1,
+          "modifiers": [],
+          "timeOfTransactionUtc": "2026-07-15T11:41:02Z",
+          "active": false
+        }
+      ]
+    }
+  ]
+}
