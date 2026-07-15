@@ -28,7 +28,7 @@
 --
 -- Roles :
 --   • lecture (SELECT)   : consultant, resp_cuisine, cuisinier
---   • bump / suite (RPC) : via kds_bump_item + kds_set_suite (consultant, resp_cuisine, cuisinier)
+--   • bump / suite / fin (RPC) : kds_bump_item + kds_set_suite + kds_complete_order (consultant, resp_cuisine, cuisinier)
 --   • ingestion          : service_role (edge function), bypass RLS
 --   • patron, serveur, hote : aucun acces
 --
@@ -47,7 +47,9 @@ create table if not exists public.kds_orders (
   table_no         text,       -- tableNumber
   couverts         int,        -- clientCount
   opened_at        timestamptz,-- openDate (UTC)
-  status           text        not null default 'open' check (status in ('open','closed')),
+  status           text        not null default 'open' check (status in ('open','closed')), -- pilote par LS (absence de getCheck = closed)
+  completed_at     timestamptz,-- termine MANUELLEMENT au passe ; independant du statut LS (le poll ne l'ecrase pas)
+  completed_by     text        references public.profiles(id),
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
@@ -195,6 +197,39 @@ $$;
 revoke execute on function public.kds_set_suite(uuid, boolean) from public, anon;
 grant  execute on function public.kds_set_suite(uuid, boolean) to authenticated;
 
+-- Terminer une commande au passe (ou la rouvrir). Independant du statut LS :
+-- le poll continue d'ecrire status='open' mais ne touche jamais completed_at,
+-- donc une commande terminee reste hors du passe meme si le check est encore ouvert.
+create or replace function public.kds_complete_order(p_order_id uuid, p_done boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_etab text;
+begin
+  select etablissement_id into v_etab from public.kds_orders where id = p_order_id;
+
+  if v_etab is null then
+    raise exception 'kds_complete_order: commande introuvable';
+  end if;
+
+  if not user_can_access_etab(v_etab)
+     or not (current_user_role() = any(array['consultant','resp_cuisine','cuisinier'])) then
+    raise exception 'kds_complete_order: acces refuse';
+  end if;
+
+  update public.kds_orders
+     set completed_at = case when p_done then now() else null end,
+         completed_by = case when p_done then auth.uid()::text else null end
+   where id = p_order_id;
+end;
+$$;
+
+revoke execute on function public.kds_complete_order(uuid, boolean) from public, anon;
+grant  execute on function public.kds_complete_order(uuid, boolean) to authenticated;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 6. Realtime — ajout a la publication (idempotent) + replica identity full
 --    (full : le client recoit l'ancien bump_status sur les UPDATE realtime)
@@ -225,6 +260,7 @@ end $$;
 --     if exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='kds_order_items') then alter publication supabase_realtime drop table public.kds_order_items; end if;
 --     if exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='kds_orders')      then alter publication supabase_realtime drop table public.kds_orders;      end if;
 --   end $$;
+--   drop function if exists public.kds_complete_order(uuid, boolean);
 --   drop function if exists public.kds_set_suite(uuid, boolean);
 --   drop function if exists public.kds_bump_item(uuid, boolean);
 --   drop table if exists public.kds_order_items;
