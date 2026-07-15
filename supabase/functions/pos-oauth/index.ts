@@ -329,7 +329,7 @@ ${errMsg.replace(/</g, '&lt;')}</p></div>
         const authUrl = `${lsBaseAuth(lsEnv)}/auth`
           + `?client_id=${encodeURIComponent(env('LS_CLIENT_ID'))}`
           + `&response_type=code`
-          + `&scope=${encodeURIComponent('financial-api offline_access')}`
+          + `&scope=${encodeURIComponent('financial-api orders-api offline_access')}`
           + `&redirect_uri=${encodeURIComponent(env('LS_REDIRECT_URI'))}`
           + `&state=${encodeURIComponent(state)}`;
         return json({ url: authUrl });
