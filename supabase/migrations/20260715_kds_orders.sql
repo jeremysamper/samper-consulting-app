@@ -90,6 +90,9 @@ begin
   return new;
 end;
 $$;
+-- create or replace efface le proconfig : re-epingler le search_path
+-- (durcissement 20260712_i2, sinon l'advisor 0011 revient a chaque rejeu).
+alter function public.set_updated_at() set search_path = public, pg_temp;
 
 create or replace trigger trg_kds_orders_updated_at
   before update on public.kds_orders
