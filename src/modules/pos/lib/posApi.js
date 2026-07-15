@@ -12,8 +12,9 @@
 // ================================================================
 import { supabase, getSupabaseConfig } from '../../../services/supabase.js';
 
-export const POS_OAUTH_FN    = 'pos-oauth';
-export const POS_BACKFILL_FN = 'pos-backfill';
+export const POS_OAUTH_FN       = 'pos-oauth';
+export const POS_BACKFILL_FN    = 'pos-backfill';
+export const POS_ORDERS_POLL_FN = 'pos-orders-poll';
 
 /**
  * Appelle une edge function POS avec la session de l'utilisateur.
@@ -38,6 +39,20 @@ export async function callPosEdge(fnName, action, body = {}) {
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Erreur ${res.status}`);
+    err.status = res.status;
+    err.payload = data;
+    throw err;
+  }
   return data;
+}
+
+/**
+ * Poll KDS : demande a l'edge function pos-orders-poll d'ingerer les checks
+ * ouverts Lightspeed pour un etablissement. Renvoie le resume { checks, upserts, ... }.
+ * Peut lever une erreur .payload.needs_reconnect (scope orders-api manquant).
+ */
+export async function pollKdsOrders(etablissementId) {
+  return callPosEdge(POS_ORDERS_POLL_FN, null, { etablissementId });
 }

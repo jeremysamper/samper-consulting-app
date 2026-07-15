@@ -139,6 +139,9 @@ export default function AppLayout({
     // IA / assistant / outils consultant : réservés au consultant culinaire,
     // même si la table permissions accorde le module à un autre rôle.
     if ((item.id === 'faq' || item.id === 'consultant_tools') && user.role !== 'consultant') return false;
+    // KDS : rôles cuisine uniquement (miroir de la RLS kds_orders), la clé kds
+    // n'existant pas encore dans la table permissions en BDD.
+    if (item.id === 'kds' && !['consultant', 'resp_cuisine', 'cuisinier'].includes(user.role)) return false;
     const permVal = perms[item.permKey];
     if (permVal === false) return false;
     if (permVal === true) return true;

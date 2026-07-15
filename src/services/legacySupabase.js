@@ -690,6 +690,66 @@ export function installLegacySupabase() {
     },
 
     // ═══════════════════════════════════════════════════════════════
+    // KDS (kds_orders + kds_order_items) — commandes live Lightspeed.
+    // Lecture RLS : consultant, resp_cuisine, cuisinier. Ecriture via RPC.
+    // ═══════════════════════════════════════════════════════════════
+    async listKdsOrders(etabId) {
+      let q = client
+        .from('kds_orders')
+        .select('*, kds_order_items(*)')
+        .order('opened_at', { ascending: true, nullsFirst: false });
+      if (etabId) q = q.eq('etablissement_id', etabId);
+      const { data, error } = await q;
+      if (error) { console.error('[listKdsOrders]', error); return []; }
+      return (data || []).map(this.mapKdsOrderFromDB);
+    },
+
+    async kdsBumpItem(itemId, bumped) {
+      const { error } = await client.rpc('kds_bump_item', { p_item_id: itemId, p_bumped: !!bumped });
+      if (error) throw error;
+    },
+
+    async kdsSetSuite(itemId, aSuivre) {
+      const { error } = await client.rpc('kds_set_suite', { p_item_id: itemId, p_a_suivre: !!aSuivre });
+      if (error) throw error;
+    },
+
+    async kdsCompleteOrder(orderId, done = true) {
+      const { error } = await client.rpc('kds_complete_order', { p_order_id: orderId, p_done: !!done });
+      if (error) throw error;
+    },
+
+    mapKdsOrderFromDB(row) {
+      if (!row) return null;
+      const items = (row.kds_order_items || []).map((i) => ({
+        id: i.id,
+        lineKey: i.ls_line_key,
+        nom: i.nom || '',
+        sku: i.sku || null,
+        qty: i.qty != null ? Number(i.qty) : null,
+        modifiers: Array.isArray(i.modifiers) ? i.modifiers : [],
+        cours: i.cours || null,
+        firedAt: i.fired_at || null,
+        active: i.active !== false,
+        aSuivre: i.a_suivre === true,
+        bumpStatus: i.bump_status || 'pending',
+        bumpedAt: i.bumped_at || null,
+        bumpedBy: i.bumped_by || null,
+      }));
+      return {
+        id: row.id,
+        etablissementId: row.etablissement_id,
+        lsCheckUuid: row.ls_check_uuid,
+        tableNo: row.table_no || null,
+        couverts: row.couverts != null ? Number(row.couverts) : null,
+        openedAt: row.opened_at || null,
+        status: row.status || 'open',
+        completedAt: row.completed_at || null,
+        items,
+      };
+    },
+
+    // ═══════════════════════════════════════════════════════════════
     // PLATS (M2M avec recettes via plat_recettes)
     // ═══════════════════════════════════════════════════════════════
     async listPlats(etabId) {

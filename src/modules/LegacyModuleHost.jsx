@@ -16,6 +16,7 @@ const loadFAQAssistant = () => import('./faq/FAQAssistant.jsx');
 const loadFichesSalle = () => import('./fiches-salle/FichesSalle.jsx');
 const loadHACCP = () => import('./haccp/HACCP.jsx');
 const loadInventaire = () => import('./inventaire/Inventaire.jsx');
+const loadKds = () => import('./kds/Kds.jsx');
 const loadMep = () => import('./mep/MiseEnPlace.jsx');
 const loadMessages = () => import('./messages/Messages.jsx');
 const loadParametres = () => import('./parametres/Parametres.jsx');
@@ -38,6 +39,7 @@ const FAQAssistant = lazy(loadFAQAssistant);
 const FichesSalle = lazy(loadFichesSalle);
 const HACCP = lazy(loadHACCP);
 const Inventaire = lazy(loadInventaire);
+const Kds = lazy(loadKds);
 const Mep = lazy(loadMep);
 const Messages = lazy(loadMessages);
 const Parametres = lazy(loadParametres);
@@ -242,6 +244,15 @@ export default function LegacyModuleHost({
       const MepComponent = Mep;
       return permissions.mep !== false
         ? wrap('Mise en place', <MepComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'kds': {
+      const KdsComponent = Kds;
+      // Garde dure par rôle (miroir de la RLS lecture kds_orders) : la table
+      // permissions en BDD n'a pas encore la clé kds, on ne s'y fie pas seule.
+      const kitchenRole = ['consultant', 'resp_cuisine', 'cuisinier'].includes(user.role);
+      return kitchenRole && permissions.kds !== false
+        ? wrap('KDS Cuisine', <KdsComponent user={user} etablissement={etablissement} isActive={isActivePage} />)
         : accessDenied;
     }
     default:
