@@ -16,6 +16,19 @@ export const POS_OAUTH_FN       = 'pos-oauth';
 export const POS_BACKFILL_FN    = 'pos-backfill';
 export const POS_ORDERS_POLL_FN = 'pos-orders-poll';
 
+// Messages d'erreur OAuth traduits par code renvoye par Lightspeed
+// (postMessage pos_oauth_error du popup, champ error_code).
+export const OAUTH_ERRORS = {
+  invalid_client:
+    'Client ID ou Secret incorrect. Vérifiez les secrets Supabase (LS_CLIENT_ID et LS_CLIENT_SECRET).',
+  invalid_redirect_uri:
+    "Redirect URI non autorisée. Vérifiez qu'elle est bien enregistrée dans le portail Lightspeed.",
+  access_denied:
+    'Autorisation refusée. Réessayez et acceptez les permissions demandées.',
+  invalid_scope:
+    'Scopes insuffisants. Vérifiez que financial-api, orders-api et offline_access sont activés dans le portail Lightspeed.',
+};
+
 /**
  * Appelle une edge function POS avec la session de l'utilisateur.
  *

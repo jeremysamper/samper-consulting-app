@@ -5,11 +5,15 @@
 // le couplage et la synchro ne sont plus enfermes dans Parametres
 // (page reservee au consultant).
 //
-//   • Non connecte  -> bouton "Connecter Lightspeed" (OAuth popup)
+//   • Non connecte  -> "Connecter Lightspeed" (wizard guide 3 etapes)
 //   • Connecte      -> "Synchroniser maintenant" (pos-backfill) + "Tester"
 //   • 1re fois      -> "Importer l'historique (14 j)"
-//   • Erreur        -> "Reconnecter"
-//   • needs_location-> renvoie vers Parametres pour finaliser
+//   • Erreur        -> "Reconnecter" (wizard, mode reconnect)
+//   • needs_location-> "Choisir le restaurant" (wizard, mode location)
+//
+// Le flux OAuth (popup + postMessage + choix de location + 1er import)
+// vit dans LightspeedConnectWizard ; la barre recharge le statut a la
+// fermeture du wizard.
 //
 // Permissions :
 //   Coupler / reconnecter : consultant, patron
@@ -19,6 +23,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../services/supabase.js';
 import { notify } from '../../../components/toast/index.js';
 import { callPosEdge, POS_OAUTH_FN, POS_BACKFILL_FN } from '../lib/posApi.js';
+import LightspeedConnectWizard from './LightspeedConnectWizard.jsx';
 
 const CONNECT_ROLES = ['consultant', 'patron'];
 const SYNC_ROLES    = ['consultant', 'patron', 'resp_cuisine'];
@@ -78,7 +83,8 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus]     = useState(null);
   const [loading, setLoading]   = useState(true);
-  const [action, setAction]     = useState(null); // 'connecting' | 'syncing' | 'testing'
+  const [action, setAction]     = useState(null); // 'syncing' | 'testing'
+  const [wizard, setWizard]     = useState(null); // null | 'connect' | 'reconnect' | 'location'
   const busy = !!action;
 
   // Provider Lightspeed (premier provider POS dispo par defaut)
@@ -116,41 +122,18 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  // Resultat du popup OAuth (postMessage)
-  useEffect(() => {
-    const handler = (event) => {
-      const d = event.data ?? {};
-      if (d.type === 'pos_oauth_success') {
-        setAction(null);
-        notify(`Lightspeed connecte${d.locationName ? ` (${d.locationName})` : ''}`, 'success');
-        loadStatus();
-      } else if (d.type === 'pos_oauth_needs_location') {
-        setAction(null);
-        notify('Plusieurs restaurants detectes. Finalisez dans Parametres -> Integrations POS.', 'warning');
-        loadStatus();
-      } else if (d.type === 'pos_oauth_error') {
-        setAction(null);
-        notify(`Connexion echouee : ${d.error || 'reessayez.'}`, 'error');
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [loadStatus]);
-
-  async function handleConnect() {
+  // Ouvre le wizard guide (le flux OAuth complet vit dedans).
+  function openWizard(mode) {
     if (!provider) { notify('Aucun provider POS disponible.', 'error'); return; }
-    setAction('connecting');
-    try {
-      const { url } = await callPosEdge(POS_OAUTH_FN, 'get_auth_url', { etablissementId, providerId: provider.id });
-      const popup = window.open(url, 'lightspeed_oauth', 'width=600,height=720,left=200,top=80');
-      if (!popup) {
-        notify('Popup bloque - autorisez les popups pour ce site.', 'warning');
-        setAction(null);
-      }
-    } catch (err) {
-      notify(`Impossible de lancer la connexion : ${err.message}`, 'error');
-      setAction(null);
-    }
+    setWizard(mode);
+  }
+
+  // Fermeture du wizard : recharge du statut ; si un import a eu lieu,
+  // previent le module pour re-fetcher les vues.
+  function handleWizardClose({ imported } = {}) {
+    setWizard(null);
+    loadStatus();
+    if (imported) onSynced?.();
   }
 
   async function handleSync(days) {
@@ -194,6 +177,16 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   const needsLocation = st === 'needs_location';
   const hasData       = isConnected && !!status?.last_sync_at;
   const lastSync      = fmtDate(status?.last_sync_at);
+
+  // Wizard guide (connexion / reconnexion / choix du restaurant)
+  const wizardEl = (wizard && provider) ? (
+    <LightspeedConnectWizard
+      etablissement={etablissement}
+      provider={provider}
+      mode={wizard}
+      onClose={handleWizardClose}
+    />
+  ) : null;
 
   // ── Chargement initial ──
   if (loading && !status) {
@@ -252,77 +245,95 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   // ── Erreur (token revoque / sync en echec) ──
   if (isError) {
     return (
-      <div style={{ ...S.card, borderColor: 'var(--danger-bd)' }}>
-        <div style={S.row}>
-          <IconLS />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={S.title}>Lightspeed</span>
-              <span style={S.pill('danger')}>Deconnecte</span>
+      <>
+        <div style={{ ...S.card, borderColor: 'var(--danger-bd)' }}>
+          <div style={S.row}>
+            <IconLS />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={S.title}>Lightspeed</span>
+                <span style={S.pill('danger')}>Deconnecte</span>
+              </div>
+              <div style={{ ...S.sub, color: 'var(--danger-text)' }}>
+                {status?.last_error
+                  ? status.last_error
+                  : 'La synchronisation est en pause. Reconnectez la caisse.'}
+              </div>
             </div>
-            <div style={{ ...S.sub, color: 'var(--danger-text)' }}>
-              {status?.last_error
-                ? status.last_error
-                : 'La synchronisation est en pause. Reconnectez la caisse.'}
-            </div>
+            <div style={S.spacer} />
+            {canConnect && (
+              <div style={S.actions}>
+                <button type="button" onClick={() => openWizard('reconnect')} style={S.primary(false)}>
+                  Reconnecter Lightspeed
+                </button>
+              </div>
+            )}
           </div>
-          <div style={S.spacer} />
-          {canConnect && (
-            <div style={S.actions}>
-              <button type="button" onClick={handleConnect} disabled={busy} style={S.primary(busy)}>
-                {action === 'connecting' ? 'Connexion...' : 'Reconnecter Lightspeed'}
-              </button>
-            </div>
-          )}
         </div>
-      </div>
+        {wizardEl}
+      </>
     );
   }
 
   // ── Selection de location requise ──
   if (needsLocation) {
     return (
-      <div style={{ ...S.card, borderColor: 'var(--warning-bd)' }}>
-        <div style={S.row}>
-          <IconLS />
-          <div style={{ minWidth: 0 }}>
-            <span style={S.title}>Selection du restaurant requise</span>
-            <div style={S.sub}>
-              Plusieurs restaurants detectes sur ce compte Lightspeed. Finalisez la selection dans
-              Parametres -&gt; Integrations POS.
+      <>
+        <div style={{ ...S.card, borderColor: 'var(--warning-bd)' }}>
+          <div style={S.row}>
+            <IconLS />
+            <div style={{ minWidth: 0 }}>
+              <span style={S.title}>Selection du restaurant requise</span>
+              <div style={S.sub}>
+                {canConnect
+                  ? 'Plusieurs restaurants detectes sur ce compte Lightspeed. Choisissez celui de cet etablissement pour terminer la connexion.'
+                  : 'Plusieurs restaurants detectes sur ce compte Lightspeed. Demandez au patron ou au consultant de finaliser la selection.'}
+              </div>
             </div>
+            <div style={S.spacer} />
+            {canConnect && (
+              <div style={S.actions}>
+                <button type="button" onClick={() => openWizard('location')} style={S.primary(false)}>
+                  Choisir le restaurant
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+        {wizardEl}
+      </>
     );
   }
 
   // ── Non connecte ──
   return (
-    <div style={S.card}>
-      <div style={{ ...S.row, alignItems: 'flex-start' }}>
-        <IconLS />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <span style={S.title}>Aucune caisse connectee</span>
-          <div style={S.sub}>
-            {canConnect
-              ? 'Connectez votre caisse Lightspeed pour synchroniser les ventes et activer les vues cuisine (mise en place, top/flop, conso ingredients).'
-              : "La caisse Lightspeed n'est pas connectee. Demandez a un responsable de la connecter."}
+    <>
+      <div style={S.card}>
+        <div style={{ ...S.row, alignItems: 'flex-start' }}>
+          <IconLS />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <span style={S.title}>Aucune caisse connectee</span>
+            <div style={S.sub}>
+              {canConnect
+                ? 'Connectez votre caisse Lightspeed en 3 etapes guidees pour synchroniser les ventes et activer les vues cuisine (mise en place, top/flop, conso ingredients).'
+                : "La caisse Lightspeed n'est pas connectee. Demandez a un responsable de la connecter."}
+            </div>
           </div>
+          {canConnect && (
+            <div style={S.actions}>
+              <button
+                type="button"
+                onClick={() => openWizard('connect')}
+                disabled={!provider}
+                style={S.primary(!provider)}
+              >
+                Connecter Lightspeed
+              </button>
+            </div>
+          )}
         </div>
-        {canConnect && (
-          <div style={S.actions}>
-            <button
-              type="button"
-              onClick={handleConnect}
-              disabled={busy || !provider}
-              style={S.primary(busy || !provider)}
-            >
-              {action === 'connecting' ? 'Connexion...' : 'Connecter Lightspeed'}
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+      {wizardEl}
+    </>
   );
 }
