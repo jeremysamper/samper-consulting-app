@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// ExcelImporter — parse un classeur XLSX / XLS / CSV en recettes.
+// ExcelImporter - parse un classeur XLSX / XLS / CSV en recettes.
 //
 // Deux formats reconnus :
 //  1. Multi-feuilles (template officiel) : feuilles Recettes / Ingrédients / Étapes
@@ -160,7 +160,7 @@ const splitAllergenes = (raw) => String(raw ?? '')
   .split(/[;,]/).map(s => norm(s)).filter(Boolean);
 
 // Construit les recettes depuis les lignes + un mapping de colonnes.
-// catHint : catégorie déduite du nom de feuille — utilisée si la ligne ne renseigne pas la catégorie.
+// catHint : catégorie déduite du nom de feuille - utilisée si la ligne ne renseigne pas la catégorie.
 export function buildFromMapping(rows, headerRowIndex, map, catHint = null) {
   const dataRows = rows.slice(headerRowIndex + 1);
   const byTitre = new Map();

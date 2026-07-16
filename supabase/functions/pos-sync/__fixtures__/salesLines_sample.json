@@ -1,5 +1,5 @@
 {
-  "_comment": "Fixture dry-run — 15 lignes de ventes, 6 SKU, cas timezone limite inclus",
+  "_comment": "Fixture dry-run - 15 lignes de ventes, 6 SKU, cas timezone limite inclus",
   "_timezone_note": "RISOTTO-001 à 22:30 UTC (CEST été UTC+2 → 00:30 lendemain). Vérifie le split jour.",
   "sales": [
     {
@@ -96,7 +96,7 @@
       "_note": "21:45 UTC = 23:45 CEST → doit rester sur le 2026-05-22"
     },
     {
-      "name": "Plat sans SKU — test fallback nom",
+      "name": "Plat sans SKU - test fallback nom",
       "sku": null,
       "qty": 2,
       "price": 2200,

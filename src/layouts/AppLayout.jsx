@@ -81,7 +81,7 @@ export default function AppLayout({
   const perms = permissionsOverride || DEMO_DATA.permissions[user.role] || {}; 
   const roleInfo = DEMO_DATA.roles[user.role] || { label: user?.role || 'Utilisateur', couleur: '#003042' };
 
-  // Établissements accessibles à l'utilisateur — en state live synchronisé avec Supabase
+  // Établissements accessibles à l'utilisateur - en state live synchronisé avec Supabase
   const [etabsAll, setEtabsAll] = React.useState(() => etablissements.length ? etablissements : (DEMO_DATA.etablissements || []));
   React.useEffect(() => {
     if (etablissements.length) setEtabsAll(etablissements);
@@ -160,7 +160,7 @@ export default function AppLayout({
     }
     return groups;
   }, []), [visibleNav]);
-  // ─── Alertes configurables — Supabase (remplace DEMO_DATA) ──────
+  // ─── Alertes configurables - Supabase (remplace DEMO_DATA) ──────
   const {
     alerts,
     unreadCount,
@@ -191,7 +191,7 @@ export default function AppLayout({
   const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
   const todayLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  // Labels personnalisés globaux (module_labels table — portée tous établissements)
+  // Labels personnalisés globaux (module_labels table - portée tous établissements)
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
   const { getLabelForModule } = useModuleLabels();
 
@@ -317,7 +317,7 @@ export default function AppLayout({
     )
   );
 
-  // ─── Panel d'alertes — rendu partagé desktop + mobile ────────────
+  // ─── Panel d'alertes - rendu partagé desktop + mobile ────────────
   // panelStyle / headerStyle / itemStyle viennent de ls ou mls selon le contexte.
   const handleAlertClick = async (alert) => {
     await dismissAlert(alert.id);
@@ -381,7 +381,7 @@ export default function AppLayout({
   // ════════════════════════════════
   if (isMobile) {
     // ═══════════════════════════════════════════════════════════════
-    // MOBILE v2 — Hamburger qui ouvre un drawer latéral gauche
+    // MOBILE v2 - Hamburger qui ouvre un drawer latéral gauche
     // ═══════════════════════════════════════════════════════════════
     return (
       <div style={mls.root}>
@@ -455,7 +455,7 @@ export default function AppLayout({
             </div>
           </div>
 
-          {/* Switch établissement — visible si l'utilisateur a accès à 2+ établissements */}
+          {/* Switch établissement - visible si l'utilisateur a accès à 2+ établissements */}
           {etabs.length > 1 && (
             <div style={mls.etabSwitcher}>
               <div style={mls.etabSwitcherLabel}>Établissement</div>
@@ -548,7 +548,7 @@ export default function AppLayout({
         </div>
 
         {/* Sélecteur d'établissement : même UI que le drawer mobile (liste
-            d'options avec pastille couleur + ✓ actif) — feedback immédiat du
+            d'options avec pastille couleur + ✓ actif) - feedback immédiat du
             changement, contrairement à l'ancien <select> sombre. */}
         {sidebarOpen && etabs.length > 1 && (
           <div style={ls.etabWrap}>
@@ -664,7 +664,7 @@ export default function AppLayout({
 }
 
 const ls = {
-  // Desktop — même langage visuel que le drawer mobile : tokens du thème
+  // Desktop - même langage visuel que le drawer mobile : tokens du thème
   // (surface/text/border/accent) au lieu du fond sombre --nav + blancs en dur.
   // Blanc en mode clair, surface sombre en mode sombre, sans couleur codée en dur.
   root: { display: 'flex', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)', overflow: 'hidden' },
@@ -733,7 +733,7 @@ const ls = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// MOBILE LAYOUT STYLES (v2 — hamburger + drawer)
+// MOBILE LAYOUT STYLES (v2 - hamburger + drawer)
 // ═══════════════════════════════════════════════════════════════
 const mls = {
   root: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'var(--font)' },

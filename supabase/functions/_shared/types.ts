@@ -6,7 +6,7 @@
 export interface SalesLine {
   /** Nom du plat (tel qu'affiché dans le POS) */
   name: string;
-  /** SKU du plat — peut être null si non configuré dans LS */
+  /** SKU du plat - peut être null si non configuré dans LS */
   sku: string | null;
   /** Quantité vendue */
   qty: number;
@@ -69,7 +69,7 @@ export interface LightspeedLocation {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// KDS (Kitchen Display System) — ingestion getCheck (Order API)
+// KDS (Kitchen Display System) - ingestion getCheck (Order API)
 // ══════════════════════════════════════════════════════════════════
 
 /** Modifier d'une ligne (getCheck salesEntries[].modifiers[]) */

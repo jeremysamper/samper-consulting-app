@@ -63,7 +63,7 @@ export function usePrevisionsSemaine(etablissementId) {
 
       // Reconstituer les 7 jours : previsions_jour ne contient que les jours
       // ayant au moins une réservation (créée par trigger). Les jours vides
-      // ne sont pas en base — on les complète avec des zéros.
+      // ne sont pas en base - on les complète avec des zéros.
       const byDate = Object.fromEntries((data || []).map((row) => [row.date_service, row]));
       const merged = buildSemaineVide(dateStr).map((jour) => {
         const row = byDate[jour.date_service];

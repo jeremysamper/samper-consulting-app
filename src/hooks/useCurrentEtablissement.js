@@ -18,7 +18,7 @@ export function useCurrentEtablissement(user) {
   // Choix explicite fait PENDANT la session : prioritaire sur la valeur DB.
   // Sans ça, un re-run de load() (profil ré-émis par Supabase au refocus de
   // l'onglet) relit current_etab_id en DB et peut ÉCRASER un changement
-  // d'établissement dont l'écriture n'a pas encore abouti — l'UI revient
+  // d'établissement dont l'écriture n'a pas encore abouti - l'UI revient
   // alors sur l'ancien établissement jusqu'au redémarrage de l'app.
   const selectedIdRef = useRef(null);
   // Premier chargement terminé : les re-runs suivants se font en arrière-plan

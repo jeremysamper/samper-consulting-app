@@ -9,7 +9,7 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-  // "Rester connecté 30 jours" — coché par défaut.
+  // "Rester connecté 30 jours" - coché par défaut.
   // Si décoché, on stocke un flag sessionStorage après connexion :
   // useAuth.js le lit au prochain boot et déconnecte silencieusement.
   const [rememberMe, setRememberMe] = useState(true);

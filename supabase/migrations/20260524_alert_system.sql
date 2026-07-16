@@ -1,12 +1,12 @@
 -- ================================================================
--- MIGRATION — Système d'alertes configurables
+-- MIGRATION - Système d'alertes configurables
 -- Projet : Samper Consulting
 -- Date   : 2026-05-24
 --
 -- TABLES :
---   alert_rules      — règles définies par consultant/patron
---   alert_instances  — alertes déclenchées (actives ou résolues)
---   alert_reads      — suivi des lectures par utilisateur
+--   alert_rules      - règles définies par consultant/patron
+--   alert_instances  - alertes déclenchées (actives ou résolues)
+--   alert_reads      - suivi des lectures par utilisateur
 --
 -- PATTERNS : text IDs (cohérent avec toutes les tables existantes)
 --            RLS via user_can_access_etab() + current_user_role()

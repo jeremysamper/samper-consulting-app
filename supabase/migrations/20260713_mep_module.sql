@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Module Mise en place — listes de production qui separent la grosse production
+-- Module Mise en place - listes de production qui separent la grosse production
 -- (preparations congelables, produites en avance et en volume) des preparations
 -- urgentes (non congelables, produites au plus pres du service).
 --
@@ -26,7 +26,7 @@
 alter table public.recettes add column if not exists congelable boolean;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2. mep_listes — une liste de mise en place par date de service
+-- 2. mep_listes - une liste de mise en place par date de service
 -- ─────────────────────────────────────────────────────────────────────────────
 create table if not exists public.mep_listes (
   id               uuid        primary key default gen_random_uuid(),
@@ -39,7 +39,7 @@ create table if not exists public.mep_listes (
 create index if not exists idx_mep_listes_etab on public.mep_listes(etablissement_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. mep_items — une ligne = une preparation (recette de base OU ajout manuel)
+-- 3. mep_items - une ligne = une preparation (recette de base OU ajout manuel)
 -- ─────────────────────────────────────────────────────────────────────────────
 create table if not exists public.mep_items (
   id          uuid        primary key default gen_random_uuid(),
@@ -159,7 +159,7 @@ create policy mep_items_delete on public.mep_items
   );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 5. Realtime — ajout a la publication (idempotent)
+-- 5. Realtime - ajout a la publication (idempotent)
 -- ─────────────────────────────────────────────────────────────────────────────
 do $$
 begin

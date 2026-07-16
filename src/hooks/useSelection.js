@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 // les supprimer ou les exporter en lot).
 //
 // Retour :
-//   active        : booléen — le mode sélection est-il activé
+//   active        : booléen - le mode sélection est-il activé
 //   ids           : Set des identifiants sélectionnés
 //   count         : nombre d'éléments sélectionnés
 //   enter()       : active le mode sélection

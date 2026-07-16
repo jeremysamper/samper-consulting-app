@@ -9,7 +9,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ═══════════════════════════════════════════════════════════════
-// SAMPER CONSULTING — MODULE SOP & CHECKLISTS
+// SAMPER CONSULTING - MODULE SOP & CHECKLISTS
 // ═══════════════════════════════════════════════════════════════
 
 const SOP_CATEGORIES = ['Service', 'Ouverture / Fermeture', 'Hygiène', 'Stock', 'HACCP', 'Sécurité', 'Autre'];
@@ -302,7 +302,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
       <div style={ss.filtersBar}>
         <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
-          {/* Mode nouveau cuisinier — toggle dédié */}
+          {/* Mode nouveau cuisinier - toggle dédié */}
           {essentialCount > 0 && (
             <button
               style={{
@@ -817,7 +817,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
     } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
   };
 
-  // Templates de la bibliothèque (en base) actuellement cochés — supprimables en lot.
+  // Templates de la bibliothèque (en base) actuellement cochés - supprimables en lot.
   const selectedDbItems = dbItems.filter(it => selected.has(it.key));
 
   const removeSelected = async () => {

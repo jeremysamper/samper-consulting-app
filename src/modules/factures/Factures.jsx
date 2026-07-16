@@ -6,7 +6,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 
 // ═══════════════════════════════════════════════════════════════
-// MODULE FACTURES — Génération + envoi auto vers Documents
+// MODULE FACTURES - Génération + envoi auto vers Documents
 // ═══════════════════════════════════════════════════════════════
 
 // ─── Template email par défaut pour notification facture ───
@@ -387,7 +387,7 @@ const Factures = ({ user, etablissement }) => {
 
   // ═══ Réinitialiser le formulaire (pour faire une nouvelle facture) ═══
   // On commence par un placeholder synchrone puis
-  // on remplace par le vrai numéro DB dès qu'il revient — comme au mount.
+  // on remplace par le vrai numéro DB dès qu'il revient - comme au mount.
   const newFacture = async () => {
     // Étape 1 : reset immédiat avec placeholder local non persistant (UX réactif)
     setForm({

@@ -1,5 +1,5 @@
 -- ============================================================================
--- I1b — Fermeture de la porte PUBLIC sur les fonctions SECURITY DEFINER
+-- I1b - Fermeture de la porte PUBLIC sur les fonctions SECURITY DEFINER
 --
 -- APPLIQUÉ EN PROD via MCP le 13/07/2026 (après I1). Mirroir repo == prod.
 --

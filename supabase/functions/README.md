@@ -1,8 +1,8 @@
-# Edge functions Supabase — module IA
+# Edge functions Supabase - module IA
 
 ## `ai-proxy`
 
-Proxy sécurisé entre l'application et le service IA — **multi-fournisseur :
+Proxy sécurisé entre l'application et le service IA - **multi-fournisseur :
 Claude (Anthropic) ou OpenAI**, au choix via un secret. La clé API reste côté
 serveur, jamais incluse dans le bundle client.
 
@@ -39,7 +39,7 @@ serveur, jamais incluse dans le bundle client.
 ### Changer de fournisseur
 
 Il suffit de modifier le secret `AI_PROVIDER` (et de fournir la clé
-correspondante) puis de redéployer — aucun changement de code applicatif.
+correspondante) puis de redéployer - aucun changement de code applicatif.
 
 ### Coût
 

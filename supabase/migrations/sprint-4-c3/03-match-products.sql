@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Sprint 4 · Chantier 3 · ÉTAPE 3 — Matching rétroactif produits
+-- Sprint 4 · Chantier 3 · ÉTAPE 3 - Matching rétroactif produits
 -- ────────────────────────────────────────────────────────────────
 -- Rapproche chaque ingrédient de recette (sans produitId) d'un produit
 -- du catalogue du MÊME établissement.

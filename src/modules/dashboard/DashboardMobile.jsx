@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// DASHBOARD MOBILE — Version dédiée mobile (<768px)
+// DASHBOARD MOBILE - Version dédiée mobile (<768px)
 // Priorité : pointage rapide, message consultant, KPIs compacts
 // ═══════════════════════════════════════════════════════════════
 
@@ -163,7 +163,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         <div style={dm.greetingSub}>{dateLabel}</div>
       </div>
 
-      {/* ═══ POINTAGE PRIORITAIRE — toujours visible ═══ */}
+      {/* ═══ POINTAGE PRIORITAIRE - toujours visible ═══ */}
       <div style={dm.pointageBloc}>
         <div style={dm.pointageHead}>⏱ MES HORAIRES AUJOURD'HUI</div>
         {pointageError && <div style={dm.errorBanner}>{pointageError}</div>}
@@ -368,7 +368,7 @@ const dm = {
   greetingTitle: { fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   greetingSub: { fontSize: 12, color: 'var(--text2)', marginTop: 2, textTransform: 'capitalize' },
 
-  // Pointage — bloc en haut, priorité absolue
+  // Pointage - bloc en haut, priorité absolue
   pointageBloc: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 12, padding: 14 },
   pointageHead: { fontSize: 11, fontWeight: 700, color: 'var(--success-text)', letterSpacing: 0.5, marginBottom: 10 },
   errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
@@ -391,7 +391,7 @@ const dm = {
   messageSig: { fontSize: 10, color: 'var(--text2)', marginTop: 6, fontWeight: 600 },
   messageEmpty: { fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' },
 
-  // KPIs 2×2 — toutes les cases ont la même hauteur, contenu centré
+  // KPIs 2×2 - toutes les cases ont la même hauteur, contenu centré
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 },
   kpi: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 76, boxSizing: 'border-box' },
   kpiLbl: { fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600, lineHeight: 1.3 },

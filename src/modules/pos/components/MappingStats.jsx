@@ -1,5 +1,5 @@
 /**
- * MappingStats — Compteur "X/Y plats mappés" + détail par statut
+ * MappingStats - Compteur "X/Y plats mappés" + détail par statut
  */
 
 /**

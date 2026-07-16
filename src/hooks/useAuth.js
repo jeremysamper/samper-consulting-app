@@ -50,7 +50,7 @@ async function loadProfileSafe(authUser) {
     );
     return result;
   } catch (err) {
-    // Erreur réseau / RLS / 401 transitoire — ne pas nullifier le profil
+    // Erreur réseau / RLS / 401 transitoire - ne pas nullifier le profil
     console.warn('[Auth] loadProfile a échoué (sera ignoré si profil déjà chargé)', err);
     return PROFILE_LOAD_FAILED;
   }
@@ -99,10 +99,10 @@ export function useAuth() {
       unsubscribe = authService.onAuthChange(async (event, nextSession) => {
         if (!mounted) return;
 
-        // Log temporaire pour diagnostic en prod — à retirer dans 2 semaines une fois validé.
+        // Log temporaire pour diagnostic en prod - à retirer dans 2 semaines une fois validé.
         console.log('[Auth]', event, nextSession?.user?.email ?? 'no session');
 
-        // ─── INITIAL_SESSION : premier état auth déterminé — débloque le chargement ───
+        // ─── INITIAL_SESSION : premier état auth déterminé - débloque le chargement ───
         //
         // Supabase JS v2 émet toujours INITIAL_SESSION en premier dès qu'un écouteur
         // est enregistré. Il représente l'état initial lu en localStorage (session valide,
@@ -110,7 +110,7 @@ export function useAuth() {
         //
         // FIX flash login : loading ne passe jamais à false avant cet event.
         // Le Login n'est donc jamais affiché avant que Supabase ait répondu de façon
-        // définitive — même si le rafraîchissement JWT prend plusieurs secondes.
+        // définitive - même si le rafraîchissement JWT prend plusieurs secondes.
         if (event === 'INITIAL_SESSION') {
           globalThis.clearTimeout(safetyTimer);
 
@@ -187,7 +187,7 @@ export function useAuth() {
       if (mounted) setLoading(false); // débloque si l'écoute échoue totalement
     }
 
-    // Note : sc_session_only (sessionStorage flag) — mécanisme de session éphémère.
+    // Note : sc_session_only (sessionStorage flag) - mécanisme de session éphémère.
     // La vérification a lieu ici uniquement pour documenter l'intention ; le vrai
     // comportement (ne pas persister) est géré par le fait que sessionStorage est effacé
     // à la fermeture de l'onglet. Supabase conserve la session en localStorage (storageKey

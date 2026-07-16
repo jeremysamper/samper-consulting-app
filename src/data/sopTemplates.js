@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// SOP TEMPLATES — Bibliothèque de SOPs pré-faites pour Samper Consulting
+// SOP TEMPLATES - Bibliothèque de SOPs pré-faites pour Samper Consulting
 // ═══════════════════════════════════════════════════════════════
 // Conçues pour la restauration suisse pro (gastro/brasserie/hôtel-restaurant)
 // L'utilisateur peut dupliquer puis personnaliser pour chaque client.

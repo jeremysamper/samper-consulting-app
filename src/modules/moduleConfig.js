@@ -18,17 +18,36 @@ export const defaultPermissions = {
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
 // par rôle dans Rôles & accès → onglet « Droits d'action ».
-// Par défaut, seuls consultant et patron peuvent gérer ces modules.
+// `defaultRoles` : rôles autorisés tant qu'aucun droit explicite n'est stocké
+// en base ; sans cette clé, defaultManageRoles s'applique. Les défauts
+// reproduisent les gardes historiques de chaque module.
+// Volontairement absents : dashboard et messages (aucune action à restreindre),
+// commande (la génération = IA, consultant only), kds (écran opérationnel du
+// passe) et les pages consultant-only (garde dure par rôle dans LegacyModuleHost).
 export const manageableModules = [
-  { id: 'fiches_salle', label: 'Fiches salle' },
-  { id: 'sop', label: 'SOPs & Checklists' },
+  { id: 'planning', label: 'Planning & Pointage', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
+  { id: 'recettes', label: 'Cartes & Recettes', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
+  { id: 'inventaire', label: 'Inventaire', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
   { id: 'pertes', label: 'Pertes' },
   { id: 'haccp', label: 'HACCP' },
+  { id: 'sop', label: 'SOPs & Checklists' },
+  { id: 'fiches_salle', label: 'Fiches salle' },
   { id: 'documents', label: 'Documents' },
+  { id: 'catalogue', label: 'Catalogue produits' },
+  { id: 'previsions', label: 'Prévisions', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
+  { id: 'mep', label: 'Mise en place', defaultRoles: ['resp_cuisine', 'cuisinier'] },
+  { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
 ];
 
 // Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.
 export const defaultManageRoles = ['consultant', 'patron'];
+
+// Rôles par défaut du droit « gérer » d'un module (defaultRoles du module,
+// sinon defaultManageRoles).
+export function getDefaultManageRoles(moduleId) {
+  const entry = manageableModules.find((m) => m.id === moduleId);
+  return entry?.defaultRoles || defaultManageRoles;
+}
 
 export const navItems = [
   { id: 'dashboard', label: 'Tableau de bord', mobileLabel: 'Accueil', icon: '◉', group: 'Général', permKey: 'dashboard' },
@@ -52,7 +71,7 @@ export const navItems = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Modules consultant-only — non présents dans navItems ni defaultPermissions.
+// Modules consultant-only - non présents dans navItems ni defaultPermissions.
 // Leur accès est géré par condition directe dans LegacyModuleHost.jsx :
 //   user.role === 'consultant' && permissions.consultant_tools !== false
 //

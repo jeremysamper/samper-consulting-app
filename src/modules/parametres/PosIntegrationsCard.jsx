@@ -338,7 +338,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  // Ping — réservé au consultant authentifié, vérifie la présence des secrets
+  // Ping - réservé au consultant authentifié, vérifie la présence des secrets
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -438,7 +438,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
 
   return (
     <div>
-      {/* ── Écran de setup (aucune connexion) — canEdit uniquement ── */}
+      {/* ── Écran de setup (aucune connexion) - canEdit uniquement ── */}
       {notConnected && canEdit && (
         loading ? (
           <div style={{

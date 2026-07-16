@@ -1,5 +1,5 @@
 // ================================================================
-// aggregate.ts — Agrégation des salesLines par SKU + date locale
+// aggregate.ts - Agrégation des salesLines par SKU + date locale
 // ================================================================
 import type { SalesLine, AggregatedSale } from './types.ts';
 import { utcToLocalDateString } from './timezone.ts';

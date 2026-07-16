@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Module KDS (Kitchen Display System) — ingestion des commandes Lightspeed.
+-- Module KDS (Kitchen Display System) - ingestion des commandes Lightspeed.
 --
 -- Source : polling de l'endpoint Order API « Get All Open Checks »
 --          GET /o/op/1/order/table/getCheck?businessLocationId=X  (scope orders-api)
@@ -38,7 +38,7 @@
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 1. kds_orders — un check (table) ouvert
+-- 1. kds_orders - un check (table) ouvert
 -- ─────────────────────────────────────────────────────────────────────────────
 create table if not exists public.kds_orders (
   id               uuid        primary key default gen_random_uuid(),
@@ -57,7 +57,7 @@ create index if not exists idx_kds_orders_etab on public.kds_orders(etablissemen
 create index if not exists idx_kds_orders_open on public.kds_orders(etablissement_id) where status = 'open';
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2. kds_order_items — une ligne de vente du check (salesEntries)
+-- 2. kds_order_items - une ligne de vente du check (salesEntries)
 -- ─────────────────────────────────────────────────────────────────────────────
 create table if not exists public.kds_order_items (
   id            uuid        primary key default gen_random_uuid(),
@@ -131,7 +131,7 @@ create policy kds_order_items_select on public.kds_order_items
   );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 5. RPC de bump et de suite — seule surface d'ecriture client
+-- 5. RPC de bump et de suite - seule surface d'ecriture client
 --    (chaque RPC ne touche que ses propres colonnes)
 -- ─────────────────────────────────────────────────────────────────────────────
 create or replace function public.kds_bump_item(p_item_id uuid, p_bumped boolean)
@@ -234,7 +234,7 @@ revoke execute on function public.kds_complete_order(uuid, boolean) from public,
 grant  execute on function public.kds_complete_order(uuid, boolean) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 6. Realtime — ajout a la publication (idempotent) + replica identity full
+-- 6. Realtime - ajout a la publication (idempotent) + replica identity full
 --    (full : le client recoit l'ancien bump_status sur les UPDATE realtime)
 -- ─────────────────────────────────────────────────────────────────────────────
 alter table public.kds_order_items replica identity full;

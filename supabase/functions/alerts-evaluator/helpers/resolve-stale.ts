@@ -8,7 +8,7 @@ import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 /**
  * Met à jour toutes les instances actives de la règle vers 'resolved'.
- * Ne touche pas aux instances 'dismissed' — l'utilisateur les a déjà vues.
+ * Ne touche pas aux instances 'dismissed' - l'utilisateur les a déjà vues.
  */
 export async function resolveStaleInstances(
   sb: SupabaseClient,

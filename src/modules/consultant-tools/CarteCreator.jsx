@@ -583,7 +583,7 @@ if (getBrowserWindow()?.innerWidth < 900) {
 // ═══════════════════════════════════════════════════════════════
 // Garde-fou : Outils consultant réservé au rôle 'consultant'
 // (le menu masque déjà l'entrée à terme, mais on protège aussi
-//  l'accès direct par URL/bookmark — défense en profondeur)
+//  l'accès direct par URL/bookmark - défense en profondeur)
 // ═══════════════════════════════════════════════════════════════
 
 

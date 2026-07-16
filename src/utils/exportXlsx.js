@@ -2,9 +2,9 @@
 // pas alourdir le bundle des modules qui n'exportent qu'occasionnellement.
 //
 //   exportRowsToXlsx('pertes.xlsx', 'Pertes', headers, rows, colWidths?)
-//     headers   : string[]      — ligne d'en-tête
-//     rows      : (string|number)[][] — lignes de données
-//     colWidths : number[]      — largeurs de colonnes optionnelles (en caractères)
+//     headers   : string[]      - ligne d'en-tête
+//     rows      : (string|number)[][] - lignes de données
+//     colWidths : number[]      - largeurs de colonnes optionnelles (en caractères)
 export async function exportRowsToXlsx(filename, sheetName, headers, rows, colWidths) {
   const XLSX = await import('xlsx');
   const aoa = [headers, ...(rows || [])];

@@ -1,5 +1,5 @@
 /**
- * Tests unitaires — logique useConsoIngredients (normalisation + calcul)
+ * Tests unitaires - logique useConsoIngredients (normalisation + calcul)
  * Exécution : node src/modules/pos/lib/__tests__/conso-ingredients.test.js
  */
 
@@ -82,7 +82,7 @@ function calcConsoIngredients(ventes, mappingByItem, recetteById) {
 
 // ── Tests normalizeQty ────────────────────────────────────────────────────────
 
-console.log('\n🥗 useConsoIngredients — Tests normalisation\n');
+console.log('\n🥗 useConsoIngredients - Tests normalisation\n');
 
 test('g < 500 → reste en g', () => {
   const r = normalizeQty(450, 'g');
@@ -127,9 +127,9 @@ test('pcs reste en pcs peu importe la quantité', () => {
 
 // ── Tests calcConsoIngredients ────────────────────────────────────────────────
 
-console.log('\n🥗 useConsoIngredients — Tests calcul\n');
+console.log('\n🥗 useConsoIngredients - Tests calcul\n');
 
-test('Calcul correct sur 1 plat — 5 portions vendues', () => {
+test('Calcul correct sur 1 plat - 5 portions vendues', () => {
   const ventes   = [{ posItemId: 'p1', qtySold: 5 }];
   const mapping  = { p1: 'r1' };
   const recettes = {

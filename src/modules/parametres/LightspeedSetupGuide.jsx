@@ -1,5 +1,5 @@
 /**
- * LightspeedSetupGuide — Modal guide de configuration OAuth Lightspeed K-Series
+ * LightspeedSetupGuide - Modal guide de configuration OAuth Lightspeed K-Series
  *
  * Affiche les 3 étapes pour connecter un compte Lightspeed :
  *   1. Créer une app sur developers.lightspeedhq.com

@@ -329,7 +329,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
         {/* ── Contenu défilant ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 8px' }}>
 
-          {/* ─── Étape 1 — Nom + Sévérité ──────────────────────── */}
+          {/* ─── Étape 1 - Nom + Sévérité ──────────────────────── */}
           {step === 1 && (
             <>
               <Field label="Nom de la règle" required>
@@ -374,7 +374,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
             </>
           )}
 
-          {/* ─── Étape 2 — Type de condition ────────────────────── */}
+          {/* ─── Étape 2 - Type de condition ────────────────────── */}
           {step === 2 && (
             <Field label="Quel événement surveiller ?" required>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -401,7 +401,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
             </Field>
           )}
 
-          {/* ─── Étape 3 — Configuration dynamique ─────────────── */}
+          {/* ─── Étape 3 - Configuration dynamique ─────────────── */}
           {step === 3 && (
             <ConfigFields
               ruleType={form.rule_type}
@@ -410,7 +410,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
             />
           )}
 
-          {/* ─── Étape 4 — Planification ────────────────────────── */}
+          {/* ─── Étape 4 - Planification ────────────────────────── */}
           {step === 4 && (
             <>
               <Field label="Fréquence d'évaluation" required>

@@ -1,5 +1,5 @@
 -- ================================================================
--- MIGRATION J1 — SPRINT PRÉVISION + BRIGADE
+-- MIGRATION J1 - SPRINT PRÉVISION + BRIGADE
 -- Projet  : Samper Consulting
 -- Date    : 2026-05-20
 -- Tables  : reservations, reservation_tags, previsions_jour,
@@ -8,10 +8,10 @@
 -- Triggers: 3  |  RPC: 2  |  Realtime: 4 tables
 --
 -- ADAPTATIONS vs spec :
---  • IDs en text (pas uuid) — cohérent avec toutes les tables existantes
+--  • IDs en text (pas uuid) - cohérent avec toutes les tables existantes
 --  • FK vers etablissements/recettes/profiles en text (idem)
 --  • RLS via user_can_access_etab() + current_user_role() (helpers existants)
---  • Pas de table etablissement_users — on utilise profiles.etablissement_ids
+--  • Pas de table etablissement_users - on utilise profiles.etablissement_ids
 --  • Rôles : 'chef' → 'resp_cuisine' | 'responsable' → 'patron' | 'hote' préparé
 -- ================================================================
 
@@ -52,7 +52,7 @@ CREATE TABLE public.reservation_tags (
 
 CREATE INDEX idx_reservation_tags_reservation ON public.reservation_tags(reservation_id);
 
--- 1.3  previsions_jour  (cache agrégat — mis à jour par triggers)
+-- 1.3  previsions_jour  (cache agrégat - mis à jour par triggers)
 CREATE TABLE public.previsions_jour (
   id               text        PRIMARY KEY DEFAULT (gen_random_uuid())::text,
   etablissement_id text        NOT NULL REFERENCES public.etablissements(id) ON DELETE CASCADE,

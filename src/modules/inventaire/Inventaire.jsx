@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
+import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -28,7 +28,7 @@ const Inventaire = ({ user, etablissement }) => {
   const [autocompleteFocus, setAutocompleteFocus] = React.useState(-1);
   const [autocompleteOpen, setAutocompleteOpen] = React.useState(false);
   const perms = demoData.permissions[user.role] || {};
-  const canManage = !!perms.inventaire;
+  const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
   // Actions d'import/export/impression réservées à consultant + patron
   const canExport = ['consultant', 'patron'].includes(user.role);
   const sel = useSelection();
@@ -400,7 +400,7 @@ const Inventaire = ({ user, etablissement }) => {
             return;
           }
 
-          // Créer un nouvel inventaire (ne pas fusionner — c'est un import complet)
+          // Créer un nouvel inventaire (ne pas fusionner - c'est un import complet)
           const newInv = {
             id: 'inv-' + Date.now(),
             etablissementId: etabId,

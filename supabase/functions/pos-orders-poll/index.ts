@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// Edge Function « pos-orders-poll » — ingestion KDS depuis Lightspeed.
+// Edge Function « pos-orders-poll » - ingestion KDS depuis Lightspeed.
 //
 // Déclenchement : invoquée par l'écran KDS toutes les ~15 s tant qu'il est
 //   monté (supabase.functions.invoke). verify_jwt=true. AUCUN cron.
@@ -55,7 +55,7 @@ function userClient(authHeader: string) {
   );
 }
 
-/** Fixture locale (dry-run) — chemin relatif à CE fichier (robuste). */
+/** Fixture locale (dry-run) - chemin relatif à CE fichier (robuste). */
 async function loadFixture(): Promise<OpenCheck[]> {
   const url = new URL('./__fixtures__/getcheck_sample.json', import.meta.url);
   const text = await Deno.readTextFile(url);
@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
   const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at) : null;
   const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 300_000;
   if (needsRefresh) {
-    if (!conn.refresh_token_enc) return json({ error: 'Refresh token manquant — reconnexion nécessaire', needs_reconnect: true }, 401);
+    if (!conn.refresh_token_enc) return json({ error: 'Refresh token manquant - reconnexion nécessaire', needs_reconnect: true }, 401);
     try {
       const refreshed = await refreshAccessToken(conn.refresh_token_enc, env('LS_CLIENT_ID')!, env('LS_CLIENT_SECRET')!, lsEnv);
       accessToken = refreshed.access_token;
@@ -159,7 +159,7 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await admin.from('pos_connections').update({ status: 'error', last_error: msg }).eq('id', conn.id).catch(() => {});
-      return json({ error: 'Token expiré — reconnexion nécessaire', needs_reconnect: true }, 401);
+      return json({ error: 'Token expiré - reconnexion nécessaire', needs_reconnect: true }, 401);
     }
   }
 

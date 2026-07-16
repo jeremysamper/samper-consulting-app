@@ -1,10 +1,10 @@
 -- ================================================================
--- MIGRATION — module_labels : portée globale (suppression etablissement_id)
+-- MIGRATION - module_labels : portée globale (suppression etablissement_id)
 -- Projet : Samper Consulting
 -- Date   : 2026-05-24
 --
 -- CONTEXTE :
--- La table a été créée avec une colonne etablissement_id — chaque label
+-- La table a été créée avec une colonne etablissement_id - chaque label
 -- était scopé par établissement. Le comportement voulu est différent :
 -- un label renommé doit s'appliquer globalement à tous les établissements.
 --

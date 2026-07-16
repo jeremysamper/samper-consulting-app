@@ -1,5 +1,5 @@
 -- ============================================================================
--- C1 STRUCTUREL — suppression définitive de la vue SECURITY DEFINER
+-- C1 STRUCTUREL - suppression définitive de la vue SECURITY DEFINER
 -- public.v_produits_avec_fourn (brief 3).
 --
 -- Le Bloc 0 (20260712_hotfix_revoke_v_produits_avec_fourn) avait révoqué les
@@ -9,7 +9,7 @@
 --
 -- Idempotent : IF EXISTS (rejouable, no-op si déjà supprimée).
 --
--- ROLLBACK — NE JAMAIS recréer en SECURITY DEFINER ni re-grant anon (c'était la
+-- ROLLBACK - NE JAMAIS recréer en SECURITY DEFINER ni re-grant anon (c'était la
 -- faille). Si un réel besoin réapparaît, recréer en security_invoker pour que la
 -- RLS de l'appelant s'applique :
 --   create view public.v_produits_avec_fourn with (security_invoker = true) as

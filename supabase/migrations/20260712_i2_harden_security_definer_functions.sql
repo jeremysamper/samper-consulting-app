@@ -1,5 +1,5 @@
 -- ============================================================================
--- I2 — Durcissement des fonctions SECURITY DEFINER (brief 3)
+-- I2 - Durcissement des fonctions SECURITY DEFINER (brief 3)
 --
 -- 1) Les deux triggers d'auth (handle_new_user / handle_user_delete) sont
 --    exposés en RPC via PostgREST : on retire leur EXECUTE à anon/authenticated.
@@ -9,7 +9,7 @@
 --    (advisor 0011 function_search_path_mutable).
 --
 -- Périmètre volontairement EXCLU : les helpers RLS (user_can_access_etab,
--- current_user_role, current_user_etab_ids) gardent leur EXECUTE — ils sont
+-- current_user_role, current_user_etab_ids) gardent leur EXECUTE - ils sont
 -- évalués dans les politiques et le rôle authenticated en a besoin. Ils ne
 -- renvoient que le périmètre de l'appelant (vide pour anon) → résidu justifié.
 --

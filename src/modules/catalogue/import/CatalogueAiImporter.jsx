@@ -4,7 +4,7 @@ import { dbService } from '../../../services/dbService.js';
 import CatalogueImportPreview from './CatalogueImportPreview.jsx';
 
 // ═══════════════════════════════════════════════════════════════
-// CatalogueAiImporter — import de catalogue produits assisté par IA.
+// CatalogueAiImporter - import de catalogue produits assisté par IA.
 //
 // L'IA lit un fichier fournisseur brut (Excel/CSV/PDF, formats variables),
 // en extrait des produits structurés ET signale les anomalies. Pour les
@@ -20,7 +20,7 @@ const CHUNK_ROWS = 40;
 // Appels IA menés en parallèle.
 const PARSE_CONCURRENCY = 4;
 
-// Les 14 catégories officielles du catalogue — doit être identique à CATEGORIES_PRODUITS (Catalogue.jsx).
+// Les 14 catégories officielles du catalogue - doit être identique à CATEGORIES_PRODUITS (Catalogue.jsx).
 const CATALOGUE_CATS = [
   'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
   'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
@@ -38,19 +38,19 @@ function normalizeCategory(raw) {
     c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') === n
   );
   if (exact) return exact;
-  // Viandes — avant fromage/cremerie pour éviter les faux positifs
+  // Viandes - avant fromage/cremerie pour éviter les faux positifs
   if (/viande|boucherie|boeuf|veau|porc|agneau|gibier|volaille|poulet|canard|dinde|lapin/.test(n)) return 'Viandes';
   // Poissons & fruits de mer
   if (/poisson|maree|saumon|thon|cabillaud|sole|dorade|truite|fruit.?de.?mer|crevette|moule|huitre|homard|langoustine/.test(n)) return 'Poissons & fruits de mer';
   // Fruits & légumes
   if (/legume|fruit|tomate|carotte|pomme.?de.?terre|salade|oignon|courgette|epinard|champignon/.test(n)) return 'Fruits & légumes';
-  // Crèmerie / fromages — fromage avant lait pour éviter "fromage blanc" → Produits laitiers
+  // Crèmerie / fromages - fromage avant lait pour éviter "fromage blanc" → Produits laitiers
   if (/fromage|comte|gruyere|emmental|roquefort|brie|camembert|parmesan|mozzarella|cremerie/.test(n)) return 'Crèmerie / fromages';
   // Produits laitiers
   if (/lait|creme|beurre|yaourt|serac|mascarpone|ricotta/.test(n)) return 'Produits laitiers';
   // Boulangerie / pâtisserie
   if (/boulangerie|patisserie|pain|viennoiserie|gateau|tarte|croissant|brioche|biscuit/.test(n)) return 'Boulangerie / pâtisserie';
-  // Alcools — vin, bière, spiritueux
+  // Alcools - vin, bière, spiritueux
   if (/\bvin\b|champagne|whisky|cognac|rhum|vodka|gin|porto|liqueur|spiritueux|alcool|biere/.test(n)) return 'Alcools';
   // Boissons sans alcool
   if (/boisson|eau|jus|soda|sirop|\bthe\b|cafe|infusion/.test(n)) return 'Boissons';
@@ -95,7 +95,7 @@ const normalizeName = (s) => (s || '')
   .replace(/\s+/g, ' ')
   .trim();
 
-// Détecte un prix unitaire aberrant — renvoie un libellé ou null.
+// Détecte un prix unitaire aberrant - renvoie un libellé ou null.
 const detectAberrantPrice = (prix, uniteRef) => {
   if (prix == null || isNaN(prix)) return 'prix manquant';
   if (prix <= 0) return 'prix nul';
@@ -126,7 +126,7 @@ function chunkLines(header, rows) {
 // Convertit un fichier (Excel, CSV ou PDF) en lots de texte pour l'IA.
 // Renvoie { chunks: string[], stats: SheetStat[] }.
 // Correction clé : les 2 premières lignes d'une feuille (titre + colonnes) sont placées
-// UNIQUEMENT dans l'en-tête de contexte (répété en préfixe de chaque lot) — elles ne
+// UNIQUEMENT dans l'en-tête de contexte (répété en préfixe de chaque lot) - elles ne
 // sont PAS renvoyées une seconde fois dans les données, ce qui évitait la duplication.
 async function fileToChunks(file) {
   const name = (file.name || '').toLowerCase();
@@ -450,7 +450,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                   <span style={{ color: 'var(--danger-strong)' }}> · <strong>{parseErrors}</strong> lot(s) IA en erreur (voir console)</span>
                 )}
               </div>
-              {/* Diagnostique par feuille — affiché seulement si plusieurs feuilles */}
+              {/* Diagnostique par feuille - affiché seulement si plusieurs feuilles */}
               {fileStats && fileStats.length > 1 && (
                 <div style={st.sheetStats}>
                   {fileStats.map(s => (

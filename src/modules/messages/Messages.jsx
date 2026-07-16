@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// MESSAGES PRIVÉS — Messagerie à sens unique : consultant → comptes
+// MESSAGES PRIVÉS - Messagerie à sens unique : consultant → comptes
 // Consultant : choisit un destinataire (tout compte, présent et futur),
 // écrit, voit l'historique et l'accusé de lecture.
 // Destinataire : boîte de réception en lecture seule + marquage lu.
@@ -38,7 +38,7 @@ const Messages = ({ user, isActive = true }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// VUE CONSULTANT — liste des comptes + fil d'envoi par destinataire
+// VUE CONSULTANT - liste des comptes + fil d'envoi par destinataire
 // ─────────────────────────────────────────────────────────────────
 function ConsultantView({ user, legacySB, isMobile }) {
   const [profiles, setProfiles] = React.useState([]);
@@ -71,7 +71,7 @@ function ConsultantView({ user, legacySB, isMobile }) {
     return () => { mounted = false; unsub && unsub(); };
   }, []);
 
-  // Tous les comptes sauf le consultant lui-même — les nouveaux comptes
+  // Tous les comptes sauf le consultant lui-même - les nouveaux comptes
   // apparaissent automatiquement (la liste vient de profiles).
   const recipients = profiles
     .filter(p => p.id !== user.id)
@@ -232,7 +232,7 @@ function ConsultantView({ user, legacySB, isMobile }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// VUE DESTINATAIRE — boîte de réception en lecture seule
+// VUE DESTINATAIRE - boîte de réception en lecture seule
 // ─────────────────────────────────────────────────────────────────
 function InboxView({ user, legacySB, isActive }) {
   const [messages, setMessages] = React.useState([]);

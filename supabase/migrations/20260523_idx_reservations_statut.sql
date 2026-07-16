@@ -1,5 +1,5 @@
 -- ================================================================
--- MIGRATION — Index perf réservations : (etablissement_id, date_service, statut)
+-- MIGRATION - Index perf réservations : (etablissement_id, date_service, statut)
 -- Projet : Samper Consulting
 -- Date   : 2026-05-23
 --

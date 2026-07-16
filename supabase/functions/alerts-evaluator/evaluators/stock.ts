@@ -32,7 +32,7 @@ export async function evalStock(
   };
 
   if (!product_name || threshold === undefined) {
-    console.warn(`[alerts/stock] rule ${rule.id} config incomplète — ignorée`);
+    console.warn(`[alerts/stock] rule ${rule.id} config incomplète - ignorée`);
     return { shouldFire: false };
   }
 

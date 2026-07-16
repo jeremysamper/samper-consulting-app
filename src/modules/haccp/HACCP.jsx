@@ -17,7 +17,7 @@ import Tracabilite from './Tracabilite.jsx';
 
 
 // ─────────────────────────────────────────────────────
-// MODULE HACCP — Relevés · Contrôles hygiène · Config consultant
+// MODULE HACCP - Relevés · Contrôles hygiène · Config consultant
 // ─────────────────────────────────────────────────────
 
 // toLocaleDateString('fr-CH') rend les libellés en minuscules ("jeudi 10 juillet")
@@ -877,7 +877,7 @@ const HACCP = ({ user, etablissement }) => {
         </div>
       )}
 
-      {/* ─── Modale "Tout conforme" — saisie groupée des relevés ─── */}
+      {/* ─── Modale "Tout conforme" - saisie groupée des relevés ─── */}
       {showQuickReleves && (
         <div className="modal-full-overlay" style={hs.qrOverlay} onClick={() => !quickSaving && setShowQuickReleves(false)}>
           <div className="modal-full" style={hs.qrModal} onClick={e => e.stopPropagation()}>

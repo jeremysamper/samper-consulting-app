@@ -1,7 +1,7 @@
 /**
- * normalize-string.test.js — Tests unitaires (11 cas)
+ * normalize-string.test.js - Tests unitaires (11 cas)
  *
- * Runner autonome — exécutable directement avec Node.js ESM :
+ * Runner autonome - exécutable directement avec Node.js ESM :
  *   node src/modules/pos/lib/__tests__/normalize-string.test.js
  *
  * Compatible Vitest si ajouté au projet :
@@ -33,7 +33,7 @@ function eq(actual, expected) {
 }
 
 // ── Tests ─────────────────────────────────────────────────────────
-console.log('\n📐 normalize-string.js — 11 tests\n');
+console.log('\n📐 normalize-string.js - 11 tests\n');
 
 test('Lowercase pur', () =>
   eq(normalizeString('BOUILLABAISSE'), 'bouillabaisse'));
@@ -47,10 +47,10 @@ test('Ligature œ → oe', () =>
 test('Ligature æ → ae', () =>
   eq(normalizeString('Salade niçoise'), 'salade nicoise'));
 
-test('Stop-word "au" retiré — cas brief', () =>
+test('Stop-word "au" retiré - cas brief', () =>
   eq(normalizeString('Risotto au safran'), 'risotto safran'));
 
-test('Stop-words "de", "à", "l\'" retirés — cas brief', () =>
+test('Stop-words "de", "à", "l\'" retirés - cas brief', () =>
   eq(normalizeString("Tartare de bœuf à l'italienne"), 'tartare boeuf italienne'));
 
 test('Ponctuation et apostrophe supprimées', () =>

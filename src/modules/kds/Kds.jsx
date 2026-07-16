@@ -5,7 +5,7 @@ import { navigateToPage } from '../../services/navigationService.js';
 import { pollKdsOrders } from '../pos/lib/posApi.js';
 import { s, ticketStyle, faireRowStyle } from './Kds.styles.js';
 
-// KDS — Passe cuisine branché Lightspeed.
+// KDS - Passe cuisine branché Lightspeed.
 //
 // Flux : ce module invoque l'edge function pos-orders-poll toutes les ~15 s
 // tant qu'il est affiché (ingestion getCheck -> kds_orders/kds_order_items),
@@ -207,7 +207,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
 
   const completeOrder = (order) => {
     const pending = order.items.filter((i) => i.active && i.bumpStatus !== 'bumped').length;
-    if (pending > 0 && !window.confirm(`${pending} plat(s) pas encore fait(s) — terminer la table quand même ?`)) return;
+    if (pending > 0 && !window.confirm(`${pending} plat(s) pas encore fait(s) - terminer la table quand même ?`)) return;
     patchOrder(order.id, { completedAt: new Date().toISOString() });
     rpcSafe(() => legacySB.db.kdsCompleteOrder(order.id, true), 'Clôture non enregistrée');
   };
@@ -244,7 +244,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
           <span style={s.onboardNum}>1</span>
           <div>
             <div style={s.onboardText}>Ouvrir le module <strong>Ventes POS</strong></div>
-            <div style={s.onboardHint}>Bouton ci-dessous — la barre de connexion Lightspeed est en haut du module.</div>
+            <div style={s.onboardHint}>Bouton ci-dessous - la barre de connexion Lightspeed est en haut du module.</div>
           </div>
         </div>
         <div style={s.onboardStep}>
@@ -254,7 +254,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
             <div style={s.onboardHint}>
               {canConnect
                 ? 'Une fenêtre Lightspeed s’ouvre : accepter les droits ventes + commandes.'
-                : 'Réservé au patron ou au consultant — demandez-leur de valider cette étape.'}
+                : 'Réservé au patron ou au consultant - demandez-leur de valider cette étape.'}
             </div>
           </div>
         </div>
@@ -268,7 +268,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
         <div style={s.onboardStep}>
           <span style={s.onboardNum}>4</span>
           <div>
-            <div style={s.onboardText}>Revenir ici — détection automatique</div>
+            <div style={s.onboardText}>Revenir ici - détection automatique</div>
             <div style={s.onboardHint}>Le KDS vérifie la connexion toutes les 15 secondes, rien d’autre à faire.</div>
           </div>
         </div>
@@ -289,7 +289,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     return (
       <div key={order.id} style={ticketStyle(ageBorder(min))}>
         <div style={s.ticketHead}>
-          <span style={s.table}>Table {order.tableNo || '—'}</span>
+          <span style={s.table}>Table {order.tableNo || '-'}</span>
           {order.couverts != null && <span style={s.couv}>{order.couverts} couv.</span>}
           {allBumped
             ? <span style={s.served}>✓ prêt</span>
@@ -367,7 +367,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
       <div style={s.header}>
         <div>
           <h2 style={s.title}>KDS Cuisine</h2>
-          <div style={s.sub}>Commandes Lightspeed en direct — tap sur un plat pour le marquer fait</div>
+          <div style={s.sub}>Commandes Lightspeed en direct - tap sur un plat pour le marquer fait</div>
         </div>
         <div style={s.kpi}>
           {atPasse.length} table{atPasse.length > 1 ? 's' : ''} · {counts.faire} à faire{counts.suite > 0 ? ` · ${counts.suite} à suivre` : ''}
@@ -380,7 +380,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
 
       {conn.state === 'error' && (
         <div style={s.banner}>
-          Synchronisation Lightspeed en erreur — l’écran continue sur les dernières données.
+          Synchronisation Lightspeed en erreur - l’écran continue sur les dernières données.
           <span style={{ fontSize: 12, opacity: 0.8 }}>{conn.error}</span>
         </div>
       )}
@@ -411,7 +411,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
             {terminees.map((o) => (
               <div key={o.id} style={s.doneCard}>
                 <div style={s.doneCardHead}>
-                  <span style={{ ...s.table, fontSize: 14, color: 'var(--text2)' }}>Table {o.tableNo || '—'}</span>
+                  <span style={{ ...s.table, fontSize: 14, color: 'var(--text2)' }}>Table {o.tableNo || '-'}</span>
                   <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text3)' }}>
                     {o.completedAt ? `terminée ${timeLabel(o.completedAt)}` : 'fermée en caisse'}
                   </span>

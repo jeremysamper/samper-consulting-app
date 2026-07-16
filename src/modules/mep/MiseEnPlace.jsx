@@ -1,5 +1,6 @@
 import React from 'react';
 import { dbService } from '../../services/dbService.js';
+import { canManageModule } from '../../data/demoData.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import MepDetail from './MepDetail.jsx';
@@ -9,11 +10,12 @@ import { s, formatDateService } from './MiseEnPlace.styles.js';
 // MISE EN PLACE
 // Listes de production separant la grosse production (congelable, batch en
 // avance) des preparations urgentes (non congelable, J-1/J-0).
-// Ecriture reservee a resp_cuisine / cuisinier ; consultant / patron = lecture.
+// Ecriture regie par le droit « gerer » du module mep (Roles & acces →
+// Droits d'action) ; defaut resp_cuisine / cuisinier, consultant / patron = lecture.
 const MiseEnPlace = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
-  const canEdit = ['resp_cuisine', 'cuisinier'].includes(user?.role);
+  const canEdit = canManageModule(user?.role, 'mep');
 
   const [listes, setListes] = React.useState([]);
   const [loading, setLoading] = React.useState(true);

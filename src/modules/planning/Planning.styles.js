@@ -48,7 +48,7 @@ const pls = {
   mobileShiftCard: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
   mobileBadge: { fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap' },
 
-  // Mobile — vue agenda par jour (refonte lisibilité)
+  // Mobile - vue agenda par jour (refonte lisibilité)
   mobilePlanWrap: { display: 'flex', flexDirection: 'column' },
   mobileDayNav: { position: 'sticky', top: 0, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 8, padding: '6px 0 10px', marginBottom: 6, background: 'var(--bg)', borderBottom: '1px solid var(--border)' },
   mobileDayNavRow: { display: 'flex', alignItems: 'center', gap: 8 },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
-import { manageableModules, defaultManageRoles } from '../moduleConfig.js';
+import { manageableModules, getDefaultManageRoles, navItems, defaultPermissions } from '../moduleConfig.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -9,17 +9,43 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 // RÔLES & ACCÈS + GESTION DES UTILISATEURS (CRUD)
 // ─────────────────────────────────────────────────────
 
+// Modules de l'onglet visibilité : tous ceux du nav (source unique :
+// moduleConfig.navItems, clé = permKey — ex. la page « cartes » est stockée
+// sous `recettes`) + les pages consultant-only hors nav.
+const MODULES = [
+  ...navItems.map((n) => ({ id: n.permKey, label: n.label })),
+  { id: 'factures',   label: 'Factures' },
+  { id: 'parametres', label: 'Établissements' },
+  { id: 'roles',      label: 'Rôles & Accès' },
+];
+
+// Gardes dures par rôle dans LegacyModuleHost : la visibilité de ces modules
+// ne peut pas être accordée aux rôles exclus, la case est verrouillée.
+const HARD_GATES = {
+  consultant_tools: ['consultant'],
+  faq:              ['consultant'],
+  factures:         ['consultant'],
+  parametres:       ['consultant'],
+  roles:            ['consultant'],
+  kds:              ['consultant', 'resp_cuisine', 'cuisinier'],
+};
+const isLockedFor = (roleKey, moduleId) =>
+  (HARD_GATES[moduleId] ? !HARD_GATES[moduleId].includes(roleKey) : false);
+
+// Défauts de visibilité : ceux du runtime (moduleConfig.defaultPermissions),
+// complétés par les pages consultant-only.
+const DEFAULT_PERMS_BASE = Object.fromEntries(
+  Object.entries(defaultPermissions).map(([role, perms]) => [
+    role,
+    { ...perms, factures: role === 'consultant', parametres: role === 'consultant', roles: role === 'consultant' },
+  ])
+);
+
 const Roles = ({ user }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   const [activeTab, setActiveTab] = React.useState('permissions');
-  const DEFAULT_PERMS = React.useMemo(() => JSON.parse(JSON.stringify({
-    consultant:   { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, previsions:true,  fiches_salle:true, documents:true, roles:true, parametres:true, consultant_tools:true, factures:true, catalogue:true, sop:true, faq:true },
-    patron:       { dashboard:true, planning:true, recettes:true, cartes:true, inventaire:true, pertes:true, haccp:true, previsions:true,  fiches_salle:true, documents:true, roles:false, parametres:true, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
-    resp_cuisine: { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:true, pertes:true, haccp:true, previsions:true,  fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
-    cuisinier:    { dashboard:true, planning:true, recettes:true, cartes:false, inventaire:false, pertes:true, haccp:true, previsions:false, fiches_salle:false, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:true, sop:true, faq:true },
-    serveur:      { dashboard:true, planning:true, recettes:false, cartes:true, inventaire:false, pertes:false, haccp:false, previsions:false, fiches_salle:true, documents:true, roles:false, parametres:false, consultant_tools:false, factures:false, catalogue:false, sop:true, faq:true }
-  })), []);
+  const DEFAULT_PERMS = React.useMemo(() => JSON.parse(JSON.stringify(DEFAULT_PERMS_BASE)), []);
   const [selected, setSelected] = React.useState('consultant');
   const [permissions, setPermissions] = React.useState(() => mergePermissionDefaults(readLegacyStorage('sc_permissions', DEFAULT_PERMS), DEFAULT_PERMS));
   const [utilisateurs, setUtilisateurs] = React.useState(() => readLegacyStorage('sc_utilisateurs', demoData.utilisateurs));
@@ -59,27 +85,6 @@ const Roles = ({ user }) => {
     return () => { unsub1 && unsub1(); };
   }, []);
 
-  // DETTE R14 : MODULES et DEFAULT_PERMS devraient être lus
-  // dynamiquement depuis moduleConfig.navItems + defaultPermissions
-  // pour éviter la duplication. À refacto en J5-J6.
-  const MODULES = [
-    { id:'dashboard',       label:'Tableau de bord' },
-    { id:'planning',        label:'Planning & Pointage' },
-    { id:'recettes',        label:'Cartes & Recettes' },
-    { id:'inventaire',      label:'Inventaire' },
-    { id:'pertes',          label:'Pertes' },
-    { id:'haccp',           label:'HACCP' },
-    { id:'previsions',      label:'Prévisions' },
-    { id:'fiches_salle',    label:'Fiches salle' },
-    { id:'documents',       label:'Documents' },
-    { id:'factures',        label:'Factures' },
-    { id:'catalogue',       label:'Catalogue produits' },
-    { id:'sop',             label:'SOPs & Checklists' },
-    { id:'roles',           label:'Rôles & Accès' },
-    { id:'parametres',      label:'Établissements' },
-    { id:'consultant_tools',label:'Outils consultant' },
-    { id:'faq',             label:'FAQ & Assistant IA' },
-  ];
   const roles = Object.entries(demoData.roles);
 
   React.useEffect(() => {
@@ -93,7 +98,7 @@ const Roles = ({ user }) => {
   }, [utilisateurs]);
 
   const togglePerm = async (roleKey, moduleId) => {
-    if (!canEdit) return;
+    if (!canEdit || isLockedFor(roleKey, moduleId)) return;
     const newPerms = { ...permissions[roleKey], [moduleId]: !permissions[roleKey][moduleId] };
     setPermissions(prev => ({ ...prev, [roleKey]: newPerms }));
     if (legacySB) {
@@ -120,7 +125,7 @@ const Roles = ({ user }) => {
   const manageKey = (moduleId) => 'manage:' + moduleId;
   const canManageValue = (roleKey, moduleId) => {
     const explicit = permissions[roleKey]?.[manageKey(moduleId)];
-    return explicit === undefined ? defaultManageRoles.includes(roleKey) : !!explicit;
+    return explicit === undefined ? getDefaultManageRoles(moduleId).includes(roleKey) : !!explicit;
   };
   const toggleManagePerm = async (roleKey, moduleId) => {
     if (!canEdit) return;
@@ -136,8 +141,7 @@ const Roles = ({ user }) => {
   const allowAll = async (roleKey, value) => {
     if (!canEdit) return;
     const next = { ...permissions[roleKey] };
-    MODULES.forEach(m => { next[m.id] = value; });
-    if (roleKey !== 'consultant') { next.consultant_tools = false; next.roles = false; }
+    MODULES.forEach(m => { next[m.id] = isLockedFor(roleKey, m.id) ? false : value; });
     setPermissions(prev => ({ ...prev, [roleKey]: next }));
     if (legacySB) {
       try { await legacySB.db.upsertPermissions(roleKey, next); }
@@ -324,14 +328,19 @@ const Roles = ({ user }) => {
               </div>
               <div style={ros.moduleList}>
                 {MODULES.map(m => {
-                  const val = !!permissions[selected]?.[m.id];
+                  const locked = isLockedFor(selected, m.id);
+                  const val = !locked && !!permissions[selected]?.[m.id];
                   return (
-                    <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
-                      <input type="checkbox" checked={val} onChange={() => togglePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+                    <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit && !locked ? 'pointer' : 'default', opacity: canEdit && !locked ? 1 : 0.7 }}>
+                      <input type="checkbox" checked={val} onChange={() => togglePerm(selected, m.id)} disabled={!canEdit || locked} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
                       <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
-                      <span style={{ ...ros.permBadge, background: val ? 'var(--success-bg)' : 'var(--danger-bg)', color: val ? 'var(--success-text)' : 'var(--danger-strong)' }}>
-                        {val ? '✓ Autorisé' : '✕ Interdit'}
-                      </span>
+                      {locked ? (
+                        <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>Verrouillé par rôle</span>
+                      ) : (
+                        <span style={{ ...ros.permBadge, background: val ? 'var(--success-bg)' : 'var(--danger-bg)', color: val ? 'var(--success-text)' : 'var(--danger-strong)' }}>
+                          {val ? '✓ Autorisé' : '✕ Interdit'}
+                        </span>
+                      )}
                     </label>
                   );
                 })}

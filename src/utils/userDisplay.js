@@ -4,8 +4,8 @@ import { getDemoData } from '../data/demoData.js';
 // user_id de shift…) en infos d'affichage, avec fallback propre.
 //
 // Depuis le durcissement RLS (migration 20260712 : profils scopés par
-// établissement), un utilisateur hors du périmètre du user courant — typiquement
-// un collaborateur ayant quitté l'établissement — n'est plus présent dans
+// établissement), un utilisateur hors du périmètre du user courant - typiquement
+// un collaborateur ayant quitté l'établissement - n'est plus présent dans
 // DEMO_DATA.utilisateurs pour un non-consultant. Son id subsiste pourtant sur des
 // lignes historiques (pertes, validations, relevés, shifts). Ces helpers évitent
 // alors un champ vide ou un identifiant brut à l'écran.

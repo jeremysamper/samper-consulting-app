@@ -7,7 +7,7 @@ import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 
 // ─────────────────────────────────────────────────────
-// PARAMÈTRES — Gestion des établissements (Consultant)
+// PARAMÈTRES - Gestion des établissements (Consultant)
 // + Maintenance des données
 // ─────────────────────────────────────────────────────
 

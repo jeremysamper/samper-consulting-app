@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// DASHBOARD — Vue d'ensemble + pointage rapide + message consultant
+// DASHBOARD - Vue d'ensemble + pointage rapide + message consultant
 // ═══════════════════════════════════════════════════════════════
 
 import React from 'react';
@@ -213,7 +213,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         </div>
       </div>
 
-      {/* Pointage rapide — toujours visible */}
+      {/* Pointage rapide - toujours visible */}
       <div style={ds.pointageSection}>
         <div style={ds.pointageSectionTitle}>⏱ Mes horaires aujourd'hui</div>
         {pointageError && <div style={ds.errorBanner}>{pointageError}</div>}

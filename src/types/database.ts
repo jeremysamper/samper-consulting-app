@@ -1,5 +1,5 @@
 // ============================================================
-// Types TypeScript — Sprint PRÉVISION + BRIGADE — J1
+// Types TypeScript - Sprint PRÉVISION + BRIGADE - J1
 // Générés depuis la migration 20260520_sprint_prevision_brigade_j1.sql
 // ============================================================
 
@@ -104,7 +104,7 @@ export interface ReservationTagUpdate {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Table : previsions_jour  (cache agrégat — lecture seule côté app)
+// Table : previsions_jour  (cache agrégat - lecture seule côté app)
 // ────────────────────────────────────────────────────────────────
 
 export interface PrevisionJourRow {
@@ -119,7 +119,7 @@ export interface PrevisionJourRow {
   last_updated_at: string;
 }
 
-/** Rarement utilisé directement — la table est alimentée par triggers */
+/** Rarement utilisé directement - la table est alimentée par triggers */
 export interface PrevisionJourInsert {
   id?: string;
   etablissement_id: string;

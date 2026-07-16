@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase.js';
 const TABLE = 'module_labels';
 
 /**
- * Labels personnalisés de modules — portée GLOBALE (tous établissements).
+ * Labels personnalisés de modules - portée GLOBALE (tous établissements).
  *
  * Les clés techniques (module_key = navItem.id) ne changent JAMAIS côté code.
  * Seul le label affiché est stocké ici. Une seule valeur par clé, partagée
@@ -15,7 +15,7 @@ const TABLE = 'module_labels';
  *   getLabelForModule('previsions', 'Prévisions') → label custom ou 'Prévisions'
  */
 export function useModuleLabels() {
-  // { module_key: label } — vide tant que les labels n'ont pas été chargés
+  // { module_key: label } - vide tant que les labels n'ont pas été chargés
   const [labels, setLabels] = useState({});
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function useModuleLabels() {
     supabase
       .from(TABLE)
       .select('module_key, label')
-      // Pas de filtre etablissement_id — les labels sont globaux
+      // Pas de filtre etablissement_id - les labels sont globaux
       .then(({ data, error }) => {
         if (!mounted) return;
         if (error) {
@@ -35,7 +35,7 @@ export function useModuleLabels() {
         setLabels(map);
       });
     return () => { mounted = false; };
-  }, []); // Pas de dépendance — global, chargé une seule fois
+  }, []); // Pas de dépendance - global, chargé une seule fois
 
   /**
    * Retourne le label custom s'il existe, sinon le label par défaut.
@@ -48,7 +48,7 @@ export function useModuleLabels() {
 
   /**
    * Enregistre (upsert) un label custom globalement.
-   * Met à jour le state local immédiatement — pas besoin de refetch.
+   * Met à jour le state local immédiatement - pas besoin de refetch.
    * Retourne { error: string | null }.
    */
   const updateLabel = useCallback(async (key, label) => {

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// HACCP — Helpers de parsing et de conformité
+// HACCP - Helpers de parsing et de conformité
 // ═══════════════════════════════════════════════════════════════
 // Source unique de vérité pour le calcul de conformité d'un relevé
 // par rapport à la plage [min, max] d'une zone HACCP.

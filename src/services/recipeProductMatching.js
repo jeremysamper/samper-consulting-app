@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// recipeProductMatching — rapprochement ingrédient de recette ↔ produit catalogue.
+// recipeProductMatching - rapprochement ingrédient de recette ↔ produit catalogue.
 //
 // Algorithme en 3 passes :
 //   1. Match exact   (nom normalisé identique)            -> confiance 100

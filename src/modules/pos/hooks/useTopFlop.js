@@ -1,5 +1,5 @@
 /**
- * useTopFlop — Ranking des ventes POS sur une période glissante
+ * useTopFlop - Ranking des ventes POS sur une période glissante
  *
  * Algorithme :
  *   Période A = [today - periodDays, today[       (semaine en cours)

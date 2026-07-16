@@ -5,10 +5,10 @@
 // instances en conséquence. Appelée par le cron Vercel toutes les
 // heures (0 * * * *).
 //
-// Sécurité : verify_jwt=false — auth via header CRON_SECRET.
+// Sécurité : verify_jwt=false - auth via header CRON_SECRET.
 //
 // POST body optionnel :
-//   { ruleId?: string }   — évaluer une règle précise (debug)
+//   { ruleId?: string }   - évaluer une règle précise (debug)
 // ================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { createInstanceIfNeeded } from './helpers/create-instance.ts';
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
 
   const sb = adminClient();
 
-  // Body optionnel — permet de cibler une règle précise en debug
+  // Body optionnel - permet de cibler une règle précise en debug
   let ruleIdFilter: string | undefined;
   try {
     const body = await req.json();
@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
   const skipped  = results.filter((r) => r.action === 'skipped').length;
 
   console.log(
-    `[alerts] évaluation terminée — ${fired} fired, ${resolved} resolved, ${skipped} skipped`,
+    `[alerts] évaluation terminée - ${fired} fired, ${resolved} resolved, ${skipped} skipped`,
   );
 
   return json({ ok: true, fired, resolved, skipped, details: results });

@@ -1,4 +1,4 @@
-// Utilitaires de manipulation de dates — toujours en heure locale (jamais UTC).
+// Utilitaires de manipulation de dates - toujours en heure locale (jamais UTC).
 // Utilisé par les modules Prévisions, Brigade, etc.
 
 /**

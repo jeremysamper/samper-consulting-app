@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// UnitParser — normalisation des unités et quantités d'ingrédients
+// UnitParser - normalisation des unités et quantités d'ingrédients
 // Utilisé par tous les importeurs (Excel, CSV, PDF).
 //
 // API :
@@ -129,7 +129,7 @@ export function parse(rawString) {
     }
   }
 
-  // Le reste peut être "unité" ou "unité de ingrédient" — on retire un "de"/"d'" éventuel.
+  // Le reste peut être "unité" ou "unité de ingrédient" - on retire un "de"/"d'" éventuel.
   rest = rest.replace(/^d['e]\s+/, '').trim();
 
   let unit = normalizeUnit(rest);

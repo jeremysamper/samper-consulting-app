@@ -11,7 +11,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 
 // ─────────────────────────────────────────────────────
-// FICHES TECHNIQUES SALLE — Descriptions, allergènes, accords mets & vins
+// FICHES TECHNIQUES SALLE - Descriptions, allergènes, accords mets & vins
 // Lecture : serveurs / Édition : consultant, patron, resp_cuisine
 // ─────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ const ALLERGENES_COLORS = {
 };
 
 // Catégories de recettes « techniques » qui ne sont pas des plats servis
-// au client — elles ne donnent pas lieu à une fiche salle.
+// au client - elles ne donnent pas lieu à une fiche salle.
 const RECETTE_CATS_NON_SERVIES = [
   'sauce', 'sauces', 'fond', 'fonds', 'garniture', 'garnitures',
   'base', 'bases', 'préparation', 'préparations', 'preparation', 'preparations',
@@ -141,13 +141,13 @@ const FichesSalle = ({ user, etablissement }) => {
   const [selBusy, setSelBusy] = React.useState(false);
   const sel = useSelection();
 
-  // Cartes (menus) — onglets de filtrage. '__all__' = toutes les fiches.
+  // Cartes (menus) - onglets de filtrage. '__all__' = toutes les fiches.
   const ALL_TAB = '__all__';
   const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
   const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
 
   const canEdit = canManageModule(user.role, 'fiches_salle');
-  const canManageCartes = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+  const canManageCartes = canManageModule(user.role, 'recettes');
   const isConsultant = user.role === 'consultant';
   const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
@@ -272,7 +272,7 @@ const FichesSalle = ({ user, etablissement }) => {
     notifyLegacy(`${ok} fiche(s) salle supprimée(s).`, 'success');
   };
 
-  // ── Génération IA des fiches salle — une fiche par PLAT FINI de la carte ──
+  // ── Génération IA des fiches salle - une fiche par PLAT FINI de la carte ──
   // Un plat fini = une fiche salle. Les recettes liées à un plat alimentent
   // l'IA (ingrédients, étapes, allergènes) mais ne donnent pas chacune une
   // fiche. À défaut de plats sur la carte, on retombe sur les recettes servies.
@@ -380,7 +380,7 @@ const FichesSalle = ({ user, etablissement }) => {
 
   return (
     <div style={fss.root}>
-      {/* Onglets de carte (menus) — filtrage des fiches */}
+      {/* Onglets de carte (menus) - filtrage des fiches */}
       <CarteTabBar
         cartes={cartes}
         activeId={activeCarteTab}
@@ -778,7 +778,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
               ))}
             </div>
 
-            {/* Accords généraux — familles de boissons recommandées */}
+            {/* Accords généraux - familles de boissons recommandées */}
             <div style={fss.field}>
               <label style={fss.fLabel}>Accords généraux - familles recommandées</label>
               <textarea

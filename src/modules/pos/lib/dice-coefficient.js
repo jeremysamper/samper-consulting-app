@@ -1,5 +1,5 @@
 /**
- * dice-coefficient.js — Score de similarité Dice sur bigrammes
+ * dice-coefficient.js - Score de similarité Dice sur bigrammes
  *
  * Algorithme :
  *   1. Normaliser les deux chaînes (normalizeString)

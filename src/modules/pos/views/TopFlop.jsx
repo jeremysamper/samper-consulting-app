@@ -1,5 +1,5 @@
 /**
- * TopFlop — Vue 2 : Ranking des ventes POS sur période glissante
+ * TopFlop - Vue 2 : Ranking des ventes POS sur période glissante
  *
  * Affiche le classement de tous les plats POS par volume vendu,
  * avec delta vs la période précédente équivalente.
@@ -158,7 +158,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
       {/* Zone exportable */}
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-        {/* En-tête contextuel à l'écran — retiré du PDF (l'en-tête branded Samper le remplace) */}
+        {/* En-tête contextuel à l'écran - retiré du PDF (l'en-tête branded Samper le remplace) */}
         <div className="no-print" style={{
           fontSize:   13,
           color:      'var(--text2)',

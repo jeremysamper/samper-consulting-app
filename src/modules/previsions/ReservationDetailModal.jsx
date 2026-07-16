@@ -120,7 +120,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
           )}
         </div>
 
-        {/* Footer — état normal */}
+        {/* Footer - état normal */}
         {!showConfirm && (
           <div style={{
             padding: '12px 18px', borderTop: '1px solid var(--border)',
@@ -167,7 +167,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
           </div>
         )}
 
-        {/* Footer — état confirmation */}
+        {/* Footer - état confirmation */}
         {showConfirm && (
           <div style={{
             padding: '14px 18px', borderTop: '1px solid var(--danger-bd)',

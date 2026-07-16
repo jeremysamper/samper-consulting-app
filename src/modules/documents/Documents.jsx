@@ -8,7 +8,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ═══════════════════════════════════════════════════════════════
-// MODULE DOCUMENTS — Partage hiérarchique de PDFs
+// MODULE DOCUMENTS - Partage hiérarchique de PDFs
 // ═══════════════════════════════════════════════════════════════
 
 const Documents = ({ user, etablissement }) => {

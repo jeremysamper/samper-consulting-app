@@ -1,5 +1,5 @@
 // ================================================================
-// PosConnectionBar — Barre de connexion / synchronisation POS
+// PosConnectionBar - Barre de connexion / synchronisation POS
 //
 // Rendue en haut du module Ventes POS. Rend le module autonome :
 // le couplage et la synchro ne sont plus enfermes dans Parametres
@@ -26,7 +26,7 @@ const RECENT_DAYS   = 7;   // synchro recurrente : 7 derniers jours
 const HISTORY_DAYS  = 14;  // 1er import : 14 jours d'historique
 
 function IconLS({ size = 30 }) {
-  // Logo Lightspeed (marque tierce) — orange conserve volontairement.
+  // Logo Lightspeed (marque tierce) - orange conserve volontairement.
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
       <rect width="32" height="32" rx="7" fill="#FF6B35" />

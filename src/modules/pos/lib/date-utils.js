@@ -1,5 +1,5 @@
 /**
- * date-utils — Utilitaires de dates pour le module POS
+ * date-utils - Utilitaires de dates pour le module POS
  *
  * Toutes les dates manipulées sont des strings ISO YYYY-MM-DD.
  * Le timezone de l'établissement est utilisé pour déterminer "aujourd'hui".

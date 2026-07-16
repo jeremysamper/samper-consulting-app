@@ -1,5 +1,5 @@
 /**
- * PosEmptyState — Empty states réutilisables pour les 3 vues cuisine POS
+ * PosEmptyState - Empty states réutilisables pour les 3 vues cuisine POS
  *
  * @param {{
  *   type:                'no_mapping' | 'no_sales' | 'no_connection' | 'loading' | 'error',

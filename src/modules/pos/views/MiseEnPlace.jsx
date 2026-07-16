@@ -1,5 +1,5 @@
 /**
- * MiseEnPlace — Vue 1 : Quantités à préparer pour J+1
+ * MiseEnPlace - Vue 1 : Quantités à préparer pour J+1
  *
  * Affiche pour chaque plat mappé la prédiction de portions basée sur
  * la moyenne historique du même jour de semaine (14 jours).
@@ -153,7 +153,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
       {/* Zone imprimable */}
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-        {/* En-tête contextuel à l'écran — retiré du PDF (l'en-tête branded Samper le remplace) */}
+        {/* En-tête contextuel à l'écran - retiré du PDF (l'en-tête branded Samper le remplace) */}
         <div className="no-print" style={{
           paddingBottom: 12,
           borderBottom:  '1px solid var(--border)',
@@ -181,7 +181,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
           ))}
         </div>
 
-        {/* Pied — plats exclus */}
+        {/* Pied - plats exclus */}
         {unmappedCount > 0 && (
           <div style={{
             marginTop:  8,

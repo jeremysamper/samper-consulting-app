@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// Helpers temps Europe/Zurich — indépendants du fuseau et de l'horloge du device.
+// Helpers temps Europe/Zurich - indépendants du fuseau et de l'horloge du device.
 //
 // Le pointage « live » reste la source de vérité côté serveur : les RPC Supabase
 // `pointer_arrivee` / `pointer_depart` posent l'heure via
@@ -32,7 +32,7 @@ export function zurichNowMinutes() {
   return h * 60 + m;
 }
 
-// Heure courante à Zurich au format HH:MM — utilisée pour l'affichage optimiste
+// Heure courante à Zurich au format HH:MM - utilisée pour l'affichage optimiste
 // avant la confirmation serveur (qui peut la corriger d'une minute près).
 export function zurichClock() {
   const total = zurichNowMinutes();

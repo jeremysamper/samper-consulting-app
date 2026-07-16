@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Module Commande — liste de produits a commander, partagee par etablissement.
+-- Module Commande - liste de produits a commander, partagee par etablissement.
 -- Une ligne = un produit (genere depuis les cartes ou ajoute a la main).
 -- Toute personne ayant acces a l'etablissement peut lire ET ecrire (cocher /
 -- saisir une quantite / ajouter). Le bouton de generation est garde cote UI

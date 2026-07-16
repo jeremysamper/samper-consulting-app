@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
+import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import ShiftCell from './ShiftCell.jsx';
@@ -10,12 +10,12 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 
 // ─────────────────────────────────────────────────────
-// PLANNING & POINTAGE — Module unifié, par établissement, responsive
+// PLANNING & POINTAGE - Module unifié, par établissement, responsive
 // ─────────────────────────────────────────────────────
 
 // Famille de poste, pour le résumé de couverture de la vue mobile par jour.
 // La couleur visuelle d'un shift reste portée par le rôle de l'employé
-// (demoData.roles[role].couleur) — c'est la seule donnée couleur fiable en base.
+// (demoData.roles[role].couleur) - c'est la seule donnée couleur fiable en base.
 const roleFamily = (role) => {
   if (role === 'serveur') return 'salle';
   if (role === 'cuisinier' || role === 'resp_cuisine') return 'cuisine';
@@ -79,7 +79,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   }, []);
 
   const perms = demoData.permissions[user.role] || {};
-  const canWrite = perms.planning && (user.role === 'consultant' || user.role === 'patron' || user.role === 'resp_cuisine');
+  const canWrite = !!perms.planning && canManageModule(user.role, 'planning');
   const canExport = ['consultant', 'patron'].includes(user.role);
 
   // canPoint(shift) : seul le propriétaire du shift peut pointer (ou un manager pour corriger)
@@ -180,8 +180,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
 
   // ─── Calculs heures par employé ───
-  // Semaine = total des 7 jours affichés (DAYS) — change avec la navigation hebdo.
-  // Mois = total du mois calendaire de selectedDate — change avec la navigation hebdo.
+  // Semaine = total des 7 jours affichés (DAYS) - change avec la navigation hebdo.
+  // Mois = total du mois calendaire de selectedDate - change avec la navigation hebdo.
   // Tous les hooks doivent rester au top niveau du composant (pas après early return).
   const weeklyHoursByUser = React.useMemo(() => {
     const out = {};
@@ -449,7 +449,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // ─── État pour la suppression multiple (Axe 2) ───
   // Mode sélection : des cases à cocher apparaissent sur chaque horaire, une barre
   // d'action sticky propose « Supprimer la sélection (N) » → une seule requête
-  // delete().in('id', [...]). Réservé à canWrite (consultant / patron / resp_cuisine).
+  // delete().in('id', [...]). Réservé à canWrite (droit « gérer » du module planning).
   const [selectionMode, setSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = React.useState(false);
@@ -494,7 +494,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   // ═══════════════ SUPPRESSION MULTIPLE (Axe 2) ═══════════════
 
-  // Horaires actuellement visibles dans la vue planning — base du « tout sélectionner ».
+  // Horaires actuellement visibles dans la vue planning - base du « tout sélectionner ».
   // En mobile, l'unité affichée est le jour ; en desktop, la plage de jours de la grille.
   const visibleShifts = isMobile
     ? planningEtab.filter(s => s.date === mobileDate)

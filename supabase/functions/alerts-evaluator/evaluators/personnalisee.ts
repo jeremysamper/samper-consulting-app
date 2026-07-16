@@ -1,7 +1,7 @@
 // ================================================================
 // evaluators/personnalisee.ts
 //
-// Alerte personnalisée — se déclenche à l'heure planifiée (daily).
+// Alerte personnalisée - se déclenche à l'heure planifiée (daily).
 // Pas de condition métier : l'alerte est toujours active à l'heure
 // configurée ; l'utilisateur la rejette manuellement.
 //
@@ -22,7 +22,7 @@ export async function evalPersonnalisee(
   };
 
   if (!message) {
-    console.warn(`[alerts/personnalisee] rule ${rule.id} sans message — ignorée`);
+    console.warn(`[alerts/personnalisee] rule ${rule.id} sans message - ignorée`);
     return { shouldFire: false };
   }
 

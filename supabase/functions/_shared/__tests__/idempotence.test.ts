@@ -1,5 +1,5 @@
 // ================================================================
-// idempotence.test.ts — Teste que upsertItemsAndSales est idempotent
+// idempotence.test.ts - Teste que upsertItemsAndSales est idempotent
 //
 // On ne peut pas appeler Supabase en vrai dans les tests Deno sans
 // infrastructure. On mocke donc le client admin avec un Map en mémoire
@@ -102,7 +102,7 @@ function makeAdminMock(posItems: MockTable, posSales: MockTable) {
 }
 
 // Version testable de upsertItemsAndSales qui accepte notre mock
-// (copie inline simplifiée — teste la logique, pas les imports Deno)
+// (copie inline simplifiée - teste la logique, pas les imports Deno)
 async function upsertItemsAndSalesTestable(
   admin: ReturnType<typeof makeAdminMock>,
   connectionId: string,

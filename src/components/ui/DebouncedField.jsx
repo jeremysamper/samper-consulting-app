@@ -11,7 +11,7 @@ import { useDebouncedCallback } from '../../hooks/useDebounce.js';
 //
 // Props :
 //   value     : valeur contrôlée venue du parent
-//   onCommit  : (valeur) => void — appelé débouncé + au blur
+//   onCommit  : (valeur) => void - appelé débouncé + au blur
 //   delay     : délai de debounce en ms (défaut 400)
 //   as        : 'input' (défaut) | 'textarea'
 //   parse     : transforme la chaîne saisie avant `onCommit` (ex: Number)

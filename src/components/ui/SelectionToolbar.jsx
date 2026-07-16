@@ -8,12 +8,12 @@ import { Btn } from './index.jsx';
 //   count        : nombre d'éléments sélectionnés
 //   total        : nombre total d'éléments sélectionnables
 //   allSelected  : tous les éléments sont-ils sélectionnés
-//   onToggleAll  : () => void — tout sélectionner / tout désélectionner
-//   onDelete     : () => void — supprimer la sélection (masqué si absent)
-//   onExport     : () => void — exporter la sélection (masqué si absent)
+//   onToggleAll  : () => void - tout sélectionner / tout désélectionner
+//   onDelete     : () => void - supprimer la sélection (masqué si absent)
+//   onExport     : () => void - exporter la sélection (masqué si absent)
 //   exportLabel  : libellé du bouton d'export (défaut « Exporter »)
-//   onCancel     : () => void — quitter le mode sélection
-//   busy         : booléen — désactive les actions pendant un traitement
+//   onCancel     : () => void - quitter le mode sélection
+//   busy         : booléen - désactive les actions pendant un traitement
 //   children     : actions supplémentaires propres au module, rendues avant Exporter
 export function SelectionToolbar({
   count = 0, total = 0, allSelected = false, onToggleAll,

@@ -47,7 +47,7 @@ export function useReservations(etablissementId) {
       return { data, error: null };
     }
 
-    // Soft delete via statut='annule' — déclenche le trigger qui
+    // Soft delete via statut='annule' - déclenche le trigger qui
     // recalcule previsions_jour en excluant cette réservation
     async function deleteReservation(id) {
       return update(id, { statut: 'annule' });

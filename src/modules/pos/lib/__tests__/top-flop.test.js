@@ -1,5 +1,5 @@
 /**
- * Tests unitaires — logique useTopFlop
+ * Tests unitaires - logique useTopFlop
  * Exécution : node src/modules/pos/lib/__tests__/top-flop.test.js
  */
 
@@ -43,19 +43,19 @@ function applyFilter(items, filter) {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-console.log('\n📊 useTopFlop — Tests\n');
+console.log('\n📊 useTopFlop - Tests\n');
 
-test('Delta positif — +50%', () => {
+test('Delta positif - +50%', () => {
   const { delta } = computeItemDelta(30, 20);
   expect(delta).toBe(50);
 });
 
-test('Delta négatif — -25%', () => {
+test('Delta négatif - -25%', () => {
   const { delta } = computeItemDelta(15, 20);
   expect(delta).toBe(-25);
 });
 
-test('Delta nul — pas de variation', () => {
+test('Delta nul - pas de variation', () => {
   const { delta } = computeItemDelta(20, 20);
   expect(delta).toBe(0);
 });

@@ -10,7 +10,7 @@
 //   4. renvoie l'URL publique permanente
 //
 // Supporte aussi la SUPPRESSION (body JSON { action: 'delete', id }) : la ligne
-// haccp_tracabilite ET le fichier storage sont supprimes ensemble — la
+// haccp_tracabilite ET le fichier storage sont supprimes ensemble - la
 // suppression cote client ne pouvait effacer que la ligne DB (bucket en
 // ecriture service-only), ce qui laissait des fichiers orphelins.
 //

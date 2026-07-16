@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// diff.test.ts — Tests de la logique pure de diff KDS (pas de DB/réseau).
+// diff.test.ts - Tests de la logique pure de diff KDS (pas de DB/réseau).
 //
 //   deno test supabase/functions/pos-orders-poll/__tests__/diff.test.ts
 // ════════════════════════════════════════════════════════════════

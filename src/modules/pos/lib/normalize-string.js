@@ -1,5 +1,5 @@
 /**
- * normalize-string.js — Normalisation française pour le matching Dice
+ * normalize-string.js - Normalisation française pour le matching Dice
  *
  * Pipeline :
  *   1. Lowercase

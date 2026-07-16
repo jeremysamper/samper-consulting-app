@@ -15,7 +15,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ─────────────────────────────────────────────────────
-// OUTILS CONSULTANT — Création et édition de recettes
+// OUTILS CONSULTANT - Création et édition de recettes
 // Interface simple : liste à gauche, éditeur à droite
 // ─────────────────────────────────────────────────────
 
@@ -258,7 +258,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     }
   }, [etabId, recettes.length]);
 
-  // Recalcul des dérivés (foodCost, etc.) — local, pas de persistance auto
+  // Recalcul des dérivés (foodCost, etc.) - local, pas de persistance auto
   React.useEffect(() => {
     recettes.forEach(r => {
       r.coutMatiere = (r.ingredients || []).reduce((s, i) => s + (Number(i.quantite) || 0) * (Number(i.prixUnit) || 0), 0);
@@ -287,7 +287,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Ref de recettes pour accès hors render (timers, callbacks realtime)
   const recettesRef = React.useRef(recettes);
   React.useEffect(() => { recettesRef.current = recettes; }, [recettes]);
-  // Ref du selectedId — closure stable pour les callbacks realtime
+  // Ref du selectedId - closure stable pour les callbacks realtime
   const selectedIdRef = React.useRef(selectedId);
   React.useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
   // dirtyRef : true entre une édition et son save confirmé
@@ -949,7 +949,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Barre d'onglets — espace admin consultant */}
+      {/* Barre d'onglets - espace admin consultant */}
       <div className="no-print" style={{ marginBottom: 14 }}>
         <SegmentedTabs
           active={activeTab}
@@ -966,7 +966,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         />
       </div>
 
-      {/* Routage des onglets — reutilise les composants migres via imports.
+      {/* Routage des onglets - reutilise les composants migres via imports.
           Chaque onglet est isolé dans un SafeModule pour qu'un crash n'affecte pas les autres. */}
       {activeTab === 'creation_carte' ? (
         SafeModule
@@ -1222,7 +1222,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             };
 
             // Dossiers : une carte active par menu + « Non classés » (plats sans
-            // carte active — inclut les plats dont toutes les cartes sont archivées,
+            // carte active - inclut les plats dont toutes les cartes sont archivées,
             // pour qu'ils ne disparaissent pas de la liste).
             const activeCarteIds = new Set(cartesActivesLocal.map(c => c.id));
             const folders = [
@@ -1885,7 +1885,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         </div>
       )}
 
-      {/* Modale suppression — enrichie : montre les plats impactés */}
+      {/* Modale suppression - enrichie : montre les plats impactés */}
       {showDeleteConfirm && (() => {
         // Cherche dans les plats ceux qui contiennent cette recette
         const platsImpactes = (plats || []).filter(p =>
@@ -1953,7 +1953,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               etablissementId: etabId,
               prixVente: p.prixVente === '' ? null : Number(p.prixVente),
             });
-            // Affectation aux cartes (M2M) — l'id existe désormais (création ou édition).
+            // Affectation aux cartes (M2M) - l'id existe désormais (création ou édition).
             const platId = saved?.id || p.id;
             if (platId) await legacySB.db.setPlatCartes(platId, p.carteIds || []);
             setShowPlatForm(false);

@@ -4,7 +4,7 @@
 -- fait que côté client. Résultat prouvé (harness RLS par rôle, begin/rollback) :
 -- un patron/cuisinier/resp_cuisine d'un établissement recevait dans la réponse
 -- serveur brute les 3 autres établissements + les profils (emails, rôles,
--- etablissement_ids) des autres tenants — sur REST comme sur Realtime
+-- etablissement_ids) des autres tenants - sur REST comme sur Realtime
 -- (les deux tables sont dans la publication supabase_realtime).
 --
 -- Correctif : la défense passe côté serveur. Le filtrage client existant reste
@@ -17,14 +17,14 @@
 --
 -- Compromis assumés (v1, validés avec Jérémy) :
 --   * L'exposition des emails ENTRE collègues d'un même établissement reste
---     acceptée — on ne durcit pas plus en v1.
+--     acceptée - on ne durcit pas plus en v1.
 --   * Un utilisateur ayant quitté l'établissement (plus d'intersection
 --     etablissement_ids) devient invisible pour un non-consultant alors que son
 --     id subsiste sur des lignes (declare_par, valide_par, operateur_id,
 --     user_id de shift…). Le fallback d'affichage propre est traité CÔTÉ FRONT
---     (commit séparé) — pas de champ vide ni de crash.
+--     (commit séparé) - pas de champ vide ni de crash.
 --
--- BRIEF 3 (audit sécurité) — NE PAS traiter ici : les politiques SELECT
+-- BRIEF 3 (audit sécurité) - NE PAS traiter ici : les politiques SELECT
 -- USING (true) restantes sont des RÉFÉRENTIELS GLOBAUX assumés
 -- (app_settings, permissions, pos_providers, module_labels). Elles ne portent
 -- pas de donnée rattachée à un tenant et sont laissées en l'état volontairement,

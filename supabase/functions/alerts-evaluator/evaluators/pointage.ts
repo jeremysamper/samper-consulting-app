@@ -28,7 +28,7 @@ function localNow(): { date: string; time: string } {
   return { date, time }; // "2026-05-24", "14:30"
 }
 
-/** Soustrait N minutes à une string "HH:MM" — retourne "HH:MM" */
+/** Soustrait N minutes à une string "HH:MM" - retourne "HH:MM" */
 function subtractMinutes(timeStr: string, minutes: number): string {
   const [h, m] = timeStr.split(':').map(Number);
   const total = h * 60 + m - minutes;

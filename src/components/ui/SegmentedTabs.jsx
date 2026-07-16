@@ -1,21 +1,21 @@
 import React from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SegmentedTabs — barre d'onglets compacte, une seule ligne, défilement
+// SegmentedTabs - barre d'onglets compacte, une seule ligne, défilement
 // horizontal si les onglets débordent. Remplace les anciennes rangées de
 // pilules en flex-wrap qui empilaient les onglets sur plusieurs lignes en
 // mobile (et mangeaient toute la hauteur).
 //
 // Style « segmented control » : une piste (var(--surface2)) contenant des
 // pilules ; l'onglet actif est surélevé (fond var(--surface) + ombre légère).
-// Aucune couleur en dur — tokens CSS uniquement. Le comportement scroll +
+// Aucune couleur en dur - tokens CSS uniquement. Le comportement scroll +
 // masquage de la scrollbar est en CSS (.segmented-tabs dans app.css).
 //
 // Props :
-//   tabs     : [{ id, label|l, icon? }]  — icon = noeud React optionnel
+//   tabs     : [{ id, label|l, icon? }]  - icon = noeud React optionnel
 //   active   : id de l'onglet actif
 //   onChange : (id) => void
-//   size     : 'sm' | undefined         — 'sm' → pilules plus compactes
+//   size     : 'sm' | undefined         - 'sm' → pilules plus compactes
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SegmentedTabs({ tabs, active, onChange, size, style = {}, className = '' }) {

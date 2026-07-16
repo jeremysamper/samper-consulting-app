@@ -38,7 +38,7 @@ export async function evalHaccp(
   };
 
   if (!zone_id) {
-    console.warn(`[alerts/haccp] rule ${rule.id} sans zone_id — ignorée`);
+    console.warn(`[alerts/haccp] rule ${rule.id} sans zone_id - ignorée`);
     return { shouldFire: false };
   }
 

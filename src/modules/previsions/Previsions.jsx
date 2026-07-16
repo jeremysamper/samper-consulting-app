@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { SectionHeader } from '../../components/ui/index.jsx';
+import { canManageModule } from '../../data/demoData.js';
 import ReservationForm from './ReservationForm.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 
 // Tous les rôles ayant accès au module (réservations en lecture au minimum)
 const ROLES_AUTORISES = ['consultant', 'patron', 'resp_cuisine', 'hote', 'serveur'];
-
-// Rôles pouvant créer / modifier / annuler des réservations
-const ROLES_EDIT = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 
 // Rôles voyant les KPIs financiers (CA prévisionnel, etc.)
 // Réservé pour les futurs affichages de chiffre d'affaires estimé.
@@ -33,7 +31,9 @@ export default function Previsions({ user, etablissement }) {
   }
 
   const etabId         = etablissement?.id;
-  const canEdit        = ROLES_EDIT.includes(user?.role);
+  // Créer / modifier / annuler des réservations : droit « gérer » du module
+  // (Rôles & accès → Droits d'action ; défaut consultant/patron/resp_cuisine/hôte).
+  const canEdit        = canManageModule(user?.role, 'previsions');
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 

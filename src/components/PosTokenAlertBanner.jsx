@@ -4,7 +4,7 @@ import React from 'react';
  * PosTokenAlertBanner
  *
  * Bandeau d'alerte global affiché quand ≥1 connexion POS est dégradée.
- * Persistant — pas de bouton "Ignorer" (c'est un état métier, pas une notif).
+ * Persistant - pas de bouton "Ignorer" (c'est un état métier, pas une notif).
  *
  * variant='banner'  → bande pleine largeur, au-dessus du header (desktop)
  * variant='pill'    → pastille rouge compacte dans la barre de boutons (mobile)

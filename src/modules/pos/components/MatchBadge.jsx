@@ -1,5 +1,5 @@
 /**
- * MatchBadge — Badge coloré indiquant le statut et le score Dice
+ * MatchBadge - Badge coloré indiquant le statut et le score Dice
  *
  * Variantes :
  *   🟢 auto      → score ≥ 85 ou validation manuelle

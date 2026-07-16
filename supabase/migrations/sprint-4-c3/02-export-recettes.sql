@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Sprint 4 · Chantier 3 · ÉTAPE 2 — Export JSON de la table recettes
+-- Sprint 4 · Chantier 3 · ÉTAPE 2 - Export JSON de la table recettes
 -- ────────────────────────────────────────────────────────────────
 -- À exécuter APRÈS l'étape 1.
 -- Copier le contenu de la colonne « recettes_json » du résultat, puis

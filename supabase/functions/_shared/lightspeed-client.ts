@@ -1,5 +1,5 @@
 // ================================================================
-// lightspeed-client.ts — Wrapper API Lightspeed K-Series (ventes)
+// lightspeed-client.ts - Wrapper API Lightspeed K-Series (ventes)
 //
 // Supporte :
 //   • Pagination cursor-based (nextPageToken)
@@ -173,7 +173,7 @@ async function loadFixture(): Promise<SalesLine[]> {
 }
 
 // ════════════════════════════════════════════════════════════════
-// KDS — Order API « Get All Open Checks » (getCheck)
+// KDS - Order API « Get All Open Checks » (getCheck)
 //
 // Scope requis : orders-api (l'app ne demande aujourd'hui que financial-api ;
 // un token financial-api renvoie 401/403 ici).
@@ -185,7 +185,7 @@ async function loadFixture(): Promise<SalesLine[]> {
 
 /**
  * Refresh d'un access_token Lightspeed. Même logique que pos-sync / pos-backfill,
- * factorisée ici (clientId/clientSecret passés en paramètres — pas de couplage env
+ * factorisée ici (clientId/clientSecret passés en paramètres - pas de couplage env
  * dans _shared). Réutilisable par toute edge function.
  */
 export async function refreshAccessToken(
@@ -216,7 +216,7 @@ export async function refreshAccessToken(
 /**
  * Récupère tous les checks ouverts d'une location (getCheck).
  * Réutilise fetchWithRetry (backoff 429/5xx). Le dry-run est géré par l'appelant
- * (il normalise la fixture via normalizeOpenChecks) — _shared reste générique.
+ * (il normalise la fixture via normalizeOpenChecks) - _shared reste générique.
  */
 export async function fetchOpenChecks(
   accessToken: string,

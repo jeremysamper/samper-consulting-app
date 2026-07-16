@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// PdfImporter — extraction de recettes depuis un PDF texte.
+// PdfImporter - extraction de recettes depuis un PDF texte.
 //
 // Extrait le texte via pdf.js, détecte les sections par heuristiques
 // (titre = plus grande police, ingrédients = lignes « QTÉ UNITÉ NOM »,

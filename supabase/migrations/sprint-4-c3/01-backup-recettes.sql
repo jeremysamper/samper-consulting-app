@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Sprint 4 · Chantier 3 · ÉTAPE 1 — Sauvegarde de la table recettes
+-- Sprint 4 · Chantier 3 · ÉTAPE 1 - Sauvegarde de la table recettes
 -- ────────────────────────────────────────────────────────────────
 -- À exécuter EN PREMIER dans Supabase SQL Editor, avant le matching.
 -- Idempotent : la table de sauvegarde est recréée si le script est relancé.

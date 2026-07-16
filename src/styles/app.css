@@ -241,7 +241,7 @@ html[data-theme="dark"] {
 }
 
 @media (max-width: 768px) {
-  /* Touch targets WCAG 2.5.5 — minimum 44×44px sur mobile */
+  /* Touch targets WCAG 2.5.5 - minimum 44×44px sur mobile */
   button:not(.mini),
   a.button,
   [role="button"]:not(.mini) {
@@ -275,7 +275,7 @@ html[data-theme="dark"] {
   }
 }
 
-/* ─── Contenu module — respiration en bas sur mobile ─────────────────────── */
+/* ─── Contenu module - respiration en bas sur mobile ─────────────────────── */
 @media (max-width: 767px) {
   .mobile-module-content {
     padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
@@ -283,8 +283,8 @@ html[data-theme="dark"] {
 }
 
 /* ─── Modales mobiles ────────────────────────────────────────────────────────
-   Pattern A — Bottom sheet  : formulaires courts (< 5 champs), confirmations
-   Pattern B — Plein écran   : formulaires longs, détails complets
+   Pattern A - Bottom sheet  : formulaires courts (< 5 champs), confirmations
+   Pattern B - Plein écran   : formulaires longs, détails complets
    !important override les inline styles React dans la media query mobile.
    ─────────────────────────────────────────────────────────────────────────── */
 @keyframes slideUp {
@@ -293,7 +293,7 @@ html[data-theme="dark"] {
 }
 
 @media (max-width: 767px) {
-  /* ── Pattern A — bottom sheet ─────────────────────────────────────────── */
+  /* ── Pattern A - bottom sheet ─────────────────────────────────────────── */
   .modal-sheet-overlay {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -309,7 +309,7 @@ html[data-theme="dark"] {
     animation: slideUp 0.22s ease;
   }
 
-  /* ── Pattern B — plein écran ──────────────────────────────────────────── */
+  /* ── Pattern B - plein écran ──────────────────────────────────────────── */
   .modal-full-overlay {
     align-items: flex-start !important;
     padding: 0 !important;
@@ -363,11 +363,11 @@ html[data-theme="dark"] {
 .carte-tab-bar--scroll::-webkit-scrollbar { display: none; }
 .carte-tab-bar--scroll > * { flex-shrink: 0; }
 
-/* ─── SegmentedTabs — onglets de module compacts, 1 ligne scrollable ───────
+/* ─── SegmentedTabs - onglets de module compacts, 1 ligne scrollable ───────
    Style « segmented control » : piste discrète (surface2) + pilules ;
    l'onglet actif est surélevé (surface + ombre légère). Sur mobile la piste
    défile horizontalement au lieu d'empiler les onglets sur plusieurs lignes.
-   Tokens CSS uniquement — s'adapte automatiquement au dark mode. */
+   Tokens CSS uniquement - s'adapte automatiquement au dark mode. */
 .segmented-tabs {
   display: flex;
   align-items: center;
@@ -423,7 +423,7 @@ html[data-theme="dark"] {
   align-items: center;
 }
 
-/* ─── Barre d'outils de module — tabs + actions, posée (jamais flottante) ───
+/* ─── Barre d'outils de module - tabs + actions, posée (jamais flottante) ───
    Remplace le duo « toolbar desktop cachée en mobile » + « barre d'actions
    flottante en bas ». Une seule barre : les onglets (SegmentedTabs) et les
    actions cohabitent. En mobile les actions passent sur une ligne qui défile
@@ -594,11 +594,11 @@ body,
 
 html,
 body {
-  /* PWA — évite le rebond de scroll iOS ("rubber band") en mode standalone */
+  /* PWA - évite le rebond de scroll iOS ("rubber band") en mode standalone */
   overscroll-behavior: none;
   /* Écran cadré : jamais de défilement horizontal de la page entière
-     (mobile/tablette). Les zones larges — tableaux, barres d'onglets et
-     d'actions — gèrent leur propre défilement horizontal en interne. */
+     (mobile/tablette). Les zones larges - tableaux, barres d'onglets et
+     d'actions - gèrent leur propre défilement horizontal en interne. */
   overflow-x: hidden;
   max-width: 100%;
 }
@@ -616,7 +616,7 @@ body {
 }
 
 #root {
-  /* PWA — zone de sécurité iPhone (encoche + barre home) en mode standalone */
+  /* PWA - zone de sécurité iPhone (encoche + barre home) en mode standalone */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
@@ -651,7 +651,7 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* PWA — désactive le menu contextuel au appui long sur les éléments interactifs (iOS) */
+/* PWA - désactive le menu contextuel au appui long sur les éléments interactifs (iOS) */
 button,
 a {
   -webkit-touch-callout: none;
@@ -1226,7 +1226,7 @@ h1 {
 }
 
 .toast-info {
-  background: var(--nav); /* fond sidebar — cohérent avec le thème dark */
+  background: var(--nav); /* fond sidebar - cohérent avec le thème dark */
   border-color: var(--border);
 }
 

@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// diff.ts — Logique PURE de diff getCheck -> kds_order_items.
+// diff.ts - Logique PURE de diff getCheck -> kds_order_items.
 //
 // Sans DB, sans réseau, déterministe : testée dans __tests__/diff.test.ts.
 // L'edge function applique ensuite le résultat via upsert idempotent.

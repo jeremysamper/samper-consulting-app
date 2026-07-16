@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// aiService — client des fonctionnalités IA.
+// aiService - client des fonctionnalités IA.
 //
 // Tous les appels passent par l'edge function Supabase « ai-proxy » : la clé
 // API reste côté serveur, jamais dans le bundle. Le jeton de session de
@@ -259,7 +259,7 @@ export async function parseCatalogue(rawText) {
 // Dédup sémantique de la liste de commande : l'IA regroupe les noms de produits
 // qui désignent le même produit à l'achat (singulier/pluriel, accents,
 // synonymes, fautes), sans toucher aux quantités. Renvoie { groupes: [{
-// canonique, variantes: string[] }] } — uniquement les groupes contenant un
+// canonique, variantes: string[] }] } - uniquement les groupes contenant un
 // vrai doublon (≥ 2 variantes).
 export async function dedupeCommande(produits) {
   const list = (produits || []).map(s => String(s || '').trim()).filter(Boolean);

@@ -1,5 +1,5 @@
 /**
- * Tests unitaires — logique useMiseEnPlace
+ * Tests unitaires - logique useMiseEnPlace
  * Exécution : node src/modules/pos/lib/__tests__/mise-en-place.test.js
  */
 
@@ -57,9 +57,9 @@ function makeSales(entries) {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-console.log('\n📋 useMiseEnPlace — Tests\n');
+console.log('\n📋 useMiseEnPlace - Tests\n');
 
-test('Historique complet — 2 lundis → fiable, moyenne correcte', () => {
+test('Historique complet - 2 lundis → fiable, moyenne correcte', () => {
   // dow 1 = lundi
   const sales = makeSales([
     ['2026-05-18', 20],  // lundi
@@ -73,7 +73,7 @@ test('Historique complet — 2 lundis → fiable, moyenne correcte', () => {
   expect(r.qty).toBe(18); // ceil((20+16)/2) = 18
 });
 
-test('Historique complet — arrondi supérieur', () => {
+test('Historique complet - arrondi supérieur', () => {
   const sales = makeSales([
     ['2026-05-18', 7],   // lundi
     ['2026-05-11', 8],   // lundi

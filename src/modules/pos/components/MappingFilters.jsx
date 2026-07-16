@@ -1,5 +1,5 @@
 /**
- * MappingFilters — Onglets de filtre + barre de recherche
+ * MappingFilters - Onglets de filtre + barre de recherche
  */
 
 import SearchToggle from '../../../components/ui/SearchToggle.jsx';

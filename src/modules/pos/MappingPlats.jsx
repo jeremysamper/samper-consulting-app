@@ -1,5 +1,5 @@
 /**
- * MappingPlats — Écran principal du mapping POS ↔ Recettes
+ * MappingPlats - Écran principal du mapping POS ↔ Recettes
  *
  * Orchestrateur J3 :
  *   1. Charge pos_items + recettes + mappings existants via usePosItemsMapping
@@ -22,9 +22,7 @@ import { getMatchStatus } from './lib/dice-coefficient.js';
 import { MappingStats }   from './components/MappingStats.jsx';
 import { MappingFilters } from './components/MappingFilters.jsx';
 import { PosItemRow }     from './components/PosItemRow.jsx';
-
-/** Rôles autorisés à modifier les mappings */
-const EDIT_ROLES = new Set(['consultant', 'patron', 'resp_cuisine']);
+import { canManageModule } from '../../data/demoData.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -160,7 +158,8 @@ export default function MappingPlats({ user, etablissement }) {
   const [filter, setFilter]   = useState('all');
   const [search, setSearch]   = useState('');
 
-  const canEdit = EDIT_ROLES.has(user?.role ?? '');
+  // Modifier les mappings : droit « gérer » du module pos (Rôles & accès).
+  const canEdit = canManageModule(user?.role, 'pos');
 
   // ── Statuts calculés pour tous les items ────────────────────────
   const itemStatuses = useMemo(() => {

@@ -17,7 +17,7 @@ function readInitialTheme() {
   // 3. Aucune préférence sauvegardée → respecter le thème système (prefers-color-scheme)
   //    Évite le flash blanc au premier lancement en dark system.
   //    Le CSS @media (prefers-color-scheme: dark) :root:not([data-theme="light"]) a déjà appliqué
-  //    les variables en dark — on doit aligner l'état JS en conséquence.
+  //    les variables en dark - on doit aligner l'état JS en conséquence.
   try {
     const prefersDark = getBrowserWindow()?.matchMedia?.('(prefers-color-scheme: dark)')?.matches;
     if (prefersDark) return 'dark';

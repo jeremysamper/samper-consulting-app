@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase.js';
 
 /**
- * Alertes actives pour un établissement — fetch + Realtime + lecture + dismiss.
+ * Alertes actives pour un établissement - fetch + Realtime + lecture + dismiss.
  *
  * @param {string|null} etablissementId
  * @returns {{
@@ -75,8 +75,8 @@ export function useAlertInstances(etablissementId) {
 
     load();
 
-    // Realtime — INSERT : nouvelle alerte déclenchée par le cron
-    // Realtime — UPDATE : alerte résolue/dismissée depuis un autre client
+    // Realtime - INSERT : nouvelle alerte déclenchée par le cron
+    // Realtime - UPDATE : alerte résolue/dismissée depuis un autre client
     const channel = supabase
       .channel(`alert_instances_${etablissementId}`)
       .on(

@@ -211,7 +211,7 @@ export default function App() {
             (le module reste enfant direct de <main>). Les modules en cours de
             chargement sont montés mais masqués → pas d'écran « Chargement… ».
             La clé inclut l'établissement courant : en changer REMONTE tous les
-            modules à neuf (états internes compris — fiche ouverte, onglet,
+            modules à neuf (états internes compris - fiche ouverte, onglet,
             sélection…). Sans ça, un module gardé monté rechargeait ses données
             mais conservait l'état de l'ancien établissement à l'écran. */}
         {pagesToRender.map((p) => (

@@ -1,5 +1,5 @@
 -- ================================================================
--- MIGRATION J2 — POS SYNC INFRASTRUCTURE
+-- MIGRATION J2 - POS SYNC INFRASTRUCTURE
 -- Projet  : Samper Consulting
 -- Date    : 2026-05-23
 -- Changements :
@@ -20,8 +20,8 @@ ALTER TABLE public.pos_connections
   ADD COLUMN IF NOT EXISTS ls_business_id text,
   ADD COLUMN IF NOT EXISTS ls_business_location_id text;
 
--- 3. pos_sync_logs — journal de chaque run de synchronisation
---    IDs en text — cohérent avec le reste du projet (pos_connections.id est text)
+-- 3. pos_sync_logs - journal de chaque run de synchronisation
+--    IDs en text - cohérent avec le reste du projet (pos_connections.id est text)
 CREATE TABLE IF NOT EXISTS public.pos_sync_logs (
   id             text        PRIMARY KEY DEFAULT (gen_random_uuid())::text,
   connection_id  text        REFERENCES public.pos_connections(id) ON DELETE CASCADE,
@@ -54,7 +54,7 @@ CREATE POLICY "pos_sync_logs_select" ON public.pos_sync_logs
     )
   );
 
--- Pas d'INSERT/UPDATE/DELETE côté client — uniquement via edge functions (service_role)
+-- Pas d'INSERT/UPDATE/DELETE côté client - uniquement via edge functions (service_role)
 
 -- 4. Étendre la contrainte status de pos_connections pour 'needs_location'
 --    (état intermédiaire quand plusieurs locations LS sont détectées)

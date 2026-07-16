@@ -3,7 +3,7 @@ import { bootDedupeRead, getSupabaseConfig, invalidateBootRead, supabase } from 
 import { readText, writeText } from '../utils/storage.js';
 
 // ═══════════════════════════════════════════════════════════════
-// MODULE SUPABASE — Client + helpers pour auth et data
+// MODULE SUPABASE - Client + helpers pour auth et data
 // ═══════════════════════════════════════════════════════════════
 // Vite compatibility layer: keeps the legacy SB API while using the central
 // Supabase client from services/supabase.js.
@@ -225,7 +225,7 @@ export function installLegacySupabase() {
 
     async loadAllUserSettings() {
       const { data: { session } } = await client.auth.getSession();
-      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
+      const user = session?.user; // session locale (0 réseau) - l'id suffit, la RLS impose user_id côté serveur
       if (!user) {
         _userSettingsCache = new Map();
         return _userSettingsCache;
@@ -260,7 +260,7 @@ export function installLegacySupabase() {
     clearUserSettingsCache() {
       _userSettingsCache = null;
       _readCache.clear();      // cache produits #4
-      invalidateBootRead();    // cache boot (etablissements/profiles) — purge au logout
+      invalidateBootRead();    // cache boot (etablissements/profiles) - purge au logout
     },
 
     // Lecture async classique. Utilise le cache si dispo, sinon fait l'appel DB.
@@ -269,7 +269,7 @@ export function installLegacySupabase() {
         return _userSettingsCache.get(key) ?? null;
       }
       const { data: { session } } = await client.auth.getSession();
-      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
+      const user = session?.user; // session locale (0 réseau) - l'id suffit, la RLS impose user_id côté serveur
       if (!user) return null;
       const { data, error } = await client
         .from('user_settings')
@@ -289,7 +289,7 @@ export function installLegacySupabase() {
         _userSettingsCache.set(key, value);
       }
       const { data: { session } } = await client.auth.getSession();
-      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
+      const user = session?.user; // session locale (0 réseau) - l'id suffit, la RLS impose user_id côté serveur
       if (!user) throw new Error('Non authentifié');
       const { error } = await client
         .from('user_settings')
@@ -314,7 +314,7 @@ export function installLegacySupabase() {
         return out;
       }
       const { data: { session } } = await client.auth.getSession();
-      const user = session?.user; // session locale (0 réseau) — l'id suffit, la RLS impose user_id côté serveur
+      const user = session?.user; // session locale (0 réseau) - l'id suffit, la RLS impose user_id côté serveur
       if (!user) return {};
       const { data, error } = await client
         .from('user_settings')
@@ -501,7 +501,7 @@ export function installLegacySupabase() {
 
     // Modifier l'e-mail et/ou le mot de passe d'un compte auth existant.
     // Réservé au consultant (contrôlé côté Edge Function via le rôle du caller).
-    // payload = { user_id, email?, password? } — champs vides = inchangés.
+    // payload = { user_id, email?, password? } - champs vides = inchangés.
     async updateUserAuthViaEdge(payload) {
       try {
         const { data, error } = await client.functions.invoke('update-user', { body: payload });
@@ -690,7 +690,7 @@ export function installLegacySupabase() {
     },
 
     // ═══════════════════════════════════════════════════════════════
-    // KDS (kds_orders + kds_order_items) — commandes live Lightspeed.
+    // KDS (kds_orders + kds_order_items) - commandes live Lightspeed.
     // Lecture RLS : consultant, resp_cuisine, cuisinier. Ecriture via RPC.
     // ═══════════════════════════════════════════════════════════════
     async listKdsOrders(etabId) {
@@ -1076,7 +1076,7 @@ export function installLegacySupabase() {
     },
 
     // ═══════════════════════════════════════════════════════════════
-    // KIT CUISINIER — fiches techniques + références polymorphiques
+    // KIT CUISINIER - fiches techniques + références polymorphiques
     // ═══════════════════════════════════════════════════════════════
     async listKitItems(etabId) {
       const { data, error } = await client
@@ -1538,7 +1538,7 @@ export function installLegacySupabase() {
         etablissement_id: etabId,
         message,
         updated_by: userId,
-        // Le default now() ne joue qu'à l'insert — sans ça, la date reste figée à la création.
+        // Le default now() ne joue qu'à l'insert - sans ça, la date reste figée à la création.
         updated_at: new Date().toISOString(),
       }).select().single();
       if (error) throw error;
@@ -1608,7 +1608,7 @@ export function installLegacySupabase() {
       if (error) throw error;
     },
 
-    // ─── HACCP — Zones ───
+    // ─── HACCP - Zones ───
     async listHaccpZones(etabId) {
       let q = client.from('haccp_zones').select('*').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
@@ -1653,7 +1653,7 @@ export function installLegacySupabase() {
       };
     },
 
-    // ─── HACCP — Control templates ───
+    // ─── HACCP - Control templates ───
     async listHaccpTpls(etabId) {
       let q = client.from('haccp_ctrl_templates').select('*').order('label');
       if (etabId) q = q.eq('etablissement_id', etabId);
@@ -1692,7 +1692,7 @@ export function installLegacySupabase() {
       };
     },
 
-    // ─── HACCP — Relevés ───
+    // ─── HACCP - Relevés ───
     async listHaccpReleves(etabId) {
       let q = client.from('haccp_releves').select('*').order('date', { ascending: false }).order('heure', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
@@ -1735,7 +1735,7 @@ export function installLegacySupabase() {
       };
     },
 
-    // ─── HACCP — Contrôles ───
+    // ─── HACCP - Contrôles ───
     async listHaccpControls(etabId) {
       let q = client.from('haccp_controls').select('*').order('date', { ascending: false }).order('heure', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
@@ -1776,7 +1776,7 @@ export function installLegacySupabase() {
       };
     },
 
-    // ─── HACCP — Traçabilité (photos d'étiquettes, classées Année/Mois/Jour) ───
+    // ─── HACCP - Traçabilité (photos d'étiquettes, classées Année/Mois/Jour) ───
     async listHaccpTracabilite(etabId) {
       let q = client.from('haccp_tracabilite').select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
@@ -1799,7 +1799,7 @@ export function installLegacySupabase() {
       if (error) throw error;
       return this.mapHaccpTracabiliteFromDB(data);
     },
-    // Suppression via l'Edge Function (ligne DB + fichier storage ensemble —
+    // Suppression via l'Edge Function (ligne DB + fichier storage ensemble -
     // le bucket est en écriture service-only, le client ne peut pas y toucher).
     // Repli sur la suppression DB directe si la fonction déployée est une
     // ancienne version qui ne connaît pas encore l'action delete.

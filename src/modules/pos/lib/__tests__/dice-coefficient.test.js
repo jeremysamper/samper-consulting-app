@@ -1,5 +1,5 @@
 /**
- * dice-coefficient.test.js — Tests unitaires (11 cas)
+ * dice-coefficient.test.js - Tests unitaires (11 cas)
  *
  * Runner autonome :
  *   node src/modules/pos/lib/__tests__/dice-coefficient.test.js
@@ -46,7 +46,7 @@ function between(actual, lo, hi) {
 }
 
 // ── Tests diceCoefficient (pré-normalisé) ─────────────────────────
-console.log('\n🎲 dice-coefficient.js — 11 tests\n');
+console.log('\n🎲 dice-coefficient.js - 11 tests\n');
 
 test('Match parfait → 100', () =>
   eq(diceCoefficient('risotto safran', 'risotto safran'), 100));

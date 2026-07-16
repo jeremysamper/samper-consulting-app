@@ -1,5 +1,5 @@
 /**
- * useMatchSuggestions — Calcul des suggestions de matching côté client
+ * useMatchSuggestions - Calcul des suggestions de matching côté client
  *
  * Pour chaque pos_item NON mappé, calcule le meilleur match Dice
  * parmi toutes les recettes disponibles.

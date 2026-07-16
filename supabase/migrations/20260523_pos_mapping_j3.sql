@@ -1,5 +1,5 @@
 -- ================================================================
--- MIGRATION J3 — POS MAPPING : matched_at + matched_by
+-- MIGRATION J3 - POS MAPPING : matched_at + matched_by
 -- Projet  : Samper Consulting
 -- Date    : 2026-05-23
 -- Changements :

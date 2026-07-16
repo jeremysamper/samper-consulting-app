@@ -1,5 +1,5 @@
 -- ================================================================
--- MIGRATION — Table module_labels : labels de modules personnalisables
+-- MIGRATION - Table module_labels : labels de modules personnalisables
 -- Projet : Samper Consulting
 -- Date   : 2026-05-23
 --
@@ -13,7 +13,7 @@
 --  • IDs en text (cohérent avec toutes les tables existantes)
 --  • FK vers etablissements(id) en text (idem)
 --  • RLS via user_can_access_etab() + current_user_role() (helpers existants)
---  • Pas de table etablissement_users — on utilise profiles.etablissement_ids
+--  • Pas de table etablissement_users - on utilise profiles.etablissement_ids
 -- ================================================================
 
 CREATE TABLE IF NOT EXISTS public.module_labels (

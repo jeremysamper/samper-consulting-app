@@ -1,5 +1,5 @@
 // ================================================================
-// posApi.js — Client partage pour les edge functions POS
+// posApi.js - Client partage pour les edge functions POS
 //
 // Centralise l'appel authentifie aux fonctions Supabase pos-oauth
 // et pos-backfill (session JWT de l'utilisateur courant).

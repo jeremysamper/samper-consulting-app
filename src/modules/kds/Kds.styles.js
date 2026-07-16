@@ -1,4 +1,4 @@
-// Styles KDS — passe cuisine. Couleurs via tokens app.css (dark-mode automatique).
+// Styles KDS - passe cuisine. Couleurs via tokens app.css (dark-mode automatique).
 export const s = {
   root: { padding: '14px 16px 40px', maxWidth: 1500, margin: '0 auto' },
   header: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 },

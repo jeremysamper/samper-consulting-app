@@ -6,7 +6,7 @@ export const ACCEPTED_MIME = new Set([
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
   'image/heic', 'image/heif',
 ]);
-// Certains telephones envoient un MIME vide pour les HEIC — on regarde l'extension en fallback.
+// Certains telephones envoient un MIME vide pour les HEIC - on regarde l'extension en fallback.
 export const HEIC_EXTENSIONS = new Set(['heic', 'heif']);
 
 export const MAX_FILE_SIZE_MB = 10; // borne superieure avant compression

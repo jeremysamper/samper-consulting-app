@@ -1,5 +1,5 @@
 /**
- * useConsoIngredients — Consommation théorique des ingrédients sur une période
+ * useConsoIngredients - Consommation théorique des ingrédients sur une période
  *
  * Algorithme :
  *   Pour chaque vente de pos_item mappé sur la période :
@@ -176,7 +176,7 @@ export function useConsoIngredients(etablissement, dateRange) {
         const ingredients = Array.isArray(recette.ingredients) ? recette.ingredients : [];
 
         for (const ing of ingredients) {
-          // Clé robuste : on lit "unite" (seule clé présente en base — vérifiée)
+          // Clé robuste : on lit "unite" (seule clé présente en base - vérifiée)
           const nom   = (ing.nom   ?? '').trim();
           const unite = (ing.unite ?? '').trim();
           const qteRecette = Number(ing.quantite ?? 0);

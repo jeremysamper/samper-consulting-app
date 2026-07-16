@@ -1,11 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════
 -- Storage policies : whitelist MIME types pour le bucket 'documents'
--- Sprint 3 — 2026-05-14
+-- Sprint 3 - 2026-05-14
 -- ═══════════════════════════════════════════════════════════════
 --
 -- Note : Supabase Storage filtre les uploads via le champ "Allowed MIME types"
 -- du bucket (Dashboard > Storage > Buckets > documents > Settings).
--- Cette migration NE PEUT PAS modifier ce paramètre via SQL — il faut le
+-- Cette migration NE PEUT PAS modifier ce paramètre via SQL - il faut le
 -- faire manuellement dans le Dashboard.
 --
 -- À appliquer dans Supabase Dashboard :

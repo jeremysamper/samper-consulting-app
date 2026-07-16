@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// pdfText — extraction du texte brut d'un PDF via pdf.js.
+// pdfText - extraction du texte brut d'un PDF via pdf.js.
 //
 // Regroupe les fragments texte par ligne (coordonnée Y) pour préserver
 // une structure proche du tableau d'origine, puis renvoie le texte page

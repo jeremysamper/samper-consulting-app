@@ -1,5 +1,5 @@
 /**
- * useMiseEnPlace — Prédiction des quantités à préparer pour J+1
+ * useMiseEnPlace - Prédiction des quantités à préparer pour J+1
  *
  * Algorithme :
  *   Pour chaque pos_item mappé :

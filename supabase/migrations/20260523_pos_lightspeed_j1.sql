@@ -1,19 +1,19 @@
 -- ================================================================
--- MIGRATION J1 — INTÉGRATION POS LIGHTSPEED
+-- MIGRATION J1 - INTÉGRATION POS LIGHTSPEED
 -- Projet  : Samper Consulting
 -- Date    : 2026-05-23
 -- Tables  : pos_providers, pos_connections, pos_items,
 --           pos_sales, pos_item_recipe_mapping  (5 tables)
 --
 -- ADAPTATIONS vs spec :
---  • IDs en text — cohérent avec toutes les tables existantes
+--  • IDs en text - cohérent avec toutes les tables existantes
 --  • FK vers etablissements/profiles/recettes en text
 --  • RLS via user_can_access_etab() + current_user_role() (helpers existants)
 --  • Tokens (access_token_enc, refresh_token_enc) : jamais exposés côté
---    client — lecture réservée aux edge functions via service_role.
+--    client - lecture réservée aux edge functions via service_role.
 --    RLS sélect exclut ces colonnes via une POLICY qui bloque les rôles
 --    non-service. En pratique : le client interroge toujours un endpoint
---    edge function pour le statut — jamais les colonnes token directement.
+--    edge function pour le statut - jamais les colonnes token directement.
 -- ================================================================
 
 -- ────────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.pos_connections (
   id                  text        PRIMARY KEY DEFAULT (gen_random_uuid())::text,
   etablissement_id    text        NOT NULL REFERENCES public.etablissements(id) ON DELETE CASCADE,
   provider_id         text        NOT NULL REFERENCES public.pos_providers(id),
-  -- tokens — JAMAIS lus côté client (service_role seulement)
+  -- tokens - JAMAIS lus côté client (service_role seulement)
   access_token_enc    text,
   refresh_token_enc   text,
   token_expires_at    timestamptz,
@@ -162,7 +162,7 @@ ALTER TABLE public.pos_sales                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pos_item_recipe_mapping  ENABLE ROW LEVEL SECURITY;
 
 -- ─────────────────────────────────────────────────────────────────
--- 4.1  pos_providers — lecture publique (référence statique)
+-- 4.1  pos_providers - lecture publique (référence statique)
 CREATE POLICY "pos_providers_select_all" ON public.pos_providers
   FOR SELECT TO authenticated USING (true);
 

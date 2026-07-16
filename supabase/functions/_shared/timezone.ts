@@ -1,8 +1,8 @@
 // ================================================================
-// timezone.ts — Conversion UTC → date locale
+// timezone.ts - Conversion UTC → date locale
 //
 // Utilise Intl.DateTimeFormat avec locale sv-SE (format YYYY-MM-DD natif).
-// Pas de dépendance externe — fonctionne dans Deno Edge Runtime.
+// Pas de dépendance externe - fonctionne dans Deno Edge Runtime.
 // ================================================================
 
 const FALLBACK_TZ = 'Europe/Zurich';

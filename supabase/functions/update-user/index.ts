@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// SAMPER CONSULTING — Edge Function : update-user
+// SAMPER CONSULTING - Edge Function : update-user
 // Nom de la fonction : update-user
 // ═══════════════════════════════════════════════════════════════
 //
@@ -8,7 +8,7 @@
 // accès manuel au dashboard Supabase.
 //
 // Sécurité : n'accepte que les requêtes authentifiées d'un consultant.
-// Body attendu : { user_id, email?, password? } — champs absents/vides
+// Body attendu : { user_id, email?, password? } - champs absents/vides
 // = laissés inchangés.
 // ═══════════════════════════════════════════════════════════════
 

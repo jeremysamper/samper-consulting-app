@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Cartes multiples (onglets) — liaisons M2M carte ↔ plat et carte ↔ fiche salle
+-- Cartes multiples (onglets) - liaisons M2M carte ↔ plat et carte ↔ fiche salle
 -- Migration additive et non destructive : aucune table existante n'est modifiée
 -- de façon destructive. Les plats / fiches existants sont rattachés à la carte
 -- par défaut (la plus ancienne) de leur établissement.

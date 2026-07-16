@@ -99,7 +99,7 @@ async function syncConnection(
 
     if (!dryRun && needsRefresh) {
       if (!conn.refresh_token_enc) {
-        throw new Error('Refresh token manquant — reconnexion nécessaire');
+        throw new Error('Refresh token manquant - reconnexion nécessaire');
       }
       const refreshed = await refreshAccessToken(conn.refresh_token_enc, lsEnv);
       accessToken = refreshed.access_token;
@@ -119,7 +119,7 @@ async function syncConnection(
     // 4. Récupérer les salesLines
     const locationId = conn.ls_business_location_id ?? '';
     if (!dryRun && !locationId) {
-      throw new Error('ls_business_location_id non configuré — sélectionner la location dans les paramètres');
+      throw new Error('ls_business_location_id non configuré - sélectionner la location dans les paramètres');
     }
 
     const lines = await fetchSalesLines(
@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
     return json({ message: 'Aucune connexion active', synced: 0, errors: 0 });
   }
 
-  console.log(`[pos-sync] Démarrage — ${connections.length} connexion(s) — date=${targetDate} dryRun=${globalDryRun}`);
+  console.log(`[pos-sync] Démarrage - ${connections.length} connexion(s) - date=${targetDate} dryRun=${globalDryRun}`);
 
   // Sync en parallèle (Promise.allSettled → une erreur n'arrête pas les autres)
   const results = await Promise.allSettled(
@@ -302,6 +302,6 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  console.log(`[pos-sync] Terminé — synced=${summary.synced} errors=${summary.errors}`);
+  console.log(`[pos-sync] Terminé - synced=${summary.synced} errors=${summary.errors}`);
   return json(summary);
 });

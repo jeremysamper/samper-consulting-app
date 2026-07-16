@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase.js';
 
-const POLL_MS = 5 * 60 * 1000; // 5 minutes — ne pas saturer Supabase
+const POLL_MS = 5 * 60 * 1000; // 5 minutes - ne pas saturer Supabase
 
 /**
  * Une connexion POS est "unhealthy" si :
@@ -71,7 +71,7 @@ export function usePosConnectionHealth({ enabled = true } = {}) {
 
   useEffect(() => {
     if (!enabled) {
-      // Rôle non concerné — on ne fait aucune requête
+      // Rôle non concerné - on ne fait aucune requête
       setLoading(false);
       setUnhealthy([]);
       setHasIssue(false);

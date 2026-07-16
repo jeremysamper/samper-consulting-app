@@ -828,7 +828,7 @@ export const pdfUtils = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // LISTE DE COMMANDE — génération jsPDF native (vectorielle, DA Samper)
+  // LISTE DE COMMANDE - génération jsPDF native (vectorielle, DA Samper)
   // Bon de commande propre, multi-pages, dans la charte (bleu petrole #003042,
   // titre serif, sections par catégorie, cases à cocher). Cohérent avec
   // la fiche recette plutôt qu'une capture html2canvas de l'écran.
@@ -985,7 +985,7 @@ export const pdfUtils = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // MISE EN PLACE — liste de production (jsPDF natif, vectoriel, DA Samper)
+  // MISE EN PLACE - liste de production (jsPDF natif, vectoriel, DA Samper)
   // Deux sections : Urgent (non congelable) en PREMIER, puis Grosse production.
   // Cases a cocher imprimees, multi-pages A4. Document lisible comme ecrit a la
   // main : pas de capitales criardes sur les titres de section, pas de tirets
@@ -1142,10 +1142,10 @@ export const pdfUtils = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // REGISTRE HACCP — relevés de température (jsPDF natif, vectoriel)
+  // REGISTRE HACCP - relevés de température (jsPDF natif, vectoriel)
   // Journalier ou mensuel : le payload arrive déjà groupé par jour.
   // Généré en vectoriel (pas de capture html2canvas) : lignes jamais
-  // coupées entre deux pages, en-têtes répétés, anomalies en rouge —
+  // coupées entre deux pages, en-têtes répétés, anomalies en rouge -
   // document présentable lors d'un contrôle d'hygiène. Même DA que la
   // fiche recette et la liste de commande (bleu pétrole #003042).
   // payload : { periodeLabel, stats:{total,conformes,anomalies,taux},

@@ -38,7 +38,7 @@ export function computeCouverts(scoreMoyen, nbCuisiniers, dureeService, scoresIn
 }
 
 /**
- * Hook principal — analyse IA d'une carte + persistance des scores en base.
+ * Hook principal - analyse IA d'une carte + persistance des scores en base.
  *
  * analyseSimulation({ plats, nbCuisiniers, dureeService, segment })
  *   - plats : [{ id, nom, ingredients: string[] }]

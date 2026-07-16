@@ -1,7 +1,7 @@
 -- Optimisation RLS : auth.uid() était réévalué POUR CHAQUE LIGNE dans les
 -- politiques ci-dessous (lint Supabase auth_rls_initplan). La forme
 -- (select auth.uid()) est évaluée UNE seule fois par requête (InitPlan).
--- Sémantique strictement identique — gain de latence sur les tables lues
+-- Sémantique strictement identique - gain de latence sur les tables lues
 -- au boot (profiles, user_settings, module_labels) et à chaque module.
 -- Idempotent : ALTER POLICY rejouable sans erreur.
 

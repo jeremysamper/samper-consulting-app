@@ -1,11 +1,11 @@
 // ================================================================
-// upsert.ts — Upsert pos_items + pos_sales (idempotent)
+// upsert.ts - Upsert pos_items + pos_sales (idempotent)
 //
 // Idempotence garantie par les contraintes UNIQUE :
 //   pos_items  : UNIQUE (pos_connection_id, external_id)
 //   pos_sales  : UNIQUE (pos_item_id, date)
 //
-// Stratégie : on écrase (ignoreDuplicates: false) — la dernière
+// Stratégie : on écrase (ignoreDuplicates: false) - la dernière
 // sync est la source de vérité.
 // ================================================================
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';

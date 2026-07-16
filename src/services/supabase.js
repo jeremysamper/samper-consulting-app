@@ -12,7 +12,7 @@ function readEnvConfig() {
   };
 }
 
-// Fallback public — mêmes valeurs que components/config.js (la clé anon est
+// Fallback public - mêmes valeurs que components/config.js (la clé anon est
 // publique par design, la sécurité repose sur la RLS). Sans lui, l'app Vite
 // jette au chargement du module sur toute machine sans .env → écran blanc
 // silencieux. Un .env local reste prioritaire pour pointer ailleurs.
@@ -50,9 +50,9 @@ if (config.source === 'fallback') {
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
     persistSession: true,       // session conservée dans localStorage entre les ouvertures PWA
-    autoRefreshToken: true,     // refresh silencieux du token — pas de reconnexion manuelle
+    autoRefreshToken: true,     // refresh silencieux du token - pas de reconnexion manuelle
     detectSessionInUrl: true,   // pour les magic links (si activés plus tard)
-    storageKey: 'samper-auth',  // clé dédiée dans localStorage — évite les conflits multi-projet
+    storageKey: 'samper-auth',  // clé dédiée dans localStorage - évite les conflits multi-projet
   },
   realtime: {
     params: { eventsPerSecond: 10 }

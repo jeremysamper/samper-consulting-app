@@ -1,5 +1,5 @@
 /**
- * RecipeSelector — Modal de sélection d'une recette
+ * RecipeSelector - Modal de sélection d'une recette
  *
  * Affiche la liste complète des recettes avec :
  *   • Recherche textuelle (contains + tri Dice)

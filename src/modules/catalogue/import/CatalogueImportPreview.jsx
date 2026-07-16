@@ -1,7 +1,7 @@
 import React from 'react';
 
 // ═══════════════════════════════════════════════════════════════
-// CatalogueImportPreview — tableau éditable des produits détectés
+// CatalogueImportPreview - tableau éditable des produits détectés
 // par l'IA avant insertion dans le catalogue.
 //
 // Chaque ligne porte : champs produit éditables, drapeau `_selected`,

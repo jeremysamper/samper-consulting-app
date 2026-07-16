@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Sprint 4 · Chantier 3 · ÉTAPE 4 — Rapport post-matching
+-- Sprint 4 · Chantier 3 · ÉTAPE 4 - Rapport post-matching
 -- ────────────────────────────────────────────────────────────────
 -- À exécuter APRÈS l'étape 3. Copier les deux résultats dans
 -- MIGRATION-PRODUCT-MATCHING-REPORT.md (dépôt local).

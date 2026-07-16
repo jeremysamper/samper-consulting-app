@@ -1,5 +1,5 @@
 /**
- * PosExportButton — Bouton d'export PDF réutilisable pour les vues cuisine POS
+ * PosExportButton - Bouton d'export PDF réutilisable pour les vues cuisine POS
  *
  * Utilise pdfUtils.exportElementToPdf() : capture html2canvas (scale 2) du DOM
  * identifié par `printId`, puis génère un PDF A4 branded Samper (en-tête logo +
@@ -11,11 +11,11 @@
  * Les boutons et éléments `.no-print` du DOM capturé sont retirés automatiquement.
  *
  * @param {{
- *   printId:       string,    — id de l'élément DOM à capturer
- *   title:         string,    — titre du document (affiché dans l'en-tête PDF)
- *   etablissement: object,    — { nom, logo_url, adresse? }
- *   fileName?:     string,    — nom du fichier (défaut: dérivé du titre)
- *   label?:        string,    — texte du bouton (défaut: "📥 Exporter PDF")
+ *   printId:       string,    - id de l'élément DOM à capturer
+ *   title:         string,    - titre du document (affiché dans l'en-tête PDF)
+ *   etablissement: object,    - { nom, logo_url, adresse? }
+ *   fileName?:     string,    - nom du fichier (défaut: dérivé du titre)
+ *   label?:        string,    - texte du bouton (défaut: "📥 Exporter PDF")
  *   disabled?:     boolean,
  *   style?:        object,
  * }} props

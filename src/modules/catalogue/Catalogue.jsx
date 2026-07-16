@@ -1,12 +1,13 @@
 import React from 'react';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { canManageModule } from '../../data/demoData.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ═══════════════════════════════════════════════════════════════
-// MODULE CATALOGUE — Base de données produits & fournisseurs
+// MODULE CATALOGUE - Base de données produits & fournisseurs
 // ═══════════════════════════════════════════════════════════════
 
 const CATEGORIES_PRODUITS = [
@@ -28,7 +29,7 @@ const safeText = (value) => String(value ?? '').toLowerCase();
 const Catalogue = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
-  const canWrite = ['consultant', 'patron'].includes(user.role);
+  const canWrite = canManageModule(user.role, 'catalogue');
   const isConsultant = user.role === 'consultant';
 
   const [produits, setProduits] = React.useState([]);
@@ -238,7 +239,7 @@ const Catalogue = ({ user, etablissement }) => {
         if (!rows || rows.length < 2) continue;
 
         // ─── Détecter le format ───
-        // Format Wood/fournisseur : L0 = titre catégorie, L1 = entête (No d'art. | Description | Unité | — | Prix)
+        // Format Wood/fournisseur : L0 = titre catégorie, L1 = entête (No d'art. | Description | Unité | - | Prix)
         // Format inventaire      : colonne A = vide, col B = catégorie, col C = produit, col D = prixUnit
         // Format catalogue std   : col A = catégorie, col B = nom, col C = unité, col D = prix
 

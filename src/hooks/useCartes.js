@@ -4,7 +4,7 @@ import { getDemoData } from '../data/demoData.js';
 import { notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// useCartes — source unique pour la liste des cartes (menus) d'un établissement.
+// useCartes - source unique pour la liste des cartes (menus) d'un établissement.
 // Charge depuis Supabase + abonnement realtime ; repli localStorage en mode démo.
 // Expose les opérations de gestion (ajout / renommage / archivage / suppression)
 // partagées par « Cartes & Recettes » et « Fiches salle ».

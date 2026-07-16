@@ -2,7 +2,7 @@
 // helpers/create-instance.ts
 //
 // Crée une instance d'alerte si aucune instance active n'existe
-// déjà pour cette règle. Idempotent — safe à appeler à chaque tick.
+// déjà pour cette règle. Idempotent - safe à appeler à chaque tick.
 // ================================================================
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -36,7 +36,7 @@ export async function createInstanceIfNeeded(
     .eq('status', 'active')
     .maybeSingle();
 
-  if (existing) return; // Instance active déjà présente — pas de doublon
+  if (existing) return; // Instance active déjà présente - pas de doublon
 
   const { error } = await sb.from('alert_instances').insert({
     rule_id:          ruleId,

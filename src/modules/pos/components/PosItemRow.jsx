@@ -1,5 +1,5 @@
 /**
- * PosItemRow — Ligne de plat POS avec badge, recette mappée et actions
+ * PosItemRow - Ligne de plat POS avec badge, recette mappée et actions
  *
  * États possibles :
  *   • Mappé + manually_validated     → 🟢 [Modifier] [Délier]

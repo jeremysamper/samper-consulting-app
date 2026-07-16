@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// Edge function « pos-oauth » v2 — OAuth2 Lightspeed K-Series.
+// Edge function « pos-oauth » v2 - OAuth2 Lightspeed K-Series.
 //
 // Nouveautés v2 :
 //   • Détection multi-location après token exchange
@@ -97,7 +97,7 @@ async function refreshTokens(refreshToken: string, lsEnv: string) {
   return res.json() as Promise<{ access_token: string; refresh_token: string; expires_in: number }>;
 }
 
-/** Upsert la connexion POS (sans ls_business_location_id — sera ajouté par set_location) */
+/** Upsert la connexion POS (sans ls_business_location_id - sera ajouté par set_location) */
 async function upsertConnection(
   admin: ReturnType<typeof adminClient>,
   etablissementId: string,
@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
   // ── GET : callback OAuth2 + utilitaires ─────────────────────────
   if (req.method === 'GET') {
 
-    // ── ping — présence des secrets (consultant authentifié uniquement) ──
+    // ── ping - présence des secrets (consultant authentifié uniquement) ──
     if (url.searchParams.get('action') === 'ping') {
       // Gate : ne pas révéler la configuration des secrets à un appelant anonyme.
       const { data: { user: pingUser } } = await userClient(req.headers.get('Authorization') ?? '').auth.getUser();
@@ -257,7 +257,7 @@ small{color:#6b7280;font-size:12px;font-weight:400;display:block;margin-top:6px;
   </p>
   <p style="color:#374151;font-size:13px;margin:0 0 16px">
     Votre compte Lightspeed contient ${locations.length} restaurants.<br>
-    La sélection se fait dans l'application Samper — cette fenêtre va se fermer.
+    La sélection se fait dans l'application Samper - cette fenêtre va se fermer.
   </p>
 </div>
 <script>
@@ -408,7 +408,7 @@ ${errMsg.replace(/</g, '&lt;')}</p></div>
           await admin.from('pos_connections').update({
             status: 'error', last_error: e instanceof Error ? e.message : 'Refresh token invalide',
           }).eq('id', conn.id);
-          return json({ error: 'Token expiré — reconnexion nécessaire', needs_reconnect: true }, 401);
+          return json({ error: 'Token expiré - reconnexion nécessaire', needs_reconnect: true }, 401);
         }
       }
 

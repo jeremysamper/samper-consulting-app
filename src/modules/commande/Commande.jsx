@@ -9,7 +9,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMMANDE — liste de produits a commander, partagee par etablissement.
+// COMMANDE - liste de produits a commander, partagee par etablissement.
 // Visible de tous : cocher + saisir une quantite (optionnelle), ajouter un produit.
 // Bouton de generation (agrege les produits de toutes les cartes) : consultant only.
 // ─────────────────────────────────────────────────────────────────────────────

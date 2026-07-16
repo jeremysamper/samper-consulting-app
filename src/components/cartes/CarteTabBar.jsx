@@ -2,13 +2,13 @@ import React from 'react';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CarteTabBar — barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
+// CarteTabBar - barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
 // et Fiches salle. Un onglet par carte + des onglets supplémentaires fournis par
 // le parent (ex. « Bibliothèque recettes », « Toutes »).
 //
 // Si canManage : bouton « + Carte » et édition (renommer / dates / archiver /
 // supprimer) de la carte active. Supprimer une carte ne retire que l'onglet et
-// ses liaisons — aucun plat / recette / fiche n'est effacé. Archiver conserve
+// ses liaisons - aucun plat / recette / fiche n'est effacé. Archiver conserve
 // tout (liaisons comprises) : la carte sort des onglets et se restaure depuis
 // la modale « Archives ».
 //

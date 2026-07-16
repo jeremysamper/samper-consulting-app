@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 -- Migration : suppression de la table kit_items (module Kit cuisinier)
--- Sprint 3 — 2026-05-14
+-- Sprint 3 - 2026-05-14
 -- ═══════════════════════════════════════════════════════════════
 --
 -- AVANT EXECUTION : faire un dump de la table en local (cf. backups/README.md)
@@ -26,6 +26,6 @@ BEGIN
     DROP TABLE public.kit_items CASCADE;
     RAISE NOTICE 'Table kit_items supprimée.';
   ELSE
-    RAISE NOTICE 'Table kit_items absente — rien à faire.';
+    RAISE NOTICE 'Table kit_items absente - rien à faire.';
   END IF;
 END $$;

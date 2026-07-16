@@ -5,7 +5,7 @@ import { dbService } from '../services/dbService.js';
 
 
 // ============================================================
-// SAMPER CONSULTING — Données de démonstration
+// SAMPER CONSULTING - Données de démonstration
 // ============================================================
 
 export const DEMO_DATA = {
@@ -295,10 +295,10 @@ DEMO_DATA.inventaires.forEach(inv => {
   if (inv.lignes.length > 0) inv.valeurTotale = +inv.lignes.reduce((s,l) => s+l.valeur, 0).toFixed(2);
 });
 
-// Data version check — force data refresh when structure changes
+// Data version check - force data refresh when structure changes
 const DATA_VERSION = '4';
 if (readText('sc_data_version', '') !== DATA_VERSION) {
-  // Structure modifiée (etablissementId ajouté au planning, pertes, etc.) — on reset les données métier
+  // Structure modifiée (etablissementId ajouté au planning, pertes, etc.) - on reset les données métier
   removeStorageKeys(['sc_user','sc_page','sc_permissions','sc_recettes','sc_cartes','sc_planning',
    'sc_inventaires','sc_pertes','sc_utilisateurs','sc_etablissements',
    'sc_inventaire_selected','sc_current_etab']);
@@ -383,7 +383,7 @@ export async function hydrateFromSupabase() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HELPERS REACT — Hooks de synchronisation Supabase
+// HELPERS REACT - Hooks de synchronisation Supabase
 // ═══════════════════════════════════════════════════════════════
 
 // Hook pour synchroniser une liste avec une table Supabase en temps réel

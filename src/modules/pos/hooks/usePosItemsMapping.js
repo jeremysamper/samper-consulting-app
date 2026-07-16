@@ -1,5 +1,5 @@
 /**
- * usePosItemsMapping — Chargement et mutations du mapping POS ↔ Recettes
+ * usePosItemsMapping - Chargement et mutations du mapping POS ↔ Recettes
  *
  * Fournit :
  *   posItems   : plats POS actifs de l'établissement (via pos_connections)

@@ -1,5 +1,5 @@
 -- ============================================================================
--- I1 — Révocation des privilèges du rôle anon (défense en profondeur)
+-- I1 - Révocation des privilèges du rôle anon (défense en profondeur)
 --
 -- STAGED : NE PAS appliquer avant que I2 (d1a9b42) soit posé (ordre du plan).
 --
@@ -39,7 +39,7 @@ alter default privileges in schema public revoke all on tables    from anon;
 alter default privileges in schema public revoke all on sequences from anon;
 alter default privileges in schema public revoke all on functions from anon;
 
--- 5) Optionnel (barrière la plus stricte) — à n'activer que si le runtime
+-- 5) Optionnel (barrière la plus stricte) - à n'activer que si le runtime
 --    confirme zéro flux anon. Laissé commenté : les revokes ci-dessus suffisent.
 -- revoke usage on schema public from anon;
 

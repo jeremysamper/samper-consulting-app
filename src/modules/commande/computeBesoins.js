@@ -1,7 +1,7 @@
 import { convertFactor } from '../consultant-tools/ConsultantTools.constants.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// computeBesoins — agrège les produits nécessaires à TOUTES les cartes d'un
+// computeBesoins - agrège les produits nécessaires à TOUTES les cartes d'un
 // établissement, de façon déterministe (aucun appel IA).
 //
 // Parcours : cartes ▸ plats (liés à au moins une carte) ▸ recettes (dédupliquées)
@@ -14,7 +14,7 @@ import { convertFactor } from '../consultant-tools/ConsultantTools.constants.js'
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Slug simple pour dédupliquer les ingrédients en texte libre. On ne cherche pas
-// la pureté ASCII (les accents sont conservés) : seule la cohérence compte —
+// la pureté ASCII (les accents sont conservés) : seule la cohérence compte -
 // un même nom doit produire la même clé.
 const slug = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, '-');
 

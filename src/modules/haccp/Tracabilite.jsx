@@ -154,7 +154,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
   };
 
   // Photo ratée (floue, mal cadrée) : on jette l'actuelle et on rouvre la
-  // caméra dans la foulée — même geste utilisateur, donc le click programmé
+  // caméra dans la foulée - même geste utilisateur, donc le click programmé
   // sur l'input file reste autorisé par le navigateur.
   const retakePending = () => {
     cancelPending();

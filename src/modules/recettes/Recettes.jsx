@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
+import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
@@ -1219,9 +1219,9 @@ const Recettes = ({ user, etablissement }) => {
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
   const perms = demoData.permissions[user.role] || {};
-  const canManageCartes = ['consultant', 'patron', 'resp_cuisine'].includes(user.role);
+  const canManageCartes = canManageModule(user.role, 'recettes');
 
-  // Cartes (menus) de l'établissement — source unique partagée + realtime.
+  // Cartes (menus) de l'établissement - source unique partagée + realtime.
   const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)

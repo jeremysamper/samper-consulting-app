@@ -1,15 +1,15 @@
 // ════════════════════════════════════════════════════════════════
-// Edge function « ai-proxy » — proxy IA multi-fournisseur (Claude / OpenAI).
+// Edge function « ai-proxy » - proxy IA multi-fournisseur (Claude / OpenAI).
 //
-// La clé API reste 100 % côté serveur — jamais exposée au client. Le client
+// La clé API reste 100 % côté serveur - jamais exposée au client. Le client
 // appelle cette fonction avec son jeton de session Supabase ; la fonction
 // vérifie l'authentification avant tout appel IA.
 //
 // Secrets (Supabase Dashboard → Edge Functions → Manage secrets) :
-//   AI_PROVIDER         (optionnel) — 'anthropic' (défaut) | 'openai'
+//   AI_PROVIDER         (optionnel) - 'anthropic' (défaut) | 'openai'
 //   ANTHROPIC_API_KEY   (requis si provider = anthropic)
 //   OPENAI_API_KEY      (requis si provider = openai)
-//   AI_MODEL            (optionnel) — id de modèle ; doit correspondre au
+//   AI_MODEL            (optionnel) - id de modèle ; doit correspondre au
 //                       fournisseur choisi. Sinon défaut par fournisseur.
 // SUPABASE_URL / SUPABASE_ANON_KEY sont injectés automatiquement.
 //
@@ -48,7 +48,7 @@ Règles :
 - une image peut contenir plusieurs recettes (renvoie-les toutes dans "recipes")
 - "categorie" parmi : Entrées, Plats, Desserts, Fromages, Sauces, Fonds, Amuse-bouches, Garnitures
 - "quantite" est un nombre ; si non précisée, mets 0
-- "unite" parmi : g, kg, ml, L, pcs, cs, cc, pincée — sinon l'unité la plus proche
+- "unite" parmi : g, kg, ml, L, pcs, cs, cc, pincée - sinon l'unité la plus proche
 - "portions" est un entier ; si absent, mets 4
 - conserve la formulation des étapes le plus fidèlement possible
 - si l'image ne contient aucune recette lisible, renvoie {"recipes":[]}`;
@@ -78,7 +78,7 @@ Base-toi sur les bonnes pratiques d'hygiène. Cette analyse est une aide à vali
 
 const SUGGEST_SYSTEM = `Tu aides un chef à compléter une recette en cours de rédaction.
 On te fournit le nom de la recette, sa catégorie, ses ingrédients et étapes actuels, et une liste de produits du catalogue.
-Suggère UNIQUEMENT des AJOUTS pertinents — ingrédients manquants et étapes de préparation — sans jamais répéter l'existant.
+Suggère UNIQUEMENT des AJOUTS pertinents - ingrédients manquants et étapes de préparation - sans jamais répéter l'existant.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 {"ingredients":[{"nom":"Beurre","quantite":50,"unite":"g"}],"etapes":["Préchauffer le four à 180°C","..."]}
 Règles :
@@ -122,12 +122,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
   → "Caille entière rôtie 12 minutes, désossée en cuisine, servie sur un lit d'orge croustillante et de fenouil braisé. Le fromage frais aux herbes alpines est déposé à la dernière minute."
   Plat : Sérac croustillant, sauce herbes, basilic, jeunes pousses
   → "Sérac de la vallée pané et frit à la commande, servi avec une sauce acidulée aux herbes fraîches et basilic. Les jeunes pousses apportent de la fraîcheur et un contraste de textures."
-- "temperatureService" : ex "Chaud — servir immédiatement" ou "Froid"
-- "dressageNotes" : toujours "" (chaîne vide — champ complété manuellement par le chef, ne pas remplir)
+- "temperatureService" : ex "Chaud - servir immédiatement" ou "Froid"
+- "dressageNotes" : toujours "" (chaîne vide - champ complété manuellement par le chef, ne pas remplir)
 - "infosService" : régimes (végétarien, sans gluten…), points d'attention allergènes, précisions à donner au client
 - "tempsPreparation" : estimation courte (ex "12 min")
 - "accords" : 2 à 4 accords mets-boissons ; "type" vaut "vin" ou "sans_alcool" ; "region" renseignée pour les vins ; "alternative" = la FAMILLE GÉNÉRALE de la boisson (ex. "Vin blanc sec et minéral", "Vin rouge léger", "Vin blanc moelleux", "Vin effervescent", "Infusion fraîche") pour que le service propose un équivalent si la référence précise manque
-- "accordsGeneraux" : 2 à 4 familles générales de boissons recommandées pour ce plat (texte libre, ex. "Vin rouge corsé", "Vin blanc sec", "Vin blanc moelleux", "Vin rosé") — un repli simple quand la carte des boissons varie
+- "accordsGeneraux" : 2 à 4 familles générales de boissons recommandées pour ce plat (texte libre, ex. "Vin rouge corsé", "Vin blanc sec", "Vin blanc moelleux", "Vin rosé") - un repli simple quand la carte des boissons varie
 Reste juste et professionnel ; n'invente aucun ingrédient absent de la recette.`;
 
 const SIMULATION_SYSTEM = `Tu es un chef consultant culinaire expert en organisation de brigade.
@@ -135,11 +135,11 @@ Tu analyses la faisabilité d'une carte restaurant selon la taille de la brigade
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format :
 {"plats":[{"id":"...","nom":"...","score":3,"justification":"...","suggestion":"...","impact_si_simplifie":2}],"score_moyen":2.8,"couverts_min":24,"couverts_max":32,"charge_brigade":75,"alerte":true,"synthese":"..."}
 Échelle de complexité :
-1 — Simple        : < 3 ingrédients, 1 technique, pas de timing critique (salade, gaspacho, tartine)
-2 — Accessible    : 3-5 ingrédients, 1-2 techniques, mise en place J-1 possible (tartare, carpaccio, soupe)
-3 — Intermédiaire : 5-8 ingrédients, 2-3 techniques, timing à gérer (risotto, poisson poêlé+garniture, viande+sauce)
-4 — Technique     : 8+ ingrédients, 3-4 techniques, plusieurs éléments en parallèle (caille rôtie+orge+fenouil, raviole ouverte)
-5 — Haute cuisine : multiples préparations distinctes, finition minute obligatoire, dressage précis, timing serré
+1 - Simple        : < 3 ingrédients, 1 technique, pas de timing critique (salade, gaspacho, tartine)
+2 - Accessible    : 3-5 ingrédients, 1-2 techniques, mise en place J-1 possible (tartare, carpaccio, soupe)
+3 - Intermédiaire : 5-8 ingrédients, 2-3 techniques, timing à gérer (risotto, poisson poêlé+garniture, viande+sauce)
+4 - Technique     : 8+ ingrédients, 3-4 techniques, plusieurs éléments en parallèle (caille rôtie+orge+fenouil, raviole ouverte)
+5 - Haute cuisine : multiples préparations distinctes, finition minute obligatoire, dressage précis, timing serré
 Règles :
 - "id" : reprend EXACTEMENT l'identifiant fourni dans la liste des plats
 - "score" : entier de 1 à 5 uniquement
@@ -154,7 +154,7 @@ Règles :
 - "alerte" : true si charge_brigade > 85 ou si ≥ 2 plats ont score ≥ 4
 - "synthese" : 3-4 phrases factuelle, recommandations concrètes et immédiatement applicables, sans adjectifs creux
 Règle réchauffe : si un plat est préparé à l'avance (braisé J-1, confit, cuit sous-vide, mariné)
-et réchauffé en service par basse température ou vapeur, réduire le score de 1 point —
+et réchauffé en service par basse température ou vapeur, réduire le score de 1 point -
 pas de timing critique en coup de feu, la charge réelle sur le service est moindre.
 Exemples : joue de bœuf braisée 6h réchauffée BT → score 3 et non 4 ;
 quasi de veau confit réchauffé vapeur → score 2 et non 3 ;
@@ -260,7 +260,7 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
       : '(non précisées)';
     return [{
       kind: 'text',
-      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
+      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '-'}\n`
         + `Ingrédients : ${ingredients.join(', ') || '(non précisés)'}\n`
         + `Étapes :\n${etapesText}`,
     }];
@@ -273,7 +273,7 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     const catalogue = Array.isArray(payload.catalogue) ? (payload.catalogue as string[]) : [];
     return [{
       kind: 'text',
-      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
+      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '-'}\n`
         + `Ingrédients actuels : ${ingredients.join(', ') || '(aucun)'}\n`
         + `Étapes actuelles :\n${etapes.map((e, i) => `${i + 1}. ${e}`).join('\n') || '(aucune)'}\n`
         + `Produits du catalogue : ${catalogue.join(', ') || '(aucun)'}`,
@@ -294,8 +294,8 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     const allergenes = Array.isArray(payload.allergenes) ? (payload.allergenes as string[]) : [];
     return [{
       kind: 'text',
-      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '—'}\n`
-        + `Portions : ${payload.portions || '—'}\n`
+      text: `Recette : ${name}\nCatégorie : ${payload.categorie || '-'}\n`
+        + `Portions : ${payload.portions || '-'}\n`
         + `Ingrédients : ${ingredients.join(', ') || '(non précisés)'}\n`
         + `Étapes :\n${etapes.map((e, i) => `${i + 1}. ${e}`).join('\n') || '(non précisées)'}\n`
         + `Allergènes connus : ${allergenes.join(', ') || '(aucun renseigné)'}`,
