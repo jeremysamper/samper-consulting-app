@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Procédure interne Lightspeed - Samper Consulting</title>
+<style>
+  :root {
+    --petrol: #003042;
+    --petrol-light: #eaf2f5;
+    --petrol-bd: #afcad4;
+    --ink: #1c2b33;
+    --muted: #5c6d75;
+    --line: #dde5e9;
+    --ls-orange: #FF6B35;
+    --amber-bg: #fffbeb;
+    --amber-bd: #fde68a;
+    --amber-tx: #92400e;
+    --green-bg: #f0fdf4;
+    --green-bd: #bbf7d0;
+    --green-tx: #166534;
+    --red-bg: #fef2f2;
+    --red-bd: #fecaca;
+    --red-tx: #991b1b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  @page { size: A4; margin: 0; }
+  .page {
+    width: 210mm; height: 297mm;
+    padding: 16mm 18mm 13mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  h1, h2, .serif { font-family: Georgia, "Times New Roman", serif; }
+  h2 { font-size: 16pt; color: var(--petrol); font-weight: 700; margin-bottom: 3.5mm; }
+  h3 { font-size: 11pt; color: var(--petrol); margin-bottom: 1.8mm; }
+  p, li { font-size: 9.8pt; line-height: 1.55; }
+  .muted { color: var(--muted); }
+  .small { font-size: 8.5pt; }
+
+  .pagehead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 2px solid var(--petrol);
+    padding-bottom: 3mm; margin-bottom: 7mm;
+  }
+  .brand { font-size: 10pt; font-weight: 700; letter-spacing: 2.5px; color: var(--petrol); text-transform: uppercase; }
+  .pagehead .doc { font-size: 8.5pt; color: var(--muted); }
+  .pagefoot {
+    margin-top: auto; padding-top: 3mm; border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+    font-size: 8pt; color: var(--muted);
+  }
+
+  .cover { justify-content: flex-start; }
+  .cover-band { border-bottom: 2px solid var(--petrol); padding-bottom: 4mm; display: flex; justify-content: space-between; align-items: baseline; }
+  .cover-mid { margin-top: 30mm; }
+  .interne-tag {
+    display: inline-block; padding: 3px 12px; border-radius: 14px;
+    background: var(--petrol); color: #fff; font-size: 9pt; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 7mm;
+  }
+  .cover h1 { font-size: 27pt; line-height: 1.2; color: var(--petrol); font-weight: 700; max-width: 155mm; }
+  .cover .sub { font-size: 12pt; color: var(--muted); margin-top: 5mm; max-width: 145mm; line-height: 1.55; }
+  .ls-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 9mm; padding: 8px 14px;
+    border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    font-size: 10pt; font-weight: 600; color: var(--ink);
+  }
+  .ls-mark {
+    width: 20px; height: 20px; border-radius: 5px; background: var(--ls-orange);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 11px; font-family: Arial, sans-serif;
+  }
+  .cover-plan {
+    margin-top: 13mm; background: var(--petrol); border-radius: 14px;
+    padding: 8mm 10mm; color: #fff;
+  }
+  .cover-plan .cp-title { font-size: 9pt; letter-spacing: 2px; text-transform: uppercase; color: #9dc0cf; margin-bottom: 4mm; }
+  .cp-line { display: flex; gap: 5mm; align-items: flex-start; margin-bottom: 3.5mm; }
+  .cp-line:last-child { margin-bottom: 0; }
+  .cp-num {
+    flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: var(--petrol);
+    font-weight: 700; font-size: 10pt; display: flex; align-items: center; justify-content: center;
+  }
+  .cp-line .t { font-weight: 700; font-size: 10.5pt; }
+  .cp-line .d { font-size: 8.8pt; color: #c9dbe3; line-height: 1.5; margin-top: 0.5mm; }
+  .cover-meta { margin-top: 10mm; font-size: 9pt; color: var(--muted); }
+
+  .section { margin-bottom: 7mm; }
+  .lead { font-size: 10pt; color: var(--muted); margin-bottom: 4mm; max-width: 168mm; }
+
+  .stepcard {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 4.5mm 5.5mm; margin-bottom: 4mm;
+    display: flex; gap: 4.5mm; align-items: flex-start;
+    background: #fff;
+  }
+  .stepcard .num {
+    flex: 0 0 auto; width: 8mm; height: 8mm; border-radius: 50%;
+    background: var(--petrol); color: #fff; font-weight: 700; font-size: 11pt;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stepcard h3 { margin-bottom: 1.5mm; }
+  .stepcard p { margin-bottom: 1.5mm; }
+  .stepcard p:last-child { margin-bottom: 0; }
+  .stepcard ol { padding-left: 5mm; }
+  .stepcard ol li { margin-bottom: 1mm; }
+
+  .code {
+    display: inline-block; font-family: Consolas, "Courier New", monospace;
+    font-size: 8.6pt; background: #f1f5f6; border: 1px solid var(--line);
+    border-radius: 5px; padding: 0.5px 6px; color: var(--petrol); font-weight: 600;
+    word-break: break-all;
+  }
+  .codeblock {
+    font-family: Consolas, "Courier New", monospace; font-size: 8.8pt;
+    background: #f1f5f6; border: 1px solid var(--line); border-radius: 7px;
+    padding: 2.5mm 4mm; color: var(--petrol); font-weight: 600; word-break: break-all;
+    margin: 1.5mm 0;
+  }
+
+  .btn-label {
+    display: inline-block; padding: 1px 8px 2px; border-radius: 6px;
+    background: var(--petrol); color: #fff; font-size: 8.6pt; font-weight: 600; white-space: nowrap;
+  }
+
+  .note {
+    border-radius: 9px; padding: 3mm 4.5mm; font-size: 9pt; line-height: 1.5;
+    margin-top: 2.5mm;
+  }
+  .note.info  { background: var(--petrol-light); border: 1px solid var(--petrol-bd); color: var(--petrol); }
+  .note.warn  { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber-tx); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 2.4mm 3mm; font-size: 8.9pt; line-height: 1.45; vertical-align: top; }
+  thead th { background: var(--petrol); color: #fff; font-weight: 600; font-size: 8.6pt; letter-spacing: 0.3px; }
+  tbody tr { border-bottom: 1px solid var(--line); }
+  tbody tr:nth-child(even) td { background: #f7fafb; }
+  .tight th, .tight td { padding: 1.9mm 2.8mm; font-size: 8.5pt; line-height: 1.4; }
+
+  .flow {
+    display: flex; align-items: stretch; gap: 4mm; margin: 4mm 0 2mm;
+  }
+  .flow .box {
+    flex: 1; border: 1px solid var(--petrol-bd); background: var(--petrol-light);
+    border-radius: 10px; padding: 3.5mm 4mm; text-align: center;
+  }
+  .flow .box .t { font-weight: 700; font-size: 9.5pt; color: var(--petrol); margin-bottom: 1mm; }
+  .flow .box .d { font-size: 8.3pt; color: var(--muted); line-height: 1.45; }
+  .flow .arrow { align-self: center; color: var(--petrol); font-size: 13pt; font-weight: 700; }
+
+  .check { list-style: none; }
+  .check li { padding: 2mm 0 2mm 8mm; position: relative; border-bottom: 1px solid var(--line); }
+  .check li:last-child { border-bottom: none; }
+  .check li::before {
+    content: ""; position: absolute; left: 0; top: 3.4mm;
+    width: 3.2mm; height: 3.2mm; border-radius: 1mm;
+    background: var(--petrol-light); border: 1.5px solid var(--petrol);
+  }
+  .check b { color: var(--petrol); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ PAGE 1 : COUVERTURE ═══════════ -->
+<div class="page cover">
+  <div class="cover-band">
+    <span class="brand">Samper Consulting</span>
+    <span class="small muted">Gestion culinaire professionnelle</span>
+  </div>
+
+  <div class="cover-mid">
+    <span class="interne-tag">Document interne</span>
+    <h1>Lightspeed de A à Z : configuration et mise en service</h1>
+    <div class="sub serif">
+      La procédure complète côté consultant : préparer la plateforme une seule fois,
+      puis brancher chaque restaurant en deux minutes.
+    </div>
+    <span class="ls-chip"><span class="ls-mark">A</span> Lightspeed K-Series · OAuth2</span>
+  </div>
+
+  <div class="cover-plan">
+    <div class="cp-title">La procédure en 3 parties</div>
+    <div class="cp-line">
+      <span class="cp-num">1</span>
+      <div>
+        <div class="t">Configurer la plateforme - une seule fois</div>
+        <div class="d">App sur le portail développeur Lightspeed + 4 secrets dans Supabase. C'est l'étape qui manque quand l'app affiche « Secret manquant : LS_CLIENT_ID ».</div>
+      </div>
+    </div>
+    <div class="cp-line">
+      <span class="cp-num">2</span>
+      <div>
+        <div class="t">Connecter chaque établissement - 2 minutes par client</div>
+        <div class="d">L'assistant guidé du module Ventes POS : autorisation, choix du restaurant, import de l'historique.</div>
+      </div>
+    </div>
+    <div class="cp-line">
+      <span class="cp-num">3</span>
+      <div>
+        <div class="t">Diagnostiquer - si quelque chose bloque</div>
+        <div class="d">Tous les messages d'erreur, leur cause et leur solution, page 5.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    Juillet 2026 &nbsp;·&nbsp; Réservé au consultant &nbsp;·&nbsp; Le guide destiné aux clients est un document séparé
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Procédure interne Lightspeed</span>
+    <span>Page 1 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 2 : COMPRENDRE + PRÉREQUIS ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Procédure interne Lightspeed</span>
+  </div>
+
+  <div class="section">
+    <h2>1. Comprendre le circuit (30 secondes)</h2>
+    <p class="lead">Aucun lien local entre l'app et la caisse : pas de wifi commun, pas de câble, pas de boîtier.
+       Tout passe par internet, de serveur à serveur.</p>
+    <div class="flow">
+      <div class="box">
+        <div class="t">Caisse (iPad)</div>
+        <div class="d">Encaisse normalement et envoie ses ventes au cloud Lightspeed, comme d'habitude</div>
+      </div>
+      <span class="arrow">→</span>
+      <div class="box">
+        <div class="t">Cloud Lightspeed</div>
+        <div class="d">Stocke ventes et commandes du restaurant</div>
+      </div>
+      <span class="arrow">→</span>
+      <div class="box">
+        <div class="t">App Samper</div>
+        <div class="d">Va chercher les données dans ce cloud, avec l'autorisation donnée une fois (OAuth)</div>
+      </div>
+    </div>
+    <p class="small muted">Conséquences pratiques : la connexion peut se faire depuis n'importe où (bureau, 4G),
+       la caisse n'a pas besoin d'être allumée à ce moment-là, et l'accès est en lecture seule : rien n'est jamais écrit dans la caisse.</p>
+  </div>
+
+  <div class="section">
+    <h2>2. Ce qu'il faut avoir sous la main</h2>
+    <ul class="check">
+      <li><b>Un compte sur le portail développeur Lightspeed</b> : developers.lightspeedhq.com.
+          C'est là que se crée l'app OAuth (partie 1). Compte sandbox possible pour tester.</li>
+      <li><b>L'accès au dashboard Supabase</b> du projet Samper : supabase.com/dashboard.
+          C'est là que se rangent les 4 secrets (partie 1).</li>
+      <li><b>Ton rôle consultant dans l'app</b> : le guide intégré et le témoin de configuration
+          sont dans Paramètres → Intégrations POS (réservé consultant).</li>
+      <li><b>Pour chaque restaurant à brancher</b> : les identifiants Lightspeed du client
+          (l'e-mail et le mot de passe de son back-office) - c'est lui qui les saisit, ou toi avec son accord.</li>
+    </ul>
+    <div class="note info">
+      <b>Règle d'or.</b> La partie 1 (plateforme) se fait une seule fois pour toute l'app,
+      quel que soit le nombre de restaurants. Ensuite, chaque nouveau client = uniquement la partie 2.
+    </div>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Procédure interne Lightspeed</span>
+    <span>Page 2 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 3 : PARTIE 1 PLATEFORME ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Procédure interne Lightspeed</span>
+  </div>
+
+  <div class="section">
+    <h2>3. Partie 1 - Configurer la plateforme (une seule fois)</h2>
+
+    <div class="stepcard">
+      <span class="num">A</span>
+      <div>
+        <h3>Créer l'app sur le portail développeur Lightspeed (~5 min)</h3>
+        <ol>
+          <li>Va sur <b>developers.lightspeedhq.com</b> et connecte-toi.</li>
+          <li>Crée une nouvelle app <b>K-Series</b>.</li>
+          <li>Renseigne la <b>Redirect URI</b>, à l'identique, sans espace ni barre finale :</li>
+        </ol>
+        <div class="codeblock">https://ppmtoiqgajwcdkbnrcll.supabase.co/functions/v1/pos-oauth</div>
+        <ol start="4">
+          <li>Active les <b>3 scopes</b> : <span class="code">financial-api</span>
+              <span class="code">orders-api</span> <span class="code">offline_access</span></li>
+          <li>Après création, note le <b>Client ID</b> et le <b>Client Secret</b>.</li>
+        </ol>
+        <div class="note warn">
+          <b>orders-api est indispensable</b> : sans lui, l'écran passe cuisine (KDS) ne recevra
+          jamais les commandes, ou l'autorisation échouera avec « invalid_scope ».
+        </div>
+      </div>
+    </div>
+
+    <div class="stepcard">
+      <span class="num">B</span>
+      <div>
+        <h3>Enregistrer les 4 secrets dans Supabase (~2 min)</h3>
+        <p>Dashboard Supabase → projet Samper → <b>Edge Functions</b> → <b>Secrets</b>. Ajoute :</p>
+        <table style="margin-top:1.5mm">
+          <thead><tr><th style="width:44mm">Nom du secret</th><th>Valeur</th></tr></thead>
+          <tbody>
+            <tr><td><span class="code">LS_CLIENT_ID</span></td><td>Le Client ID noté à l'étape A</td></tr>
+            <tr><td><span class="code">LS_CLIENT_SECRET</span></td><td>Le Client Secret noté à l'étape A - à coller uniquement ici, jamais ailleurs</td></tr>
+            <tr><td><span class="code">LS_REDIRECT_URI</span></td><td>La même URL que l'étape A, à l'identique</td></tr>
+            <tr><td><span class="code">LS_ENV</span></td><td><b>prod</b> pour une vraie caisse · <b>demo</b> pour le sandbox</td></tr>
+          </tbody>
+        </table>
+        <div class="note warn">
+          <b>Piège LS_ENV.</b> La valeur production s'écrit exactement <span class="code">prod</span> :
+          toute autre écriture (« production », majuscules, espace) retombe silencieusement sur le sandbox.
+          Le Client ID/Secret doivent venir du même environnement que LS_ENV.
+        </div>
+      </div>
+    </div>
+
+    <div class="stepcard">
+      <span class="num">C</span>
+      <div>
+        <h3>Vérifier que la plateforme est prête (~1 min)</h3>
+        <p>Les secrets sont pris en compte automatiquement en quelques secondes, sans redéploiement.
+           Deux façons de contrôler : dans l'app, <b>Paramètres → Intégrations POS</b> affiche l'étape
+           « secrets Supabase » cochée ; ou simplement relancer
+           <span class="btn-label">Connecter Lightspeed</span> dans Ventes POS -
+           le message « Secret manquant » doit avoir disparu.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Procédure interne Lightspeed</span>
+    <span>Page 3 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 4 : PARTIE 2 PAR ÉTABLISSEMENT ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Procédure interne Lightspeed</span>
+  </div>
+
+  <div class="section">
+    <h2>4. Partie 2 - Connecter un établissement (à chaque client)</h2>
+    <p class="lead">Tout se fait dans l'app, via l'assistant guidé du module Ventes POS.
+       Le détail écran par écran est dans le guide client : ici, l'essentiel.</p>
+
+    <div class="stepcard">
+      <span class="num">1</span>
+      <div>
+        <h3>Sélectionner l'établissement et ouvrir Ventes POS</h3>
+        <p>Vérifie le sélecteur d'établissement en haut de l'app : la connexion est propre à chaque
+           établissement. Puis clique sur <span class="btn-label">Connecter Lightspeed</span> dans la barre en haut du module.</p>
+      </div>
+    </div>
+    <div class="stepcard">
+      <span class="num">2</span>
+      <div>
+        <h3>Dérouler les 3 étapes de l'assistant</h3>
+        <p><b>Autoriser</b> : la fenêtre Lightspeed s'ouvre, connexion avec les identifiants du restaurant
+           (ceux du client), accepter les droits. <b>Restaurant</b> : choisir la bonne adresse si le compte
+           en gère plusieurs (étape sautée sinon). <b>Historique</b> : importer les 14 derniers jours.</p>
+      </div>
+    </div>
+    <div class="stepcard">
+      <span class="num">3</span>
+      <div>
+        <h3>Faire le mapping des plats</h3>
+        <p>Onglet <b>Mapping plats</b> : associer les plats de la caisse aux recettes de l'app
+           (suggestions automatiques). Sans ce lien, la mise en place et la conso ingrédients restent vides.</p>
+      </div>
+    </div>
+
+    <div class="note info">
+      <b>Ensuite, plus rien à faire :</b> synchronisation automatique chaque nuit.
+      Synchro manuelle possible à tout moment (« Synchroniser maintenant », 7 derniers jours).
+      Si un bandeau rouge « Déconnecté » apparaît un jour : « Reconnecter Lightspeed », 30 secondes,
+      l'historique est conservé.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. Qui peut faire quoi</h2>
+    <table>
+      <thead><tr><th>Action</th><th>Rôles autorisés</th></tr></thead>
+      <tbody>
+        <tr><td>Connecter / reconnecter la caisse, choisir le restaurant</td><td>Consultant, patron</td></tr>
+        <tr><td>Synchroniser manuellement, importer l'historique</td><td>Consultant, patron, responsable de cuisine</td></tr>
+        <tr><td>Configurer la plateforme (portail + secrets), guide intégré</td><td>Consultant uniquement</td></tr>
+        <tr><td>Consulter les vues cuisine</td><td>Selon les droits du module Ventes POS</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Procédure interne Lightspeed</span>
+    <span>Page 4 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 5 : ERREURS ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Procédure interne Lightspeed</span>
+  </div>
+
+  <div class="section" style="margin-bottom:5mm">
+    <h2>6. Erreurs : cause et solution</h2>
+    <table class="tight">
+      <thead>
+        <tr><th style="width:52mm">Message ou symptôme</th><th style="width:48mm">Cause</th><th>Solution</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>« Secret manquant : LS_CLIENT_ID » (ou autre secret)</td>
+          <td>Les secrets Supabase n'ont jamais été configurés</td>
+          <td>Partie 1, étape B</td>
+        </tr>
+        <tr>
+          <td>« invalid_client »</td>
+          <td>Client ID ou Secret erroné, ou pris dans le mauvais environnement (demo / prod)</td>
+          <td>Revérifier les valeurs sur le portail, refaire l'étape B</td>
+        </tr>
+        <tr>
+          <td>« invalid_redirect_uri »</td>
+          <td>La Redirect URI enregistrée sur le portail ne correspond pas exactement</td>
+          <td>Copier-coller l'URL de l'étape A sur le portail, sans rien changer</td>
+        </tr>
+        <tr>
+          <td>« invalid_scope »</td>
+          <td>Un des 3 scopes n'est pas activé sur l'app du portail (souvent orders-api)</td>
+          <td>Activer financial-api, orders-api, offline_access, puis réessayer</td>
+        </tr>
+        <tr>
+          <td>« Autorisation refusée »</td>
+          <td>Les droits ont été refusés dans la fenêtre Lightspeed</td>
+          <td>Relancer et accepter les permissions</td>
+        </tr>
+        <tr>
+          <td>La fenêtre Lightspeed ne s'ouvre pas</td>
+          <td>Le navigateur bloque les popups</td>
+          <td>Autoriser les popups pour l'app (icône dans la barre d'adresse), « Réessayer »</td>
+        </tr>
+        <tr>
+          <td>Connecté, mais vues cuisine vides</td>
+          <td>Historique non importé, ou plats non associés aux recettes</td>
+          <td>« Importer l'historique (14 j) » + onglet Mapping plats</td>
+        </tr>
+        <tr>
+          <td>KDS : « reconnexion Lightspeed requise »</td>
+          <td>Connexion datant d'avant l'ajout du droit commandes (orders-api)</td>
+          <td>« Reconnecter Lightspeed » dans Ventes POS : 30 s, données conservées</td>
+        </tr>
+        <tr>
+          <td>Connexion OK mais restaurant introuvable ou données incohérentes</td>
+          <td>LS_ENV pointe sur le mauvais environnement (sandbox au lieu de prod)</td>
+          <td>Mettre LS_ENV = prod avec les identifiants prod, refaire la connexion</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="small muted" style="margin-top:2mm">
+      Pour approfondir : Dashboard Supabase → Edge Functions → <b>pos-oauth</b> → Logs
+      (chaque tentative de connexion y laisse une trace).
+    </p>
+  </div>
+
+  <div class="section">
+    <h2>7. Checklist nouveau client</h2>
+    <ul class="check" style="font-size:9.3pt">
+      <li>L'établissement existe dans l'app et il est sélectionné en haut.</li>
+      <li>Les identifiants Lightspeed du restaurant sont disponibles (compte back-office du client).</li>
+      <li>Assistant déroulé : autorisation, restaurant choisi, 14 jours importés.</li>
+      <li>Mapping plats fait, au moins sur les meilleures ventes.</li>
+      <li>Contrôle le lendemain : « Dernière synchro » datée du matin même dans la barre Lightspeed.</li>
+    </ul>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Procédure interne Lightspeed · Juillet 2026</span>
+    <span>Page 5 / 5</span>
+  </div>
+</div>
+
+</body>
+</html>

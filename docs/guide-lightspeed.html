@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Guide Lightspeed - Samper Consulting</title>
+<style>
+  :root {
+    --petrol: #003042;
+    --petrol-light: #eaf2f5;
+    --petrol-bd: #afcad4;
+    --ink: #1c2b33;
+    --muted: #5c6d75;
+    --line: #dde5e9;
+    --ls-orange: #FF6B35;
+    --amber-bg: #fffbeb;
+    --amber-bd: #fde68a;
+    --amber-tx: #92400e;
+    --green-bg: #f0fdf4;
+    --green-bd: #bbf7d0;
+    --green-tx: #166534;
+    --red-bg: #fef2f2;
+    --red-bd: #fecaca;
+    --red-tx: #991b1b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  @page { size: A4; margin: 0; }
+  .page {
+    width: 210mm; height: 297mm;
+    padding: 17mm 18mm 14mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── Typo ── */
+  h1, h2, .serif { font-family: Georgia, "Times New Roman", serif; }
+  h2 {
+    font-size: 17pt; color: var(--petrol); font-weight: 700;
+    margin-bottom: 4mm; letter-spacing: 0.1px;
+  }
+  h3 { font-size: 11.5pt; color: var(--petrol); margin-bottom: 2mm; }
+  p, li { font-size: 10pt; line-height: 1.55; }
+  .muted { color: var(--muted); }
+  .small { font-size: 8.5pt; }
+
+  /* ── Header / footer de page ── */
+  .pagehead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 2px solid var(--petrol);
+    padding-bottom: 3mm; margin-bottom: 8mm;
+  }
+  .brand { font-size: 10pt; font-weight: 700; letter-spacing: 2.5px; color: var(--petrol); text-transform: uppercase; }
+  .pagehead .doc { font-size: 8.5pt; color: var(--muted); }
+  .pagefoot {
+    margin-top: auto; padding-top: 3mm; border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+    font-size: 8pt; color: var(--muted);
+  }
+
+  /* ── Couverture ── */
+  .cover { justify-content: flex-start; }
+  .cover-band { border-bottom: 2px solid var(--petrol); padding-bottom: 4mm; display: flex; justify-content: space-between; align-items: baseline; }
+  .cover-mid { margin-top: 38mm; }
+  .kicker { font-size: 10pt; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 6mm; }
+  .cover h1 { font-size: 30pt; line-height: 1.18; color: var(--petrol); font-weight: 700; max-width: 150mm; }
+  .cover .sub { font-size: 12.5pt; color: var(--muted); margin-top: 6mm; max-width: 140mm; line-height: 1.5; }
+  .ls-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 10mm; padding: 8px 14px;
+    border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    font-size: 10pt; font-weight: 600; color: var(--ink);
+  }
+  .ls-mark {
+    width: 20px; height: 20px; border-radius: 5px; background: var(--ls-orange);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 11px; font-family: Arial, sans-serif;
+  }
+  .cover-steps {
+    margin-top: 16mm; background: var(--petrol); border-radius: 14px;
+    padding: 9mm 10mm; color: #fff;
+  }
+  .cover-steps .cs-title { font-size: 9pt; letter-spacing: 2px; text-transform: uppercase; color: #9dc0cf; margin-bottom: 5mm; }
+  .cs-row { display: flex; gap: 8mm; }
+  .cs-item { flex: 1; }
+  .cs-num {
+    width: 24px; height: 24px; border-radius: 50%; background: #fff; color: var(--petrol);
+    font-weight: 700; font-size: 11pt; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 3mm;
+  }
+  .cs-item .t { font-weight: 700; font-size: 10.5pt; margin-bottom: 1.5mm; }
+  .cs-item .d { font-size: 8.5pt; color: #c9dbe3; line-height: 1.5; }
+  .cover-meta { margin-top: 12mm; font-size: 9pt; color: var(--muted); }
+
+  /* ── Blocs communs ── */
+  .section { margin-bottom: 8mm; }
+  .lead { font-size: 10.5pt; color: var(--muted); margin-bottom: 5mm; max-width: 165mm; }
+
+  .check { list-style: none; }
+  .check li {
+    padding: 2.2mm 0 2.2mm 8mm; position: relative;
+    border-bottom: 1px solid var(--line);
+  }
+  .check li:last-child { border-bottom: none; }
+  .check li::before {
+    content: ""; position: absolute; left: 0; top: 3.6mm;
+    width: 3.2mm; height: 3.2mm; border-radius: 1mm;
+    background: var(--petrol-light); border: 1.5px solid var(--petrol);
+  }
+  .check b { color: var(--petrol); }
+
+  .stepcard {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 5mm 6mm; margin-bottom: 4.5mm;
+    display: flex; gap: 5mm; align-items: flex-start;
+    background: #fff;
+  }
+  .stepcard .num {
+    flex: 0 0 auto; width: 8.5mm; height: 8.5mm; border-radius: 50%;
+    background: var(--petrol); color: #fff; font-weight: 700; font-size: 11.5pt;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stepcard h3 { margin-bottom: 1.5mm; }
+  .stepcard p { margin-bottom: 1.5mm; }
+  .stepcard p:last-child { margin-bottom: 0; }
+
+  .btn-label {
+    display: inline-block; padding: 1px 8px 2px; border-radius: 6px;
+    background: var(--petrol); color: #fff; font-size: 8.8pt; font-weight: 600;
+    white-space: nowrap;
+  }
+  .btn-ghost {
+    display: inline-block; padding: 1px 8px 2px; border-radius: 6px;
+    background: #fff; color: var(--ink); border: 1px solid #b9c4c9;
+    font-size: 8.8pt; font-weight: 600; white-space: nowrap;
+  }
+
+  .note {
+    border-radius: 9px; padding: 3.5mm 5mm; font-size: 9pt; line-height: 1.5;
+    margin-top: 3mm;
+  }
+  .note.info  { background: var(--petrol-light); border: 1px solid var(--petrol-bd); color: var(--petrol); }
+  .note.warn  { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber-tx); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 2.8mm 3.5mm; font-size: 9.3pt; line-height: 1.45; vertical-align: top; }
+  thead th {
+    background: var(--petrol); color: #fff; font-weight: 600; font-size: 8.8pt;
+    letter-spacing: 0.4px;
+  }
+  tbody tr { border-bottom: 1px solid var(--line); }
+  tbody tr:nth-child(even) td { background: #f7fafb; }
+
+  .pill { display: inline-block; padding: 0.5px 8px 1.5px; border-radius: 12px; font-size: 8.2pt; font-weight: 700; white-space: nowrap; }
+  .pill.green { background: var(--green-bg); border: 1px solid var(--green-bd); color: var(--green-tx); }
+  .pill.red   { background: var(--red-bg); border: 1px solid var(--red-bd); color: var(--red-tx); }
+  .pill.amber { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber-tx); }
+  .pill.grey  { background: #f1f5f6; border: 1px solid var(--line); color: var(--muted); }
+
+  .two-col { display: flex; gap: 8mm; }
+  .two-col > div { flex: 1; }
+
+  .qa { border-bottom: 1px solid var(--line); padding: 2.6mm 0; }
+  .qa:last-child { border-bottom: none; }
+  .qa .q { font-weight: 700; font-size: 9.5pt; color: var(--petrol); margin-bottom: 0.8mm; }
+  .qa .a { font-size: 9.3pt; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ PAGE 1 : COUVERTURE ═══════════ -->
+<div class="page cover">
+  <div class="cover-band">
+    <span class="brand">Samper Consulting</span>
+    <span class="small muted">Gestion culinaire professionnelle</span>
+  </div>
+
+  <div class="cover-mid">
+    <div class="kicker">Guide pas à pas</div>
+    <h1>Connecter votre caisse Lightspeed et synchroniser vos ventes</h1>
+    <div class="sub serif">
+      De la première connexion à la synchronisation quotidienne :
+      tout ce qu'il faut savoir pour brancher votre caisse au module Ventes POS.
+    </div>
+    <span class="ls-chip"><span class="ls-mark">A</span> Lightspeed K-Series</span>
+  </div>
+
+  <div class="cover-steps">
+    <div class="cs-title">La connexion en 3 étapes guidées</div>
+    <div class="cs-row">
+      <div class="cs-item">
+        <div class="cs-num">1</div>
+        <div class="t">Autoriser</div>
+        <div class="d">Une fenêtre Lightspeed s'ouvre : connectez-vous et acceptez les droits de lecture.</div>
+      </div>
+      <div class="cs-item">
+        <div class="cs-num">2</div>
+        <div class="t">Restaurant</div>
+        <div class="d">Si votre compte gère plusieurs restaurants, choisissez celui de votre établissement.</div>
+      </div>
+      <div class="cs-item">
+        <div class="cs-num">3</div>
+        <div class="t">Historique</div>
+        <div class="d">Importez les 14 derniers jours de ventes pour activer les vues cuisine.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    Module Ventes POS &nbsp;·&nbsp; Juillet 2026 &nbsp;·&nbsp; Connexion réservée aux rôles patron et consultant
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Guide Lightspeed</span>
+    <span>Page 1 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 2 : AVANT DE COMMENCER ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Guide Lightspeed - Connexion et synchronisation</span>
+  </div>
+
+  <div class="section">
+    <h2>1. Avant de commencer</h2>
+    <p class="lead">Quatre points à vérifier, une seule fois. La connexion elle-même prend environ deux minutes.</p>
+    <ul class="check">
+      <li><b>Vos identifiants Lightspeed</b> : l'e-mail et le mot de passe de votre caisse K-Series
+          (pas ceux de l'application Samper). C'est avec eux que vous autoriserez l'accès.</li>
+      <li><b>Le bon rôle dans l'application</b> : seuls le patron et le consultant peuvent connecter
+          ou reconnecter la caisse. Le responsable de cuisine peut ensuite lancer les synchronisations.</li>
+      <li><b>Les popups autorisés</b> : l'autorisation Lightspeed s'ouvre dans une petite fenêtre.
+          Si votre navigateur les bloque, autorisez-les pour l'application (icône dans la barre d'adresse).</li>
+      <li><b>Le bon établissement sélectionné</b> : la connexion se fait établissement par établissement.
+          Vérifiez le sélecteur en haut de l'application avant de commencer.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>2. Lancer la connexion</h2>
+    <p class="lead">Tout se passe dans le module Ventes POS, sans quitter l'application.</p>
+
+    <div class="stepcard">
+      <span class="num">1</span>
+      <div>
+        <h3>Ouvrez le module Ventes POS</h3>
+        <p>Dans le menu de l'application, choisissez <b>Ventes POS</b>. La barre Lightspeed est
+           affichée en haut du module et indique l'état de la connexion.</p>
+      </div>
+    </div>
+
+    <div class="stepcard">
+      <span class="num">2</span>
+      <div>
+        <h3>Cliquez sur <span class="btn-label">Connecter Lightspeed</span></h3>
+        <p>La barre affiche « Aucune caisse connectée ». Le bouton ouvre l'assistant de connexion,
+           qui vous guide écran par écran : autorisation, choix du restaurant, import de l'historique.</p>
+        <p class="small muted">Le bouton n'apparaît pas ? Votre rôle ne permet pas la connexion :
+           demandez au patron ou au consultant.</p>
+      </div>
+    </div>
+
+    <div class="note info">
+      <b>Lecture seule.</b> L'application lit vos ventes et vos commandes en cours. Elle n'écrit
+      jamais rien dans votre caisse : aucun risque pour votre service.
+    </div>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Guide Lightspeed</span>
+    <span>Page 2 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 3 : LES 3 ÉTAPES ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Guide Lightspeed - Connexion et synchronisation</span>
+  </div>
+
+  <div class="section">
+    <h2>3. Les trois étapes de l'assistant</h2>
+    <p class="lead">L'assistant affiche votre progression en haut de la fenêtre : Autoriser, Restaurant, Historique.</p>
+
+    <div class="stepcard">
+      <span class="num">1</span>
+      <div>
+        <h3>Autoriser l'accès</h3>
+        <p>Cliquez sur <span class="btn-label">Ouvrir Lightspeed</span>. Une fenêtre Lightspeed s'ouvre :
+           connectez-vous avec les identifiants de votre caisse, puis acceptez les droits demandés
+           (lecture des ventes et des commandes en cours).</p>
+        <p>La fenêtre se ferme toute seule une fois l'autorisation validée, et l'assistant passe
+           à l'étape suivante. Fenêtre fermée par erreur ? Cliquez sur « Rouvrir ».</p>
+        <div class="note warn">
+          <b>Rien ne s'ouvre ?</b> Le navigateur bloque les popups. Autorisez-les pour ce site
+          (icône à droite de la barre d'adresse), puis cliquez sur « Réessayer ».
+        </div>
+      </div>
+    </div>
+
+    <div class="stepcard">
+      <span class="num">2</span>
+      <div>
+        <h3>Choisir le restaurant</h3>
+        <p>Si votre compte Lightspeed gère plusieurs restaurants, l'assistant affiche la liste :
+           cochez celui qui correspond à votre établissement, puis
+           <span class="btn-label">Confirmer ce restaurant</span>. Ses ventes alimenteront les vues cuisine.</p>
+        <p class="small muted">Un seul restaurant sur votre compte ? Cette étape est sautée
+           automatiquement, vous ne la verrez pas.</p>
+      </div>
+    </div>
+
+    <div class="stepcard">
+      <span class="num">3</span>
+      <div>
+        <h3>Importer l'historique</h3>
+        <p>Cliquez sur <span class="btn-label">Importer les 14 derniers jours</span>. Les vues cuisine
+           (mise en place, top/flop, conso ingrédients) ont besoin de cet historique pour être fiables.
+           L'import prend en général moins d'une minute.</p>
+        <p>Pas le temps ? <span class="btn-ghost">Plus tard</span> : vous pourrez lancer l'import
+           à tout moment depuis la barre Lightspeed.</p>
+      </div>
+    </div>
+
+    <div class="note info">
+      <b>Écran final.</b> L'assistant confirme la connexion, rappelle le restaurant relié et le nombre
+      de ventes importées. Prochaine étape conseillée : l'onglet <b>Mapping plats</b> (voir page 5).
+    </div>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Guide Lightspeed</span>
+    <span>Page 3 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 4 : SYNCHRONISATION ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Guide Lightspeed - Connexion et synchronisation</span>
+  </div>
+
+  <div class="section">
+    <h2>4. Synchroniser vos ventes</h2>
+    <p class="lead">Une fois la caisse connectée, vous n'avez en principe plus rien à faire.</p>
+
+    <div class="two-col">
+      <div>
+        <h3>Automatique, chaque nuit</h3>
+        <p>Les ventes de la veille sont importées automatiquement tôt le matin, tous les jours.
+           La barre Lightspeed affiche la date et l'heure de la dernière synchronisation.</p>
+      </div>
+      <div>
+        <h3>Manuelle, quand vous voulez</h3>
+        <p><span class="btn-label">Synchroniser maintenant</span> réimporte les 7 derniers jours :
+           utile pour contrôler la journée en cours ou rattraper une coupure. Accessible au patron,
+           au consultant et au responsable de cuisine.</p>
+      </div>
+    </div>
+
+    <div class="note info" style="margin-top:4mm">
+      Après chaque synchronisation, les vues du module se rechargent toutes seules :
+      inutile de rafraîchir la page. Le bouton <span class="btn-ghost">Tester</span> vérifie
+      en quelques secondes que la liaison répond.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. Les états de la barre Lightspeed</h2>
+    <p class="lead">La barre en haut du module vous dit toujours où vous en êtes, et quoi faire.</p>
+    <table>
+      <thead>
+        <tr><th style="width:34mm">État affiché</th><th>Ce que cela veut dire</th><th style="width:52mm">Ce qu'il faut faire</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill green">Connecté</span></td>
+          <td>Tout fonctionne. La dernière synchronisation est affichée.</td>
+          <td>Rien, ou « Synchroniser maintenant » pour forcer une mise à jour.</td>
+        </tr>
+        <tr>
+          <td><span class="pill grey">Aucune caisse connectée</span></td>
+          <td>La caisse n'a jamais été reliée à cet établissement.</td>
+          <td>« Connecter Lightspeed » et suivre les 3 étapes.</td>
+        </tr>
+        <tr>
+          <td><span class="pill amber">Sélection requise</span></td>
+          <td>Plusieurs restaurants détectés, le choix n'a pas été finalisé.</td>
+          <td>« Choisir le restaurant » : l'assistant reprend à l'étape 2.</td>
+        </tr>
+        <tr>
+          <td><span class="pill red">Déconnecté</span></td>
+          <td>L'autorisation a expiré ou a été révoquée : la synchronisation est en pause.</td>
+          <td>« Reconnecter Lightspeed » : 30 secondes, les données déjà importées sont conservées.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="small muted" style="margin-top:3mm">
+      Premier import jamais lancé ? Tant qu'aucune donnée n'est présente, le bouton principal
+      affiche « Importer l'historique (14 j) » au lieu de « Synchroniser maintenant ».
+    </p>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Guide Lightspeed</span>
+    <span>Page 4 / 5</span>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 5 : EXPLOITER + DÉPANNAGE ═══════════ -->
+<div class="page">
+  <div class="pagehead">
+    <span class="brand">Samper Consulting</span>
+    <span class="doc">Guide Lightspeed - Connexion et synchronisation</span>
+  </div>
+
+  <div class="section">
+    <h2>6. Exploiter vos données</h2>
+    <div class="stepcard" style="margin-bottom:3.5mm">
+      <span class="num">→</span>
+      <div>
+        <h3>Mapping plats : l'étape qui change tout</h3>
+        <p>Dans l'onglet <b>Mapping plats</b>, associez chaque plat de la caisse à sa recette dans
+           l'application. C'est ce lien qui permet de calculer la mise en place et la consommation
+           d'ingrédients. Des suggestions automatiques vous font gagner du temps.</p>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3>Les vues cuisine</h3>
+        <p><b>Mise en place J+1</b> : quoi préparer pour demain, d'après les ventes récentes.<br>
+           <b>Top / Flop</b> : les plats qui marchent et ceux qui ne tournent pas.<br>
+           <b>Conso ingrédients</b> : les quantités consommées, pour les commandes.</p>
+      </div>
+      <div>
+        <h3>KDS : le passe en direct</h3>
+        <p>L'écran <b>Passe cuisine (KDS)</b> affiche les commandes en cours de la caisse, en direct.
+           Il utilise la même connexion Lightspeed : une fois la caisse reliée, il est prêt.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>7. Questions fréquentes</h2>
+    <div class="qa">
+      <div class="q">Les vues cuisine sont vides alors que la caisse est connectée.</div>
+      <div class="a">Deux causes possibles : l'historique n'a pas été importé (bouton « Importer l'historique (14 j) »),
+      ou les plats ne sont pas encore associés aux recettes (onglet Mapping plats).</div>
+    </div>
+    <div class="qa">
+      <div class="q">« Autorisation refusée » pendant la connexion.</div>
+      <div class="a">Vous avez refusé les droits dans la fenêtre Lightspeed. Relancez et acceptez les
+      permissions demandées.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Un bandeau rouge indique que la synchronisation est en pause.</div>
+      <div class="a">L'autorisation Lightspeed a expiré. Cliquez sur « Reconnecter Lightspeed » et refaites
+      l'autorisation : tout l'historique est conservé.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Je gère plusieurs établissements.</div>
+      <div class="a">Répétez la connexion pour chaque établissement, en le sélectionnant d'abord en haut
+      de l'application. Chaque établissement est relié à son propre restaurant Lightspeed.</div>
+    </div>
+    <div class="qa">
+      <div class="q">Mes identifiants de caisse sont-ils stockés dans l'application ?</div>
+      <div class="a">Non. Vous les saisissez uniquement sur la page officielle de Lightspeed. L'application
+      ne conserve que des jetons d'accès chiffrés, côté serveur, et n'accède à la caisse qu'en lecture.</div>
+    </div>
+  </div>
+
+  <div class="pagefoot">
+    <span>Samper Consulting - Guide Lightspeed · Juillet 2026</span>
+    <span>Page 5 / 5</span>
+  </div>
+</div>
+
+</body>
+</html>
