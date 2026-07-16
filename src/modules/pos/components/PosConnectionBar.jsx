@@ -142,13 +142,13 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
     try {
       const res = await callPosEdge(POS_BACKFILL_FN, null, { connectionId: status.id, days });
       if ((res.daysProcessed ?? 0) === 0 && (res.daysErrored ?? 0) > 0) {
-        notify(`Synchro echouee : ${res.errors?.[0]?.error || 'erreur inconnue'}`, 'error');
+        notify(`Synchro échouée : ${res.errors?.[0]?.error || 'erreur inconnue'}`, 'error');
       } else {
-        notify(`Synchronise : ${res.salesTotal ?? 0} vente(s) sur ${res.daysProcessed} jour(s)`, 'success');
+        notify(`Synchronisé : ${res.salesTotal ?? 0} vente(s) sur ${res.daysProcessed} jour(s)`, 'success');
         onSynced?.();
       }
     } catch (err) {
-      notify(`Synchro echouee : ${err.message}`, 'error');
+      notify(`Synchro échouée : ${err.message}`, 'error');
     } finally {
       setAction(null);
       loadStatus();
@@ -160,9 +160,9 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
     setAction('testing');
     try {
       const res = await callPosEdge(POS_OAUTH_FN, 'test', { etablissementId, providerId: provider.id });
-      notify(res.message || 'Connexion operationnelle', 'success');
+      notify(res.message || 'Connexion opérationnelle', 'success');
     } catch (err) {
-      notify(`Test echoue : ${err.message}`, 'error');
+      notify(`Test échoué : ${err.message}`, 'error');
     } finally {
       setAction(null);
       loadStatus();
@@ -194,7 +194,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
       <div style={S.card}>
         <div style={S.row}>
           <IconLS />
-          <span style={{ fontSize: 13, color: 'var(--text3)' }}>Verification de la caisse...</span>
+          <span style={{ fontSize: 13, color: 'var(--text3)' }}>Vérification de la caisse...</span>
         </div>
       </div>
     );
@@ -209,12 +209,12 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={S.title}>Lightspeed</span>
-              <span style={S.pill('success')}>Connecte</span>
+              <span style={S.pill('success')}>Connecté</span>
             </div>
             <div style={S.sub}>
               {hasData
-                ? `Derniere synchro : ${lastSync}`
-                : "Aucune donnee importee. Lancez une premiere synchronisation."}
+                ? `Dernière synchro : ${lastSync}`
+                : "Aucune donnée importée. Lancez une première synchronisation."}
             </div>
           </div>
           <div style={S.spacer} />
@@ -252,7 +252,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={S.title}>Lightspeed</span>
-                <span style={S.pill('danger')}>Deconnecte</span>
+                <span style={S.pill('danger')}>Déconnecté</span>
               </div>
               <div style={{ ...S.sub, color: 'var(--danger-text)' }}>
                 {status?.last_error
@@ -283,11 +283,11 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
           <div style={S.row}>
             <IconLS />
             <div style={{ minWidth: 0 }}>
-              <span style={S.title}>Selection du restaurant requise</span>
+              <span style={S.title}>Sélection du restaurant requise</span>
               <div style={S.sub}>
                 {canConnect
-                  ? 'Plusieurs restaurants detectes sur ce compte Lightspeed. Choisissez celui de cet etablissement pour terminer la connexion.'
-                  : 'Plusieurs restaurants detectes sur ce compte Lightspeed. Demandez au patron ou au consultant de finaliser la selection.'}
+                  ? 'Plusieurs restaurants détectés sur ce compte Lightspeed. Choisissez celui de cet établissement pour terminer la connexion.'
+                  : 'Plusieurs restaurants détectés sur ce compte Lightspeed. Demandez au patron ou au consultant de finaliser la sélection.'}
               </div>
             </div>
             <div style={S.spacer} />
@@ -312,11 +312,11 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
         <div style={{ ...S.row, alignItems: 'flex-start' }}>
           <IconLS />
           <div style={{ minWidth: 0, flex: 1 }}>
-            <span style={S.title}>Aucune caisse connectee</span>
+            <span style={S.title}>Aucune caisse connectée</span>
             <div style={S.sub}>
               {canConnect
-                ? 'Connectez votre caisse Lightspeed en 3 etapes guidees pour synchroniser les ventes et activer les vues cuisine (mise en place, top/flop, conso ingredients).'
-                : "La caisse Lightspeed n'est pas connectee. Demandez a un responsable de la connecter."}
+                ? 'Connectez votre caisse Lightspeed en 3 étapes guidées pour synchroniser les ventes et activer les vues cuisine (mise en place, top/flop, conso ingrédients).'
+                : "La caisse Lightspeed n'est pas connectée. Demandez à un responsable de la connecter."}
             </div>
           </div>
           {canConnect && (
