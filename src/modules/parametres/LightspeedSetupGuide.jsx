@@ -11,7 +11,8 @@
 import { useState } from 'react';
 
 const REDIRECT_URI   = 'https://ppmtoiqgajwcdkbnrcll.supabase.co/functions/v1/pos-oauth';
-const SCOPES         = 'financial-api offline_access';
+// orders-api requis depuis le KDS (pos-oauth demande les 3 scopes)
+const SCOPES         = 'financial-api orders-api offline_access';
 const DEV_PORTAL_URL = 'https://developers.lightspeedhq.com';
 
 // ── Bouton copier ─────────────────────────────────────────────────
@@ -182,7 +183,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                   { key: 'LS_CLIENT_ID',     note: '(ton Client ID Lightspeed)' },
                   { key: 'LS_CLIENT_SECRET', note: '(ton Client Secret Lightspeed)' },
                   { key: 'LS_REDIRECT_URI',  note: REDIRECT_URI, copyVal: REDIRECT_URI },
-                  { key: 'LS_ENV',           note: 'demo  (sandbox)  ou  production' },
+                  { key: 'LS_ENV',           note: 'prod  (vraie caisse)  ou  demo  (sandbox) - exactement "prod", pas "production"' },
                 ].map(({ key, note, copyVal }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <code style={{
