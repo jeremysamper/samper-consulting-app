@@ -889,7 +889,9 @@ const fac = {
 
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4, marginTop: 10 },
   input: { width: '100%', padding: '8px 11px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+  // minmax(0,1fr) : sans le minimum 0, la largeur intrinsèque des input[type=date]
+  // élargit les colonnes et fait déborder la 2e date du cadre sur mobile.
+  row2: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 },
 
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },

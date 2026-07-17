@@ -361,7 +361,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
       </div>
 
       {isConsultant && (
-      <div style={ds.midGrid}>
+      <div style={ds.midGrid} className="dash-mid-grid">
         <Card>
           <SectionHeader
             title="Automatisations recommandees"

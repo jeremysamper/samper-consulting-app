@@ -326,19 +326,23 @@ html[data-theme="dark"] {
   }
 }
 
-/* ─── Tables en grid (lignes display:grid) : scroll horizontal sur mobile ──
+/* ─── Tables en grid (lignes display:grid) : scroll horizontal ─────────────
    Pour les listes-tableaux construites en display:grid avec colonnes fixes :
    .grid-table-scroll sur le conteneur, .grid-table-row sur l'entête et chaque
-   ligne. Desktop inchangé ; sur mobile les lignes gardent une largeur lisible
-   et le conteneur défile horizontalement (pas d'écrasement ni de débordement). */
-@media (max-width: 767px) {
+   ligne. Grand desktop inchangé ; dès que la place manque (mobile ET tablette,
+   où la sidebar réduit le contenu à ~480px) le conteneur défile
+   horizontalement au lieu de clipper les colonnes d'action (boutons Supprimer
+   inatteignables à 768px sinon). `screen` : ne s'applique jamais à l'impression. */
+@media screen and (max-width: 1023px) {
   .grid-table-scroll {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
+}
 
+@media (max-width: 767px) {
   .grid-table-scroll .grid-table-row {
     min-width: 640px;
   }
@@ -348,6 +352,16 @@ html[data-theme="dark"] {
     grid-template-columns: 1fr !important;
     height: auto !important;
     min-height: 0 !important;
+  }
+}
+
+/* ─── Dashboard : grille pilotage (Automatisations + Assistant) ────────────
+   2 colonnes dont une à minimum fixe 320px : dès que le contenu passe sous
+   ~660px (layout desktop sur tablette 768-1023), la 1re colonne s'écrase et
+   ses boutons sortent de la carte. On empile en 1 colonne sur ces largeurs. */
+@media screen and (max-width: 1023px) {
+  .dash-mid-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 

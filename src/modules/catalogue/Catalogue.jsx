@@ -632,7 +632,7 @@ const Catalogue = ({ user, etablissement }) => {
                           {canWrite && (
                             <>
                               <button style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }}>✎</button>
-                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)' }} onClick={() => deleteProd(p.id)}>🗑</button>
+                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)}>🗑</button>
                             </>
                           )}
                         </td>
@@ -676,7 +676,7 @@ const Catalogue = ({ user, etablissement }) => {
                         {canWrite && (
                           <>
                             <button style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }}>✎</button>
-                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)' }} onClick={() => deleteFourn(f.id)}>🗑</button>
+                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)}>🗑</button>
                           </>
                         )}
                       </td>

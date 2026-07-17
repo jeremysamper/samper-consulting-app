@@ -144,11 +144,11 @@ export default function CarteTabBar({
                 onKeyDown={e => { if (e.key === 'Enter') submit(); }}
               />
               <div style={s.dateRow}>
-                <div style={{ flex: 1 }}>
+                <div style={s.dateCol}>
                   <label style={s.label}>Début (optionnel)</label>
                   <input type="date" style={s.input} value={form.dateDebut || ''} onChange={e => setForm(f => ({ ...f, dateDebut: e.target.value }))} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={s.dateCol}>
                   <label style={s.label}>Fin (optionnel)</label>
                   <input type="date" style={s.input} value={form.dateFin || ''} onChange={e => setForm(f => ({ ...f, dateFin: e.target.value }))} />
                 </div>
@@ -244,8 +244,11 @@ const s = {
   modalBody: { padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
   label: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  dateRow: { display: 'flex', gap: 10 },
-  modalFooter: { display: 'flex', gap: 8, alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border)' },
+  // minWidth:0 : les input[type=date] ont une largeur intrinsèque (~170px) qui
+  // ferait déborder la rangée hors de la modale sur mobile (375px).
+  dateRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
+  dateCol: { flex: '1 1 140px', minWidth: 0 },
+  modalFooter: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '12px 20px', borderTop: '1px solid var(--border)' },
   ghostBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
 };
