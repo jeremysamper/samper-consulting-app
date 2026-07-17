@@ -299,9 +299,24 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
   const stepTitles = ['Identifier', 'Type de condition', 'Configuration', 'Planification'];
 
   return (
-    <div className={overlayClass} onClick={onClose}>
+    // Styles inline = desktop/tablette (les classes modal-* ne stylent qu'en
+    // mobile ≤767px) ; sans eux la modale se rendait dans le flux de la page.
+    <div
+      className={overlayClass}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: 16,
+      }}
+      onClick={onClose}
+    >
       <div className={modalClass} onClick={(e) => e.stopPropagation()}
-        style={{ display: 'flex', flexDirection: 'column' }}>
+        style={{
+          display: 'flex', flexDirection: 'column',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 14, width: 560, maxWidth: '94vw', maxHeight: '90vh',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden',
+        }}>
 
         {/* ── Titre ── */}
         <div style={{
