@@ -186,7 +186,7 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Date + Service */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
             <div>
               <label style={lbl}>Date</label>
               <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} style={inp} />

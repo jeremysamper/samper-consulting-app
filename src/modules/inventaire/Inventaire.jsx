@@ -637,13 +637,13 @@ const Inventaire = ({ user, etablissement }) => {
       </div>
 
       {showNew && (
-        <div style={invs.overlay} onClick={() => setShowNew(false)}>
-          <div style={invs.modal} onClick={e=>e.stopPropagation()}>
+        <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => setShowNew(false)}>
+          <div className="modal-sheet" style={invs.modal} onClick={e=>e.stopPropagation()}>
             <div style={invs.modalHeader}><div style={{fontWeight:700, fontSize:16, fontFamily:'var(--font-serif)'}}>Nouvel inventaire</div><button style={invs.closeBtn} onClick={() => setShowNew(false)}>✕</button></div>
             <div style={{padding:'22px', display:'flex', flexDirection:'column', gap:16}}>
               <div><label style={invs.fieldLabel}>Date de l'inventaire</label><input type="date" defaultValue={new Date().toISOString().slice(0,10)} style={invs.fieldInput}/></div>
               <div><label style={invs.fieldLabel}>Modèle de base</label><select style={invs.fieldInput}><option>Dupliquer depuis l'inventaire courant</option><option>Inventaire vierge</option></select></div>
-              <div style={{display:'flex', gap:10, justifyContent:'flex-end', marginTop:4}}><button style={invs.exportBtn} onClick={() => setShowNew(false)}>Annuler</button><button style={invs.addBtn} onClick={createInventory}>Créer</button></div>
+              <div style={{display:'flex', gap:10, justifyContent:'flex-end', marginTop:4, flexWrap:'wrap'}}><button style={invs.exportBtn} onClick={() => setShowNew(false)}>Annuler</button><button style={invs.addBtn} onClick={createInventory}>Créer</button></div>
             </div>
           </div>
         </div>
@@ -827,7 +827,7 @@ const invs = {
   kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   filters: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',minWidth:0}, catTabs: {display:'flex',gap:4,flexWrap:'wrap'}, catBtn: {padding:'5px 14px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}, catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:600,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:600,color:'var(--text)'}, catTag: {fontSize:10,fontWeight:600,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
-  overlay: {position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}, modal: {background:'var(--surface)',borderRadius:14,width:420,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}, modalHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'}, closeBtn: {background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}, fieldLabel: {display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
+  overlay: {position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}, modal: {background:'var(--surface)',borderRadius:14,width:420,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}, modalHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'}, closeBtn: {background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}, fieldLabel: {display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
 };
 
 export default Inventaire;

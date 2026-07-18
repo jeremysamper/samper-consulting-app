@@ -53,7 +53,7 @@ export const s = {
   field: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   fieldLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   input: { padding: '11px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box', minWidth: 0 },
-  formRow2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+  formRow2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 },
 
   pickList: { display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', maxHeight: 320, overflowY: 'auto' },
   pickRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', borderBottom: '1px solid var(--border)', cursor: 'pointer', minHeight: 48 },

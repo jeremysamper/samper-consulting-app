@@ -451,7 +451,7 @@ const Factures = ({ user, etablissement }) => {
               </div>
             </div>
 
-            <div style={fac.row2}>
+            <div style={fac.datesRow}>
               <div>
                 <label style={fac.label}>Date de facturation</label>
                 <input type="date" style={fac.input} value={form.dateFacturation} onChange={e => updateForm('dateFacturation', e.target.value)} />
@@ -892,6 +892,9 @@ const fac = {
   // minmax(0,1fr) : sans le minimum 0, la largeur intrinsèque des input[type=date]
   // élargit les colonnes et fait déborder la 2e date du cadre sur mobile.
   row2: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 },
+  // Rangée des deux dates (facturation / échéance) : auto-fit pour qu'elles
+  // s'empilent sous ~330px au lieu de rester serrées et de tronquer la valeur.
+  datesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 },
 
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },

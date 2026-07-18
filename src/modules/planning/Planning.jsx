@@ -1362,13 +1362,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <button style={pls.closeBtn} onClick={() => setDuplicateMode(null)}>✕</button>
             </div>
             <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 150px', minWidth: 0 }}>
                   <label style={pls.fieldLabel}>Lundi de la semaine source</label>
                   <input type="date" style={pls.fieldInput} value={duplicateSource.sourceDate}
                     onChange={e => setDuplicateSource({ ...duplicateSource, sourceDate: e.target.value })} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 150px', minWidth: 0 }}>
                   <label style={pls.fieldLabel}>Lundi de la semaine cible</label>
                   <input type="date" style={pls.fieldInput} value={duplicateSource.targetDate}
                     onChange={e => setDuplicateSource({ ...duplicateSource, targetDate: e.target.value })} />
@@ -1377,7 +1377,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: 10, borderRadius: 6, lineHeight: 1.5 }}>
                 💡 Tous les horaires de tous les employés de la semaine source (7 jours à partir du lundi choisi) seront copiés vers la semaine cible. Les pointages ne sont pas copiés.
               </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
                 <button style={pls.exportBtn} onClick={() => setDuplicateMode(null)}>Annuler</button>
                 <button style={pls.addBtn} onClick={doDuplicateWeek}>Dupliquer</button>
               </div>
@@ -1398,7 +1398,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--warning-text)', lineHeight: 1.5 }}>
                 Document conforme aux <strong>articles 15 &amp; 21 CCNT</strong> hôtellerie-restauration suisse. À signer <strong>chaque mois</strong> par le collaborateur et l'employeur, à conserver <strong>5 ans</strong>.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
                 <div>
                   <label style={pls.fieldLabel}>Collaborateur</label>
                   <select style={pls.fieldInput} value={ccntEmployeeId || ''} onChange={e => setCcntEmployeeId(e.target.value)}>
@@ -1441,7 +1441,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <input type="number" step="0.5" style={pls.fieldInput} value={ccntJoursFeries.pris} onChange={e => setCcntJoursFeries({ ...ccntJoursFeries, pris: parseFloat(e.target.value) || 0 })} />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6, flexWrap: 'wrap' }}>
                 <button style={pls.exportBtn} onClick={() => setShowCCNTModal(false)}>Annuler</button>
                 <button style={pls.exportBtn} onClick={() => exportCCNT('print')}>Imprimer</button>
                 <button style={pls.addBtn} onClick={() => exportCCNT('pdf')}>Exporter en PDF</button>
@@ -1844,11 +1844,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <div>
                   <label style={pls.fieldLabel}>Plage de dates ({dates.length} jour{dates.length > 1 ? 's' : ''})</label>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 150px' }}>
+                    <div style={{ flex: '1 1 150px', minWidth: 0 }}>
                       <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Du</label>
                       <input type="date" style={pls.fieldInput} value={batchStart} onChange={e => setBatchStart(e.target.value)} />
                     </div>
-                    <div style={{ flex: '1 1 150px' }}>
+                    <div style={{ flex: '1 1 150px', minWidth: 0 }}>
                       <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Au</label>
                       <input type="date" style={pls.fieldInput} value={batchEnd} onChange={e => setBatchEnd(e.target.value)} />
                     </div>
@@ -1888,7 +1888,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       );
                     })}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
                     <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
                     <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
                     <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>

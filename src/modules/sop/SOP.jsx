@@ -1015,7 +1015,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
     <div style={ss.editorRoot}>
       {/* Header */}
       <div style={ss.editorHeader}>
-        <button style={ss.backBtn} onClick={onBack}>← Retour</button>
+        <button style={{ ...ss.backBtn, width: 'auto', padding: '0 14px', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }} onClick={onBack}>← Retour</button>
         <div style={{ flex: 1 }} />
         {!isNew && (
           <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }} onClick={deleteSop}>🗑 Supprimer</button>

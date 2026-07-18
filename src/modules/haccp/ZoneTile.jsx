@@ -100,16 +100,16 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
               value={inlineTempInput}
               onChange={e => setInlineTempInput(e.target.value)}
               placeholder={`${zone.cible}${zone.unite}`}
-              style={{ flex: 1, padding: '8px 10px', border: '2px solid var(--accent)', borderRadius: 7, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' }}
+              style={{ flex: '1 1 50px', minWidth: 0, padding: '8px 10px', border: '2px solid var(--accent)', borderRadius: 7, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' }}
               onKeyDown={e => {
                 if (e.key === 'Enter') submitInlineReleve(zone, inlineTempInput);
                 if (e.key === 'Escape') setInlineReleve(null);
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)' }}>{zone.unite}</span>
-            <button style={{ padding: '8px 12px', background: 'var(--success-strong)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>{zone.unite}</span>
+            <button style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--success-strong)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               onClick={() => submitInlineReleve(zone, inlineTempInput)}>✓</button>
-            <button style={{ padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}
+            <button style={{ flexShrink: 0, padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}
               onClick={() => setInlineReleve(null)}>✕</button>
           </div>
         )}
