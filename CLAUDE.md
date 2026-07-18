@@ -118,3 +118,12 @@ All styles are plain JS objects (inline `style={...}` props) — no CSS modules,
 3. Do not remove `localStorage` fallbacks until DB migration is confirmed in production.
 4. Do not touch `components/` files — the legacy app must stay unmodified.
 5. After any change, verify both `/index.html` and `/vite-index.html` still load.
+
+## Deployment safety (never break live users)
+
+The brigade uses the app in production during service. The pipeline: every push to a branch → automatic Vercel **preview** deployment (unique URL, `sc-app-git-<branch>-samper-consulting.vercel.app`); every push to `main` → **production** deploy on samperconsulting-app.com. A failed build never goes live (Vercel keeps serving the previous deployment). Supabase (DB, RLS, Edge Functions) is shared production — there is no staging database.
+
+1. Never commit app code directly to `main`. Work on a feature branch, push it, verify the Vercel preview URL (with the dev account, not a client account), then merge into `main`. Docs-only changes may go straight to `main`.
+2. Supabase changes hit production users instantly. Migrations must stay backward-compatible with the currently deployed front (expand/contract): add first, migrate reads, drop later. Never `DROP`/`RENAME` anything the deployed code still reads. Apply a migration BEFORE merging the front that depends on it. Destructive or risky migrations outside service hours only.
+3. Open sessions keep their own bundle across releases: the PWA service worker precaches all compiled assets and only switches version on user consent (`registerType: 'prompt'`), and `installPreloadErrorRecovery()` (wired in `main.jsx`) transparently reloads once when a lazy chunk disappeared after a release. Do not change `registerType` or narrow the precache `globPatterns`.
+4. If production breaks anyway: Vercel dashboard → sc-app → Deployments → previous READY production deployment → "Instant Rollback" (restores in under a minute). Roll back first, debug after. Supabase migrations are not auto-rolled-back — write the inverse migration.

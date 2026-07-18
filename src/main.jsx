@@ -2,7 +2,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { initPwa } from './pwa/registerPwa.js';
+import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
 import './styles/app.css';
+
+// Filet anti-crash après release : un chunk lazy introuvable (ancienne
+// version encore ouverte) déclenche un rechargement unique et transparent.
+installPreloadErrorRecovery();
 
 class RootErrorBoundary extends React.Component {
   constructor(props) {
