@@ -292,6 +292,13 @@ html[data-theme="dark"] {
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* Languette de réouverture de la sidebar desktop repliée (AppLayout.jsx) :
+   glisse depuis le bord gauche une fois la barre refermée. */
+@keyframes sidebarPeekIn {
+  from { transform: translate(-100%, -50%); opacity: 0; }
+  to   { transform: translate(0, -50%);     opacity: 1; }
+}
+
 @media (max-width: 767px) {
   /* ── Pattern A - bottom sheet ─────────────────────────────────────────── */
   .modal-sheet-overlay {

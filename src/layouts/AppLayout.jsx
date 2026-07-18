@@ -528,29 +528,37 @@ export default function AppLayout({
   // ════════════════════════════════
   return (
     <div style={ls.root} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
-      <aside style={{ ...ls.sidebar, width: sidebarOpen ? 234 : 58 }}>
+      {/* Repliée = la barre disparaît complètement (width 0 + visibility hidden
+          après la transition) ; une languette fixée au bord gauche la rouvre. */}
+      <aside style={{
+        ...ls.sidebar,
+        width: sidebarOpen ? 234 : 0,
+        borderRight: sidebarOpen ? '1px solid var(--border)' : 'none',
+        visibility: sidebarOpen ? 'visible' : 'hidden',
+        transition: sidebarOpen
+          ? 'width .2s cubic-bezier(.4,0,.2,1)'
+          : 'width .2s cubic-bezier(.4,0,.2,1), visibility 0s linear .2s',
+      }}>
         <div style={ls.sidebarTop}>
           <div style={ls.logoWrap}>
             <div style={{ position: 'relative' }}>
               {renderLogoMark(34, 12)}
               {renderLogoMenu()}
             </div>
-            {sidebarOpen && (
-              <div style={ls.logoText}>
-                <div style={ls.logoName}>Samper Consulting</div>
-                <div style={ls.logoSub}>Gestion culinaire</div>
-              </div>
-            )}
+            <div style={ls.logoText}>
+              <div style={ls.logoName}>Samper Consulting</div>
+              <div style={ls.logoSub}>Gestion culinaire</div>
+            </div>
           </div>
-          <button style={ls.toggleBtn} onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? '◂' : '▸'}
+          <button style={ls.toggleBtn} onClick={() => setSidebarOpen(false)} aria-label="Masquer le menu" title="Masquer le menu">
+            ❮
           </button>
         </div>
 
         {/* Sélecteur d'établissement : même UI que le drawer mobile (liste
             d'options avec pastille couleur + ✓ actif) - feedback immédiat du
             changement, contrairement à l'ancien <select> sombre. */}
-        {sidebarOpen && etabs.length > 1 && (
+        {etabs.length > 1 && (
           <div style={ls.etabWrap}>
             <div style={ls.etabLabel}>Établissement</div>
             <div style={ls.etabList}>
@@ -571,7 +579,7 @@ export default function AppLayout({
             </div>
           </div>
         )}
-        {sidebarOpen && etabs.length === 1 && etablissement && (
+        {etabs.length === 1 && etablissement && (
           <div style={ls.etabWrap}>
             <div style={ls.etabLabel}>Établissement</div>
             <div style={ls.etabSingle}>
@@ -584,17 +592,16 @@ export default function AppLayout({
         <nav style={ls.nav}>
           {groupedNav.map(group => (
             <div key={group.label} style={ls.navGroup}>
-              {sidebarOpen && <div style={ls.navGroupLabel}>{group.label}</div>}
+              <div style={ls.navGroupLabel}>{group.label}</div>
               {group.items.map(item => {
                 const active = currentPage === item.id;
                 return (
                   <button key={item.id}
-                    style={{ ...ls.navItem, ...(active ? ls.navActive : {}), justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
-                    onClick={() => handleSetPage(item.id)} title={!sidebarOpen ? getLabelForModule(item.id, item.label) : ''}>
-                    {!sidebarOpen && <span style={{ ...ls.navIcon, opacity: active ? 1 : 0.72 }}>{item.icon || '•'}</span>}
-                    {sidebarOpen && <span style={{ ...ls.navLabel, flex: 1 }}>{getLabelForModule(item.id, item.label)}</span>}
-                    {sidebarOpen && renderNavBadge(item.id)}
-                    {active && sidebarOpen && <div style={ls.navActiveLine} />}
+                    style={{ ...ls.navItem, ...(active ? ls.navActive : {}) }}
+                    onClick={() => handleSetPage(item.id)}>
+                    <span style={{ ...ls.navLabel, flex: 1 }}>{getLabelForModule(item.id, item.label)}</span>
+                    {renderNavBadge(item.id)}
+                    {active && <div style={ls.navActiveLine} />}
                   </button>
                 );
               })}
@@ -602,16 +609,27 @@ export default function AppLayout({
           ))}
         </nav>
 
-        <div style={{ ...ls.userArea, padding: sidebarOpen ? '14px 16px' : '14px 0', justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
+        <div style={ls.userArea}>
           <div style={{ ...ls.avatar, background: roleInfo.couleur }}>{user.avatar}</div>
-          {sidebarOpen && (
-            <div style={ls.userInfo}>
-              <div style={ls.userName}>{user.prenom} {user.nom}</div>
-              <div style={{ ...ls.userRole, color: roleInfo.couleur }}>{roleInfo.label}</div>
-            </div>
-          )}
+          <div style={ls.userInfo}>
+            <div style={ls.userName}>{user.prenom} {user.nom}</div>
+            <div style={{ ...ls.userRole, color: roleInfo.couleur }}>{roleInfo.label}</div>
+          </div>
         </div>
       </aside>
+
+      {/* Languette de réouverture - visible uniquement quand la barre est repliée.
+          Onglet collé au bord gauche, à mi-hauteur, façon flèche PiP iPhone. */}
+      {!sidebarOpen && (
+        <button
+          style={ls.sidebarPeek}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Afficher le menu"
+          title="Afficher le menu"
+        >
+          ❯
+        </button>
+      )}
 
       <div style={ls.main}>
         {showPosBanner && (
@@ -668,7 +686,10 @@ const ls = {
   // (surface/text/border/accent) au lieu du fond sombre --nav + blancs en dur.
   // Blanc en mode clair, surface sombre en mode sombre, sans couleur codée en dur.
   root: { display: 'flex', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)', overflow: 'hidden' },
-  sidebar: { background: 'var(--surface)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'visible', borderRight: '1px solid var(--border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
+  // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
+  // être bloquée par la taille min-content de ses enfants flex.
+  sidebar: { background: 'var(--surface)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
+  sidebarPeek: { position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 10px 18px 7px', background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 12px 12px 0', boxShadow: '2px 0 12px rgba(0,0,0,0.10)', color: 'var(--text2)', fontSize: 14, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', animation: 'sidebarPeekIn .25s ease .12s both' },
   sidebarTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 14px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 },
   logoWrap: { display: 'flex', alignItems: 'center', gap: 10, overflow: 'visible' },
   logoText: { overflow: 'hidden' },
@@ -692,9 +713,8 @@ const ls = {
   navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 7, border: 'none', background: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
   navActive: { background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700 },
   navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--accent)', borderRadius: 2 },
-  navIcon: { fontSize: 14, flexShrink: 0, width: 18, textAlign: 'center' },
   navLabel: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  userArea: { display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' },
+  userArea: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' },
   avatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
   userInfo: { overflow: 'hidden' },
   userName: { color: 'var(--text)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
