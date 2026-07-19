@@ -1545,7 +1545,7 @@ const Recettes = ({ user, etablissement }) => {
 
             const renderRecetteCard = (r, isSubItem = false) => (
               <div key={r.id + (isSubItem ? '-sub' : '')}
-                style={isSubItem ? {...rs.recetteRow, ...rs.recetteRowSub} : rs.recetteRow}
+                style={isSubItem ? {...rs.recetteRow, ...rs.recetteRowSub} : {...rs.recetteRow, ...rs.recetteRowOrphelin}}
                 onClick={() => setSelectedRecette(r)}>
                 {r.photoUrl ? (
                   <img src={r.photoUrl} alt={r.nom} style={rs.thumb} onError={e => e.currentTarget.style.display = 'none'}/>
@@ -1556,8 +1556,17 @@ const Recettes = ({ user, etablissement }) => {
                   <div style={rs.recetteName}>{r.nom}</div>
                   <div style={rs.recetteMeta}>{r.categorie} · {r.portions} portions · v{r.version} · modifié {r.modifie}</div>
                 </div>
+                {/* Pastilles d'allergènes plafonnées : une recette en cumulant 5
+                    occupait 139px et écrasait le nom à 0px de large sur mobile.
+                    Au-delà de 3, le surplus est résumé par un « +N » dont
+                    l'infobulle liste les allergènes restants. */}
                 <div style={rs.recetteBadges}>
-                  {(r.allergenesIds||[]).map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
+                  {(r.allergenesIds||[]).slice(0, 3).map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
+                  {(r.allergenesIds||[]).length > 3 && (
+                    <span style={rs.allergeneDot} title={(r.allergenesIds||[]).slice(3).map(a => ALLERGENES_MAP[a]||a).join(', ')}>
+                      +{(r.allergenesIds||[]).length - 3}
+                    </span>
+                  )}
                 </div>
                 {user.role === 'consultant' && !isEtroit && (
                   <div style={rs.recetteKpis}>
@@ -1618,7 +1627,11 @@ const Recettes = ({ user, etablissement }) => {
                 {orphelines.length > 0 && plats.length > 0 && (
                   <div style={rs.orphelinTitle}>Recettes sans plat ({orphelines.length})</div>
                 )}
-                {orphelines.map(r => renderRecetteCard(r, false))}
+                {orphelines.length > 0 && (
+                  <div style={rs.orphelinListe}>
+                    {orphelines.map(r => renderRecetteCard(r, false))}
+                  </div>
+                )}
               </>
             );
           })()}
@@ -1677,7 +1690,11 @@ const rs = {
   congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'#fff'},
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
-  recetteRow: {display:'flex',alignItems:'center',gap:14,padding:'14px 18px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .12s'},
+  // flexWrap : sur mobile la rangee (vignette + nom + pastilles + statut +
+  // chevron) depasse la largeur disponible. Sans wrap, soit le nom s'ecrase a
+  // 0px, soit le contenu sort de la carte. En passant a la ligne, les elements
+  // secondaires descendent et le nom garde sa place.
+  recetteRow: {display:'flex',alignItems:'center',gap:14,padding:'14px 18px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .12s',flexWrap:'wrap'},
 
   // ─── Recettes rattachées à un plat : cartes détachées ─────────────────────
   // Mesuré sur mobile : les lignes se touchaient bord à bord (0px d'écart), y
@@ -1692,7 +1709,17 @@ const rs = {
   // Rail d'accent à gauche pour garder la hiérarchie visuelle ; minHeight pose
   // un plancher de rythme vertical (les hauteurs mesurées allaient de 91 à 123px).
   recetteRowSub: {marginLeft:22,border:'1px solid var(--border)',borderLeft:'3px solid var(--accent-bd)',borderRadius:10,background:'var(--surface)',minHeight:72},
-  recetteInfo: {flex:1,minWidth:0},
+  // Recettes sans plat : meme traitement que les sous-lignes, mais sans
+  // indentation ni rail puisqu'elles ne dependent d'aucun plat. Elles etaient
+  // separees de 2px seulement (le gap de recettesWrap), donc pas visables non
+  // plus au doigt.
+  orphelinListe: {display:'flex',flexDirection:'column',gap:8,padding:'8px 10px',background:'var(--bg)'},
+  recetteRowOrphelin: {border:'1px solid var(--border)',borderRadius:10,background:'var(--surface)',minHeight:72},
+  // minWidth 96 : avec minWidth:0 le nom cedait toute sa place aux elements de
+  // droite (pastilles, statut) et tombait a 0px de large, le texte se lisant
+  // alors verticalement. Le nom est l'information qu'on cherche : c'est lui qui
+  // garde un plancher, ce sont les pastilles qui se plafonnent.
+  recetteInfo: {flex:'1 1 140px',minWidth:96},
   thumb: { width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
   thumbPlaceholder: { width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 24, color: 'var(--text2)', flexShrink: 0 },
   platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--warning-bg-soft)', cursor: 'pointer' },
@@ -1700,7 +1727,7 @@ const rs = {
   orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   recetteName: {fontSize:14,fontWeight:600,color:'var(--text)'},
   recetteMeta: {fontSize:11,color:'var(--text2)',marginTop:2},
-  recetteBadges: {display:'flex',gap:4},
+  recetteBadges: {display:'flex',gap:4,flexShrink:0},
   recetteKpis: {display:'flex',gap:16},
   recetteKpi: {display:'flex',flexDirection:'column',gap:2,fontSize:12,color:'var(--text2)',textAlign:'right'},
   // Detail
