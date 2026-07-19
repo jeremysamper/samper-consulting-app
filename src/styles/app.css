@@ -249,8 +249,8 @@ html[data-theme="dark"] {
   }
 
   /* Tous les types de champs saisis dans l'app doivent figurer ici : un type
-     oublie garde sa taille de police d'origine et Safari zoome automatiquement
-     au tap (month = releve CCNT, tel = reservations et parametres). */
+     oublié garde sa taille de police d'origine et Safari zoome automatiquement
+     au tap (month = relevé CCNT, tel = réservations et paramètres). */
   input[type="text"],
   input[type="email"],
   input[type="password"],
