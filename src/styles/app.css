@@ -531,6 +531,25 @@ html[data-theme="dark"] {
   gap: 6px;
 }
 
+/* ─── Barres d'actions : la cible tactile prime sur la compacité ────────────
+   La normalisation ci-dessus pose 38px. Elle a la même spécificité que la
+   règle globale « button:not(.mini) { min-height: 44px } » de la media query
+   mobile, mais elle est déclarée PLUS LOIN dans ce fichier : à égalité, c'est
+   la dernière qui gagne. Résultat, les boutons des barres d'actions passaient
+   sous la norme des 44px sur mobile (mesuré à 38px dans Pertes, Réservations,
+   Mise en place, Catalogue et Documents).
+   On rétablit donc la cible tactile ici, après la normalisation. */
+@media (max-width: 768px) {
+  .module-actions > button,
+  .module-actions > label,
+  .module-actions > input,
+  .module-actions > select,
+  .module-toolbar > button,
+  .module-toolbar > label {
+    min-height: 44px;
+  }
+}
+
 /* ─── SearchToggle : loupe qui déplie la recherche (gain de place) ──────────
    Replié : bouton carré loupe. Déplié : champ + croix, il prend l'espace
    disponible de la ligne (flex 1). Fermer efface le filtre (SearchToggle.jsx). */
