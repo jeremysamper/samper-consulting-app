@@ -772,7 +772,7 @@ const HACCP = ({ user, etablissement }) => {
                     {(activeZones || []).map(z=><option key={z.id} value={z.id}>{z.icone} {z.nom}</option>)}
                   </select>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))',gap:12}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12}}>
                   <div style={hs.field}><label style={hs.fLabel}>Date</label><input type="date" style={hs.fInput} value={formRel.date} onChange={e=>setFormRel({...formRel,date:e.target.value})}/></div>
                   <div style={hs.field}><label style={hs.fLabel}>Heure *</label><input type="time" style={hs.fInput} value={formRel.heure} onChange={e=>setFormRel({...formRel,heure:e.target.value})}/></div>
                 </div>
@@ -813,7 +813,7 @@ const HACCP = ({ user, etablissement }) => {
                     {(activeTpls || []).map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))',gap:12}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12}}>
                   <div style={hs.field}><label style={hs.fLabel}>Date</label><input type="date" style={hs.fInput} value={formCtrl.date} onChange={e=>setFormCtrl({...formCtrl,date:e.target.value})}/></div>
                   <div style={hs.field}><label style={hs.fLabel}>Heure *</label><input type="time" style={hs.fInput} value={formCtrl.heure} onChange={e=>setFormCtrl({...formCtrl,heure:e.target.value})}/></div>
                 </div>

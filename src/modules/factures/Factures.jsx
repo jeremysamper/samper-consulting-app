@@ -894,7 +894,7 @@ const fac = {
   row2: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 },
   // Rangée des deux dates (facturation / échéance) : auto-fit pour qu'elles
   // s'empilent sous ~330px au lieu de rester serrées et de tronquer la valeur.
-  datesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 },
+  datesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 },
 
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },

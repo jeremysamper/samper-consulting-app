@@ -555,7 +555,12 @@ const pts = {
   modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'},
   closeBtn:{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'},
   modalBody:{padding:'22px'},
-  formGrid:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14},
+  // Plancher a 200px : un input[type=date] rendu par iOS occupe ~192px et
+  // refuse de rétrécir sous cette taille. Avec deux colonnes cote a cote sur
+  // un telephone, la colonne de droite (Motif, Unite, Categorie) partait hors
+  // ecran. Au-dessus de 200px de place par colonne on garde deux colonnes,
+  // en dessous elles s'empilent.
+  formGrid:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:14},
   field:{display:'flex',flexDirection:'column',gap:6},
   fieldLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
   fieldInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none'},

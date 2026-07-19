@@ -1363,12 +1363,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
             <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <label style={pls.fieldLabel}>Lundi de la semaine source</label>
                   <input type="date" style={pls.fieldInput} value={duplicateSource.sourceDate}
                     onChange={e => setDuplicateSource({ ...duplicateSource, sourceDate: e.target.value })} />
                 </div>
-                <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <label style={pls.fieldLabel}>Lundi de la semaine cible</label>
                   <input type="date" style={pls.fieldInput} value={duplicateSource.targetDate}
                     onChange={e => setDuplicateSource({ ...duplicateSource, targetDate: e.target.value })} />
@@ -1398,7 +1398,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--warning-text)', lineHeight: 1.5 }}>
                 Document conforme aux <strong>articles 15 &amp; 21 CCNT</strong> hôtellerie-restauration suisse. À signer <strong>chaque mois</strong> par le collaborateur et l'employeur, à conserver <strong>5 ans</strong>.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                 <div>
                   <label style={pls.fieldLabel}>Collaborateur</label>
                   <select style={pls.fieldInput} value={ccntEmployeeId || ''} onChange={e => setCcntEmployeeId(e.target.value)}>
@@ -1843,12 +1843,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 {/* ── Plage de dates ── */}
                 <div>
                   <label style={pls.fieldLabel}>Plage de dates ({dates.length} jour{dates.length > 1 ? 's' : ''})</label>
+                  {/* base a 200px : le champ date iOS occupe ~192px, il faut
+                      qu'une colonne trop etroite provoque le passage a la ligne */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                    <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                       <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Du</label>
                       <input type="date" style={pls.fieldInput} value={batchStart} onChange={e => setBatchStart(e.target.value)} />
                     </div>
-                    <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                    <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                       <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Au</label>
                       <input type="date" style={pls.fieldInput} value={batchEnd} onChange={e => setBatchEnd(e.target.value)} />
                     </div>
@@ -1888,7 +1890,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       );
                     })}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                     <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
                     <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
                     <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>

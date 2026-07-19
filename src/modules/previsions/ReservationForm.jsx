@@ -185,8 +185,10 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
         {/* ── Corps scrollable ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Date + Service */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          {/* Date + Service. Plancher a 200px : le champ date rendu par iOS
+              occupe ~192px et ne rétrécit pas. A 150px il debordait de sa
+              colonne et passait sous les boutons Midi/Soir/Brunch. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
               <label style={lbl}>Date</label>
               <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} style={inp} />
