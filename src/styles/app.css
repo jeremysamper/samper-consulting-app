@@ -668,6 +668,82 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* ─── Champs date/heure : neutraliser le dimensionnement natif iOS ──────────
+   CAUSE RACINE des modales cassées sur iPhone et iPad alors qu'elles étaient
+   mesurées correctes en émulation Chrome.
+
+   Sur iOS, input[type=date|time|month] n'est pas un champ texte : Safari le
+   rend comme un CONTRÔLE NATIF qui impose sa propre largeur minimale. Cette
+   largeur ignore `width: 100%` : le champ déborde de sa colonne de grille et
+   pousse les champs et boutons voisins, d'où les chevauchements. Chrome
+   desktop, lui, rend un champ texte ordinaire qui se plie à sa colonne - il
+   ne reproduit donc jamais le défaut, quelle que soit la largeur simulée.
+
+   `appearance: none` retire ce dimensionnement natif, `min-width: 0` autorise
+   enfin le champ à rétrécir dans une grille ou un flex (sans ça la valeur
+   `auto` par défaut vaut la taille intrinsèque du contrôle).
+
+   HORS media query, volontairement : un iPad en paysage fait 1024px, donc le
+   bloc @media (max-width: 768px) ne s'y applique pas. Une correction placée
+   là-dedans n'aurait rien changé au cas d'usage principal. */
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* Même verrou pour les champs numériques : la saisie de température des tuiles
+   HACCP se retrouvait trop large et masquait les boutons valider/annuler.
+   Pas d'appearance:none ici, cela retirerait les fleches de reglage en desktop. */
+input[type="number"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Appareils tactiles : cibler le POINTEUR, pas la largeur ───────────────
+   Toutes les protections tactiles de l'app vivaient dans
+   @media (max-width: 768px). Un iPad en paysage fait 1024px : il n'en
+   recevait donc aucune, alors que c'est un écran qu'on utilise au doigt, en
+   cuisine, souvent avec les mains humides. `pointer: coarse` vise l'appareil
+   par son mode d'interaction et couvre tablette et téléphone dans les deux
+   orientations. Une souris (`pointer: fine`) n'est pas concernée : le desktop
+   garde ses barres compactes. */
+@media (pointer: coarse) {
+  button:not(.mini),
+  a.button,
+  [role="button"]:not(.mini),
+  .module-actions > button,
+  .module-actions > label,
+  .module-actions > input,
+  .module-actions > select,
+  .module-toolbar > button,
+  .module-toolbar > label {
+    min-height: 44px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="month"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px !important; /* évite le zoom auto iOS */
+    min-height: 44px;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
