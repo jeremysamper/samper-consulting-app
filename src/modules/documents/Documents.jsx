@@ -379,8 +379,8 @@ const Documents = ({ user, etablissement }) => {
               <div style={doc_s.itemMeta}>{formatDate(f.createdAt)}</div>
               {canWrite && (
                 <div style={doc_s.itemActions} className="no-print">
-                  <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); setMoving(f); }} title="Déplacer">↗</button>
-                  <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); startRename(f); }} title="Renommer">✎</button>
+                  <button className="touch-target" style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); setMoving(f); }} title="Déplacer" aria-label="Déplacer">↗</button>
+                  <button className="touch-target" style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); startRename(f); }} title="Renommer" aria-label="Renommer">✎</button>
                   <button style={{ ...doc_s.miniBtn, color: 'var(--danger-strong)' }} onClick={(e) => { e.stopPropagation(); deleteDoc(f); }} title="Supprimer">🗑</button>
                 </div>
               )}
@@ -425,8 +425,8 @@ const Documents = ({ user, etablissement }) => {
               <div style={doc_s.itemMeta}>{formatSize(f.taille)} · {formatDate(f.createdAt)}</div>
               <div style={doc_s.itemActions} className="no-print">
                 <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); downloadFile(f); }} title="Télécharger">⬇</button>
-                {canWrite && <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); setMoving(f); }} title="Déplacer">↗</button>}
-                {canWrite && <button style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); startRename(f); }} title="Renommer">✎</button>}
+                {canWrite && <button className="touch-target" style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); setMoving(f); }} title="Déplacer" aria-label="Déplacer">↗</button>}
+                {canWrite && <button className="touch-target" style={doc_s.miniBtn} onClick={(e) => { e.stopPropagation(); startRename(f); }} title="Renommer" aria-label="Renommer">✎</button>}
                 {canWrite && <button style={{ ...doc_s.miniBtn, color: 'var(--danger-strong)' }} onClick={(e) => { e.stopPropagation(); deleteDoc(f); }} title="Supprimer">🗑</button>}
               </div>
             </div>

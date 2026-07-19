@@ -742,6 +742,25 @@ input[type="number"] {
     font-size: 16px !important; /* évite le zoom auto iOS */
     min-height: 44px;
   }
+
+  /* !important assumé : ces deux cibles posent leur taille en style inline
+     (le primitif Btn, et les boutons-icônes des modules). Une regle de feuille
+     de style ne peut pas passer devant un inline autrement. La portee reste
+     etroite - deux classes explicites, pas tous les boutons de l app. */
+  .ui-btn,
+  .touch-target {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* Cases a cocher natives : ~15px par defaut, impossible a viser au doigt
+     quand on coche une ligne en service. 24px est le minimum WCAG 2.5.8.
+     Les cases deja dimensionnees en inline (22 a 26px) ne sont pas touchees. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 24px;
+    height: 24px;
+  }
 }
 
 ::-webkit-scrollbar {

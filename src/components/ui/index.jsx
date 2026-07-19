@@ -49,6 +49,11 @@ export function Btn({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
+      /* La hauteur est posée en inline juste dessous, donc aucune feuille de
+         style ne peut la relever sur mobile sans !important. Cette classe donne
+         un point d'accroche à la règle tactile de app.css (pointer: coarse),
+         qui remonte les 32/38px à 44px sur tablette et téléphone. */
+      className="ui-btn"
       style={{
         display: 'inline-flex',
         alignItems: 'center',

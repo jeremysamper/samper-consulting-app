@@ -1543,10 +1543,31 @@ const Recettes = ({ user, etablissement }) => {
               recettesParPlat[p.id]?.some(r => normalizeSearch(r.nom).includes(q))
             );
 
+            // La ligne reste un <div> plutôt qu'un <button> : la convertir
+            // imposerait de neutraliser tous les styles par défaut du bouton et
+            // ferait courir un risque de régression visuelle. On lui donne donc
+            // le contrat d'accessibilité d'un bouton - rôle, focus au clavier,
+            // activation par Entrée et Espace - sans toucher au rendu. Sans ça
+            // la ligne était invisible au clavier et aux lecteurs d'écran.
+            const activerRecette = (r) => setSelectedRecette(r);
+            const togglePlat = (platId, estDeplie) => {
+              const next = new Set(expandedPlats);
+              estDeplie ? next.delete(platId) : next.add(platId);
+              setExpandedPlats(next);
+            };
             const renderRecetteCard = (r, isSubItem = false) => (
               <div key={r.id + (isSubItem ? '-sub' : '')}
+                role="button"
+                tabIndex={0}
+                aria-label={`Ouvrir la recette ${r.nom}`}
                 style={isSubItem ? {...rs.recetteRow, ...rs.recetteRowSub} : {...rs.recetteRow, ...rs.recetteRowOrphelin}}
-                onClick={() => setSelectedRecette(r)}>
+                onClick={() => activerRecette(r)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault(); // Espace ferait défiler la page sinon
+                    activerRecette(r);
+                  }
+                }}>
                 {r.photoUrl ? (
                   <img src={r.photoUrl} alt={r.nom} style={rs.thumb} onError={e => e.currentTarget.style.display = 'none'}/>
                 ) : (
@@ -1587,10 +1608,16 @@ const Recettes = ({ user, etablissement }) => {
                   return (
                     <div key={plat.id}>
                       <div style={rs.platBlock}
-                        onClick={() => {
-                          const next = new Set(expandedPlats);
-                          isExpanded ? next.delete(plat.id) : next.add(plat.id);
-                          setExpandedPlats(next);
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        aria-label={`${isExpanded ? 'Replier' : 'Déplier'} les recettes de ${plat.nom}`}
+                        onClick={() => togglePlat(plat.id, isExpanded)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            togglePlat(plat.id, isExpanded);
+                          }
                         }}>
                         {plat.photoUrl ? (
                           <img src={plat.photoUrl} alt={plat.nom} style={rs.thumb} onError={e => e.currentTarget.style.display = 'none'}/>
