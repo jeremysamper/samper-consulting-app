@@ -1490,7 +1490,7 @@ const Recettes = ({ user, etablissement }) => {
                                   style={rs.recetteLink}
                                   onClick={() => setSelectedRecette(r)}
                                 >
-                                  <span style={rs.recetteLinkNom}>→ {r.nom}</span>
+                                  <span style={rs.recetteLinkNom}>{r.nom}</span>
                                   {user.role === 'consultant' && r.coutPortion != null && (
                                     <span style={rs.recetteLinkPrix}>
                                       CHF {r.coutPortion.toFixed(2)}
@@ -1553,7 +1553,7 @@ const Recettes = ({ user, etablissement }) => {
                   <div style={rs.thumbPlaceholder}>📖</div>
                 )}
                 <div style={rs.recetteInfo}>
-                  <div style={rs.recetteName}>{isSubItem && '↳ '}{r.nom}</div>
+                  <div style={rs.recetteName}>{r.nom}</div>
                   <div style={rs.recetteMeta}>{r.categorie} · {r.portions} portions · v{r.version} · modifié {r.modifie}</div>
                 </div>
                 <div style={rs.recetteBadges}>
