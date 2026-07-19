@@ -1209,6 +1209,11 @@ const Recettes = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   const isMobile = useIsMobile();
+  // Les KPIs consultant (coût/portion + food cost) demandent ~144px sur la
+  // ligne de recette. Entre 768 et 1023px la sidebar laisse à peine 470px de
+  // contenu : les afficher écrasait le nom de la recette à ~44px de large, qui
+  // se lisait alors verticalement sur 190px de haut. On attend 1024px.
+  const isEtroit = useIsMobile(1024);
   const online = useOnlineStatus();
   // Onglet actif : id d'une carte, ou 'recettes' (bibliothèque).
   // Démarre vide → l'effet ci-dessous bascule sur la 1re carte une fois chargée
@@ -1478,16 +1483,16 @@ const Recettes = ({ user, etablissement }) => {
                             )}
                           </div>
                           {recettesPlat.length > 0 && (
-                            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
+                            <div style={rs.recetteLinkListe}>
                               {recettesPlat.map(r => (
                                 <button
                                   key={r.id}
-                                  style={{ ...rs.recetteLink, display: 'block', textAlign: 'left', marginBottom: 4, width: '100%' }}
+                                  style={rs.recetteLink}
                                   onClick={() => setSelectedRecette(r)}
                                 >
-                                  → {r.nom}
+                                  <span style={rs.recetteLinkNom}>→ {r.nom}</span>
                                   {user.role === 'consultant' && r.coutPortion != null && (
-                                    <span style={{ float: 'right', fontSize: 10, color: 'var(--text2)' }}>
+                                    <span style={rs.recetteLinkPrix}>
                                       CHF {r.coutPortion.toFixed(2)}
                                     </span>
                                   )}
@@ -1540,7 +1545,7 @@ const Recettes = ({ user, etablissement }) => {
 
             const renderRecetteCard = (r, isSubItem = false) => (
               <div key={r.id + (isSubItem ? '-sub' : '')}
-                style={{...rs.recetteRow, marginLeft: isSubItem ? 30 : 0, borderLeft: isSubItem ? '3px solid var(--border)' : 'none'}}
+                style={isSubItem ? {...rs.recetteRow, ...rs.recetteRowSub} : rs.recetteRow}
                 onClick={() => setSelectedRecette(r)}>
                 {r.photoUrl ? (
                   <img src={r.photoUrl} alt={r.nom} style={rs.thumb} onError={e => e.currentTarget.style.display = 'none'}/>
@@ -1554,7 +1559,7 @@ const Recettes = ({ user, etablissement }) => {
                 <div style={rs.recetteBadges}>
                   {(r.allergenesIds||[]).map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
                 </div>
-                {user.role === 'consultant' && !isMobile && (
+                {user.role === 'consultant' && !isEtroit && (
                   <div style={rs.recetteKpis}>
                     <div style={rs.recetteKpi}><span>Coût/portion</span><strong>CHF {(r.coutPortion != null ? r.coutPortion : 0).toFixed(2)}</strong></div>
                     <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
@@ -1595,9 +1600,13 @@ const Recettes = ({ user, etablissement }) => {
                           </div>
                         </div>
                       </div>
-                      {isExpanded && platRecettes.map(r => renderRecetteCard(r, true))}
+                      {isExpanded && platRecettes.length > 0 && (
+                        <div style={rs.sousListe}>
+                          {platRecettes.map(r => renderRecetteCard(r, true))}
+                        </div>
+                      )}
                       {isExpanded && platRecettes.length === 0 && (
-                        <div style={{ padding: '8px 14px 8px 60px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
+                        <div style={rs.sousListeVide}>
                           Aucune recette rattachée à ce plat.
                         </div>
                       )}
@@ -1648,7 +1657,19 @@ const rs = {
   allergeneDot: {fontSize:10,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
   platFooter: {display:'flex',alignItems:'center',justifyContent:'space-between'},
   platPrix: {fontSize:16,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
-  recetteLink: {background:'none',border:'none',color:'var(--accent)',fontSize:11,fontWeight:600,cursor:'pointer',padding:0,fontFamily:'var(--font)'},
+  // ─── Recettes listées au pied d'une carte de plat ─────────────────────────
+  // Mesuré sur iPad paysage (1024px) : c'étaient des liens texte de 11px sans
+  // padding, soit 15px de haut séparés de 4px. Un doigt pose ~40px de contact :
+  // il couvrait deux à trois lignes à la fois, d'où les ouvertures à côté.
+  // La règle globale « min-height 44px » ne s'applique qu'en dessous de 768px,
+  // donc elle ne protégeait justement pas la tablette en paysage.
+  // Vraies lignes tactiles : 44px de haut, fond distinct, séparées de 6px.
+  recetteLinkListe: {marginTop:8,paddingTop:8,borderTop:'1px dashed var(--border)',display:'flex',flexDirection:'column',gap:6},
+  recetteLink: {display:'flex',alignItems:'center',gap:8,width:'100%',minHeight:44,padding:'8px 10px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,color:'var(--accent)',fontSize:12,fontWeight:600,textAlign:'left',cursor:'pointer',fontFamily:'var(--font)',transition:'background .12s'},
+  // Le prix était en float:right : il se décalait mal dès que le nom passait
+  // sur deux lignes. En flex il reste aligné à droite, sur la même ligne.
+  recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
+  recetteLinkPrix: {flexShrink:0,fontSize:10,color:'var(--text2)',fontWeight:600},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   fcLine: {fontSize:11,color:'var(--text2)',marginTop:6},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
@@ -1657,6 +1678,20 @@ const rs = {
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
   recetteRow: {display:'flex',alignItems:'center',gap:14,padding:'14px 18px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .12s'},
+
+  // ─── Recettes rattachées à un plat : cartes détachées ─────────────────────
+  // Mesuré sur mobile : les lignes se touchaient bord à bord (0px d'écart), y
+  // compris entre l'en-tête du plat et sa première recette. Un doigt à quelques
+  // pixels de la frontière ouvrait la recette voisine - ou repliait le plat et
+  // faisait perdre sa position dans la liste.
+  // Les gouttières de 8px appartiennent à `sousListe`, qui n'a aucun onClick :
+  // un quasi-raté ne déclenche donc plus rien au lieu de déclencher la mauvaise
+  // ligne. Le fond en retrait (--bg) rend ces gouttières visibles.
+  sousListe: {display:'flex',flexDirection:'column',gap:8,padding:'8px 10px',background:'var(--bg)',borderBottom:'1px solid var(--border)'},
+  sousListeVide: {padding:'12px 10px 12px 40px',background:'var(--bg)',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--text2)',fontStyle:'italic'},
+  // Rail d'accent à gauche pour garder la hiérarchie visuelle ; minHeight pose
+  // un plancher de rythme vertical (les hauteurs mesurées allaient de 91 à 123px).
+  recetteRowSub: {marginLeft:22,border:'1px solid var(--border)',borderLeft:'3px solid var(--accent-bd)',borderRadius:10,background:'var(--surface)',minHeight:72},
   recetteInfo: {flex:1,minWidth:0},
   thumb: { width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
   thumbPlaceholder: { width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 24, color: 'var(--text2)', flexShrink: 0 },
