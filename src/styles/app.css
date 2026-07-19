@@ -248,12 +248,17 @@ html[data-theme="dark"] {
     min-height: 44px;
   }
 
+  /* Tous les types de champs saisis dans l'app doivent figurer ici : un type
+     oublie garde sa taille de police d'origine et Safari zoome automatiquement
+     au tap (month = releve CCNT, tel = reservations et parametres). */
   input[type="text"],
   input[type="email"],
   input[type="password"],
   input[type="number"],
   input[type="date"],
   input[type="time"],
+  input[type="month"],
+  input[type="tel"],
   textarea,
   select {
     font-size: 16px !important; /* évite le zoom auto iOS */
