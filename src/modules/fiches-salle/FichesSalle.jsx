@@ -4,6 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { Btn } from '../../components/ui/index.jsx';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -139,6 +140,7 @@ const FichesSalle = ({ user, etablissement }) => {
   const [bulkProgress, setBulkProgress] = React.useState(null);
   const bulkCancelRef = React.useRef(false);
   const [selBusy, setSelBusy] = React.useState(false);
+  const [showBulkCartes, setShowBulkCartes] = React.useState(false);
   const sel = useSelection();
 
   // Cartes (menus) - onglets de filtrage. '__all__' = toutes les fiches.
@@ -272,30 +274,85 @@ const FichesSalle = ({ user, etablissement }) => {
     notifyLegacy(`${ok} fiche(s) salle supprimée(s).`, 'success');
   };
 
+  // ── Attribution en masse des fiches sélectionnées à une ou plusieurs cartes ──
+  // Rattrapage des fiches sans carte (générations antérieures au rattachement
+  // automatique) et déplacement d'une carte à l'autre au changement de saison.
+  const bulkAssignCartes = async (carteIds, mode) => {
+    if (sel.count === 0) return;
+    setSelBusy(true);
+    const updated = new Map();
+    let echecs = 0;
+    for (const id of Array.from(sel.ids)) {
+      const fiche = fiches.find(f => f.id === id);
+      if (!fiche) continue;
+      const next = mode === 'replace'
+        ? [...carteIds]
+        : [...new Set([...(fiche.carteIds || []), ...carteIds])];
+      try {
+        if (legacySB) await legacySB.db.setFicheCartes(id, next);
+        updated.set(id, next);
+      } catch (err) {
+        console.error('[setFicheCartes]', err);
+        echecs += 1;
+      }
+    }
+    setFiches(prev => prev.map(f => (updated.has(f.id) ? { ...f, carteIds: updated.get(f.id) } : f)));
+    setSelBusy(false);
+    setShowBulkCartes(false);
+    sel.exit();
+    const noms = cartes.filter(c => carteIds.includes(c.id)).map(c => c.nom).join(', ');
+    notifyLegacy(
+      updated.size === 0
+        ? 'Aucune fiche rattachée.'
+        : `${updated.size} fiche(s) ${mode === 'replace' ? 'déplacée(s) vers' : 'rattachée(s) à'} ${noms || 'aucune carte'}`
+          + `${echecs ? ` · ${echecs} échec(s)` : ''}.`,
+      updated.size === 0 ? 'error' : 'success',
+    );
+  };
+
   // ── Génération IA des fiches salle - une fiche par PLAT FINI de la carte ──
   // Un plat fini = une fiche salle. Les recettes liées à un plat alimentent
   // l'IA (ingrédients, étapes, allergènes) mais ne donnent pas chacune une
   // fiche. À défaut de plats sur la carte, on retombe sur les recettes servies.
   const genererFichesSalleIA = async () => {
     const existingByNom = new Set(fiches.map(f => (f.nom || '').trim().toLowerCase()));
+    // Carte affichée : elle borne la génération ET rattache les fiches produites.
+    // Sans ce rattachement, les fiches ne ressortent que dans l'onglet « Toutes ».
+    const carteActive = activeCarteTab === ALL_TAB ? null : cartes.find(c => c.id === activeCarteTab);
 
     const recettesActives = (recettes || []).filter(r => r && r.statut !== 'archivée');
     const recetteById = new Map(recettesActives.map(r => [r.id, r]));
     const platsActifs = (plats || []).filter(p => p && p.actif !== false);
+    const platsPortee = carteActive
+      ? platsActifs.filter(p => (p.carteIds || []).includes(carteActive.id))
+      : platsActifs;
     // Plats réellement exploitables : au moins une recette liée connue.
-    const platsLies = platsActifs.filter(p => (p.recettes || []).some(pr => recetteById.has(pr.recetteId)));
-    const useRecettesDirect = platsLies.length === 0;
+    const platsLies = platsPortee.filter(p => (p.recettes || []).some(pr => recetteById.has(pr.recetteId)));
+    // Repli sur les recettes servies : uniquement depuis « Toutes ». Depuis
+    // l'onglet d'une carte, ce repli générerait pour tout l'établissement.
+    const useRecettesDirect = platsLies.length === 0 && !carteActive;
+
+    if (carteActive && platsLies.length === 0) {
+      notifyLegacy(
+        `Aucun plat de « ${carteActive.nom} » n'a de recette liée. Rattachez les recettes aux plats dans « Cartes & Recettes ».`,
+        'warning',
+      );
+      return;
+    }
 
     // Unités à transformer en fiche salle : plats finis, ou recettes servies
     // si la carte n'a pas de plats.
     const units = useRecettesDirect
       ? recettesActives
         .filter(r => estRecetteServie(r.categorie))
-        .map(r => ({ nom: r.nom || 'Recette', categorie: r.categorie || 'Plats', recettes: [r] }))
+        .map(r => ({ nom: r.nom || 'Recette', categorie: r.categorie || 'Plats', recettes: [r], carteIds: [] }))
       : platsLies.map(p => ({
         nom: p.nom || 'Plat',
         categorie: p.categorie || 'Plats',
         recettes: (p.recettes || []).map(pr => recetteById.get(pr.recetteId)).filter(Boolean),
+        // Depuis une carte : cette carte. Depuis « Toutes » : la fiche hérite
+        // des cartes de son plat, elle atterrit donc dans les bons onglets.
+        carteIds: carteActive ? [carteActive.id] : (p.carteIds || []),
       }));
 
     const targets = units.filter(u =>
@@ -304,14 +361,16 @@ const FichesSalle = ({ user, etablissement }) => {
       && u.recettes.some(r => (r.ingredients || []).length > 0)
     );
     if (!targets.length) {
-      notifyLegacy(useRecettesDirect
-        ? 'Tous les plats ont déjà une fiche salle.'
-        : 'Tous les plats de la carte ont déjà une fiche salle.', 'info');
+      notifyLegacy(carteActive
+        ? `Tous les plats de « ${carteActive.nom} » ont déjà une fiche salle.`
+        : 'Tous les plats ont déjà une fiche salle.', 'info');
       return;
     }
     if (!confirmLegacy(
       `Générer ${targets.length} fiche(s) salle par IA ?\n\n`
-      + `Une fiche par plat fini${useRecettesDirect ? '' : ' de la carte'}. `
+      + (carteActive
+        ? `Une fiche par plat fini de « ${carteActive.nom} », rattachée à cette carte. `
+        : 'Une fiche par plat fini, rattachée aux cartes de son plat. ')
       + `Cela effectue ${targets.length} appel(s) à l'IA. Les fiches sont créées en statut « Brouillon » - à relire avant publication.`
     )) return;
     bulkCancelRef.current = false;
@@ -352,8 +411,14 @@ const FichesSalle = ({ user, etablissement }) => {
             modifiePar: user.id,
             modifie: todayStr,
           };
-          if (legacySB) return legacySB.db.upsertFicheSalle(fiche);
-          return { ...fiche, id: 'fs-' + Date.now() + Math.round(Math.random() * 1e6) };
+          if (legacySB) {
+            const saved = await legacySB.db.upsertFicheSalle(fiche);
+            // upsertFicheSalle n'écrit pas la jointure carte_fiches_salle : sans
+            // ce second appel la fiche n'a aucune carte (cf. saveFiche).
+            if (u.carteIds.length) await legacySB.db.setFicheCartes(saved.id, u.carteIds);
+            return { ...saved, carteIds: u.carteIds };
+          }
+          return { ...fiche, carteIds: u.carteIds, id: 'fs-' + Date.now() + Math.round(Math.random() * 1e6) };
         }));
         results.forEach(res => {
           done += 1;
@@ -370,6 +435,7 @@ const FichesSalle = ({ user, etablissement }) => {
     setBulkProgress(null);
     notifyLegacy(
       `Génération terminée : ${created} fiche(s) salle créée(s) sur ${done} traitée(s)`
+      + `${carteActive ? ` dans « ${carteActive.nom} »` : ''}`
       + `${bulkCancelRef.current ? ' · interrompu' : ''}.`,
       created > 0 ? 'success' : 'info',
     );
@@ -428,7 +494,13 @@ const FichesSalle = ({ user, etablissement }) => {
           onDelete={bulkDeleteFiches}
           onCancel={sel.exit}
           busy={selBusy}
-        />
+        >
+          {cartes.length > 0 && (
+            <Btn small variant="primary" onClick={() => setShowBulkCartes(true)} disabled={sel.count === 0 || selBusy}>
+              Attribuer à une carte ({sel.count})
+            </Btn>
+          )}
+        </SelectionToolbar>
       )}
 
       {/* Progression de la génération IA des fiches salle */}
@@ -513,6 +585,15 @@ const FichesSalle = ({ user, etablissement }) => {
       </div>
 
       {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
+      {showBulkCartes && (
+        <BulkCartesModal
+          cartes={cartes}
+          count={sel.count}
+          busy={selBusy}
+          onApply={bulkAssignCartes}
+          onClose={()=>setShowBulkCartes(false)}
+        />
+      )}
     </div>
   );
 };
@@ -669,6 +750,52 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 </select>
               </div>
             </div>
+            {/* Attribution : cartes (menus) où figure cette fiche. Placé haut
+                dans le formulaire, c'est ce qui décide de l'onglet où la fiche
+                apparaît ; enterré en bas, il passait inaperçu. */}
+            <div style={fss.field}>
+              <label style={fss.fLabel}>
+                Attribution aux cartes
+                {(fiche?.carteIds || []).length === 0 && (
+                  <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700, textTransform: 'none', letterSpacing: 0 }}>
+                    aucune carte, la fiche ne sortira que dans « Toutes »
+                  </span>
+                )}
+              </label>
+              {cartes.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+                  Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher cette fiche.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {cartes.map(c => {
+                    const checked = (fiche?.carteIds || []).includes(c.id);
+                    return (
+                      // touch-target : ce sont des <label>, la regle globale
+                      // des 44px sur pointer:coarse ne vise que les boutons.
+                      <label key={c.id} className="touch-target"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 36,
+                          border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                          background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                          color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 400,
+                        }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setFiche(f => {
+                            const cur = f.carteIds || [];
+                            return { ...f, carteIds: checked ? cur.filter(id => id !== c.id) : [...cur, c.id] };
+                          })}
+                        />
+                        {c.nom}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div style={fss.field}><label style={fss.fLabel}>Description pour l'équipe salle *</label><textarea style={{...fss.fInput,minHeight:80,resize:'vertical'}} value={fiche?.descriptionService||''} onChange={e=>setFiche(f=>({...f,descriptionService:e.target.value}))}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <div style={fss.field}><label style={fss.fLabel}>Température de service</label><input style={fss.fInput} placeholder="ex. Chaud - servir immédiatement" value={fiche?.temperatureService||''} onChange={e=>setFiche(f=>({...f,temperatureService:e.target.value}))}/></div>
@@ -697,41 +824,6 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 )}
               </div>
             )}
-
-            {/* Cartes (menus) où figure cette fiche */}
-            <div style={fss.field}>
-              <label style={fss.fLabel}>Cartes (menus)</label>
-              {cartes.length === 0 ? (
-                <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
-                  Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher cette fiche.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {cartes.map(c => {
-                    const checked = (fiche?.carteIds || []).includes(c.id);
-                    return (
-                      <label key={c.id}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
-                          border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
-                          background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                          color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 11, cursor: 'pointer', fontWeight: checked ? 700 : 400,
-                        }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => setFiche(f => {
-                            const cur = f.carteIds || [];
-                            return { ...f, carteIds: checked ? cur.filter(id => id !== c.id) : [...cur, c.id] };
-                          })}
-                        />
-                        {c.nom}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
 
             {/* Allergènes */}
             <div style={fss.field}>
@@ -796,6 +888,85 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
           <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:18}}>
             <button style={fss.cancelBtn} onClick={onClose}>Annuler</button>
             <button style={fss.saveBtn} onClick={()=>onSave(fiche)}>Enregistrer la fiche</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Attribution en masse : choix des cartes pour les fiches sélectionnées ───
+// « Ajouter » cumule avec les cartes déjà rattachées, « Remplacer » écrase.
+// Remplacer sans aucune carte cochée détache les fiches de toutes les cartes,
+// c'est volontaire (retirer une série de fiches d'une carte de saison).
+const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
+  const [ids, setIds] = React.useState([]);
+  const [mode, setMode] = React.useState('add');
+  const toggle = (id) => setIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  const fermer = () => { if (!busy) onClose(); };
+
+  return (
+    <div className="modal-sheet-overlay" style={fss.overlay} onClick={fermer}>
+      <div className="modal-sheet" style={{ ...fss.modal, width: 460 }} onClick={e => e.stopPropagation()}>
+        <div style={fss.modalHeader}>
+          <div style={fss.modalTitle}>Attribuer {count} fiche{count > 1 ? 's' : ''}</div>
+          <button style={fss.closeBtn} onClick={fermer}>✕</button>
+        </div>
+        <div style={fss.modalBody}>
+          <div style={{ ...fss.field, marginBottom: 16 }}>
+            <label style={fss.fLabel}>Cartes (menus)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {cartes.map(c => {
+                const checked = ids.includes(c.id);
+                return (
+                  <label key={c.id} className="touch-target"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 36,
+                      border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                      background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                      color: checked ? 'var(--accent)' : 'var(--text2)',
+                      fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 400,
+                    }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggle(c.id)} />
+                    {c.nom}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={fss.field}>
+            <label style={fss.fLabel}>Mode</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+              {[
+                { id: 'add', titre: 'Ajouter', aide: 'Les cartes déjà rattachées sont conservées.' },
+                { id: 'replace', titre: 'Remplacer', aide: 'Les cartes actuelles des fiches sont écrasées.' },
+              ].map(o => (
+                <label key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+                  <input type="radio" name="bulk-cartes-mode" checked={mode === o.id} onChange={() => setMode(o.id)} style={{ marginTop: 2 }} />
+                  <span>
+                    {o.titre}
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', lineHeight: 1.3 }}>{o.aide}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {mode === 'replace' && ids.length === 0 && (
+            <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 12 }}>
+              Aucune carte cochée : les fiches seront retirées de toutes leurs cartes et ne resteront visibles que dans « Toutes ».
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+            <button style={fss.cancelBtn} onClick={fermer} disabled={busy}>Annuler</button>
+            <button
+              style={{ ...fss.saveBtn, opacity: busy || (mode === 'add' && ids.length === 0) ? 0.5 : 1 }}
+              onClick={() => onApply(ids, mode)}
+              disabled={busy || (mode === 'add' && ids.length === 0)}>
+              {busy ? 'Attribution…' : 'Appliquer'}
+            </button>
           </div>
         </div>
       </div>
