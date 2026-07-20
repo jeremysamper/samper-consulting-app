@@ -10,7 +10,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 // ─────────────────────────────────────────────────────
 
 // Modules de l'onglet visibilité : tous ceux du nav (source unique :
-// moduleConfig.navItems, clé = permKey — ex. la page « cartes » est stockée
+// moduleConfig.navItems, clé = permKey, ex. la page « cartes » est stockée
 // sous `recettes`) + les pages consultant-only hors nav.
 const MODULES = [
   ...navItems.map((n) => ({ id: n.permKey, label: n.label })),
