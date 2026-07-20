@@ -382,7 +382,12 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                     { key: 'ingredients', label: 'Ingrédients' },
                     { key: 'etapes', label: 'Étapes de préparation' },
                     { key: 'photos', label: 'Photo' },
-                    { key: 'prix', label: 'Food cost / prix', warn: 'Les prix varient par établissement' },
+                    // Chiffrage : consultant uniquement, le budget vit dans Outils
+                    // consultant. Pour les autres rôles l'option reste à false, donc
+                    // les prix ne sont pas copiés : c'est déjà le défaut historique.
+                    ...(user?.role === 'consultant'
+                      ? [{ key: 'prix', label: 'Food cost / prix', warn: 'Les prix varient par établissement' }]
+                      : []),
                     { key: 'allergenes', label: 'Allergènes & HACCP' },
                   ].map(o => (
                     <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -450,7 +455,6 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   const [showDuplicate, setShowDuplicate] = React.useState(false);
   const isMobile = useIsMobile();
   const ratio = portions / (recette.portions || 1);
-  const coutAdj = (recette.ingredients || []).reduce((s,i) => s + (i.quantite||0) * ratio * (i.prixUnit||0), 0);
 
   // ─── Flag congelation (utilise par le module Mise en place) ───
   // Editable par consultant/patron uniquement ; les autres roles voient le statut.
@@ -481,7 +485,10 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
 
   // Données fiche pour l'export jsPDF natif (helper module buildRecettePdfData).
   // On reflète les portions affichées (quantités mises à l'échelle).
-  const pdfOpts = { isConsultant: user?.role === 'consultant', portions };
+  // Pas de food cost : la fiche sortie d'ici est une fiche de production pour la
+  // brigade. Le chiffrage reste dans Outils consultant, qui appelle le même
+  // helper avec isConsultant.
+  const pdfOpts = { portions };
 
   const printRecipe = () => {
     if (!pdfUtils?.exportRecettePdf) {
@@ -504,7 +511,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   // Styles inline → pas de @media : on bascule via le hook useIsMobile.
   // Grille 2 col → 1 col, en-tête empilé, colonnes ingrédients resserrées
   // et police agrandie pour rester lisible sous 400 px.
-  const ingCols = isMobile ? '1fr 54px 38px 62px' : '1fr 80px 60px 80px';
+  const ingCols = isMobile ? '1fr 54px 38px' : '1fr 80px 60px';
   const sIngName = { ...rs.ingName, ...(isMobile ? { fontSize: 15 } : null) };
   const sIngQty = { ...rs.ingQty, ...(isMobile ? { fontSize: 15 } : null) };
 
@@ -551,7 +558,6 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
         </div>
         <div style={rs.detailBadges}>
           <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
-          {recette.foodCost && <span style={{...rs.badge, background: recette.foodCost < 30 ? 'var(--success-bg)' : recette.foodCost < 35 ? 'var(--warning-bg)' : 'var(--danger-bg)', color: recette.foodCost < 30 ? 'var(--success-text)' : recette.foodCost < 35 ? 'var(--warning-text)' : 'var(--danger-strong)'}}>FC {recette.foodCost.toFixed(1)}%</span>}
         </div>
       </div>
 
@@ -568,36 +574,18 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
             </div>
           </div>
           <div style={rs.ingTable}>
-            <div style={{...rs.ingHead, gridTemplateColumns: ingCols}}><span>Ingrédient</span><span>Quantité</span><span>Unité</span>{user.role === 'consultant' && <span>Coût</span>}</div>
+            <div style={{...rs.ingHead, gridTemplateColumns: ingCols}}><span>Ingrédient</span><span>Quantité</span><span>Unité</span></div>
             {(recette.ingredients || []).map(i => (
               <div key={i.id} style={{...rs.ingRow, gridTemplateColumns: ingCols}}>
                 <span style={sIngName}>{i.nom}</span>
                 <span style={sIngQty}>{((i.quantite||0) * ratio % 1 === 0 ? ((i.quantite||0) * ratio).toFixed(0) : ((i.quantite||0) * ratio).toFixed(1))}</span>
                 <span style={{fontSize: isMobile ? 14 : 13, color:'var(--text2)'}}>{i.unite}</span>
-                {user.role === 'consultant' && <span style={{fontSize:12, color:'var(--text2)'}}>CHF {((i.quantite||0) * ratio * (i.prixUnit||0)).toFixed(2)}</span>}
               </div>
             ))}
-            {user.role === 'consultant' && (
-              <div style={{...rs.ingRow, gridTemplateColumns: ingCols, background:'var(--bg)', fontWeight:700}}>
-                <span>Total pour {portions} portions</span><span></span><span></span>
-                <span style={{color:'var(--accent)'}}>CHF {coutAdj.toFixed(2)}</span>
-              </div>
-            )}
           </div>
         </div>
 
         <div style={{display:'flex', flexDirection:'column', gap:16}}>
-          {user.role === 'consultant' && (
-            <div style={rs.detailCard} className='no-print'>
-              <div style={rs.cardHeader}><span style={rs.cardTitle}>Analyse économique</span></div>
-              <div style={rs.kpiGrid}>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Coût matière / portion</span><strong style={{color:'var(--accent)'}}>CHF {portions > 0 ? (coutAdj/portions).toFixed(2) : '-'}</strong></div>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Prix de vente</span><strong>CHF {(recette.prixVente || 0).toFixed(2)}</strong></div>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Food cost %</span><strong style={{color: recette.foodCost == null ? 'var(--text2)' : recette.foodCost < 30 ? 'var(--success-strong)' : recette.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{recette.foodCost != null ? recette.foodCost.toFixed(1) + ' %' : '-'}</strong></div>
-                <div style={rs.kpiItem}><span style={rs.kpiLabel}>Marge brute</span><strong>CHF {((recette.prixVente || 0) - (portions > 0 ? coutAdj/portions : 0)).toFixed(2)}</strong></div>
-              </div>
-            </div>
-          )}
           <div style={rs.detailCard}>
             <div style={rs.cardHeader}><span style={rs.cardTitle}>Congélation</span></div>
             <div style={{padding:'12px 16px', display:'flex', flexDirection:'column', gap:10}}>
@@ -693,7 +681,7 @@ const exportCatRank = (c) => {
   return i === -1 ? EXPORT_CATS.length : i;
 };
 
-const ExportMultipleModal = ({ cartes, plats, recettes, user, etablissement, onClose }) => {
+const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }) => {
   const [tab, setTab] = React.useState('cartes'); // 'cartes' | 'plats' | 'recettes'
   const [query, setQuery] = React.useState('');
   const [selCartes, setSelCartes] = React.useState(() => new Set());
@@ -828,8 +816,8 @@ const ExportMultipleModal = ({ cartes, plats, recettes, user, etablissement, onC
   const handleExport = async () => {
     if (!count || busy) return;
     if (!pdfUtils?.exportRecettesPdf) { notifyLegacy('Export PDF indisponible pour le moment.', 'error'); return; }
-    const isConsultant = user?.role === 'consultant';
-    const data = fichesFinales.map(r => buildRecettePdfData(r, { isConsultant }));
+    // Fiches de production : jamais de food cost (cf. RecetteDetail).
+    const data = fichesFinales.map(r => buildRecettePdfData(r));
 
     let filename = `Fiches_${count}_recettes.pdf`;
     if (selectedCartesList.length === 1 && !selectedPlatsList.length && !selectedRecettesList.length) {
@@ -1209,11 +1197,6 @@ const Recettes = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   const isMobile = useIsMobile();
-  // Les KPIs consultant (coût/portion + food cost) demandent ~144px sur la
-  // ligne de recette. Entre 768 et 1023px la sidebar laisse à peine 470px de
-  // contenu : les afficher écrasait le nom de la recette à ~44px de large, qui
-  // se lisait alors verticalement sur 190px de haut. On attend 1024px.
-  const isEtroit = useIsMobile(1024);
   const online = useOnlineStatus();
   // Onglet actif : id d'une carte, ou 'recettes' (bibliothèque).
   // Démarre vide → l'effet ci-dessous bascule sur la 1re carte une fois chargée
@@ -1337,7 +1320,6 @@ const Recettes = ({ user, etablissement }) => {
           cartes={cartes}
           plats={plats}
           recettes={recettesEtab}
-          user={user}
           etablissement={etablissement}
           onClose={() => setShowExportModal(false)}
         />
@@ -1441,13 +1423,10 @@ const Recettes = ({ user, etablissement }) => {
                     // Recettes rattachées au plat
                     const recettesIds = (plat.recettes || []).map(pr => pr.recetteId);
                     const recettesPlat = recettesEtab.filter(r => recettesIds.includes(r.id));
-                    // Food cost agrégé = somme des coûts par portion de toutes les recettes
-                    const coutTotalParPortion = recettesPlat.reduce((s, r) => s + (r.coutPortion || 0), 0);
                     // Allergènes consolidés depuis toutes les recettes liées
                     const allergsSet = new Set();
                     recettesPlat.forEach(r => (r.allergenesIds || []).forEach(a => allergsSet.add(a)));
                     const allergsList = [...allergsSet];
-                    const fcAgg = (plat.prixVente && coutTotalParPortion > 0) ? (coutTotalParPortion / plat.prixVente * 100) : null;
 
                     return (
                       <div key={plat.id} style={rs.platCard}>
@@ -1472,16 +1451,13 @@ const Recettes = ({ user, etablissement }) => {
                           <div style={rs.platAllergenes}>
                             {allergsList.map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
                           </div>
-                          <div style={rs.platFooter}>
-                            <div style={rs.platPrix}>
-                              {plat.prixVente != null ? `CHF ${plat.prixVente.toFixed(2)}` : '-'}
-                            </div>
-                            {recettesPlat.length > 0 && (
+                          {recettesPlat.length > 0 && (
+                            <div style={rs.platFooter}>
                               <div style={{ fontSize: 11, color: 'var(--text2)' }}>
                                 {recettesPlat.length} recette{recettesPlat.length > 1 ? 's' : ''}
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                           {recettesPlat.length > 0 && (
                             <div style={rs.recetteLinkListe}>
                               {recettesPlat.map(r => (
@@ -1491,19 +1467,8 @@ const Recettes = ({ user, etablissement }) => {
                                   onClick={() => setSelectedRecette(r)}
                                 >
                                   <span style={rs.recetteLinkNom}>{r.nom}</span>
-                                  {user.role === 'consultant' && r.coutPortion != null && (
-                                    <span style={rs.recetteLinkPrix}>
-                                      CHF {r.coutPortion.toFixed(2)}
-                                    </span>
-                                  )}
                                 </button>
                               ))}
-                            </div>
-                          )}
-                          {user.role === 'consultant' && fcAgg != null && (
-                            <div style={rs.fcLine}>
-                              Food cost agrégé : <strong style={{color: fcAgg < 30 ? 'var(--success-text)' : fcAgg < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{fcAgg.toFixed(1)}%</strong>
-                              <span style={{ fontSize: 10, color: 'var(--text2)', marginLeft: 6 }}>(coût matière {coutTotalParPortion.toFixed(2)} / vente {plat.prixVente?.toFixed(2)})</span>
                             </div>
                           )}
                         </div>
@@ -1589,12 +1554,6 @@ const Recettes = ({ user, etablissement }) => {
                     </span>
                   )}
                 </div>
-                {user.role === 'consultant' && !isEtroit && (
-                  <div style={rs.recetteKpis}>
-                    <div style={rs.recetteKpi}><span>Coût/portion</span><strong>CHF {(r.coutPortion != null ? r.coutPortion : 0).toFixed(2)}</strong></div>
-                    <div style={rs.recetteKpi}><span>Food cost</span><strong style={{color: r.foodCost == null ? 'var(--text2)' : r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)'}}>{r.foodCost != null ? r.foodCost.toFixed(1) + '%' : '-'}</strong></div>
-                  </div>
-                )}
                 <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{r.statut}</span>
                 <span style={{color:'var(--text2)', fontSize:18}}>›</span>
               </div>
@@ -1631,7 +1590,6 @@ const Recettes = ({ user, etablissement }) => {
                           </div>
                           <div style={rs.recetteMeta}>
                             {plat.categorie}
-                            {plat.prixVente != null && ` · CHF ${plat.prixVente.toFixed(2)}`}
                             {' · '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
                           </div>
                         </div>
@@ -1696,7 +1654,6 @@ const rs = {
   platAllergenes: {display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'},
   allergeneDot: {fontSize:10,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
   platFooter: {display:'flex',alignItems:'center',justifyContent:'space-between'},
-  platPrix: {fontSize:16,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
   // ─── Recettes listées au pied d'une carte de plat ─────────────────────────
   // Mesuré sur iPad paysage (1024px) : c'étaient des liens texte de 11px sans
   // padding, soit 15px de haut séparés de 4px. Un doigt pose ~40px de contact :
@@ -1706,12 +1663,8 @@ const rs = {
   // Vraies lignes tactiles : 44px de haut, fond distinct, séparées de 6px.
   recetteLinkListe: {marginTop:8,paddingTop:8,borderTop:'1px dashed var(--border)',display:'flex',flexDirection:'column',gap:6},
   recetteLink: {display:'flex',alignItems:'center',gap:8,width:'100%',minHeight:44,padding:'8px 10px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,color:'var(--accent)',fontSize:12,fontWeight:600,textAlign:'left',cursor:'pointer',fontFamily:'var(--font)',transition:'background .12s'},
-  // Le prix était en float:right : il se décalait mal dès que le nom passait
-  // sur deux lignes. En flex il reste aligné à droite, sur la même ligne.
   recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
-  recetteLinkPrix: {flexShrink:0,fontSize:10,color:'var(--text2)',fontWeight:600},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  fcLine: {fontSize:11,color:'var(--text2)',marginTop:6},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
   congBtn: {padding:'7px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'#fff'},
@@ -1755,8 +1708,6 @@ const rs = {
   recetteName: {fontSize:14,fontWeight:600,color:'var(--text)'},
   recetteMeta: {fontSize:11,color:'var(--text2)',marginTop:2},
   recetteBadges: {display:'flex',gap:4,flexShrink:0},
-  recetteKpis: {display:'flex',gap:16},
-  recetteKpi: {display:'flex',flexDirection:'column',gap:2,fontSize:12,color:'var(--text2)',textAlign:'right'},
   // Detail
   detailRoot: {display:'flex',flexDirection:'column',gap:18},
   detailHeader: {display:'flex',alignItems:'center',gap:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'16px 20px'},
@@ -1772,13 +1723,10 @@ const rs = {
   portionsCtrl: {display:'flex',alignItems:'center',gap:8},
   portBtn: {width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'},
   ingTable: {display:'flex',flexDirection:'column'},
-  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px 80px',padding:'8px 16px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
-  ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px 80px',padding:'9px 16px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
+  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 16px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
+  ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'9px 16px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
   ingName: {fontSize:13,color:'var(--text)'},
   ingQty: {fontSize:13,fontWeight:600,color:'var(--text)'},
-  kpiGrid: {display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,padding:'14px 16px'},
-  kpiItem: {display:'flex',flexDirection:'column',gap:4},
-  kpiLabel: {fontSize:11,color:'var(--text2)',fontWeight:500},
   etapeRow: {display:'flex',gap:14,marginBottom:12,alignItems:'flex-start'},
   etapeNum: {width:24,height:24,borderRadius:'50%',background:'var(--accent)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1},
   etapeTxt: {fontSize:13,color:'var(--text)',lineHeight:1.6},
