@@ -9,26 +9,80 @@ import { dbService } from '../../services/dbService.js';
 // MODULE FACTURES - Génération + envoi auto vers Documents
 // ═══════════════════════════════════════════════════════════════
 
-// ─── Template email par défaut pour notification facture ───
-// Variables disponibles : {{numero}}, {{date}}, {{montant}}, {{echeance}}, {{etablissement}}
+// ─── Templates email par défaut pour la notification client ───
+// Variables disponibles : {{numero}}, {{date}}, {{echeance}}, {{montant}},
+// {{etablissement}}, {{prestation}}, {{reference}}
+const EMAIL_VARS = ['numero', 'date', 'echeance', 'montant', 'etablissement', 'prestation', 'reference'];
+
+const DEFAULT_EMAIL_SUBJECT = 'Facture n° {{numero}} - Samper Consulting';
+
 const DEFAULT_EMAIL_TEMPLATE = `Bonjour,
 
-Votre facture n° {{numero}} datée du {{date}} d'un montant de {{montant}} est désormais disponible.
+Vous trouverez en pièce jointe la facture n° {{numero}} du {{date}}, relative à la prestation suivante : {{prestation}}.
 
+Montant : {{montant}}
 Échéance de paiement : {{echeance}}
 
-Le document est joint à ce message ou consultable dans votre espace.
+Le règlement peut être effectué par virement sur le compte indiqué au bas de la facture. Le document reste également disponible dans votre espace Samper Consulting, rubrique Documents.
 
-Cordialement,
+Je reste à disposition pour toute question.
+
+Avec mes meilleures salutations,
+
 Jeremy Samper
-Samper Consulting`;
+Consultant culinaire
+Samper Consulting
++41 76 626 54 00
+jeremysamper.pro@gmail.com`;
 
 const renderEmailTemplate = (tpl, vars) => {
   let out = tpl || '';
   Object.entries(vars).forEach(([k, v]) => {
     out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'g'), v ?? '');
   });
-  return out;
+  // Une variable vide (référence absente, par ex.) laisse souvent une ligne
+  // orpheline du type "Référence :" ; on compacte les blancs qui en résultent.
+  return out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+// Un champ multiligne (la prestation est un textarea) ne doit pas casser la
+// mise en forme du mail : on l'aplatit en une seule ligne.
+const flattenValue = (v) => String(v ?? '').replace(/\s*\n\s*/g, ' ').trim();
+
+// ─── Ouverture d'un brouillon Gmail prérempli ───
+// view=cm : fenêtre de rédaction. fs=1&tf=1 : plein écran, pas la petite popup
+// d'angle. Pas de /u/0/ : Gmail utilise le compte déjà connecté dans le navigateur.
+const buildGmailUrl = ({ to, cc, subject, body }) => {
+  const params = new URLSearchParams();
+  if (to) params.set('to', to);
+  if (cc) params.set('cc', cc);
+  if (subject) params.set('su', subject);
+  if (body) params.set('body', body);
+  return `https://mail.google.com/mail/?view=cm&fs=1&tf=1&${params.toString()}`;
+};
+
+const buildMailtoUrl = ({ to, cc, subject, body }) => {
+  const q = [];
+  if (cc) q.push(`cc=${encodeURIComponent(cc)}`);
+  if (subject) q.push(`subject=${encodeURIComponent(subject)}`);
+  if (body) q.push(`body=${encodeURIComponent(body)}`);
+  return `mailto:${encodeURIComponent(to || '')}${q.length ? `?${q.join('&')}` : ''}`;
+};
+
+// Téléchargement local d'un Blob déjà en mémoire (le PDF qui vient d'être uploadé) :
+// évite un aller-retour par le module Documents pour joindre la facture au mail.
+const downloadBlob = (win, blob, fileName) => {
+  const doc = win?.document;
+  if (!doc || !win.URL?.createObjectURL) return false;
+  const url = win.URL.createObjectURL(blob);
+  const a = doc.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  doc.body.appendChild(a);
+  a.click();
+  doc.body.removeChild(a);
+  setTimeout(() => { try { win.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+  return true;
 };
 
 const Factures = ({ user, etablissement }) => {
@@ -131,8 +185,11 @@ const Factures = ({ user, etablissement }) => {
   // → Migration douce : si rien en cache et qu'il y a une valeur localStorage legacy,
   //    on la pousse en DB une seule fois puis on nettoie le localStorage.
   const [showEmailModal, setShowEmailModal] = React.useState(false);
-  const [emailDraft, setEmailDraft] = React.useState(null); // { to, subject, body, fileName }
+  const [emailDraft, setEmailDraft] = React.useState(null); // { to, cc, subject, body, fileName, blob, etabNom }
   const [showTemplateEditor, setShowTemplateEditor] = React.useState(false);
+  // Le PDF ne peut pas être joint par URL : on trace si l'utilisateur l'a déjà
+  // téléchargé pour afficher l'étape suivante plutôt qu'un simple avertissement.
+  const [attachmentSaved, setAttachmentSaved] = React.useState(false);
 
   // Lecture initiale synchrone depuis le cache (déjà hydraté par App au login)
   const [emailEnabled, setEmailEnabled] = React.useState(() => {
@@ -158,6 +215,18 @@ const Factures = ({ user, etablissement }) => {
       if (raw) return raw;
     } catch(e) {}
     return DEFAULT_EMAIL_TEMPLATE;
+  });
+
+  // Objet du mail : template au même titre que le corps (mêmes variables).
+  const [emailSubjectTpl, setEmailSubjectTpl] = React.useState(() => {
+    const v = legacySB?.db?.getUserSettingSync?.('email_facture_subject');
+    return v ? String(v) : DEFAULT_EMAIL_SUBJECT;
+  });
+
+  // Copie systématique (comptable, archive perso...) préremplie dans chaque brouillon.
+  const [emailCcDefault, setEmailCcDefault] = React.useState(() => {
+    const v = legacySB?.db?.getUserSettingSync?.('email_facture_cc');
+    return v ? String(v) : '';
   });
 
   // Migration douce : si on a lu depuis localStorage (legacy), pousser en DB une seule fois
@@ -202,6 +271,36 @@ const Factures = ({ user, etablissement }) => {
       console.warn('[Factures] save email_facture_template failed', err);
     });
   }, [emailTemplate]);
+  React.useEffect(() => {
+    if (!isConsultant) return;
+    if (!legacySB?.db?.setUserSetting) return;
+    legacySB.db.setUserSetting('email_facture_subject', String(emailSubjectTpl || '')).catch(err => {
+      console.warn('[Factures] save email_facture_subject failed', err);
+    });
+  }, [emailSubjectTpl]);
+  React.useEffect(() => {
+    if (!isConsultant) return;
+    if (!legacySB?.db?.setUserSetting) return;
+    legacySB.db.setUserSetting('email_facture_cc', String(emailCcDefault || '')).catch(err => {
+      console.warn('[Factures] save email_facture_cc failed', err);
+    });
+  }, [emailCcDefault]);
+
+  // Insertion d'une variable à l'endroit du curseur dans l'éditeur de message type
+  const templateBodyRef = React.useRef(null);
+  const insertTemplateVar = (name) => {
+    const token = `{{${name}}}`;
+    const el = templateBodyRef.current;
+    if (!el) { setEmailTemplate(prev => `${prev}${token}`); return; }
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? start;
+    setEmailTemplate(`${el.value.slice(0, start)}${token}${el.value.slice(end)}`);
+    // Le curseur est repositionné après le re-render, sinon React le renvoie en fin de champ.
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + token.length, start + token.length);
+    }, 0);
+  };
 
   // Fermeture des modales avec la touche Échap (UX standard)
   React.useEffect(() => {
@@ -250,6 +349,31 @@ const Factures = ({ user, etablissement }) => {
     setForm(prev => ({ ...prev, faitALe: `Erde, le ${formatDateFr(prev.dateFacturation)}` }));
   }, [form.dateFacturation]);
 
+  // ═══ Brouillon de notification client ═══
+  // Objet et corps viennent des templates persistés ; les variables sont
+  // résolues sur la facture qui vient d'être envoyée.
+  const buildEmailDraft = (fileName, blob) => {
+    const targetEtab = etabsAll.find(e => e.id === selectedEtabId) || etablissement;
+    const vars = {
+      numero: form.numero,
+      date: formatDateFr(form.dateFacturation),
+      echeance: formatDateFr(form.dateEcheance),
+      montant: form.montant ? `${form.montant} ${form.devise} ${form.htOuTtc}` : '',
+      etablissement: targetEtab?.nom || '',
+      prestation: flattenValue(form.prestation),
+      reference: flattenValue(form.referenceContratDevis),
+    };
+    return {
+      to: targetEtab?.email || '',
+      cc: emailCcDefault || '',
+      subject: renderEmailTemplate(emailSubjectTpl || DEFAULT_EMAIL_SUBJECT, vars),
+      body: renderEmailTemplate(emailTemplate, vars),
+      fileName,
+      blob: blob || null,
+      etabNom: targetEtab?.nom || '',
+    };
+  };
+
   // ═══ Génération du PDF ═══
   const generatePDF = async (sendToDocs) => {
     if (!form.montant || isNaN(parseFloat(form.montant))) {
@@ -262,29 +386,16 @@ const Factures = ({ user, etablissement }) => {
 
       if (sendToDocs) {
         // Mode "Envoyer au module Documents"
-        await sendFactureToDocuments(fileName);
+        // On récupère le Blob généré pour le proposer en pièce jointe sans
+        // repasser par un téléchargement depuis Documents.
+        const blob = await sendFactureToDocuments(fileName);
         setSavedToDocs(true);
         setTimeout(() => setSavedToDocs(false), 4000);
 
         // ─── Préparer le brouillon email si activé ───
         if (emailEnabled) {
-          const targetEtab = etabsAll.find(e => e.id === selectedEtabId) || etablissement;
-          const vars = {
-            numero: form.numero,
-            date: formatDateFr(form.dateFacturation),
-            echeance: formatDateFr(form.dateEcheance),
-            montant: form.montant ? `${form.montant} ${form.devise} ${form.htOuTtc}` : '',
-            etablissement: targetEtab?.nom || '',
-          };
-          const subject = `Facture n° ${form.numero} - ${targetEtab?.nom || 'Samper Consulting'}`;
-          const body = renderEmailTemplate(emailTemplate, vars);
-          setEmailDraft({
-            to: targetEtab?.email || '',
-            subject,
-            body,
-            fileName,
-            etabNom: targetEtab?.nom || '',
-          });
+          setEmailDraft(buildEmailDraft(fileName, blob));
+          setAttachmentSaved(false);
           setShowEmailModal(true);
         }
       } else {
@@ -383,6 +494,8 @@ const Factures = ({ user, etablissement }) => {
       const allFactures = collectFiles(fact.id).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setRecentFactures(allFactures.slice(0, 5));
     }
+
+    return blob;
   };
 
   // ═══ Réinitialiser le formulaire (pour faire une nouvelle facture) ═══
@@ -539,17 +652,28 @@ const Factures = ({ user, etablissement }) => {
                 {emailEnabled ? 'Activée' : 'Désactivée'}
               </label>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
               {emailEnabled
-                ? 'Après envoi dans Documents, un brouillon d\'email sera proposé pour notifier le client.'
-                : 'Aucune notification ne sera proposée après l\'upload.'}
+                ? 'Après envoi dans Documents, un brouillon prérempli s\'ouvre directement dans Gmail (objet, destinataire et message).'
+                : 'Aucune notification ne sera proposée après l\'envoi dans Documents.'}
             </div>
-            <button
-              style={{ padding: '6px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: 'var(--text)', fontFamily: 'var(--font)' }}
-              onClick={() => setShowTemplateEditor(true)}
-            >
-              ✎ Modifier le template d'email
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                style={fac.smallBtn}
+                onClick={() => setShowTemplateEditor(true)}
+              >
+                ✎ Modifier le message type
+              </button>
+              {emailDraft && (
+                <button
+                  style={fac.smallBtn}
+                  onClick={() => setShowEmailModal(true)}
+                  title={`Brouillon de la facture ${emailDraft.fileName}`}
+                >
+                  ✉ Rouvrir le dernier brouillon
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={fac.actions}>
@@ -605,38 +729,50 @@ const Factures = ({ user, etablissement }) => {
         // L'overlay ne ferme PAS la modale au clic (UX trop fragile pour une zone de saisie).
         // Fermeture uniquement via : bouton ✕, bouton "Fermer", ou touche Échap.
         <div className="modal-full-overlay" style={fac.overlay}>
-          <div className="modal-full" style={{ ...fac.modal, width: 600, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-full" style={{ ...fac.modal, width: 640, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div style={fac.modalHeader}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📧 Notifier le client</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Notifier le client</div>
                 <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Brouillon généré pour <strong>{emailDraft.etabNom}</strong>
+                  Facture n° {form.numero} · <strong>{emailDraft.etabNom || 'client'}</strong>
                 </div>
               </div>
               <button style={fac.closeBtn} onClick={() => setShowEmailModal(false)} title="Fermer (Échap)">✕</button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Destinataire */}
-              <div>
-                <label style={fac.modalLabel}>Destinataire</label>
-                <input
-                  type="email"
-                  value={emailDraft.to}
-                  onChange={e => setEmailDraft({ ...emailDraft, to: e.target.value })}
-                  placeholder="email@client.ch"
-                  style={fac.modalInput}
-                />
-                {!emailDraft.to && (
-                  <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
-                    ⚠ Aucune adresse email enregistrée pour cet établissement. Renseignez-la dans Paramètres ou tapez-la ci-dessus.
-                  </div>
-                )}
+              {/* Destinataires */}
+              <div style={fac.modalRow2}>
+                <div style={{ minWidth: 0 }}>
+                  <label style={fac.modalLabel}>Destinataire</label>
+                  <input
+                    type="email"
+                    value={emailDraft.to}
+                    onChange={e => setEmailDraft({ ...emailDraft, to: e.target.value })}
+                    placeholder="email@client.ch"
+                    style={fac.modalInput}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <label style={fac.modalLabel}>Copie (Cc)</label>
+                  <input
+                    type="email"
+                    value={emailDraft.cc || ''}
+                    onChange={e => setEmailDraft({ ...emailDraft, cc: e.target.value })}
+                    placeholder="facultatif"
+                    style={fac.modalInput}
+                  />
+                </div>
               </div>
+              {!emailDraft.to && (
+                <div style={fac.noticeWarn}>
+                  Aucune adresse enregistrée pour cet établissement. Renseignez-la ci-dessus, ou dans sa fiche pour les prochaines factures.
+                </div>
+              )}
 
-              {/* Sujet */}
+              {/* Objet */}
               <div>
-                <label style={fac.modalLabel}>Sujet</label>
+                <label style={fac.modalLabel}>Objet</label>
                 <input
                   type="text"
                   value={emailDraft.subject}
@@ -647,37 +783,73 @@ const Factures = ({ user, etablissement }) => {
 
               {/* Corps */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <label style={fac.modalLabel}>Message</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <label style={fac.modalLabel}>Message</label>
+                  <button
+                    style={fac.linkBtn}
+                    onClick={() => setShowTemplateEditor(true)}
+                    title="Modifier le message type utilisé pour toutes les factures"
+                  >
+                    Modifier le message type
+                  </button>
+                </div>
                 <textarea
                   value={emailDraft.body}
                   onChange={e => setEmailDraft({ ...emailDraft, body: e.target.value })}
-                  rows={10}
-                  style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', minHeight: 200 }}
+                  rows={12}
+                  style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55, minHeight: 240 }}
                 />
               </div>
 
-              {/* Note PJ */}
-              <div style={{ padding: 10, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, fontSize: 11, color: '#92400e', display: 'flex', gap: 8 }}>
-                <span style={{ fontSize: 14 }}>⚠</span>
-                <div>
-                  <strong>Pièce jointe :</strong> "{emailDraft.fileName}"<br/>
-                  <span style={{ fontSize: 10 }}>Le PDF n'est pas joint automatiquement. Téléchargez-le depuis Documents et joignez-le manuellement à votre email.</span>
+              {/* Pièce jointe : Gmail ne permet pas de joindre un fichier par URL,
+                  on met donc le PDF à un clic de la fenêtre de rédaction. */}
+              <div style={attachmentSaved ? fac.attachBoxDone : fac.attachBox}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 18 }}>📎</span>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>Pièce jointe</div>
+                    <div style={{ fontSize: 11, opacity: 0.85, wordBreak: 'break-all' }}>{emailDraft.fileName}</div>
+                  </div>
+                  <button
+                    style={fac.attachBtn}
+                    disabled={!emailDraft.blob}
+                    onClick={() => {
+                      if (!emailDraft.blob) return;
+                      const ok = downloadBlob(browserWindow, emailDraft.blob, emailDraft.fileName);
+                      if (ok) {
+                        setAttachmentSaved(true);
+                        notifyLegacy('PDF téléchargé, glissez-le dans la fenêtre Gmail.', 'success');
+                      } else {
+                        notifyLegacy('Téléchargement impossible. Récupérez le PDF dans Documents.', 'error');
+                      }
+                    }}
+                  >
+                    {attachmentSaved ? '✓ Téléchargé' : '⬇ Récupérer le PDF'}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, marginTop: 8, lineHeight: 1.5, opacity: 0.9 }}>
+                  {attachmentSaved
+                    ? 'Le PDF est dans vos téléchargements : glissez-le dans la fenêtre Gmail avant d\'envoyer.'
+                    : 'La facture est déjà classée dans Documents. Récupérez-la ici pour la joindre au message en une fois.'}
                 </div>
               </div>
             </div>
 
+            {/* Pas d'espaceur flex ici : le bouton Gmail occupe la place restante,
+                donc il passe pleine largeur quand la barre se réorganise sur mobile. */}
             <div style={fac.modalFooter}>
               <button style={fac.modalGhostBtn} onClick={() => setShowEmailModal(false)}>Fermer</button>
 
-              {/* Copier dans le presse-papiers */}
+              {/* Copier dans le presse-papiers (secours si Gmail n'est pas le client utilisé) */}
               <button
                 style={fac.modalGhostBtn}
+                title="Copier objet + message"
                 onClick={() => {
-                  const txt = `À : ${emailDraft.to}\nSujet : ${emailDraft.subject}\n\n${emailDraft.body}`;
+                  const txt = `Objet : ${emailDraft.subject}\n\n${emailDraft.body}`;
                   const clipboard = browserWindow?.navigator?.clipboard;
                   if (clipboard?.writeText) {
                     clipboard.writeText(txt)
-                      .then(() => notifyLegacy('✓ Email copié dans le presse-papiers. Collez-le dans votre client mail.', 'success'))
+                      .then(() => notifyLegacy('Message copié dans le presse-papiers.', 'success'))
                       .catch(() => notifyLegacy('Impossible de copier. Sélectionnez le texte manuellement.', 'error'));
                   } else {
                     notifyLegacy('Presse-papiers non disponible. Sélectionnez le texte manuellement.', 'warning');
@@ -687,22 +859,34 @@ const Factures = ({ user, etablissement }) => {
                 📋 Copier
               </button>
 
-              {/* Ouvrir dans le client mail (mailto) */}
+              {/* Repli pour un autre client mail que Gmail */}
               <button
-                style={fac.modalPrimaryBtn}
+                style={fac.modalGhostBtn}
+                title="Ouvrir dans le client mail par défaut du poste"
                 onClick={() => {
-                  if (!emailDraft.to) {
-                    if (!confirmLegacy('Aucune adresse email. Ouvrir quand même le client mail (vous pourrez la renseigner dedans) ?')) return;
-                  }
-                  const mailtoUrl = `mailto:${encodeURIComponent(emailDraft.to)}?subject=${encodeURIComponent(emailDraft.subject)}&body=${encodeURIComponent(emailDraft.body)}`;
-                  if (mailtoUrl.length > 2000) {
-                    if (!confirmLegacy('Le message est très long et certains clients mail risquent de le tronquer. Continuer (recommandé : utiliser "Copier" à la place) ?')) return;
-                  }
-                  if (browserWindow) browserWindow.location.href = mailtoUrl;
-                  setTimeout(() => setShowEmailModal(false), 500);
+                  const url = buildMailtoUrl(emailDraft);
+                  if (url.length > 2000 && !confirmLegacy('Le message est long : certains clients mail vont le tronquer. Continuer quand même ?')) return;
+                  if (browserWindow) browserWindow.location.href = url;
                 }}
               >
-                ✉ Ouvrir dans mon mail
+                Autre client mail
+              </button>
+
+              {/* Brouillon Gmail prérempli, dans un nouvel onglet */}
+              <button
+                style={{ ...fac.modalPrimaryBtn, flexGrow: 1, minWidth: 200 }}
+                onClick={() => {
+                  if (!emailDraft.to && !confirmLegacy('Aucune adresse email. Ouvrir quand même Gmail (vous la saisirez dans le brouillon) ?')) return;
+                  const url = buildGmailUrl(emailDraft);
+                  const win = browserWindow?.open(url, '_blank', 'noopener,noreferrer');
+                  if (!win) {
+                    notifyLegacy('Gmail a été bloqué par le navigateur. Autorisez les fenêtres pop-up pour ce site.', 'warning');
+                    return;
+                  }
+                  setTimeout(() => setShowEmailModal(false), 400);
+                }}
+              >
+                ✉ Ouvrir le brouillon Gmail
               </button>
             </div>
           </div>
@@ -716,37 +900,71 @@ const Factures = ({ user, etablissement }) => {
         // Overlay non-cliquable pour fermer (cohérent avec la modale email).
         // Fermeture via : ✕, "Annuler", ou Échap.
         <div className="modal-full-overlay" style={fac.overlay}>
-          <div className="modal-full" style={{ ...fac.modal, width: 580, maxWidth: '94vw' }}>
+          <div className="modal-full" style={{ ...fac.modal, width: 620, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div style={fac.modalHeader}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>✎ Template d'email</div>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Message type</div>
                 <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Personnalisez le message de notification client
+                  Utilisé pour chaque notification de facture
                 </div>
               </div>
-              <button style={fac.closeBtn} onClick={() => setShowTemplateEditor(false)}>✕</button>
+              <button style={fac.closeBtn} onClick={() => setShowTemplateEditor(false)} title="Fermer (Échap)">✕</button>
             </div>
 
-            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ padding: 10, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 11, color: '#15803d' }}>
-                <strong>Variables disponibles</strong> (remplacées automatiquement) :<br/>
-                <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{'{{numero}}'}</code> · <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{'{{date}}'}</code> · <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{'{{echeance}}'}</code> · <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{'{{montant}}'}</code> · <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{'{{etablissement}}'}</code>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={fac.modalLabel}>Objet</label>
+                <input
+                  type="text"
+                  value={emailSubjectTpl}
+                  onChange={e => setEmailSubjectTpl(e.target.value)}
+                  style={fac.modalInput}
+                />
               </div>
 
-              <textarea
-                value={emailTemplate}
-                onChange={e => setEmailTemplate(e.target.value)}
-                rows={14}
-                style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', minHeight: 280 }}
-              />
+              <div>
+                <label style={fac.modalLabel}>Copie (Cc) par défaut</label>
+                <input
+                  type="email"
+                  value={emailCcDefault}
+                  onChange={e => setEmailCcDefault(e.target.value)}
+                  placeholder="comptable@exemple.ch (facultatif)"
+                  style={fac.modalInput}
+                />
+              </div>
+
+              <div>
+                <label style={fac.modalLabel}>Message</label>
+                <textarea
+                  ref={templateBodyRef}
+                  value={emailTemplate}
+                  onChange={e => setEmailTemplate(e.target.value)}
+                  rows={14}
+                  style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55, minHeight: 280 }}
+                />
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>
+                  Variables remplacées à l'envoi (cliquez pour insérer dans le message) :
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {EMAIL_VARS.map(v => (
+                    <button key={v} type="button" style={fac.varChip} onClick={() => insertTemplateVar(v)}>
+                      {`{{${v}}}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div style={fac.modalFooter}>
               <button
-                style={{ ...fac.modalGhostBtn, color: '#dc2626', borderColor: '#fca5a5' }}
+                style={fac.modalDangerBtn}
                 onClick={() => {
-                  if (confirmLegacy('Restaurer le template par défaut ?')) {
+                  if (confirmLegacy('Restaurer l\'objet et le message par défaut ?')) {
                     setEmailTemplate(DEFAULT_EMAIL_TEMPLATE);
+                    setEmailSubjectTpl(DEFAULT_EMAIL_SUBJECT);
                   }
                 }}
               >
@@ -900,7 +1118,9 @@ const fac = {
   primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },
   ghostBtn: { flex: 1, padding: '12px 18px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 180 },
 
-  successBanner: { background: '#dcfce7', border: '1px solid #86efac', color: '#15803d', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 },
+  successBanner: { background: 'var(--success-bg)', border: '1px solid var(--success-bd)', color: 'var(--success-text)', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 },
+
+  smallBtn: { padding: '7px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: 'var(--text)', fontFamily: 'var(--font)', fontWeight: 500 },
 
   recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--bg)', borderRadius: 5 },
 
@@ -915,6 +1135,55 @@ const fac = {
   },
   etabChipActive: {
     background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff',
+  },
+
+  // ─── Modales email ───
+  // (elles vivaient par erreur dans l'objet `fr` réservé à la facture imprimable,
+  //  donc toutes les clés `fac.modal*` sortaient undefined et les modales
+  //  s'affichaient sans mise en forme)
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
+  modal: { background: 'var(--surface)', borderRadius: 12, boxShadow: '0 10px 40px rgba(0,0,0,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  modalHeader: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 },
+  modalFooter: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0, background: 'var(--surface)' },
+  modalLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
+  modalInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
+  modalPrimaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  modalGhostBtn: { padding: '8px 14px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
+  modalDangerBtn: { padding: '8px 14px', background: 'none', color: 'var(--danger-strong)', border: '1px solid var(--danger-bd)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
+  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', lineHeight: 1, flexShrink: 0 },
+
+  // Destinataire + Cc côte à côte, empilés dès que la modale est étroite
+  modalRow2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12 },
+
+  linkBtn: {
+    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+    color: 'var(--accent)', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600,
+    textDecoration: 'underline', textUnderlineOffset: 2,
+  },
+
+  noticeWarn: {
+    padding: '9px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)',
+    color: 'var(--warning-text)', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+  },
+
+  attachBox: {
+    padding: 12, borderRadius: 10,
+    background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)',
+  },
+  attachBoxDone: {
+    padding: 12, borderRadius: 10,
+    background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', color: 'var(--success-text)',
+  },
+  attachBtn: {
+    padding: '8px 13px', background: 'var(--surface)', color: 'var(--text)',
+    border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+  },
+
+  varChip: {
+    padding: '5px 9px', borderRadius: 14, background: 'var(--bg)',
+    border: '1px solid var(--border)', color: 'var(--text2)',
+    fontFamily: 'monospace', fontSize: 11, cursor: 'pointer',
   },
 };
 
@@ -938,17 +1207,6 @@ const fr = {
   signature: { marginTop: 14, fontSize: 11, fontFamily: 'Arial, Helvetica, sans-serif' },
   signatureLine: { marginBottom: 18 },
   signatureSig: { fontSize: 11, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' },
-
-  // ─── Modales email ───
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 12, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' },
-  modalHeader: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  modalFooter: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' },
-  modalLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
-  modalInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  modalPrimaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
-  modalGhostBtn: { padding: '7px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
 };
 
 export default Factures;
