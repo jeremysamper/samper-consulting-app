@@ -7,7 +7,9 @@
 // ─────────────────────────────────────────────────────────────
 
 // ALLERGENES_MAP : id technique → libellé affiché (résolution des allergènes).
-export const ALLERGENES_MAP = { gluten:'Gluten', lactose:'Lactose', oeufs:'Œufs', poissons:'Poissons', sulfites:'Sulfites', crustaces:'Crustacés', fruits_coque:'Fruits à coque', arachides:'Arachides', soja:'Soja', celeri:'Céleri', moutarde:'Moutarde', sesame:'Sésame', mollusques:'Mollusques', lupin:'Lupin' };
+// Référentiel partagé (src/utils/allergenes.js) : ne pas redéclarer la liste.
+export { ALLERGENES_LABELS as ALLERGENES_MAP } from './allergenes.js';
+import { labelAllergene } from './allergenes.js';
 
 // slug pour nom de fichier PDF (sans accents, kebab-case).
 // [̀-ͯ] = marques diacritiques combinantes retirées après normalize('NFD').
@@ -41,6 +43,6 @@ export function buildRecettePdfData(recette, { isConsultant = false, portions } 
     })),
     etapes: recette.etapes || [],
     notes,
-    allergenesText: (recette.allergenesIds || []).map((a) => ALLERGENES_MAP[a] || a).join(', ') || 'Aucun',
+    allergenesText: (recette.allergenesIds || []).map(labelAllergene).join(', ') || 'Aucun',
   };
 }

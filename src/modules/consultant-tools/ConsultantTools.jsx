@@ -20,6 +20,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 // ─────────────────────────────────────────────────────
 
 import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, convertFactor } from './ConsultantTools.constants.js';
+import { partitionAllergenes, normalizeAllergenes, labelAllergene } from '../../utils/allergenes.js';
 import PhotoUploader from './PhotoUploader.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore } from 'lucide-react';
@@ -767,6 +768,18 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     const current = selected.allergenesIds || [];
     const next = current.includes(aid) ? current.filter(a => a !== aid) : [...current, aid];
     updateSelected({ allergenesIds: next });
+  };
+
+  // Valeurs hors référentiel héritées d'anciens imports (« aucun », « lait »,
+  // « crustacés si écrevisse ») : aucune puce ne les représentait, elles
+  // étaient donc indélébiles et invisibles aux filtres allergènes.
+  const allergenesInconnus = partitionAllergenes(selected?.allergenesIds).inconnus;
+  const retirerAllergeneInconnu = (v) =>
+    updateSelected({ allergenesIds: (selected.allergenesIds || []).filter(a => a !== v) });
+  const corrigerAllergeneInconnu = (v) => {
+    const { ids } = normalizeAllergenes([v]);
+    const restant = (selected.allergenesIds || []).filter(a => a !== v);
+    updateSelected({ allergenesIds: [...new Set([...restant, ...ids])] });
   };
 
   // ── Détection automatique des allergènes par IA ──
@@ -1641,6 +1654,37 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     );
                   })}
                 </div>
+                {allergenesInconnus.length > 0 && (
+                  <div style={{ margin: '0 14px 14px', padding: '8px 10px', background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 6 }}>
+                      {allergenesInconnus.length} valeur{allergenesInconnus.length > 1 ? 's' : ''} hors liste (import ancien) - à convertir ou retirer
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {allergenesInconnus.map(v => {
+                        const { ids } = normalizeAllergenes([v]);
+                        return (
+                          <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 10px', border: '1.5px dashed var(--warning-bd)', borderRadius: 20, background: 'var(--surface)', fontSize: 11, color: 'var(--warning-text)' }}>
+                            {v}
+                            {ids.length > 0 && (
+                              <button
+                                className="touch-target"
+                                onClick={() => corrigerAllergeneInconnu(v)}
+                                title={`Remplacer par ${ids.map(labelAllergene).join(' + ')}`}
+                                style={{ border: 'none', background: 'none', color: 'var(--warning-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' }}
+                              >→ {ids.map(labelAllergene).join(' + ')}</button>
+                            )}
+                            <button
+                              className="touch-target"
+                              onClick={() => retirerAllergeneInconnu(v)}
+                              title="Retirer cette valeur"
+                              style={{ border: 'none', background: 'none', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' }}
+                            >✕</button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Ingrédients */}

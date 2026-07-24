@@ -12,6 +12,7 @@
 //   FIELD_LABELS                          -> libellés des champs cibles (assistant de mapping)
 // ─────────────────────────────────────────────────────────────
 import { parse as parseUnit, parseQuantity, normalizeUnit, toAppUnit } from './UnitParser.js';
+import { splitAllergenesText } from '../../../utils/allergenes.js';
 
 // xlsx (~143 Ko gzip) chargé à la demande, uniquement quand on parse réellement
 // un classeur. Évite d'alourdir le bundle des modules qui importent ce util.
@@ -156,8 +157,23 @@ function makeIngredient(nomCell, qtyCell, uniteCell, prixCell) {
   };
 }
 
-const splitAllergenes = (raw) => String(raw ?? '')
-  .split(/[;,]/).map(s => norm(s)).filter(Boolean);
+// Colonne « allergènes » : du texte libre côté fichier source. Elle était
+// stockée telle quelle dans allergenes_ids, d'où des « aucun » ou des
+// « crustacés si écrevisse » traités comme des ids - invisibles aux filtres
+// et non décochables dans les formulaires. On ne conserve désormais que des
+// ids du référentiel ; la précision éventuelle part en note pour ne pas être
+// perdue et la recette est signalée à relire.
+const litAllergenes = (raw) => {
+  const { ids, nuances } = splitAllergenesText(raw);
+  return {
+    allergenesIds: ids,
+    _noteAllergenes: nuances.length ? `Allergènes (fichier source) : ${nuances.join(' · ')}` : '',
+    _warnAllergenes: nuances.length ? ['Allergènes à vérifier (précision non normalisée)'] : [],
+  };
+};
+
+// Fusionne la note d'allergènes avec les notes déjà collectées.
+const avecNote = (notes, note) => [notes, note].filter(Boolean).join('\n');
 
 // Construit les recettes depuis les lignes + un mapping de colonnes.
 // catHint : catégorie déduite du nom de feuille - utilisée si la ligne ne renseigne pas la catégorie.
@@ -172,6 +188,7 @@ export function buildFromMapping(rows, headerRowIndex, map, catHint = null) {
 
     if (!byTitre.has(titre)) {
       const rawCat = String(get('categorie') ?? '').trim();
+      const allerg = litAllergenes(get('allergenes'));
       byTitre.set(titre, {
         _tempId: tempId('rec'),
         nom: titre,
@@ -180,14 +197,14 @@ export function buildFromMapping(rows, headerRowIndex, map, catHint = null) {
         prixVente: Number(String(get('prixVente') ?? '').replace(',', '.')) || 0,
         statut: 'brouillon',
         version: 1,
-        allergenesIds: splitAllergenes(get('allergenes')),
-        notesConsultant: '',
+        allergenesIds: allerg.allergenesIds,
+        notesConsultant: allerg._noteAllergenes,
         conservation: '',
         dressage: '',
         ingredients: [],
         etapes: [],
         _etapesBuffer: [],
-        _warnings: [],
+        _warnings: [...allerg._warnAllergenes],
       });
     }
     const rec = byTitre.get(titre);
@@ -319,7 +336,8 @@ function parseFicheTechnique(rows) {
   if (!nom) return [];
 
   const flagged = ingredients.filter(i => i._import.warning).length;
-  const warnings = [];
+  const allerg = litAllergenes(allergenesRaw);
+  const warnings = [...allerg._warnAllergenes];
   if (flagged > 0) warnings.push(`${flagged} ligne(s) ingrédient à vérifier`);
   if (ingredients.length === 0) warnings.push('Aucun ingrédient détecté');
 
@@ -331,8 +349,8 @@ function parseFicheTechnique(rows) {
     prixVente: 0,
     statut: 'brouillon',
     version: 1,
-    allergenesIds: splitAllergenes(allergenesRaw),
-    notesConsultant: notesLines.join('\n'),
+    allergenesIds: allerg.allergenesIds,
+    notesConsultant: avecNote(notesLines.join('\n'), allerg._noteAllergenes),
     conservation,
     dressage,
     ingredients,
@@ -360,6 +378,7 @@ function parseMultiSheet(wb, XLSX) {
   for (const r of recRows.slice(1)) {
     const titre = String(r[0] ?? '').trim();
     if (!titre) continue;
+    const allerg = litAllergenes(r[6]);
     byTitre.set(titre, {
       _tempId: tempId('rec'),
       nom: titre,
@@ -370,14 +389,14 @@ function parseMultiSheet(wb, XLSX) {
       tempsCuisson: Number(r[5]) || 0,
       statut: 'brouillon',
       version: 1,
-      allergenesIds: splitAllergenes(r[6]),
-      notesConsultant: String(r[7] ?? '').trim(),
+      allergenesIds: allerg.allergenesIds,
+      notesConsultant: avecNote(String(r[7] ?? '').trim(), allerg._noteAllergenes),
       conservation: '',
       dressage: '',
       ingredients: [],
       etapes: [],
       _etapesBuffer: [],
-      _warnings: [],
+      _warnings: [...allerg._warnAllergenes],
     });
   }
   for (const r of ingRows.slice(1)) {

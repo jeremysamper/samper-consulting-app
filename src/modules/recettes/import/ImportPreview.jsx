@@ -61,6 +61,10 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
           const selected = r._selected !== false;
           const valid = isRecipeValid(r);
           const flagged = (r.ingredients || []).filter(i => i._import && i._import.warning).length;
+          // Alertes du parseur non couvertes par le compteur d'ingrédients
+          // ci-dessus (allergènes non normalisés notamment) : elles étaient
+          // collectées mais jamais affichées.
+          const alertes = (r._warnings || []).filter(w => !/ingr[ée]dient/i.test(w));
           return (
             <div key={id} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', opacity: selected ? 1 : 0.55 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', flexWrap: 'wrap' }}>
@@ -93,6 +97,9 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                 {valid && flagged > 0 && (
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>⚠ {flagged} ligne(s) à vérifier</span>
                 )}
+                {alertes.map((w, i) => (
+                  <span key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>⚠ {w}</span>
+                ))}
                 <Btn small variant="ghost" onClick={() => toggleExpand(id)} style={{ marginLeft: 'auto' }}>
                   {open ? '▲ Réduire' : '▼ Détail'}
                 </Btn>

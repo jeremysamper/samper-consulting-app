@@ -1,19 +1,6 @@
-export const ALLERGENES_OPTIONS = [
-  { id: 'gluten', label: 'Gluten' },
-  { id: 'lactose', label: 'Lactose' },
-  { id: 'oeufs', label: 'Œufs' },
-  { id: 'poissons', label: 'Poissons' },
-  { id: 'crustaces', label: 'Crustacés' },
-  { id: 'fruits_coque', label: 'Fruits à coque' },
-  { id: 'sulfites', label: 'Sulfites' },
-  { id: 'arachides', label: 'Arachides' },
-  { id: 'soja', label: 'Soja' },
-  { id: 'celeri', label: 'Céleri' },
-  { id: 'moutarde', label: 'Moutarde' },
-  { id: 'sesame', label: 'Sésame' },
-  { id: 'mollusques', label: 'Mollusques' },
-  { id: 'lupin', label: 'Lupin' },
-];
+// Référentiel partagé (src/utils/allergenes.js) : une seule liste pour
+// l'app entière, sinon les ids divergent d'un module à l'autre.
+export { ALLERGENES as ALLERGENES_OPTIONS } from '../../utils/allergenes.js';
 
 export const CATEGORIES_REC = ['Entrées', 'Plats', 'Desserts', 'Fromages', 'Sauces', 'Fonds', 'Amuse-bouches', 'Garnitures'];
 export const UNITES_REC = ['g', 'kg', 'ml', 'L', 'pcs', 'cs', 'cc', 'pincée'];

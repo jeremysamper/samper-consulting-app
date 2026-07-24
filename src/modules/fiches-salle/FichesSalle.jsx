@@ -9,6 +9,10 @@ import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import {
+  ALLERGENE_IDS, ALLERGENES_LABELS, labelAllergene,
+  normalizeAllergenes, partitionAllergenes,
+} from '../../utils/allergenes.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -16,12 +20,8 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 // Lecture : serveurs / Édition : consultant, patron, resp_cuisine
 // ─────────────────────────────────────────────────────
 
-const ALLERGENES_LABELS = {
-  gluten:'Gluten', lactose:'Lactose', oeufs:'Œufs', poissons:'Poissons',
-  crustaces:'Crustacés', fruits_coque:'Fruits à coque', sulfites:'Sulfites',
-  arachides:'Arachides', soja:'Soja', celeri:'Céleri', moutarde:'Moutarde',
-  sesame:'Sésame', mollusques:'Mollusques', lupin:'Lupin',
-};
+// Libellés et liste : référentiel partagé (src/utils/allergenes.js).
+// Seules les couleurs sont propres à ce module.
 const ALLERGENES_COLORS = {
   gluten:'var(--warning-text)', lactose:'#0369a1', oeufs:'var(--warning-strong)', poissons:'#0891b2',
   crustaces:'var(--danger-strong)', fruits_coque:'var(--ai-text)', sulfites:'#4f7942',
@@ -389,10 +389,18 @@ const FichesSalle = ({ user, etablissement }) => {
           const etapes = u.recettes.flatMap(r => (multi
             ? [`- ${r.nom} -`, ...((r.etapes) || [])]
             : (r.etapes || [])));
-          const allergIds = [...new Set(u.recettes.flatMap(r => r.allergenesIds || []))];
-          const allergLabels = allergIds.map(id => ALLERGENES_LABELS[id] || id);
+          // Les recettes portent parfois du texte libre hérité d'imports
+          // (« aucun », « crustacés si écrevisse »). On ne recopie que des
+          // allergènes du référentiel, et la précision part en info service
+          // plutôt que d'être stockée comme un allergène de plus.
+          const { ids: allergIds, nuances } = normalizeAllergenes(
+            u.recettes.flatMap(r => r.allergenesIds || []),
+          );
+          const allergLabels = allergIds.map(labelAllergene);
           const platRecipe = { nom: u.nom, categorie: u.categorie, portions: '', ingredients, etapes };
           const ai = await generateFicheSalle(platRecipe, allergLabels);
+          const infosService = [ai.infosService, nuances.length ? `Précisions allergènes : ${nuances.join(' · ')}` : '']
+            .filter(Boolean).join(' ');
           const fiche = {
             id: null,
             etablissementId: etabId,
@@ -403,7 +411,7 @@ const FichesSalle = ({ user, etablissement }) => {
             descriptionService: ai.descriptionService,
             temperatureService: ai.temperatureService,
             dressageNotes: '',
-            infosService: ai.infosService,
+            infosService,
             tempsPreparation: ai.tempsPreparation,
             allergenes: allergIds,
             accords: ai.accords,
@@ -706,8 +714,18 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
 
 // ── Formulaire création/édition ──
 const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [] }) => {
-  const allAllergs = Object.keys(ALLERGENES_LABELS);
+  const allAllergs = ALLERGENE_IDS;
   const toggleAllerg = (a) => setFiche(f=>({...f,allergenes:(f.allergenes || []).includes(a)?f.allergenes.filter(x=>x!==a):[...f.allergenes,a]}));
+  // Valeurs hors référentiel (texte libre d'un ancien import) : sans puce
+  // dédiée elles n'ont aucun bouton et survivent à chaque enregistrement.
+  const { inconnus } = partitionAllergenes(fiche?.allergenes);
+  const retirerInconnu = (v) => setFiche(f => ({ ...f, allergenes: (f.allergenes || []).filter(x => x !== v) }));
+  // Reprend l'allergène réellement déclaré par la valeur libre et la retire.
+  const corrigerInconnu = (v) => setFiche(f => {
+    const { ids } = normalizeAllergenes([v]);
+    const restant = (f.allergenes || []).filter(x => x !== v);
+    return { ...f, allergenes: [...new Set([...restant, ...ids])] };
+  });
   const addAccord = (type) => setFiche(f=>({...f,accords:[...(f.accords||[]),{type,nom:'',region:'',alternative:'',notes:''}]}));
   const updateAccord = (i,field,val) => setFiche(f=>({...f,accords:(f.accords || []).map((a,idx)=>idx===i?{...a,[field]:val}:a)}));
   const removeAccord = (i) => setFiche(f=>({...f,accords:f.accords.filter((_,idx)=>idx!==i)}));
@@ -717,12 +735,17 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
     if (!recetteId) return;
     const rec = recettes.find(r => r.id === recetteId);
     if (!rec) return;
+    // La recette peut porter du texte libre hérité d'un import : on importe
+    // les allergènes normalisés, la précision éventuelle va en info service.
+    const { ids, nuances } = normalizeAllergenes(rec.allergenesIds || []);
     const currentAllergs = fiche?.allergenes || [];
-    const newAllergs = [...new Set([...currentAllergs, ...(rec.allergenesIds || [])])];
+    const newAllergs = [...new Set([...currentAllergs, ...ids])];
     setFiche(f => ({
       ...f,
       recetteId,
       allergenes: newAllergs,
+      infosService: [f.infosService, nuances.length ? `Précisions allergènes : ${nuances.join(' · ')}` : '']
+        .filter(Boolean).join(' '),
       // Pré-remplir la description si vide
       descriptionService: f.descriptionService || rec.nom,
     }));
@@ -843,6 +866,37 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                   </button>;
                 })}
               </div>
+              {inconnus.length > 0 && (
+                <div style={{marginTop:10,padding:'8px 10px',background:'var(--warning-bg-soft)',border:'1px solid var(--warning-bd)',borderRadius:8}}>
+                  <div style={{fontSize:11,color:'var(--warning-text)',fontWeight:700,marginBottom:6}}>
+                    {inconnus.length} valeur{inconnus.length>1?'s':''} hors liste (import ancien) - à convertir ou retirer
+                  </div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                    {inconnus.map(v=>{
+                      const { ids } = normalizeAllergenes([v]);
+                      return (
+                        <span key={v} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 6px 4px 10px',border:'1.5px dashed var(--warning-bd)',borderRadius:20,background:'var(--surface)',fontSize:11,color:'var(--warning-text)'}}>
+                          {v}
+                          {ids.length > 0 && (
+                            <button
+                              className="touch-target"
+                              onClick={()=>corrigerInconnu(v)}
+                              title={`Remplacer par ${ids.map(labelAllergene).join(' + ')}`}
+                              style={{border:'none',background:'none',color:'var(--warning-text)',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
+                            >→ {ids.map(labelAllergene).join(' + ')}</button>
+                          )}
+                          <button
+                            className="touch-target"
+                            onClick={()=>retirerInconnu(v)}
+                            title="Retirer cette valeur"
+                            style={{border:'none',background:'none',color:'var(--text2)',fontSize:13,cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
+                          >✕</button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Accords */}

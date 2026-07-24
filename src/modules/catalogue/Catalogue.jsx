@@ -5,6 +5,7 @@ import { canManageModule } from '../../data/demoData.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { ALLERGENES } from '../../utils/allergenes.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -734,22 +735,14 @@ const Catalogue = ({ user, etablissement }) => {
   );
 };
 
-const ALLERGENES_OPTIONS = [
-  { id: 'gluten', label: 'Gluten', emoji: '🌾' },
-  { id: 'lactose', label: 'Lactose', emoji: '🥛' },
-  { id: 'oeufs', label: 'Œufs', emoji: '🥚' },
-  { id: 'poissons', label: 'Poissons', emoji: '🐟' },
-  { id: 'crustaces', label: 'Crustacés', emoji: '🦐' },
-  { id: 'fruits_coque', label: 'Fruits à coque', emoji: '🥜' },
-  { id: 'sulfites', label: 'Sulfites', emoji: '🍷' },
-  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
-  { id: 'soja', label: 'Soja', emoji: '🫘' },
-  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
-  { id: 'moutarde', label: 'Moutarde', emoji: '🌻' },
-  { id: 'sesame', label: 'Sésame', emoji: '🌿' },
-  { id: 'mollusques', label: 'Mollusques', emoji: '🦑' },
-  { id: 'lupin', label: 'Lupin', emoji: '🌱' },
-];
+// Liste et libellés viennent du référentiel partagé ; seul le pictogramme
+// est propre au catalogue.
+const ALLERGENE_EMOJIS = {
+  gluten: '🌾', lactose: '🥛', oeufs: '🥚', poissons: '🐟', crustaces: '🦐',
+  fruits_coque: '🥜', sulfites: '🍷', arachides: '🥜', soja: '🫘', celeri: '🥬',
+  moutarde: '🌻', sesame: '🌿', mollusques: '🦑', lupin: '🌱',
+};
+const ALLERGENES_OPTIONS = ALLERGENES.map(a => ({ ...a, emoji: ALLERGENE_EMOJIS[a.id] || '⚠' }));
 
 // ─── Formulaire Produit ───
 const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
