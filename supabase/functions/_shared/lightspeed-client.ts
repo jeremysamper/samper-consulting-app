@@ -156,10 +156,12 @@ function delay(ms: number): Promise<void> {
 }
 
 async function loadFixture(): Promise<SalesLine[]> {
-  // Chemin relatif depuis l'edge function pos-sync qui consomme ce module
+  // Chemin relatif depuis CE module (_shared/), pas depuis l'edge function qui
+  // le consomme : import.meta.url designe toujours lightspeed-client.ts.
+  // Donc functions/_shared/ -> ../pos-sync/__fixtures__/.
   try {
     const fixtureUrl = new URL(
-      '../../pos-sync/__fixtures__/salesLines_sample.json',
+      '../pos-sync/__fixtures__/salesLines_sample.json',
       import.meta.url
     );
     const text = await Deno.readTextFile(fixtureUrl);
