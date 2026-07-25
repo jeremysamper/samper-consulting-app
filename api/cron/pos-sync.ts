@@ -59,7 +59,7 @@ export default async function handler(
   } catch (err) {
     console.error('[cron/pos-sync] Erreur appel Edge Function:', err);
     return res.status(502).json({
-      error:   'Erreur lors de l'appel à l'Edge Function pos-sync',
+      error:   'Erreur lors de l\'appel à l\'Edge Function pos-sync',
       details: err instanceof Error ? err.message : String(err),
     });
   }
