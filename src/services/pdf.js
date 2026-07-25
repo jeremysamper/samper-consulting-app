@@ -1333,6 +1333,242 @@ export const pdfUtils = {
       doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXÉCUTION DE SOP / CHECKLIST - génération jsPDF native
+  // Rapport d'audit d'une checklist exécutée : qui, quand, quelles
+  // étapes validées et - surtout - lesquelles ne l'ont pas été. Même
+  // DA que les relevés HACCP (bleu petrole, filets fins, visa en pied)
+  // puisque c'est le même usage : un document présenté en contrôle.
+  // payload : {
+  //   titre, categorie, dateLabel, heureDebut, heureFin, operateur,
+  //   statutLabel, statutOk, total, cochees, notes,
+  //   sections: [{ titre, etapes: [{ label, critique, cochee, heure, note }] }]
+  // }
+  // options : { etablissement, autoPrint, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportSopExecutionPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      this._renderSopExecution(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'checklist.pdf');
+      } else {
+        doc.save(options.filename || 'checklist.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportSopExecutionPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderSopExecution(doc, payload, options = {}) {
+    const ACC = [0, 48, 66];      // bleu petrole Samper
+    const INK = [26, 26, 28];
+    const MUTE = [121, 124, 126];
+    const HAIR = [215, 220, 224];
+    const OK = [21, 128, 61];
+    const KO = [220, 38, 38];
+    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const contentW = PAGE_W - 2 * M;
+    const headerH = 12;
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
+    const logoDataUrl = options.logoDataUrl || null;
+
+    const titre      = pdfSafeText((payload.titre || 'Checklist').toString());
+    const categorie  = pdfSafeText((payload.categorie || '').toString());
+    const dateLabel  = pdfSafeText((payload.dateLabel || '').toString());
+    const heureDebut = pdfSafeText((payload.heureDebut || '-').toString());
+    const heureFin   = pdfSafeText((payload.heureFin || '-').toString());
+    const operateur  = pdfSafeText((payload.operateur || '-').toString());
+    const statutLabel = pdfSafeText((payload.statutLabel || '').toString());
+    const notes      = pdfSafeText((payload.notes || '').toString());
+    const total   = Number(payload.total) || 0;
+    const cochees = Number(payload.cochees) || 0;
+    const taux    = total > 0 ? Math.round(cochees / total * 100) : 0;
+    // statutOk : true = conforme (vert), false = anomalie (rouge), null = neutre
+    const statutColor = payload.statutOk === true ? OK : payload.statutOk === false ? KO : MUTE;
+    const sections = (Array.isArray(payload.sections) ? payload.sections : []).map(s => ({
+      titre: pdfSafeText((s.titre || '').toString()),
+      etapes: (s.etapes || []).map(e => ({
+        label: pdfSafeText((e.label || '').toString()),
+        note: pdfSafeText((e.note || '').toString()),
+        heure: pdfSafeText((e.heure || '').toString()),
+        critique: !!e.critique,
+        cochee: !!e.cochee,
+      })),
+    }));
+    const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Colonnes : [case] Libellé de l'étape ......... CRITIQUE  heure de validation
+    const boxSize = 3.8;
+    const labelX = M + 6.5;
+    const heureRight = PAGE_W - M;
+    const critiqueRight = heureRight - 13;
+    const labelW = contentW - 6.5 - 33;
+    const bodyBottom = PAGE_H - M - 12;
+    const LINE_H = 4.3;
+
+    // L'en-tête est répété sur chaque page : un rapport d'audit doit être
+    // identifiable page par page, même si les feuilles sont séparées.
+    const drawHeader = () => {
+      if (logoDataUrl) {
+        try {
+          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
+        } catch (e) { /* logo illisible */ }
+      }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
+      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
+      const ruleTopY = M + headerH;
+      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
+
+      let ty = ruleTopY + 9;
+      let tSize = 18;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(tSize); doc.setTextColor(...INK);
+      while (doc.getTextWidth(titre) > contentW && tSize > 11) { tSize -= 0.5; doc.setFontSize(tSize); }
+      doc.text(titre, M, ty);
+      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ty + 2.5, M + 26, ty + 2.5);
+
+      ty += 8;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
+      doc.text(dateLabel + (categorie ? `   ·   ${categorie}` : ''), M, ty);
+
+      ty += 4.5;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+      doc.text(`${heureDebut} -> ${heureFin}   ·   Opérateur : ${operateur}`, M, ty);
+
+      ty += 4.5;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...statutColor);
+      doc.text(statutLabel, M, ty);
+      const statutW = doc.getTextWidth(statutLabel);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTE);
+      doc.text(`   ·   ${cochees}/${total} étape${total > 1 ? 's' : ''} validée${cochees > 1 ? 's' : ''} (${taux}%)`, M + statutW, ty);
+
+      return ty + 7;
+    };
+    const drawFooter = () => {
+      const fy = PAGE_H - M - 4;
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text('Checklist SOP - Samper Consulting', M, fy);
+      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
+    };
+
+    let y = drawHeader();
+    const ensureSpace = (h, onNewPage) => {
+      if (y + h > bodyBottom) {
+        drawFooter(); doc.addPage(); y = drawHeader();
+        if (onNewPage) onNewPage();
+      }
+    };
+    // Titre de section, répété avec « (suite) » quand elle déborde sur la page suivante
+    const sectionHead = (sec, suite = false) => {
+      const done = sec.etapes.filter(e => e.cochee).length;
+      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
+      doc.text(((sec.titre || 'Étapes') + (suite ? ' (suite)' : '')).toUpperCase(), M + 3.4, y, { charSpace: 0.5 });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+      doc.text(`${done}/${sec.etapes.length}`, PAGE_W - M, y, { align: 'right' });
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
+      y += 7;
+    };
+
+    if (!sections.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      doc.text('Cette procédure ne contient aucune étape.', M, y + 4);
+    }
+
+    sections.forEach((sec) => {
+      ensureSpace(18);
+      sectionHead(sec);
+      sec.etapes.forEach((et) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+        const lines = doc.splitTextToSize(et.label || '-', labelW);
+        const noteLines = et.note ? doc.splitTextToSize(et.note, labelW) : [];
+        const rowH = Math.max(6.5, (lines.length + noteLines.length) * LINE_H + 2);
+        ensureSpace(rowH, () => sectionHead(sec, true));
+
+        // Case à cocher : pleine (accent + coche blanche) si validée, vide sinon
+        const boxY = y - 3;
+        if (et.cochee) {
+          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
+          doc.rect(M, boxY, boxSize, boxSize, 'F');
+          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
+          doc.line(M + 0.9, boxY + 2.0, M + 1.6, boxY + 2.9);
+          doc.line(M + 1.6, boxY + 2.9, M + 3.1, boxY + 1.1);
+        } else {
+          doc.setDrawColor(...(et.critique ? KO : MUTE)); doc.setLineWidth(0.3);
+          doc.rect(M, boxY, boxSize, boxSize, 'S');
+        }
+
+        // Une étape critique non validée est le signal d'audit : elle passe en rouge.
+        const manqueCritique = et.critique && !et.cochee;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+        doc.setTextColor(...(manqueCritique ? KO : INK));
+        lines.forEach((l, k) => doc.text(l, labelX, y + k * LINE_H));
+
+        if (et.critique) {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...KO);
+          doc.text('CRITIQUE', critiqueRight, y, { align: 'right', charSpace: 0.3 });
+        }
+        if (et.cochee && et.heure) {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+          doc.text(et.heure, heureRight, y, { align: 'right' });
+        }
+        if (noteLines.length) {
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+          noteLines.forEach((l, k) => doc.text(l, labelX, y + (lines.length + k) * LINE_H));
+        }
+
+        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
+        doc.line(M, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
+        y += rowH;
+      });
+      y += 4;
+    });
+
+    // Notes de l'exécution (anomalies relevées par l'opérateur)
+    if (notes) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      const noteLines = doc.splitTextToSize(notes, contentW);
+      ensureSpace(12 + noteLines.length * LINE_H);
+      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
+      doc.text('NOTES DE L\'OPÉRATEUR', M + 3.4, y, { charSpace: 0.5 });
+      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
+      y += 7;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+      noteLines.forEach((l) => { doc.text(l, M, y); y += LINE_H; });
+      y += 2;
+    }
+
+    // Visa du responsable : attendu sur un document présenté en contrôle
+    ensureSpace(18);
+    y += 6;
+    doc.setDrawColor(...MUTE); doc.setLineWidth(0.3);
+    doc.line(PAGE_W - M - 60, y, PAGE_W - M, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+    doc.text('Date et visa du responsable', PAGE_W - M, y + 3.5, { align: 'right' });
+
+    drawFooter();
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
+      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
+    }
+  },
 };
 
 // ─── Assainissement texte pour jsPDF ────────────────────────────────

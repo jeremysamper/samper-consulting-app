@@ -7,6 +7,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -167,7 +168,7 @@ const SOP = ({ user, etablissement }) => {
           }}
         />
       ) : (
-        <SopHistory executions={executions} sops={sops} user={user} canManage={canManage} />
+        <SopHistory executions={executions} sops={sops} user={user} canManage={canManage} etablissement={etablissement} />
       )}
 
       {/* Modale templates */}
@@ -457,6 +458,18 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
   const [stepStates, setStepStates] = React.useState({});  // { 'sectionId:stepId' : { cochee, note } }
   const [notes, setNotes] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+  // Photos de référence dépliées, par stepPath. Repliées par défaut : en service
+  // on veut la liste des étapes lisible d'un coup d'œil, la photo à la demande.
+  const [openPhotos, setOpenPhotos] = React.useState(() => new Set());
+  const [zoomPhoto, setZoomPhoto] = React.useState(null); // { url, label } en plein écran
+
+  const togglePhoto = (path) => {
+    setOpenPhotos(prev => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
+  };
 
   // Charger états initiaux
   React.useEffect(() => {
@@ -554,6 +567,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
               {sectionSteps.map(etape => {
                 const path = `${section.id}:${etape.id}`;
                 const state = stepStates[path] || {};
+                const photoOpen = openPhotos.has(path);
                 return (
                   <div key={etape.id}
                     style={{ ...ss.etapeRow, ...(state.cochee ? ss.etapeRowChecked : {}) }}
@@ -562,13 +576,36 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
                     <div style={{ ...ss.checkbox, ...(state.cochee ? ss.checkboxChecked : {}) }}>
                       {state.cochee && <span style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>✓</span>}
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ ...ss.etapeLabel, ...(state.cochee ? ss.etapeLabelChecked : {}) }}>
                         {etape.critique && <span style={ss.criticalDot} title="Étape critique">●</span>}
                         {etape.label}
                       </div>
                       {etape.info && (
                         <div style={ss.etapeInfo}>ℹ {etape.info}</div>
+                      )}
+                      {/* Photo de référence : repliée par défaut, le clic ne coche pas l'étape */}
+                      {etape.photoUrl && (
+                        <>
+                          <button
+                            type="button"
+                            style={{ ...ss.photoToggle, ...(photoOpen ? ss.photoToggleOpen : {}) }}
+                            onClick={(e) => { e.stopPropagation(); togglePhoto(path); }}
+                            aria-expanded={photoOpen}
+                          >
+                            {photoOpen ? '▾ Masquer la photo' : '📷 Voir la photo'}
+                          </button>
+                          {photoOpen && (
+                            <img
+                              src={etape.photoUrl}
+                              alt={etape.label || 'Photo de référence'}
+                              loading="lazy"
+                              style={ss.etapePhoto}
+                              title="Agrandir"
+                              onClick={(e) => { e.stopPropagation(); setZoomPhoto({ url: etape.photoUrl, label: etape.label }); }}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -598,100 +635,102 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
           {busy ? '...' : `✓ Valider (${checkedSteps}/${totalSteps})`}
         </button>
       </div>
+
+      {/* Photo en plein écran (utile sur téléphone au poste) */}
+      {zoomPhoto && (
+        <div style={ss.zoomOverlay} onClick={() => setZoomPhoto(null)}>
+          <button style={ss.zoomClose} onClick={() => setZoomPhoto(null)} title="Fermer">✕</button>
+          <img src={zoomPhoto.url} alt={zoomPhoto.label || 'Photo de référence'} style={ss.zoomImg} onClick={e => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 };
 
 // ─── Historique des exécutions ───
-const SopHistory = ({ executions, sops, user, canManage }) => {
+const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
+  const legacySB = dbService.getBridge();
   const sopMap = Object.fromEntries(sops.map(s => [s.id, s]));
   const sorted = [...executions].sort((a, b) => new Date(b.heureDebut) - new Date(a.heureDebut));
+  const [pdfBusyId, setPdfBusyId] = React.useState(null);
 
-  // ─── Export PDF d'une exécution ───
-  // Génère un document A4 propre avec : titre SOP, date, opérateur, étapes cochées/non cochées,
-  // notes éventuelles. Utile pour audits HACCP / ISO.
-  const exportExecutionPDF = (exec) => {
+  // ─── Export PDF d'une exécution (audit HACCP / ISO) ───
+  // Les états des étapes ne sont PAS portés par la ligne d'exécution : ils
+  // vivent dans la table sop_step_states, clés par `sectionId:etapeId`.
+  // On les charge donc avant de construire le document.
+  const exportExecutionPDF = async (exec) => {
     const sop = sopMap[exec.sopId];
     if (!sop) {
-      notifyLegacy('SOP introuvable pour cette exécution', 'error');
+      notifyLegacy('SOP introuvable pour cette exécution : le document ne peut pas être reconstitué.', 'error');
       return;
     }
-
-    // Reconstruire la liste des étapes avec leur état coché
-    // sop.sections = [{titre, etapes: [{id, libelle, ...}]}]
-    // exec.stepStates = { etapeId: true/false }
-    const stepStates = exec.stepStates || {};
-    const sections = sop.sections || [];
-
-    const escapeHtml = (s) => String(s || '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-    const dateLabel = new Date(exec.dateExecution + 'T12:00:00').toLocaleDateString('fr-CH', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-    });
-    const heureDebut = new Date(exec.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
-    const heureFin = exec.heureFin ? new Date(exec.heureFin).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' }) : '-';
-
-    // Compter étapes / cochées
-    const allEtapes = sections.flatMap(s => s.etapes || []);
-    const total = allEtapes.length;
-    const cochees = allEtapes.filter(e => stepStates[e.id]).length;
-    const tauxConf = total > 0 ? Math.round(cochees / total * 100) : 0;
-    const statutLabel = exec.statut === 'terminee' ? '✓ Terminée'
-                      : exec.statut === 'abandonnee' ? 'Abandonnée'
-                      : 'En cours';
-
-    // Construire le HTML des sections
-    let sectionsHtml = '';
-    sections.forEach(sec => {
-      sectionsHtml += `<h3 style="margin:14px 0 6px 0;font-size:12pt;color:#003042;border-bottom:1px solid #d4c8a0;padding-bottom:3px;">${escapeHtml(sec.titre || 'Étapes')}</h3>`;
-      sectionsHtml += '<ul style="list-style:none;padding-left:0;margin:0;">';
-      (sec.etapes || []).forEach(et => {
-        const checked = !!stepStates[et.id];
-        const checkbox = checked ? '☑' : '☐';
-        const color = checked ? '#15803d' : '#666';
-        const critical = et.critique ? ' <span style="color:#dc2626;font-size:8pt;font-weight:700;">● CRITIQUE</span>' : '';
-        sectionsHtml += `<li style="padding:4px 0;font-size:10pt;color:${color};border-bottom:1px dotted #eee;">
-          <span style="font-size:13pt;margin-right:6px;">${checkbox}</span>
-          ${escapeHtml(et.libelle || '')}${critical}
-        </li>`;
-      });
-      sectionsHtml += '</ul>';
-    });
-
-    // Métadonnées en haut
-    const metaHtml = `
-      <div style="display:flex;justify-content:space-between;gap:20px;margin-bottom:16px;font-size:10pt;">
-        <div>
-          <div><strong>Date :</strong> ${dateLabel}</div>
-          <div><strong>Horaire :</strong> ${heureDebut} → ${heureFin}</div>
-          <div><strong>Opérateur :</strong> ${escapeHtml(exec.operateurNom || '-')}</div>
-        </div>
-        <div style="text-align:right;">
-          <div><strong>Statut :</strong> ${statutLabel}</div>
-          <div><strong>Progression :</strong> ${cochees} / ${total} (${tauxConf}%)</div>
-          ${exec.notes ? `<div style="margin-top:6px;font-style:italic;color:#666;">📝 ${escapeHtml(exec.notes)}</div>` : ''}
-        </div>
-      </div>
-    `;
-
-    // Construire un élément temporaire pour PDFUtils
-    const tempId = 'sop-export-' + Date.now();
-    const tempDiv = document.createElement('div');
-    tempDiv.id = tempId;
-    tempDiv.style.display = 'none';
-    tempDiv.innerHTML = `${metaHtml}${sectionsHtml}`;
-    document.body.appendChild(tempDiv);
-
+    if (pdfBusyId) return;
+    setPdfBusyId(exec.id);
     try {
-      pdfUtils.printElement(tempId, sop.titre, { noBrandHeader: false });
+      const states = legacySB ? await legacySB.db.listSopStepStates(exec.id) : [];
+      const stateByPath = {};
+      (states || []).forEach(s => { stateByPath[s.stepPath] = s; });
+
+      const heureCourte = (iso) => iso
+        ? new Date(iso).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })
+        : '';
+
+      const sections = (sop.sections || []).map(sec => ({
+        titre: sec.titre,
+        etapes: (sec.etapes || []).map(et => {
+          const st = stateByPath[`${sec.id}:${et.id}`] || {};
+          return {
+            label: et.label,
+            critique: !!et.critique,
+            cochee: !!st.cochee,
+            heure: st.cochee ? heureCourte(st.heureCheck) : '',
+            note: st.note || '',
+          };
+        }),
+      }));
+
+      // Les compteurs enregistrés à la validation font foi (la SOP a pu être
+      // modifiée depuis). On ne recalcule que si l'exécution est encore en cours.
+      const allEtapes = sections.flatMap(s => s.etapes);
+      const total = exec.totalEtapes > 0 ? exec.totalEtapes : allEtapes.length;
+      const cochees = exec.totalEtapes > 0 ? exec.etapesCochees : allEtapes.filter(e => e.cochee).length;
+
+      const statutLabel = exec.statut === 'terminee' ? 'Terminée'
+                        : exec.statut === 'abandonnee' ? 'Abandonnée'
+                        : 'En cours';
+      // Vert seulement si tout est validé : une checklist terminée à 8/10 n'est
+      // pas conforme, et c'est précisément ce qu'un contrôle doit voir.
+      const statutOk = exec.statut === 'terminee' ? (total > 0 && cochees >= total)
+                     : exec.statut === 'abandonnee' ? false
+                     : null;
+
+      const dateLabel = new Date(exec.dateExecution + 'T12:00:00').toLocaleDateString('fr-CH', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      });
+      const slug = (sop.titre || 'checklist').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+      await pdfUtils.exportSopExecutionPdf({
+        titre: sop.titre,
+        categorie: sop.categorie,
+        dateLabel,
+        heureDebut: heureCourte(exec.heureDebut) || '-',
+        heureFin: heureCourte(exec.heureFin) || '-',
+        operateur: exec.operateurNom || '-',
+        statutLabel, statutOk, total, cochees,
+        notes: exec.notes || '',
+        sections,
+      }, {
+        etablissement,
+        filename: `checklist-${slug}-${exec.dateExecution}.pdf`,
+      });
     } catch (err) {
-      notifyLegacy('Erreur lors de la génération PDF', 'error');
+      // exportSopExecutionPdf notifie déjà en cas d'échec du rendu ; ce filet
+      // couvre le chargement des états d'étapes.
       console.error('[exportExecutionPDF]', err);
     } finally {
-      // Cleanup après un délai pour laisser printElement faire son travail
-      setTimeout(() => { tempDiv.remove(); }, 2000);
+      setPdfBusyId(null);
     }
   };
 
@@ -749,11 +788,13 @@ const SopHistory = ({ executions, sops, user, canManage }) => {
                       marginTop: 4, padding: '3px 8px',
                       background: 'var(--surface)', border: '1px solid var(--border)',
                       borderRadius: 6, fontSize: 10, fontWeight: 600, color: 'var(--text2)',
-                      cursor: 'pointer', fontFamily: 'var(--font)',
+                      cursor: pdfBusyId ? 'default' : 'pointer', fontFamily: 'var(--font)',
+                      opacity: pdfBusyId && pdfBusyId !== exec.id ? 0.5 : 1,
                     }}
                     onClick={(e) => { e.stopPropagation(); exportExecutionPDF(exec); }}
+                    disabled={!!pdfBusyId}
                     title="Exporter cette exécution en PDF (audit)"
-                  >📄 PDF</button>
+                  >{pdfBusyId === exec.id ? '… PDF' : '📄 PDF'}</button>
                 </div>
               </div>
             );
@@ -942,6 +983,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
 
 // ─── Éditeur de SOP ───
 const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
+  const legacySB = dbService.getBridge();
   const isNew = !sop?.id;
   const [data, setData] = React.useState({
     titre: '', categorie: 'Service', frequence: 'ponctuelle', description: '',
@@ -1073,7 +1115,23 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
             </div>
             {(section.etapes || []).map((etape, eIdx) => (
               <div key={etape.id} style={ss.etapeEditRow}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {/* Photo de référence de l'étape (ex. dressage d'une table) :
+                    dépliable à la demande pendant l'exécution de la checklist. */}
+                <PhotoUploader
+                  photoUrl={etape.photoUrl}
+                  size={64}
+                  emoji="📷"
+                  onUpload={async (file) => {
+                    try {
+                      const { url } = await legacySB.db.uploadRecettePhoto({
+                        etabId, type: 'sop', id: etape.id, file,
+                      });
+                      updateEtape(sIdx, eIdx, { photoUrl: url });
+                    } catch (err) { notifyLegacy('Erreur upload : ' + err.message, 'error'); }
+                  }}
+                  onRemove={() => updateEtape(sIdx, eIdx, { photoUrl: null })}
+                />
+                <div style={{ flex: 1, minWidth: 150, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <input
                     type="text"
                     value={etape.label}
@@ -1089,13 +1147,15 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                     style={{ ...ss.input, fontSize: 11, color: 'var(--text2)' }}
                   />
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  <input type="checkbox" checked={!!etape.critique}
-                    onChange={e => updateEtape(sIdx, eIdx, { critique: e.target.checked })}
-                    style={{ accentColor: '#dc2626' }}/>
-                  Critique
-                </label>
-                <button style={ss.iconBtnDanger} onClick={() => removeEtape(sIdx, eIdx)}>✕</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    <input type="checkbox" checked={!!etape.critique}
+                      onChange={e => updateEtape(sIdx, eIdx, { critique: e.target.checked })}
+                      style={{ accentColor: '#dc2626' }}/>
+                    Critique
+                  </label>
+                  <button style={ss.iconBtnDanger} onClick={() => removeEtape(sIdx, eIdx)}>✕</button>
+                </div>
               </div>
             ))}
             <button style={ss.addStepBtn} onClick={() => addEtape(sIdx)}>+ Étape</button>
@@ -1156,6 +1216,12 @@ const ss = {
   etapeLabelChecked: { textDecoration: 'line-through', color: 'var(--text2)' },
   criticalDot: { color: '#dc2626', marginRight: 6, fontSize: 8 },
   etapeInfo: { fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', marginTop: 4, paddingLeft: 4 },
+  photoToggle: { marginTop: 6, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, fontSize: 11, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  photoToggleOpen: { background: 'var(--surface)', borderColor: 'var(--accent)', color: 'var(--accent)' },
+  etapePhoto: { display: 'block', width: '100%', maxWidth: 420, height: 'auto', maxHeight: 340, objectFit: 'contain', marginTop: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'zoom-in' },
+  zoomOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16, cursor: 'zoom-out' },
+  zoomImg: { maxWidth: '96vw', maxHeight: '86vh', objectFit: 'contain', borderRadius: 8, cursor: 'default' },
+  zoomClose: { position: 'absolute', top: 12, right: 12, width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', fontSize: 18, cursor: 'pointer' },
   notesInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', resize: 'vertical', marginTop: 4 },
   checklistFooter: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', gap: 10, zIndex: 10 },
   abandonBtn: { flex: 1, padding: '12px', background: 'none', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
@@ -1174,7 +1240,9 @@ const ss = {
   fieldLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
   input: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' },
   select: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', width: '100%', cursor: 'pointer', boxSizing: 'border-box' },
-  etapeEditRow: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px dashed var(--border)' },
+  // flexWrap : sur mobile le bloc « Critique + ✕ » passe à la ligne plutôt que
+  // d'écraser les champs texte une fois la vignette photo ajoutée à gauche.
+  etapeEditRow: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px dashed var(--border)', flexWrap: 'wrap' },
   addStepBtn: { width: '100%', padding: '8px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 6 },
 
   // Modale
