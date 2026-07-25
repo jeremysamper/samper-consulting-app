@@ -7,6 +7,7 @@ import { dedupeCommande } from '../../services/aiService.js';
 import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMANDE - liste de produits a commander, partagee par etablissement.
@@ -217,10 +218,10 @@ const Commande = ({ user, etablissement }) => {
   };
 
   // ── Derives ──
-  const searchVal = search.trim().toLowerCase();
+  const searchVal = normalizeSearch(search.trim());
   const filtered = items.filter(i =>
     (catFilter === 'Tous' || i.categorie === catFilter) &&
-    (searchVal === '' || (i.nom || '').toLowerCase().includes(searchVal))
+    (searchVal === '' || normalizeSearch(i.nom).includes(searchVal))
   );
   const categories = ['Tous', ...[...new Set(items.map(i => i.categorie || 'Autres'))].sort(catSort)];
   const groups = groupByCategorie(filtered);

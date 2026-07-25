@@ -6,6 +6,7 @@ import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { ALLERGENES } from '../../utils/allergenes.js';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -25,7 +26,6 @@ const UNITES_REF = [
   { val: 'pcs', label: 'pcs (pièce)' },
 ];
 
-const safeText = (value) => String(value ?? '').toLowerCase();
 
 const Catalogue = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
@@ -103,11 +103,11 @@ const Catalogue = ({ user, etablissement }) => {
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
 
-  const searchValue = safeText(search);
+  const searchValue = normalizeSearch(search);
   const filtered = produits.filter(p =>
     (catFilter === 'Tous' || p.categorie === catFilter) &&
-    (searchValue === '' || safeText(p.nom).includes(searchValue) ||
-     safeText(p.fournisseurNom).includes(searchValue))
+    (searchValue === '' || normalizeSearch(p.nom).includes(searchValue) ||
+     normalizeSearch(p.fournisseurNom).includes(searchValue))
   );
 
   // ═══ Fournisseur CRUD ═══

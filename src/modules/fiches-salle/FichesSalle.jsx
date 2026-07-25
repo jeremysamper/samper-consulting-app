@@ -13,6 +13,7 @@ import {
   ALLERGENE_IDS, ALLERGENES_LABELS, labelAllergene,
   normalizeAllergenes, partitionAllergenes,
 } from '../../utils/allergenes.js';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -209,7 +210,7 @@ const FichesSalle = ({ user, etablissement }) => {
   const filtered = fiches.filter(f =>
     (catFilter === 'Tous' || f.categorie === catFilter) &&
     (activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab)) &&
-    (search === '' || f.nom.toLowerCase().includes(search.toLowerCase()))
+    (search === '' || normalizeSearch(f.nom).includes(normalizeSearch(search)))
   );
 
   const todayStr = new Date().toISOString().slice(0, 10);

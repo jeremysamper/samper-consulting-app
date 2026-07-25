@@ -6,6 +6,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS - Partage hiérarchique de PDFs
@@ -76,7 +77,7 @@ const Documents = ({ user, etablissement }) => {
   // Filtrer les documents du dossier courant
   const docsInFolder = allDocs.filter(d =>
     (d.parentId || null) === currentFolder &&
-    (search === '' || d.nom.toLowerCase().includes(search.toLowerCase()))
+    (search === '' || normalizeSearch(d.nom).includes(normalizeSearch(search)))
   );
   const folders = docsInFolder.filter(d => d.type === 'folder');
   const files = docsInFolder.filter(d => d.type === 'file');

@@ -3,6 +3,7 @@ import { alertLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacy
 import { pdfUtils } from '../../services/pdf.js';
 import { writeText } from '../../utils/storage.js';
 import { ALLERGENES_OPTIONS } from './ConsultantTools.constants.js';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 const MENU_CATEGORIES = ['Entrées', 'Plats', 'Fromages', 'Desserts', 'Boissons', 'Menus'];
 
@@ -159,8 +160,8 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
 
   const filteredSources = sourceItems.filter((item) => {
     const matchesCategory = filterCategory === 'Tous' || item.category === filterCategory;
-    const term = search.trim().toLowerCase();
-    const matchesSearch = !term || item.name.toLowerCase().includes(term) || item.description.toLowerCase().includes(term);
+    const term = normalizeSearch(search.trim());
+    const matchesSearch = !term || normalizeSearch(item.name).includes(term) || normalizeSearch(item.description).includes(term);
     return matchesCategory && matchesSearch && !items.some((menuItem) => menuItem.sourceId === item.sourceId && menuItem.sourceType === item.sourceType);
   });
 

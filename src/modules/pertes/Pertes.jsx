@@ -9,6 +9,7 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -139,7 +140,7 @@ const Pertes = ({ user, etablissement }) => {
 
   const filtered = pertesEtab.filter(p =>
     (motifFilter === 'Tous' || p.motif === motifFilter) &&
-    (search === '' || p.produit.toLowerCase().includes(search.toLowerCase()))
+    (search === '' || normalizeSearch(p.produit).includes(normalizeSearch(search)))
   );
 
   const totalValeur = filtered.reduce((s,p) => s + p.quantite * p.valeurUnit, 0);
@@ -385,9 +386,9 @@ const Pertes = ({ user, etablissement }) => {
                     onFocus={() => setAutocompleteOpen(true)}
                     onBlur={() => setTimeout(() => setAutocompleteOpen(false), 150)}
                     onKeyDown={e => {
-                      const q = (form.produit || '').toLowerCase().trim();
+                      const q = normalizeSearch(form.produit).trim();
                       const matches = catalogue
-                        .filter(p => p.nom && p.nom.toLowerCase().includes(q))
+                        .filter(p => p.nom && normalizeSearch(p.nom).includes(q))
                         .slice(0, 8);
                       if (e.key === 'ArrowDown') {
                         e.preventDefault();
@@ -415,9 +416,9 @@ const Pertes = ({ user, etablissement }) => {
                   />
                   {/* Dropdown suggestions */}
                   {autocompleteOpen && form.produit.trim() && catalogue.length > 0 && (() => {
-                    const q = form.produit.toLowerCase().trim();
+                    const q = normalizeSearch(form.produit).trim();
                     const matches = catalogue
-                      .filter(p => p.nom && p.nom.toLowerCase().includes(q))
+                      .filter(p => p.nom && normalizeSearch(p.nom).includes(q))
                       .slice(0, 8);
                     if (matches.length === 0) return null;
                     return (

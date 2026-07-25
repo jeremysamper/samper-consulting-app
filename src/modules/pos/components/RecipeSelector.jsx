@@ -18,17 +18,18 @@
 import { useState, useMemo } from 'react';
 import { Input, Btn } from '../../../components/ui/index.jsx';
 import { diceScore } from '../lib/dice-coefficient.js';
+import { normalizeSearch } from '../../../utils/searchText.js';
 
 export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelect, onClose }) {
   const [search, setSearch] = useState('');
 
   // Filtre + tri par similarité Dice avec la recherche
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = normalizeSearch(search.trim());
     if (!q) return [...recettes].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
 
     return recettes
-      .filter((r) => r.nom.toLowerCase().includes(q))
+      .filter((r) => normalizeSearch(r.nom).includes(q))
       .map((r) => ({ ...r, _score: diceScore(q, r.nom) }))
       .sort((a, b) => b._score - a._score);
   }, [recettes, search]);

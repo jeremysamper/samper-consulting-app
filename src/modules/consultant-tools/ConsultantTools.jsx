@@ -35,8 +35,8 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
 import AlertRules from './AlertRules.jsx';
+import { normalizeSearch } from '../../utils/searchText.js';
 
-const safeText = (value) => String(value ?? '').toLowerCase();
 const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures', 'alertes'];
 
 // ─── Stabilité de la saisie : brouillons localStorage + détection de conflit ───
@@ -277,9 +277,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   }, [recettes]);
 
   const selected = recettes.find(r => r.id === selectedId);
-  const searchValue = safeText(search);
-  const filtered = recettesActives.filter(r => searchValue === '' || safeText(r.nom).includes(searchValue));
-  const archiveesFiltrees = recettesArchivees.filter(r => searchValue === '' || safeText(r.nom).includes(searchValue));
+  const searchValue = normalizeSearch(search);
+  const filtered = recettesActives.filter(r => searchValue === '' || normalizeSearch(r.nom).includes(searchValue));
+  const archiveesFiltrees = recettesArchivees.filter(r => searchValue === '' || normalizeSearch(r.nom).includes(searchValue));
   // Section « Archivées » de la liste : repliée par défaut.
   const [showArchivees, setShowArchivees] = React.useState(false);
 
@@ -1257,7 +1257,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             );
 
             // Un plat est visible si son nom matche ou s'il a une recette filtrée.
-            const platMatches = (p) => searchValue === '' || safeText(p.nom).includes(searchValue) || (recettesParPlat[p.id]?.length > 0);
+            const platMatches = (p) => searchValue === '' || normalizeSearch(p.nom).includes(searchValue) || (recettesParPlat[p.id]?.length > 0);
 
             // Retire le plat d'UNE carte (lien carte↔plat) sans supprimer le plat
             // ni ses recettes : il reste dans l'établissement et sur les autres cartes.
@@ -1824,7 +1824,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     const showSugg = focusedIngId === ing.id && (ing.nom || '').length >= 3 && catalogue.length > 0 && !ing.produitId;
                     const suggestions = showSugg
                       ? catalogue
-                          .filter(p => safeText(p.nom).includes(safeText(ing.nom)))
+                          .filter(p => normalizeSearch(p.nom).includes(normalizeSearch(ing.nom)))
                           .slice(0, 5)
                       : [];
                     const isLinked = !!ing.produitId;
@@ -2275,7 +2275,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         const cats = ['Tous', ...new Set(catalogue.map(p => p.categorie).filter(Boolean))];
         const filtered = catalogue.filter(p =>
           (pickerCat === 'Tous' || p.categorie === pickerCat) &&
-          (safeText(pickerSearch) === '' || safeText(p.nom).includes(safeText(pickerSearch)))
+          (normalizeSearch(pickerSearch) === '' || normalizeSearch(p.nom).includes(normalizeSearch(pickerSearch)))
         ).sort((a, b) => String(a.nom || '').localeCompare(String(b.nom || '')));
 
         const linkProductToLine = (p, lineIdx) => linkProductToIngredient(lineIdx, p);

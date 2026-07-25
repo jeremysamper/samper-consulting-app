@@ -8,6 +8,7 @@ import { canManageModule } from '../../data/demoData.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -284,7 +285,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
 
   const filtered = sops.filter(s => {
     if (!s.actif) return false;
-    if (search !== '' && !s.titre.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search !== '' && !normalizeSearch(s.titre).includes(normalizeSearch(search))) return false;
     if (onboardingMode && !(s.tags || []).includes(ONBOARDING_TAG)) return false;
     if (!onboardingMode && filterFreq !== 'all' && s.frequence !== filterFreq) return false;
     return true;

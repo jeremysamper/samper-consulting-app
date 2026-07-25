@@ -23,6 +23,7 @@ import { MappingStats }   from './components/MappingStats.jsx';
 import { MappingFilters } from './components/MappingFilters.jsx';
 import { PosItemRow }     from './components/PosItemRow.jsx';
 import { canManageModule } from '../../data/demoData.js';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -183,8 +184,8 @@ export default function MappingPlats({ user, etablissement }) {
   const filteredItems = useMemo(() => {
     let items = posItems;
     if (search.trim()) {
-      const q = search.toLowerCase();
-      items = items.filter((i) => i.name.toLowerCase().includes(q));
+      const q = normalizeSearch(search);
+      items = items.filter((i) => normalizeSearch(i.name).includes(q));
     }
     if (filter !== 'all') {
       items = items.filter((i) => itemStatuses[i.id] === filter);

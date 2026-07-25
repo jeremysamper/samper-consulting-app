@@ -8,6 +8,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 // INVENTAIRE MENSUEL
 const Inventaire = ({ user, etablissement }) => {
@@ -139,7 +140,7 @@ const Inventaire = ({ user, etablissement }) => {
   const filtered = (inv.lignes || []).filter(l =>
     (catFilter === 'Tous' || l.categorie === catFilter) &&
     (typeFilter === 'Tous' || (l.type || '') === typeFilter) &&
-    (search === '' || l.produit.toLowerCase().includes(search.toLowerCase()))
+    (search === '' || normalizeSearch(l.produit).includes(normalizeSearch(search)))
   );
   // Liste des types présents dans l'inventaire (pour afficher le filtre si au moins 1 ligne a un type)
   const hasTypes = inv.lignes.some(l => l.type);
@@ -685,9 +686,9 @@ const Inventaire = ({ user, etablissement }) => {
                     setTimeout(() => setAutocompleteOpen(false), 150);
                   }}
                   onKeyDown={e => {
-                    const q = (newLine.produit || '').toLowerCase().trim();
+                    const q = normalizeSearch(newLine.produit).trim();
                     const matches = catalogue
-                      .filter(p => p.nom && p.nom.toLowerCase().includes(q))
+                      .filter(p => p.nom && normalizeSearch(p.nom).includes(q))
                       .slice(0, 8);
                     if (e.key === 'ArrowDown') {
                       e.preventDefault();
@@ -715,9 +716,9 @@ const Inventaire = ({ user, etablissement }) => {
                 />
                 {/* Dropdown suggestions */}
                 {autocompleteOpen && newLine.produit.trim() && catalogue.length > 0 && (() => {
-                  const q = newLine.produit.toLowerCase().trim();
+                  const q = normalizeSearch(newLine.produit).trim();
                   const matches = catalogue
-                    .filter(p => p.nom && p.nom.toLowerCase().includes(q))
+                    .filter(p => p.nom && normalizeSearch(p.nom).includes(q))
                     .slice(0, 8);
                   if (matches.length === 0) return null;
                   return (

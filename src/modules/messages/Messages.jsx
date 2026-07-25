@@ -12,6 +12,7 @@ import { roles as roleConfig } from '../moduleConfig.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 function formatMessageDate(iso) {
   if (!iso) return '';
@@ -77,8 +78,8 @@ function ConsultantView({ user, legacySB, isMobile }) {
     .filter(p => p.id !== user.id)
     .filter(p => {
       if (!search.trim()) return true;
-      const q = search.trim().toLowerCase();
-      return `${p.prenom || ''} ${p.nom || ''} ${p.email || ''}`.toLowerCase().includes(q);
+      const q = normalizeSearch(search.trim());
+      return normalizeSearch(`${p.prenom || ''} ${p.nom || ''} ${p.email || ''}`).includes(q);
     });
 
   const byRecipient = React.useMemo(() => {
