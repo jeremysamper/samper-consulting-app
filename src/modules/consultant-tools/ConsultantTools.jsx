@@ -21,7 +21,9 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
 import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, convertFactor } from './ConsultantTools.constants.js';
 import { partitionAllergenes, normalizeAllergenes, labelAllergene } from '../../utils/allergenes.js';
+import { CATEGORIES_PLAT } from '../../utils/categoriesPlat.js';
 import PhotoUploader from './PhotoUploader.jsx';
+import PlatPicker from './components/PlatPicker.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
@@ -318,6 +320,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Mode sélection multiple de recettes (suppression / export en lot)
   const recSel = useSelection();
   const [recBulkBusy, setRecBulkBusy] = React.useState(false);
+  // Menu « ⋯ » : actions ponctuelles sorties de l'en-tête de la colonne gauche
+  const [outilsMenuOpen, setOutilsMenuOpen] = React.useState(false);
   // Détection IA des allergènes en cours
   const [allergenAiBusy, setAllergenAiBusy] = React.useState(false);
   // Génération IA de l'analyse HACCP
@@ -562,35 +566,80 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setRecBulkBusy(false);
   };
 
-  // Rattache toutes les recettes sélectionnées à un plat en une fois.
+  // Rattache toutes les recettes sélectionnées à PLUSIEURS plats en une fois.
+  // La modale n'imposait qu'un plat par passage : rattacher une garniture aux
+  // quatre plats qui l'utilisent demandait quatre allers-retours, en re-cochant
+  // les recettes à chaque fois.
   // linkRecetteToPlat est un upsert (plat_id, recette_id) : les doublons sont
   // impossibles, on saute quand même les recettes déjà liées pour le compteur.
-  const rattacherSelectionAuPlat = async (plat) => {
+  const rattacherSelectionAuxPlats = async (platsCibles) => {
     const ids = Array.from(recSel.ids);
-    if (!ids.length || !legacySB) return;
+    if (!ids.length || !platsCibles.length || !legacySB) return;
     setRecBulkBusy(true);
-    const dejaLiees = new Set((plat.recettes || []).map(pr => pr.recetteId));
-    const liees = [];
-    let deja = 0, ko = 0;
-    for (const rid of ids) {
-      if (dejaLiees.has(rid)) { deja += 1; continue; }
-      try { await legacySB.db.linkRecetteToPlat(plat.id, rid, 'composant', 0); liees.push(rid); }
-      catch (err) { console.error('[linkRecetteToPlat]', err); ko += 1; }
+    const parPlat = new Map(); // platId -> recetteIds effectivement liées
+    let total = 0, deja = 0, ko = 0;
+    for (const plat of platsCibles) {
+      const dejaLiees = new Set((plat.recettes || []).map(pr => pr.recetteId));
+      const liees = [];
+      for (const rid of ids) {
+        if (dejaLiees.has(rid)) { deja += 1; continue; }
+        try { await legacySB.db.linkRecetteToPlat(plat.id, rid, 'composant', 0); liees.push(rid); }
+        catch (err) { console.error('[linkRecetteToPlat]', err); ko += 1; }
+      }
+      if (liees.length) parPlat.set(plat.id, liees);
+      total += liees.length;
     }
     // Mise à jour optimiste ; le realtime plat_recettes reste la source de vérité.
-    if (liees.length) {
-      setPlats(prev => prev.map(p => p.id === plat.id
-        ? { ...p, recettes: [...p.recettes, ...liees.map(rid => ({ recetteId: rid, role: 'composant', ordre: 0 }))] }
+    if (parPlat.size) {
+      setPlats(prev => prev.map(p => parPlat.has(p.id)
+        ? { ...p, recettes: [...p.recettes, ...parPlat.get(p.id).map(rid => ({ recetteId: rid, role: 'composant', ordre: 0 }))] }
         : p));
     }
     setRecBulkBusy(false);
     setBulkLinkPlatOpen(false);
     recSel.exit();
+    const cible = platsCibles.length === 1
+      ? `« ${platsCibles[0].nom} »`
+      : `${platsCibles.length} plats`;
     const parts = [];
-    if (liees.length) parts.push(`${liees.length} recette${liees.length > 1 ? 's' : ''} rattachée${liees.length > 1 ? 's' : ''} à « ${plat.nom} »`);
+    if (total) parts.push(`${total} rattachement${total > 1 ? 's' : ''} vers ${cible}`);
     if (deja) parts.push(`${deja} déjà liée${deja > 1 ? 's' : ''}`);
     if (ko) parts.push(`${ko} en erreur`);
     notifyLegacy(parts.join(' · ') || 'Aucune recette à rattacher.', ko ? 'warning' : 'success');
+  };
+
+  // Applique la sélection de plats du picker à UNE recette : ce qui a été coché
+  // est lié, ce qui a été décoché est délié. Le picker ne fait aucune écriture,
+  // la modale peut donc être annulée sans laisser de lien à moitié posé.
+  const appliquerPlatsPourRecette = async (recette, platIds) => {
+    if (!recette || !legacySB) return;
+    const cible = new Set(platIds);
+    const avant = new Set(plats.filter(p => (p.recettes || []).some(pr => pr.recetteId === recette.id)).map(p => p.id));
+    const aLier = platIds.filter(id => !avant.has(id));
+    const aDelier = [...avant].filter(id => !cible.has(id));
+    if (!aLier.length && !aDelier.length) { setLinkPlatPickerForRecette(null); return; }
+    setRecBulkBusy(true);
+    let ko = 0;
+    for (const platId of aLier) {
+      try { await legacySB.db.linkRecetteToPlat(platId, recette.id, 'composant', 0); }
+      catch (err) { console.error('[linkRecetteToPlat]', err); ko += 1; }
+    }
+    for (const platId of aDelier) {
+      try { await legacySB.db.unlinkRecetteFromPlat(platId, recette.id); }
+      catch (err) { console.error('[unlinkRecetteFromPlat]', err); ko += 1; }
+    }
+    setPlats(prev => prev.map(p => {
+      if (aLier.includes(p.id)) return { ...p, recettes: [...p.recettes, { recetteId: recette.id, role: 'composant', ordre: 0 }] };
+      if (aDelier.includes(p.id)) return { ...p, recettes: p.recettes.filter(pr => pr.recetteId !== recette.id) };
+      return p;
+    }));
+    setRecBulkBusy(false);
+    setLinkPlatPickerForRecette(null);
+    const parts = [];
+    if (aLier.length) parts.push(`${aLier.length} plat${aLier.length > 1 ? 's' : ''} rattaché${aLier.length > 1 ? 's' : ''}`);
+    if (aDelier.length) parts.push(`${aDelier.length} lien${aDelier.length > 1 ? 's' : ''} retiré${aDelier.length > 1 ? 's' : ''}`);
+    if (ko) parts.push(`${ko} en erreur`);
+    notifyLegacy(parts.join(' · '), ko ? 'warning' : 'success');
   };
 
   // ═══ Synchronisation carte active ═══
@@ -1063,63 +1112,100 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       )}
       {/* Colonne gauche : liste */}
       <div style={cts.leftCol} className="no-print">
+        {/* En-tête : deux rangées maximum. La colonne fait 280px - les cinq
+            rangées d'actions qui s'y empilaient (création, import, sélection,
+            allergènes IA, correspondances) mangeaient le haut de la liste. Les
+            actions ponctuelles sont passées sous le menu « ⋯ », et le mode
+            sélection REMPLACE la barre de création au lieu de s'y ajouter. */}
         <div style={cts.leftHeader}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button style={{ ...cts.newBtn, flex: 1 }} onClick={createNew}>+ Recette</button>
-            <button
-              style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}
-              onClick={() => { setEditPlat(null); setShowPlatForm(true); }}
-            >+ Plat</button>
-            <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
-          </div>
-          <div style={{display:'flex', gap:6, marginTop:8}}>
-            <button
-              style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}}
-              onClick={() => setShowImport(true)}
-            >📥 Importer des recettes</button>
-            {!recSel.active && (
-              <button
-                style={{...cts.ghostBtn, flex:1, fontSize:11, padding:'6px 8px'}}
-                onClick={recSel.enter}
-              >☑ Sélectionner</button>
-            )}
-          </div>
-          {recSel.active && (
-            <div style={{ marginTop: 8 }}>
-              <SelectionToolbar
-                count={recSel.count}
-                total={filtered.length}
-                allSelected={recSel.count > 0 && recSel.count === filtered.length}
-                onToggleAll={() => (recSel.count === filtered.length ? recSel.clear() : recSel.selectAll(filtered.map(r => r.id)))}
-                onDelete={supprimerRecettesSelection}
-                onExport={exporterRecettesSelection}
-                exportLabel="⬇ Exporter Excel"
-                onCancel={recSel.exit}
-                busy={recBulkBusy}
-              >
-                <Btn small variant="ghost" onClick={() => setBulkLinkPlatOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
-                  🍽 Rattacher à un plat ({recSel.count})
-                </Btn>
-                <Btn small variant="ghost" onClick={archiverRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
-                  🗄 Archiver ({recSel.count})
-                </Btn>
-              </SelectionToolbar>
-            </div>
+          {recSel.active ? (
+            <SelectionToolbar
+              layout="stack"
+              count={recSel.count}
+              total={filtered.length}
+              allSelected={recSel.count > 0 && recSel.count === filtered.length}
+              onToggleAll={() => (recSel.count === filtered.length ? recSel.clear() : recSel.selectAll(filtered.map(r => r.id)))}
+              onDelete={supprimerRecettesSelection}
+              onExport={exporterRecettesSelection}
+              exportLabel="⬇ Excel"
+              onCancel={recSel.exit}
+              busy={recBulkBusy}
+              /* La recherche reste accessible : « Tout » sélectionne la liste
+                 filtrée, filtrer puis tout cocher est l'usage courant. */
+              headExtra={<SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />}
+            >
+              <Btn small variant="ghost" onClick={() => setBulkLinkPlatOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
+                🍽 Rattacher
+              </Btn>
+              <Btn small variant="ghost" onClick={archiverRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
+                🗄 Archiver
+              </Btn>
+            </SelectionToolbar>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button style={{ ...cts.newBtn, flex: 1 }} onClick={createNew}>+ Recette</button>
+                <button
+                  style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}
+                  onClick={() => { setEditPlat(null); setShowPlatForm(true); }}
+                >+ Plat</button>
+                <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+                <button
+                  style={{ ...cts.ghostBtn, flex: 1, fontSize: 11, padding: '6px 8px' }}
+                  onClick={recSel.enter}
+                >☑ Sélectionner</button>
+                {(() => {
+                  const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
+                  return (
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <button
+                        style={{ ...cts.ghostBtn, fontSize: 13, padding: '6px 12px', height: '100%', lineHeight: 1 }}
+                        onClick={() => setOutilsMenuOpen(v => !v)}
+                        title="Autres outils"
+                        aria-haspopup="menu"
+                        aria-expanded={outilsMenuOpen}
+                      >
+                        ⋯
+                        {reviewCount > 0 && <span style={cts.menuDot} title={`${reviewCount} correspondance(s) à valider`} />}
+                      </button>
+                      {outilsMenuOpen && (
+                        <>
+                          {/* Voile transparent : ferme le menu au clic à côté
+                              sans écouteur global sur document. */}
+                          <div style={cts.menuBackdrop} onClick={() => setOutilsMenuOpen(false)} />
+                          <div style={cts.menuPanel} role="menu">
+                            <button
+                              className="sc-menu-item"
+                              style={cts.menuItem}
+                              role="menuitem"
+                              onClick={() => { setOutilsMenuOpen(false); setShowImport(true); }}
+                            >📥 Importer des recettes</button>
+                            <button
+                              className="sc-menu-item"
+                              style={{ ...cts.menuItem, color: 'var(--ai-text)' }}
+                              role="menuitem"
+                              disabled={!!bulkAllergenProgress}
+                              onClick={() => { setOutilsMenuOpen(false); detecterAllergenesToutes(); }}
+                            >✨ Allergènes IA - toutes les recettes</button>
+                            {reviewCount > 0 && (
+                              <button
+                                className="sc-menu-item"
+                                style={{ ...cts.menuItem, color: 'var(--warning-text)' }}
+                                role="menuitem"
+                                onClick={() => { setOutilsMenuOpen(false); setShowMatchReview(true); }}
+                              >⚠ Correspondances à valider ({reviewCount})</button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </>
           )}
-          <button
-            style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
-            onClick={detecterAllergenesToutes}
-            disabled={!!bulkAllergenProgress}
-          >✨ Allergènes IA - toutes les recettes</button>
-          {(() => {
-            const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
-            return reviewCount > 0 ? (
-              <button
-                style={{ ...cts.ghostBtn, width: '100%', marginTop: 6, fontSize: 11, padding: '6px 8px', background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' }}
-                onClick={() => setShowMatchReview(true)}
-              >⚠ Correspondances à valider ({reviewCount})</button>
-            ) : null;
-          })()}
         </div>
         <div style={cts.leftList}>
           {(() => {
@@ -2059,9 +2145,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       onChange={e => setP({ categorie: e.target.value })}
                       style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', marginTop: 4, cursor: 'pointer' }}
                     >
-                      {['Entrées', 'Plats', 'Poissons', 'Viandes', 'Pâtes & Risottos', 'Fromages', 'Desserts', 'Boissons', 'Menus'].map(c =>
-                        <option key={c} value={c}>{c}</option>
-                      )}
+                      {CATEGORIES_PLAT.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div style={{ flex: 1 }}>
@@ -2133,129 +2217,55 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         );
       })()}
 
-      {/* ─── Modale rattacher recette à un plat ─── */}
-      {linkPlatPickerForRecette !== null && selected && (() => {
-        const linkedPlatIds = new Set(
-          plats.filter(p => p.recettes.some(pr => pr.recetteId === selected.id)).map(p => p.id)
-        );
-        return (
-          <div className="modal-full-overlay" style={cts.overlay} onClick={() => setLinkPlatPickerForRecette(null)}>
-            <div className="modal-full" style={{ ...cts.modal, width: 460, maxWidth: '94vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🍽 Rattacher à un plat</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>"{selected.nom}" peut appartenir à plusieurs plats</div>
-                </div>
-                <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => setLinkPlatPickerForRecette(null)}>✕</button>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-                {plats.length === 0 ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
-                    Aucun plat. Créez-en d'abord avec "+ Plat".
-                  </div>
-                ) : (
-                  plats.map(p => {
-                    const isLinked = linkedPlatIds.has(p.id);
-                    return (
-                      <div key={p.id}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
-                          borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                          background: isLinked ? 'var(--success-bg)' : 'transparent',
-                        }}
-                        onClick={async () => {
-                          try {
-                            if (isLinked) {
-                              await legacySB.db.unlinkRecetteFromPlat(p.id, selected.id);
-                            } else {
-                              await legacySB.db.linkRecetteToPlat(p.id, selected.id, 'composant', 0);
-                            }
-                          } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
-                        }}
-                      >
-                        <span style={{ fontSize: 14 }}>{isLinked ? '✓' : '○'}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.nom}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{p.categorie}{p.prixVente != null ? ` · CHF ${p.prixVente.toFixed(2)}` : ''}</div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
-                <button style={cts.ghostBtn} onClick={() => setLinkPlatPickerForRecette(null)}>Fermer</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* ─── Modale rattacher UNE recette à des plats ─── */}
+      {linkPlatPickerForRecette !== null && selected && (
+        <PlatPicker
+          key={selected.id}
+          title="Rattacher à un plat"
+          subtitle={`« ${selected.nom} » peut appartenir à plusieurs plats : cochez-les, puis enregistrez. Décocher retire le lien.`}
+          plats={plats}
+          cartes={cartesActivesLocal}
+          initialSelected={plats.filter(p => (p.recettes || []).some(pr => pr.recetteId === selected.id)).map(p => p.id)}
+          confirmLabel={(n) => `Enregistrer (${n})`}
+          emptyHint={'Aucun plat. Créez-en un d\'abord avec « + Plat ».'}
+          busy={recBulkBusy}
+          onConfirm={(ids) => appliquerPlatsPourRecette(selected, ids)}
+          onClose={() => setLinkPlatPickerForRecette(null)}
+          onCreatePlat={() => { setLinkPlatPickerForRecette(null); setEditPlat(null); setShowPlatForm(true); }}
+        />
+      )}
 
-      {/* ─── Modale rattacher la sélection (multi-recettes) à un plat ─── */}
+      {/* ─── Modale rattacher la sélection (multi-recettes) à plusieurs plats ─── */}
       {bulkLinkPlatOpen && (() => {
         const selIds = Array.from(recSel.ids);
+        const dejaCount = (p) => selIds.filter(rid => (p.recettes || []).some(pr => pr.recetteId === rid)).length;
+        // Un plat qui a déjà TOUTES les recettes de la sélection est coché et
+        // verrouillé : le décocher signifierait délier en masse, ce que cette
+        // modale ne fait pas (le retrait se gère recette par recette).
+        const complets = plats.filter(p => selIds.length > 0 && dejaCount(p) === selIds.length).map(p => p.id);
         return (
-          <div className="modal-full-overlay" style={cts.overlay} onClick={() => { if (!recBulkBusy) setBulkLinkPlatOpen(false); }}>
-            <div className="modal-full" style={{ ...cts.modal, width: 460, maxWidth: '94vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🍽 Rattacher la sélection à un plat</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                    {selIds.length} recette{selIds.length > 1 ? 's' : ''} sélectionnée{selIds.length > 1 ? 's' : ''} : choisissez le plat qui les recevra comme composants.
-                  </div>
-                </div>
-                <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => setBulkLinkPlatOpen(false)} disabled={recBulkBusy}>✕</button>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-                {plats.length === 0 ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
-                    Aucun plat. Créez-en d'abord avec "+ Nouveau plat" ci-dessous.
-                  </div>
-                ) : (
-                  plats.map(p => {
-                    const dejaCount = selIds.filter(rid => (p.recettes || []).some(pr => pr.recetteId === rid)).length;
-                    const toutesLiees = dejaCount === selIds.length && selIds.length > 0;
-                    return (
-                      <div key={p.id}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px',
-                          borderBottom: '1px solid var(--border)',
-                          cursor: recBulkBusy || toutesLiees ? 'default' : 'pointer',
-                          background: toutesLiees ? 'var(--success-bg)' : 'transparent',
-                          opacity: recBulkBusy ? 0.6 : 1,
-                        }}
-                        onClick={() => { if (!recBulkBusy && !toutesLiees) rattacherSelectionAuPlat(p); }}
-                      >
-                        <span style={{ fontSize: 14 }}>{toutesLiees ? '✓' : '○'}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.nom}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                            {p.categorie}{p.prixVente != null ? ` · CHF ${p.prixVente.toFixed(2)}` : ''} · {(p.recettes || []).length} composant{(p.recettes || []).length > 1 ? 's' : ''}
-                          </div>
-                        </div>
-                        {dejaCount > 0 && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-text)', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
-                            {toutesLiees ? 'déjà toutes liées' : `${dejaCount}/${selIds.length} déjà liée${dejaCount > 1 ? 's' : ''}`}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <button
-                  style={cts.ghostBtn}
-                  disabled={recBulkBusy}
-                  onClick={() => { setBulkLinkPlatOpen(false); setEditPlat(null); setShowPlatForm(true); }}
-                  title="Créer le plat puis relancer le rattachement : la sélection est conservée"
-                >+ Nouveau plat</button>
-                <button style={cts.ghostBtn} onClick={() => setBulkLinkPlatOpen(false)} disabled={recBulkBusy}>
-                  {recBulkBusy ? 'Rattachement…' : 'Fermer'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <PlatPicker
+            title="Rattacher la sélection à des plats"
+            subtitle={`${selIds.length} recette${selIds.length > 1 ? 's' : ''} sélectionnée${selIds.length > 1 ? 's' : ''} : cochez tous les plats qui les recevront comme composants.`}
+            plats={plats}
+            cartes={cartesActivesLocal}
+            lockedIds={complets}
+            badgeFor={(p) => {
+              const n = dejaCount(p);
+              if (!n) return null;
+              return (
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-text)', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
+                  {n === selIds.length ? 'déjà toutes liées' : `${n}/${selIds.length} déjà liée${n > 1 ? 's' : ''}`}
+                </span>
+              );
+            }}
+            confirmLabel={(n) => `Rattacher à ${n} plat${n > 1 ? 's' : ''}`}
+            emptyHint={'Aucun plat. Créez-en un d\'abord avec « + Nouveau plat ».'}
+            busy={recBulkBusy}
+            onConfirm={(ids) => rattacherSelectionAuxPlats(plats.filter(p => ids.includes(p.id) && !complets.includes(p.id)))}
+            onClose={() => setBulkLinkPlatOpen(false)}
+            onCreatePlat={() => { setBulkLinkPlatOpen(false); setEditPlat(null); setShowPlatForm(true); }}
+          />
         );
       })()}
 

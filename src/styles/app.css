@@ -568,6 +568,12 @@ html[data-theme="dark"] {
 }
 .search-toggle-btn:hover { color: var(--text); }
 
+/* ─── Entrées d'un menu déroulant « ⋯ » ────────────────────────────────────
+   Le survol et l'état désactivé ne s'expriment pas en style inline : sans
+   ces deux règles, un menu déroulant ne donne aucun retour au pointeur. */
+.sc-menu-item:hover:not(:disabled) { background: var(--bg); }
+.sc-menu-item:disabled { opacity: 0.5; cursor: default; }
+
 .search-toggle {
   display: inline-flex;
   align-items: center;

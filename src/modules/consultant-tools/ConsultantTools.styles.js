@@ -65,6 +65,13 @@ export const cts = {
   textarea: { width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   modal: { background: 'var(--surface)', borderRadius: 14, width: 420, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  // ─── Menu « ⋯ » des actions ponctuelles de la colonne gauche ───
+  // Le panneau sort de la colonne (280px) : largeur propre et ancrage à droite
+  // pour ne pas déborder du cadre.
+  menuDot: { position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--warning-strong)' },
+  menuBackdrop: { position: 'fixed', inset: 0, zIndex: 40 },
+  menuPanel: { position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 41, minWidth: 232, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.18)', padding: 4, display: 'flex', flexDirection: 'column', gap: 2 },
+  menuItem: { display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'none', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)', color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap' },
 };
 
 if (getBrowserWindow()?.innerWidth < 900) {

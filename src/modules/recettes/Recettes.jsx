@@ -10,6 +10,8 @@ import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { categorieDuPlat, categoriesPresentes, platCatRank } from '../../utils/categoriesPlat.js';
+import { normalizeSearch } from '../../utils/searchText.js';
 
 
 // CARTES & RECETTES
@@ -675,11 +677,10 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
 // plat sélectionné ne sort qu'une seule fois. L'ordre des pages du PDF suit le
 // rangement affiché : cartes (catégorie > ordre du plat > ordre des recettes),
 // puis plats, puis recettes individuelles.
-const EXPORT_CATS = ['Entrées', 'Plats', 'Desserts', 'Fromages'];
-const exportCatRank = (c) => {
-  const i = EXPORT_CATS.indexOf(c);
-  return i === -1 ? EXPORT_CATS.length : i;
-};
+// Ordre des pages = ordre de service du référentiel partagé (Entrées → Menus).
+// Les catégories de recette qui n'y figurent pas (Sauces, Fonds, Garnitures…)
+// passent en fin de liste, rangées entre elles par ordre alphabétique.
+const exportCatRank = platCatRank;
 
 const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }) => {
   const [tab, setTab] = React.useState('cartes'); // 'cartes' | 'plats' | 'recettes'
@@ -1068,14 +1069,6 @@ const ms = {
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
 };
 
-// Normalisation recherche : minuscules + sans accents (poivre = poivré) +
-// ligatures repliées (bœuf = boeuf). Utilisée par la recherche principale
-// (plats/recettes) ET par la modale allergènes/ingrédients.
-const normalizeSearch = (s) => String(s || '')
-  .toLowerCase()
-  .replace(/œ/g, 'oe').replace(/æ/g, 'ae')
-  .normalize('NFD').replace(/[̀-ͯ]/g, '');
-
 // ─── IngredientSearchModal : « où se trouve cet ingrédient / allergène ? » ───
 // Cherche un terme (ex. « poivre », « gluten ») dans TOUTES les recettes de
 // l'établissement et liste précisément lesquelles le contiennent (ingrédient
@@ -1274,8 +1267,6 @@ const Recettes = ({ user, etablissement }) => {
     };
   }, [etabId]);
 
-  const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
-
   // Filtrer par établissement courant (déjà filtré par Supabase mais on garde le
   // filtre côté client pour le fallback). Les recettes archivées (statut géré
   // dans Outils consultant) sortent de la bibliothèque, des plats, des exports
@@ -1302,12 +1293,22 @@ const Recettes = ({ user, etablissement }) => {
   const platsCarte = activeCarte
     ? (plats || []).filter(p => (p.carteIds || []).includes(activeCarte.id))
     : [];
+  // Onglets de catégories : déduits des plats réellement présents sur la carte,
+  // dans l'ordre de service du référentiel partagé. Une liste figée laissait
+  // les plats Boissons, Poissons, Viandes, Pâtes & Risottos et Menus enregistrés
+  // en base mais absents de la carte, sans onglet pour les atteindre.
+  const catsCarte = categoriesPresentes(platsCarte.filter(p => p.actif !== false));
+  const cats = ['Tous', ...catsCarte];
+  // Le filtre survit au changement d'onglet de carte : s'il pointe une catégorie
+  // absente de la nouvelle carte, on retombe sur « Tous » plutôt que d'afficher
+  // une carte vide sans onglet actif.
+  const catFilterEff = cats.includes(catFilter) ? catFilter : 'Tous';
   // Recherche insensible aux accents, à la casse et aux espaces parasites
   // (« creme » trouve « Crème brûlée »).
   const q = normalizeSearch(search.trim());
   const filteredPlats = platsCarte.filter(p =>
     p.actif !== false &&
-    (catFilter === 'Tous' || p.categorie === catFilter) &&
+    (catFilterEff === 'Tous' || categorieDuPlat(p) === catFilterEff) &&
     (q === '' || normalizeSearch(p.nom).includes(q))
   );
 
@@ -1403,17 +1404,20 @@ const Recettes = ({ user, etablissement }) => {
             </div>
           </div>
 
-          {/* Cat filter */}
-          <SegmentedTabs
-            size="sm"
-            active={catFilter}
-            onChange={setCatFilter}
-            tabs={cats.map(c => ({ id: c, label: c }))}
-          />
+          {/* Cat filter - une seule catégorie sur la carte : l'onglet unique
+              ferait doublon avec le titre de section, on le masque. */}
+          {catsCarte.length > 1 && (
+            <SegmentedTabs
+              size="sm"
+              active={catFilterEff}
+              onChange={setCatFilter}
+              tabs={cats.map(c => ({ id: c, label: c }))}
+            />
+          )}
 
           {/* Plats by category */}
-          {cats.filter(c => c !== 'Tous').map(cat => {
-            const platsCat = filteredPlats.filter(p => p.categorie === cat);
+          {catsCarte.map(cat => {
+            const platsCat = filteredPlats.filter(p => categorieDuPlat(p) === cat);
             if (!platsCat.length) return null;
             return (
               <div key={cat} style={rs.catSection}>

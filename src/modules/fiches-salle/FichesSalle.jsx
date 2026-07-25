@@ -151,8 +151,10 @@ const FichesSalle = ({ user, etablissement }) => {
   const canEdit = canManageModule(user.role, 'fiches_salle');
   const canManageCartes = canManageModule(user.role, 'recettes');
   const isConsultant = user.role === 'consultant';
-  const cats = ['Tous','Entrées','Plats','Desserts','Fromages'];
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
+  // Les onglets couvrent toutes les catégories que le formulaire peut produire :
+  // « Boissons » manquait, une fiche boisson n'était donc filtrable que par « Tous ».
+  const cats = ['Tous', ...FICHE_CATS];
 
   // ═══ Chargement depuis Supabase + Realtime ═══
   React.useEffect(() => {
