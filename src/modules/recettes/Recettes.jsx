@@ -612,9 +612,6 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
                       style={{...rs.congBtn, ...(congelable === false ? rs.congBtnActive : null)}}
                     >Non congelable</button>
                   </div>
-                  <div style={{fontSize:11, color:'var(--text2)', lineHeight:1.5}}>
-                    Jamais congelable : gels agar, tzatziki, œufs mollets panés, meringue italienne, laitages frais, herbes fraîches, légumes crus, œufs.
-                  </div>
                 </div>
               ) : (
                 congelable == null && (
