@@ -3,7 +3,8 @@ export const DATA_VERSION = '4';
 export const UI_STORAGE_KEYS = {
   page: 'sc_page',
   consultantToolsTab: 'sc_consultant_tools_tab',
-  theme: 'sc_theme'
+  theme: 'sc_theme',
+  lang: 'sc_lang'
 };
 
 export function readJson(key, fallback = null) {

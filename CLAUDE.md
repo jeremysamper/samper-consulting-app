@@ -103,6 +103,18 @@ All styles are plain JS objects (inline `style={...}` props) — no CSS modules,
 
 `notify(message, type)` (types: `'info'`, `'success'`, `'warning'`, `'error'`) is installed as a global in `App.jsx` via `installToastGlobals()`. In new React modules, import `notify` directly from `src/components/toast/index.js`. In legacy components, `window.notify` is available.
 
+### Language (Original / English)
+
+The header toggle switches the whole app between `Original` (French, as typed) and `English`. There is no i18n refactor and no `t()` calls: `src/i18n/domTranslator.js` translates the rendered DOM in place and re-applies itself on every React re-render via a `MutationObserver`. Modules stay written in French and are translated for free, including data typed by the teams (recipe steps, notes, custom labels).
+
+Resolution order per string: static glossary (`src/i18n/glossary.js`, instant/offline/free) → `localStorage` cache → `translate` task on the `ai-proxy` edge function, then cached. Affixes are stripped before lookup, so `Supprimer`, `🗑 Supprimer` and `Supprimer…` share one entry.
+
+Invariants to preserve when touching UI code:
+- The engine writes text nodes and the `placeholder` / `title` / `aria-label` / `alt` attributes **only**. It never touches an `input`/`textarea` value — that is business data. Keep it that way.
+- Wrap anything that must never be translated (brand names, a control whose label identifies the current mode) in `data-no-translate`.
+- Vector PDFs (recipe sheet, DLC labels, MEP, ordering) are built from data, not the DOM, so they stay French — correct for HACCP and labelling records. `exportElementToPdf` captures the DOM and therefore follows the on-screen language.
+- Add high-frequency UI wording to the glossary rather than letting it hit the AI: it is instant, works offline, and costs nothing.
+
 ## Adding a new module
 
 1. Create `src/modules/<name>/` with a main JSX component and an `index.js` re-export.

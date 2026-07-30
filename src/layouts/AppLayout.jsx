@@ -9,6 +9,7 @@ import { useUnreadPrivateMessages } from '../hooks/useUnreadPrivateMessages.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import OfflineBanner from '../components/OfflineBanner.jsx';
+import LanguageToggle from '../components/LanguageToggle.jsx';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
@@ -406,6 +407,7 @@ export default function AppLayout({
                 variant="pill"
               />
             )}
+            <LanguageToggle compact />
             <button
               type="button"
               style={mls.themeBtn}
@@ -654,6 +656,7 @@ export default function AppLayout({
             )}
           </div>
           <div style={ls.topbarRight}>
+            <LanguageToggle />
             <button
               type="button"
               style={ls.themeBtn}

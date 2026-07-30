@@ -15,7 +15,7 @@
 //
 // Tâches : 'ocr-recipe' (vision), 'detect-allergens', 'generate-haccp',
 //          'suggest-recipe', 'match-product', 'generate-fiche-salle',
-//          'parse-catalogue', 'dedupe-commande' (texte).
+//          'parse-catalogue', 'dedupe-commande', 'translate' (texte).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -201,6 +201,19 @@ Règles STRICTES :
 - dans le doute, NE REGROUPE PAS (mieux vaut un doublon qu'une fusion erronée)
 - n'inclus que les groupes contenant un vrai doublon (≥ 2 variantes). Si aucun doublon, renvoie {"groupes":[]}`;
 
+const TRANSLATE_SYSTEM = `Tu traduis du français vers l'anglais les textes d'une application de gestion de cuisine professionnelle (restauration, HACCP, recettes, planning, inventaire).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"t":["Delete","Recipes"]}
+Règles :
+- "t" contient EXACTEMENT autant d'éléments que la liste fournie, dans le MÊME ordre. C'est impératif : un décalage casse l'affichage.
+- traduis chaque entrée indépendamment ; n'en fusionne, n'en ajoute et n'en supprime aucune
+- registre : anglais de cuisine professionnelle, concis, ton d'interface logicielle (pas de phrase explicative)
+- garde TEL QUEL : noms propres, noms de personnes, d'établissements, de lieux et de plats signature, marques (Lightspeed, Metro, Transgourmet), sigles (HACCP, DLC, SOP, POS, KDS, MEP, CHF, TVA), unités (g, kg, ml, L, pcs, cs, cc), nombres, dates, heures et prix
+- conserve la casse d'origine (une entrée TOUT EN MAJUSCULES le reste) et la ponctuation finale
+- si une entrée est déjà en anglais, ou n'a rien à traduire, renvoie-la à l'identique
+- vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigade" ; "carte" → "menu" ; "fiche technique" → "spec sheet" ; "fiche salle" → "service sheet" ; "perte" → "waste" ; "pointage" → "time clock" ; "inventaire" → "inventory" ; "établissement" → "site" ; "commande" → "ordering" ; "prévisions" → "forecasts" ; "dressage" → "plating" ; "conservation" → "storage" ; "régénération" → "reheating"
+- ne commente jamais, ne pose jamais de question : traduis.`;
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
@@ -211,6 +224,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'analyse-simulation-carte':   { system: SIMULATION_SYSTEM,   maxTokens: 2048 },
   'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
   'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
+  'translate':                  { system: TRANSLATE_SYSTEM,    maxTokens: 4096 },
 };
 
 // Contrôle d'accès par rôle, appliqué côté serveur (le gate client ne suffit pas :
@@ -219,6 +233,9 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
 // - Outils consultant : réservé au consultant.
 const AUTHORING_ROLES = ['consultant', 'patron', 'resp_cuisine'];
 const CONSULTANT_ONLY = ['consultant'];
+// Traduction : ouverte à tous les rôles connectés. C'est le sens même du mode
+// English - qu'un cuisinier anglophone puisse lire recettes, MEP et HACCP.
+const ALL_ROLES = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote'];
 const TASK_ROLES: Record<string, string[]> = {
   'ocr-recipe':               AUTHORING_ROLES,
   'detect-allergens':         AUTHORING_ROLES,
@@ -229,6 +246,7 @@ const TASK_ROLES: Record<string, string[]> = {
   'analyse-simulation-carte': CONSULTANT_ONLY,
   'parse-catalogue':          CONSULTANT_ONLY,
   'dedupe-commande':          CONSULTANT_ONLY,
+  'translate':                ALL_ROLES,
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
@@ -328,6 +346,16 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     // Garde-fou : on borne la taille du texte transmis à l'IA.
     const text = rows.length > 32000 ? rows.slice(0, 32000) : rows;
     return [{ kind: 'text', text: `Lignes brutes du fichier fournisseur :\n${text}` }];
+  }
+  if (task === 'translate') {
+    const texts = Array.isArray(payload.texts) ? (payload.texts as string[]) : [];
+    const list = texts.map(t => String(t || '')).filter(Boolean).slice(0, 60);
+    if (!list.length) throw new Error('Rien à traduire.');
+    return [{
+      kind: 'text',
+      text: `Traduis en anglais ces ${list.length} entrées, dans le même ordre :\n`
+        + list.map((t, i) => `${i + 1}. ${t}`).join('\n'),
+    }];
   }
   if (task === 'dedupe-commande') {
     const produits = Array.isArray(payload.produits) ? (payload.produits as string[]) : [];

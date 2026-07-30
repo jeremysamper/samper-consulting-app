@@ -184,6 +184,12 @@ html[data-theme="dark"] {
   }
 }
 
+/* Pastille du bouton Original / English pendant une traduction en cours */
+@keyframes scLangPulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.9; }
+}
+
 /* Animation barre de chargement splash screen */
 @keyframes splashBar {
   0%   { transform: translateX(-100%); }

@@ -6,31 +6,13 @@
 // l'utilisateur est transmis automatiquement par supabase.functions.invoke.
 // ════════════════════════════════════════════════════════════════
 import imageCompression from 'browser-image-compression';
-import { supabase } from './supabase.js';
+import { callAiProxy as callAi } from './aiProxy.js';
 import { normalizeUnit, toAppUnit } from '../modules/recettes/import/UnitParser.js';
 
 let tmpCounter = 0;
 const tid = (prefix) => `${prefix}-${Date.now()}-${tmpCounter++}`;
 
 const ACCEPTED_MEDIA = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
-// Appel générique de l'edge function ai-proxy.
-async function callAi(task, payload) {
-  const { data, error } = await supabase.functions.invoke('ai-proxy', { body: { task, payload } });
-  if (error) {
-    let message = error.message || 'Appel IA échoué.';
-    // Le corps d'erreur de la fonction (JSON { error }) est dans error.context.
-    try {
-      const ctx = error.context && typeof error.context.json === 'function'
-        ? await error.context.json()
-        : null;
-      if (ctx && ctx.error) message = ctx.error;
-    } catch (e) { /* on garde le message générique */ }
-    throw new Error(message);
-  }
-  if (data && data.error) throw new Error(data.error);
-  return data;
-}
 
 // Lit un fichier en base64 (sans le préfixe data:...;base64,).
 function fileToBase64(file) {
