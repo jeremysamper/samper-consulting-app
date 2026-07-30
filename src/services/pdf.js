@@ -623,9 +623,11 @@ export const pdfUtils = {
   // etiquettes : [{ lignes: [{ role, text?, segments?, bold? }] }]
   //   role 'nom' | 'dlc' | 'corps' choisit la police, le contenu est
   //   construit par le module (lignesEtiquette).
-  // options : { format?, autoPrint?, filename?, onProgress? }
-  // Retour : { doc, url, imprime } - `url` reste exploitable par l'appelant pour
-  // rouvrir le PDF si la feuille d'impression n'est pas apparue.
+  // options : { format?, autoPrint?, filename?, onProgress?, destination? }
+  //   destination 'agent' : ne rien ouvrir ni télécharger, retourner le PDF en
+  //   base64 pour l'envoyer à l'agent d'impression du restaurant.
+  // Retour : { doc, url, imprime, base64? } - `url` reste exploitable par
+  // l'appelant pour rouvrir le PDF si la feuille d'impression n'est pas apparue.
   // ═══════════════════════════════════════════════════════════════
   async exportEtiquettesDlcPdf(etiquettes, options = {}) {
     try {
@@ -650,6 +652,15 @@ export const pdfUtils = {
 
       const filename = options.filename || 'etiquettes-dlc.pdf';
       const url = doc.output('bloburl');
+
+      // Impression directe : le lot part vers l'agent du restaurant, l'app
+      // n'ouvre rien du tout. On rend quand même `url` pour que l'appelant
+      // puisse retomber sur le PDF si l'envoi échoue.
+      if (options.destination === 'agent') {
+        const base64 = doc.output('datauristring').split('base64,').pop();
+        return { doc, url, imprime: false, base64 };
+      }
+
       let imprime = false;
       if (options.autoPrint) {
         doc.autoPrint();

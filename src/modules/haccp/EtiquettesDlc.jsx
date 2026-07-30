@@ -3,6 +3,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
@@ -69,6 +70,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // ignorer la demande d'impression sans lever d'erreur (cas connu sur iPad) ;
   // sans ce repli visible, l'opérateur resterait devant un écran qui n'a rien fait.
   const [dernierLot, setDernierLot] = React.useState(null);
+  // Agent d'impression du restaurant : présent = le lot part directement sur
+  // l'imprimante, absent = feuille d'impression système. Jamais bloquant.
+  const [agent, setAgent] = React.useState(null);
   const urlsRef = React.useRef([]);
   React.useEffect(() => () => {
     urlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch { /* déjà libérée */ } });
@@ -102,6 +106,13 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     const unsub = legacySB.realtime.subscribeReload(['recettes'], reload);
     return () => { mounted = false; if (unsub) unsub(); };
   }, [etabId, legacySB]);
+
+  // ─── Disponibilité de l'impression directe ───
+  React.useEffect(() => {
+    let vivant = true;
+    agentDisponible(etabId).then(a => { if (vivant) setAgent(a); });
+    return () => { vivant = false; };
+  }, [etabId]);
 
   // ─── Recherche : filtre local, debounce 200 ms, aucune requête par frappe ───
   React.useEffect(() => {
@@ -189,17 +200,60 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     // la génération est trop rapide pour qu'il serve à autre chose qu'à clignoter.
     const suivi = etiquettes.length > 50;
     if (suivi) setProgress({ done: 0, total: etiquettes.length });
+    const nb = etiquettes.length;
+    const pluriel = nb > 1 ? 's' : '';
+    const onProgress = suivi ? (done, total) => setProgress({ done, total }) : undefined;
+
     try {
+      // ─── Impression directe, si l'agent du restaurant est joignable ───
+      // Vérification juste avant l'envoi et non seulement au montage : l'onglet
+      // peut rester ouvert des heures, l'agent peut être tombé entre-temps.
+      const agentActuel = await agentDisponible(etabId);
+      setAgent(agentActuel);
+
+      if (agentActuel) {
+        const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, { destination: 'agent', onProgress });
+        if (res?.url) urlsRef.current.push(res.url);
+        try {
+          const jobId = await envoyerLot({
+            etabId, pdfBase64: res.base64, nbEtiquettes: nb, mode: modeId, userId: user?.id,
+          });
+          setDernierLot({ url: res.url, nb, viaAgent: true, etat: 'envoye' });
+          notifyLegacy(`${nb} étiquette${pluriel} envoyée${pluriel} à l'imprimante.`, 'success');
+
+          const fin = await attendreImpression(jobId);
+          if (fin.statut === 'imprime') {
+            setDernierLot(l => (l ? { ...l, etat: 'imprime' } : l));
+          } else if (fin.statut === 'erreur') {
+            setDernierLot(l => (l ? { ...l, etat: 'erreur', erreur: fin.erreur } : l));
+            notifyLegacy('L\'imprimante a refusé le lot : ' + (fin.erreur || 'erreur inconnue'), 'error');
+          } else {
+            // L'agent n'a pas répondu à temps : le lot reste dans la file et
+            // partira à son retour. Rien n'est perdu, mais on le dit.
+            setDernierLot(l => (l ? { ...l, etat: 'attente' } : l));
+            notifyLegacy('Lot en attente : l\'imprimante n\'a pas encore répondu.', 'warning');
+          }
+          return;
+        } catch (err) {
+          // Dépôt impossible : on ne laisse pas la brigade sans étiquettes,
+          // on bascule sur la feuille d'impression.
+          console.error('[EtiquettesDlc envoyerLot]', err);
+          notifyLegacy('Envoi direct impossible, ouverture de la feuille d\'impression.', 'warning');
+          setAgent(null);
+        }
+      }
+
+      // ─── Feuille d'impression système (aucun agent, ou envoi échoué) ───
       const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, {
         autoPrint: true,
         filename: `etiquettes-dlc-${modeId}-${dates[mode.dlcDepuis]}.pdf`,
-        onProgress: suivi ? (done, total) => setProgress({ done, total }) : undefined,
+        onProgress,
       });
       if (res?.url) {
         urlsRef.current.push(res.url);
-        setDernierLot({ url: res.url, nb: etiquettes.length, imprime: !!res.imprime });
+        setDernierLot({ url: res.url, nb, imprime: !!res.imprime });
       }
-      notifyLegacy(`${etiquettes.length} étiquette${etiquettes.length > 1 ? 's' : ''} générée${etiquettes.length > 1 ? 's' : ''}.`, 'success');
+      notifyLegacy(`${nb} étiquette${pluriel} générée${pluriel}.`, 'success');
     } catch (err) {
       /* notify déjà géré dans le service */
     } finally {
@@ -270,9 +324,15 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
             </div>
           )}
-          Imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint) ·
-          rouleau {ETIQUETTE_DK11209.ref} {ETIQUETTE_DK11209.widthMm} × {ETIQUETTE_DK11209.heightMm} mm.
-          La feuille d'impression s'ouvre sur l'imprimante utilisée la dernière fois : il n'y a qu'à valider.
+          Rouleau {ETIQUETTE_DK11209.ref} {ETIQUETTE_DK11209.widthMm} × {ETIQUETTE_DK11209.heightMm} mm ·
+          {agent ? (
+            <> impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
+              {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong> :
+              le lot part sans fenêtre.</>
+          ) : (
+            <> imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint).
+              La feuille d'impression s'ouvre sur l'imprimante utilisée la dernière fois : il n'y a qu'à valider.</>
+          )}
         </div>
       </div>
 
@@ -346,19 +406,36 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           Filet de sécurité assumé : si la feuille d'impression ne s'est pas
           ouverte, l'opérateur récupère le PDF ici plutôt que de relancer le lot. */}
       {dernierLot && (
-        <div style={es.dernierLot}>
+        <div style={{
+          ...es.dernierLot,
+          ...(dernierLot.etat === 'erreur'
+            ? { background: 'var(--danger-bg-soft)', borderColor: 'var(--danger-bd)' }
+            : dernierLot.etat === 'attente'
+              ? { background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)' }
+              : null),
+        }}>
           <span style={{ flex: 1, minWidth: 0 }}>
-            {dernierLot.nb} étiquette{dernierLot.nb > 1 ? 's' : ''} prête{dernierLot.nb > 1 ? 's' : ''}.
-            {dernierLot.imprime
+            {dernierLot.nb} étiquette{dernierLot.nb > 1 ? 's' : ''}
+            {!dernierLot.viaAgent && <> prête{dernierLot.nb > 1 ? 's' : ''}.</>}
+            {dernierLot.viaAgent && dernierLot.etat === 'envoye' && ' envoyée(s) à l\'imprimante, impression en cours…'}
+            {dernierLot.viaAgent && dernierLot.etat === 'imprime' && ' imprimée(s).'}
+            {dernierLot.viaAgent && dernierLot.etat === 'attente' && ' en attente : l\'imprimante n\'a pas encore répondu. Le lot partira dès son retour.'}
+            {dernierLot.viaAgent && dernierLot.etat === 'erreur' && ` refusée(s) par l'imprimante : ${dernierLot.erreur || 'erreur inconnue'}.`}
+            {!dernierLot.viaAgent && (dernierLot.imprime
               ? " Si la feuille d'impression ne s'est pas affichée :"
-              : ' Ouvrez le PDF puis Partager › Imprimer :'}
+              : ' Ouvrez le PDF puis Partager › Imprimer :')}
           </span>
-          <a
-            href={dernierLot.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ ...hs.exportBtn, flexShrink: 0, textDecoration: 'none', display: 'inline-block' }}
-          >Ouvrir le PDF</a>
+          {/* Le PDF reste accessible dans tous les cas : impression directe en
+              échec ou feuille d'impression restée fermée, la brigade a un
+              chemin de secours sans relancer le lot. */}
+          {(!dernierLot.viaAgent || dernierLot.etat === 'erreur' || dernierLot.etat === 'attente') && (
+            <a
+              href={dernierLot.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ ...hs.exportBtn, flexShrink: 0, textDecoration: 'none', display: 'inline-block' }}
+            >Ouvrir le PDF</a>
+          )}
         </div>
       )}
 
@@ -379,7 +456,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           disabled={totalEtiquettes === 0 || busy}
           onClick={genererEtiquettes}
         >
-          {busy ? 'Génération…' : 'Générer les étiquettes'}
+          {busy
+            ? (agent ? 'Envoi…' : 'Génération…')
+            : (agent ? 'Envoyer à l\'imprimante' : 'Générer les étiquettes')}
         </button>
       </div>
     </div>
