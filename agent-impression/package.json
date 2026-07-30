@@ -1,0 +1,13 @@
+{
+  "name": "samper-agent-impression",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent d'impression des etiquettes DLC vers l'imprimante du restaurant",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node --env-file=.env agent.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
