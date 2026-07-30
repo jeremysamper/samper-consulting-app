@@ -12,8 +12,8 @@ const DEGRADED_MSG = 'Traduction partielle : le service de traduction est injoig
 // Desktop : segments explicites. Mobile : bouton 44×44 comme le thème et la
 // cloche, le header n'a pas la place d'un segment complet (et la page ne doit
 // jamais pouvoir défiler horizontalement).
-export default function LanguageToggle({ compact = false }) {
-  const { lang, translating, degraded, setLang, toggleLang } = useLanguage();
+export default function LanguageToggle({ compact = false, etablissementId = null }) {
+  const { lang, translating, degraded, setLang, toggleLang } = useLanguage(etablissementId);
   const isEn = lang === 'en';
 
   // Alerte une seule fois par bascule en dégradé : sans ce signal, l'app a

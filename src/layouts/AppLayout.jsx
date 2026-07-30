@@ -407,7 +407,7 @@ export default function AppLayout({
                 variant="pill"
               />
             )}
-            <LanguageToggle compact />
+            <LanguageToggle compact etablissementId={etablissement?.id || null} />
             <button
               type="button"
               style={mls.themeBtn}
@@ -656,7 +656,7 @@ export default function AppLayout({
             )}
           </div>
           <div style={ls.topbarRight}>
-            <LanguageToggle />
+            <LanguageToggle etablissementId={etablissement?.id || null} />
             <button
               type="button"
               style={ls.themeBtn}

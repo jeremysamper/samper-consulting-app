@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getLanguage, initTranslator, setLanguage, subscribe } from '../i18n/domTranslator.js';
+import {
+  getLanguage, initTranslator, setEtablissement, setLanguage, subscribe,
+} from '../i18n/domTranslator.js';
 import { readText, UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
 
 // Le moteur n'est initialisé qu'une fois par chargement de page, même si
@@ -14,7 +16,7 @@ function readInitialLang() {
  * Mode d'affichage « Original » (français, tel que saisi) ou « English »
  * (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
  */
-export function useLanguage() {
+export function useLanguage(etablissementId) {
   const [state, setState] = useState(() => ({ lang: getLanguage(), translating: false, degraded: false }));
 
   useEffect(() => {
@@ -25,6 +27,11 @@ export function useLanguage() {
     }
     return unsubscribe;
   }, []);
+
+  // Périmètre du cache partagé. Changer d'établissement resynchronise.
+  useEffect(() => {
+    setEtablissement(etablissementId || null);
+  }, [etablissementId]);
 
   function changeLang(next) {
     const lang = next === 'en' ? 'en' : 'fr';

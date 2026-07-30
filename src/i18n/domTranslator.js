@@ -19,9 +19,10 @@
 //     commande) partent des données, pas du DOM : ils restent en français.
 // ════════════════════════════════════════════════════════════════
 import { DO_NOT_TRANSLATE, lookupGlossary } from './glossary.js';
-import { translateTexts } from '../services/translationService.js';
+import { fetchSharedTranslations, pushSharedTranslations, translateTexts } from '../services/translationService.js';
 
 const CACHE_KEY = 'sc_i18n_en_v1';
+const SYNC_KEY = 'sc_i18n_sync_';       // + id d'établissement
 const CACHE_MAX = 5000;      // entrées conservées en localStorage
 const BATCH_SIZE = 40;       // phrases par appel IA
 const MAX_BATCHES = 10;      // plafond par passe → 400 phrases max
@@ -57,6 +58,8 @@ let busy = 0;                               // requêtes IA en vol
 let failures = 0;                           // échecs consécutifs (mode hors-ligne)
 let mutedUntil = 0;                         // pause après échecs répétés
 let degraded = false;                       // service IA injoignable → glossaire seul
+let etabId = null;                          // établissement courant (scope du cache partagé)
+let sharedLoaded = false;                   // cache partagé déjà rapatrié pour cet établissement
 const listeners = new Set();
 
 // ── Cache persistant ──────────────────────────────────────────────
@@ -276,6 +279,36 @@ function restore() {
   touchedAttrs = new Set();
 }
 
+// ── Cache partagé (Supabase) ──────────────────────────────────────
+/**
+ * Rapatrie une fois par établissement le travail déjà fait par la brigade.
+ * C'est ce qui évite que chaque téléphone repaie la même première passe :
+ * une phrase traduite par un collègue arrive ici sans appel IA.
+ *
+ * Synchro incrémentale : on ne redemande que ce qui a été ajouté depuis le
+ * dernier import de CET appareil.
+ */
+async function ensureSharedCache() {
+  if (sharedLoaded || !etabId) return;
+  sharedLoaded = true;   // une seule tentative par établissement et par session
+
+  const key = SYNC_KEY + etabId;
+  try {
+    const since = localStorage.getItem(key) || null;
+    const { pairs, latest } = await fetchSharedTranslations(etabId, since);
+    for (const [fr, en] of pairs) {
+      if (!memCache.has(fr)) memCache.set(fr, en);
+    }
+    if (latest) {
+      try { localStorage.setItem(key, latest); } catch { /* quota : on resyncera */ }
+    }
+    if (pairs.length) saveCacheSoon();
+  } catch {
+    // Base injoignable (hors ligne, RLS, table absente) : on continue sur le
+    // cache local. La traduction ne doit jamais dépendre de cette optimisation.
+  }
+}
+
 // ── Appels IA ─────────────────────────────────────────────────────
 function chunk(list, size) {
   const out = [];
@@ -313,15 +346,22 @@ async function fetchMissing(missing) {
       }
     }));
 
+    const fraisTraduits = [];
     for (const res of results) {
       if (!res) continue;
       res.batch.forEach((fr, i) => {
         const en = res.out[i];
         if (typeof en === 'string' && en.trim()) {
           memCache.set(fr, en.trim());
+          fraisTraduits.push([fr, en.trim()]);
           gotSomething = true;
         }
       });
+    }
+    // Ce qu'on vient de payer, la brigade n'aura pas à le repayer.
+    // En arrière-plan : un échec d'écriture ne doit pas retarder l'affichage.
+    if (fraisTraduits.length && etabId) {
+      pushSharedTranslations(etabId, fraisTraduits).catch(() => {});
     }
   } finally {
     busy = Math.max(0, busy - batches.length);
@@ -346,6 +386,8 @@ async function flush() {
   try {
     do {
       dirty = false;
+      // Avant tout appel IA : récupérer ce que la brigade a déjà traduit.
+      await ensureSharedCache();
       const missing = sweep();
       if (missing.size) {
         const got = await fetchMissing(missing);
@@ -398,6 +440,37 @@ export function subscribe(fn) {
 
 export function getLanguage() {
   return currentLang;
+}
+
+/**
+ * Établissement courant : c'est le périmètre du cache partagé. En changer
+ * relance une synchro sur le nouveau périmètre - le cache d'un client ne doit
+ * jamais servir à un autre.
+ */
+export function setEtablissement(id) {
+  const next = id || null;
+  if (next === etabId) return;
+  etabId = next;
+  sharedLoaded = false;
+  if (currentLang === 'en') flush();
+}
+
+/**
+ * Vide le cache local. Appelé à la déconnexion : une tablette de passe est
+ * partagée, les noms de recettes d'un établissement n'ont pas à y rester.
+ */
+export function clearTranslationCache() {
+  memCache.clear();
+  sharedLoaded = false;
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(SYNC_KEY)) localStorage.removeItem(k);
+    }
+  } catch {
+    // Mode privé ou quota : le cache mémoire est déjà vidé, c'est l'essentiel.
+  }
 }
 
 /** Bascule l'app en 'en' (traduction à la volée) ou 'fr' (texte d'origine). */

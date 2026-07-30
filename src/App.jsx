@@ -16,6 +16,7 @@ import { dbService } from './services/dbService.js';
 import { setNavigationHandler } from './services/navigationService.js';
 import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
+import { clearTranslationCache } from './i18n/domTranslator.js';
 
 function readInitialPage() {
   return normalizePage(readText(UI_STORAGE_KEYS.page, 'dashboard'));
@@ -160,6 +161,8 @@ export default function App() {
       // ne doit rien pouvoir relire hors-ligne. La file de punches (IndexedDB)
       // est conservée : elle repartira à la prochaine session de ce compte.
       purgeAllDataCaches();
+      // Même raison : le cache de traduction contient des noms de recettes.
+      clearTranslationCache();
       setPage('dashboard');
       notify('Deconnexion effectuee', 'info');
       if (pendingPunches > 0) {
