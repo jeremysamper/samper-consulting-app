@@ -14,6 +14,7 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import Tracabilite from './Tracabilite.jsx';
+import EtiquettesDlc from './EtiquettesDlc.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -473,8 +474,16 @@ const HACCP = ({ user, etablissement }) => {
     {id:'releves',     l:'Relevés température'},
     {id:'controles',   l:'Contrôles hygiène'},
     {id:'tracabilite', l:'Traçabilité'},
+    // Poste d'étiquetage : mêmes rôles que la saisie (consultant, patron,
+    // resp_cuisine, cuisinier). Serveur et hôte n'accèdent déjà pas au module.
+    ...(canWrite ? [{id:'etiquettes', l:'Étiquettes DLC'}] : []),
     ...(isConsultant ? [{id:'config', l:'✦ Paramètres'}] : []),
   ];
+
+  // Onglets sans filtre de date ni impression de la vue courante : traçabilité
+  // (galerie photo) et étiquettes (qui a ses propres dates de lot et son PDF).
+  const showDateFilter  = !['config', 'tracabilite', 'etiquettes'].includes(activeTab);
+  const showPrintExport = !['tracabilite', 'etiquettes'].includes(activeTab);
 
   return (
     <div style={hs.root}>
@@ -482,7 +491,7 @@ const HACCP = ({ user, etablissement }) => {
       <div className="module-toolbar">
         <SegmentedTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
         <div className="module-actions">
-          {activeTab!=='config' && activeTab!=='tracabilite' && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
+          {showDateFilter && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
               première option mais le state reste vide → « Cible : undefined » et
               validation bloquée alors qu'une zone semble choisie. */}
@@ -497,8 +506,8 @@ const HACCP = ({ user, etablissement }) => {
           )}
           {/* Onglet relevés : choix de période (journalier / mensuel) avant génération.
               Autres onglets : impression/export de la vue affichée, comme avant. */}
-          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>}
-          {activeTab!=='tracabilite' && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
+          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>}
+          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
         </div>
       </div>
 
@@ -675,6 +684,11 @@ const HACCP = ({ user, etablissement }) => {
           canManage={canManage}
           registerCaptureTrigger={registerCaptureTrigger}
         />
+      )}
+
+      {/* ── ÉTIQUETTES DLC ── */}
+      {activeTab==='etiquettes' && canWrite && (
+        <EtiquettesDlc etabId={etabId} legacySB={legacySB} user={user} />
       )}
 
       {/* ── CONFIG CONSULTANT ── */}

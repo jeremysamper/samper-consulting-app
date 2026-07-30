@@ -9,6 +9,14 @@ import { readText, writeText } from '../utils/storage.js';
 // Supabase client from services/supabase.js.
 // ═══════════════════════════════════════════════════════════════
 
+// Durée de vie en jours : entier strictement positif, comme les CHECK SQL
+// (recettes_duree_vie_*_positive). Une saisie vide ou aberrante retombe sur le
+// défaut plutôt que de faire échouer l'enregistrement de toute la recette.
+function joursValides(value, defaut) {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) && n > 0 ? n : defaut;
+}
+
 export function installLegacySupabase() {
   const client = supabase;
 
@@ -555,6 +563,21 @@ export function installLegacySupabase() {
         // dependre de la colonne tant que la migration n'est pas appliquee, et laisse
         // la valeur existante intacte pour un upsert qui ne touche pas a ce champ.
         ...(recette.congelable === true || recette.congelable === false ? { congelable: recette.congelable } : {}),
+        // Durees de vie (DLC, etiquetage HACCP) : envoyees uniquement si
+        // l'appelant les porte. mapRecetteFromDB ne les expose que si les
+        // colonnes existent cote DB, donc un front deploye avant la migration
+        // 20260730_recettes_durees_vie n'essaie jamais de les ecrire.
+        ...(recette.dureeVieJours != null
+          ? { duree_vie_jours: joursValides(recette.dureeVieJours, 3) } : {}),
+        ...(recette.dureeVieDecongeleJours != null
+          ? { duree_vie_decongele_jours: joursValides(recette.dureeVieDecongeleJours, 2) } : {}),
+        // NULL est une valeur metier ici (= preparation non congelable) : la cle
+        // doit passer meme a null, d'ou le test de presence et non de valeur.
+        ...(Object.prototype.hasOwnProperty.call(recette, 'dureeVieCongeleJours')
+          ? { duree_vie_congele_jours: recette.dureeVieCongeleJours == null
+              ? null
+              : joursValides(recette.dureeVieCongeleJours, 1) }
+          : {}),
       };
       const { data, error } = await client.from('recettes').upsert(payload).select().single();
       if (error) throw error;
@@ -898,6 +921,13 @@ export function installLegacySupabase() {
         photoUrl: row.photo_url || null,
         // null volontairement preserve (= « a qualifier », traite comme non congelable).
         congelable: row.congelable ?? null,
+        // Durees de vie (DLC) : cles exposees UNIQUEMENT si la colonne existe,
+        // pour qu'un upsert issu d'un objet recette ne tente pas de les ecrire
+        // tant que la migration n'est pas appliquee. Cote congele, null est une
+        // valeur metier (non congelable) et non une colonne absente.
+        ...(row.duree_vie_jours !== undefined ? { dureeVieJours: row.duree_vie_jours } : {}),
+        ...(row.duree_vie_congele_jours !== undefined ? { dureeVieCongeleJours: row.duree_vie_congele_jours } : {}),
+        ...(row.duree_vie_decongele_jours !== undefined ? { dureeVieDecongeleJours: row.duree_vie_decongele_jours } : {}),
         coutMatiere, coutPortion, foodCost,
         margeGrossePct: row.prix_vente ? ((row.prix_vente - coutPortion) / row.prix_vente * 100) : null,
       };

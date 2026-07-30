@@ -12,6 +12,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { categorieDuPlat, categoriesPresentes, platCatRank } from '../../utils/categoriesPlat.js';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { dureesVie } from '../../utils/etiquettesDlc.js';
 
 
 // CARTES & RECETTES
@@ -481,6 +482,57 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
     setSavingCong(false);
   };
 
+  // ─── Durées de vie (DLC) : alimentent le poste d'étiquetage HACCP ───
+  // La durée de vie relève de l'autocontrôle de l'établissement : elle est
+  // saisie ici par consultant/patron/resp_cuisine, jamais calculée par le
+  // système ni modifiable par un exécutant. C'est le seul endroit où elle
+  // s'édite - l'onglet Étiquettes la lit sans jamais l'écrire.
+  const canEditDurees = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
+  // Référence enregistrée : sert de base de comparaison pour activer le bouton.
+  // Remise à jour après un enregistrement réussi, sinon le bouton resterait actif
+  // tant que la fiche parente n'a pas été rechargée.
+  const [dureesRef, setDureesRef] = React.useState(() => dureesVie(recette));
+  const [durees, setDurees] = React.useState({
+    frais: String(dureesRef.frais),
+    congele: dureesRef.congele == null ? '' : String(dureesRef.congele),
+    decongele: String(dureesRef.decongele),
+  });
+  const [savingDurees, setSavingDurees] = React.useState(false);
+  const dureesModifiees = durees.frais !== String(dureesRef.frais)
+    || durees.congele !== (dureesRef.congele == null ? '' : String(dureesRef.congele))
+    || durees.decongele !== String(dureesRef.decongele);
+
+  const saveDurees = async () => {
+    const legacySB = dbService.getBridge();
+    if (!legacySB) { notifyLegacy('Base de données indisponible.', 'error'); return; }
+    const entier = (v) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? n : NaN; };
+    const frais = entier(durees.frais);
+    const decongele = entier(durees.decongele);
+    // Vide = préparation non congelable (les modes surgélation et décongélation
+    // deviennent indisponibles à l'étiquetage).
+    const congele = durees.congele.trim() === '' ? null : entier(durees.congele);
+    if (!(frais > 0) || !(decongele > 0) || (congele !== null && !(congele > 0))) {
+      notifyLegacy('Les durées de vie doivent être des nombres de jours supérieurs à zéro.', 'warning');
+      return;
+    }
+    setSavingDurees(true);
+    try {
+      await legacySB.db.upsertRecette({
+        ...recette,
+        dureeVieJours: frais,
+        dureeVieCongeleJours: congele,
+        dureeVieDecongeleJours: decongele,
+        modifiePar: user?.id || null,
+      });
+      setDureesRef({ frais, congele, decongele });
+      notifyLegacy('Durées de vie enregistrées.', 'success');
+    } catch (err) {
+      console.error('[saveDurees]', err);
+      notifyLegacy('Erreur : ' + (err?.message || 'enregistrement impossible'), 'error');
+    }
+    setSavingDurees(false);
+  };
+
   // Qui peut dupliquer ? consultant + patron + responsable cuisine
   // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
   const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
@@ -619,6 +671,52 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
                     Non qualifiée : à faire renseigner par le consultant ou le patron.
                   </div>
                 )
+              )}
+            </div>
+          </div>
+          {/* Durées de vie : lues par le poste d'étiquetage DLC (module HACCP). */}
+          <div style={rs.detailCard}>
+            <div style={rs.cardHeader}><span style={rs.cardTitle}>Durées de vie (DLC)</span></div>
+            <div style={{padding:'12px 16px', display:'flex', flexDirection:'column', gap:10}}>
+              {canEditDurees ? (
+                <div className="no-print" style={{display:'flex', flexDirection:'column', gap:8}}>
+                  {[
+                    { k: 'frais',     label: 'Froid positif (0 à 3 °C)' },
+                    { k: 'congele',   label: 'Surgelé (-18 °C)' },
+                    { k: 'decongele', label: 'Après décongélation' },
+                  ].map(f => (
+                    <div key={f.k} style={{display:'flex', alignItems:'center', gap:10}}>
+                      <span style={{flex:1, minWidth:0, fontSize:12, color:'var(--text2)'}}>{f.label}</span>
+                      <input
+                        type="number" min="1" step="1" inputMode="numeric"
+                        value={durees[f.k]}
+                        disabled={savingDurees}
+                        onChange={e => setDurees(prev => ({ ...prev, [f.k]: e.target.value }))}
+                        style={{width:64, flexShrink:0, padding:'7px 8px', border:'1px solid var(--border)', borderRadius:7, fontSize:13, fontWeight:700, textAlign:'right', color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', outline:'none'}}
+                        aria-label={f.label}
+                      />
+                      <span style={{width:38, flexShrink:0, fontSize:11, color:'var(--text2)'}}>jours</span>
+                    </div>
+                  ))}
+                  <div style={{fontSize:11, color:'var(--text2)', lineHeight:1.5}}>
+                    Surgelé vide = préparation non congelable : les modes surgélation et décongélation
+                    sont alors indisponibles à l'étiquetage.
+                  </div>
+                  <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                    <button
+                      type="button"
+                      disabled={savingDurees || !dureesModifiees}
+                      onClick={saveDurees}
+                      style={{...rs.congBtn, ...(dureesModifiees ? rs.congBtnActive : null), opacity: savingDurees || !dureesModifiees ? 0.55 : 1}}
+                    >{savingDurees ? 'Enregistrement…' : 'Enregistrer les durées'}</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{fontSize:13, color:'var(--text)', lineHeight:1.7}}>
+                  <div>Froid positif : <strong>{dureesRef.frais} jours</strong></div>
+                  <div>Surgelé : <strong>{dureesRef.congele == null ? 'non congelable' : `${dureesRef.congele} jours`}</strong></div>
+                  <div>Après décongélation : <strong>{dureesRef.decongele} jours</strong></div>
+                </div>
               )}
             </div>
           </div>

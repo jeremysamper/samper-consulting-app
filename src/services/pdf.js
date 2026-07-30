@@ -1,6 +1,7 @@
 import { getDemoData } from '../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../legacy/legacyApi.js';
 import { readJson } from '../utils/storage.js';
+import { ETIQUETTE_DK11209, ETIQUETTE_FONTS } from '../utils/etiquettesDlc.js';
 
 // ─────────────────────────────────────────────────────
 // PDF & IMPRESSION - Mise en page A4 professionnelle
@@ -607,6 +608,143 @@ export const pdfUtils = {
       notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
       throw err;
     }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // ÉTIQUETTES DLC - poste d'étiquetage (onglet Étiquettes du module HACCP)
+  // ───────────────────────────────────────────────────────────────
+  // Une étiquette = UNE page à la dimension exacte du media (défaut :
+  // Brother DK-11209, 62 × 29 mm). Jamais une page longue contenant
+  // plusieurs étiquettes : sur rouleau prédécoupé, le cutter couperait
+  // une seule fois et sortirait un ruban d'étiquettes attachées.
+  // Texte vectoriel natif, jsPDF lazy-loadé, aucun html2canvas.
+  // Les dimensions viennent de utils/etiquettesDlc.js - rien en dur ici.
+  //
+  // etiquettes : [{ lignes: [{ role, text?, segments?, bold? }] }]
+  //   role 'nom' | 'dlc' | 'corps' choisit la police, le contenu est
+  //   construit par le module (lignesEtiquette).
+  // options : { format?, autoPrint?, filename?, onProgress? }
+  // ═══════════════════════════════════════════════════════════════
+  async exportEtiquettesDlcPdf(etiquettes, options = {}) {
+    try {
+      const list = (etiquettes || []).filter(e => e && Array.isArray(e.lignes) && e.lignes.length);
+      if (!list.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return null; }
+      const cfg = { ...ETIQUETTE_DK11209, ...(options.format || {}) };
+      const format = [cfg.widthMm, cfg.heightMm];
+      const jsPDF = await this._loadJsPdf();
+      const doc = new jsPDF({ unit: 'mm', format, orientation: 'landscape' });
+      const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+
+      for (let i = 0; i < list.length; i += 1) {
+        if (i > 0) doc.addPage(format, 'landscape');
+        this._renderEtiquetteDlc(doc, list[i], cfg);
+        // Génération synchrone : on rend la main au navigateur par paquets pour
+        // que l'indicateur de progression s'affiche réellement sur un gros lot.
+        if (onProgress && (i % 20 === 19 || i === list.length - 1)) {
+          onProgress(i + 1, list.length);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      const filename = options.filename || 'etiquettes-dlc.pdf';
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        // Popup bloquée (ou pas de window) : on retombe sur le téléchargement,
+        // l'impression AirPrint se fait alors depuis le fichier.
+        const opened = win ? win.open(url, '_blank') : null;
+        if (!opened) doc.save(filename);
+      } else {
+        doc.save(filename);
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportEtiquettesDlcPdf]', err);
+      notifyLegacy('Génération des étiquettes échouée : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  // Rend UNE étiquette sur la page courante. Les lignes sont ajustées à la
+  // largeur imprimable (paliers de police puis troncature) et réparties
+  // verticalement sur la hauteur restante : le mode Surgélation, six lignes sur
+  // 29 mm, sert de calibre.
+  _renderEtiquetteDlc(doc, etiquette, cfg) {
+    const MM_PER_PT = 0.3528;
+    const LINE_FACTOR = 1.15;   // interligne relatif au corps de police
+    const SEGMENT_GAP = 3;      // mm entre température et mention en gras
+    const F = ETIQUETTE_FONTS;
+    const m = cfg.marginMm;
+    const usableW = cfg.widthMm - 2 * m;
+    const usableH = cfg.heightMm - 2 * m;
+
+    doc.setTextColor(0, 0, 0);
+
+    const widthAt = (text, size, bold) => {
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setFontSize(size);
+      return doc.getTextWidth(text);
+    };
+
+    // Tronque au plancher de police : la lisibilité à bout de bras dans une
+    // chambre froide passe avant la complétude du texte.
+    // Marque de troncature en points ASCII et NON '…' : jsPDF mesure bien
+    // l'ellipsie Unicode mais la supprime au rendu avec les polices standard
+    // (vérifié : 'X…Y' sort '(XY) Tj'), on perdrait le marqueur en silence.
+    const ELLIPSIS = '...';
+    const truncate = (text, size, bold) => {
+      if (widthAt(text, size, bold) <= usableW) return text;
+      let cut = text;
+      while (cut.length > 1 && widthAt(cut.trimEnd() + ELLIPSIS, size, bold) > usableW) cut = cut.slice(0, -1);
+      return cut.trimEnd() + ELLIPSIS;
+    };
+
+    // Chaque ligne : segments + taille de police retenue.
+    const lignes = etiquette.lignes.map((l) => {
+      const segments = (Array.isArray(l.segments) ? l.segments : [{ text: l.text, bold: l.bold }])
+        .map(s => ({ text: pdfSafeText(s.text || ''), bold: !!(s.bold ?? l.bold) }))
+        .filter(s => s.text !== '');
+      const measure = (size) => segments.reduce(
+        (w, s, i) => w + widthAt(s.text, size, s.bold) + (i > 0 ? SEGMENT_GAP : 0), 0);
+
+      if (l.role === 'nom') {
+        const size = F.nomLadder.find(s => measure(s) <= usableW) ?? F.nomLadder[F.nomLadder.length - 1];
+        const fitted = measure(size) <= usableW
+          ? segments
+          : segments.map(s => ({ ...s, text: truncate(s.text, size, s.bold) }));
+        return { segments: fitted, size };
+      }
+
+      // Lignes de corps et de DLC : on descend par demi-point jusqu'au plancher.
+      let size = l.role === 'dlc' ? F.dlc : F.ligne;
+      while (size > F.min && measure(size) > usableW) size -= 0.5;
+      const fitted = measure(size) <= usableW
+        ? segments
+        : segments.map(s => ({ ...s, text: truncate(s.text, size, s.bold) }));
+      return { segments: fitted, size };
+    }).filter(l => l.segments.length);
+
+    if (!lignes.length) return;
+
+    // Répartition verticale : hauteur restante distribuée uniformément, ce qui
+    // absorbe la différence entre un mode à cinq lignes et un à six.
+    const hauteurs = lignes.map(l => l.size * MM_PER_PT * LINE_FACTOR);
+    const totalTexte = hauteurs.reduce((s, h) => s + h, 0);
+    const gap = Math.max(0, (usableH - totalTexte) / lignes.length);
+
+    let y = m;
+    lignes.forEach((l, i) => {
+      y += hauteurs[i] * 0.8 + gap / 2;   // baseline
+      let x = m;
+      l.segments.forEach((s, j) => {
+        doc.setFont('helvetica', s.bold ? 'bold' : 'normal');
+        doc.setFontSize(l.size);
+        doc.text(s.text, x, y);
+        if (j < l.segments.length - 1) x += doc.getTextWidth(s.text) + SEGMENT_GAP;
+      });
+      y += hauteurs[i] * 0.2 + gap / 2;
+    });
   },
 
   _buildRecettePDF(jsPDF, recette, options = {}) {
