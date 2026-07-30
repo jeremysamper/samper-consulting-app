@@ -2,13 +2,26 @@
 // Moteur de traduction à la volée du DOM (mode « Original » / « English »).
 //
 // Principe, identique aux widgets de traduction des sites web : on ne réécrit
-// AUCUN module. Le moteur parcourt le DOM rendu, traduit le texte visible, et
-// se remet à jour à chaque re-rendu React via un MutationObserver.
+// AUCUN module. Le moteur traduit le DOM rendu et se remet à jour à chaque
+// re-rendu React via un MutationObserver.
 //
 // Trois niveaux, du moins cher au plus cher :
 //   1. glossaire statique  → instantané, hors-ligne, gratuit (voir glossary.js)
 //   2. cache localStorage  → instantané, hors-ligne, gratuit (déjà traduit ici)
 //   3. edge function IA    → une seule fois par phrase, puis mis en cache
+//
+// FLUIDITÉ - deux règles qui gouvernent tout ce fichier :
+//
+//   · INCRÉMENTAL. On ne retraverse jamais le document entier après le premier
+//     passage : on ne traite QUE les sous-arbres signalés par le
+//     MutationObserver. Une v1 rescannait tout le DOM à chaque re-rendu, ce qui
+//     rendait l'app perceptiblement moins fluide en usage normal.
+//
+//   · AVANT PEINTURE. Tout ce que le glossaire ou le cache savent déjà traduire
+//     est écrit SYNCHRONEMENT dans le callback du MutationObserver, qui est une
+//     microtâche : le navigateur n'a pas encore peint. L'utilisateur ne voit
+//     donc jamais le français pour du contenu déjà connu - plus de clignotement.
+//     Seul l'appel IA (contenu jamais rencontré) reste différé, par nature.
 //
 // GARDE-FOUS (aucune donnée métier ne doit pouvoir être corrompue) :
 //   · on n'écrit JAMAIS dans la value d'un input/textarea/select : seul le
@@ -26,22 +39,24 @@ const SYNC_KEY = 'sc_i18n_sync_';       // + id d'établissement
 const CACHE_MAX = 5000;      // entrées conservées en localStorage
 const BATCH_SIZE = 40;       // phrases par appel IA
 const MAX_BATCHES = 10;      // plafond par passe → 400 phrases max
-const FLUSH_DELAY = 150;     // ms de regroupement après un re-rendu React
+const FETCH_DELAY = 120;     // ms de regroupement avant l'appel IA
 
-// Balises dont le TEXTE ne doit jamais être touché.
-// TEXTAREA est capital : son nœud texte EST sa valeur (donnée saisie).
-// Le texte des <option> est en revanche traduit : seul l'attribut value compte
-// pour le code, et une liste déroulante restée en français ferait tache.
-const TEXT_SKIP_TAGS = new Set([
-  'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA',
-  'CODE', 'PRE', 'KBD', 'SAMP', 'CANVAS', 'SVG', 'IFRAME', 'OBJECT', 'EMBED',
-  'VIDEO', 'AUDIO', 'MATH',
+// Sous-arbres entièrement ignorés : ni texte, ni attributs. Les élaguer au
+// niveau du TreeWalker évite de remonter la chaîne des ancêtres pour chaque
+// nœud texte, ce qui était l'autre coût caché de la v1.
+const PRUNE_TAGS = new Set([
+  'SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE', 'KBD', 'SAMP',
+  'CANVAS', 'SVG', 'IFRAME', 'OBJECT', 'EMBED', 'VIDEO', 'AUDIO', 'MATH',
 ]);
 
+// TEXTAREA n'est PAS élagué : son placeholder est de l'affichage et mérite
+// d'être traduit. En revanche son nœud texte EST sa valeur (donnée saisie) et
+// ne doit jamais être touché - c'est un enfant direct, donc un test O(1).
+const VALUE_AS_TEXT = 'TEXTAREA';
+
 // Attributs d'affichage traduits (jamais « value » : ce serait de la donnée).
-// Ceux-là sont traités sur TOUTES les balises, y compris input et textarea :
-// un placeholder est de l'affichage, pas de la saisie.
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+const ATTR_SELECTOR = '[placeholder],[title],[aria-label],[alt]';
 
 // ── État ──────────────────────────────────────────────────────────
 const memCache = new Map();                 // 'Supprimer' → 'Delete'
@@ -51,9 +66,15 @@ const attrState = new WeakMap();            // élément     → Map(attr → { 
 let touchedNodes = new Set();               // nœuds texte à restaurer
 let touchedAttrs = new Set();               // éléments à restaurer
 
+// Cibles dont la traduction n'est pas encore connue : réappliquées telles
+// quelles quand l'IA répond, sans retraverser quoi que ce soit.
+let deferredTexts = [];
+let deferredAttrs = [];
+const pendingStrings = new Set();
+
 let currentLang = 'fr';
 let observer = null;
-let flushTimer = null;
+let fetchTimer = null;
 let busy = 0;                               // requêtes IA en vol
 let failures = 0;                           // échecs consécutifs (mode hors-ligne)
 let mutedUntil = 0;                         // pause après échecs répétés
@@ -91,6 +112,36 @@ function saveCacheSoon() {
   }, 1000);
 }
 
+// ── Cache partagé (Supabase) ──────────────────────────────────────
+/**
+ * Rapatrie une fois par établissement le travail déjà fait par la brigade.
+ * C'est ce qui évite que chaque téléphone repaie la même première passe :
+ * une phrase traduite par un collègue arrive ici sans appel IA.
+ *
+ * Synchro incrémentale : on ne redemande que ce qui a été ajouté depuis le
+ * dernier import de CET appareil.
+ */
+async function ensureSharedCache() {
+  if (sharedLoaded || !etabId) return;
+  sharedLoaded = true;   // une seule tentative par établissement et par session
+
+  const key = SYNC_KEY + etabId;
+  try {
+    const since = localStorage.getItem(key) || null;
+    const { pairs, latest } = await fetchSharedTranslations(etabId, since);
+    for (const [fr, en] of pairs) {
+      if (!memCache.has(fr)) memCache.set(fr, en);
+    }
+    if (latest) {
+      try { localStorage.setItem(key, latest); } catch { /* quota : on resyncera */ }
+    }
+    if (pairs.length) saveCacheSoon();
+  } catch {
+    // Base injoignable (hors ligne, RLS, table absente) : on continue sur le
+    // cache local. La traduction ne doit jamais dépendre de cette optimisation.
+  }
+}
+
 // ── Éligibilité ───────────────────────────────────────────────────
 const WORDISH = /[\p{L}\p{N}]/u;
 const URL_LIKE = /^(https?:\/\/|www\.|[\w.+-]+@[\w-]+\.)/i;
@@ -124,35 +175,80 @@ function isTranslatable(core) {
   return true;
 }
 
+/** Cet élément porte-t-il un opt-out explicite ? */
+function isOptOutEl(el) {
+  if (!el.hasAttribute) return false;
+  if (el.hasAttribute('data-no-translate')) return true;
+  if (el.getAttribute('translate') === 'no') return true;
+  return !!(el.classList && el.classList.contains('notranslate'));
+}
+
 /**
- * Un ancêtre marque-t-il ce nœud comme intraduisible ?
- * Vaut pour le texte comme pour les attributs.
+ * Un ancêtre interdit-il la traduction ? Appelé UNE fois par racine de
+ * mutation (pas par nœud) : à l'intérieur, le TreeWalker élague tout seul.
  */
-function hasOptOut(node) {
-  let el = node.nodeType === 1 ? node : node.parentElement;
+function hasForbiddenAncestor(node) {
+  let el = node.nodeType === 1 ? node.parentElement : node.parentElement;
   while (el) {
-    if (el.hasAttribute) {
-      if (el.hasAttribute('data-no-translate')) return true;
-      if (el.getAttribute('translate') === 'no') return true;
-      if (el.classList && el.classList.contains('notranslate')) return true;
-    }
+    const tag = el.tagName ? el.tagName.toUpperCase() : '';
+    if (PRUNE_TAGS.has(tag)) return true;
+    if (isOptOutEl(el)) return true;
     el = el.parentElement;
   }
   return false;
 }
 
-/** Le TEXTE de ce nœud est-il hors périmètre (balise interdite ou opt-out) ? */
-function isSkippedForText(node) {
-  let el = node.nodeType === 1 ? node : node.parentElement;
-  while (el) {
-    const tag = el.tagName ? el.tagName.toUpperCase() : '';
-    if (TEXT_SKIP_TAGS.has(tag)) return true;
-    el = el.parentElement;
+// ── Collecte incrémentale ─────────────────────────────────────────
+function pushAttrs(el, attrs) {
+  for (const attr of ATTRS) {
+    if (el.hasAttribute(attr)) attrs.push([el, attr]);
   }
-  return hasOptOut(node);
 }
 
-// ── Résolution ────────────────────────────────────────────────────
+/**
+ * Collecte les cibles d'un sous-arbre. Les sous-arbres interdits sont élagués
+ * par FILTER_REJECT, qui saute la descendance d'un coup.
+ */
+function collectTargets(root, texts, attrs) {
+  if (!root || (root.nodeType !== 1 && root.nodeType !== 3)) return;
+  if (hasForbiddenAncestor(root)) return;
+
+  if (root.nodeType === 3) {
+    const parent = root.parentElement;
+    if (!parent || parent.tagName !== VALUE_AS_TEXT) texts.push(root);
+    return;
+  }
+
+  const tag = root.tagName ? root.tagName.toUpperCase() : '';
+  if (isOptOutEl(root)) return;
+  if (PRUNE_TAGS.has(tag)) return;
+  pushAttrs(root, attrs);
+
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        if (node.nodeType === 1) {
+          const t = node.tagName ? node.tagName.toUpperCase() : '';
+          if (PRUNE_TAGS.has(t) || isOptOutEl(node)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        const p = node.parentElement;
+        if (p && p.tagName === VALUE_AS_TEXT) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    },
+  );
+
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.nodeType === 1) pushAttrs(n, attrs);
+    else texts.push(n);
+  }
+}
+
+// ── Résolution / écriture ─────────────────────────────────────────
 /** Traduction connue (glossaire puis cache), ou null s'il faut appeler l'IA. */
 function resolve(core) {
   const fromGlossary = lookupGlossary(core);
@@ -161,7 +257,7 @@ function resolve(core) {
   return cached === undefined ? null : cached;
 }
 
-function writeText(node, value) {
+function writeTextNode(node, value) {
   written.set(node, value);
   node.nodeValue = value;
   touchedNodes.add(node);
@@ -177,77 +273,65 @@ function writeAttr(el, attr, value) {
   touchedAttrs.add(el);
 }
 
-// ── Passe de traduction ───────────────────────────────────────────
 /**
- * Parcourt le document, traduit tout ce qui est déjà connu, et renvoie les
- * chaînes encore inconnues à envoyer à l'IA.
+ * Traduit les cibles fournies avec ce qui est déjà connu. Synchrone.
+ * Les cibles inconnues sont mises de côté pour l'appel IA.
+ * @returns {boolean} true si au moins une chaîne manque.
  */
-function sweep() {
-  const missing = new Set();
-  if (typeof document === 'undefined' || !document.body) return missing;
+function applyTargets(texts, attrs) {
+  let anyMissing = false;
 
-  // ── Nœuds texte ──
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-      return NodeFilter.FILTER_ACCEPT;
-    },
-  });
-
-  const nodes = [];
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
-
-  for (const node of nodes) {
+  for (const node of texts) {
+    if (!node.isConnected) continue;
     const value = node.nodeValue;
-    // Déjà traduit par nous et intact depuis : rien à faire.
-    if (written.get(node) === value) continue;
-    if (isSkippedForText(node)) continue;
-
-    // Sinon la valeur courante est la source (premier passage, ou React a
-    // réécrit le nœud avec un nouveau texte français).
-    const source = value;
-    const { pre, core, post } = splitAffixes(source);
+    if (written.get(node) === value) continue;   // notre écriture, intacte
+    const { pre, core, post } = splitAffixes(value);
     if (!isTranslatable(core)) continue;
 
-    originals.set(node, source);
+    originals.set(node, value);
     const en = resolve(core);
-    if (en === null) missing.add(core);
-    else if (en !== core) writeText(node, pre + en + post);
-  }
-
-  // ── Attributs d'affichage ──
-  const els = document.body.querySelectorAll('[placeholder],[title],[aria-label],[alt]');
-  for (const el of els) {
-    if (hasOptOut(el)) continue;
-    for (const attr of ATTRS) {
-      if (!el.hasAttribute(attr)) continue;
-      const value = el.getAttribute(attr);
-      let map = attrState.get(el);
-      const entry = map && map.get(attr);
-      if (entry && entry.out === value) continue;   // notre écriture, intacte
-
-      const { pre, core, post } = splitAffixes(value);
-      if (!isTranslatable(core)) continue;
-
-      if (!map) { map = new Map(); attrState.set(el, map); }
-      map.set(attr, { src: value, out: undefined });
-
-      const en = resolve(core);
-      if (en === null) missing.add(core);
-      else if (en !== core) writeAttr(el, attr, pre + en + post);
+    if (en === null) {
+      pendingStrings.add(core);
+      deferredTexts.push(node);
+      anyMissing = true;
+    } else if (en !== core) {
+      writeTextNode(node, pre + en + post);
     }
   }
 
-  // Les nœuds démontés par React n'ont plus à être restaurés : on les lâche
-  // pour que le Set ne grossisse pas indéfiniment au fil de la navigation.
-  if (touchedNodes.size > 2000) {
-    touchedNodes = new Set([...touchedNodes].filter((n) => n.isConnected));
-  }
-  if (touchedAttrs.size > 2000) {
-    touchedAttrs = new Set([...touchedAttrs].filter((el) => el.isConnected));
+  for (const pair of attrs) {
+    const el = pair[0];
+    const attr = pair[1];
+    if (!el.isConnected || !el.hasAttribute(attr)) continue;
+    const value = el.getAttribute(attr);
+    let map = attrState.get(el);
+    const entry = map && map.get(attr);
+    if (entry && entry.out === value) continue;   // notre écriture, intacte
+    const { pre, core, post } = splitAffixes(value);
+    if (!isTranslatable(core)) continue;
+
+    if (!map) { map = new Map(); attrState.set(el, map); }
+    map.set(attr, { src: value, out: undefined });
+    const en = resolve(core);
+    if (en === null) {
+      pendingStrings.add(core);
+      deferredAttrs.push(pair);
+      anyMissing = true;
+    } else if (en !== core) {
+      writeAttr(el, attr, pre + en + post);
+    }
   }
 
-  return missing;
+  return anyMissing;
+}
+
+/** Passe complète : uniquement au basculement en English. */
+function fullSweep() {
+  if (typeof document === 'undefined' || !document.body) return false;
+  const texts = [];
+  const attrs = [];
+  collectTargets(document.body, texts, attrs);
+  return applyTargets(texts, attrs);
 }
 
 /** Restaure intégralement le français. */
@@ -277,36 +361,9 @@ function restore() {
   }
   touchedNodes = new Set();
   touchedAttrs = new Set();
-}
-
-// ── Cache partagé (Supabase) ──────────────────────────────────────
-/**
- * Rapatrie une fois par établissement le travail déjà fait par la brigade.
- * C'est ce qui évite que chaque téléphone repaie la même première passe :
- * une phrase traduite par un collègue arrive ici sans appel IA.
- *
- * Synchro incrémentale : on ne redemande que ce qui a été ajouté depuis le
- * dernier import de CET appareil.
- */
-async function ensureSharedCache() {
-  if (sharedLoaded || !etabId) return;
-  sharedLoaded = true;   // une seule tentative par établissement et par session
-
-  const key = SYNC_KEY + etabId;
-  try {
-    const since = localStorage.getItem(key) || null;
-    const { pairs, latest } = await fetchSharedTranslations(etabId, since);
-    for (const [fr, en] of pairs) {
-      if (!memCache.has(fr)) memCache.set(fr, en);
-    }
-    if (latest) {
-      try { localStorage.setItem(key, latest); } catch { /* quota : on resyncera */ }
-    }
-    if (pairs.length) saveCacheSoon();
-  } catch {
-    // Base injoignable (hors ligne, RLS, table absente) : on continue sur le
-    // cache local. La traduction ne doit jamais dépendre de cette optimisation.
-  }
+  deferredTexts = [];
+  deferredAttrs = [];
+  pendingStrings.clear();
 }
 
 // ── Appels IA ─────────────────────────────────────────────────────
@@ -316,97 +373,122 @@ function chunk(list, size) {
   return out;
 }
 
-async function fetchMissing(missing) {
-  if (!missing.size) return false;
-  if (Date.now() < mutedUntil) return false;
+async function fetchPending() {
+  if (currentLang !== 'en' || !pendingStrings.size) return;
+  if (Date.now() < mutedUntil) return;
 
-  const batches = chunk([...missing], BATCH_SIZE).slice(0, MAX_BATCHES);
-  let gotSomething = false;
+  const wanted = [...pendingStrings];
+  pendingStrings.clear();
 
-  busy += batches.length;
-  emit();
-  try {
-    const results = await Promise.all(batches.map(async (batch) => {
-      try {
-        const out = await translateTexts(batch);
-        failures = 0;
-        if (degraded) { degraded = false; emit(); }
-        return { batch, out };
-      } catch {
-        failures += 1;
-        // Hors-ligne ou service indisponible : on met en pause pour ne pas
-        // marteler l'edge function à chaque re-rendu, et on le SIGNALE. Sans
-        // ce signal, l'app a l'air à moitié traduite sans qu'on sache pourquoi
-        // (vécu : edge function ai-proxy pas encore déployée).
-        if (failures >= 3) {
-          mutedUntil = Date.now() + 60000;
-          if (!degraded) { degraded = true; emit(); }
+  // Avant tout appel IA : récupérer ce que la brigade a déjà traduit.
+  await ensureSharedCache();
+
+  // Ce que la synchro vient de rapatrier n'a plus rien à faire dans le lot.
+  const stillMissing = wanted.filter(s => resolve(s) === null);
+  const batches = chunk(stillMissing, BATCH_SIZE).slice(0, MAX_BATCHES);
+  const fraisTraduits = [];
+
+  if (batches.length) {
+    busy += batches.length;
+    emit();
+    try {
+      const results = await Promise.all(batches.map(async (batch) => {
+        try {
+          const out = await translateTexts(batch);
+          failures = 0;
+          if (degraded) { degraded = false; emit(); }
+          return { batch, out };
+        } catch {
+          failures += 1;
+          // Hors-ligne ou service indisponible : on met en pause pour ne pas
+          // marteler l'edge function à chaque re-rendu, et on le SIGNALE. Sans
+          // ce signal, l'app a l'air à moitié traduite sans qu'on sache
+          // pourquoi (vécu : edge function ai-proxy pas encore déployée).
+          if (failures >= 3) {
+            mutedUntil = Date.now() + 60000;
+            if (!degraded) { degraded = true; emit(); }
+          }
+          return null;
         }
-        return null;
+      }));
+
+      for (const res of results) {
+        if (!res) continue;
+        res.batch.forEach((fr, i) => {
+          const en = res.out[i];
+          if (typeof en === 'string' && en.trim()) {
+            memCache.set(fr, en.trim());
+            fraisTraduits.push([fr, en.trim()]);
+          }
+        });
       }
-    }));
-
-    const fraisTraduits = [];
-    for (const res of results) {
-      if (!res) continue;
-      res.batch.forEach((fr, i) => {
-        const en = res.out[i];
-        if (typeof en === 'string' && en.trim()) {
-          memCache.set(fr, en.trim());
-          fraisTraduits.push([fr, en.trim()]);
-          gotSomething = true;
-        }
-      });
+    } finally {
+      busy = Math.max(0, busy - batches.length);
+      emit();
     }
+  }
+
+  if (fraisTraduits.length) {
+    saveCacheSoon();
     // Ce qu'on vient de payer, la brigade n'aura pas à le repayer.
     // En arrière-plan : un échec d'écriture ne doit pas retarder l'affichage.
-    if (fraisTraduits.length && etabId) {
-      pushSharedTranslations(etabId, fraisTraduits).catch(() => {});
-    }
-  } finally {
-    busy = Math.max(0, busy - batches.length);
-    emit();
+    if (etabId) pushSharedTranslations(etabId, fraisTraduits).catch(() => {});
   }
 
-  if (gotSomething) saveCacheSoon();
-  return gotSomething;
-}
-
-// ── Boucle ────────────────────────────────────────────────────────
-let running = false;
-let dirty = false;
-
-async function flush() {
   if (currentLang !== 'en') return;
-  // Un re-rendu pendant un appel IA ne doit pas être perdu : on le note et on
-  // reboucle à la fin plutôt que d'abandonner la passe.
-  if (running) { dirty = true; return; }
 
-  running = true;
-  try {
-    do {
-      dirty = false;
-      // Avant tout appel IA : récupérer ce que la brigade a déjà traduit.
-      await ensureSharedCache();
-      const missing = sweep();
-      if (missing.size) {
-        const got = await fetchMissing(missing);
-        if (got && currentLang === 'en') sweep();   // applique ce qui vient d'arriver
-      }
-    } while (dirty && currentLang === 'en');
-  } finally {
-    running = false;
-  }
+  // Réapplique UNIQUEMENT les cibles mises de côté. Aucun rescan.
+  const texts = deferredTexts;
+  const attrs = deferredAttrs;
+  deferredTexts = [];
+  deferredAttrs = [];
+  if (applyTargets(texts, attrs)) scheduleFetch();
 }
 
-function scheduleFlush() {
-  clearTimeout(flushTimer);
-  flushTimer = setTimeout(() => { flush(); }, FLUSH_DELAY);
+function scheduleFetch() {
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(() => { fetchPending(); }, FETCH_DELAY);
 }
 
+// ── Observation ───────────────────────────────────────────────────
 function startObserver() {
   if (observer || typeof MutationObserver === 'undefined' || !document.body) return;
-  observer = new MutationObserver(() => { scheduleFlush(); });
+
+  observer = new MutationObserver((records) => {
+    if (currentLang !== 'en') return;
+
+    const texts = [];
+    const attrs = [];
+
+    for (const r of records) {
+      if (r.type === 'childList') {
+        for (const node of r.addedNodes) collectTargets(node, texts, attrs);
+      } else if (r.type === 'characterData') {
+        const node = r.target;
+        // Notre propre écriture qui revient : on l'ignore, sinon on boucle.
+        if (written.get(node) === node.nodeValue) continue;
+        if (!hasForbiddenAncestor(node)) {
+          const p = node.parentElement;
+          if (!p || p.tagName !== VALUE_AS_TEXT) texts.push(node);
+        }
+      } else if (r.type === 'attributes') {
+        const el = r.target;
+        const attr = r.attributeName;
+        const map = attrState.get(el);
+        const entry = map && map.get(attr);
+        if (entry && entry.out === el.getAttribute(attr)) continue;
+        if (!isOptOutEl(el) && !hasForbiddenAncestor(el)) attrs.push([el, attr]);
+      }
+    }
+
+    if (!texts.length && !attrs.length) return;
+
+    // Synchrone : on est dans une microtâche, le navigateur n'a pas encore
+    // peint. Tout ce que le glossaire et le cache savent traduire est appliqué
+    // sans que l'utilisateur voie passer le français.
+    if (applyTargets(texts, attrs)) scheduleFetch();
+  });
+
   observer.observe(document.body, {
     subtree: true,
     childList: true,
@@ -423,12 +505,19 @@ function stopObserver() {
 }
 
 // ── État exposé (bouton de bascule) ───────────────────────────────
+let lastSignature = '';
+
 function snapshot() {
   return { lang: currentLang, translating: busy > 0, degraded };
 }
 
 function emit() {
   const state = snapshot();
+  // N'informer qu'en cas de VRAI changement : chaque emit provoque un rendu
+  // React, donc des mutations, donc du travail pour le moteur.
+  const signature = `${state.lang}|${state.translating}|${state.degraded}`;
+  if (signature === lastSignature) return;
+  lastSignature = signature;
   listeners.forEach((fn) => { try { fn(state); } catch { /* un abonné cassé n'arrête pas les autres */ } });
 }
 
@@ -452,7 +541,7 @@ export function setEtablissement(id) {
   if (next === etabId) return;
   etabId = next;
   sharedLoaded = false;
-  if (currentLang === 'en') flush();
+  if (currentLang === 'en' && fullSweep()) scheduleFetch();
 }
 
 /**
@@ -494,10 +583,10 @@ export function setLanguage(lang) {
     degraded = false;
     startObserver();
     emit();
-    flush();
+    if (fullSweep()) scheduleFetch();
   } else {
     stopObserver();
-    clearTimeout(flushTimer);
+    clearTimeout(fetchTimer);
     restore();
     emit();
   }
