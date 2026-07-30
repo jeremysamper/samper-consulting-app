@@ -1,5 +1,9 @@
 import React from 'react';
 import { useLanguage } from '../hooks/useLanguage.js';
+import { notify } from './toast/index.js';
+
+const DEGRADED_MSG = 'Traduction partielle : le service de traduction est injoignable. '
+  + "Seuls les libellés courants sont traduits, le contenu des fiches reste en français.";
 
 // Bascule « Original » (français, tel que saisi) ↔ « English » (traduction à la
 // volée du DOM). Le composant porte data-no-translate : ses propres libellés ne
@@ -9,18 +13,30 @@ import { useLanguage } from '../hooks/useLanguage.js';
 // cloche, le header n'a pas la place d'un segment complet (et la page ne doit
 // jamais pouvoir défiler horizontalement).
 export default function LanguageToggle({ compact = false }) {
-  const { lang, translating, setLang, toggleLang } = useLanguage();
+  const { lang, translating, degraded, setLang, toggleLang } = useLanguage();
   const isEn = lang === 'en';
+
+  // Alerte une seule fois par bascule en dégradé : sans ce signal, l'app a
+  // l'air à moitié traduite sans qu'on sache pourquoi.
+  const wasDegraded = React.useRef(false);
+  React.useEffect(() => {
+    if (degraded && !wasDegraded.current) notify(DEGRADED_MSG, 'warning');
+    wasDegraded.current = degraded;
+  }, [degraded]);
+
+  const enTitle = degraded
+    ? 'Traduction partielle : service injoignable'
+    : 'Translate this app to English';
 
   if (compact) {
     return (
       <button
         type="button"
         data-no-translate=""
-        style={{ ...s.compact, ...(isEn ? s.compactActive : null) }}
+        style={{ ...s.compact, ...(isEn ? s.compactActive : null), ...(isEn && degraded ? s.compactDegraded : null) }}
         onClick={(e) => { e.stopPropagation(); toggleLang(); }}
         aria-label={isEn ? 'Afficher le texte original (français)' : 'Translate this app to English'}
-        title={isEn ? 'Afficher le texte original' : 'Translate to English'}
+        title={isEn ? (degraded ? enTitle : 'Afficher le texte original') : 'Translate to English'}
       >
         {isEn ? 'EN' : 'FR'}
         {translating && <span style={s.dot} />}
@@ -41,10 +57,10 @@ export default function LanguageToggle({ compact = false }) {
       </button>
       <button
         type="button"
-        style={{ ...s.seg, ...(isEn ? s.segActive : null) }}
+        style={{ ...s.seg, ...(isEn ? s.segActive : null), ...(isEn && degraded ? s.segDegraded : null) }}
         onClick={(e) => { e.stopPropagation(); setLang('en'); }}
         aria-pressed={isEn}
-        title="Translate this app to English"
+        title={enTitle}
       >
         English
         {translating && <span style={s.dot} />}
@@ -82,6 +98,8 @@ const s = {
     whiteSpace: 'nowrap',
   },
   segActive: { background: 'var(--accent)', color: '#fff' },
+  // Traduction dégradée : l'ambre dit « ça marche, mais pas complètement ».
+  segDegraded: { background: 'var(--warning-bg-soft)', color: 'var(--warning-text)' },
   compact: {
     position: 'relative',
     width: 44,
@@ -102,6 +120,11 @@ const s = {
     cursor: 'pointer',
   },
   compactActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
+  compactDegraded: {
+    background: 'var(--warning-bg-soft)',
+    borderColor: 'var(--warning-bd)',
+    color: 'var(--warning-text)',
+  },
   dot: {
     width: 6,
     height: 6,

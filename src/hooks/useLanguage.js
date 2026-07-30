@@ -15,7 +15,7 @@ function readInitialLang() {
  * (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
  */
 export function useLanguage() {
-  const [state, setState] = useState(() => ({ lang: getLanguage(), translating: false }));
+  const [state, setState] = useState(() => ({ lang: getLanguage(), translating: false, degraded: false }));
 
   useEffect(() => {
     const unsubscribe = subscribe(setState);
@@ -36,6 +36,8 @@ export function useLanguage() {
     lang: state.lang,
     isEnglish: state.lang === 'en',
     translating: state.translating,
+    // true = service de traduction injoignable : seul le glossaire s'applique.
+    degraded: state.degraded,
     setLang: changeLang,
     toggleLang: () => changeLang(state.lang === 'en' ? 'fr' : 'en'),
   };

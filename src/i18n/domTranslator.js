@@ -56,6 +56,7 @@ let flushTimer = null;
 let busy = 0;                               // requêtes IA en vol
 let failures = 0;                           // échecs consécutifs (mode hors-ligne)
 let mutedUntil = 0;                         // pause après échecs répétés
+let degraded = false;                       // service IA injoignable → glossaire seul
 const listeners = new Set();
 
 // ── Cache persistant ──────────────────────────────────────────────
@@ -296,12 +297,18 @@ async function fetchMissing(missing) {
       try {
         const out = await translateTexts(batch);
         failures = 0;
+        if (degraded) { degraded = false; emit(); }
         return { batch, out };
       } catch {
         failures += 1;
         // Hors-ligne ou service indisponible : on met en pause pour ne pas
-        // marteler l'edge function à chaque re-rendu.
-        if (failures >= 3) mutedUntil = Date.now() + 60000;
+        // marteler l'edge function à chaque re-rendu, et on le SIGNALE. Sans
+        // ce signal, l'app a l'air à moitié traduite sans qu'on sache pourquoi
+        // (vécu : edge function ai-proxy pas encore déployée).
+        if (failures >= 3) {
+          mutedUntil = Date.now() + 60000;
+          if (!degraded) { degraded = true; emit(); }
+        }
         return null;
       }
     }));
@@ -374,14 +381,18 @@ function stopObserver() {
 }
 
 // ── État exposé (bouton de bascule) ───────────────────────────────
+function snapshot() {
+  return { lang: currentLang, translating: busy > 0, degraded };
+}
+
 function emit() {
-  const state = { lang: currentLang, translating: busy > 0 };
+  const state = snapshot();
   listeners.forEach((fn) => { try { fn(state); } catch { /* un abonné cassé n'arrête pas les autres */ } });
 }
 
 export function subscribe(fn) {
   listeners.add(fn);
-  fn({ lang: currentLang, translating: busy > 0 });
+  fn(snapshot());
   return () => listeners.delete(fn);
 }
 
@@ -403,6 +414,11 @@ export function setLanguage(lang) {
 
   if (next === 'en') {
     if (!memCache.size) loadCache();
+    // Nouvelle tentative : on repart d'une ardoise propre, pour que l'alerte
+    // puisse se redéclencher si le service est toujours injoignable.
+    failures = 0;
+    mutedUntil = 0;
+    degraded = false;
     startObserver();
     emit();
     flush();
