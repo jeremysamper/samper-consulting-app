@@ -15,13 +15,27 @@
 
 import { addDays, isoDate, parseLocalDate } from './dateHelpers.js';
 
-// Consommable cible : rouleau prédécoupé, media 29 mm de large, 62 mm par
-// étiquette, 800 par rouleau. Le PDF sort en paysage 62 × 29.
+// Consommable cible : rouleau prédécoupé DK-11209, 800 étiquettes, media de
+// 62 mm de large, chaque étiquette faisant 29 mm dans le sens du défilement.
+// Le PDF sort donc en paysage 62 × 29.
+//
+// Marges NON symétriques, et ce n'est pas un choix esthétique : la tête
+// d'impression ne couvre pas toute l'étiquette. D'après le Raster Command
+// Reference de Brother (QL-800/810W/820NWB, § 2.3.2, étiquettes prédécoupées,
+// ligne « 62 mm x 29 mm ») :
+//   largeur  62,0 mm (732 dots) → zone imprimable 58,9 mm (696 dots),
+//                                 décalage 1,5 mm (18 dots) de chaque côté
+//   longueur 28,9 mm (341 dots) → zone imprimable 22,9 mm (271 dots),
+//                                 décalage 3,0 mm (35 dots) en tête et en pied
+// On ajoute une petite tolérance au décalage constructeur pour absorber la
+// dérive du rouleau : écrire jusqu'au dernier dot théorique, c'est se faire
+// rogner la ligne du bas au premier flottement de l'entraînement.
 export const ETIQUETTE_DK11209 = {
   ref: 'DK-11209',
   widthMm: 62,
   heightMm: 29,
-  marginMm: 2,
+  marginXMm: 2,     // 1,5 mm non imprimable + 0,5 mm de tolérance
+  marginYMm: 3.4,   // 3,0 mm non imprimable + 0,4 mm de tolérance
 };
 
 // Échelle de polices (en points), calibrée sur le mode Surgélation : c'est le

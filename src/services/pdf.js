@@ -728,9 +728,13 @@ export const pdfUtils = {
     const LINE_FACTOR = 1.15;   // interligne relatif au corps de police
     const SEGMENT_GAP = 3;      // mm entre température et mention en gras
     const F = ETIQUETTE_FONTS;
-    const m = cfg.marginMm;
-    const usableW = cfg.widthMm - 2 * m;
-    const usableH = cfg.heightMm - 2 * m;
+    // Marges asymétriques : la zone imprimable du media est plus étroite que
+    // l'étiquette, et bien plus courte (cf. ETIQUETTE_DK11209). Écrire au-delà
+    // ne produit pas une erreur, ça sort une étiquette rognée.
+    const mx = cfg.marginXMm ?? cfg.marginMm ?? 2;
+    const my = cfg.marginYMm ?? cfg.marginMm ?? 2;
+    const usableW = cfg.widthMm - 2 * mx;
+    const usableH = cfg.heightMm - 2 * my;
 
     doc.setTextColor(0, 0, 0);
 
@@ -786,10 +790,10 @@ export const pdfUtils = {
     const totalTexte = hauteurs.reduce((s, h) => s + h, 0);
     const gap = Math.max(0, (usableH - totalTexte) / lignes.length);
 
-    let y = m;
+    let y = my;
     lignes.forEach((l, i) => {
       y += hauteurs[i] * 0.8 + gap / 2;   // baseline
-      let x = m;
+      let x = mx;
       l.segments.forEach((s, j) => {
         doc.setFont('helvetica', s.bold ? 'bold' : 'normal');
         doc.setFontSize(l.size);
