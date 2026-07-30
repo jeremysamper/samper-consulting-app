@@ -624,6 +624,8 @@ export const pdfUtils = {
   //   role 'nom' | 'dlc' | 'corps' choisit la police, le contenu est
   //   construit par le module (lignesEtiquette).
   // options : { format?, autoPrint?, filename?, onProgress? }
+  // Retour : { doc, url, imprime } - `url` reste exploitable par l'appelant pour
+  // rouvrir le PDF si la feuille d'impression n'est pas apparue.
   // ═══════════════════════════════════════════════════════════════
   async exportEtiquettesDlcPdf(etiquettes, options = {}) {
     try {
@@ -647,22 +649,73 @@ export const pdfUtils = {
       }
 
       const filename = options.filename || 'etiquettes-dlc.pdf';
+      const url = doc.output('bloburl');
+      let imprime = false;
       if (options.autoPrint) {
         doc.autoPrint();
-        const win = getBrowserWindow();
-        const url = doc.output('bloburl');
-        // Popup bloquée (ou pas de window) : on retombe sur le téléchargement,
-        // l'impression AirPrint se fait alors depuis le fichier.
-        const opened = win ? win.open(url, '_blank') : null;
-        if (!opened) doc.save(filename);
+        // 1er choix : feuille d'impression native par-dessus l'app (voir
+        // _printPdfInline). Sur tablette, l'imprimante retenue par le systeme
+        // est deja selectionnee : l'operateur n'a qu'a valider.
+        imprime = await this._printPdfInline(url);
+        if (!imprime) {
+          // Repli : ouverture du PDF dans un onglet, impression depuis le
+          // visualiseur (Partager > Imprimer sur iPad). Popup bloquee -> fichier.
+          const win = getBrowserWindow();
+          const opened = win ? win.open(url, '_blank') : null;
+          if (!opened) doc.save(filename);
+        }
       } else {
         doc.save(filename);
       }
-      return doc;
+      return { doc, url, imprime };
     } catch (err) {
       console.error('[pdf exportEtiquettesDlcPdf]', err);
       notifyLegacy('Génération des étiquettes échouée : ' + (err?.message || 'erreur inconnue'), 'error');
       throw err;
+    }
+  },
+
+  // ─── Feuille d'impression native, sans quitter l'application ──────────────
+  // Le PDF est chargé dans une iframe invisible et c'est elle qui appelle
+  // print() : le système ouvre sa feuille d'impression au-dessus de l'app, avec
+  // l'imprimante utilisée la fois précédente déjà sélectionnée. C'est le plus
+  // près du « ça part directement sur l'imprimante » qu'une page web puisse
+  // faire : aucun navigateur n'expose de socket réseau ni de pilote, le choix
+  // de l'imprimante appartient au système.
+  //
+  // Retourne false si l'iframe n'a pas pu charger le PDF ou si print() a été
+  // refusé - l'appelant retombe alors sur l'ouverture du PDF dans un onglet.
+  // ATTENTION : un navigateur peut ignorer print() sans lever d'erreur ; c'est
+  // pourquoi l'appelant garde TOUJOURS un accès manuel au PDF (`url`).
+  async _printPdfInline(url) {
+    const win = getBrowserWindow();
+    if (!win || !win.document?.body || !url) return false;
+    let frame = null;
+    try {
+      frame = win.document.createElement('iframe');
+      frame.setAttribute('aria-hidden', 'true');
+      frame.setAttribute('tabindex', '-1');
+      frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;';
+      const charge = new Promise((resolve) => {
+        let regle = false;
+        const finir = (ok) => { if (!regle) { regle = true; resolve(ok); } };
+        frame.onload = () => finir(true);
+        frame.onerror = () => finir(false);
+        win.setTimeout(() => finir(false), 4000);
+      });
+      frame.src = url;
+      win.document.body.appendChild(frame);
+      if (!await charge) { frame.remove(); return false; }
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      // L'iframe doit survivre à la feuille d'impression (le rendu est lu
+      // pendant l'affichage du dialogue) : nettoyage différé, pas immédiat.
+      win.setTimeout(() => { try { frame.remove(); } catch { /* déjà retirée */ } }, 60000);
+      return true;
+    } catch (err) {
+      console.warn('[pdf _printPdfInline]', err);
+      try { frame?.remove(); } catch { /* rien à nettoyer */ }
+      return false;
     }
   },
 

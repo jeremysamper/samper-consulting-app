@@ -45,6 +45,7 @@ const es = {
   // Barre de résumé posée en bas de l'onglet (sticky, jamais flottante).
   resume: { position: 'sticky', bottom: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
   resumeTotal: { fontSize: 13, color: 'var(--text2)', flex: 1, minWidth: 160 },
+  dernierLot: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' },
   rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
   rechercheInput: { flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
 };
@@ -64,6 +65,14 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const [retraits, setRetraits] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState(null);
+  // Dernier lot produit : garde un accès manuel au PDF. Un navigateur peut
+  // ignorer la demande d'impression sans lever d'erreur (cas connu sur iPad) ;
+  // sans ce repli visible, l'opérateur resterait devant un écran qui n'a rien fait.
+  const [dernierLot, setDernierLot] = React.useState(null);
+  const urlsRef = React.useRef([]);
+  React.useEffect(() => () => {
+    urlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch { /* déjà libérée */ } });
+  }, []);
 
   // Initiales préremplies depuis le profil, champ modifiable : c'est un poste
   // partagé, la personne qui étiquette n'est pas toujours celle qui est connectée.
@@ -181,11 +190,15 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     const suivi = etiquettes.length > 50;
     if (suivi) setProgress({ done: 0, total: etiquettes.length });
     try {
-      await pdfUtils.exportEtiquettesDlcPdf(etiquettes, {
+      const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, {
         autoPrint: true,
         filename: `etiquettes-dlc-${modeId}-${dates[mode.dlcDepuis]}.pdf`,
         onProgress: suivi ? (done, total) => setProgress({ done, total }) : undefined,
       });
+      if (res?.url) {
+        urlsRef.current.push(res.url);
+        setDernierLot({ url: res.url, nb: etiquettes.length, imprime: !!res.imprime });
+      }
       notifyLegacy(`${etiquettes.length} étiquette${etiquettes.length > 1 ? 's' : ''} générée${etiquettes.length > 1 ? 's' : ''}.`, 'success');
     } catch (err) {
       /* notify déjà géré dans le service */
@@ -252,9 +265,14 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           </div>
         </div>
         <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
-          {modeId === 'surgelation'
-            ? 'La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.'
-            : `Étiquettes ${ETIQUETTE_DK11209.ref} · ${ETIQUETTE_DK11209.widthMm} × ${ETIQUETTE_DK11209.heightMm} mm · impression AirPrint depuis la tablette.`}
+          {modeId === 'surgelation' && (
+            <div style={{ marginBottom: 4 }}>
+              La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
+            </div>
+          )}
+          Imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint) ·
+          rouleau {ETIQUETTE_DK11209.ref} {ETIQUETTE_DK11209.widthMm} × {ETIQUETTE_DK11209.heightMm} mm.
+          La feuille d'impression s'ouvre sur l'imprimante utilisée la dernière fois : il n'y a qu'à valider.
         </div>
       </div>
 
@@ -323,6 +341,26 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           );
         })}
       </div>
+
+      {/* ── Dernier lot : accès manuel au PDF ──
+          Filet de sécurité assumé : si la feuille d'impression ne s'est pas
+          ouverte, l'opérateur récupère le PDF ici plutôt que de relancer le lot. */}
+      {dernierLot && (
+        <div style={es.dernierLot}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            {dernierLot.nb} étiquette{dernierLot.nb > 1 ? 's' : ''} prête{dernierLot.nb > 1 ? 's' : ''}.
+            {dernierLot.imprime
+              ? " Si la feuille d'impression ne s'est pas affichée :"
+              : ' Ouvrez le PDF puis Partager › Imprimer :'}
+          </span>
+          <a
+            href={dernierLot.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ ...hs.exportBtn, flexShrink: 0, textDecoration: 'none', display: 'inline-block' }}
+          >Ouvrir le PDF</a>
+        </div>
+      )}
 
       {/* ── Résumé du lot + génération ── */}
       <div style={es.resume}>
