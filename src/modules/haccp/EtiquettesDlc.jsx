@@ -55,6 +55,29 @@ const es = {
   rechercheInput: { flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
 };
 
+// Feuille de partage du système : le PDF y arrive directement, « Imprimer » est
+// sous le pouce, et l'écran d'aperçu disparaît du parcours. C'est le chemin le
+// plus court qu'une page web puisse offrir sur iPad — aucun navigateur n'expose
+// d'impression silencieuse, seul l'agent local sait faire mieux.
+//
+// Rien d'asynchrone ici : iOS n'autorise le partage que dans la tâche du geste
+// utilisateur. Le PDF est donc construit sur place, jsPDF ayant été préchargé
+// au montage de l'onglet.
+const partagerPdf = (blob, nomFichier) => {
+  const win = getBrowserWindow();
+  const nav = win?.navigator;
+  if (!nav?.share || typeof win.File !== 'function') return null;
+  try {
+    const fichier = new win.File([blob], nomFichier, { type: 'application/pdf' });
+    // canShare avec des fichiers : la seule façon de savoir AVANT d'appeler si
+    // le système acceptera un PDF. Un share() refusé consommerait le geste.
+    if (!nav.canShare?.({ files: [fichier] })) return null;
+    return nav.share({ files: [fichier], title: nomFichier });
+  } catch {
+    return null;
+  }
+};
+
 // Onglet vide ouvert dans la foulée du clic, garni du PDF une fois celui-ci
 // prêt. Sans ce pré-ouvrage, iOS bloque l'ouverture : la génération comporte
 // des await, et Safari n'autorise window.open que dans la tâche déclenchée par
@@ -121,6 +144,12 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     agentDisponible(etabId).then(a => { if (vivant) setAgent(a); });
     return () => { vivant = false; };
   }, [etabId]);
+
+  // ─── Préchargement de jsPDF ───
+  // Au montage et non au clic : iOS refuse la feuille de partage dès qu'une
+  // promesse s'est intercalée depuis le geste, fût-ce celle d'un import déjà
+  // résolu. C'est ce préchargement qui rend la construction du PDF synchrone.
+  React.useEffect(() => { pdfUtils.precharger?.(); }, []);
 
   // ─── Recherche : filtre local, debounce 200 ms, aucune requête par frappe ───
   React.useEffect(() => {
@@ -203,6 +232,37 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     });
     if (!etiquettes.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return; }
 
+    const nb = etiquettes.length;
+    const pluriel = nb > 1 ? 's' : '';
+    const nomFichier = `etiquettes-dlc-${modeId}-${dates[mode.dlcDepuis]}.pdf`;
+
+    // ─── Chemin le plus court : la feuille de partage, sans écran d'aperçu ───
+    // Tout est synchrone jusqu'à l'appel de partage, sans quoi iOS le refuse.
+    // On ne re-vérifie pas l'agent ici : ce chemin n'est pris que s'il était
+    // déjà absent, et une requête réseau ferait perdre le geste utilisateur.
+    if (!agent && pdfUtils.jsPdfDisponible?.()) {
+      const lot = pdfUtils.construireEtiquettesDlcSync(etiquettes, {});
+      const promesse = lot && partagerPdf(lot.blob, nomFichier);
+      if (promesse) {
+        const url = lot.doc.output('bloburl');
+        urlsRef.current.push(url);
+        setBusy(true);
+        promesse
+          .then(() => {
+            setDernierLot({ url, nb, ouvert: true, viaPartage: true });
+            notifyLegacy(`${nb} étiquette${pluriel} envoyée${pluriel} à l'impression.`, 'success');
+          })
+          .catch((err) => {
+            // AbortError = feuille refermée par l'opérateur : rien à signaler,
+            // mais on garde le PDF sous la main pour qu'il n'ait pas à relancer.
+            if (err?.name !== 'AbortError') console.warn('[EtiquettesDlc partage]', err);
+            setDernierLot({ url, nb, ouvert: false, viaPartage: true });
+          })
+          .finally(() => setBusy(false));
+        return;
+      }
+    }
+
     // Onglet ouvert AVANT le moindre await, et rempli avec le PDF une fois
     // celui-ci prêt : iOS refuse window.open dès qu'une promesse s'est
     // intercalée depuis le geste de l'opérateur. Inutile si l'impression part
@@ -212,10 +272,8 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     setBusy(true);
     // Indicateur de progression au-delà de 50 étiquettes seulement : en dessous,
     // la génération est trop rapide pour qu'il serve à autre chose qu'à clignoter.
-    const suivi = etiquettes.length > 50;
-    if (suivi) setProgress({ done: 0, total: etiquettes.length });
-    const nb = etiquettes.length;
-    const pluriel = nb > 1 ? 's' : '';
+    const suivi = nb > 50;
+    if (suivi) setProgress({ done: 0, total: nb });
     const onProgress = suivi ? (done, total) => setProgress({ done, total }) : undefined;
 
     try {
@@ -262,7 +320,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
       // ─── PDF ouvert dans le visualiseur (aucun agent, ou envoi échoué) ───
       const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, {
         autoPrint: true,
-        filename: `etiquettes-dlc-${modeId}-${dates[mode.dlcDepuis]}.pdf`,
+        filename: nomFichier,
         onProgress,
         fenetre: fenetrePdf,
       });
@@ -332,14 +390,15 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
             </div>
           )}
-          Étiquettes {ETIQUETTE_MEDIA.widthMm} × {ETIQUETTE_MEDIA.heightMm} mm sur bande {ETIQUETTE_MEDIA.ref} ·
+          Étiquettes {ETIQUETTE_MEDIA.widthMm} × {ETIQUETTE_MEDIA.heightMm} mm, rouleau {ETIQUETTE_MEDIA.ref} ·
           {agent ? (
             <> impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
               {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong> :
               le lot part sans fenêtre.</>
           ) : (
             <> imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint).
-              Le PDF s'ouvre dans le visualiseur : <strong style={{ color: 'var(--text)' }}>Partager › Imprimer</strong>.</>
+              La feuille de partage s'ouvre directement, sans écran d'aperçu :
+              {' '}<strong style={{ color: 'var(--text)' }}>Imprimer</strong>, puis valider.</>
           )}
           {!agent && (
             <div style={{ marginTop: 4 }}>
@@ -433,7 +492,10 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         }}>
           <span style={{ flex: 1, minWidth: 0 }}>
             {dernierLot.nb} étiquette{dernierLot.nb > 1 ? 's' : ''}
-            {!dernierLot.viaAgent && (dernierLot.ouvert
+            {!dernierLot.viaAgent && dernierLot.viaPartage && (dernierLot.ouvert
+              ? <> parti{dernierLot.nb > 1 ? 'es' : 'e'} à l'impression.</>
+              : <> prête{dernierLot.nb > 1 ? 's' : ''}, mais la feuille d'impression a été refermée :</>)}
+            {!dernierLot.viaAgent && !dernierLot.viaPartage && (dernierLot.ouvert
               ? <> prête{dernierLot.nb > 1 ? 's' : ''} dans le PDF : Partager › Imprimer.</>
               : <> prête{dernierLot.nb > 1 ? 's' : ''}, mais le PDF ne s'est pas ouvert tout seul :</>)}
             {dernierLot.viaAgent && dernierLot.etat === 'envoye' && ' envoyée(s) à l\'imprimante, impression en cours…'}

@@ -516,8 +516,25 @@ export const pdfUtils = {
   // ═══════════════════════════════════════════════════════════════
 
   async _loadJsPdf() {
+    if (this._jsPdf) return this._jsPdf;
     const { jsPDF } = await import('jspdf');
+    this._jsPdf = jsPDF;
     return jsPDF;
+  },
+
+  // ─── Préchargement de jsPDF ───────────────────────────────────────────────
+  // iOS n'autorise navigator.share que dans la tâche déclenchée par le geste de
+  // l'utilisateur : le moindre await intercalé, fût-ce celui d'un import déjà
+  // résolu, et le partage est refusé. Un onglet qui sait qu'il va produire un
+  // PDF appelle donc ceci à son montage, pour que la construction soit ensuite
+  // entièrement synchrone au moment du clic.
+  precharger() {
+    if (!this._prechargement) this._prechargement = this._loadJsPdf().catch(() => null);
+    return this._prechargement;
+  },
+
+  jsPdfDisponible() {
+    return !!this._jsPdf;
   },
 
   // Logo établissement → dataURL pour doc.addImage (jsPDF n'accepte pas
@@ -635,47 +652,8 @@ export const pdfUtils = {
     try {
       const list = (etiquettes || []).filter(e => e && Array.isArray(e.lignes) && e.lignes.length);
       if (!list.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return null; }
-      const cfg = { ...ETIQUETTE_MEDIA, ...(options.format || {}) };
-
-      // ─── Géométrie de page : deux transports, deux contraintes ─────────────
-      // Agent local : CUPS reçoit la dimension exacte de l'étiquette, une page
-      // = une étiquette, le massicot coupe au bon endroit.
-      // AirPrint : iOS met la page à l'échelle du format de papier de SA liste,
-      // qui n'offre aucune longueur continue. On lui donne donc la seule feuille
-      // de 62 mm de large qu'il propose (62 × 100) et on y range plusieurs
-      // étiquettes séparées par un trait de coupe (cf. ETIQUETTE_MEDIA).
-      const versAgent = options.destination === 'agent';
-      const pageW = versAgent ? cfg.widthMm : (cfg.pageWidthMm ?? cfg.widthMm);
-      const pageH = versAgent ? cfg.heightMm : (cfg.pageHeightMm ?? cfg.heightMm);
-      const margeY = versAgent ? 0 : (cfg.pageMarginYMm ?? 0);
-      const parPage = Math.max(1, Math.floor((pageH - 2 * margeY) / cfg.heightMm));
-      // jsPDF intervertit les côtés si l'orientation ne correspond pas : on la
-      // déduit du format plutôt que de l'écrire en dur, sinon la feuille 62 × 100
-      // ressortirait couchée en 100 × 62.
-      const format = [pageW, pageH];
-      const orientation = pageW > pageH ? 'landscape' : 'portrait';
-
       const jsPDF = await this._loadJsPdf();
-      const doc = new jsPDF({ unit: 'mm', format, orientation });
-      const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
-
-      for (let i = 0; i < list.length; i += 1) {
-        const rang = i % parPage;
-        if (i > 0 && rang === 0) doc.addPage(format, orientation);
-        const offsetY = margeY + rang * cfg.heightMm;
-        // Trait de coupe à la frontière de deux étiquettes voisines : c'est là
-        // que la brigade sépare la bande, le massicot ne coupant qu'en fin de
-        // feuille. Jamais au-dessus de la première, ce bord-là est déjà coupé.
-        if (rang > 0 && cfg.traitCoupeMm) this._traitDeCoupe(doc, offsetY, pageW, cfg);
-        this._renderEtiquetteDlc(doc, list[i], cfg, offsetY);
-        // Génération synchrone : on rend la main au navigateur par paquets pour
-        // que l'indicateur de progression s'affiche réellement sur un gros lot.
-        if (onProgress && (i % 20 === 19 || i === list.length - 1)) {
-          onProgress(i + 1, list.length);
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-      }
-
+      const { doc } = this._dessinerLotEtiquettes(jsPDF, list, options);
       const filename = options.filename || 'etiquettes-dlc.pdf';
 
       // Impression directe : le lot part vers l'agent du restaurant, l'app
@@ -718,6 +696,66 @@ export const pdfUtils = {
       console.error('[pdf exportEtiquettesDlcPdf]', err);
       notifyLegacy('Génération des étiquettes échouée : ' + (err?.message || 'erreur inconnue'), 'error');
       throw err;
+    }
+  },
+
+  // ─── Dessin d'un lot, SYNCHRONE ───────────────────────────────────────────
+  // Aucun await : c'est la condition pour que navigator.share reste autorisé par
+  // iOS après le clic (cf. precharger). Le dessin d'une étiquette est du texte
+  // vectoriel, quelques dizaines de millisecondes pour un gros lot - il n'y a
+  // rien à rendre au navigateur entre deux pages.
+  //
+  // Géométrie de page : deux transports, deux contraintes.
+  // Agent local : CUPS reçoit la dimension exacte de l'étiquette, une page =
+  // une étiquette, le massicot suit les prédécoupes.
+  // AirPrint : iOS met la page à l'échelle du format de papier de SA liste. Sur
+  // un prédécoupé ce format existe et correspond ; sur une bande continue il
+  // n'en existe aucun, d'où le pavage d'une feuille par plusieurs étiquettes
+  // dès que pageHeightMm est renseigné (cf. ETIQUETTE_MEDIA).
+  _dessinerLotEtiquettes(jsPDF, list, options = {}) {
+    const cfg = { ...ETIQUETTE_MEDIA, ...(options.format || {}) };
+    const versAgent = options.destination === 'agent';
+    const pageW = versAgent ? cfg.widthMm : (cfg.pageWidthMm ?? cfg.widthMm);
+    const pageH = versAgent ? cfg.heightMm : (cfg.pageHeightMm ?? cfg.heightMm);
+    const margeY = versAgent ? 0 : (cfg.pageMarginYMm ?? 0);
+    const parPage = Math.max(1, Math.floor((pageH - 2 * margeY) / cfg.heightMm));
+    // jsPDF intervertit les côtés si l'orientation ne correspond pas : on la
+    // déduit du format plutôt que de l'écrire en dur, sinon une feuille plus
+    // haute que large ressortirait couchée.
+    const format = [pageW, pageH];
+    const orientation = pageW > pageH ? 'landscape' : 'portrait';
+    const doc = new jsPDF({ unit: 'mm', format, orientation });
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+
+    for (let i = 0; i < list.length; i += 1) {
+      const rang = i % parPage;
+      if (i > 0 && rang === 0) doc.addPage(format, orientation);
+      const offsetY = margeY + rang * cfg.heightMm;
+      // Trait de coupe à la frontière de deux étiquettes voisines : c'est là que
+      // la brigade sépare la feuille. Jamais au-dessus de la première, ce
+      // bord-là est déjà coupé. Sans pavage (prédécoupé), rang vaut toujours 0.
+      if (rang > 0 && cfg.traitCoupeMm) this._traitDeCoupe(doc, offsetY, pageW, cfg);
+      this._renderEtiquetteDlc(doc, list[i], cfg, offsetY);
+    }
+    if (onProgress) onProgress(list.length, list.length);
+    return { doc, cfg, parPage };
+  },
+
+  // Lot prêt à partager, construit SANS le moindre await. Réservé au chemin
+  // « feuille de partage iOS » : l'appelant doit avoir appelé precharger() en
+  // amont, faute de quoi jsPDF n'est pas là et la construction est impossible.
+  // Retourne null plutôt que de lever : l'appelant retombe alors sur le chemin
+  // asynchrone habituel.
+  construireEtiquettesDlcSync(etiquettes, options = {}) {
+    if (!this._jsPdf) return null;
+    const list = (etiquettes || []).filter(e => e && Array.isArray(e.lignes) && e.lignes.length);
+    if (!list.length) return null;
+    try {
+      const { doc } = this._dessinerLotEtiquettes(this._jsPdf, list, options);
+      return { doc, blob: doc.output('blob') };
+    } catch (err) {
+      console.error('[pdf construireEtiquettesDlcSync]', err);
+      return null;
     }
   },
 
