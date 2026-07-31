@@ -390,24 +390,13 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
             </div>
           )}
-          Étiquettes {ETIQUETTE_MEDIA.widthMm} × {ETIQUETTE_MEDIA.heightMm} mm, rouleau {ETIQUETTE_MEDIA.ref} ·
-          {agent ? (
-            <> impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
-              {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong> :
-              le lot part sans fenêtre.</>
-          ) : (
-            <> imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint).
-              La feuille de partage s'ouvre directement, sans écran d'aperçu :
-              {' '}<strong style={{ color: 'var(--text)' }}>Imprimer</strong>, puis valider.</>
-          )}
-          {!agent && (
-            <div style={{ marginTop: 4 }}>
-              À faire <strong style={{ color: 'var(--text)' }}>une seule fois</strong> sur la tablette :
-              dans la feuille d'impression, <strong style={{ color: 'var(--text)' }}>Options › Format de papier ›
-              {' '}{ETIQUETTE_MEDIA.formatAirPrint}</strong> — c'est le {ETIQUETTE_MEDIA.ref}, annoncé par
-              l'imprimante dans l'ordre inverse de sa géométrie réelle. Tout autre choix réduit l'étiquette.
-              iOS le mémorise ensuite.
-            </div>
+          {/* Le seul renseignement qui serve au poste : quel rouleau charger.
+              Le format de papier iOS et le parcours d'impression relèvent de la
+              mise en service, pas de l'écran quotidien de la brigade. */}
+          Rouleau {ETIQUETTE_MEDIA.ref}
+          {agent && (
+            <> · impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
+              {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong></>
           )}
         </div>
       </div>
