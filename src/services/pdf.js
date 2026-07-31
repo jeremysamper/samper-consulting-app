@@ -614,9 +614,9 @@ export const pdfUtils = {
   // ÉTIQUETTES DLC - poste d'étiquetage (onglet Étiquettes du module HACCP)
   // ───────────────────────────────────────────────────────────────
   // Une étiquette = UNE page à la dimension exacte du media (défaut :
-  // bande continue Brother DK-22205, 62 × 25 mm). Jamais une page longue
-  // contenant plusieurs étiquettes : le massicot coupe en fin de page, il
-  // sortirait un ruban d'étiquettes attachées.
+  // prédécoupé Brother DK-11209, 62 × 29 mm), le massicot suivant alors les
+  // prédécoupes. Le pavage de plusieurs étiquettes par feuille n'existe que
+  // pour la bande continue, dont AirPrint ne propose aucune longueur.
   // Texte vectoriel natif, jsPDF lazy-loadé, aucun html2canvas.
   // Les dimensions viennent de utils/etiquettesDlc.js - rien en dur ici.
   //

@@ -14,27 +14,42 @@
 
 import { addDays, isoDate, parseLocalDate } from './dateHelpers.js';
 
-// Consommable cible : bande CONTINUE DK-22205, 62 mm de large, longueur libre.
-// Contrairement au rouleau prédécoupé DK-11209 (étiquette figée à 29 mm par le
-// fabricant), c'est le PDF qui décide de la longueur et le massicot coupe à la
-// fin de chaque page. D'où une étiquette de 25 mm : plus courte à coller, et
-// autant de bande économisée à chaque impression.
+// Consommable en service : rouleau PRÉDÉCOUPÉ DK-11209. Le media fait 62 mm de
+// large et chaque étiquette 29 mm dans le sens du défilement — et non l'inverse,
+// contrairement à ce que laissent croire les fiches produit qui l'annoncent
+// « 29 × 62 mm ». C'est d'ailleurs sous ce libellé que la QL-820NWB l'annonce
+// en AirPrint, d'où formatAirPrint ci-dessous : le format à choisir sur l'iPad
+// n'est PAS écrit dans le même ordre que la géométrie réelle.
 //
-// Largeur : d'après le Raster Command Reference de Brother (QL-800/810W/820NWB,
-// § 2.3.2, ligne « 62 mm » continu), 62,0 mm (732 dots) → zone imprimable
-// 58,9 mm (696 dots), soit un décalage de 1,5 mm (18 dots) de chaque côté. On y
-// ajoute une petite tolérance : écrire jusqu'au dernier dot théorique, c'est se
-// faire rogner au premier flottement de l'entraînement.
+// La découpe étant faite par le fabricant, la hauteur n'est plus négociable :
+// une page = une étiquette, le massicot suit les prédécoupes, la brigade n'a
+// rien à séparer aux ciseaux.
 //
-// Longueur : la bande n'étant pas prédécoupée, il n'y a pas de zone morte en
-// tête et en pied comme sur le DK-11209 — la marge verticale ne sert plus qu'à
-// dégager le trait de coupe.
+// Marges NON symétriques, et ce n'est pas un choix esthétique : la tête
+// d'impression ne couvre pas toute l'étiquette. D'après le Raster Command
+// Reference de Brother (QL-800/810W/820NWB, § 2.3.2, étiquettes prédécoupées,
+// ligne « 62 mm x 29 mm ») :
+//   largeur  62,0 mm (732 dots) → zone imprimable 58,9 mm (696 dots),
+//                                 décalage 1,5 mm (18 dots) de chaque côté
+//   longueur 28,9 mm (341 dots) → zone imprimable 22,9 mm (271 dots),
+//                                 décalage 3,0 mm (35 dots) en tête et en pied
+// La marge verticale vaut donc DEUX FOIS la latérale. Sur bande continue elle
+// n'existait pas ; en repassant au prédécoupé, l'oublier ferait rogner la
+// première et la dernière ligne sans le moindre message d'erreur.
+//
+// ─── Si le jour où l'on repasse à la bande continue DK-22205 ────────────────
+// ref 'DK-22205', heightMm libre (24), marginYMm 2.5 (plus de zone morte, juste
+// le dégagement du massicot), et surtout : AirPrint n'annonce AUCUNE longueur
+// continue, il faut donc réactiver le pavage de la feuille 62 × 100 (voir
+// pageWidthMm / pageHeightMm / pageMarginYMm, encore honorés par le service PDF)
+// et la brigade sépare les étiquettes au trait pointillé.
 export const ETIQUETTE_MEDIA = {
-  ref: 'DK-22205',
+  ref: 'DK-11209',
+  formatAirPrint: '29 × 62 mm',  // libellé exact à choisir dans la feuille iOS
   widthMm: 62,
-  heightMm: 24,
+  heightMm: 29,
   marginXMm: 2,     // 1,5 mm non imprimable + 0,5 mm de tolérance
-  marginYMm: 2.5,   // dégagement du massicot
+  marginYMm: 3.4,   // 3,0 mm non imprimable + 0,4 mm de tolérance
   // Filet de délimitation imprimé au bord de la zone imprimable : sur un
   // rouleau prédécoupé, le bord physique de l'étiquette ne se voit pas une fois
   // collée sur un bac, le cadre rend le format lisible d'un coup d'œil.
@@ -46,30 +61,20 @@ export const ETIQUETTE_MEDIA = {
   cadrePadXMm: 1.4,
   cadrePadYMm: 0.9,
 
-  // ─── Feuille AirPrint ──────────────────────────────────────────────────────
+  // ─── Feuille AirPrint : sans objet sur un prédécoupé ───────────────────────
   // Constat de terrain (iPad, 31.07.2026) : iOS n'imprime PAS le PDF à sa
   // dimension propre, il le met à l'échelle du format de papier choisi dans sa
-  // feuille d'impression. Une page de 62 × 24 envoyée sur le format « 58 × 58 »
-  // sortait réduite de 6,5 % et la bande avançait de 58 mm.
-  //
-  // La liste que la QL-820NWB annonce en AirPrint ne contient AUCUNE longueur
-  // continue, uniquement des tailles fixes, et une seule fait 62 mm de large :
-  // 62 × 100 mm. C'est donc la seule qui utilise la bande sur toute sa largeur
-  // sans rien réduire, et le PDF est calé dessus. Comme 100 mm pour une
-  // étiquette de 24 serait du gâchis de bande, la feuille en porte quatre,
-  // séparées par un trait de coupe.
-  //
-  // Ne concerne QUE le chemin AirPrint : l'agent d'impression local reçoit,
-  // lui, des pages à la dimension exacte de l'étiquette, CUPS n'ayant pas
-  // besoin qu'on lui mente sur la géométrie.
-  pageWidthMm: 62,
-  pageHeightMm: 100,
-  pageMarginYMm: 2,
+  // feuille d'impression. Sur un prédécoupé, ce format EXISTE dans la liste
+  // (29 × 62 mm) et correspond exactement à l'étiquette : une page = une
+  // étiquette, rien à mettre à l'échelle, rien à paver. Le pavage reste codé
+  // dans le service PDF et se réveille dès qu'on renseigne pageHeightMm — c'est
+  // ce qu'il faut pour une bande continue, dont aucune longueur n'est proposée
+  // par AirPrint.
   traitCoupeMm: 0.15,
 };
 
 // Échelle de polices (en points), calibrée sur le mode Surgélation : c'est le
-// plus dense, cinq lignes sur 25 mm de hauteur. Si ça tient en surgélation,
+// plus dense, cinq lignes sur 29 mm de hauteur. Si ça tient en surgélation,
 // ça tient partout. Le service PDF réduit en plus tout le bloc d'un même
 // facteur si le media retenu est trop court — la hiérarchie est préservée.
 //   nomLadder : paliers de réduction du nom, du plus grand au plancher.

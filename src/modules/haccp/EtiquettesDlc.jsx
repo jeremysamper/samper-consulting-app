@@ -345,10 +345,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
             <div style={{ marginTop: 4 }}>
               À faire <strong style={{ color: 'var(--text)' }}>une seule fois</strong> sur la tablette :
               dans la feuille d'impression, <strong style={{ color: 'var(--text)' }}>Options › Format de papier ›
-              {' '}{ETIQUETTE_MEDIA.pageWidthMm} × {ETIQUETTE_MEDIA.pageHeightMm} mm</strong>. C'est le seul format
-              qui utilise la bande sur toute sa largeur ; tout autre choix réduit l'étiquette. iOS le mémorise ensuite.
-              Chaque feuille porte {Math.floor((ETIQUETTE_MEDIA.pageHeightMm - 2 * ETIQUETTE_MEDIA.pageMarginYMm) / ETIQUETTE_MEDIA.heightMm)} étiquettes
-              à séparer au trait pointillé.
+              {' '}{ETIQUETTE_MEDIA.formatAirPrint}</strong> — c'est le {ETIQUETTE_MEDIA.ref}, annoncé par
+              l'imprimante dans l'ordre inverse de sa géométrie réelle. Tout autre choix réduit l'étiquette.
+              iOS le mémorise ensuite.
             </div>
           )}
         </div>
