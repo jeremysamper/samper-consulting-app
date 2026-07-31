@@ -32,7 +32,7 @@ import { addDays, isoDate, parseLocalDate } from './dateHelpers.js';
 export const ETIQUETTE_MEDIA = {
   ref: 'DK-22205',
   widthMm: 62,
-  heightMm: 25,
+  heightMm: 24,
   marginXMm: 2,     // 1,5 mm non imprimable + 0,5 mm de tolérance
   marginYMm: 2.5,   // dégagement du massicot
   // Filet de délimitation imprimé au bord de la zone imprimable : sur un
@@ -45,6 +45,27 @@ export const ETIQUETTE_MEDIA = {
   // le trait et l'étiquette devient sale.
   cadrePadXMm: 1.4,
   cadrePadYMm: 0.9,
+
+  // ─── Feuille AirPrint ──────────────────────────────────────────────────────
+  // Constat de terrain (iPad, 31.07.2026) : iOS n'imprime PAS le PDF à sa
+  // dimension propre, il le met à l'échelle du format de papier choisi dans sa
+  // feuille d'impression. Une page de 62 × 24 envoyée sur le format « 58 × 58 »
+  // sortait réduite de 6,5 % et la bande avançait de 58 mm.
+  //
+  // La liste que la QL-820NWB annonce en AirPrint ne contient AUCUNE longueur
+  // continue, uniquement des tailles fixes, et une seule fait 62 mm de large :
+  // 62 × 100 mm. C'est donc la seule qui utilise la bande sur toute sa largeur
+  // sans rien réduire, et le PDF est calé dessus. Comme 100 mm pour une
+  // étiquette de 24 serait du gâchis de bande, la feuille en porte quatre,
+  // séparées par un trait de coupe.
+  //
+  // Ne concerne QUE le chemin AirPrint : l'agent d'impression local reçoit,
+  // lui, des pages à la dimension exacte de l'étiquette, CUPS n'ayant pas
+  // besoin qu'on lui mente sur la géométrie.
+  pageWidthMm: 62,
+  pageHeightMm: 100,
+  pageMarginYMm: 2,
+  traitCoupeMm: 0.15,
 };
 
 // Échelle de polices (en points), calibrée sur le mode Surgélation : c'est le

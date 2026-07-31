@@ -332,7 +332,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
             </div>
           )}
-          Bande {ETIQUETTE_MEDIA.ref} {ETIQUETTE_MEDIA.widthMm} × {ETIQUETTE_MEDIA.heightMm} mm ·
+          Étiquettes {ETIQUETTE_MEDIA.widthMm} × {ETIQUETTE_MEDIA.heightMm} mm sur bande {ETIQUETTE_MEDIA.ref} ·
           {agent ? (
             <> impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
               {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong> :
@@ -340,6 +340,16 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           ) : (
             <> imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint).
               Le PDF s'ouvre dans le visualiseur : <strong style={{ color: 'var(--text)' }}>Partager › Imprimer</strong>.</>
+          )}
+          {!agent && (
+            <div style={{ marginTop: 4 }}>
+              À faire <strong style={{ color: 'var(--text)' }}>une seule fois</strong> sur la tablette :
+              dans la feuille d'impression, <strong style={{ color: 'var(--text)' }}>Options › Format de papier ›
+              {' '}{ETIQUETTE_MEDIA.pageWidthMm} × {ETIQUETTE_MEDIA.pageHeightMm} mm</strong>. C'est le seul format
+              qui utilise la bande sur toute sa largeur ; tout autre choix réduit l'étiquette. iOS le mémorise ensuite.
+              Chaque feuille porte {Math.floor((ETIQUETTE_MEDIA.pageHeightMm - 2 * ETIQUETTE_MEDIA.pageMarginYMm) / ETIQUETTE_MEDIA.heightMm)} étiquettes
+              à séparer au trait pointillé.
+            </div>
           )}
         </div>
       </div>

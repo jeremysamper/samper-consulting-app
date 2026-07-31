@@ -636,14 +636,38 @@ export const pdfUtils = {
       const list = (etiquettes || []).filter(e => e && Array.isArray(e.lignes) && e.lignes.length);
       if (!list.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return null; }
       const cfg = { ...ETIQUETTE_MEDIA, ...(options.format || {}) };
-      const format = [cfg.widthMm, cfg.heightMm];
+
+      // ─── Géométrie de page : deux transports, deux contraintes ─────────────
+      // Agent local : CUPS reçoit la dimension exacte de l'étiquette, une page
+      // = une étiquette, le massicot coupe au bon endroit.
+      // AirPrint : iOS met la page à l'échelle du format de papier de SA liste,
+      // qui n'offre aucune longueur continue. On lui donne donc la seule feuille
+      // de 62 mm de large qu'il propose (62 × 100) et on y range plusieurs
+      // étiquettes séparées par un trait de coupe (cf. ETIQUETTE_MEDIA).
+      const versAgent = options.destination === 'agent';
+      const pageW = versAgent ? cfg.widthMm : (cfg.pageWidthMm ?? cfg.widthMm);
+      const pageH = versAgent ? cfg.heightMm : (cfg.pageHeightMm ?? cfg.heightMm);
+      const margeY = versAgent ? 0 : (cfg.pageMarginYMm ?? 0);
+      const parPage = Math.max(1, Math.floor((pageH - 2 * margeY) / cfg.heightMm));
+      // jsPDF intervertit les côtés si l'orientation ne correspond pas : on la
+      // déduit du format plutôt que de l'écrire en dur, sinon la feuille 62 × 100
+      // ressortirait couchée en 100 × 62.
+      const format = [pageW, pageH];
+      const orientation = pageW > pageH ? 'landscape' : 'portrait';
+
       const jsPDF = await this._loadJsPdf();
-      const doc = new jsPDF({ unit: 'mm', format, orientation: 'landscape' });
+      const doc = new jsPDF({ unit: 'mm', format, orientation });
       const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
       for (let i = 0; i < list.length; i += 1) {
-        if (i > 0) doc.addPage(format, 'landscape');
-        this._renderEtiquetteDlc(doc, list[i], cfg);
+        const rang = i % parPage;
+        if (i > 0 && rang === 0) doc.addPage(format, orientation);
+        const offsetY = margeY + rang * cfg.heightMm;
+        // Trait de coupe à la frontière de deux étiquettes voisines : c'est là
+        // que la brigade sépare la bande, le massicot ne coupant qu'en fin de
+        // feuille. Jamais au-dessus de la première, ce bord-là est déjà coupé.
+        if (rang > 0 && cfg.traitCoupeMm) this._traitDeCoupe(doc, offsetY, pageW, cfg);
+        this._renderEtiquetteDlc(doc, list[i], cfg, offsetY);
         // Génération synchrone : on rend la main au navigateur par paquets pour
         // que l'indicateur de progression s'affiche réellement sur un gros lot.
         if (onProgress && (i % 20 === 19 || i === list.length - 1)) {
@@ -697,11 +721,27 @@ export const pdfUtils = {
     }
   },
 
+  // Trait de coupe pointillé entre deux étiquettes voisines d'une même feuille.
+  // Pointillé et non plein : c'est un repère de ciseaux, il ne doit pas se lire
+  // comme le cadre d'une étiquette.
+  _traitDeCoupe(doc, y, pageW, cfg) {
+    const marge = cfg.marginXMm ?? 2;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(cfg.traitCoupeMm ?? 0.15);
+    doc.setLineDashPattern([1, 1.2], 0);
+    doc.line(marge, y, pageW - marge, y);
+    // Le pointillé est un état du document : sans remise à zéro, le cadre de
+    // l'étiquette suivante sortirait en pointillé lui aussi.
+    doc.setLineDashPattern([], 0);
+  },
+
   // Rend UNE étiquette sur la page courante. Les lignes sont ajustées à la
   // largeur imprimable (paliers de police puis troncature), réduites si elles
   // ne tiennent pas en hauteur, puis réparties sur la hauteur restante : le
-  // mode Surgélation, cinq lignes sur 25 mm, sert de calibre.
-  _renderEtiquetteDlc(doc, etiquette, cfg) {
+  // mode Surgélation, cinq lignes sur 24 mm, sert de calibre.
+  // offsetY : position de l'étiquette dans la feuille, une feuille AirPrint en
+  // portant plusieurs.
+  _renderEtiquetteDlc(doc, etiquette, cfg, offsetY = 0) {
     const MM_PER_PT = 0.3528;
     const LINE_FACTOR = 1.15;   // interligne relatif au corps de police
     const SEGMENT_GAP = 3;      // mm entre température et mention en gras
@@ -728,7 +768,7 @@ export const pdfUtils = {
       doc.setLineWidth(trait);
       doc.roundedRect(
         mx + trait / 2,
-        my + trait / 2,
+        offsetY + my + trait / 2,
         cfg.widthMm - 2 * mx - trait,
         cfg.heightMm - 2 * my - trait,
         cfg.cadreRayonMm ?? 0,
@@ -800,7 +840,7 @@ export const pdfUtils = {
     const totalTexte = hauteurs.reduce((s, h) => s + h, 0);
     const gap = Math.max(0, (usableH - totalTexte) / lignes.length);
 
-    let y = my + padY;
+    let y = offsetY + my + padY;
     lignes.forEach((l, i) => {
       y += hauteurs[i] * 0.8 + gap / 2;   // baseline
       let x = mx + padX;
