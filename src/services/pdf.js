@@ -1,7 +1,7 @@
 import { getDemoData } from '../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../legacy/legacyApi.js';
 import { readJson } from '../utils/storage.js';
-import { ETIQUETTE_DK11209, ETIQUETTE_FONTS } from '../utils/etiquettesDlc.js';
+import { ETIQUETTE_FONTS, ETIQUETTE_MEDIA } from '../utils/etiquettesDlc.js';
 
 // ─────────────────────────────────────────────────────
 // PDF & IMPRESSION - Mise en page A4 professionnelle
@@ -614,26 +614,28 @@ export const pdfUtils = {
   // ÉTIQUETTES DLC - poste d'étiquetage (onglet Étiquettes du module HACCP)
   // ───────────────────────────────────────────────────────────────
   // Une étiquette = UNE page à la dimension exacte du media (défaut :
-  // Brother DK-11209, 62 × 29 mm). Jamais une page longue contenant
-  // plusieurs étiquettes : sur rouleau prédécoupé, le cutter couperait
-  // une seule fois et sortirait un ruban d'étiquettes attachées.
+  // bande continue Brother DK-22205, 62 × 25 mm). Jamais une page longue
+  // contenant plusieurs étiquettes : le massicot coupe en fin de page, il
+  // sortirait un ruban d'étiquettes attachées.
   // Texte vectoriel natif, jsPDF lazy-loadé, aucun html2canvas.
   // Les dimensions viennent de utils/etiquettesDlc.js - rien en dur ici.
   //
   // etiquettes : [{ lignes: [{ role, text?, segments?, bold? }] }]
   //   role 'nom' | 'dlc' | 'corps' choisit la police, le contenu est
   //   construit par le module (lignesEtiquette).
-  // options : { format?, autoPrint?, filename?, onProgress?, destination? }
+  // options : { format?, autoPrint?, filename?, onProgress?, destination?, fenetre? }
   //   destination 'agent' : ne rien ouvrir ni télécharger, retourner le PDF en
   //   base64 pour l'envoyer à l'agent d'impression du restaurant.
-  // Retour : { doc, url, imprime, base64? } - `url` reste exploitable par
-  // l'appelant pour rouvrir le PDF si la feuille d'impression n'est pas apparue.
+  //   fenetre : onglet vide déjà ouvert par l'appelant au moment du clic, dans
+  //   lequel afficher le PDF (contournement obligatoire du bloqueur iOS).
+  // Retour : { doc, url, ouvert, base64? } - `url` reste exploitable par
+  // l'appelant si le PDF n'a pas pu être affiché.
   // ═══════════════════════════════════════════════════════════════
   async exportEtiquettesDlcPdf(etiquettes, options = {}) {
     try {
       const list = (etiquettes || []).filter(e => e && Array.isArray(e.lignes) && e.lignes.length);
       if (!list.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return null; }
-      const cfg = { ...ETIQUETTE_DK11209, ...(options.format || {}) };
+      const cfg = { ...ETIQUETTE_MEDIA, ...(options.format || {}) };
       const format = [cfg.widthMm, cfg.heightMm];
       const jsPDF = await this._loadJsPdf();
       const doc = new jsPDF({ unit: 'mm', format, orientation: 'landscape' });
@@ -651,34 +653,43 @@ export const pdfUtils = {
       }
 
       const filename = options.filename || 'etiquettes-dlc.pdf';
-      const url = doc.output('bloburl');
 
       // Impression directe : le lot part vers l'agent du restaurant, l'app
       // n'ouvre rien du tout. On rend quand même `url` pour que l'appelant
       // puisse retomber sur le PDF si l'envoi échoue.
       if (options.destination === 'agent') {
+        const url = doc.output('bloburl');
         const base64 = doc.output('datauristring').split('base64,').pop();
-        return { doc, url, imprime: false, base64 };
+        return { doc, url, ouvert: false, base64 };
       }
 
-      let imprime = false;
-      if (options.autoPrint) {
-        doc.autoPrint();
-        // 1er choix : feuille d'impression native par-dessus l'app (voir
-        // _printPdfInline). Sur tablette, l'imprimante retenue par le systeme
-        // est deja selectionnee : l'operateur n'a qu'a valider.
-        imprime = await this._printPdfInline(url);
-        if (!imprime) {
-          // Repli : ouverture du PDF dans un onglet, impression depuis le
-          // visualiseur (Partager > Imprimer sur iPad). Popup bloquee -> fichier.
-          const win = getBrowserWindow();
-          const opened = win ? win.open(url, '_blank') : null;
-          if (!opened) doc.save(filename);
-        }
-      } else {
-        doc.save(filename);
+      // Demande d'impression à l'ouverture, honorée par les visualiseurs de
+      // bureau, ignorée sur iPad. AVANT output() : l'action est écrite dans le
+      // fichier, l'ajouter après ne toucherait plus le blob déjà sérialisé.
+      if (options.autoPrint) doc.autoPrint();
+      const url = doc.output('bloburl');
+
+      // ─── Le PDF, et rien autour ──────────────────────────────────────────
+      // On n'imprime plus depuis une iframe : le navigateur imprime alors une
+      // PAGE WEB et y ajoute ses propres en-tête et pied de page, d'où l'URL du
+      // document qui ressortait IMPRIMÉE en bas de l'étiquette. Le visualiseur
+      // PDF du système, lui, sort la page telle quelle, à la dimension exacte
+      // du media.
+      //
+      // La fenêtre est ouverte par l'appelant AU MOMENT DU CLIC et passée ici
+      // (options.fenetre) : iOS refuse tout window.open déclenché après une
+      // promesse, et la génération en comporte plusieurs.
+      let ouvert = false;
+      const fenetre = options.fenetre;
+      if (fenetre && !fenetre.closed) {
+        try { fenetre.location.href = url; ouvert = true; } catch { ouvert = false; }
       }
-      return { doc, url, imprime };
+      if (!ouvert) {
+        const win = getBrowserWindow();
+        if (win?.open(url, '_blank')) ouvert = true;
+        else doc.save(filename); // dernier recours : le fichier, ouvert à la main
+      }
+      return { doc, url, ouvert };
     } catch (err) {
       console.error('[pdf exportEtiquettesDlcPdf]', err);
       notifyLegacy('Génération des étiquettes échouée : ' + (err?.message || 'erreur inconnue'), 'error');
@@ -686,68 +697,44 @@ export const pdfUtils = {
     }
   },
 
-  // ─── Feuille d'impression native, sans quitter l'application ──────────────
-  // Le PDF est chargé dans une iframe invisible et c'est elle qui appelle
-  // print() : le système ouvre sa feuille d'impression au-dessus de l'app, avec
-  // l'imprimante utilisée la fois précédente déjà sélectionnée. C'est le plus
-  // près du « ça part directement sur l'imprimante » qu'une page web puisse
-  // faire : aucun navigateur n'expose de socket réseau ni de pilote, le choix
-  // de l'imprimante appartient au système.
-  //
-  // Retourne false si l'iframe n'a pas pu charger le PDF ou si print() a été
-  // refusé - l'appelant retombe alors sur l'ouverture du PDF dans un onglet.
-  // ATTENTION : un navigateur peut ignorer print() sans lever d'erreur ; c'est
-  // pourquoi l'appelant garde TOUJOURS un accès manuel au PDF (`url`).
-  async _printPdfInline(url) {
-    const win = getBrowserWindow();
-    if (!win || !win.document?.body || !url) return false;
-    let frame = null;
-    try {
-      frame = win.document.createElement('iframe');
-      frame.setAttribute('aria-hidden', 'true');
-      frame.setAttribute('tabindex', '-1');
-      frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;';
-      const charge = new Promise((resolve) => {
-        let regle = false;
-        const finir = (ok) => { if (!regle) { regle = true; resolve(ok); } };
-        frame.onload = () => finir(true);
-        frame.onerror = () => finir(false);
-        win.setTimeout(() => finir(false), 4000);
-      });
-      frame.src = url;
-      win.document.body.appendChild(frame);
-      if (!await charge) { frame.remove(); return false; }
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-      // L'iframe doit survivre à la feuille d'impression (le rendu est lu
-      // pendant l'affichage du dialogue) : nettoyage différé, pas immédiat.
-      win.setTimeout(() => { try { frame.remove(); } catch { /* déjà retirée */ } }, 60000);
-      return true;
-    } catch (err) {
-      console.warn('[pdf _printPdfInline]', err);
-      try { frame?.remove(); } catch { /* rien à nettoyer */ }
-      return false;
-    }
-  },
-
   // Rend UNE étiquette sur la page courante. Les lignes sont ajustées à la
-  // largeur imprimable (paliers de police puis troncature) et réparties
-  // verticalement sur la hauteur restante : le mode Surgélation, six lignes sur
-  // 29 mm, sert de calibre.
+  // largeur imprimable (paliers de police puis troncature), réduites si elles
+  // ne tiennent pas en hauteur, puis réparties sur la hauteur restante : le
+  // mode Surgélation, cinq lignes sur 25 mm, sert de calibre.
   _renderEtiquetteDlc(doc, etiquette, cfg) {
     const MM_PER_PT = 0.3528;
     const LINE_FACTOR = 1.15;   // interligne relatif au corps de police
     const SEGMENT_GAP = 3;      // mm entre température et mention en gras
     const F = ETIQUETTE_FONTS;
     // Marges asymétriques : la zone imprimable du media est plus étroite que
-    // l'étiquette, et bien plus courte (cf. ETIQUETTE_DK11209). Écrire au-delà
-    // ne produit pas une erreur, ça sort une étiquette rognée.
+    // l'étiquette (cf. ETIQUETTE_MEDIA). Écrire au-delà ne produit pas une
+    // erreur, ça sort une étiquette rognée.
     const mx = cfg.marginXMm ?? cfg.marginMm ?? 2;
     const my = cfg.marginYMm ?? cfg.marginMm ?? 2;
-    const usableW = cfg.widthMm - 2 * mx;
-    const usableH = cfg.heightMm - 2 * my;
+    // Filet de délimitation au bord de la zone imprimable, texte en retrait à
+    // l'intérieur pour qu'aucune lettre ne vienne toucher le trait.
+    const trait = cfg.cadreTraitMm ?? 0;
+    const padX = trait > 0 ? (cfg.cadrePadXMm ?? 1.2) : 0;
+    const padY = trait > 0 ? (cfg.cadrePadYMm ?? 0.8) : 0;
+    const usableW = cfg.widthMm - 2 * mx - 2 * padX;
+    const usableH = cfg.heightMm - 2 * my - 2 * padY;
 
     doc.setTextColor(0, 0, 0);
+
+    if (trait > 0) {
+      // Le trait est centré sur le chemin : on rentre d'une demi-épaisseur pour
+      // qu'il reste entièrement dans la zone que la tête d'impression couvre.
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(trait);
+      doc.roundedRect(
+        mx + trait / 2,
+        my + trait / 2,
+        cfg.widthMm - 2 * mx - trait,
+        cfg.heightMm - 2 * my - trait,
+        cfg.cadreRayonMm ?? 0,
+        cfg.cadreRayonMm ?? 0,
+      );
+    }
 
     const widthAt = (text, size, bold) => {
       doc.setFont('helvetica', bold ? 'bold' : 'normal');
@@ -795,16 +782,28 @@ export const pdfUtils = {
 
     if (!lignes.length) return;
 
+    // Ajustement à la HAUTEUR. Les paliers ci-dessus ne traitent que la largeur :
+    // sur un media court, le mode Surgélation et ses cinq lignes peuvent déborder
+    // sans que rien ne le signale - l'étiquette sort rognée. On réduit alors tout
+    // le bloc d'un même facteur, ce qui préserve la hiérarchie nom / DLC / corps.
+    // Une police plus petite ne déborde jamais en largeur : rien à recalculer.
+    const hauteurBloc = (ls) => ls.reduce((s, l) => s + l.size * MM_PER_PT * LINE_FACTOR, 0);
+    const brut = hauteurBloc(lignes);
+    if (brut > usableH) {
+      const facteur = usableH / brut;
+      lignes.forEach((l) => { l.size = Math.max(F.min, l.size * facteur); });
+    }
+
     // Répartition verticale : hauteur restante distribuée uniformément, ce qui
-    // absorbe la différence entre un mode à cinq lignes et un à six.
+    // absorbe la différence entre un mode à quatre lignes et un à cinq.
     const hauteurs = lignes.map(l => l.size * MM_PER_PT * LINE_FACTOR);
     const totalTexte = hauteurs.reduce((s, h) => s + h, 0);
     const gap = Math.max(0, (usableH - totalTexte) / lignes.length);
 
-    let y = my;
+    let y = my + padY;
     lignes.forEach((l, i) => {
       y += hauteurs[i] * 0.8 + gap / 2;   // baseline
-      let x = mx;
+      let x = mx + padX;
       l.segments.forEach((s, j) => {
         doc.setFont('helvetica', s.bold ? 'bold' : 'normal');
         doc.setFontSize(l.size);

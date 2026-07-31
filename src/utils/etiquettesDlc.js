@@ -3,10 +3,9 @@
 //
 // SEULE source des dimensions d'étiquette et du contenu des lignes : ni le
 // module HACCP ni le service PDF n'écrivent une dimension en dur. La surface
-// imprimable réelle du DK-11209 est légèrement inférieure au nominal
-// 62 × 29 mm ; les marges seront ajustées après la première impression
-// physique sur la Brother QL-820NWB, et c'est la raison d'être de ce fichier :
-// une seule valeur à corriger.
+// imprimable réelle est légèrement inférieure à la largeur nominale du media ;
+// les marges s'ajustent après impression physique sur la Brother QL-820NWB, et
+// c'est la raison d'être de ce fichier : une seule valeur à corriger.
 //
 // Transport d'impression = AirPrint natif de l'OS. Aucun driver, aucun SDK :
 // l'app produit un PDF à la dimension exacte de l'étiquette, une page par
@@ -15,32 +14,43 @@
 
 import { addDays, isoDate, parseLocalDate } from './dateHelpers.js';
 
-// Consommable cible : rouleau prédécoupé DK-11209, 800 étiquettes, media de
-// 62 mm de large, chaque étiquette faisant 29 mm dans le sens du défilement.
-// Le PDF sort donc en paysage 62 × 29.
+// Consommable cible : bande CONTINUE DK-22205, 62 mm de large, longueur libre.
+// Contrairement au rouleau prédécoupé DK-11209 (étiquette figée à 29 mm par le
+// fabricant), c'est le PDF qui décide de la longueur et le massicot coupe à la
+// fin de chaque page. D'où une étiquette de 25 mm : plus courte à coller, et
+// autant de bande économisée à chaque impression.
 //
-// Marges NON symétriques, et ce n'est pas un choix esthétique : la tête
-// d'impression ne couvre pas toute l'étiquette. D'après le Raster Command
-// Reference de Brother (QL-800/810W/820NWB, § 2.3.2, étiquettes prédécoupées,
-// ligne « 62 mm x 29 mm ») :
-//   largeur  62,0 mm (732 dots) → zone imprimable 58,9 mm (696 dots),
-//                                 décalage 1,5 mm (18 dots) de chaque côté
-//   longueur 28,9 mm (341 dots) → zone imprimable 22,9 mm (271 dots),
-//                                 décalage 3,0 mm (35 dots) en tête et en pied
-// On ajoute une petite tolérance au décalage constructeur pour absorber la
-// dérive du rouleau : écrire jusqu'au dernier dot théorique, c'est se faire
-// rogner la ligne du bas au premier flottement de l'entraînement.
-export const ETIQUETTE_DK11209 = {
-  ref: 'DK-11209',
+// Largeur : d'après le Raster Command Reference de Brother (QL-800/810W/820NWB,
+// § 2.3.2, ligne « 62 mm » continu), 62,0 mm (732 dots) → zone imprimable
+// 58,9 mm (696 dots), soit un décalage de 1,5 mm (18 dots) de chaque côté. On y
+// ajoute une petite tolérance : écrire jusqu'au dernier dot théorique, c'est se
+// faire rogner au premier flottement de l'entraînement.
+//
+// Longueur : la bande n'étant pas prédécoupée, il n'y a pas de zone morte en
+// tête et en pied comme sur le DK-11209 — la marge verticale ne sert plus qu'à
+// dégager le trait de coupe.
+export const ETIQUETTE_MEDIA = {
+  ref: 'DK-22205',
   widthMm: 62,
-  heightMm: 29,
+  heightMm: 25,
   marginXMm: 2,     // 1,5 mm non imprimable + 0,5 mm de tolérance
-  marginYMm: 3.4,   // 3,0 mm non imprimable + 0,4 mm de tolérance
+  marginYMm: 2.5,   // dégagement du massicot
+  // Filet de délimitation imprimé au bord de la zone imprimable : sur un
+  // rouleau prédécoupé, le bord physique de l'étiquette ne se voit pas une fois
+  // collée sur un bac, le cadre rend le format lisible d'un coup d'œil.
+  // Épaisseur au trait le plus fin qui sorte net à 300 dpi.
+  cadreTraitMm: 0.25,
+  cadreRayonMm: 1,
+  // Retrait du texte À L'INTÉRIEUR du filet : sans lui, les lettres touchent
+  // le trait et l'étiquette devient sale.
+  cadrePadXMm: 1.4,
+  cadrePadYMm: 0.9,
 };
 
 // Échelle de polices (en points), calibrée sur le mode Surgélation : c'est le
-// plus dense, six lignes sur 29 mm de hauteur. Si ça tient en surgélation,
-// ça tient partout.
+// plus dense, cinq lignes sur 25 mm de hauteur. Si ça tient en surgélation,
+// ça tient partout. Le service PDF réduit en plus tout le bloc d'un même
+// facteur si le media retenu est trop court — la hiérarchie est préservée.
 //   nomLadder : paliers de réduction du nom, du plus grand au plancher.
 //               Sous le plancher on tronque — le critère est la lisibilité à
 //               bout de bras dans une chambre froide, pas la complétude.
@@ -176,7 +186,12 @@ export function calculerDlc(recette, modeId, dates) {
 //   bold  : nom et ligne de DLC en gras, le reste en corps normal
 //   segments : deux fragments sur une même ligne, le second en gras
 //              (température + « Ne pas recongeler »)
-export function lignesEtiquette({ recette, modeId, dates, operateur }) {
+//
+// Pas de ligne opérateur : la traçabilité de qui a produit le lot vit dans le
+// module HACCP, pas sur 29 mm de hauteur. Une ligne de moins, c'est de la place
+// rendue au nom de la préparation et à la DLC, les deux seules informations
+// qu'on lit à bout de bras dans une chambre froide.
+export function lignesEtiquette({ recette, modeId, dates }) {
   const mode = getMode(modeId);
   const dlc = calculerDlc(recette, modeId, dates);
   const lignes = [{ role: 'nom', text: recette?.nom || '', bold: true }];
@@ -201,7 +216,5 @@ export function lignesEtiquette({ recette, modeId, dates, operateur }) {
     lignes.push({ role: 'corps', text: mode.temperature });
   }
 
-  // Opérateur vide : on imprime le libellé seul, l'initiale se note à la main.
-  lignes.push({ role: 'corps', text: `Opérateur : ${operateur || ''}`.trimEnd() });
   return lignes;
 }

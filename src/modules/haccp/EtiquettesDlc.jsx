@@ -1,13 +1,12 @@
 import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import { notifyLegacy } from '../../legacy/legacyApi.js';
+import { getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
-import { userDisplay } from '../../utils/userDisplay.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  ETIQUETTE_DK11209, ETIQUETTE_MODES, QUANTITE_MAX, QUANTITE_MIN,
+  ETIQUETTE_MEDIA, ETIQUETTE_MODES, QUANTITE_MAX, QUANTITE_MIN,
   calculerDlc, dureeVieMode, estEligible, formatDateFr, getMode, lignesEtiquette, motifNonEligible,
 } from '../../utils/etiquettesDlc.js';
 import { hs } from './HACCP.styles.js';
@@ -20,6 +19,11 @@ import { hs } from './HACCP.styles.js';
 // d'impression est le système natif de l'OS : l'app produit un PDF à la
 // dimension exacte de l'étiquette (une page = une étiquette), la tablette
 // imprime. Aucun driver, aucun SDK, aucune configuration matérielle.
+//
+// Le PDF est OUVERT, jamais imprimé par le navigateur : imprimer une page web
+// fait ajouter au système son en-tête et son pied de page, et l'URL du document
+// ressortait imprimée en bas de l'étiquette. Le visualiseur PDF, lui, sort la
+// page telle quelle.
 //
 // Un lot porte UN seul mode : en cuisine, on étiquette un lot qui part au même
 // endroit. Les durées de vie ne se saisissent pas ici - elles relèvent de
@@ -51,6 +55,19 @@ const es = {
   rechercheInput: { flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
 };
 
+// Onglet vide ouvert dans la foulée du clic, garni du PDF une fois celui-ci
+// prêt. Sans ce pré-ouvrage, iOS bloque l'ouverture : la génération comporte
+// des await, et Safari n'autorise window.open que dans la tâche déclenchée par
+// le geste de l'utilisateur.
+const ouvrirOngletVide = () => {
+  const win = getBrowserWindow();
+  try { return win?.open('', '_blank') || null; } catch { return null; }
+};
+
+const fermerOnglet = (onglet) => {
+  try { onglet?.close(); } catch { /* déjà fermé */ }
+};
+
 const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const today = zurichToday();
 
@@ -66,9 +83,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const [retraits, setRetraits] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState(null);
-  // Dernier lot produit : garde un accès manuel au PDF. Un navigateur peut
-  // ignorer la demande d'impression sans lever d'erreur (cas connu sur iPad) ;
-  // sans ce repli visible, l'opérateur resterait devant un écran qui n'a rien fait.
+  // Dernier lot produit. Le lien vers le PDF n'apparaît QUE si l'ouverture
+  // automatique a échoué : en marche normale l'opérateur a déjà le PDF sous les
+  // yeux, un lien de plus en bas de l'écran n'est que du bruit.
   const [dernierLot, setDernierLot] = React.useState(null);
   // Agent d'impression du restaurant : présent = le lot part directement sur
   // l'imprimante, absent = feuille d'impression système. Jamais bloquant.
@@ -77,15 +94,6 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   React.useEffect(() => () => {
     urlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch { /* déjà libérée */ } });
   }, []);
-
-  // Initiales préremplies depuis le profil, champ modifiable : c'est un poste
-  // partagé, la personne qui étiquette n'est pas toujours celle qui est connectée.
-  const [operateur, setOperateur] = React.useState(() => {
-    const parProfil = `${user?.prenom?.[0] || ''}${user?.nom?.[0] || ''}`.toUpperCase();
-    if (parProfil) return parProfil;
-    const resolu = userDisplay(user?.id).avatar;
-    return resolu && resolu !== '?' ? resolu : '';
-  });
 
   const mode = getMode(modeId);
 
@@ -190,10 +198,16 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     recettes.forEach(r => {
       const n = quantites[r.id];
       if (!n || !estEligible(r, modeId)) return;
-      const lignes = lignesEtiquette({ recette: r, modeId, dates, operateur: operateur.trim() });
+      const lignes = lignesEtiquette({ recette: r, modeId, dates });
       for (let i = 0; i < n; i += 1) etiquettes.push({ lignes });
     });
     if (!etiquettes.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return; }
+
+    // Onglet ouvert AVANT le moindre await, et rempli avec le PDF une fois
+    // celui-ci prêt : iOS refuse window.open dès qu'une promesse s'est
+    // intercalée depuis le geste de l'opérateur. Inutile si l'impression part
+    // par l'agent — on le referme alors, mais seulement une fois le lot déposé.
+    const fenetrePdf = agent ? null : ouvrirOngletVide();
 
     setBusy(true);
     // Indicateur de progression au-delà de 50 étiquettes seulement : en dessous,
@@ -218,6 +232,8 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           const jobId = await envoyerLot({
             etabId, pdfBase64: res.base64, nbEtiquettes: nb, mode: modeId, userId: user?.id,
           });
+          // Le lot est déposé : plus rien à afficher, l'onglet de secours part.
+          fermerOnglet(fenetrePdf);
           setDernierLot({ url: res.url, nb, viaAgent: true, etat: 'envoye' });
           notifyLegacy(`${nb} étiquette${pluriel} envoyée${pluriel} à l'imprimante.`, 'success');
 
@@ -236,25 +252,28 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           return;
         } catch (err) {
           // Dépôt impossible : on ne laisse pas la brigade sans étiquettes,
-          // on bascule sur la feuille d'impression.
+          // on bascule sur l'ouverture du PDF.
           console.error('[EtiquettesDlc envoyerLot]', err);
-          notifyLegacy('Envoi direct impossible, ouverture de la feuille d\'impression.', 'warning');
+          notifyLegacy('Envoi direct impossible, ouverture du PDF.', 'warning');
           setAgent(null);
         }
       }
 
-      // ─── Feuille d'impression système (aucun agent, ou envoi échoué) ───
+      // ─── PDF ouvert dans le visualiseur (aucun agent, ou envoi échoué) ───
       const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, {
         autoPrint: true,
         filename: `etiquettes-dlc-${modeId}-${dates[mode.dlcDepuis]}.pdf`,
         onProgress,
+        fenetre: fenetrePdf,
       });
       if (res?.url) {
         urlsRef.current.push(res.url);
-        setDernierLot({ url: res.url, nb, imprime: !!res.imprime });
+        setDernierLot({ url: res.url, nb, ouvert: !!res.ouvert });
       }
       notifyLegacy(`${nb} étiquette${pluriel} générée${pluriel}.`, 'success');
     } catch (err) {
+      // Onglet vide laissé derrière soi = onglet à refermer à la main.
+      fermerOnglet(fenetrePdf);
       /* notify déjà géré dans le service */
     } finally {
       setBusy(false);
@@ -292,7 +311,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         </div>
       )}
 
-      {/* ── Dates du lot (globales, jamais par ligne) + opérateur ── */}
+      {/* ── Dates du lot (globales, jamais par ligne) ── */}
       <div style={es.bloc}>
         <div style={es.champsDates}>
           {mode.dates.map(champ => (
@@ -306,17 +325,6 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               />
             </div>
           ))}
-          <div style={hs.field}>
-            <label style={hs.fLabel}>Opérateur (initiales)</label>
-            <input
-              type="text"
-              maxLength={4}
-              style={{ ...hs.fInput, textTransform: 'uppercase' }}
-              value={operateur}
-              onChange={e => setOperateur(e.target.value.toUpperCase())}
-              placeholder="XX"
-            />
-          </div>
         </div>
         <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
           {modeId === 'surgelation' && (
@@ -324,14 +332,14 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
             </div>
           )}
-          Rouleau {ETIQUETTE_DK11209.ref} {ETIQUETTE_DK11209.widthMm} × {ETIQUETTE_DK11209.heightMm} mm ·
+          Bande {ETIQUETTE_MEDIA.ref} {ETIQUETTE_MEDIA.widthMm} × {ETIQUETTE_MEDIA.heightMm} mm ·
           {agent ? (
             <> impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
               {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong> :
               le lot part sans fenêtre.</>
           ) : (
             <> imprimante <strong style={{ color: 'var(--text)' }}>Brother QL-820NWB</strong> (AirPrint).
-              La feuille d'impression s'ouvre sur l'imprimante utilisée la dernière fois : il n'y a qu'à valider.</>
+              Le PDF s'ouvre dans le visualiseur : <strong style={{ color: 'var(--text)' }}>Partager › Imprimer</strong>.</>
           )}
         </div>
       </div>
@@ -402,9 +410,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         })}
       </div>
 
-      {/* ── Dernier lot : accès manuel au PDF ──
-          Filet de sécurité assumé : si la feuille d'impression ne s'est pas
-          ouverte, l'opérateur récupère le PDF ici plutôt que de relancer le lot. */}
+      {/* ── Dernier lot ──
+          Le lien vers le PDF ne s'affiche que si l'ouverture automatique n'a
+          pas eu lieu : filet de sécurité, pas étape de la marche normale. */}
       {dernierLot && (
         <div style={{
           ...es.dernierLot,
@@ -416,19 +424,17 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         }}>
           <span style={{ flex: 1, minWidth: 0 }}>
             {dernierLot.nb} étiquette{dernierLot.nb > 1 ? 's' : ''}
-            {!dernierLot.viaAgent && <> prête{dernierLot.nb > 1 ? 's' : ''}.</>}
+            {!dernierLot.viaAgent && (dernierLot.ouvert
+              ? <> prête{dernierLot.nb > 1 ? 's' : ''} dans le PDF : Partager › Imprimer.</>
+              : <> prête{dernierLot.nb > 1 ? 's' : ''}, mais le PDF ne s'est pas ouvert tout seul :</>)}
             {dernierLot.viaAgent && dernierLot.etat === 'envoye' && ' envoyée(s) à l\'imprimante, impression en cours…'}
             {dernierLot.viaAgent && dernierLot.etat === 'imprime' && ' imprimée(s).'}
             {dernierLot.viaAgent && dernierLot.etat === 'attente' && ' en attente : l\'imprimante n\'a pas encore répondu. Le lot partira dès son retour.'}
             {dernierLot.viaAgent && dernierLot.etat === 'erreur' && ` refusée(s) par l'imprimante : ${dernierLot.erreur || 'erreur inconnue'}.`}
-            {!dernierLot.viaAgent && (dernierLot.imprime
-              ? " Si la feuille d'impression ne s'est pas affichée :"
-              : ' Ouvrez le PDF puis Partager › Imprimer :')}
           </span>
-          {/* Le PDF reste accessible dans tous les cas : impression directe en
-              échec ou feuille d'impression restée fermée, la brigade a un
-              chemin de secours sans relancer le lot. */}
-          {(!dernierLot.viaAgent || dernierLot.etat === 'erreur' || dernierLot.etat === 'attente') && (
+          {/* Chemin de secours uniquement : ouverture bloquée par le navigateur,
+              ou lot refusé/en attente côté agent. Sinon, aucun lien affiché. */}
+          {((!dernierLot.viaAgent && !dernierLot.ouvert) || dernierLot.etat === 'erreur' || dernierLot.etat === 'attente') && (
             <a
               href={dernierLot.url}
               target="_blank"
