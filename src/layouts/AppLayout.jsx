@@ -49,7 +49,14 @@ export default function AppLayout({
     if (!nextEtablissement?.id) return;
     onSelectEtablissement?.(nextEtablissement.id);
   };
-  const [sidebarOpen, setSidebarOpen] = React.useState(!isMobile);
+  // DEUX états distincts, et non un seul partagé : le tiroir mobile s'ouvre à la
+  // demande et se referme après navigation, la barre latérale desktop reste
+  // ouverte tant que l'utilisateur ne la replie pas lui-même. Avec un état
+  // commun, un basculement transitoire en présentation mobile refermait le
+  // tiroir - et l'iPad revenait en desktop SANS barre latérale, sans que
+  // personne ne l'ait repliée.
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
@@ -171,8 +178,10 @@ export default function AppLayout({
     loading: alertsLoading,
   } = useAlertInstances(etablissement?.id);
 
+  // Le tiroir ne survit ni à une navigation ni au retour en présentation
+  // desktop. La barre latérale desktop, elle, n'est jamais touchée ici.
   React.useEffect(() => {
-    if (isMobile) setSidebarOpen(false);
+    setDrawerOpen(false);
   }, [currentPage, isMobile]);
 
   // Badge messages privés non lus (consultant → utilisateur) sur l'item de nav
@@ -187,7 +196,7 @@ export default function AppLayout({
     ) : null
   );
 
-  const handleSetPage = (p) => { setPage(p); if (isMobile) setSidebarOpen(false); };
+  const handleSetPage = (p) => { setPage(p); setDrawerOpen(false); };
 
   const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
   const todayLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -389,7 +398,7 @@ export default function AppLayout({
         {/* ─── Header fixe en haut ─── */}
         <header style={mls.topbar}>
           {/* Bouton hamburger */}
-          <button style={mls.hamburger} onClick={() => setSidebarOpen(true)} aria-label="Menu">
+          <button style={mls.hamburger} onClick={() => setDrawerOpen(true)} aria-label="Menu">
             <span style={mls.hamLine} />
             <span style={mls.hamLine} />
             <span style={mls.hamLine} />
@@ -429,10 +438,10 @@ export default function AppLayout({
         <OfflineBanner />
 
         {/* ─── Overlay sombre (visible seulement quand le drawer est ouvert) ─── */}
-        {sidebarOpen && <div style={mls.overlay} onClick={() => setSidebarOpen(false)} />}
+        {drawerOpen && <div style={mls.overlay} onClick={() => setDrawerOpen(false)} />}
 
         {/* ─── Drawer latéral gauche ─── */}
-        <aside style={{ ...mls.drawer, transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+        <aside style={{ ...mls.drawer, transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
           {/* Header drawer : logo + nom consulting + fermeture */}
           <div style={mls.drawerHead}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -445,7 +454,7 @@ export default function AppLayout({
                 <div style={{ fontSize: 11, color: 'var(--text2)' }}>Consulting</div>
               </div>
             </div>
-            <button style={mls.closeDrawer} onClick={() => setSidebarOpen(false)} aria-label="Fermer">✕</button>
+            <button style={mls.closeDrawer} onClick={() => setDrawerOpen(false)} aria-label="Fermer">✕</button>
           </div>
 
           {/* Carte utilisateur */}
@@ -467,7 +476,7 @@ export default function AppLayout({
                   <button
                     key={et.id}
                     style={{ ...mls.etabOption, ...(active ? mls.etabOptionActive : {}) }}
-                    onClick={() => { setEtablissement(et); setSidebarOpen(false); }}
+                    onClick={() => { setEtablissement(et); setDrawerOpen(false); }}
                   >
                     <span style={{ ...mls.etabDot, background: et.couleur || 'var(--accent)' }} />
                     <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{et.nom}</span>
@@ -688,7 +697,10 @@ const ls = {
   // Desktop - même langage visuel que le drawer mobile : tokens du thème
   // (surface/text/border/accent) au lieu du fond sombre --nav + blancs en dur.
   // Blanc en mode clair, surface sombre en mode sombre, sans couleur codée en dur.
-  root: { display: 'flex', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)', overflow: 'hidden' },
+  // height 100% et non 100vh : #root porte déjà les zones de sécurité iOS, une
+  // coque en 100vh dépasse par le bas de la hauteur de l'indicateur d'accueil et
+  // fait sortir de l'écran le bas de la zone de contenu (barres d'action posées).
+  root: { display: 'flex', height: '100%', fontFamily: 'var(--font)', background: 'var(--bg)', overflow: 'hidden' },
   // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
   // être bloquée par la taille min-content de ses enfants flex.
   sidebar: { background: 'var(--surface)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
@@ -759,11 +771,19 @@ const ls = {
 // MOBILE LAYOUT STYLES (v2 - hamburger + drawer)
 // ═══════════════════════════════════════════════════════════════
 const mls = {
-  root: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'var(--font)' },
+  // Coque de hauteur FIXE dont seul <main> défile, exactement comme en desktop.
+  // Avec l'ancien minHeight:100vh, c'est #root qui défilait et <main> prenait la
+  // hauteur de son contenu : il restait une « boîte de défilement » (overflowY
+  // auto) qui ne défilait jamais, ce qui neutralise position:sticky. Les barres
+  // d'action posées en bas d'un module - dont « Générer les étiquettes » -
+  // repartaient donc tout en bas de la page au lieu de rester sous la main.
+  // height 100% et non 100vh : #root est déjà borné aux zones de sécurité iOS,
+  // 100vh déborderait par le bas de la hauteur de l'indicateur d'accueil.
+  root: { height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'var(--font)' },
 
   // Header fixe haut
   topbar: {
-    position: 'sticky', top: 0, zIndex: 50,
+    position: 'sticky', top: 0, zIndex: 50, flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '10px 14px',
     background: 'var(--surface)',
@@ -878,5 +898,7 @@ const mls = {
     fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
   },
 
-  content: { flex: 1, padding: '16px 14px 24px', overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%' },
+  // minHeight 0 : sans lui, la taille minimale automatique d'un élément flex
+  // vaut la hauteur de son contenu, <main> déborde la coque et ne défile pas.
+  content: { flex: 1, minHeight: 0, padding: '16px 14px 24px', overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%' },
 };
