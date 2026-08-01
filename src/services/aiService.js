@@ -178,9 +178,12 @@ export async function generateFicheSalle(recipe, allergenLabels) {
     allergenes,
   });
   const r = (data && data.result) || {};
+  // Familles reconnues par la fiche salle. Tout type hors liste retombe sur
+  // « vin » : c'est ce que produit le modèle par défaut.
+  const ACCORD_TYPES_VALIDES = ['vin', 'cocktail', 'spiritueux', 'the', 'sans_alcool'];
   const accords = (Array.isArray(r.accords) ? r.accords : [])
     .map((a) => ({
-      type: a && a.type === 'sans_alcool' ? 'sans_alcool' : 'vin',
+      type: a && ACCORD_TYPES_VALIDES.includes(a.type) ? a.type : 'vin',
       nom: String((a && a.nom) || '').trim(),
       region: String((a && a.region) || '').trim(),
       alternative: String((a && a.alternative) || '').trim(),

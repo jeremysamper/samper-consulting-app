@@ -30,6 +30,20 @@ const ALLERGENES_COLORS = {
   sesame:'#f97316', mollusques:'#8b5cf6', lupin:'#ec4899',
 };
 
+// Familles de boissons pour les accords. L'ordre est celui des onglets.
+// Les fiches n'avaient que « vin » et « sans_alcool » : une maison qui sert
+// ses propres cocktails, ses spiritueux et une carte de thés n'avait aucun
+// endroit où les poser, tout finissait empilé sous « Sans alcool ».
+const ACCORD_TYPES = [
+  { id: 'vin', label: 'Vins', icon: '🍷' },
+  { id: 'cocktail', label: 'Cocktails', icon: '🍹' },
+  { id: 'spiritueux', label: 'Spiritueux', icon: '🥃' },
+  { id: 'the', label: 'Thés & infusions', icon: '🍵' },
+  { id: 'sans_alcool', label: 'Sans alcool', icon: '🥤' },
+];
+const ACCORD_TYPE_IDS = ACCORD_TYPES.map(t => t.id);
+const accordIcon = (type) => (ACCORD_TYPES.find(t => t.id === type) || {}).icon || '🥤';
+
 // Catégories de recettes « techniques » qui ne sont pas des plats servis
 // au client - elles ne donnent pas lieu à une fiche salle.
 const RECETTE_CATS_NON_SERVIES = [
@@ -611,9 +625,27 @@ const FichesSalle = ({ user, etablissement }) => {
 
 // ── Détail d'une fiche ──
 const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], cartes = [] }) => {
-  const [accordTab, setAccordTab] = React.useState('vin');
-  const vins = fiche.accords?.filter(a=>a.type==='vin')||[];
-  const sansAlcool = fiche.accords?.filter(a=>a.type==='sans_alcool')||[];
+  // Un onglet par famille réellement présente sur la fiche. Un type inconnu
+  // (import ancien, famille ajoutée plus tard) garde son propre onglet plutôt
+  // que d'être avalé : sans ça l'accord n'a pas d'onglet, donc il est invisible
+  // en salle - exactement ce qui arrivait aux cocktails et aux thés.
+  const groupes = React.useMemo(() => {
+    const parType = new Map();
+    (fiche.accords || []).forEach(a => {
+      const id = (a && a.type) || 'vin';
+      if (!parType.has(id)) parType.set(id, []);
+      parType.get(id).push(a);
+    });
+    const connus = ACCORD_TYPES
+      .filter(t => parType.has(t.id))
+      .map(t => ({ ...t, items: parType.get(t.id) }));
+    const inconnus = [...parType.keys()]
+      .filter(id => !ACCORD_TYPE_IDS.includes(id))
+      .map(id => ({ id, label: id, icon: '🥤', items: parType.get(id) }));
+    return [...connus, ...inconnus];
+  }, [fiche.accords]);
+  const [accordTab, setAccordTab] = React.useState(null);
+  const groupeActif = groupes.find(g => g.id === accordTab) || groupes[0] || null;
 
   return (
     <div style={fss.detailRoot}>
@@ -689,24 +721,34 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
               </div>
             </div>
           )}
-          <div style={{display:'flex',gap:6,marginTop:10,marginBottom:14}}>
-            <button style={{...fss.accordTab,...(accordTab==='vin'?fss.accordTabActive:{})}} onClick={()=>setAccordTab('vin')}>Vins ({vins.length})</button>
-            <button style={{...fss.accordTab,...(accordTab==='sans'?fss.accordTabActive:{})}} onClick={()=>setAccordTab('sans')}>Sans alcool ({sansAlcool.length})</button>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12}}>
-            {(accordTab==='vin'?vins:sansAlcool).map((a,i)=>(
-              <div key={i} style={fss.accordCard}>
-                <div style={fss.accordIcon}>{accordTab==='vin'?'🍷':'🥤'}</div>
-                <div>
-                  <div style={fss.accordNom}>{a.nom}</div>
-                  {a.region && <div style={fss.accordRegion}>{a.region}</div>}
-                  {a.alternative && <div style={fss.accordAlt}>↪ {a.alternative}</div>}
-                  <div style={fss.accordNotes}>{a.notes}</div>
-                </div>
+          {groupeActif ? (
+            <>
+              {/* Les onglets défilent horizontalement : sur mobile 4 familles
+                  ne tiennent pas sur une ligne et la page ne doit pas paner. */}
+              <div style={{display:'flex',gap:6,marginTop:10,marginBottom:14,overflowX:'auto',paddingBottom:2}}>
+                {groupes.map(g=>(
+                  <button
+                    key={g.id}
+                    style={{...fss.accordTab,flexShrink:0,...(groupeActif.id===g.id?fss.accordTabActive:{})}}
+                    onClick={()=>setAccordTab(g.id)}
+                  >{g.icon} {g.label} ({g.items.length})</button>
+                ))}
               </div>
-            ))}
-            {(accordTab==='vin'?vins:sansAlcool).length===0 && <div style={{fontSize:13,color:'var(--text2)'}}>Aucun accord renseigné.</div>}
-          </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12}}>
+                {groupeActif.items.map((a,i)=>(
+                  <div key={i} style={fss.accordCard}>
+                    <div style={fss.accordIcon}>{groupeActif.icon}</div>
+                    <div>
+                      <div style={fss.accordNom}>{a.nom}</div>
+                      {a.region && <div style={fss.accordRegion}>{a.region}</div>}
+                      {a.alternative && <div style={fss.accordAlt}>↪ {a.alternative}</div>}
+                      <div style={fss.accordNotes}>{a.notes}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : <div style={{fontSize:13,color:'var(--text2)',marginTop:10}}>Aucun accord renseigné.</div>}
         </div>
       </div>
 
@@ -904,22 +946,29 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
 
             {/* Accords */}
             <div style={fss.field}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+              <div style={{marginBottom:8}}>
                 <label style={fss.fLabel}>Accords mets & boissons</label>
-                <div style={{display:'flex',gap:6}}>
-                  <button style={fss.smallBtn} onClick={()=>addAccord('vin')}>+ Vin</button>
-                  <button style={fss.smallBtn} onClick={()=>addAccord('sans_alcool')}>+ Sans alcool</button>
+                {/* 5 familles : la ligne passe à la ligne plutôt que de forcer
+                    un défilement horizontal dans la modale. */}
+                <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
+                  {ACCORD_TYPES.map(t=>(
+                    <button key={t.id} style={fss.smallBtn} onClick={()=>addAccord(t.id)}>+ {t.icon} {t.label}</button>
+                  ))}
                 </div>
               </div>
               {(fiche?.accords||[]).map((a,i)=>(
                 <div key={i} style={{border:'1px solid var(--border)',borderRadius:8,padding:8,marginBottom:8}}>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr 110px 28px',gap:8,alignItems:'center'}}>
-                    <span style={{fontSize:16}}>{a.type==='vin'?'🍷':'🥤'}</span>
+                    <span style={{fontSize:16}}>{accordIcon(a.type)}</span>
                     <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
                     <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)}>✕</button>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:6}}>
+                  <div style={{display:'grid',gridTemplateColumns:'130px 1fr 1fr',gap:8,marginTop:6}}>
+                    {/* Changer de famille sans devoir supprimer puis recréer. */}
+                    <select style={fss.fInput} value={ACCORD_TYPE_IDS.includes(a.type)?a.type:'vin'} onChange={e=>updateAccord(i,'type',e.target.value)}>
+                      {ACCORD_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+                    </select>
                     <input style={fss.fInput} placeholder="Type général (ex. Vin blanc sec)" value={a.alternative||''} onChange={e=>updateAccord(i,'alternative',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Notes d'accord" value={a.notes} onChange={e=>updateAccord(i,'notes',e.target.value)}/>
                   </div>
