@@ -139,6 +139,50 @@ export const ETIQUETTE_MODES = [
 
 export const getMode = (modeId) => ETIQUETTE_MODES.find(m => m.id === modeId) || ETIQUETTE_MODES[0];
 
+// ─── Cases « Divers » ────────────────────────────────────────────────────────
+// Étiquettes génériques épinglées en tête de liste et JAMAIS masquées par la
+// recherche : en service, un bac sans fiche doit pouvoir sortir une DLC sans
+// que personne ne quitte le poste pour aller créer une recette.
+//
+// Elles n'existent qu'ici : aucune ligne en base, aucun établissement
+// particulier, rien à maintenir côté données. Elles portent les mêmes clés
+// qu'une recette (dureeVie*), donc estEligible / dureeVieMode / calculerDlc /
+// lignesEtiquette les traitent sans un seul cas particulier.
+//
+// Le jeu dépend du MODE, parce qu'une durée n'y a pas le même sens : les trois
+// paliers du barème maison (3 / 5 / 7 j) au froid positif et après
+// décongélation, et une seule case à 90 j en surgélation — la durée forfaitaire
+// retenue pour une préparation congelée sans fiche.
+export const ETIQUETTES_DIVERS = [
+  {
+    id: 'divers-3j', nom: 'Divers 3 jours', categorie: 'Étiquette libre', divers: true,
+    modes: ['frais', 'decongelation'],
+    dureeVieJours: 3, dureeVieDecongeleJours: 3, dureeVieCongeleJours: null,
+  },
+  {
+    id: 'divers-5j', nom: 'Divers 5 jours', categorie: 'Étiquette libre', divers: true,
+    modes: ['frais', 'decongelation'],
+    dureeVieJours: 5, dureeVieDecongeleJours: 5, dureeVieCongeleJours: null,
+  },
+  {
+    id: 'divers-7j', nom: 'Divers 7 jours', categorie: 'Étiquette libre', divers: true,
+    modes: ['frais', 'decongelation'],
+    dureeVieJours: 7, dureeVieDecongeleJours: 7, dureeVieCongeleJours: null,
+  },
+  {
+    id: 'divers-90j', nom: 'Divers 90 jours', categorie: 'Étiquette libre', divers: true,
+    modes: ['surgelation'],
+    dureeVieJours: 90, dureeVieDecongeleJours: 2, dureeVieCongeleJours: 90,
+  },
+];
+
+export const diversPourMode = (modeId) => ETIQUETTES_DIVERS.filter(d => d.modes.includes(modeId));
+
+// Une sélection porte des id de recette ET des id de case Divers : ce test les
+// sépare partout où l'un des deux n'a pas de sens (purge des fiches supprimées,
+// changement de mode).
+export const estDivers = (id) => String(id || '').startsWith('divers-');
+
 // ─── Durées de vie d'une recette ─────────────────────────────────────────────
 // Les durées relèvent de l'autocontrôle de l'établissement : saisies sur la
 // fiche recette, jamais calculées ni devinées ici. `congele` à null = non
@@ -156,6 +200,11 @@ export function dureesVie(recette) {
 // congelable ne peut être ni surgelée ni décongelée.
 export function estEligible(recette, modeId) {
   if (modeId === 'frais') return true;
+  // Les cases Divers ne se qualifient pas par une durée de surgélation : elles
+  // n'ont pas de fiche, c'est leur liste `modes` qui dit où elles ont cours
+  // (cf. diversPourMode). Sans cette sortie, la case Divers du mode
+  // Décongélation s'afficherait grisée et non cochable.
+  if (recette?.divers) return true;
   return dureesVie(recette).congele != null;
 }
 

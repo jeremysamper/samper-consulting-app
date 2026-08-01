@@ -6,8 +6,9 @@ import { normalizeSearch } from '../../utils/searchText.js';
 import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  ETIQUETTE_MEDIA, ETIQUETTE_MODES, QUANTITE_MAX, QUANTITE_MIN,
-  calculerDlc, dureeVieMode, estEligible, formatDateFr, getMode, lignesEtiquette, motifNonEligible,
+  ETIQUETTE_MEDIA, ETIQUETTE_MODES, ETIQUETTES_DIVERS, QUANTITE_MAX, QUANTITE_MIN,
+  calculerDlc, diversPourMode, dureeVieMode, estDivers, estEligible, formatDateFr, getMode,
+  lignesEtiquette, motifNonEligible,
 } from '../../utils/etiquettesDlc.js';
 import { hs } from './HACCP.styles.js';
 
@@ -28,6 +29,18 @@ import { hs } from './HACCP.styles.js';
 // Un lot porte UN seul mode : en cuisine, on étiquette un lot qui part au même
 // endroit. Les durées de vie ne se saisissent pas ici - elles relèvent de
 // l'autocontrôle et vivent sur la fiche recette.
+//
+// La liste est le miroir de Cartes & Recettes : elle se recharge sur event
+// realtime, donc une fiche créée, renommée, archivée ou supprimée là-bas se voit
+// ici sans rechargement de page. Une fiche supprimée pendant qu'elle était
+// cochée quitte aussi la sélection, sinon le compteur du bas annoncerait des
+// étiquettes que la génération ne produirait pas.
+//
+// En tête de liste, hors recherche, les cases « Divers » : des étiquettes
+// génériques (3 / 5 / 7 jours au froid positif, 90 jours au congélateur) pour
+// un bac qui n'a pas de fiche. Elles vivent dans utils/etiquettesDlc.js, pas en
+// base — elles valent pour tous les établissements et ne polluent aucun
+// référentiel.
 //
 // La sélection est en état de composant : quitter l'onglet la perd, comportement
 // accepté pour cette version.
@@ -52,6 +65,9 @@ const es = {
   resumeTotal: { fontSize: 13, color: 'var(--text2)', flex: 1, minWidth: 160 },
   dernierLot: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' },
   rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
+  // Bloc épinglé des cases Divers : posé au-dessus de la recherche pour qu'il
+  // reste visible quel que soit le filtre saisi.
+  diversTitre: { padding: '10px 14px 5px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   rechercheInput: { flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
 };
 
@@ -100,8 +116,14 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const [dates, setDates] = React.useState({ fabrication: today, surgelation: today, decongelation: today });
   const [search, setSearch] = React.useState('');
   const [searchApplied, setSearchApplied] = React.useState('');
-  // id de recette → quantité d'étiquettes. La présence de la clé = sélection.
+  // id de recette (ou de case Divers) → quantité d'étiquettes. La présence de
+  // la clé = sélection.
   const [quantites, setQuantites] = React.useState({});
+  // Miroir de la sélection lisible depuis le rechargement realtime, dont les
+  // dépendances ne comportent pas `quantites` : sans lui, la purge des fiches
+  // supprimées travaillerait sur une sélection périmée.
+  const quantitesRef = React.useRef(quantites);
+  React.useEffect(() => { quantitesRef.current = quantites; }, [quantites]);
   // Retraits du dernier changement de mode : jamais de retrait silencieux.
   const [retraits, setRetraits] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -119,8 +141,15 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   }, []);
 
   const mode = getMode(modeId);
+  // Cases Divers du mode courant. Épinglées en tête et rendues hors du filtre :
+  // la recherche ne les masque jamais.
+  const divers = React.useMemo(() => diversPourMode(modeId), [modeId]);
 
   // ─── Chargement des recettes de l'établissement + realtime ───
+  // L'onglet suit Cartes & Recettes en direct : toute création, modification ou
+  // suppression de fiche y déclenche un event Postgres, donc un rechargement de
+  // cette liste. `listRecettes` n'est pas mise en cache, il n'y a rien à
+  // invalider — la liste affichée est toujours celle de la base.
   React.useEffect(() => {
     if (!legacySB) { setRecettes([]); setLoading(false); return; }
     let mounted = true;
@@ -129,7 +158,28 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         const list = await legacySB.db.listRecettes(etabId);
         if (!mounted) return;
         // Les recettes archivées ne sont plus produites : pas d'étiquette.
-        setRecettes((list || []).filter(r => r.statut !== 'archivée'));
+        const actives = (list || []).filter(r => r.statut !== 'archivée');
+        setRecettes(actives);
+
+        // Purge des fiches sélectionnées puis supprimées (ou archivées) depuis
+        // un autre poste. Sans elle, le compteur du bas annoncerait des
+        // étiquettes que la génération ne produirait pas : elle balaie les
+        // recettes chargées, une clé orpheline y est simplement ignorée.
+        const vivants = new Set(actives.map(r => r.id));
+        const disparues = Object.keys(quantitesRef.current)
+          .filter(id => !estDivers(id) && !vivants.has(id));
+        if (disparues.length) {
+          const perdues = new Set(disparues);
+          setQuantites(prev => {
+            const next = {};
+            Object.entries(prev).forEach(([id, n]) => { if (!perdues.has(id)) next[id] = n; });
+            return next;
+          });
+          notifyLegacy(
+            `${disparues.length} préparation${disparues.length > 1 ? 's' : ''} retirée${disparues.length > 1 ? 's' : ''} de la sélection : supprimée${disparues.length > 1 ? 's' : ''} de Cartes & Recettes.`,
+            'warning',
+          );
+        }
       } catch (err) { console.error('[EtiquettesDlc load]', err); }
       finally { if (mounted) setLoading(false); }
     };
@@ -192,11 +242,21 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   };
 
   // ─── Changement de mode : retrait explicite des lignes devenues inéligibles ───
+  // Deux motifs, jamais confondus : une préparation non congelable ne peut pas
+  // suivre en surgélation, et les cases Divers changent de jeu avec le mode
+  // (3 / 5 / 7 j au froid positif, 90 j au congélateur). Aucun retrait
+  // silencieux — l'opérateur doit savoir ce qui a quitté son lot.
   const changerMode = (nextId) => {
     if (nextId === modeId) return;
-    const retires = Object.keys(quantites)
+    const selection = Object.keys(quantites);
+    const nonCongelables = selection
       .map(id => parId.get(id))
       .filter(r => r && !estEligible(r, nextId));
+    const diversSuivants = new Set(diversPourMode(nextId).map(d => d.id));
+    const diversRetires = ETIQUETTES_DIVERS
+      .filter(d => selection.includes(d.id) && !diversSuivants.has(d.id));
+
+    const retires = [...nonCongelables, ...diversRetires];
     if (retires.length) {
       const ids = new Set(retires.map(r => r.id));
       setQuantites(prev => {
@@ -204,9 +264,13 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         Object.entries(prev).forEach(([id, n]) => { if (!ids.has(id)) next[id] = n; });
         return next;
       });
-      setRetraits({ nb: retires.length, noms: retires.map(r => r.nom), modeLabel: getMode(nextId).label });
+      setRetraits({
+        modeLabel: getMode(nextId).label,
+        nonCongelables: nonCongelables.map(r => r.nom),
+        divers: diversRetires.map(d => d.nom),
+      });
       notifyLegacy(
-        `${retires.length} préparation${retires.length > 1 ? 's' : ''} retirée${retires.length > 1 ? 's' : ''} de la sélection : non congelable${retires.length > 1 ? 's' : ''}.`,
+        `${retires.length} ligne${retires.length > 1 ? 's' : ''} retirée${retires.length > 1 ? 's' : ''} de la sélection.`,
         'warning',
       );
     } else {
@@ -221,10 +285,10 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     const dateManquante = mode.dates.find(d => !dates[d.id]);
     if (dateManquante) { notifyLegacy(`Renseignez la ${dateManquante.label.toLowerCase()}.`, 'warning'); return; }
 
-    // Ordre des pages : ordre de la liste (recettes triées par nom côté DB),
-    // quantités groupées par recette.
+    // Ordre des pages : ordre de la liste — cases Divers épinglées en tête,
+    // puis les recettes triées par nom côté DB — quantités groupées par ligne.
     const etiquettes = [];
-    recettes.forEach(r => {
+    [...divers, ...recettes].forEach(r => {
       const n = quantites[r.id];
       if (!n || !estEligible(r, modeId)) return;
       const lignes = lignesEtiquette({ recette: r, modeId, dates });
@@ -341,6 +405,52 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement des recettes…</div>;
 
+  // Une seule écriture de la ligne pour les deux blocs : les cases Divers ne
+  // sont pas un affichage à part, ce sont des lignes comme les autres — mêmes
+  // cases à cocher, même stepper, même DLC calculée.
+  const renderLigne = (r) => {
+    const eligible = estEligible(r, modeId);
+    const selected = Object.prototype.hasOwnProperty.call(quantites, r.id);
+    const dlc = eligible ? calculerDlc(r, modeId, dates) : null;
+    const duree = dureeVieMode(r, modeId);
+    return (
+      <div key={r.id} style={{ ...es.ligne, opacity: eligible ? 1 : 0.55, background: selected ? 'var(--bg)' : 'transparent' }}>
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={!eligible}
+          onChange={() => toggleSelection(r)}
+          style={{ width: 18, height: 18, flexShrink: 0, cursor: eligible ? 'pointer' : 'not-allowed' }}
+          aria-label={`Sélectionner ${r.nom}`}
+        />
+        <div style={es.ligneInfo}>
+          <div style={es.nom}>{r.nom}</div>
+          <div style={es.meta}>
+            {r.categorie || 'Sans catégorie'}
+            {eligible
+              ? <> · {duree} jour{duree > 1 ? 's' : ''} · <span style={es.dlc}>DLC {formatDateFr(dlc)}</span></>
+              : <> · <strong>{motifNonEligible(r)}</strong></>}
+          </div>
+        </div>
+        {selected && (
+          <div style={es.stepper}>
+            <button type="button" style={es.stepBtn} onClick={() => setQuantite(r.id, quantites[r.id] - 1)} aria-label="Retirer une étiquette">−</button>
+            <input
+              type="number"
+              min={QUANTITE_MIN}
+              max={QUANTITE_MAX}
+              style={es.qteInput}
+              value={quantites[r.id]}
+              onChange={e => setQuantite(r.id, e.target.value)}
+              aria-label={`Nombre d'étiquettes pour ${r.nom}`}
+            />
+            <button type="button" style={es.stepBtn} onClick={() => setQuantite(r.id, quantites[r.id] + 1)} aria-label="Ajouter une étiquette">+</button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
@@ -356,9 +466,19 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         <div style={es.banniere}>
           <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <strong>{retraits.nb} préparation{retraits.nb > 1 ? 's' : ''} retirée{retraits.nb > 1 ? 's' : ''} de la sélection</strong>
-            {' '}en passant en mode {retraits.modeLabel} : non congelable{retraits.nb > 1 ? 's' : ''}, donc ni surgelable{retraits.nb > 1 ? 's' : ''} ni décongelable{retraits.nb > 1 ? 's' : ''}.
-            <span style={{ display: 'block', marginTop: 3, fontStyle: 'italic' }}>{retraits.noms.join(' · ')}</span>
+            <strong>Sélection réduite en passant en mode {retraits.modeLabel}</strong>
+            {retraits.nonCongelables.length > 0 && (
+              <span style={{ display: 'block', marginTop: 3 }}>
+                {retraits.nonCongelables.length} préparation{retraits.nonCongelables.length > 1 ? 's' : ''} non congelable{retraits.nonCongelables.length > 1 ? 's' : ''}, donc ni surgelable{retraits.nonCongelables.length > 1 ? 's' : ''} ni décongelable{retraits.nonCongelables.length > 1 ? 's' : ''} :
+                <span style={{ fontStyle: 'italic' }}> {retraits.nonCongelables.join(' · ')}</span>
+              </span>
+            )}
+            {retraits.divers.length > 0 && (
+              <span style={{ display: 'block', marginTop: 3 }}>
+                Les cases Divers changent avec le mode :
+                <span style={{ fontStyle: 'italic' }}> {retraits.divers.join(' · ')}</span> ne s'y applique{retraits.divers.length > 1 ? 'nt' : ''} pas.
+              </span>
+            )}
           </span>
           <button
             type="button"
@@ -403,6 +523,11 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
 
       {/* ── Liste des préparations ── */}
       <div style={hs.tableCard}>
+        {/* Cases Divers : au-dessus de la recherche, donc toujours à l'écran,
+            filtre saisi ou non. Un bac sans fiche s'étiquette sans détour. */}
+        <div style={es.diversTitre}>Divers</div>
+        {divers.map(renderLigne)}
+
         <div style={es.rechercheWrap}>
           <input
             type="text"
@@ -423,48 +548,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           </div>
         )}
 
-        {visibles.map(r => {
-          const eligible = estEligible(r, modeId);
-          const selected = Object.prototype.hasOwnProperty.call(quantites, r.id);
-          const dlc = eligible ? calculerDlc(r, modeId, dates) : null;
-          const duree = dureeVieMode(r, modeId);
-          return (
-            <div key={r.id} style={{ ...es.ligne, opacity: eligible ? 1 : 0.55, background: selected ? 'var(--bg)' : 'transparent' }}>
-              <input
-                type="checkbox"
-                checked={selected}
-                disabled={!eligible}
-                onChange={() => toggleSelection(r)}
-                style={{ width: 18, height: 18, flexShrink: 0, cursor: eligible ? 'pointer' : 'not-allowed' }}
-                aria-label={`Sélectionner ${r.nom}`}
-              />
-              <div style={es.ligneInfo}>
-                <div style={es.nom}>{r.nom}</div>
-                <div style={es.meta}>
-                  {r.categorie || 'Sans catégorie'}
-                  {eligible
-                    ? <> · {duree} jour{duree > 1 ? 's' : ''} · <span style={es.dlc}>DLC {formatDateFr(dlc)}</span></>
-                    : <> · <strong>{motifNonEligible(r)}</strong></>}
-                </div>
-              </div>
-              {selected && (
-                <div style={es.stepper}>
-                  <button type="button" style={es.stepBtn} onClick={() => setQuantite(r.id, quantites[r.id] - 1)} aria-label="Retirer une étiquette">−</button>
-                  <input
-                    type="number"
-                    min={QUANTITE_MIN}
-                    max={QUANTITE_MAX}
-                    style={es.qteInput}
-                    value={quantites[r.id]}
-                    onChange={e => setQuantite(r.id, e.target.value)}
-                    aria-label={`Nombre d'étiquettes pour ${r.nom}`}
-                  />
-                  <button type="button" style={es.stepBtn} onClick={() => setQuantite(r.id, quantites[r.id] + 1)} aria-label="Ajouter une étiquette">+</button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {visibles.map(renderLigne)}
       </div>
 
       {/* ── Dernier lot ──
