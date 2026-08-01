@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { addDays, isoDate, parseLocalDate } from './dateHelpers.js';
+import { normalizeSearch } from './searchText.js';
 
 // Consommable en service : rouleau PRÉDÉCOUPÉ DK-11209. Le media fait 62 mm de
 // large et chaque étiquette 29 mm dans le sens du défilement — et non l'inverse,
@@ -177,6 +178,62 @@ export const ETIQUETTES_DIVERS = [
 ];
 
 export const diversPourMode = (modeId) => ETIQUETTES_DIVERS.filter(d => d.modes.includes(modeId));
+
+// ─── Étiquettes « maison » ───────────────────────────────────────────────────
+// Étiquettes nommées propres à un établissement (table `etiquettes_perso`),
+// pour les préparations courantes qui n'ont pas de fiche recette : un fond
+// blanc ou une pâte à crumble sortait jusqu'ici sur une case « Divers 3 jours »,
+// avec la bonne DLC mais sans son nom sur le bac.
+//
+// Elles portent les mêmes clés de durée qu'une recette (dureeVie*), donc
+// estEligible / dureeVieMode / calculerDlc / lignesEtiquette les traitent sans
+// un seul cas particulier. Contrairement aux cases Divers, elles vivent en base
+// et se modifient — à partir du responsable cuisine.
+export const ETIQUETTE_PERSO_CATEGORIE = 'Étiquette maison';
+
+// Garde-fou de saisie : au-delà, c'est une faute de frappe, pas une durée de
+// conservation. 10 ans couvre largement toute conserve ou surgelé.
+export const DUREE_MAX_JOURS = 3650;
+
+const dureeValide = (v) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 && n <= DUREE_MAX_JOURS;
+};
+
+// Validation du formulaire d'étiquette maison. Retourne un message d'erreur ou
+// null. Le contrôle de doublon reproduit l'index unique de la base
+// (etablissement_id, lower(btrim(nom))) : mieux vaut un message clair qu'une
+// erreur Postgres remontée telle quelle à la brigade.
+export function validerEtiquettePerso(form, { existantes = [], id = null } = {}) {
+  const nom = String(form?.nom || '').trim();
+  if (!nom) return 'Donnez un nom à l\'étiquette.';
+
+  const cle = normaliserNomPerso(nom);
+  if (existantes.some(e => e.id !== id && normaliserNomPerso(e.nom) === cle)) {
+    return `« ${nom} » existe déjà dans les étiquettes maison.`;
+  }
+
+  if (!dureeValide(form?.dureeVieJours)) {
+    return 'La durée au froid positif doit être un nombre entier de jours supérieur à 0.';
+  }
+  // congelable === false → dureeVieCongeleJours restera null : rien à valider.
+  if (form?.congelable) {
+    if (!dureeValide(form?.dureeVieCongeleJours)) {
+      return 'La durée au congélateur doit être un nombre entier de jours supérieur à 0.';
+    }
+    if (!dureeValide(form?.dureeVieDecongeleJours)) {
+      return 'La durée après décongélation doit être un nombre entier de jours supérieur à 0.';
+    }
+  }
+  return null;
+}
+
+// Clé de comparaison des noms : casse, accents et espaces de bord ignorés.
+// Aligné sur lower(btrim(nom)) côté base, en tolérant en plus les accents et
+// les ligatures via normalizeSearch — « Bearnaise » et « Béarnaise » sont la
+// même préparation pour une brigade. La base, elle, reste plus permissive :
+// elle ne rejettera que le doublon strict, ce message arrive avant.
+export const normaliserNomPerso = (nom) => normalizeSearch(String(nom || '').trim());
 
 // Une sélection porte des id de recette ET des id de case Divers : ce test les
 // sépare partout où l'un des deux n'a pas de sens (purge des fiches supprimées,

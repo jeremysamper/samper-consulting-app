@@ -590,6 +590,79 @@ export function installLegacySupabase() {
     },
 
     // ═══════════════════════════════════════════════════════════════
+    // ÉTIQUETTES DLC PERSONNALISÉES (etiquettes_perso)
+    // Étiquettes nommées propres à l'établissement, pour les préparations
+    // courantes qui n'ont pas de fiche recette. Mêmes colonnes de durées que
+    // `recettes` : l'onglet Étiquettes DLC les traite comme des fiches.
+    // RLS : lecture + création jusqu'au cuisinier, modification et suppression
+    // à partir du responsable cuisine.
+    // ═══════════════════════════════════════════════════════════════
+    async listEtiquettesPerso(etabId) {
+      let q = client.from('etiquettes_perso').select('*').order('nom');
+      if (etabId) q = q.eq('etablissement_id', etabId);
+      const { data, error } = await q;
+      // Liste vide plutôt qu'une exception : un front déployé avant
+      // l'application de la migration doit continuer d'imprimer ses étiquettes
+      // de recettes et ses cases Divers.
+      if (error) { console.error('[listEtiquettesPerso]', error); return []; }
+      return (data || []).map(this.mapEtiquettePersoFromDB);
+    },
+
+    async upsertEtiquettePerso(e) {
+      const row = {
+        nom: String(e.nom || '').trim(),
+        duree_vie_jours: joursValides(e.dureeVieJours, 3),
+        duree_vie_decongele_jours: joursValides(e.dureeVieDecongeleJours, 2),
+        // null est une valeur métier ici (= non congelable), pas une absence.
+        duree_vie_congele_jours: e.dureeVieCongeleJours == null
+          ? null
+          : joursValides(e.dureeVieCongeleJours, 1),
+      };
+      let result;
+      if (e.id) {
+        row.updated_at = new Date().toISOString();
+        const { data, error } = await client.from('etiquettes_perso').update(row).eq('id', e.id).select().single();
+        if (error) throw error;
+        result = data;
+      } else {
+        row.etablissement_id = e.etablissementId;
+        row.created_by = e.createdBy || null;
+        const { data, error } = await client.from('etiquettes_perso').insert(row).select().single();
+        if (error) throw error;
+        result = data;
+      }
+      return this.mapEtiquettePersoFromDB(result);
+    },
+
+    async deleteEtiquettePerso(id) {
+      const { error } = await client.from('etiquettes_perso').delete().eq('id', id);
+      if (error) throw error;
+    },
+
+    mapEtiquettePersoFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id,
+        etablissementId: row.etablissement_id,
+        nom: row.nom,
+        dureeVieJours: row.duree_vie_jours,
+        dureeVieCongeleJours: row.duree_vie_congele_jours ?? null,
+        dureeVieDecongeleJours: row.duree_vie_decongele_jours,
+        // `congelable` qualifié et non laissé indéterminé : c'est ce qui fait
+        // afficher « Non congelable » au lieu de « durée de surgélation non
+        // renseignée » (motifNonEligible). Sur une étiquette maison, l'absence
+        // de durée de surgélation EST la qualification.
+        congelable: row.duree_vie_congele_jours != null,
+        // Marqueur de provenance : distingue ces lignes des fiches recettes
+        // dans la liste de l'onglet (bloc dédié, boutons Modifier/Supprimer).
+        perso: true,
+        createdBy: row.created_by || null,
+        createdAt: row.created_at || null,
+        updatedAt: row.updated_at || null,
+      };
+    },
+
+    // ═══════════════════════════════════════════════════════════════
     // MISE EN PLACE (mep_listes + mep_items)
     // Listes de production : grosse prod (congelable) vs urgent (non congelable).
     // ═══════════════════════════════════════════════════════════════

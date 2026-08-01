@@ -115,6 +115,11 @@ export const UI_GLOSSARY = {
   'Archiver': 'Archive',
   'Restaurer': 'Restore',
   'Dupliquer la recette': 'Duplicate recipe',
+  // Étiquettes DLC (HACCP). « + Ajouter une étiquette » se résout ici : les
+  // affixes sont retirés avant lookup, le « + » est réappliqué après.
+  'Ajouter une étiquette': 'Add a label',
+  'Ajouter l\'étiquette': 'Add label',
+  'Modifier l\'étiquette': 'Edit label',
   'Reconnecter': 'Reconnect',
   'Connecter Lightspeed': 'Connect Lightspeed',
   'Précédent': 'Previous',
@@ -258,6 +263,13 @@ export const UI_GLOSSARY = {
   'Ven': 'Fri',
   'Sam': 'Sat',
   'Dim': 'Sun',
+
+  // ── Étiquettes DLC (HACCP) ──
+  'Étiquettes maison': 'House labels',
+  'Étiquette maison': 'House label',
+  'Nom de la préparation': 'Preparation name',
+  'Préparation congelable': 'Can be frozen',
+  'Non congelable': 'Cannot be frozen',
 
   // ── Catégories produits / recettes ──
   'Entrées': 'Starters',

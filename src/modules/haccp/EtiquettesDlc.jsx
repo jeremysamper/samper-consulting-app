@@ -1,15 +1,17 @@
 import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import { getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
+import { confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  ETIQUETTE_MEDIA, ETIQUETTE_MODES, ETIQUETTES_DIVERS, QUANTITE_MAX, QUANTITE_MIN,
+  ETIQUETTE_MEDIA, ETIQUETTE_MODES, ETIQUETTE_PERSO_CATEGORIE, ETIQUETTES_DIVERS,
+  QUANTITE_MAX, QUANTITE_MIN,
   calculerDlc, diversPourMode, dureeVieMode, estDivers, estEligible, formatDateFr, getMode,
   lignesEtiquette, motifNonEligible,
 } from '../../utils/etiquettesDlc.js';
+import EtiquettePersoForm from './EtiquettePersoForm.jsx';
 import { hs } from './HACCP.styles.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,9 +44,27 @@ import { hs } from './HACCP.styles.js';
 // base — elles valent pour tous les établissements et ne polluent aucun
 // référentiel.
 //
+// Viennent ensuite les « étiquettes maison » (table etiquettes_perso) : la liste
+// propre à l'établissement, pour les préparations courantes qui n'ont pas de
+// fiche recette et méritent mieux qu'un bac étiqueté « Divers 3 jours ». Elles
+// se créent depuis cet onglet, en plein service, par qui étiquette.
+//
+// Modifier ou supprimer, en revanche, s'arrête au responsable cuisine : une
+// durée de vie relève de l'autocontrôle, la corriger alors que la brigade
+// l'utilise déjà est une décision de responsable. La garde d'interface
+// (canGererEtiquettes) est doublée par les politiques RLS de la table — le front
+// cache les boutons, la base refuse l'écriture.
+//
 // La sélection est en état de composant : quitter l'onglet la perd, comportement
 // accepté pour cette version.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Rôles autorisés à modifier et supprimer une étiquette maison. Liste explicite
+// et non canManageModule('haccp') : le droit « gérer » du module HACCP est
+// configurable dans Rôles & accès et exclut le responsable cuisine par défaut,
+// alors que c'est précisément lui le garant des durées de vie. Miroir exact des
+// politiques etiquettes_perso_update / _delete (migration 20260802).
+const ROLES_GESTION_ETIQUETTES = ['consultant', 'patron', 'resp_cuisine'];
 
 const es = {
   banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 10, color: 'var(--warning-text)', fontSize: 12, lineHeight: 1.5 },
@@ -69,6 +89,16 @@ const es = {
   // reste visible quel que soit le filtre saisi.
   diversTitre: { padding: '10px 14px 5px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   rechercheInput: { flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
+  // En-tête du bloc « Étiquettes maison » : titre + bouton d'ajout, toujours
+  // présent même quand la liste est vide (c'est par là qu'on crée la première).
+  blocTitre: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 5px', flexWrap: 'wrap' },
+  blocLabel: { flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  // flexShrink 0 comme les steppers : le min-height global de 44px sur les
+  // <button> écrase le flex et fait se superposer les boutons sur mobile.
+  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  vide: { padding: '4px 14px 12px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
 };
 
 // Feuille de partage du système : le PDF y arrive directement, « Imprimer » est
@@ -107,11 +137,28 @@ const fermerOnglet = (onglet) => {
   try { onglet?.close(); } catch { /* déjà fermé */ }
 };
 
+// Traduction des seules erreurs Postgres qui veulent dire quelque chose au
+// poste d'étiquetage. Le reste part en message générique : un code SQL brut
+// affiché en cuisine n'aide personne à finir son service.
+const messageErreurPerso = (err) => {
+  if (err?.code === '23505') return 'Une étiquette porte déjà ce nom.';
+  if (err?.code === '42501' || /row.level security/i.test(err?.message || '')) {
+    return 'Votre rôle ne permet pas cette action.';
+  }
+  return 'Enregistrement impossible. Réessayez.';
+};
+
 const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const today = zurichToday();
 
   const [recettes, setRecettes] = React.useState([]);
+  // Étiquettes maison de l'établissement (table etiquettes_perso).
+  const [perso, setPerso] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  // null = modale fermée · {} = création · étiquette = modification.
+  const [formPerso, setFormPerso] = React.useState(null);
+  const [savingPerso, setSavingPerso] = React.useState(false);
+  const canGererEtiquettes = ROLES_GESTION_ETIQUETTES.includes(user?.role);
   const [modeId, setModeId] = React.useState('frais');
   const [dates, setDates] = React.useState({ fabrication: today, surgelation: today, decongelation: today });
   const [search, setSearch] = React.useState('');
@@ -124,6 +171,10 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // supprimées travaillerait sur une sélection périmée.
   const quantitesRef = React.useRef(quantites);
   React.useEffect(() => { quantitesRef.current = quantites; }, [quantites]);
+  // id → 'recette' | 'perso', photo du dernier chargement. Sert uniquement à
+  // nommer la bonne origine quand une ligne sélectionnée disparaît des deux
+  // listes : à ce moment-là, plus rien d'autre ne sait d'où elle venait.
+  const sourcesRef = React.useRef(new Map());
   // Retraits du dernier changement de mode : jamais de retrait silencieux.
   const [retraits, setRetraits] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -145,27 +196,41 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // la recherche ne les masque jamais.
   const divers = React.useMemo(() => diversPourMode(modeId), [modeId]);
 
-  // ─── Chargement des recettes de l'établissement + realtime ───
+  // ─── Chargement des recettes + étiquettes maison, et realtime ───
   // L'onglet suit Cartes & Recettes en direct : toute création, modification ou
   // suppression de fiche y déclenche un event Postgres, donc un rechargement de
   // cette liste. `listRecettes` n'est pas mise en cache, il n'y a rien à
   // invalider — la liste affichée est toujours celle de la base.
+  //
+  // Les deux tables sont rechargées ENSEMBLE et non par deux effets séparés :
+  // la purge ci-dessous compare la sélection à l'ensemble des lignes vivantes,
+  // et un rechargement partiel prendrait les lignes de l'autre table pour des
+  // disparues — elle viderait la sélection à chaque event.
   React.useEffect(() => {
-    if (!legacySB) { setRecettes([]); setLoading(false); return; }
+    if (!legacySB) { setRecettes([]); setPerso([]); setLoading(false); return; }
     let mounted = true;
     const reload = async () => {
       try {
-        const list = await legacySB.db.listRecettes(etabId);
+        const [list, listPerso] = await Promise.all([
+          legacySB.db.listRecettes(etabId),
+          // Tolérance au déploiement : tant que la migration 20260802 n'est pas
+          // appliquée, la lecture échoue proprement et rend [] (cf. couche DB).
+          legacySB.db.listEtiquettesPerso ? legacySB.db.listEtiquettesPerso(etabId) : [],
+        ]);
         if (!mounted) return;
         // Les recettes archivées ne sont plus produites : pas d'étiquette.
         const actives = (list || []).filter(r => r.statut !== 'archivée');
+        // `categorie` posée ici et non en base : c'est un libellé d'affichage,
+        // qui sert aussi de matière à la recherche (cf. `visibles`).
+        const maison = (listPerso || []).map(p => ({ ...p, categorie: ETIQUETTE_PERSO_CATEGORIE }));
         setRecettes(actives);
+        setPerso(maison);
 
-        // Purge des fiches sélectionnées puis supprimées (ou archivées) depuis
+        // Purge des lignes sélectionnées puis supprimées (ou archivées) depuis
         // un autre poste. Sans elle, le compteur du bas annoncerait des
         // étiquettes que la génération ne produirait pas : elle balaie les
-        // recettes chargées, une clé orpheline y est simplement ignorée.
-        const vivants = new Set(actives.map(r => r.id));
+        // lignes chargées, une clé orpheline y est simplement ignorée.
+        const vivants = new Set([...actives.map(r => r.id), ...maison.map(p => p.id)]);
         const disparues = Object.keys(quantitesRef.current)
           .filter(id => !estDivers(id) && !vivants.has(id));
         if (disparues.length) {
@@ -175,16 +240,29 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
             Object.entries(prev).forEach(([id, n]) => { if (!perdues.has(id)) next[id] = n; });
             return next;
           });
+          // Provenance relevée AVANT mise à jour de la table des sources : une
+          // ligne disparue n'est plus dans aucune des deux listes, seule la
+          // photo précédente sait laquelle des deux la portait. L'opérateur doit
+          // savoir où la ligne a été supprimée pour la recréer au bon endroit.
+          const nbMaison = disparues.filter(id => sourcesRef.current.get(id) === 'perso').length;
+          const nbFiches = disparues.length - nbMaison;
+          const motifs = [];
+          if (nbFiches) motifs.push(`${nbFiches} supprimée${nbFiches > 1 ? 's' : ''} de Cartes & Recettes`);
+          if (nbMaison) motifs.push(`${nbMaison} étiquette${nbMaison > 1 ? 's' : ''} maison supprimée${nbMaison > 1 ? 's' : ''}`);
           notifyLegacy(
-            `${disparues.length} préparation${disparues.length > 1 ? 's' : ''} retirée${disparues.length > 1 ? 's' : ''} de la sélection : supprimée${disparues.length > 1 ? 's' : ''} de Cartes & Recettes.`,
+            `${disparues.length} ligne${disparues.length > 1 ? 's' : ''} retirée${disparues.length > 1 ? 's' : ''} de la sélection : ${motifs.join(', ')}.`,
             'warning',
           );
         }
+        sourcesRef.current = new Map([
+          ...actives.map(r => [r.id, 'recette']),
+          ...maison.map(p => [p.id, 'perso']),
+        ]);
       } catch (err) { console.error('[EtiquettesDlc load]', err); }
       finally { if (mounted) setLoading(false); }
     };
     reload();
-    const unsub = legacySB.realtime.subscribeReload(['recettes'], reload);
+    const unsub = legacySB.realtime.subscribeReload(['recettes', 'etiquettes_perso'], reload);
     return () => { mounted = false; if (unsub) unsub(); };
   }, [etabId, legacySB]);
 
@@ -207,22 +285,33 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Recettes ET étiquettes maison : `changerMode` y cherche les lignes devenues
+  // inéligibles, et une étiquette maison non congelable doit en sortir comme une
+  // fiche non congelable.
   const parId = React.useMemo(() => {
     const m = new Map();
     recettes.forEach(r => m.set(r.id, r));
+    perso.forEach(p => m.set(p.id, p));
     return m;
-  }, [recettes]);
+  }, [recettes, perso]);
 
-  const visibles = React.useMemo(() => {
-    const q = normalizeSearch(searchApplied.trim());
-    if (!q) return recettes;
-    return recettes.filter(r => {
-      // Une recette déjà sélectionnée reste visible même hors du filtre courant,
-      // sinon on imprimerait un lot dont une partie a disparu de l'écran.
+  // Filtre commun aux deux blocs filtrables (étiquettes maison et recettes).
+  // Une ligne déjà sélectionnée reste visible même hors du filtre courant,
+  // sinon on imprimerait un lot dont une partie a disparu de l'écran.
+  const filtrer = React.useCallback((liste, q) => {
+    if (!q) return liste;
+    return liste.filter(r => {
       if (Object.prototype.hasOwnProperty.call(quantites, r.id)) return true;
       return normalizeSearch(`${r.nom || ''} ${r.categorie || ''}`).includes(q);
     });
-  }, [recettes, searchApplied, quantites]);
+  }, [quantites]);
+
+  const requete = React.useMemo(() => normalizeSearch(searchApplied.trim()), [searchApplied]);
+  const visibles = React.useMemo(() => filtrer(recettes, requete), [recettes, requete, filtrer]);
+  // Les étiquettes maison suivent la recherche, contrairement aux cases Divers :
+  // ce sont de vraies lignes de référentiel, et la liste d'un établissement
+  // rodé pousserait sinon les recettes hors de l'écran.
+  const persoVisibles = React.useMemo(() => filtrer(perso, requete), [perso, requete, filtrer]);
 
   const nbSelection = Object.keys(quantites).length;
   const totalEtiquettes = Object.values(quantites).reduce((s, n) => s + (Number(n) || 0), 0);
@@ -286,9 +375,10 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     if (dateManquante) { notifyLegacy(`Renseignez la ${dateManquante.label.toLowerCase()}.`, 'warning'); return; }
 
     // Ordre des pages : ordre de la liste — cases Divers épinglées en tête,
-    // puis les recettes triées par nom côté DB — quantités groupées par ligne.
+    // puis les étiquettes maison, puis les recettes, les deux triées par nom
+    // côté DB — quantités groupées par ligne.
     const etiquettes = [];
-    [...divers, ...recettes].forEach(r => {
+    [...divers, ...perso, ...recettes].forEach(r => {
       const n = quantites[r.id];
       if (!n || !estEligible(r, modeId)) return;
       const lignes = lignesEtiquette({ recette: r, modeId, dates });
@@ -403,12 +493,74 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     }
   };
 
+  // ─── Étiquettes maison : création, modification, suppression ───
+  // Créer reste ouvert à qui étiquette : le cuisinier au poste doit pouvoir
+  // nommer son bac sans attendre son responsable. Modifier et supprimer, non —
+  // une durée déjà en service engage l'autocontrôle. Les deux gardes ci-dessous
+  // doublent les politiques RLS de la table, elles ne les remplacent pas.
+  const enregistrerPerso = async (valeurs) => {
+    if (savingPerso || !legacySB) return;
+    if (valeurs.id && !canGererEtiquettes) return;
+    setSavingPerso(true);
+    try {
+      const saved = await legacySB.db.upsertEtiquettePerso({
+        ...valeurs,
+        etablissementId: etabId,
+        createdBy: user?.id || null,
+      });
+      const ligne = { ...saved, categorie: ETIQUETTE_PERSO_CATEGORIE };
+      // Insertion immédiate dans la liste : l'event realtime confirmera, mais
+      // l'opérateur ne doit pas attendre l'aller-retour pour voir sa ligne.
+      setPerso(prev => [...prev.filter(p => p.id !== ligne.id), ligne]
+        .sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')));
+      // Une étiquette qu'on vient de créer est une étiquette qu'on va imprimer :
+      // elle entre dans le lot. Une modification ne touche pas à la sélection.
+      if (!valeurs.id) setQuantites(prev => ({ ...prev, [ligne.id]: prev[ligne.id] || 1 }));
+      setFormPerso(null);
+      notifyLegacy(
+        valeurs.id ? `« ${ligne.nom} » modifiée.` : `« ${ligne.nom} » ajoutée et sélectionnée.`,
+        'success',
+      );
+    } catch (err) {
+      console.error('[EtiquettesDlc upsertEtiquettePerso]', err);
+      notifyLegacy(messageErreurPerso(err), 'error');
+    } finally {
+      setSavingPerso(false);
+    }
+  };
+
+  const supprimerPerso = async (etiquette) => {
+    if (!canGererEtiquettes || !legacySB) return;
+    // Les étiquettes déjà collées sur les bacs restent valables : c'est le
+    // modèle qui part, pas la traçabilité. Le dire évite l'hésitation.
+    if (!confirmLegacy(
+      `Supprimer l'étiquette « ${etiquette.nom} » ?\n\nLes étiquettes déjà imprimées restent valables.`,
+    )) return;
+    try {
+      await legacySB.db.deleteEtiquettePerso(etiquette.id);
+      setPerso(prev => prev.filter(p => p.id !== etiquette.id));
+      setQuantites(prev => {
+        if (!Object.prototype.hasOwnProperty.call(prev, etiquette.id)) return prev;
+        const next = { ...prev };
+        delete next[etiquette.id];
+        return next;
+      });
+      notifyLegacy(`« ${etiquette.nom} » supprimée.`, 'success');
+    } catch (err) {
+      console.error('[EtiquettesDlc deleteEtiquettePerso]', err);
+      notifyLegacy(messageErreurPerso(err), 'error');
+    }
+  };
+
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement des recettes…</div>;
 
-  // Une seule écriture de la ligne pour les deux blocs : les cases Divers ne
-  // sont pas un affichage à part, ce sont des lignes comme les autres — mêmes
-  // cases à cocher, même stepper, même DLC calculée.
-  const renderLigne = (r) => {
+  // Une seule écriture de la ligne pour les trois blocs : cases Divers et
+  // étiquettes maison ne sont pas un affichage à part, ce sont des lignes comme
+  // les autres — mêmes cases à cocher, même stepper, même DLC calculée.
+  // `actions` : boutons de fin de ligne (Modifier / Supprimer des étiquettes
+  // maison). Toujours appeler renderLigne dans une lambda explicite : passé
+  // directement à .map(), le second argument serait l'index et s'afficherait.
+  const renderLigne = (r, actions = null) => {
     const eligible = estEligible(r, modeId);
     const selected = Object.prototype.hasOwnProperty.call(quantites, r.id);
     const dlc = eligible ? calculerDlc(r, modeId, dates) : null;
@@ -447,6 +599,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
             <button type="button" style={es.stepBtn} onClick={() => setQuantite(r.id, quantites[r.id] + 1)} aria-label="Ajouter une étiquette">+</button>
           </div>
         )}
+        {actions}
       </div>
     );
   };
@@ -526,7 +679,31 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         {/* Cases Divers : au-dessus de la recherche, donc toujours à l'écran,
             filtre saisi ou non. Un bac sans fiche s'étiquette sans détour. */}
         <div style={es.diversTitre}>Divers</div>
-        {divers.map(renderLigne)}
+        {divers.map(d => renderLigne(d))}
+
+        {/* Étiquettes maison : le référentiel de l'établissement. Le bouton
+            d'ajout reste affiché liste vide et recherche en cours — c'est par
+            là qu'on crée la première, et en service on ne cherche pas un
+            bouton. */}
+        <div style={es.blocTitre}>
+          <span style={es.blocLabel}>Étiquettes maison</span>
+          <button type="button" style={es.ajoutBtn} onClick={() => setFormPerso({})}>
+            + Ajouter une étiquette
+          </button>
+        </div>
+        {persoVisibles.map(p => renderLigne(p, canGererEtiquettes ? (
+          <div style={es.stepper}>
+            <button type="button" style={es.actionBtn} onClick={() => setFormPerso(p)}>Modifier</button>
+            <button type="button" style={es.actionBtnDanger} onClick={() => supprimerPerso(p)}>Supprimer</button>
+          </div>
+        ) : null))}
+        {persoVisibles.length === 0 && (
+          <div style={es.vide}>
+            {perso.length === 0
+              ? 'Aucune étiquette maison. Ajoutez-en une pour les préparations courantes qui n\'ont pas de fiche recette.'
+              : 'Aucune étiquette maison ne correspond à la recherche.'}
+          </div>
+        )}
 
         <div style={es.rechercheWrap}>
           <input
@@ -548,7 +725,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           </div>
         )}
 
-        {visibles.map(renderLigne)}
+        {visibles.map(r => renderLigne(r))}
       </div>
 
       {/* ── Dernier lot ──
@@ -611,6 +788,17 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
             : (agent ? 'Envoyer à l\'imprimante' : 'Générer les étiquettes')}
         </button>
       </div>
+
+      {/* ── Création / modification d'une étiquette maison ── */}
+      {formPerso && (
+        <EtiquettePersoForm
+          etiquette={formPerso.id ? formPerso : null}
+          existantes={perso}
+          busy={savingPerso}
+          onSave={enregistrerPerso}
+          onCancel={() => { if (!savingPerso) setFormPerso(null); }}
+        />
+      )}
     </div>
   );
 };
