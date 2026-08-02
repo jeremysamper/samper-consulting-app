@@ -2,6 +2,7 @@ import React from 'react';
 import { dbService } from '../services/dbService.js';
 import { getDemoData } from '../data/demoData.js';
 import { notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
+import { useResumeRefresh } from './useResumeRefresh.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useCartes - source unique pour la liste des cartes (menus) d'un établissement.
@@ -15,7 +16,17 @@ import { notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/l
 //
 // La suppression d'une carte n'efface AUCUN plat / recette / fiche : seules les
 // liaisons carte_plats / carte_fiches_salle sont retirées (ON DELETE CASCADE).
+//
+// Robustesse au réveil (tablette en veille, absence prolongée) : une lecture en
+// échec (réseau coupé, JWT expiré) ne vide JAMAIS la liste, elle laisse la
+// dernière version connue à l'écran et reprogramme un essai. `status` dit si on
+// détient des données fiables ; l'UI ne doit annoncer « Aucune carte » que sur
+// status === 'ready'. Sans ça un simple 401 au réveil affichait un
+// établissement vide alors que ses cartes étaient bien en base.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const RETRY_MIN_MS = 4000;
+const RETRY_MAX_MS = 30000;
 
 export function useCartes(etabId) {
   const legacySB = dbService.getBridge();
@@ -23,21 +34,64 @@ export function useCartes(etabId) {
   const [allCartes, setAllCartes] = React.useState(() =>
     legacySB ? [] : (readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId)
   );
+  // 'loading' : aucune lecture n'a encore abouti · 'ready' : on détient des
+  // données valides · 'error' : la première lecture a échoué (rien à afficher).
+  const [status, setStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
+  // Rechargement de l'effet courant, exposé aux appelants (bouton « Réessayer »).
+  const reloadRef = React.useRef(null);
 
   React.useEffect(() => {
     if (!legacySB) {
       setAllCartes((readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId));
+      setStatus('ready');
       return undefined;
     }
     let mounted = true;
+    let retryTimer = null;
+    let retryDelay = RETRY_MIN_MS;
+    let loadedOnce = false;
+
     const reload = async () => {
-      try { const c = await legacySB.db.listCartes(etabId); if (mounted) setAllCartes(Array.isArray(c) ? c : []); }
-      catch (e) { /* le realtime relancera */ }
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      try {
+        const c = await legacySB.db.listCartes(etabId, { strict: true });
+        if (!mounted) return;
+        setAllCartes(Array.isArray(c) ? c : []);
+        loadedOnce = true;
+        retryDelay = RETRY_MIN_MS;
+        setStatus('ready');
+      } catch (e) {
+        if (!mounted) return;
+        // Échec : on conserve la liste affichée et on réessaie, en doublant
+        // l'attente. Le retry est programmé même onglet caché : au réveil d'une
+        // tablette l'appareil peut se déclarer « hidden » au moment précis de
+        // l'échec, et attendre un prochain événement de visibilité qui ne
+        // viendra pas laisserait justement l'écran vide. Les navigateurs
+        // bridant déjà les timers en arrière-plan, le coût reste nul.
+        if (!loadedOnce) setStatus('error');
+        retryTimer = setTimeout(reload, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+      }
     };
+
+    reloadRef.current = reload;
+    // Changement d'établissement : on repart d'un état « en cours », sinon un
+    // échec de lecture sur le nouvel établissement passerait pour un vide fiable.
+    setStatus('loading');
     reload();
     const unsub = legacySB.realtime.subscribeReload('cartes', reload);
-    return () => { mounted = false; unsub && unsub(); };
+    return () => {
+      mounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (reloadRef.current === reload) reloadRef.current = null;
+      unsub && unsub();
+    };
   }, [etabId, legacySB, demoData]);
+
+  const reload = React.useCallback(() => { reloadRef.current && reloadRef.current(); }, []);
+  // Réveil de la tablette / retour d'onglet / retour du réseau : le canal
+  // realtime a pu mourir pendant la veille, on refait une lecture.
+  useResumeRefresh(reload);
 
   const cartes = React.useMemo(() => allCartes.filter(c => !c.archive), [allCartes]);
   const archivedCartes = React.useMemo(() => allCartes.filter(c => c.archive === true), [allCartes]);
@@ -57,6 +111,9 @@ export function useCartes(etabId) {
       try {
         const saved = await legacySB.db.upsertCarte(carte);
         setAllCartes(prev => (prev.some(c => c.id === saved.id) ? prev : [...prev, saved]));
+        // L'écriture a abouti : la liste à l'écran est de nouveau fiable, même
+        // si la dernière lecture avait échoué (réseau revenu entre-temps).
+        setStatus('ready');
         return saved;
       } catch (err) { notifyLegacy('Erreur création de carte : ' + (err.message || err), 'error'); return null; }
     }
@@ -116,5 +173,5 @@ export function useCartes(etabId) {
     setAllCartes(prev => prev.filter(c => c.id !== id));
   }, [legacySB, demoData]);
 
-  return { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte };
+  return { cartes, archivedCartes, status, reload, addCarte, renameCarte, archiveCarte, deleteCarte };
 }

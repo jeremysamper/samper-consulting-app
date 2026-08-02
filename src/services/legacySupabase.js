@@ -26,6 +26,23 @@ export function installLegacySupabase() {
   let _userSettingsCache = null;
 
   // ─────────────────────────────────────────
+  // ÉCHEC DE LECTURE : silencieux par défaut, remontable en mode strict
+  // ─────────────────────────────────────────
+  // Historiquement toutes les lectures de liste renvoient [] quand la requête
+  // échoue. Résultat : un 401 (JWT expiré pendant la veille d'une tablette) ou
+  // une coupure réseau est indiscernable d'un établissement réellement vide, et
+  // l'écran annonce « Aucune carte » alors que les données existent en base.
+  // `{ strict: true }` fait remonter l'erreur : l'appelant garde sa dernière
+  // liste valide, affiche un état « indisponible » et réessaie.
+  // À utiliser dans tout nouvel appel ; le défaut reste [] pour ne pas casser
+  // les appelants historiques qui n'ont pas de gestion d'erreur.
+  function _readFailed(label, error, strict) {
+    console.error(label, error);
+    if (strict) throw error;
+    return [];
+  }
+
+  // ─────────────────────────────────────────
   // CACHE COURT + DÉDUP IN-FLIGHT pour les lectures lourdes
   // ─────────────────────────────────────────
   // Objectif : absorber les clics rapides entre modules qui chargent tous la
@@ -529,11 +546,12 @@ export function installLegacySupabase() {
     },
 
     // ─── RECETTES ───
-    async listRecettes(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listRecettes(etabId, { strict = false } = {}) {
       let q = client.from('recettes').select('*').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listRecettes]', error); return []; }
+      if (error) return _readFailed('[listRecettes]', error, strict);
       return (data || []).map(this.mapRecetteFromDB);
     },
 
@@ -848,14 +866,15 @@ export function installLegacySupabase() {
     // ═══════════════════════════════════════════════════════════════
     // PLATS (M2M avec recettes via plat_recettes)
     // ═══════════════════════════════════════════════════════════════
-    async listPlats(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listPlats(etabId, { strict = false } = {}) {
       const { data, error } = await client
         .from('plats')
         .select('*, plat_recettes(id, recette_id, role, ordre), carte_plats(carte_id)')
         .eq('etablissement_id', etabId)
         .order('ordre', { ascending: true })
         .order('nom', { ascending: true });
-      if (error) { console.error('[listPlats]', error); return []; }
+      if (error) return _readFailed('[listPlats]', error, strict);
       return (data || []).map(this.mapPlatFromDB);
     },
 
@@ -1244,11 +1263,12 @@ export function installLegacySupabase() {
     },
 
     // ─── CARTES ───
-    async listCartes(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listCartes(etabId, { strict = false } = {}) {
       let q = client.from('cartes').select('*').order('created_at', { ascending: true });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listCartes]', error); return []; }
+      if (error) return _readFailed('[listCartes]', error, strict);
       return (data || []).map(this.mapCarteFromDB);
     },
 

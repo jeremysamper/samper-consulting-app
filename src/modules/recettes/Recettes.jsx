@@ -7,6 +7,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { ALLERGENES_MAP, slug, buildRecettePdfData } from '../../utils/recettePdfData.js';
 import { useCartes } from '../../hooks/useCartes.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
@@ -18,6 +19,31 @@ import { dureesVie } from '../../utils/etiquettesDlc.js';
 // CARTES & RECETTES
 // ALLERGENES_MAP, slug et buildRecettePdfData sont partagés avec le module
 // Consultant via src/utils/recettePdfData.js (source unique de l'export fiche).
+
+// Réessai des lectures après un échec réseau (réveil de tablette, coupure) :
+// on double l'attente à chaque échec, plafonnée à 30 s.
+const RETRY_MIN_MS = 4000;
+const RETRY_MAX_MS = 30000;
+
+// ─── PanneauEtat : grand panneau centré (vide, chargement, indisponible) ───
+// Un chargement en cours ou une lecture en échec ne doit JAMAIS s'afficher
+// comme un établissement vide : la brigade croyait ses cartes perdues au
+// réveil de la tablette.
+const PanneauEtat = ({ titre, texte, onRetry }) => (
+  <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
+    <div style={{fontSize:40, opacity:0.4}}>🍽</div>
+    <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>{titre}</div>
+    <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>{texte}</div>
+    {onRetry && (
+      <button
+        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)'}}
+        onClick={onRetry}
+      >
+        Réessayer
+      </button>
+    )}
+  </div>
+);
 
 // ─── ScalingModal : modale de calculateur de quantités (portions OU grammage cible) ───
 const ScalingModal = ({ recette, onClose }) => {
@@ -1298,11 +1324,18 @@ const Recettes = ({ user, etablissement }) => {
   const canManageCartes = canManageModule(user.role, 'recettes');
 
   // Cartes (menus) de l'établissement - source unique partagée + realtime.
-  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
+  // `cartesStatus` distingue « pas encore chargé / lecture en échec » de
+  // « réellement aucune carte » : au réveil d'une tablette la lecture peut
+  // repartir en 401 et il ne faut surtout pas annoncer un établissement vide.
+  const { cartes, archivedCartes, status: cartesStatus, reload: reloadCartes,
+          addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)
   const [recettes, setRecettes] = React.useState([]);
   const [plats, setPlats] = React.useState([]);
+  // Même contrat que cartesStatus, pour les recettes et les plats.
+  const [dataStatus, setDataStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
+  const reloadDataRef = React.useRef(null);
   const [expandedPlats, setExpandedPlats] = React.useState(new Set());
   const [showExportModal, setShowExportModal] = React.useState(false);
   const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
@@ -1326,28 +1359,55 @@ const Recettes = ({ user, etablissement }) => {
   React.useEffect(() => {
     if (!legacySB) {
       setRecettes(readLegacyStorage('sc_recettes', demoData.recettes));
+      setDataStatus('ready');
       return;
     }
     let unsubRec = null, unsubPlats = null, unsubPR = null, unsubCP = null, mounted = true;
+    let retryTimer = null;
+    let retryDelay = RETRY_MIN_MS;
+    let loadedOnce = false;
 
-    (async () => {
+    // Lectures en mode strict : une erreur remonte au lieu de renvoyer []. Les
+    // listes déjà à l'écran ne sont donc jamais écrasées par un échec réseau
+    // (réveil de tablette, JWT expiré) et un essai est reprogrammé.
+    const runLoad = async (loader) => {
       try {
-        const [recs, pls] = await Promise.all([
-          legacySB.db.listRecettes(etabId),
-          legacySB.db.listPlats(etabId),
-        ]);
+        await loader();
         if (!mounted) return;
-        setRecettes(recs);
-        setPlats(pls);
-      } catch (err) { console.error('[Recettes load]', err); }
-    })();
+        loadedOnce = true;
+        retryDelay = RETRY_MIN_MS;
+        setDataStatus('ready');
+      } catch (err) {
+        if (!mounted) return;
+        console.error('[Recettes load]', err);
+        if (!loadedOnce) setDataStatus('error');
+        // Réessai programmé même onglet caché : cf. useCartes.
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimer = setTimeout(reloadAll, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+      }
+    };
 
-    const refreshRec = async () => {
-      try { const r = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(r); } catch(e) {}
+    const fetchRecettes = async () => {
+      const r = await legacySB.db.listRecettes(etabId, { strict: true });
+      if (mounted) setRecettes(r);
     };
-    const refreshPlats = async () => {
-      try { const p = await legacySB.db.listPlats(etabId); if (mounted) setPlats(p); } catch(e) {}
+    const fetchPlats = async () => {
+      const p = await legacySB.db.listPlats(etabId, { strict: true });
+      if (mounted) setPlats(p || []);
     };
+
+    function reloadAll() {
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      return runLoad(() => Promise.all([fetchRecettes(), fetchPlats()]));
+    }
+    const refreshRec = () => runLoad(fetchRecettes);
+    const refreshPlats = () => runLoad(fetchPlats);
+
+    reloadDataRef.current = reloadAll;
+    setDataStatus('loading');
+    reloadAll();
+
     unsubRec = legacySB.realtime.subscribeReload('recettes', refreshRec);
     unsubPlats = legacySB.realtime.subscribeReload('plats', refreshPlats);
     unsubPR = legacySB.realtime.subscribeReload('plat_recettes', refreshPlats);
@@ -1355,12 +1415,22 @@ const Recettes = ({ user, etablissement }) => {
 
     return () => {
       mounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (reloadDataRef.current === reloadAll) reloadDataRef.current = null;
       unsubRec && unsubRec();
       unsubPlats && unsubPlats();
       unsubPR && unsubPR();
       unsubCP && unsubCP();
     };
   }, [etabId]);
+
+  const reloadData = React.useCallback(() => { reloadDataRef.current && reloadDataRef.current(); }, []);
+  // Réveil de la tablette / retour d'onglet / retour du réseau : le canal
+  // realtime est mort pendant la veille, on refait une lecture.
+  useResumeRefresh(reloadData);
+
+  // Rechargement manuel (bouton « Réessayer ») : cartes + recettes + plats.
+  const retryAll = React.useCallback(() => { reloadCartes(); reloadData(); }, [reloadCartes, reloadData]);
 
   // Filtrer par établissement courant (déjà filtré par Supabase mais on garde le
   // filtre côté client pour le fallback). Les recettes archivées (statut géré
@@ -1459,19 +1529,45 @@ const Recettes = ({ user, etablissement }) => {
 
       {!isLibrary ? (
         !activeCarte ? (
-          <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
-            <div style={{fontSize:40, opacity:0.4}}>🍽</div>
-            <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>Aucune carte</div>
-            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>
-              {canManageCartes ? 'Créez une carte avec le bouton « + Carte ».' : 'Aucune carte définie pour cet établissement.'}
-            </div>
-          </div>
+          // « Aucune carte » ne s'affiche que si la lecture a VRAIMENT abouti sur
+          // zéro carte. Tant qu'elle est en cours ou en échec (tablette qui sort
+          // de veille, JWT expiré, réseau coupé), on le dit et on propose un
+          // nouvel essai - un rechargement automatique est déjà programmé.
+          cartesStatus !== 'ready' ? (
+            <PanneauEtat
+              titre={cartesStatus === 'loading' ? 'Chargement des cartes…' : 'Cartes indisponibles'}
+              texte={cartesStatus === 'loading'
+                ? 'Les cartes de cet établissement arrivent.'
+                : (online
+                  ? 'La connexion a été interrompue (mise en veille de l’appareil, réseau instable). Les cartes ne sont pas perdues : nouvel essai automatique en cours.'
+                  : 'Hors ligne : les cartes s’afficheront au retour du réseau.')}
+              onRetry={cartesStatus === 'error' ? retryAll : null}
+            />
+          ) : (
+            <PanneauEtat
+              titre="Aucune carte"
+              texte={canManageCartes ? 'Créez une carte avec le bouton « + Carte ».' : 'Aucune carte définie pour cet établissement.'}
+            />
+          )
         ) : platsCarte.length === 0 ? (
-          <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
-            <div style={{fontSize:40, opacity:0.4}}>🍽</div>
-            <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>Aucun plat sur « {activeCarte.nom} »</div>
-            <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>Rattachez des plats à cette carte depuis le module "Outils consultant".</div>
-          </div>
+          // Même règle pour les plats : un échec de lecture ne doit pas passer
+          // pour une carte vide.
+          dataStatus !== 'ready' ? (
+            <PanneauEtat
+              titre={dataStatus === 'loading' ? 'Chargement des plats…' : 'Plats indisponibles'}
+              texte={dataStatus === 'loading'
+                ? `Les plats de « ${activeCarte.nom} » arrivent.`
+                : (online
+                  ? 'La connexion a été interrompue. Nouvel essai automatique en cours.'
+                  : 'Hors ligne : les plats s’afficheront au retour du réseau.')}
+              onRetry={dataStatus === 'error' ? retryAll : null}
+            />
+          ) : (
+            <PanneauEtat
+              titre={`Aucun plat sur « ${activeCarte.nom} »`}
+              texte={'Rattachez des plats à cette carte depuis le module "Outils consultant".'}
+            />
+          )
         ) : (
         <div style={rs.carteWrap}>
           {/* Carte header */}
@@ -1583,10 +1679,19 @@ const Recettes = ({ user, etablissement }) => {
       ) : (
         <div style={rs.recettesWrap}>
           {recettesEtab.length === 0 && plats.length === 0 && (
-            online
-              ? <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucune recette pour cet établissement. Créez-en depuis "Outils consultant".</div>
-              // Hors-ligne sans cache : état vide propre, pas de chargement infini.
-              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Hors ligne : les recettes de cet établissement n'ont pas encore été chargées sur cet appareil. Elles s'afficheront au retour du réseau.</div>
+            dataStatus !== 'ready'
+              // Lecture en cours ou en échec : surtout ne pas annoncer une
+              // bibliothèque vide (cf. PanneauEtat).
+              ? <PanneauEtat
+                  titre={dataStatus === 'loading' ? 'Chargement des recettes…' : 'Recettes indisponibles'}
+                  texte={dataStatus === 'loading'
+                    ? 'La bibliothèque de cet établissement arrive.'
+                    : (online
+                      ? 'La connexion a été interrompue. Rien n’est perdu : nouvel essai automatique en cours.'
+                      : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
+                  onRetry={dataStatus === 'error' ? retryAll : null}
+                />
+              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucune recette pour cet établissement. Créez-en depuis "Outils consultant".</div>
           )}
 
           {/* ─── Hiérarchie plats avec leurs recettes ─── */}
