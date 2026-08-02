@@ -672,12 +672,18 @@ export function installLegacySupabase() {
       let q = client.from('etiquettes_perso').select('*').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      // Liste vide plutôt qu'une exception : un front déployé avant
-      // l'application de la migration doit continuer d'imprimer ses étiquettes
-      // de recettes et ses cases Divers. L'appelant qui a besoin de distinguer
-      // « table absente / lecture en échec » de « aucune étiquette maison »
-      // demande explicitement strict.
-      if (error) return _readFailed('[listEtiquettesPerso]', error, strict);
+      // Table absente = liste vide MÊME en strict : un front déployé avant
+      // l'application de la migration 20260802 doit continuer d'imprimer ses
+      // étiquettes de recettes et ses cases Divers, sans état « indisponible »
+      // ni réessai en boucle qui ne trouveront jamais la table. Les autres
+      // erreurs (401, réseau, RLS) sont, elles, de vrais échecs de lecture.
+      if (error) {
+        if (_relationAbsente(error)) {
+          console.warn('[listEtiquettesPerso] table absente, migration non appliquée');
+          return [];
+        }
+        return _readFailed('[listEtiquettesPerso]', error, strict);
+      }
       return (data || []).map(this.mapEtiquettePersoFromDB);
     },
 
