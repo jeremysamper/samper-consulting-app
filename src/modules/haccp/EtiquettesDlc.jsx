@@ -6,7 +6,7 @@ import { normalizeSearch } from '../../utils/searchText.js';
 import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  ETIQUETTE_MEDIA, ETIQUETTE_MODES, ETIQUETTE_PERSO_CATEGORIE, ETIQUETTES_DIVERS,
+  ETIQUETTE_MEDIA, ETIQUETTE_MODES, ETIQUETTE_PERSO_CATEGORIE,
   QUANTITE_MAX, QUANTITE_MIN,
   calculerDlc, diversPourMode, dureeVieMode, estDivers, estEligible, formatDateFr, getMode,
   lignesEtiquette, motifNonEligible,
@@ -28,21 +28,42 @@ import { hs } from './HACCP.styles.js';
 // ressortait imprimée en bas de l'étiquette. Le visualiseur PDF, lui, sort la
 // page telle quelle.
 //
-// Un lot porte UN seul mode : en cuisine, on étiquette un lot qui part au même
-// endroit. Les durées de vie ne se saisissent pas ici - elles relèvent de
-// l'autocontrôle et vivent sur la fiche recette.
+// ─── UN LOT, PLUSIEURS MODES ─────────────────────────────────────────────────
+// Un lot portait UN seul mode : changer de mode purgeait la sélection devenue
+// inéligible. En service, l'étiquetage ne se range pas comme ça — on compte
+// 3 étiquettes de guacamole frais, puis on passe au congélateur pour 2 abricots
+// confits, et les trois premières ne doivent pas disparaître.
 //
-// La liste est le miroir de Cartes & Recettes : elle se recharge sur event
-// realtime, donc une fiche créée, renommée, archivée ou supprimée là-bas se voit
-// ici sans rechargement de page. Une fiche supprimée pendant qu'elle était
-// cochée quitte aussi la sélection, sinon le compteur du bas annoncerait des
-// étiquettes que la génération ne produirait pas.
+// La sélection est donc tenue PAR MODE (`lots`), et les dates aussi
+// (`datesParMode`). Changer d'onglet ne retire plus rien : il montre un autre
+// plan de travail. La génération parcourt les modes dans l'ordre et sort un PDF
+// unique, les étiquettes groupées par mode — une pile par destination.
+//
+// Les dates sont par mode et NON partagées, même pour un champ de même nom :
+// une préparation fabriquée lundi et surgelée mercredi porte une date de
+// fabrication qui n'est pas celle du lot frais du jour. Partager le champ
+// aurait réécrit en silence la date d'un lot déjà composé — inacceptable sur un
+// document d'autocontrôle.
+//
+// ─── LA LISTE EST LE MIROIR DE CARTES & RECETTES ─────────────────────────────
+// Elle se recharge sur event realtime, donc une fiche créée, renommée, archivée
+// ou supprimée là-bas se voit ici sans rechargement de page. Une fiche
+// supprimée pendant qu'elle était cochée quitte aussi la sélection, sinon le
+// compteur du bas annoncerait des étiquettes que la génération ne produirait
+// pas.
+//
+// Les lectures sont STRICTES : une erreur remonte au lieu de rendre []. Sans
+// ça, le réveil d'une tablette (JWT expiré, réseau pas encore revenu) rendait
+// une liste vide, la purge prenait toutes les lignes cochées pour des fiches
+// supprimées, et la sélection s'effaçait sous les doigts de l'opérateur —
+// « je coche et ça ne coche pas ». On garde désormais la dernière liste valide,
+// on le dit, et on réessaie.
 //
 // En tête de liste, hors recherche, les cases « Divers » : des étiquettes
 // génériques (3 / 5 / 7 jours au froid positif, 90 jours au congélateur) pour
 // un bac qui n'a pas de fiche. Elles vivent dans utils/etiquettesDlc.js, pas en
-// base — elles valent pour tous les établissements et ne polluent aucun
-// référentiel.
+// base — elles valent pour tous les établissements, ne polluent aucun
+// référentiel, et restent imprimables même quand la base est injoignable.
 //
 // Viennent ensuite les « étiquettes maison » (table etiquettes_perso) : la liste
 // propre à l'établissement, pour les préparations courantes qui n'ont pas de
@@ -66,6 +87,26 @@ import { hs } from './HACCP.styles.js';
 // politiques etiquettes_perso_update / _delete (migration 20260802).
 const ROLES_GESTION_ETIQUETTES = ['consultant', 'patron', 'resp_cuisine'];
 
+// Réessai après un échec de lecture (réveil de tablette, coupure réseau) :
+// l'attente double à chaque échec, plafonnée à 30 s. Même contrat que le module
+// Recettes, qui a essuyé le même défaut.
+const RETRY_MIN_MS = 4000;
+const RETRY_MAX_MS = 30000;
+
+const MODE_IDS = ETIQUETTE_MODES.map(m => m.id);
+
+// Identité stable pour un mode sans sélection : sert de dépendance à des
+// useMemo / useCallback, un `{}` neuf à chaque rendu les invaliderait tous.
+const VIDE = Object.freeze({});
+
+const lotsVides = () => Object.fromEntries(MODE_IDS.map(id => [id, {}]));
+
+// Chaque mode part avec SES dates, toutes au jour même : le cas courant est
+// « tout ce que j'étiquette maintenant a été fait maintenant ».
+const datesInitiales = (jour) => Object.fromEntries(
+  ETIQUETTE_MODES.map(m => [m.id, Object.fromEntries(m.dates.map(d => [d.id, jour]))]),
+);
+
 const es = {
   banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 10, color: 'var(--warning-text)', fontSize: 12, lineHeight: 1.5 },
   bloc: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
@@ -75,6 +116,12 @@ const es = {
   nom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 },
   meta: { fontSize: 11, color: 'var(--text2)', marginTop: 3 },
   dlc: { fontSize: 12, fontWeight: 700, color: 'var(--accent)' },
+  // Cible tactile de la case à cocher : 44 px, la case dessinée n'en faisant
+  // que 20. Une case de 18 px se rate une fois sur trois sur un iPad tenu d'une
+  // main en service — et un tap raté ressemble exactement à un bug. Les marges
+  // négatives absorbent la cible dans la hauteur de ligne existante.
+  caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, marginLeft: -8, marginTop: -4, marginBottom: -4, flexShrink: 0, touchAction: 'manipulation' },
+  case: { width: 20, height: 20, flexShrink: 0, margin: 0, cursor: 'inherit', accentColor: 'var(--accent)' },
   stepper: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se superposer les boutons d'une rangée sur mobile.
@@ -83,6 +130,15 @@ const es = {
   // Barre de résumé posée en bas de l'onglet (sticky, jamais flottante).
   resume: { position: 'sticky', bottom: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
   resumeTotal: { fontSize: 13, color: 'var(--text2)', flex: 1, minWidth: 160 },
+  // Compteur porté par l'onglet de mode : c'est ce qui rend visible, sans
+  // quitter l'écran courant, qu'un autre mode contient déjà des étiquettes.
+  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 999, background: 'var(--accent)', color: '#fff', fontSize: 10.5, fontWeight: 700, verticalAlign: 'middle' },
+  // Récapitulatif du lot multi-mode : affiché uniquement quand le lot porte
+  // plusieurs modes, seul cas où l'onglet courant ne dit pas tout.
+  recap: { background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 10, overflow: 'hidden' },
+  recapTitre: { padding: '10px 14px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  recapLigne: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
+  recapInfo: { flex: 1, minWidth: 160, fontSize: 12.5, color: 'var(--text2)' },
   dernierLot: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' },
   rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
   // Bloc épinglé des cases Divers : posé au-dessus de la recherche pour qu'il
@@ -154,29 +210,31 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const [recettes, setRecettes] = React.useState([]);
   // Étiquettes maison de l'établissement (table etiquettes_perso).
   const [perso, setPerso] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  // 'loading' = premier chargement · 'ready' = liste à jour · 'error' = la
+  // dernière lecture a échoué (la liste affichée est celle d'avant, conservée).
+  const [status, setStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
   // null = modale fermée · {} = création · étiquette = modification.
   const [formPerso, setFormPerso] = React.useState(null);
   const [savingPerso, setSavingPerso] = React.useState(false);
   const canGererEtiquettes = ROLES_GESTION_ETIQUETTES.includes(user?.role);
   const [modeId, setModeId] = React.useState('frais');
-  const [dates, setDates] = React.useState({ fabrication: today, surgelation: today, decongelation: today });
+  // Sélection PAR MODE : { frais: { id → quantité }, surgelation: {…}, … }.
+  // La présence de la clé = sélection. Changer de mode change de plan de
+  // travail, il ne retire jamais rien.
+  const [lots, setLots] = React.useState(lotsVides);
+  // Dates PAR MODE, jamais partagées entre modes (cf. en-tête de fichier).
+  const [datesParMode, setDatesParMode] = React.useState(() => datesInitiales(today));
   const [search, setSearch] = React.useState('');
   const [searchApplied, setSearchApplied] = React.useState('');
-  // id de recette (ou de case Divers) → quantité d'étiquettes. La présence de
-  // la clé = sélection.
-  const [quantites, setQuantites] = React.useState({});
-  // Miroir de la sélection lisible depuis le rechargement realtime, dont les
-  // dépendances ne comportent pas `quantites` : sans lui, la purge des fiches
+  // Miroir des sélections lisible depuis le rechargement realtime, dont les
+  // dépendances ne comportent pas `lots` : sans lui, la purge des fiches
   // supprimées travaillerait sur une sélection périmée.
-  const quantitesRef = React.useRef(quantites);
-  React.useEffect(() => { quantitesRef.current = quantites; }, [quantites]);
+  const lotsRef = React.useRef(lots);
+  React.useEffect(() => { lotsRef.current = lots; }, [lots]);
   // id → 'recette' | 'perso', photo du dernier chargement. Sert uniquement à
   // nommer la bonne origine quand une ligne sélectionnée disparaît des deux
   // listes : à ce moment-là, plus rien d'autre ne sait d'où elle venait.
   const sourcesRef = React.useRef(new Map());
-  // Retraits du dernier changement de mode : jamais de retrait silencieux.
-  const [retraits, setRetraits] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState(null);
   // Dernier lot produit. Le lien vers le PDF n'apparaît QUE si l'ouverture
@@ -191,7 +249,11 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     urlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch { /* déjà libérée */ } });
   }, []);
 
-  const mode = getMode(modeId);
+  const modeCourant = getMode(modeId);
+  // Sélection et dates du mode affiché. Tout le reste de l'écran (liste,
+  // steppers, DLC) ne connaît que celles-là.
+  const quantites = lots[modeId] || VIDE;
+  const dates = datesParMode[modeId] || VIDE;
   // Cases Divers du mode courant. Épinglées en tête et rendues hors du filtre :
   // la recherche ne les masque jamais.
   const divers = React.useMemo(() => diversPourMode(modeId), [modeId]);
@@ -206,16 +268,28 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // la purge ci-dessous compare la sélection à l'ensemble des lignes vivantes,
   // et un rechargement partiel prendrait les lignes de l'autre table pour des
   // disparues — elle viderait la sélection à chaque event.
+  const reloadRef = React.useRef(null);
   React.useEffect(() => {
-    if (!legacySB) { setRecettes([]); setPerso([]); setLoading(false); return; }
+    if (!legacySB) { setRecettes([]); setPerso([]); setStatus('ready'); return; }
     let mounted = true;
+    let retryTimer = null;
+    let retryDelay = RETRY_MIN_MS;
+
     const reload = async () => {
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
       try {
+        // Lecture stricte des fiches : une erreur remonte et interrompt le
+        // rechargement, au lieu de rendre [] - sinon un réveil de tablette avec
+        // une lecture ratée viderait la liste ET la sélection d'étiquettes en
+        // cours (la purge plus bas prendrait toutes les lignes pour supprimées).
+        // Les étiquettes maison restent tolérantes (la migration 20260802 peut
+        // ne pas être appliquée) mais on retient si leur lecture a abouti.
+        let persoOk = true;
         const [list, listPerso] = await Promise.all([
-          legacySB.db.listRecettes(etabId),
-          // Tolérance au déploiement : tant que la migration 20260802 n'est pas
-          // appliquée, la lecture échoue proprement et rend [] (cf. couche DB).
-          legacySB.db.listEtiquettesPerso ? legacySB.db.listEtiquettesPerso(etabId) : [],
+          legacySB.db.listRecettes(etabId, { strict: true }),
+          legacySB.db.listEtiquettesPerso
+            ? legacySB.db.listEtiquettesPerso(etabId, { strict: true }).catch(() => { persoOk = false; return []; })
+            : [],
         ]);
         if (!mounted) return;
         // Les recettes archivées ne sont plus produites : pas d'étiquette.
@@ -224,26 +298,39 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         // qui sert aussi de matière à la recherche (cf. `visibles`).
         const maison = (listPerso || []).map(p => ({ ...p, categorie: ETIQUETTE_PERSO_CATEGORIE }));
         setRecettes(actives);
-        setPerso(maison);
+        // Lecture maison en échec : on garde la liste déjà affichée plutôt que
+        // de la remplacer par du vide.
+        if (persoOk) setPerso(maison);
 
         // Purge des lignes sélectionnées puis supprimées (ou archivées) depuis
-        // un autre poste. Sans elle, le compteur du bas annoncerait des
-        // étiquettes que la génération ne produirait pas : elle balaie les
-        // lignes chargées, une clé orpheline y est simplement ignorée.
+        // un autre poste, TOUS MODES CONFONDUS : une fiche supprimée doit
+        // quitter le lot frais comme le lot surgélation. Sans elle, le compteur
+        // du bas annoncerait des étiquettes que la génération ne produirait pas.
         const vivants = new Set([...actives.map(r => r.id), ...maison.map(p => p.id)]);
-        const disparues = Object.keys(quantitesRef.current)
-          .filter(id => !estDivers(id) && !vivants.has(id));
-        if (disparues.length) {
-          const perdues = new Set(disparues);
-          setQuantites(prev => {
-            const next = {};
-            Object.entries(prev).forEach(([id, n]) => { if (!perdues.has(id)) next[id] = n; });
-            return next;
+        const perdues = new Set();
+        MODE_IDS.forEach((id) => {
+          Object.keys(lotsRef.current[id] || {}).forEach((ligneId) => {
+            if (estDivers(ligneId) || vivants.has(ligneId)) return;
+            // Une ligne dont la liste d'origine n'a pas pu être relue n'est pas
+            // « disparue » : on ne retire de la sélection que ce qu'on a
+            // réellement vérifié auprès de la base.
+            if (!persoOk && sourcesRef.current.get(ligneId) === 'perso') return;
+            perdues.add(ligneId);
           });
+        });
+        if (perdues.size) {
+          setLots(prev => Object.fromEntries(MODE_IDS.map((id) => {
+            const restant = {};
+            Object.entries(prev[id] || {}).forEach(([ligneId, n]) => {
+              if (!perdues.has(ligneId)) restant[ligneId] = n;
+            });
+            return [id, restant];
+          })));
           // Provenance relevée AVANT mise à jour de la table des sources : une
           // ligne disparue n'est plus dans aucune des deux listes, seule la
           // photo précédente sait laquelle des deux la portait. L'opérateur doit
           // savoir où la ligne a été supprimée pour la recréer au bon endroit.
+          const disparues = [...perdues];
           const nbMaison = disparues.filter(id => sourcesRef.current.get(id) === 'perso').length;
           const nbFiches = disparues.length - nbMaison;
           const motifs = [];
@@ -256,15 +343,41 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         }
         sourcesRef.current = new Map([
           ...actives.map(r => [r.id, 'recette']),
-          ...maison.map(p => [p.id, 'perso']),
+          // Si la lecture maison a échoué, on conserve les provenances connues :
+          // sans elles, la purge du prochain rechargement ne saurait plus dire
+          // d'où venait une ligne retirée.
+          ...(persoOk
+            ? maison.map(p => [p.id, 'perso'])
+            : [...sourcesRef.current].filter(([, src]) => src === 'perso')),
         ]);
-      } catch (err) { console.error('[EtiquettesDlc load]', err); }
-      finally { if (mounted) setLoading(false); }
+        retryDelay = RETRY_MIN_MS;
+        setStatus('ready');
+      } catch (err) {
+        if (!mounted) return;
+        console.error('[EtiquettesDlc load]', err);
+        // Ni la liste ni la sélection ne sont touchées : on le signale et on
+        // reprogramme un essai. Les cases Divers restent imprimables, elles ne
+        // viennent pas de la base.
+        setStatus('error');
+        retryTimer = setTimeout(reload, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+      }
     };
+
+    reloadRef.current = reload;
     reload();
+    // subscribeReload rejoue aussi ce reload au réveil de l'appareil : pendant
+    // la veille le canal realtime est mort et aucun event n'arrive.
     const unsub = legacySB.realtime.subscribeReload(['recettes', 'etiquettes_perso'], reload);
-    return () => { mounted = false; if (unsub) unsub(); };
+    return () => {
+      mounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (reloadRef.current === reload) reloadRef.current = null;
+      if (unsub) unsub();
+    };
   }, [etabId, legacySB]);
+
+  const reessayer = React.useCallback(() => { reloadRef.current && reloadRef.current(); }, []);
 
   // ─── Disponibilité de l'impression directe ───
   React.useEffect(() => {
@@ -285,19 +398,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Recettes ET étiquettes maison : `changerMode` y cherche les lignes devenues
-  // inéligibles, et une étiquette maison non congelable doit en sortir comme une
-  // fiche non congelable.
-  const parId = React.useMemo(() => {
-    const m = new Map();
-    recettes.forEach(r => m.set(r.id, r));
-    perso.forEach(p => m.set(p.id, p));
-    return m;
-  }, [recettes, perso]);
-
   // Filtre commun aux deux blocs filtrables (étiquettes maison et recettes).
-  // Une ligne déjà sélectionnée reste visible même hors du filtre courant,
-  // sinon on imprimerait un lot dont une partie a disparu de l'écran.
+  // Une ligne déjà sélectionnée DANS LE MODE COURANT reste visible même hors du
+  // filtre, sinon on imprimerait un lot dont une partie a disparu de l'écran.
   const filtrer = React.useCallback((liste, q) => {
     if (!q) return liste;
     return liste.filter(r => {
@@ -313,82 +416,103 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // rodé pousserait sinon les recettes hors de l'écran.
   const persoVisibles = React.useMemo(() => filtrer(perso, requete), [perso, requete, filtrer]);
 
-  const nbSelection = Object.keys(quantites).length;
-  const totalEtiquettes = Object.values(quantites).reduce((s, n) => s + (Number(n) || 0), 0);
+  // ─── Compteurs du lot ───
+  // Un mode compte pour lui-même : une même préparation cochée en frais et en
+  // surgélation, ce sont bien deux étiquettes différentes à imprimer.
+  const compteurs = React.useMemo(() => {
+    const parMode = ETIQUETTE_MODES
+      .map((m) => {
+        const q = lots[m.id] || VIDE;
+        const ids = Object.keys(q);
+        return {
+          mode: m,
+          nbLignes: ids.length,
+          nbEtiquettes: ids.reduce((s, id) => s + (Number(q[id]) || 0), 0),
+        };
+      })
+      .filter(c => c.nbLignes > 0);
+    return {
+      parMode,
+      nbLignes: parMode.reduce((s, c) => s + c.nbLignes, 0),
+      nbEtiquettes: parMode.reduce((s, c) => s + c.nbEtiquettes, 0),
+    };
+  }, [lots]);
+
+  const nbEtiquettesMode = React.useMemo(
+    () => Object.values(quantites).reduce((s, n) => s + (Number(n) || 0), 0),
+    [quantites],
+  );
+  const lotMultiMode = compteurs.parMode.length > 1;
+
+  // ─── Mutations de la sélection : toujours sur le mode affiché ───
+  const majLot = (id, updater) => setLots(prev => ({ ...prev, [id]: updater(prev[id] || {}) }));
 
   const setQuantite = (id, valeur) => {
     const n = Math.min(QUANTITE_MAX, Math.max(QUANTITE_MIN, Math.round(Number(valeur) || QUANTITE_MIN)));
-    setQuantites(prev => ({ ...prev, [id]: n }));
+    majLot(modeId, q => ({ ...q, [id]: n }));
   };
 
   const toggleSelection = (recette) => {
-    setQuantites(prev => {
-      const next = { ...prev };
+    majLot(modeId, (q) => {
+      const next = { ...q };
       if (Object.prototype.hasOwnProperty.call(next, recette.id)) delete next[recette.id];
       else next[recette.id] = 1;
       return next;
     });
   };
 
-  // ─── Changement de mode : retrait explicite des lignes devenues inéligibles ───
-  // Deux motifs, jamais confondus : une préparation non congelable ne peut pas
-  // suivre en surgélation, et les cases Divers changent de jeu avec le mode
-  // (3 / 5 / 7 j au froid positif, 90 j au congélateur). Aucun retrait
-  // silencieux — l'opérateur doit savoir ce qui a quitté son lot.
-  const changerMode = (nextId) => {
-    if (nextId === modeId) return;
-    const selection = Object.keys(quantites);
-    const nonCongelables = selection
-      .map(id => parId.get(id))
-      .filter(r => r && !estEligible(r, nextId));
-    const diversSuivants = new Set(diversPourMode(nextId).map(d => d.id));
-    const diversRetires = ETIQUETTES_DIVERS
-      .filter(d => selection.includes(d.id) && !diversSuivants.has(d.id));
+  const viderMode = (id) => setLots(prev => ({ ...prev, [id]: {} }));
 
-    const retires = [...nonCongelables, ...diversRetires];
-    if (retires.length) {
-      const ids = new Set(retires.map(r => r.id));
-      setQuantites(prev => {
-        const next = {};
-        Object.entries(prev).forEach(([id, n]) => { if (!ids.has(id)) next[id] = n; });
-        return next;
-      });
-      setRetraits({
-        modeLabel: getMode(nextId).label,
-        nonCongelables: nonCongelables.map(r => r.nom),
-        divers: diversRetires.map(d => d.nom),
-      });
-      notifyLegacy(
-        `${retires.length} ligne${retires.length > 1 ? 's' : ''} retirée${retires.length > 1 ? 's' : ''} de la sélection.`,
-        'warning',
-      );
-    } else {
-      setRetraits(null);
-    }
-    setModeId(nextId);
+  // Vider TOUT le lot efface aussi le travail fait dans les autres modes, que
+  // l'écran courant ne montre pas : on demande confirmation dès qu'il y en a.
+  const viderLot = () => {
+    if (lotMultiMode && !confirmLegacy(
+      `Vider le lot entier ?\n\n${compteurs.nbEtiquettes} étiquettes réparties sur ${compteurs.parMode.length} modes seront désélectionnées.`,
+    )) return;
+    setLots(lotsVides());
   };
 
-  // ─── Génération : une étiquette = une page, quantités groupées par recette ───
+  // ─── Génération : une étiquette = une page, tous modes du lot ───
   const genererEtiquettes = async () => {
-    if (busy || totalEtiquettes === 0) return;
-    const dateManquante = mode.dates.find(d => !dates[d.id]);
-    if (dateManquante) { notifyLegacy(`Renseignez la ${dateManquante.label.toLowerCase()}.`, 'warning'); return; }
+    if (busy || compteurs.nbEtiquettes === 0) return;
 
-    // Ordre des pages : ordre de la liste — cases Divers épinglées en tête,
-    // puis les étiquettes maison, puis les recettes, les deux triées par nom
-    // côté DB — quantités groupées par ligne.
+    // Chaque mode du lot valide SES dates. On bascule sur le mode fautif :
+    // demander une date sans montrer le champ à remplir n'aide personne.
+    for (const { mode: m } of compteurs.parMode) {
+      const manquante = m.dates.find(d => !datesParMode[m.id]?.[d.id]);
+      if (manquante) {
+        setModeId(m.id);
+        notifyLegacy(`${m.label} : renseignez la ${manquante.label.toLowerCase()}.`, 'warning');
+        return;
+      }
+    }
+
+    // Ordre des pages : les modes dans l'ordre des onglets, et dans chacun
+    // l'ordre de la liste — cases Divers épinglées en tête, puis les étiquettes
+    // maison, puis les recettes, les deux triées par nom côté DB. La brigade
+    // récupère donc une pile par destination, pas un paquet à trier.
     const etiquettes = [];
-    [...divers, ...perso, ...recettes].forEach(r => {
-      const n = quantites[r.id];
-      if (!n || !estEligible(r, modeId)) return;
-      const lignes = lignesEtiquette({ recette: r, modeId, dates });
-      for (let i = 0; i < n; i += 1) etiquettes.push({ lignes });
+    compteurs.parMode.forEach(({ mode: m }) => {
+      const q = lots[m.id] || VIDE;
+      const datesMode = datesParMode[m.id];
+      [...diversPourMode(m.id), ...perso, ...recettes].forEach((r) => {
+        const n = q[r.id];
+        if (!n || !estEligible(r, m.id)) return;
+        const lignes = lignesEtiquette({ recette: r, modeId: m.id, dates: datesMode });
+        for (let i = 0; i < n; i += 1) etiquettes.push({ lignes });
+      });
     });
     if (!etiquettes.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return; }
 
     const nb = etiquettes.length;
     const pluriel = nb > 1 ? 's' : '';
-    const nomFichier = `etiquettes-dlc-${modeId}-${dates[mode.dlcDepuis]}.pdf`;
+    const modesDuLot = compteurs.parMode.map(c => c.mode);
+    const seulMode = modesDuLot.length === 1 ? modesDuLot[0] : null;
+    const nomFichier = seulMode
+      ? `etiquettes-dlc-${seulMode.id}-${datesParMode[seulMode.id][seulMode.dlcDepuis]}.pdf`
+      : `etiquettes-dlc-lot-${today}.pdf`;
+    // Trace du lot côté file d'impression : les modes réellement présents.
+    const modeLot = modesDuLot.map(m => m.id).join('+');
 
     // ─── Chemin le plus court : la feuille de partage, sans écran d'aperçu ───
     // Tout est synchrone jusqu'à l'appel de partage, sans quoi iOS le refuse.
@@ -442,7 +566,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         if (res?.url) urlsRef.current.push(res.url);
         try {
           const jobId = await envoyerLot({
-            etabId, pdfBase64: res.base64, nbEtiquettes: nb, mode: modeId, userId: user?.id,
+            etabId, pdfBase64: res.base64, nbEtiquettes: nb, mode: modeLot, userId: user?.id,
           });
           // Le lot est déposé : plus rien à afficher, l'onglet de secours part.
           fermerOnglet(fenetrePdf);
@@ -514,13 +638,16 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
       setPerso(prev => [...prev.filter(p => p.id !== ligne.id), ligne]
         .sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')));
       // Une étiquette qu'on vient de créer est une étiquette qu'on va imprimer :
-      // elle entre dans le lot. Une modification ne touche pas à la sélection.
-      if (!valeurs.id) setQuantites(prev => ({ ...prev, [ligne.id]: prev[ligne.id] || 1 }));
+      // elle entre dans le lot du mode courant. Une modification ne touche pas à
+      // la sélection. Une étiquette non congelable créée depuis l'onglet
+      // Surgélation, elle, n'a rien à y faire : on le dit plutôt que de la
+      // cocher dans un mode où elle sortirait grisée.
+      const entreDansLeLot = !valeurs.id && estEligible(ligne, modeId);
+      if (entreDansLeLot) majLot(modeId, q => ({ ...q, [ligne.id]: q[ligne.id] || 1 }));
       setFormPerso(null);
-      notifyLegacy(
-        valeurs.id ? `« ${ligne.nom} » modifiée.` : `« ${ligne.nom} » ajoutée et sélectionnée.`,
-        'success',
-      );
+      if (valeurs.id) notifyLegacy(`« ${ligne.nom} » modifiée.`, 'success');
+      else if (entreDansLeLot) notifyLegacy(`« ${ligne.nom} » ajoutée et sélectionnée.`, 'success');
+      else notifyLegacy(`« ${ligne.nom} » ajoutée. Non congelable : elle ne peut pas entrer dans un lot ${modeCourant.label}.`, 'warning');
     } catch (err) {
       console.error('[EtiquettesDlc upsertEtiquettePerso]', err);
       notifyLegacy(messageErreurPerso(err), 'error');
@@ -539,12 +666,14 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     try {
       await legacySB.db.deleteEtiquettePerso(etiquette.id);
       setPerso(prev => prev.filter(p => p.id !== etiquette.id));
-      setQuantites(prev => {
-        if (!Object.prototype.hasOwnProperty.call(prev, etiquette.id)) return prev;
-        const next = { ...prev };
-        delete next[etiquette.id];
-        return next;
-      });
+      // Retrait de TOUS les modes : le modèle n'existe plus nulle part.
+      setLots(prev => Object.fromEntries(MODE_IDS.map((id) => {
+        const q = prev[id] || {};
+        if (!Object.prototype.hasOwnProperty.call(q, etiquette.id)) return [id, q];
+        const restant = { ...q };
+        delete restant[etiquette.id];
+        return [id, restant];
+      })));
       notifyLegacy(`« ${etiquette.nom} » supprimée.`, 'success');
     } catch (err) {
       console.error('[EtiquettesDlc deleteEtiquettePerso]', err);
@@ -552,7 +681,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement des recettes…</div>;
+  if (status === 'loading') return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement des recettes…</div>;
 
   // Une seule écriture de la ligne pour les trois blocs : cases Divers et
   // étiquettes maison ne sont pas un affichage à part, ce sont des lignes comme
@@ -567,14 +696,18 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     const duree = dureeVieMode(r, modeId);
     return (
       <div key={r.id} style={{ ...es.ligne, opacity: eligible ? 1 : 0.55, background: selected ? 'var(--bg)' : 'transparent' }}>
-        <input
-          type="checkbox"
-          checked={selected}
-          disabled={!eligible}
-          onChange={() => toggleSelection(r)}
-          style={{ width: 18, height: 18, flexShrink: 0, cursor: eligible ? 'pointer' : 'not-allowed' }}
-          aria-label={`Sélectionner ${r.nom}`}
-        />
+        {/* Le <label> porte la cible tactile : taper à côté de la case coche
+            quand même. Un input de 20 px seul se rate en service. */}
+        <label style={{ ...es.caseCible, cursor: eligible ? 'pointer' : 'not-allowed' }}>
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={!eligible}
+            onChange={() => toggleSelection(r)}
+            style={es.case}
+            aria-label={`Sélectionner ${r.nom}`}
+          />
+        </label>
         <div style={es.ligneInfo}>
           <div style={es.nom}>{r.nom}</div>
           <div style={es.meta}>
@@ -607,57 +740,64 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-      {/* ── Mode du lot ── */}
+      {/* ── Mode du lot ──
+          Le compteur sur l'onglet est ce qui rend un lot multi-mode lisible :
+          sans lui, les étiquettes composées dans un autre mode seraient
+          invisibles depuis l'écran courant. */}
       <SegmentedTabs
-        tabs={ETIQUETTE_MODES.map(m => ({ id: m.id, label: m.label }))}
+        tabs={ETIQUETTE_MODES.map((m) => {
+          const compte = compteurs.parMode.find(c => c.mode.id === m.id);
+          return {
+            id: m.id,
+            label: compte
+              ? <>{m.label}<span style={es.tabBadge}>{compte.nbEtiquettes}</span></>
+              : m.label,
+          };
+        })}
         active={modeId}
-        onChange={changerMode}
+        onChange={setModeId}
       />
 
-      {/* ── Retraits au changement de mode ── */}
-      {retraits && (
+      {/* ── Lecture en échec ──
+          Ni la liste ni la sélection ne sont perdues : on l'annonce et un essai
+          est déjà reprogrammé. Les cases Divers restent imprimables. */}
+      {status === 'error' && (
         <div style={es.banniere}>
           <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <strong>Sélection réduite en passant en mode {retraits.modeLabel}</strong>
-            {retraits.nonCongelables.length > 0 && (
-              <span style={{ display: 'block', marginTop: 3 }}>
-                {retraits.nonCongelables.length} préparation{retraits.nonCongelables.length > 1 ? 's' : ''} non congelable{retraits.nonCongelables.length > 1 ? 's' : ''}, donc ni surgelable{retraits.nonCongelables.length > 1 ? 's' : ''} ni décongelable{retraits.nonCongelables.length > 1 ? 's' : ''} :
-                <span style={{ fontStyle: 'italic' }}> {retraits.nonCongelables.join(' · ')}</span>
-              </span>
-            )}
-            {retraits.divers.length > 0 && (
-              <span style={{ display: 'block', marginTop: 3 }}>
-                Les cases Divers changent avec le mode :
-                <span style={{ fontStyle: 'italic' }}> {retraits.divers.join(' · ')}</span> ne s'y applique{retraits.divers.length > 1 ? 'nt' : ''} pas.
-              </span>
-            )}
+            <strong>Liste des préparations indisponible</strong>
+            <span style={{ display: 'block', marginTop: 3 }}>
+              La dernière lecture a échoué (réseau ou session expirée). La liste affichée et votre sélection sont conservées, un nouvel essai est en cours. Les cases Divers restent imprimables.
+            </span>
           </span>
-          <button
-            type="button"
-            onClick={() => setRetraits(null)}
-            style={{ background: 'none', border: 'none', color: 'inherit', fontSize: 15, cursor: 'pointer', flexShrink: 0, padding: 0 }}
-            aria-label="Masquer le message"
-          >✕</button>
+          <button type="button" style={{ ...hs.exportBtn, flexShrink: 0 }} onClick={reessayer}>Réessayer</button>
         </div>
       )}
 
-      {/* ── Dates du lot (globales, jamais par ligne) ── */}
+      {/* ── Dates du lot (globales au mode, jamais par ligne) ── */}
       <div style={es.bloc}>
         <div style={es.champsDates}>
-          {mode.dates.map(champ => (
+          {modeCourant.dates.map(champ => (
             <div key={champ.id} style={hs.field}>
               <label style={hs.fLabel}>{champ.label}</label>
               <input
                 type="date"
                 style={hs.fInput}
                 value={dates[champ.id] || ''}
-                onChange={e => setDates(prev => ({ ...prev, [champ.id]: e.target.value }))}
+                onChange={e => setDatesParMode(prev => ({
+                  ...prev,
+                  [modeId]: { ...(prev[modeId] || {}), [champ.id]: e.target.value },
+                }))}
               />
             </div>
           ))}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
+          {lotMultiMode && (
+            <div style={{ marginBottom: 4 }}>
+              Ces dates ne valent que pour le mode <strong>{modeCourant.label}</strong> : chaque mode du lot porte les siennes.
+            </div>
+          )}
           {modeId === 'surgelation' && (
             <div style={{ marginBottom: 4 }}>
               La DLC part de la date de surgélation : une préparation refroidie la veille de son passage au congélateur a bien deux dates.
@@ -699,9 +839,11 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         ) : null))}
         {persoVisibles.length === 0 && (
           <div style={es.vide}>
-            {perso.length === 0
-              ? 'Aucune étiquette maison. Ajoutez-en une pour les préparations courantes qui n\'ont pas de fiche recette.'
-              : 'Aucune étiquette maison ne correspond à la recherche.'}
+            {status !== 'ready'
+              ? 'Liste indisponible pour le moment.'
+              : perso.length === 0
+                ? 'Aucune étiquette maison. Ajoutez-en une pour les préparations courantes qui n\'ont pas de fiche recette.'
+                : 'Aucune étiquette maison ne correspond à la recherche.'}
           </div>
         )}
 
@@ -719,14 +861,44 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           )}
         </div>
 
+        {/* « Aucune recette » n'est affirmé que si la lecture a VRAIMENT abouti
+            sur zéro fiche : une lecture en échec annoncerait sinon un
+            établissement vide, ce qu'il n'est pas. */}
         {visibles.length === 0 && (
           <div style={hs.empty}>
-            {recettes.length === 0 ? 'Aucune recette dans cet établissement.' : 'Aucune préparation ne correspond à la recherche.'}
+            {status !== 'ready'
+              ? 'Liste indisponible pour le moment — nouvel essai en cours.'
+              : recettes.length === 0
+                ? 'Aucune recette dans cet établissement.'
+                : 'Aucune préparation ne correspond à la recherche.'}
           </div>
         )}
 
         {visibles.map(r => renderLigne(r))}
       </div>
+
+      {/* ── Récapitulatif d'un lot multi-mode ──
+          Affiché seulement quand le lot porte plusieurs modes : c'est le seul
+          cas où l'onglet courant ne montre pas tout ce qui va sortir. */}
+      {lotMultiMode && (
+        <div style={es.recap}>
+          <div style={es.recapTitre}>Lot en préparation</div>
+          {compteurs.parMode.map(({ mode: m, nbLignes, nbEtiquettes }) => (
+            <div key={m.id} style={es.recapLigne}>
+              <span style={es.recapInfo}>
+                <strong style={{ color: 'var(--text)' }}>{m.label}</strong>
+                {' · '}{nbLignes} préparation{nbLignes > 1 ? 's' : ''}
+                {' · '}<strong style={{ color: 'var(--text)' }}>{nbEtiquettes}</strong> étiquette{nbEtiquettes > 1 ? 's' : ''}
+                {' · '}DLC dès le {formatDateFr(datesParMode[m.id]?.[m.dlcDepuis])}
+              </span>
+              {m.id !== modeId && (
+                <button type="button" style={es.actionBtn} onClick={() => setModeId(m.id)}>Ouvrir</button>
+              )}
+              <button type="button" style={es.actionBtn} onClick={() => viderMode(m.id)}>Vider</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Dernier lot ──
           Le lien vers le PDF ne s'affiche que si l'ouverture automatique n'a
@@ -766,21 +938,31 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         </div>
       )}
 
-      {/* ── Résumé du lot + génération ── */}
+      {/* ── Résumé du lot + génération ──
+          Les totaux sont ceux du LOT ENTIER, tous modes confondus : c'est ce
+          que le bouton va imprimer. Le détail du mode courant reste rappelé
+          quand le lot en porte plusieurs. */}
       <div style={es.resume}>
         <span style={es.resumeTotal}>
-          <strong style={{ color: 'var(--text)' }}>{nbSelection}</strong> préparation{nbSelection > 1 ? 's' : ''}
+          <strong style={{ color: 'var(--text)' }}>{compteurs.nbLignes}</strong> préparation{compteurs.nbLignes > 1 ? 's' : ''}
           {' · '}
-          <strong style={{ color: 'var(--text)' }}>{totalEtiquettes}</strong> étiquette{totalEtiquettes > 1 ? 's' : ''}
+          <strong style={{ color: 'var(--text)' }}>{compteurs.nbEtiquettes}</strong> étiquette{compteurs.nbEtiquettes > 1 ? 's' : ''}
+          {lotMultiMode && (
+            <span style={{ color: 'var(--text3)' }}>
+              {' · '}dont {nbEtiquettesMode} en {modeCourant.label.toLowerCase()}
+            </span>
+          )}
           {progress && <span style={{ marginLeft: 8, color: 'var(--accent)' }}>· génération {progress.done}/{progress.total}</span>}
         </span>
-        {nbSelection > 0 && (
-          <button type="button" style={hs.cancelBtn} disabled={busy} onClick={() => setQuantites({})}>Tout désélectionner</button>
+        {compteurs.nbLignes > 0 && (
+          <button type="button" style={hs.cancelBtn} disabled={busy} onClick={viderLot}>
+            {lotMultiMode ? 'Vider le lot' : 'Tout désélectionner'}
+          </button>
         )}
         <button
           type="button"
-          style={{ ...hs.addBtn, opacity: totalEtiquettes === 0 || busy ? 0.5 : 1 }}
-          disabled={totalEtiquettes === 0 || busy}
+          style={{ ...hs.addBtn, opacity: compteurs.nbEtiquettes === 0 || busy ? 0.5 : 1 }}
+          disabled={compteurs.nbEtiquettes === 0 || busy}
           onClick={genererEtiquettes}
         >
           {busy

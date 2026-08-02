@@ -17,6 +17,49 @@ function joursValides(value, defaut) {
   return Number.isFinite(n) && n > 0 ? n : defaut;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// RÉVEIL DE L'APPAREIL - re-jouer les refetch des modules montés
+// ═══════════════════════════════════════════════════════════════
+// Une tablette mise en veille (ou laissée de côté une heure) perd son canal
+// realtime et peut voir son JWT expirer. Au réveil, plus aucun event Postgres
+// n'arrive : les modules restent sur les données d'avant la veille - ou sur un
+// écran vide si la lecture du réveil a échoué. Comme le shell garde les 3
+// derniers modules visités montés, l'écran reste figé jusqu'au rechargement de
+// l'app. C'était la cause du bug « Aucune carte » de Cartes & Recettes.
+//
+// On rejoue donc les refetch enregistrés par subscribeReload quand l'onglet
+// redevient visible, à la restauration bfcache (iOS) et au retour du réseau.
+// C'est sûr par construction : le contrat de subscribeReload est justement que
+// reloadFn soit un refetch complet et idempotent.
+//
+// Les écouteurs sont posés UNE fois pour toute l'app (pas un jeu par
+// abonnement) et le déclenchement est limité à un par 10 s : au réveil les
+// trois événements arrivent souvent groupés.
+const _resumeHandlers = new Set();
+const RESUME_MIN_INTERVAL_MS = 10000;
+let _lastResumeAt = 0;
+
+function _fireResume() {
+  // Garde-fou : hors-ligne, on ne rejoue RIEN. Les lectures du bridge rendent []
+  // en cas d'échec, donc un refetch sans réseau remplacerait des données encore
+  // affichées par du vide - exactement ce qu'on cherche à éviter. Le retour du
+  // réseau déclenche l'event 'online', qui rejouera les refetch à ce moment-là.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  const now = Date.now();
+  if (now - _lastResumeAt < RESUME_MIN_INTERVAL_MS) return;
+  _lastResumeAt = now;
+  // Copie : un handler peut se désabonner pendant la boucle (module démonté).
+  [..._resumeHandlers].forEach((fn) => {
+    try { fn(); } catch (err) { console.warn('[resume reload]', err); }
+  });
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) _fireResume(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) _fireResume(); });
+  window.addEventListener('online', _fireResume);
+}
+
 export function installLegacySupabase() {
   const client = supabase;
 
@@ -41,6 +84,14 @@ export function installLegacySupabase() {
     if (strict) throw error;
     return [];
   }
+
+  // Relation absente : la migration qui crée la table n'est pas encore
+  // appliquée. Ce n'est PAS un échec de lecture — aucun réessai ne la fera
+  // apparaître, et l'appelant doit voir un référentiel vide plutôt qu'un état
+  // « indisponible » permanent. Distinction indispensable dès qu'une lecture
+  // passe en strict sur une table déployée après le front.
+  const RELATION_ABSENTE = new Set(['42P01', 'PGRST205', 'PGRST202']);
+  const _relationAbsente = (error) => RELATION_ABSENTE.has(error?.code);
 
   // ─────────────────────────────────────────
   // CACHE COURT + DÉDUP IN-FLIGHT pour les lectures lourdes
@@ -365,11 +416,12 @@ export function installLegacySupabase() {
     },
 
     // ─── SHIFTS (planning) ───
-    async listShifts(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listShifts(etabId, { strict = false } = {}) {
       let q = client.from('shifts').select('*').order('date').order('debut');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listShifts]', error); return []; }
+      if (error) return _readFailed('[listShifts]', error, strict);
       return data || [];
     },
 
@@ -615,14 +667,17 @@ export function installLegacySupabase() {
     // RLS : lecture + création jusqu'au cuisinier, modification et suppression
     // à partir du responsable cuisine.
     // ═══════════════════════════════════════════════════════════════
-    async listEtiquettesPerso(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listEtiquettesPerso(etabId, { strict = false } = {}) {
       let q = client.from('etiquettes_perso').select('*').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
       // Liste vide plutôt qu'une exception : un front déployé avant
       // l'application de la migration doit continuer d'imprimer ses étiquettes
-      // de recettes et ses cases Divers.
-      if (error) { console.error('[listEtiquettesPerso]', error); return []; }
+      // de recettes et ses cases Divers. L'appelant qui a besoin de distinguer
+      // « table absente / lecture en échec » de « aucune étiquette maison »
+      // demande explicitement strict.
+      if (error) return _readFailed('[listEtiquettesPerso]', error, strict);
       return (data || []).map(this.mapEtiquettePersoFromDB);
     },
 
@@ -2322,6 +2377,11 @@ export function installLegacySupabase() {
     // (plusieurs utilisateurs), une rafale d'events est regroupée en UN seul
     // refetch → réduit les « tempêtes de rechargement ». 500 ms reste
     // imperceptible à l'usage tout en divisant la charge sous forte activité.
+    //
+    // Le même reloadFn est aussi rejoué au réveil de l'appareil (cf.
+    // _resumeHandlers en haut de fichier) : pendant la veille le canal realtime
+    // est mort, aucun event n'arrive, et sans ça le module resterait figé sur
+    // les données d'avant la veille - ou vide si sa dernière lecture a échoué.
     subscribeReload(tables, reloadFn, { debounceMs = 500 } = {}) {
       const list = Array.isArray(tables) ? tables : [tables];
       let timer = null;
@@ -2336,8 +2396,10 @@ export function installLegacySupabase() {
         timer = setTimeout(() => { timer = null; if (!cancelled) reloadFn(); }, debounceMs);
       };
       const unsubs = list.map(t => this.subscribe(t, schedule));
+      _resumeHandlers.add(schedule);
       return () => {
         cancelled = true;
+        _resumeHandlers.delete(schedule);
         if (timer) { clearTimeout(timer); timer = null; }
         unsubs.forEach(u => u && u());
       };

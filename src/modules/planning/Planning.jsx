@@ -8,6 +8,7 @@ import { userDisplay } from '../../utils/userDisplay.js';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -61,6 +62,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [editForm, setEditForm] = React.useState(null);
   const [planning, setPlanning] = React.useState([]); // shifts chargés depuis Supabase
   const [loading, setLoading] = React.useState(true);
+  // Refetch des shifts de l'effet courant, rejoué au réveil de l'appareil.
+  const reloadShiftsRef = React.useRef(null);
   const [isMobile, setIsMobile] = React.useState(browserWindow?.innerWidth < 768);
 
   // === Export CCNT ===
@@ -112,18 +115,25 @@ const Planning = ({ user, etablissement, initialTab }) => {
     let mounted = true;
     let unsubscribe = null;
 
-    (async () => {
+    // Lecture stricte : une erreur remonte au lieu de rendre []. Le planning
+    // déjà affiché n'est donc jamais remplacé par un écran vide (réveil de
+    // tablette, réseau coupé) - sans shift affiché, plus aucun bouton de
+    // pointage. Planning est le seul module qui écoute le realtime payload par
+    // payload : il ne bénéficie pas du rejeu automatique de subscribeReload, on
+    // le rebranche donc explicitement sur le réveil (useResumeRefresh).
+    const reloadShifts = async () => {
       try {
-        const rows = await legacySB.db.listShifts(etabId);
+        const rows = await legacySB.db.listShifts(etabId, { strict: true });
         if (!mounted) return;
-        const shifts = rows.map(r => legacySB.db.mapShiftFromDB(r));
-        setPlanning(shifts);
+        setPlanning(rows.map(r => legacySB.db.mapShiftFromDB(r)));
       } catch (err) {
         console.error('[Planning] load', err);
       } finally {
         if (mounted) setLoading(false);
       }
-    })();
+    };
+    reloadShiftsRef.current = reloadShifts;
+    reloadShifts();
 
     // Realtime en dehors du IIFE async : garantit le cleanup même si le chargement initial échoue
     unsubscribe = legacySB.realtime.subscribe('shifts', (payload) => {
@@ -149,9 +159,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
     return () => {
       mounted = false;
+      if (reloadShiftsRef.current === reloadShifts) reloadShiftsRef.current = null;
       if (unsubscribe) unsubscribe();
     };
   }, [etabId]);
+
+  useResumeRefresh(React.useCallback(() => {
+    reloadShiftsRef.current && reloadShiftsRef.current();
+  }, []));
 
   const fmtLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('fr-CH', {
     weekday: isMobile ? 'short' : 'short', day: '2-digit', month: '2-digit'
