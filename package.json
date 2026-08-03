@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1 --open /vite-index.html",
     "dev:vite": "vite --host 127.0.0.1",
     "build": "vite build",
+    "brand:icons": "node scripts/gen-icons.mjs",
     "lint": "eslint src",
     "preview": "vite preview --host 127.0.0.1"
   },

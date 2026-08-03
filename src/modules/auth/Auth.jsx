@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SamperMark from '../../components/brand/SamperMark.jsx';
 import { notify } from '../../components/toast/index.js';
 import { getSupabaseConfigState } from '../../services/supabase.js';
 
@@ -72,7 +73,7 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
     <div style={as.screen}>
       <div style={as.panel}>
         <div style={as.logoWrap}>
-          <div style={as.logoBox}>SC</div>
+          <SamperMark size={48} radius={10} title={null} />
           <div style={as.brandText}>
             <div style={as.brandTitle}>Samper Consulting</div>
             <div style={as.brandSub}>Gestion culinaire professionnelle</div>
@@ -157,7 +158,6 @@ const as = {
   screen: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)', fontFamily: 'var(--font)' },
   panel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '32px 36px', width: 440, maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' },
   logoWrap: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
-  logoBox: { width: 48, height: 48, borderRadius: 10, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', letterSpacing: 1 },
   brandText: { flex: 1 },
   brandTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   brandSub: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },

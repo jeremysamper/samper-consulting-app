@@ -306,6 +306,12 @@ export const UI_GLOSSARY = {
   // ── États de chargement / erreurs ──
   'Chargement': 'Loading',
   'Chargement…': 'Loading…',
+  // Écran de démarrage : au glossaire plutôt qu'à l'IA, c'est le tout premier
+  // texte affiché et il doit être traduit instantanément, même hors ligne.
+  'Connexion à votre espace': 'Connecting to your workspace',
+  'Préparation de votre espace': 'Preparing your workspace',
+  'Gestion culinaire': 'Culinary management',
+  'Gestion culinaire professionnelle': 'Professional culinary management',
   'Enregistrement': 'Saving',
   'Génération': 'Generating',
   'Traitement': 'Processing',

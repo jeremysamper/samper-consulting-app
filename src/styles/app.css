@@ -190,11 +190,76 @@ html[data-theme="dark"] {
   50%      { opacity: 0.9; }
 }
 
-/* Animation barre de chargement splash screen */
-@keyframes splashBar {
-  0%   { transform: translateX(-100%); }
-  50%  { transform: translateX(150%); }
-  100% { transform: translateX(-100%); }
+/* ─── Écran de démarrage (src/components/brand/BootScreen.jsx) ──────────────
+   Chorégraphie courte et volontairement discrète : le logo se pose, ses pales
+   se révèlent dans le sens horaire, puis le nom monte. Tout est terminé en
+   ~700 ms, pour qu'un démarrage rapide ne laisse pas voir un logo à moitié
+   dessiné. La barre de balayage, elle, tourne tant que l'app charge. */
+
+@keyframes splashMarkIn {
+  from { opacity: 0; transform: scale(0.86) rotate(-16deg); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes splashBladeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes splashRise {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Halo respirant derrière le logo : seule animation qui dure.
+   Le centrage se fait aux marges, pas au transform, pour que la règle
+   `transform: none` du mode « mouvement réduit » ne le décale pas. */
+@keyframes splashAura {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.09); }
+}
+
+@keyframes splashSweep {
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(320%); }
+}
+
+.splash-mark { animation: splashMarkIn 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both; }
+
+/* Les pales dans l'ordre horaire de markGeometry.js : le retard croissant
+   dessine un balayage autour du centre. */
+.splash-mark polygon { animation: splashBladeIn 320ms ease-out both; }
+.splash-mark polygon:nth-of-type(1) { animation-delay: 60ms; }
+.splash-mark polygon:nth-of-type(2) { animation-delay: 110ms; }
+.splash-mark polygon:nth-of-type(3) { animation-delay: 160ms; }
+.splash-mark polygon:nth-of-type(4) { animation-delay: 210ms; }
+.splash-mark polygon:nth-of-type(5) { animation-delay: 260ms; }
+.splash-mark polygon:nth-of-type(6) { animation-delay: 310ms; }
+
+.splash-aura  { animation: splashAura 4.5s ease-in-out infinite; }
+.splash-word  { animation: splashRise 520ms ease-out 240ms both; }
+.splash-status { animation: splashRise 520ms ease-out 360ms both; }
+.splash-track { animation: splashRise 520ms ease-out 440ms both; }
+.splash-sweep { animation: splashSweep 1.35s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+
+/* Accessibilité : plus aucun déplacement, le chargement reste signalé par une
+   pulsation douce de la barre. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-mark,
+  .splash-mark polygon,
+  .splash-aura,
+  .splash-word,
+  .splash-status,
+  .splash-track {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .splash-sweep {
+    animation: scLangPulse 1.8s ease-in-out infinite;
+    transform: none;
+    width: 100%;
+  }
 }
 
 /* ─── Transition entre modules ──────────────────────────────────────────────

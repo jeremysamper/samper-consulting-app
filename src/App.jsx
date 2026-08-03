@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import BootScreen from './components/brand/BootScreen.jsx';
 import { ToastContainer, installToastGlobals, notify } from './components/toast/index.js';
 import AppLayout from './layouts/AppLayout.jsx';
 import Auth from './modules/auth/Auth.jsx';
@@ -194,7 +195,7 @@ export default function App() {
   } else if (auth.profile.actif === false) {
     content = <DisabledAccount onLogout={handleLogout} />;
   } else if (legacyState.loading) {
-    content = <BootScreen title="Chargement des modules" />;
+    content = <BootScreen title="Préparation de votre espace" />;
   } else if (legacyState.error) {
     content = <LegacyLoadError error={legacyState.error} />;
   } else {
@@ -244,103 +245,6 @@ export default function App() {
     </>
   );
 }
-
-function BootScreen({ title = '' }) {
-  // Splash screen : fond bleu petrole sombre degrade + halo doux, logo SC,
-  // nom de l'app et barre de progression animee (@keyframes splashBar dans app.css).
-  // Charte #003042 (carte de visite) declinee en camaieu sombre.
-  return (
-    <main style={bootScreenStyles.root}>
-      <div style={bootScreenStyles.glow} />
-      <div style={bootScreenStyles.center}>
-        <div style={bootScreenStyles.logoBox}>SC</div>
-
-        <div style={bootScreenStyles.brand}>Samper Consulting</div>
-        {title && <div style={bootScreenStyles.subtitle}>{title}</div>}
-
-        <div style={bootScreenStyles.barTrack}>
-          <div style={bootScreenStyles.barFill} />
-        </div>
-      </div>
-    </main>
-  );
-}
-
-const bootScreenStyles = {
-  root: {
-    position: 'fixed',
-    inset: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'radial-gradient(125% 85% at 50% 12%, #0d4258 0%, #062839 48%, #02141c 100%)',
-    fontFamily: 'var(--font)',
-    zIndex: 9999,
-    overflow: 'hidden',
-  },
-  glow: {
-    position: 'absolute',
-    top: '-22%',
-    left: '50%',
-    width: 560,
-    height: 560,
-    transform: 'translateX(-50%)',
-    background: 'radial-gradient(circle, rgba(116,174,195,0.22) 0%, rgba(116,174,195,0) 68%)',
-    pointerEvents: 'none',
-  },
-  center: {
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 18,
-  },
-  logoBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 22,
-    background: 'linear-gradient(155deg, #0d3c51 0%, #062839 100%)',
-    color: '#74aec3',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 700,
-    fontSize: 30,
-    fontFamily: 'var(--font-serif)',
-    letterSpacing: 1,
-    border: '1px solid rgba(116,174,195,0.28)',
-    boxShadow: '0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)',
-  },
-  brand: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#e7edf0',
-    fontFamily: 'var(--font-serif)',
-    letterSpacing: 0.4,
-  },
-  subtitle: {
-    fontSize: 11.5,
-    color: 'rgba(231,237,240,0.5)',
-    fontStyle: 'italic',
-    marginTop: -10,
-  },
-  barTrack: {
-    marginTop: 6,
-    width: 132,
-    height: 3,
-    background: 'rgba(255,255,255,0.09)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    width: '42%',
-    background: 'linear-gradient(90deg, #2e6d84 0%, #8ec9de 100%)',
-    borderRadius: 3,
-    boxShadow: '0 0 12px rgba(116,174,195,0.5)',
-    animation: 'splashBar 1.2s ease-in-out infinite',
-  },
-};
 
 function LegacyLoadError({ error }) {
   return (

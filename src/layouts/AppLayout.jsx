@@ -7,6 +7,7 @@ import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useUnreadPrivateMessages } from '../hooks/useUnreadPrivateMessages.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
+import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import OfflineBanner from '../components/OfflineBanner.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
@@ -256,7 +257,7 @@ export default function AppLayout({
 
   const handleLogoRemove = async () => {
     if (!etablissement?.id) return;
-    if (!confirmLegacy('Revenir au logo par défaut "SC" pour ' + etablissement.nom + ' ?')) return;
+    if (!confirmLegacy('Revenir au logo Samper par défaut pour ' + etablissement.nom + ' ?')) return;
     if (legacySB) {
       try {
         await legacySB.db.updateEtablissementLogo(etablissement.id, null);
@@ -274,7 +275,10 @@ export default function AppLayout({
   const renderLogoMark = (size = 34, fontSize = 12) => (
     <div style={{
       width: size, height: size, borderRadius: 8,
-      background: appLogo ? 'transparent' : 'var(--accent)',
+      // Sans logo d'établissement, on affiche la marque Samper (fond pétrole
+      // intégré au SVG) : le conteneur reste transparent, sinon le --accent
+      // clair du mode sombre déborderait en liseré.
+      background: 'transparent',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontWeight: 700, fontSize, color: '#fff',
       fontFamily: 'var(--font-serif)', letterSpacing: 1, flexShrink: 0,
@@ -289,7 +293,7 @@ export default function AppLayout({
     title={canEditLogo ? 'Cliquer pour changer le logo' : ''}>
       {appLogo
         ? <img src={appLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : 'SC'}
+        : <SamperMark size={size} radius={0} title={null} style={{ width: '100%', height: '100%', display: 'block' }} />}
       {canEditLogo && logoHover && (
         <div style={{
           position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
