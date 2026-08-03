@@ -311,6 +311,7 @@ export const UI_GLOSSARY = {
   'Connexion à votre espace': 'Connecting to your workspace',
   'Préparation de votre espace': 'Preparing your workspace',
   'Gestion culinaire': 'Culinary management',
+  "J'ai compris": 'Got it',
   'Gestion culinaire professionnelle': 'Professional culinary management',
   'Enregistrement': 'Saving',
   'Génération': 'Generating',

@@ -13,6 +13,14 @@
 // Deux secteurs sur huit restent vides : c'est ce vide qui donne la rotation
 // visuelle du moulin.
 
+// Version des fichiers d'icônes (suffixe des PNG : icon-192-v2.png).
+// Incrémenter à chaque changement de logo : c'est le changement d'URL dans le
+// manifest qui déclenche la mise à jour de la vignette chez les utilisateurs
+// déjà installés (voir scripts/gen-icons.mjs). Le front la lit aussi, pour
+// savoir s'il doit encore rappeler aux appareils iOS de rafraîchir leur
+// raccourci (src/components/HomeScreenIconBanner.jsx).
+export const ICON_VERSION = 'v2';
+
 export const BRAND_COLORS = {
   petrol: '#003042', // fond de marque (carte de visite)
   blade: '#175C82', // pales bleues

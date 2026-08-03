@@ -4,7 +4,10 @@ export const UI_STORAGE_KEYS = {
   page: 'sc_page',
   consultantToolsTab: 'sc_consultant_tools_tab',
   theme: 'sc_theme',
-  lang: 'sc_lang'
+  lang: 'sc_lang',
+  // Version d'icônes pour laquelle l'appareil a lu le rappel « rafraîchir la
+  // vignette de l'écran d'accueil » (iOS uniquement).
+  iconTipAck: 'sc_icon_tip_ack'
 };
 
 export function readJson(key, fallback = null) {

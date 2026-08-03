@@ -5,7 +5,7 @@
  *
  * Usage : npm run brand:icons
  *
- * VERSIONNAGE DES FICHIERS (ICON_VERSION)
+ * VERSIONNAGE DES FICHIERS (ICON_VERSION, défini dans markGeometry.js)
  * Les PNG portent un suffixe de version (icon-192-v2.png). C'est ce qui rend la
  * mise à jour automatique chez les utilisateurs qui ont déjà installé l'app :
  * Chrome ne compare pas les octets des icônes, il compare le manifest. Tant que
@@ -30,14 +30,12 @@ import sharp from 'sharp';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { buildMarkSvg, BRAND_COLORS } from '../src/components/brand/markGeometry.js';
+import { buildMarkSvg, BRAND_COLORS, ICON_VERSION } from '../src/components/brand/markGeometry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const iconsDir = path.join(rootDir, 'public', 'icons');
 mkdirSync(iconsDir, { recursive: true });
-
-export const ICON_VERSION = 'v2';
 
 // 180 = apple-touch-icon iOS ; 192 et 512 sont les tailles maskable du manifest.
 const SIZES = [72, 96, 128, 144, 180, 192, 512];

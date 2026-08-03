@@ -10,6 +10,7 @@ import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import OfflineBanner from '../components/OfflineBanner.jsx';
+import HomeScreenIconBanner from '../components/HomeScreenIconBanner.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
@@ -440,6 +441,7 @@ export default function AppLayout({
 
         {/* ─── Bandeau d'état hors-ligne / sync pointages / mise à jour ─── */}
         <OfflineBanner />
+        <HomeScreenIconBanner />
 
         {/* ─── Overlay sombre (visible seulement quand le drawer est ouvert) ─── */}
         {drawerOpen && <div style={mls.overlay} onClick={() => setDrawerOpen(false)} />}
@@ -655,6 +657,7 @@ export default function AppLayout({
         )}
         {/* Bandeau d'état hors-ligne / sync pointages / mise à jour */}
         <OfflineBanner />
+        <HomeScreenIconBanner />
         <header style={ls.topbar}>
           <div style={ls.topbarLeft}>
             <div style={ls.titleBlock}>
