@@ -14,6 +14,12 @@ import { useResumeRefresh } from './useResumeRefresh.js';
 // `archivedCartes` (restaurables via archiveCarte(id, false)). L'archivage ne
 // touche à aucune liaison carte_plats / carte_fiches_salle.
 //
+// L'ordre des onglets (colonne `cartes.ordre`, migration 20260805) est une
+// donnée d'établissement partagée par toute la brigade, pas une préférence
+// utilisateur : `reorderCartes` l'écrit pour tout le monde. Tant que la
+// migration n'est pas appliquée, la liste retombe sur l'ordre de création et
+// seul `reorderCartes` échoue - avec un message explicite.
+//
 // La suppression d'une carte n'efface AUCUN plat / recette / fiche : seules les
 // liaisons carte_plats / carte_fiches_salle sont retirées (ON DELETE CASCADE).
 //
@@ -96,9 +102,19 @@ export function useCartes(etabId) {
   const cartes = React.useMemo(() => allCartes.filter(c => !c.archive), [allCartes]);
   const archivedCartes = React.useMemo(() => allCartes.filter(c => c.archive === true), [allCartes]);
 
+  // Rang d'affichage à donner à une carte créée : juste après la dernière.
+  // Renvoie undefined si AUCUNE carte ne porte de rang, c'est-à-dire tant que
+  // la migration 20260805 n'est pas appliquée - upsertCarte n'enverra alors pas
+  // la colonne et la création continue de fonctionner.
+  const prochainOrdre = React.useCallback(() => {
+    const rangs = allCartes.map(c => c.ordre).filter(n => Number.isFinite(n));
+    return rangs.length ? Math.max(...rangs) + 1 : undefined;
+  }, [allCartes]);
+
   // Crée une nouvelle carte ; renvoie la carte créée (ou null en cas d'échec).
   const addCarte = React.useCallback(async (nom) => {
     const cleanNom = String(nom || '').trim() || 'Nouvelle carte';
+    const ordre = prochainOrdre();
     const carte = {
       id: 'carte-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       etablissementId: etabId,
@@ -106,6 +122,8 @@ export function useCartes(etabId) {
       dateDebut: null,
       dateFin: null,
       plats: [],
+      // Une carte créée se pose à DROITE des existantes, jamais devant elles.
+      ...(ordre !== undefined ? { ordre } : {}),
     };
     if (legacySB) {
       try {
@@ -123,7 +141,7 @@ export function useCartes(etabId) {
     writeLegacyStorage('sc_cartes', all);
     setAllCartes(prev => [...prev, carte]);
     return carte;
-  }, [etabId, legacySB, demoData]);
+  }, [etabId, legacySB, demoData, prochainOrdre]);
 
   // Renomme / met à jour les dates d'une carte existante.
   const renameCarte = React.useCallback(async (id, patch) => {
@@ -161,6 +179,46 @@ export function useCartes(etabId) {
     return true;
   }, [legacySB, demoData]);
 
+  // Réordonne les onglets. `orderedIds` = les cartes ACTIVES dans leur nouvel
+  // ordre, de gauche à droite. Renvoie true si l'ordre est bien enregistré.
+  //
+  // Optimiste puis rollback : la barre d'onglets doit bouger sous le doigt,
+  // mais un échec d'écriture (migration non appliquée, réseau coupé) ne doit
+  // pas laisser à l'écran un ordre que la base ignore - au prochain rechargement
+  // les onglets sauteraient en place sans explication.
+  const reorderCartes = React.useCallback(async (orderedIds) => {
+    const ids = (orderedIds || []).filter(Boolean);
+    if (ids.length < 2) return false;
+    const rangs = new Map(ids.map((id, i) => [id, i + 1]));
+    const avant = allCartes;
+    const applique = (list) => list.map(c => (rangs.has(c.id) ? { ...c, ordre: rangs.get(c.id) } : c));
+    setAllCartes(prev => applique(prev));
+
+    if (!legacySB) {
+      const all = applique(readLegacyStorage('sc_cartes', demoData.cartes) || []);
+      demoData.cartes = all;
+      writeLegacyStorage('sc_cartes', all);
+      return true;
+    }
+    try {
+      await legacySB.db.setCartesOrdre(ids);
+      notifyLegacy('Ordre des cartes enregistré.', 'success');
+      return true;
+    } catch (err) {
+      setAllCartes(avant);
+      // 42703 / PGRST204 = colonne `ordre` absente : la migration 20260805 n'a
+      // pas encore été appliquée. Message explicite plutôt qu'un code SQL brut.
+      const colonneAbsente = err?.code === '42703' || err?.code === 'PGRST204';
+      notifyLegacy(
+        colonneAbsente
+          ? 'Ordre des cartes indisponible : la mise à jour de la base n\'a pas encore été appliquée.'
+          : 'Erreur enregistrement de l\'ordre : ' + (err.message || err),
+        'error',
+      );
+      return false;
+    }
+  }, [allCartes, legacySB, demoData]);
+
   const deleteCarte = React.useCallback(async (id) => {
     if (legacySB) {
       try { await legacySB.db.deleteCarte(id); }
@@ -173,5 +231,5 @@ export function useCartes(etabId) {
     setAllCartes(prev => prev.filter(c => c.id !== id));
   }, [legacySB, demoData]);
 
-  return { cartes, archivedCartes, status, reload, addCarte, renameCarte, archiveCarte, deleteCarte };
+  return { cartes, archivedCartes, status, reload, addCarte, renameCarte, archiveCarte, deleteCarte, reorderCartes };
 }

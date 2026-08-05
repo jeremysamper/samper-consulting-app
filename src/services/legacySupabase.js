@@ -1330,7 +1330,14 @@ export function installLegacySupabase() {
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
       if (error) return _readFailed('[listCartes]', error, strict);
-      return (data || []).map(this.mapCarteFromDB);
+      // Ordre des onglets : rang choisi par l'utilisateur (colonne `ordre`),
+      // created_at en repli. Le tri se fait ici et NON dans la requête pour
+      // qu'un front déployé avant la migration 20260805 ne demande pas une
+      // colonne absente : `ordre` vaut alors undefined → 0 pour toutes les
+      // cartes, et le tri stable de sort() préserve l'ordre created_at déjà
+      // appliqué par la requête.
+      return (data || []).map(this.mapCarteFromDB)
+        .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
     },
 
     async upsertCarte(carte) {
@@ -1341,6 +1348,12 @@ export function installLegacySupabase() {
         date_debut: carte.dateDebut || null,
         date_fin: carte.dateFin || null,
         plats: carte.plats || [],
+        // Rang d'affichage : envoyé UNIQUEMENT si l'appelant le porte.
+        // mapCarteFromDB ne l'expose que si la colonne existe, donc un front
+        // déployé avant la migration 20260805 n'essaie jamais de l'écrire.
+        // Sans clé, l'upsert préserve la valeur en base (même contrat que
+        // `archive`) : renommer une carte ne la renvoie pas en tête.
+        ...(Number.isFinite(carte.ordre) ? { ordre: carte.ordre } : {}),
       };
       const { data, error } = await client.from('cartes').upsert(payload).select().single();
       if (error) throw error;
@@ -1362,6 +1375,19 @@ export function installLegacySupabase() {
         .update({ archive: archive === true })
         .eq('id', id);
       if (error) throw error;
+    },
+
+    // Écrit le rang d'affichage des onglets : `orderedIds` est la liste des
+    // cartes dans leur nouvel ordre, de gauche à droite. Update ciblé et non
+    // upsert : `etablissement_id` est NOT NULL sans défaut, un upsert partiel
+    // (id, ordre) serait rejeté. Les cartes archivées ne sont pas touchées -
+    // elles gardent leur rang et retrouvent donc leur place à la restauration.
+    async setCartesOrdre(orderedIds) {
+      const ids = (orderedIds || []).filter(Boolean);
+      for (let i = 0; i < ids.length; i += 1) {
+        const { error } = await client.from('cartes').update({ ordre: i + 1 }).eq('id', ids[i]);
+        if (error) throw error;
+      }
     },
 
     // Remplace l'ensemble des cartes auxquelles un plat est rattaché.
@@ -1433,6 +1459,11 @@ export function installLegacySupabase() {
         dateFin: row.date_fin,
         plats: row.plats || [],
         archive: row.archive === true,
+        // Rang d'affichage : clé exposée UNIQUEMENT si la colonne existe, pour
+        // qu'un upsert issu d'un objet carte (renommage, sync de plats) ne
+        // tente pas de l'écrire tant que la migration 20260805 n'est pas
+        // appliquée. Absente = tri replié sur created_at.
+        ...(row.ordre !== undefined ? { ordre: row.ordre } : {}),
       };
     },
 

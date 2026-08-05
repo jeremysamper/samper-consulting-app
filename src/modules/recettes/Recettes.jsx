@@ -1328,7 +1328,7 @@ const Recettes = ({ user, etablissement }) => {
   // « réellement aucune carte » : au réveil d'une tablette la lecture peut
   // repartir en 401 et il ne faut surtout pas annoncer un établissement vide.
   const { cartes, archivedCartes, status: cartesStatus, reload: reloadCartes,
-          addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
+          addCarte, renameCarte, archiveCarte, deleteCarte, reorderCartes } = useCartes(etabId);
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)
   const [recettes, setRecettes] = React.useState([]);
@@ -1515,6 +1515,7 @@ const Recettes = ({ user, etablissement }) => {
             archivedCartes={archivedCartes}
             onArchiveCarte={archiveCarte}
             homeId={defaultCarteId}
+            onReorderCartes={reorderCartes}
           />
         </div>
         <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">

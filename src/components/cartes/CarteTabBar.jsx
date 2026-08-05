@@ -12,6 +12,12 @@ import { confirmLegacy } from '../../legacy/legacyApi.js';
 // tout (liaisons comprises) : la carte sort des onglets et se restaure depuis
 // la modale « Archives ».
 //
+// onReorderCartes (optionnel) active le bouton « ⇄ Ordre » : une modale où l'on
+// déplace chaque carte d'un cran vers la gauche ou vers la droite. Pas de
+// glisser-déposer : la barre défile horizontalement sur tablette, et un drag y
+// entre en conflit avec le défilement tactile. L'ordre n'est écrit qu'à la
+// validation, la modale est donc annulable sans effet de bord.
+//
 // Styles via tokens CSS (var(--surface/nav/border/text…)), aucune couleur en dur.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,11 +37,17 @@ export default function CarteTabBar({
   // Optionnel : id de la carte « d'accueil » → préfixe ★ sur l'onglet.
   // Additif : les autres usages (Fiches salle) ne passent rien → aucun marqueur.
   homeId = null,
+  // Optionnel : (orderedIds) => Promise<boolean> - enregistre l'ordre des
+  // onglets. Absent → pas de bouton « Ordre ».
+  onReorderCartes,
 }) {
   // modal: null | { mode: 'create' } | { mode: 'edit', carte }
   const [modal, setModal] = React.useState(null);
   const [form, setForm] = React.useState({ nom: '', dateDebut: '', dateFin: '' });
   const [showArchives, setShowArchives] = React.useState(false);
+  // Brouillon d'ordre : liste d'ids en cours de réagencement (null = fermé).
+  const [ordreDraft, setOrdreDraft] = React.useState(null);
+  const [ordreBusy, setOrdreBusy] = React.useState(false);
 
   const openCreate = () => { setForm({ nom: '', dateDebut: '', dateFin: '' }); setModal({ mode: 'create' }); };
   const openEdit = (carte) => {
@@ -81,6 +93,38 @@ export default function CarteTabBar({
     close();
   };
 
+  // ─── Réagencement des onglets ───
+  const ordreActuel = cartes.map(c => c.id);
+  // Le brouillon est resynchronisé sur la liste réelle à chaque rendu : une
+  // carte supprimée par un collègue (realtime) sort de la liste, une carte
+  // créée entre-temps rejoint la fin. Sans ça la modale ouverte pendant une
+  // modification distante enregistrerait un ordre incomplet.
+  const ordreLignes = React.useMemo(() => {
+    const parId = new Map(cartes.map(c => [c.id, c]));
+    const listees = (ordreDraft || []).map(id => parId.get(id)).filter(Boolean);
+    const vues = new Set(listees.map(c => c.id));
+    return [...listees, ...cartes.filter(c => !vues.has(c.id))];
+  }, [ordreDraft, cartes]);
+  const ordreModifie = ordreLignes.some((c, i) => c.id !== ordreActuel[i]);
+
+  const deplacerCarte = (index, delta) => {
+    const cible = index + delta;
+    if (cible < 0 || cible >= ordreLignes.length) return;
+    const next = ordreLignes.map(c => c.id);
+    [next[index], next[cible]] = [next[cible], next[index]];
+    setOrdreDraft(next);
+  };
+
+  const submitOrdre = async () => {
+    if (!ordreModifie) return;
+    setOrdreBusy(true);
+    const ok = await onReorderCartes?.(ordreLignes.map(c => c.id));
+    setOrdreBusy(false);
+    // Échec d'écriture : la modale reste ouverte avec le brouillon intact, le
+    // toast d'erreur ayant déjà expliqué pourquoi.
+    if (ok !== false) setOrdreDraft(null);
+  };
+
   return (
     <div className="segmented-tabs no-print">
       {cartes.map(carte => {
@@ -115,6 +159,15 @@ export default function CarteTabBar({
 
       {canManage && (
         <button className="segmented-tab" style={s.addBtn} onClick={openCreate} title="Ajouter une carte">+ Carte</button>
+      )}
+
+      {canManage && onReorderCartes && cartes.length > 1 && (
+        <button
+          className="segmented-tab"
+          style={s.ordreBtn}
+          onClick={() => setOrdreDraft(ordreActuel)}
+          title="Changer l'ordre des onglets, de gauche à droite"
+        >⇄ Ordre</button>
       )}
 
       {canManage && onArchiveCarte && archivedCartes.length > 0 && (
@@ -175,6 +228,51 @@ export default function CarteTabBar({
         </div>
       )}
 
+      {ordreDraft && (
+        <div className="modal-sheet-overlay" style={s.overlay} onClick={() => { if (!ordreBusy) setOrdreDraft(null); }}>
+          <div className="modal-sheet" style={s.modal} onClick={e => e.stopPropagation()}>
+            <div style={s.modalHeader}>
+              <div>
+                <div style={s.modalTitle}>Ordre des cartes</div>
+                <div style={s.modalHint}>Le haut de la liste est l'onglet le plus à gauche.</div>
+              </div>
+              <button style={s.closeBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>✕</button>
+            </div>
+            <div style={{ ...s.modalBody, gap: 6, maxHeight: '58vh', overflowY: 'auto' }}>
+              {ordreLignes.map((carte, i) => (
+                <div key={carte.id} style={s.ordreRow}>
+                  <span style={s.ordreRang}>{i + 1}</span>
+                  <div style={s.ordreNom}>{carte.nom}</div>
+                  <button
+                    style={{ ...s.ordreArrow, opacity: i === 0 ? 0.3 : 1 }}
+                    onClick={() => deplacerCarte(i, -1)}
+                    disabled={i === 0 || ordreBusy}
+                    title="Déplacer vers la gauche"
+                    aria-label={`Déplacer « ${carte.nom} » vers la gauche`}
+                  >←</button>
+                  <button
+                    style={{ ...s.ordreArrow, opacity: i === ordreLignes.length - 1 ? 0.3 : 1 }}
+                    onClick={() => deplacerCarte(i, 1)}
+                    disabled={i === ordreLignes.length - 1 || ordreBusy}
+                    title="Déplacer vers la droite"
+                    aria-label={`Déplacer « ${carte.nom} » vers la droite`}
+                  >→</button>
+                </div>
+              ))}
+            </div>
+            <div style={s.modalFooter}>
+              <div style={{ flex: 1 }} />
+              <button style={s.ghostBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>Annuler</button>
+              <button
+                style={{ ...s.primaryBtn, opacity: ordreModifie && !ordreBusy ? 1 : 0.5 }}
+                onClick={submitOrdre}
+                disabled={!ordreModifie || ordreBusy}
+              >{ordreBusy ? 'Enregistrement…' : 'Enregistrer l\'ordre'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showArchives && (
         <div style={s.overlay} onClick={() => setShowArchives(false)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
@@ -229,7 +327,16 @@ const s = {
   tabLabel: { whiteSpace: 'nowrap' },
   editBtn: { background: 'transparent', border: 'none', borderRadius: 5, color: 'var(--accent)', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: '0 2px', marginLeft: 2, fontFamily: 'var(--font)' },
   addBtn: { color: 'var(--accent)', border: '1px dashed var(--accent-bd)', fontWeight: 700 },
+  ordreBtn: { color: 'var(--text2)', border: '1px dashed var(--border)', fontWeight: 600 },
   archivesBtn: { color: 'var(--text2)', border: '1px dashed var(--border)', fontWeight: 600 },
+  // flexShrink 0 : sans lui les lignes se superposent sur mobile (min-height
+  // global 44px sur les contrôles vs hauteur calculée par flex).
+  ordreRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', flexShrink: 0 },
+  ordreRang: { width: 22, flexShrink: 0, fontSize: 11, fontWeight: 800, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' },
+  ordreNom: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  // 44px : cible tactile iPad. Une flèche nue de 16px se rate une fois sur deux
+  // et passe pour un bug d'enregistrement.
+  ordreArrow: { width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--accent)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   archiveRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)' },
   archiveName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   archiveMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
@@ -240,6 +347,7 @@ const s = {
   modal: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 460, maxWidth: '94vw', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
   modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
   modalTitle: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
+  modalHint: { fontSize: 11, color: 'var(--text2)', marginTop: 3, lineHeight: 1.4 },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
   modalBody: { padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
   label: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
