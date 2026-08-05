@@ -24,6 +24,7 @@ import { partitionAllergenes, normalizeAllergenes, labelAllergene } from '../../
 import { CATEGORIES_PLAT } from '../../utils/categoriesPlat.js';
 import PhotoUploader from './PhotoUploader.jsx';
 import PlatPicker from './components/PlatPicker.jsx';
+import EtablissementTransferModal from './components/EtablissementTransferModal.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
@@ -143,6 +144,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [linkPlatPickerForRecette, setLinkPlatPickerForRecette] = React.useState(null);
   // Rattachement groupé : les recettes cochées en mode sélection vers un plat.
   const [bulkLinkPlatOpen, setBulkLinkPlatOpen] = React.useState(false);
+  // Transfert groupé : les recettes cochées vers un autre établissement.
+  const [bulkTransferOpen, setBulkTransferOpen] = React.useState(false);
+  // Établissements accessibles (cibles de transfert). Même filtre que le
+  // sélecteur d'établissement de l'entête : un consultant LIT tous les
+  // établissements, mais la RLS n'accepte l'écriture que sur ceux de son profil.
+  const [etablissementsAll, setEtablissementsAll] = React.useState([]);
+  React.useEffect(() => {
+    if (!legacySB) { setEtablissementsAll(demoData.etablissements || []); return undefined; }
+    let mounted = true;
+    legacySB.db.listEtablissements()
+      .then(list => { if (mounted) setEtablissementsAll(Array.isArray(list) ? list : []); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [legacySB, demoData]);
   // ─── Onglet actif ───
   // Onglets dispo : 'recettes' | 'creation_carte' | 'simulation' | 'roles' | 'etablissements' | 'factures'
   // Si on arrive ici via une redirection (ancien lien /factures par ex.),
@@ -606,6 +621,110 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (deja) parts.push(`${deja} déjà liée${deja > 1 ? 's' : ''}`);
     if (ko) parts.push(`${ko} en erreur`);
     notifyLegacy(parts.join(' · ') || 'Aucune recette à rattacher.', ko ? 'warning' : 'success');
+  };
+
+  // ─── Transfert groupé vers un autre établissement ───
+  // Cibles possibles : les établissements du profil (la RLS refuse l'écriture
+  // ailleurs, alors qu'un consultant les LIT tous), hors celui où l'on est déjà
+  // et hors inactifs. Même filtre que le sélecteur d'établissement de l'entête.
+  const etablissementsCibles = React.useMemo(() => {
+    const autorises = user?.etablissementIds?.length
+      ? (etablissementsAll || []).filter(e => user.etablissementIds.includes(e.id))
+      : (etablissementsAll || []);
+    return autorises.filter(e => e.id !== etabId && e.actif !== false);
+  }, [etablissementsAll, user, etabId]);
+
+  // Recopie les ingrédients pour l'établissement d'arrivée. Quand un produit du
+  // même nom existe à SON catalogue, on relie dessus et on aligne unité + prix :
+  // les tarifs fournisseurs ne se suivent pas d'un site à l'autre, garder ceux
+  // du départ donnerait un food cost faux là-bas. Sans correspondance, la ligne
+  // part telle quelle, sans lien produit ni drapeau de correspondance - ceux-ci
+  // désignent le catalogue de départ.
+  const recopierIngredients = (ings, catalogueCible) => {
+    const parNom = new Map();
+    (catalogueCible || []).forEach(p => {
+      const k = normalizeSearch(p.nom);
+      if (k && !parNom.has(k)) parNom.set(k, p);
+    });
+    return (ings || []).map(ing => {
+      const match = parNom.get(normalizeSearch(ing.nom || ''));
+      if (match) return applyProductToIngredient(ing, match);
+      const copie = { ...ing };
+      delete copie.produitId;
+      delete copie.needsReview;
+      delete copie.matchSuggestions;
+      return copie;
+    });
+  };
+
+  // « Copier » duplique (rien ne bouge ici). « Déplacer » change
+  // l'établissement de la recette ET la retire des plats d'ici : un plat qui
+  // garderait un composant parti ailleurs afficherait une ligne fantôme,
+  // invisible depuis la bibliothèque.
+  const transfererRecettesSelection = async ({ etablissementId, mode, ignorerDoublons, doublonsIds }) => {
+    const cible = etablissementsCibles.find(e => e.id === etablissementId);
+    if (!cible || !legacySB) return;
+    const ignores = new Set(ignorerDoublons ? (doublonsIds || []) : []);
+    const rows = recettesEtab.filter(r => recSel.ids.has(r.id) && !ignores.has(r.id));
+    if (!rows.length) return;
+
+    setRecBulkBusy(true);
+    // Catalogue d'arrivée : une lecture en échec n'annule pas le transfert, les
+    // ingrédients partent alors sans lien produit.
+    let catalogueCible = [];
+    try { catalogueCible = (await legacySB.db.listProduits(etablissementId)) || []; }
+    catch (e) { /* ingrédients recopiés bruts */ }
+
+    const deplacement = mode === 'deplacement';
+    let ok = 0, ko = 0, liensRetires = 0;
+    const deplacees = [];
+    for (const r of rows) {
+      const payload = {
+        ...r,
+        // Copie : nouvel id, sinon l'upsert écraserait la recette d'origine et
+        // la ferait changer d'établissement au lieu de la dupliquer.
+        id: deplacement ? r.id : ('rec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)),
+        etablissementId,
+        ingredients: recopierIngredients(r.ingredients, catalogueCible),
+        modifiePar: user.id,
+      };
+      try {
+        if (deplacement) {
+          // Délier AVANT le déplacement : une fois la recette partie, les plats
+          // d'ici ne la référencent plus visiblement et le nettoyage n'aurait
+          // plus de liste sur laquelle s'appuyer.
+          const platsLies = plats.filter(p => (p.recettes || []).some(pr => pr.recetteId === r.id));
+          for (const p of platsLies) {
+            try { await legacySB.db.unlinkRecetteFromPlat(p.id, r.id); liensRetires += 1; }
+            catch (err) { console.error('[unlinkRecetteFromPlat]', err); }
+          }
+        }
+        await legacySB.db.upsertRecette(payload);
+        ok += 1;
+        if (deplacement) deplacees.push(r.id);
+      } catch (err) {
+        console.error('[transfertRecette]', err);
+        ko += 1;
+      }
+    }
+
+    // Mise à jour optimiste du départ ; le realtime reste la source de vérité.
+    if (deplacees.length) {
+      const partis = new Set(deplacees);
+      setPlats(prev => prev.map(p => ({ ...p, recettes: (p.recettes || []).filter(pr => !partis.has(pr.recetteId)) })));
+      setRecettes(prev => prev.filter(r => !partis.has(r.id)));
+    }
+
+    setRecBulkBusy(false);
+    setBulkTransferOpen(false);
+    recSel.exit();
+
+    const parts = [];
+    if (ok) parts.push(`${ok} recette${ok > 1 ? 's' : ''} ${deplacement ? 'déplacée' : 'copiée'}${ok > 1 ? 's' : ''} vers « ${cible.nom} »`);
+    if (ignores.size) parts.push(`${ignores.size} déjà présente${ignores.size > 1 ? 's' : ''} ignorée${ignores.size > 1 ? 's' : ''}`);
+    if (liensRetires) parts.push(`${liensRetires} lien${liensRetires > 1 ? 's' : ''} plat retiré${liensRetires > 1 ? 's' : ''}`);
+    if (ko) parts.push(`${ko} en erreur`);
+    notifyLegacy(parts.join(' · ') || 'Aucune recette transférée.', ko ? 'warning' : 'success');
   };
 
   // Applique la sélection de plats du picker à UNE recette : ce qui a été coché
@@ -1140,6 +1259,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <Btn small variant="ghost" onClick={archiverRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
                 🗄 Archiver
               </Btn>
+              {/* legacySB : le transfert écrit en base, il n'a pas de sens en
+                  mode démo (bridge absent) où il ne ferait rien. */}
+              {legacySB && etablissementsCibles.length > 0 && (
+                <Btn small variant="ghost" onClick={() => setBulkTransferOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
+                  🏛 Transférer
+                </Btn>
+              )}
             </SelectionToolbar>
           ) : (
             <>
@@ -2268,6 +2394,19 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           />
         );
       })()}
+
+      {/* ─── Modale transfert de la sélection vers un autre établissement ─── */}
+      {bulkTransferOpen && (
+        <EtablissementTransferModal
+          recettes={recettesEtab.filter(r => recSel.ids.has(r.id))}
+          etablissements={etablissementsCibles}
+          sourceNom={etablissement?.nom || ''}
+          loadRecettesCible={(id) => legacySB.db.listRecettes(id, { strict: true })}
+          busy={recBulkBusy}
+          onConfirm={transfererRecettesSelection}
+          onClose={() => setBulkTransferOpen(false)}
+        />
+      )}
 
       {/* ─── Modale picker catalogue ─── */}
       {catalogPicker !== null && selected && (() => {
