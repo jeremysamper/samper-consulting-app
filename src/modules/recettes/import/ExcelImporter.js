@@ -282,12 +282,57 @@ function familleDeService(valeur) {
   return FAMILLES_SERVICE.find(f => premier === f || premier === f + 's') || '';
 }
 
+// ─── Lecture du rendement ────────────────────────────────────────────────────
+// « Rendement : » est une phrase, pas un nombre : « 2 bûches, soit 105 sablés
+// de 6,5 g crus », « 400 g de chips, soit 20 coupelles de 20 g ». Prendre le
+// premier nombre venu donnait 2 portions pour 105 sablés. On lit donc les
+// couples « nombre + mot » et on garde le nombre de pièces servies.
+
+// Mots de mesure : le nombre qui les précède décrit un poids, un volume ou une
+// dimension, jamais un nombre de portions.
+const MOTS_MESURE = new Set([
+  'g', 'gr', 'gramme', 'grammes', 'kg', 'mg', 'ml', 'cl', 'dl', 'l', 'litre',
+  'litres', 'cm', 'mm', 'm', 'min', 'minute', 'minutes', 'h', 'heure', 'heures',
+  'degre', 'degres', 'c', 'chf', 'eur', 'euros', 'pourcent',
+]);
+
+// Mots qui désignent explicitement une portion servie : ils l'emportent sur un
+// simple contenant (« 16 tranches … 32 portions de buffet » → 32).
+const MOTS_PORTION = new Set([
+  'portion', 'portions', 'part', 'parts', 'personne', 'personnes',
+  'couvert', 'couverts', 'piece', 'pieces',
+]);
+
+// Renvoie le nombre de pièces lu dans un rendement, ou null si la phrase ne
+// décrit qu'un poids ou un volume (« 250 ml ») - dans ce cas le nombre de
+// portions est inconnu et ne doit pas être deviné.
+function lireRendement(texte) {
+  const source = String(texte ?? '');
+  const explicites = [];
+  const comptables = [];
+  const re = /(\d+(?:[.,]\d+)?)\s*([\p{L}]+)?/gu;
+  let m;
+  while ((m = re.exec(source)) !== null) {
+    const nombre = Math.round(Number(m[1].replace(',', '.')));
+    if (!Number.isFinite(nombre) || nombre <= 0) continue;
+    const mot = norm(m[2] || '');
+    if (mot && MOTS_MESURE.has(mot)) continue; // « 450 g », « 24 cm »
+    if (MOTS_PORTION.has(mot)) explicites.push(nombre);
+    else comptables.push(nombre);
+  }
+  const retenus = explicites.length ? explicites : comptables;
+  if (!retenus.length) return null;
+  // Le plus grand : « 2 bûches, soit 105 sablés » sert 105 pièces, pas 2.
+  return Math.max(...retenus);
+}
+
 // Parse une feuille en format fiche technique et renvoie un tableau d'une recette.
 function parseFicheTechnique(rows) {
   let produit = ''; // "Produit :" → nom de la préparation OU classement de service
   let platParent = ''; // "Plat :" → nom du plat, ou contexte du plat parent
   let catRaw = '';
   let portions = 4;
+  let rendementIllisible = false; // rendement en poids/volume : portions inconnues
   let allergenesRaw = '';
   let conservation = '';
   let dressage = '';
@@ -328,8 +373,8 @@ function parseFicheTechnique(rows) {
       }
       if (keyStartsWith(key, 'produit')) { if (val && !produit) produit = val; continue; }
       if (keyStartsWith(key, 'rendement', 'portions', 'couverts', 'nb portions', 'nbr portions')) {
-        const m = (val || '').match(/(\d+)/);
-        if (m) portions = parseInt(m[1], 10);
+        const lu = lireRendement(val);
+        if (lu != null) portions = lu; else rendementIllisible = Boolean(val);
         continue;
       }
       if (keyStartsWith(key, 'allergene', 'allergenes')) { allergenesRaw = val; continue; }
@@ -367,6 +412,9 @@ function parseFicheTechnique(rows) {
   const warnings = [...allerg._warnAllergenes];
   if (flagged > 0) warnings.push(`${flagged} ligne(s) ingrédient à vérifier`);
   if (ingredients.length === 0) warnings.push('Aucun ingrédient détecté');
+  // Mieux vaut la valeur par défaut signalée qu'un « 250 portions » lu dans
+  // « Rendement : 250 ml » : le champ est modifiable dans l'aperçu d'import.
+  if (rendementIllisible) warnings.push('Portions à vérifier (rendement en poids/volume)');
 
   return [{
     _tempId: tempId('rec'),
