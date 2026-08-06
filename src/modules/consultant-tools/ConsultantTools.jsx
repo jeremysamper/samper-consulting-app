@@ -137,8 +137,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // ─── Plats (hiérarchie) ───
   const [plats, setPlats] = React.useState([]);
   const [expandedPlats, setExpandedPlats] = React.useState(new Set());
-  // Dossiers cartes repliés (vide = toutes dépliées par défaut).
-  const [collapsedCartes, setCollapsedCartes] = React.useState(new Set());
+  // Dossiers cartes dépliés (vide = toutes repliées par défaut). L'arborescence
+  // tient ainsi sur un écran à l'arrivée : on ouvre la carte qu'on cherche au
+  // lieu de scroller tous les plats de toutes les cartes.
+  const [expandedCartes, setExpandedCartes] = React.useState(new Set());
   const [showPlatForm, setShowPlatForm] = React.useState(false);
   const [editPlat, setEditPlat] = React.useState(null);
   const [linkPlatPickerForRecette, setLinkPlatPickerForRecette] = React.useState(null);
@@ -1470,15 +1472,17 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 {folders.map(folder => {
                   // En recherche, on masque les dossiers vides ; sinon « Non classés » n'apparaît que s'il a des plats.
                   if (folder.plats.length === 0 && (searchValue !== '' || folder.id === '__none__')) return null;
-                  const collapsed = collapsedCartes.has(folder.id);
+                  // En recherche, les dossiers restants s'ouvrent d'office :
+                  // sinon on ne verrait que des en-têtes de cartes.
+                  const collapsed = searchValue === '' && !expandedCartes.has(folder.id);
                   return (
                     <div key={folder.id}>
                       <div
                         style={cts.carteHeader}
                         onClick={() => {
-                          const next = new Set(collapsedCartes);
-                          collapsed ? next.delete(folder.id) : next.add(folder.id);
-                          setCollapsedCartes(next);
+                          const next = new Set(expandedCartes);
+                          expandedCartes.has(folder.id) ? next.delete(folder.id) : next.add(folder.id);
+                          setExpandedCartes(next);
                         }}
                         title={collapsed ? 'Développer' : 'Réduire'}
                       >
