@@ -64,7 +64,8 @@ const normalizeCategorie = (raw) => {
   if (!n) return 'Plats';
   const hit = CATEGORIES_VALIDES.find(c => norm(c) === n || norm(c).startsWith(n));
   if (hit) return hit;
-  if (/dessert|sucr/.test(n)) return 'Desserts';
+  if (/aperitif|apero|amuse|mise en bouche/.test(n)) return 'Amuse-bouches';
+  if (/dessert|sucr|gouter|patisserie|viennoiserie/.test(n)) return 'Desserts';
   if (/entree|froid/.test(n)) return 'Entrées';
   if (/fromage/.test(n)) return 'Fromages';
   if (/sauce/.test(n)) return 'Sauces';
@@ -75,11 +76,13 @@ const normalizeCategorie = (raw) => {
 // Renvoie une catégorie valide ou null si non reconnu.
 function categoryFromSheetName(sheetName) {
   const n = norm(sheetName);
-  if (/entree|entrees|starter|amuse|aperitif/.test(n)) return 'Entrées';
-  if (/dessert|sucre|sucrerie|patisserie|gateau|tarte|glace/.test(n)) return 'Desserts';
+  // « Apéritif » avant « Entrées » : une bouchée d'apéritif est un amuse-bouche,
+  // et le même mot doit donner la même catégorie qu'en normalizeCategorie.
+  if (/amuse.?bouche|mise en bouche|aperitif|apero/.test(n)) return 'Amuse-bouches';
+  if (/entree|entrees|starter/.test(n)) return 'Entrées';
+  if (/dessert|sucre|sucrerie|gouter|patisserie|gateau|tarte|glace/.test(n)) return 'Desserts';
   if (/sauce|fond|jus|coulis|veloute|bisque/.test(n)) return 'Sauces';
   if (/fromage|plateau fromage/.test(n)) return 'Fromages';
-  if (/amuse.?bouche|mise en bouche/.test(n)) return 'Amuse-bouches';
   if (/garniture|accompagnement|legume|vegetal/.test(n)) return 'Garnitures';
   if (/plat|principal|chaud|viande|poisson/.test(n)) return 'Plats';
   return null;
@@ -258,10 +261,31 @@ function detectFicheTechnique(rows) {
   return false;
 }
 
+// « Produit : » ne porte pas la même chose selon les fiches : tantôt le nom réel
+// de la préparation (fiches client : Plat = plat parent, Produit = la
+// préparation), tantôt un classement de service (« Apéritif, feuilleté »,
+// « Goûter, cake »). Dans ce second cas le nom juste est celui de « Plat : ».
+const FAMILLES_SERVICE = [
+  'aperitif', 'apero', 'amuse-bouche', 'amuse bouche', 'mise en bouche',
+  'entree', 'plat', 'plat principal', 'dessert', 'gouter', 'snack', 'buffet',
+  'petit dejeuner', 'petit-dejeuner', 'brunch', 'room service', 'picnic',
+  'pique-nique', 'pique nique', 'garniture', 'accompagnement', 'sauce', 'fond',
+  'fromage', 'boisson', 'cocktail', 'boulangerie', 'viennoiserie', 'patisserie',
+];
+
+// Renvoie la famille de service si « Produit : » est un classement et non un
+// nom, en ne lisant que le premier segment (« Goûter, tarte de garde » →
+// « gouter »). Chaîne vide si la valeur nomme bien une préparation.
+function familleDeService(valeur) {
+  const premier = norm(String(valeur ?? '').split(/[,;/|·]/)[0]);
+  if (!premier) return '';
+  return FAMILLES_SERVICE.find(f => premier === f || premier === f + 's') || '';
+}
+
 // Parse une feuille en format fiche technique et renvoie un tableau d'une recette.
 function parseFicheTechnique(rows) {
-  let nom = '';
-  let platParent = ''; // "Plat :" → contexte du plat parent
+  let produit = ''; // "Produit :" → nom de la préparation OU classement de service
+  let platParent = ''; // "Plat :" → nom du plat, ou contexte du plat parent
   let catRaw = '';
   let portions = 4;
   let allergenesRaw = '';
@@ -302,7 +326,7 @@ function parseFicheTechnique(rows) {
       if (keyStartsWith(key, 'plat', 'recette', 'nom')) {
         if (val && !platParent) platParent = val; continue;
       }
-      if (keyStartsWith(key, 'produit')) { if (val) nom = val; continue; }
+      if (keyStartsWith(key, 'produit')) { if (val && !produit) produit = val; continue; }
       if (keyStartsWith(key, 'rendement', 'portions', 'couverts', 'nb portions', 'nbr portions')) {
         const m = (val || '').match(/(\d+)/);
         if (m) portions = parseInt(m[1], 10);
@@ -331,8 +355,11 @@ function parseFicheTechnique(rows) {
     }
   }
 
-  // Fallback : si pas de "Produit :", utiliser "Plat :" comme nom
-  if (!nom && platParent) nom = platParent;
+  // Nom : « Produit : » quand il nomme la préparation, sinon « Plat : ». Un
+  // classement de service ne devient jamais le nom tant qu'un autre libellé
+  // existe, sans quoi toutes les fiches d'une même famille s'appellent pareil.
+  const famille = familleDeService(produit);
+  const nom = (produit && !famille) ? produit : (platParent || produit);
   if (!nom) return [];
 
   const flagged = ingredients.filter(i => i._import.warning).length;
@@ -344,7 +371,9 @@ function parseFicheTechnique(rows) {
   return [{
     _tempId: tempId('rec'),
     nom,
-    categorie: normalizeCategorie(catRaw),
+    // À défaut de ligne catégorie, la famille lue dans « Produit : » la donne :
+    // sans elle ces fiches arrivaient toutes en « Plats ».
+    categorie: normalizeCategorie(catRaw || famille),
     portions,
     prixVente: 0,
     statut: 'brouillon',
