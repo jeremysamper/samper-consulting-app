@@ -3,7 +3,7 @@ import { getDemoData } from '../../data/demoData.js';
 import ImportLauncher from '../recettes/import/ImportLauncher.jsx';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
-import { readText, removeStorageKeys } from '../../utils/storage.js';
+import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { Factures } from '../factures/index.js';
 import { Parametres } from '../parametres/index.js';
 import { Roles } from '../roles/index.js';
@@ -36,9 +36,12 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
 import AlertRules from './AlertRules.jsx';
+import ConsultantOverview from './ConsultantOverview.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 
-const CONSULTANT_TOOLS_TABS = ['recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures', 'alertes'];
+const CONSULTANT_TOOLS_TABS = ['vue', 'recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures', 'alertes'];
+// Dernier onglet visité, restauré à l'ouverture du module (préférence UI locale).
+const LAST_TAB_KEY = 'sc_consultant_tools_last_tab';
 
 // ─── Stabilité de la saisie : brouillons localStorage + détection de conflit ───
 const RECIPE_DRAFT_PREFIX = 'sc_recipe_draft_';
@@ -161,9 +164,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     return () => { mounted = false; };
   }, [legacySB, demoData]);
   // ─── Onglet actif ───
-  // Onglets dispo : 'recettes' | 'creation_carte' | 'simulation' | 'roles' | 'etablissements' | 'factures'
-  // Si on arrive ici via une redirection (ancien lien /factures par ex.),
-  // on lit une cle UI locale temporaire pour ouvrir le bon onglet d'entree.
+  // Onglets dispo : voir CONSULTANT_TOOLS_TABS ('vue' = cockpit d'arrivée).
+  // Priorité : redirection ponctuelle (ancien lien /factures par ex., clé
+  // one-shot) > dernier onglet visité (persisté) > Vue d'ensemble.
   const [activeTab, setActiveTab] = React.useState(() => {
     try {
       const pre = readText('sc_consultant_tools_tab', '');
@@ -173,9 +176,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           return pre;
         }
       }
+      const last = readText(LAST_TAB_KEY, '');
+      if (CONSULTANT_TOOLS_TABS.includes(last)) return last;
     } catch(e) {}
-    return 'recettes';
+    return 'vue';
   });
+  React.useEffect(() => { writeText(LAST_TAB_KEY, activeTab); }, [activeTab]);
   React.useEffect(() => {
     const browserWindow = getBrowserWindow();
     if (!browserWindow) return undefined;
@@ -299,6 +305,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const archiveesFiltrees = recettesArchivees.filter(r => searchValue === '' || normalizeSearch(r.nom).includes(searchValue));
   // Section « Archivées » de la liste : repliée par défaut.
   const [showArchivees, setShowArchivees] = React.useState(false);
+  // Correspondances catalogue incertaines (héritées d'un import) : compteur
+  // partagé entre la Vue d'ensemble et le menu « ⋯ » de la liste.
+  const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
 
   // ═══ Sauvegarde différée + stabilité de la saisie ═══
   const saveTimerRef = React.useRef(null);
@@ -1132,26 +1141,53 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Barre d'onglets - espace admin consultant */}
+      {/* Barre d'onglets - deux groupes : création culinaire | administration */}
       <div className="no-print" style={{ marginBottom: 14 }}>
         <SegmentedTabs
           active={activeTab}
           onChange={setActiveTab}
           tabs={[
-            { id: 'recettes', label: '📖 Plats & Recettes' },
+            { id: 'vue', label: 'Vue d\'ensemble' },
+            { id: 'recettes', label: 'Plats & Recettes' },
             { id: 'creation_carte', label: 'Création carte' },
-            { id: 'simulation', label: '📊 Simulation carte' },
-            { id: 'roles', label: '🔐 Rôles & accès' },
-            { id: 'etablissements', label: '🏛 Établissements' },
-            { id: 'factures', label: '€ Factures' },
-            { id: 'alertes', label: '🔔 Alertes' },
+            { id: 'simulation', label: 'Simulation' },
+            { divider: true },
+            { id: 'roles', label: 'Rôles & accès' },
+            { id: 'etablissements', label: 'Établissements' },
+            { id: 'factures', label: 'Factures' },
+            { id: 'alertes', label: 'Alertes' },
           ]}
         />
       </div>
 
       {/* Routage des onglets - reutilise les composants migres via imports.
           Chaque onglet est isolé dans un SafeModule pour qu'un crash n'affecte pas les autres. */}
-      {activeTab === 'creation_carte' ? (
+      {activeTab === 'vue' ? (() => {
+        // Cockpit : lit les données déjà chargées ici, et renvoie chaque alerte
+        // vers l'onglet Recettes (dont les modales font partie du rendu).
+        const overview = (
+          <ConsultantOverview
+            recettesActives={recettesActives}
+            recettesArchivees={recettesArchivees}
+            plats={plats}
+            cartesActives={cartesActivesLocal}
+            pendingDrafts={pendingDrafts}
+            reviewCount={reviewCount}
+            onOpenRecette={(id) => { setSelectedId(id); setActiveTab('recettes'); }}
+            onNewRecette={() => { setActiveTab('recettes'); createNew(); }}
+            onNewPlat={() => { setActiveTab('recettes'); setEditPlat(null); setShowPlatForm(true); }}
+            onEditPlat={(p) => { setActiveTab('recettes'); setEditPlat(p); setShowPlatForm(true); }}
+            onImport={() => { setActiveTab('recettes'); setShowImport(true); }}
+            onMatchReview={() => { setActiveTab('recettes'); setShowMatchReview(true); }}
+            onBulkAllergenes={() => { setActiveTab('recettes'); detecterAllergenesToutes(); }}
+            onRestoreDrafts={restoreDrafts}
+            onGoTab={setActiveTab}
+          />
+        );
+        return SafeModule
+          ? <SafeModule name="Vue d'ensemble">{overview}</SafeModule>
+          : overview;
+      })() : activeTab === 'creation_carte' ? (
         SafeModule
           ? <SafeModule name="Création de carte"><CarteCreator plats={plats} recettes={recettesActives} etablissement={etablissement} legacySB={legacySB} etabId={etabId} user={user}/></SafeModule>
           : <CarteCreator plats={plats} recettes={recettesActives} etablissement={etablissement} legacySB={legacySB} etabId={etabId} user={user}/>
@@ -1285,7 +1321,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   onClick={recSel.enter}
                 >☑ Sélectionner</button>
                 {(() => {
-                  const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
                   return (
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <button

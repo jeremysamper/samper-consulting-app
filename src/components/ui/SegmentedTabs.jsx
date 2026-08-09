@@ -13,6 +13,7 @@ import React from 'react';
 //
 // Props :
 //   tabs     : [{ id, label|l, icon? }]  - icon = noeud React optionnel
+//              ou { divider: true }      - séparateur vertical entre groupes
 //   active   : id de l'onglet actif
 //   onChange : (id) => void
 //   size     : 'sm' | undefined         - 'sm' → pilules plus compactes
@@ -26,7 +27,10 @@ export default function SegmentedTabs({ tabs, active, onChange, size, style = {}
       role="tablist"
       style={style}
     >
-      {list.map((tab) => {
+      {list.map((tab, i) => {
+        if (tab.divider) {
+          return <span key={'divider-' + i} className="segmented-tabs-divider" aria-hidden="true" />;
+        }
         const isActive = active === tab.id;
         const label = tab.label ?? tab.l;
         return (

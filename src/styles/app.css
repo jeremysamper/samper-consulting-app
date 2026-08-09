@@ -520,6 +520,15 @@ html[data-theme="dark"] {
   align-items: center;
 }
 
+/* Séparateur vertical entre groupes d'onglets ({ divider: true }) */
+.segmented-tabs-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 5px;
+}
+
 /* ─── Barre d'outils de module - tabs + actions, posée (jamais flottante) ───
    Remplace le duo « toolbar desktop cachée en mobile » + « barre d'actions
    flottante en bas ». Une seule barre : les onglets (SegmentedTabs) et les
