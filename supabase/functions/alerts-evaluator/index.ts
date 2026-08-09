@@ -20,7 +20,7 @@ import { evalStock }          from './evaluators/stock.ts';
 import { evalVentes }         from './evaluators/ventes.ts';
 import { evalPertes }         from './evaluators/pertes.ts';
 import { evalPersonnalisee }  from './evaluators/personnalisee.ts';
-import type { AlertRule, EvalResult } from './types.ts';
+import type { AlertItem, AlertRule, EvalResult } from './types.ts';
 
 // ── CORS ─────────────────────────────────────────────────────────
 const corsHeaders = {
@@ -139,23 +139,41 @@ Deno.serve(async (req: Request) => {
 
       const result = await evaluate(sb, rule);
 
-      if (result.shouldFire) {
+      // Un evaluator renvoie soit une liste de sujets (items), soit une
+      // alerte unique sans sujet - normalisées ici en une seule forme.
+      const items: AlertItem[] = !result.shouldFire
+        ? []
+        : (result.items ?? [{
+            dedupeKey:  null,
+            title:      result.title ?? rule.name,
+            message:    result.message ?? '',
+            linkModule: result.linkModule,
+          }]);
+
+      for (const item of items) {
         await createInstanceIfNeeded({
           sb,
           ruleId:          rule.id,
           etablissementId: rule.etablissement_id,
-          title:           result.title ?? rule.name,
-          message:         result.message ?? '',
+          title:           item.title || rule.name,
+          message:         item.message ?? '',
           severity:        rule.severity,
-          linkModule:      result.linkModule ?? null,
+          linkModule:      item.linkModule ?? null,
           targetRoles:     rule.target_roles ?? ['consultant', 'patron'],
+          targetUserIds:   item.targetUserIds ?? [],
+          dedupeKey:       item.dedupeKey ?? null,
         });
-        results.push({ ruleId: rule.id, name: rule.name, action: 'fired' });
-      } else {
-        // Condition redevenue fausse → résoudre les instances actives
-        await resolveStaleInstances(sb, rule.id);
-        results.push({ ruleId: rule.id, name: rule.name, action: 'resolved' });
       }
+
+      // Sujets sortis de l'alerte (employé qui a fini par pointer, relevé
+      // saisi…) → instances résolues. Liste vide = tout est résolu.
+      await resolveStaleInstances(sb, rule.id, items.map((i) => i.dedupeKey ?? null));
+
+      results.push({
+        ruleId: rule.id,
+        name:   rule.name,
+        action: items.length > 0 ? 'fired' : 'resolved',
+      });
 
       // Mise à jour last_evaluated_at (+ last_triggered_at si fired)
       const nowIso = new Date().toISOString();

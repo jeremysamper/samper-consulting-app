@@ -257,6 +257,7 @@ export default function AlertRules({ etablissement }) {
       {showForm && (
         <AlertRuleForm
           initialData={editRule}
+          etablissementId={etabId}
           onSave={handleSave}
           onClose={closeForm}
         />

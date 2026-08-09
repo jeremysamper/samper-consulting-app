@@ -1,5 +1,6 @@
 import React from 'react';
 import { cts } from './ConsultantTools.styles.js';
+import { dbService } from '../../services/dbService.js';
 
 // ─── Constantes ───────────────────────────────────────────────────
 const RULE_TYPES = [
@@ -25,10 +26,11 @@ const DAYS = [
 ];
 
 const ROLES_OPTIONS = [
-  { id: 'consultant', label: 'Consultant' },
-  { id: 'patron',     label: 'Patron'     },
+  { id: 'consultant',   label: 'Consultant'    },
+  { id: 'patron',       label: 'Patron'        },
   { id: 'resp_cuisine', label: 'Resp. cuisine' },
-  { id: 'cuisinier',  label: 'Chef'       },
+  { id: 'cuisinier',    label: 'Chef'          },
+  { id: 'serveur',      label: 'Service'       },
 ];
 
 const TOTAL_STEPS = 4;
@@ -43,33 +45,179 @@ function Field({ label, children, required }) {
   );
 }
 
+// ─── Ligne à cocher (cible tactile 44px, cf. contrainte iPad) ────
+function CheckRow({ checked, onToggle, title, subtitle, disabled }) {
+  return (
+    <label
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        minHeight: 44, flexShrink: 0, padding: '6px 10px',
+        borderRadius: 8, border: '2px solid',
+        borderColor: checked ? 'var(--accent)' : 'var(--border)',
+        background: checked ? 'var(--accent-light)' : 'var(--surface)',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onToggle}
+        style={{ width: 18, height: 18, flexShrink: 0, accentColor: 'var(--accent)', cursor: 'inherit' }}
+      />
+      <span style={{ minWidth: 0 }}>
+        <span style={{
+          display: 'block', fontSize: 13, lineHeight: 1.3,
+          fontWeight: checked ? 600 : 400,
+          color: checked ? 'var(--accent)' : 'var(--text)',
+        }}>
+          {title}
+        </span>
+        {subtitle && (
+          <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+            {subtitle}
+          </span>
+        )}
+      </span>
+    </label>
+  );
+}
+
+// ─── Sélecteur de zones HACCP ────────────────────────────────────
+// Les ids de zones sont générés ("z1778761664397") : personne ne peut
+// les taper. On liste les zones réelles de l'établissement à cocher.
+function ZonePicker({ etablissementId, selected, onChange }) {
+  const [zones, setZones]   = React.useState(null); // null = en cours de chargement
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (!etablissementId) { setZones([]); return undefined; }
+
+    setZones(null);
+    setFailed(false);
+
+    (async () => {
+      try {
+        const list = await dbService.getDb()?.listHaccpZones(etablissementId);
+        if (!mounted) return;
+        setZones(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.error('[AlertRuleForm] listHaccpZones', err);
+        if (mounted) { setZones([]); setFailed(true); }
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [etablissementId]);
+
+  const toggle = (zoneId) => {
+    onChange(selected.includes(zoneId)
+      ? selected.filter((id) => id !== zoneId)
+      : [...selected, zoneId]);
+  };
+
+  if (zones === null) {
+    return <div style={{ fontSize: 12, color: 'var(--text2)', padding: '8px 0' }}>Chargement des zones…</div>;
+  }
+
+  const actives = zones.filter((z) => z.actif !== false);
+  // Zone cochée puis désactivée/supprimée : on la garde visible pour pouvoir la décocher.
+  const orphelines = selected
+    .filter((id) => !actives.some((z) => z.id === id))
+    .map((id) => ({ id, nom: zones.find((z) => z.id === id)?.nom || 'Zone supprimée', orpheline: true }));
+
+  const rows = [...actives, ...orphelines];
+
+  if (rows.length === 0) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, padding: '8px 0' }}>
+        {failed
+          ? 'Impossible de charger les zones HACCP. Réessayez dans un instant.'
+          : 'Aucune zone HACCP configurée pour cet établissement. Créez-les d\'abord dans le module HACCP.'}
+      </div>
+    );
+  }
+
+  const allSelected = actives.length > 0 && actives.every((z) => selected.includes(z.id));
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+        <button
+          type="button"
+          style={{ ...cts.ghostBtn, fontSize: 12, padding: '4px 10px' }}
+          onClick={() => onChange(allSelected ? [] : actives.map((z) => z.id))}
+        >
+          {allSelected ? 'Tout décocher' : 'Toutes les zones'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {rows.map((z) => (
+          <CheckRow
+            key={z.id}
+            checked={selected.includes(z.id)}
+            onToggle={() => toggle(z.id)}
+            title={`${z.icone ? z.icone + ' ' : ''}${z.nom}`}
+            subtitle={z.orpheline
+              ? 'Zone désactivée ou supprimée - décochez-la'
+              : [z.cible != null ? `cible ${z.cible}${z.unite || ''}` : null,
+                 z.min != null || z.max != null
+                   ? `tolérance ${z.min ?? '−∞'} → ${z.max ?? '+∞'}${z.unite || ''}`
+                   : null].filter(Boolean).join(' · ') || null}
+          />
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
+        Une alerte distincte par zone sans relevé, nommée par la zone.
+      </div>
+    </>
+  );
+}
+
 // ─── Champs dynamiques selon rule_type (Étape 3) ─────────────────
-function ConfigFields({ ruleType, config, onChange }) {
+function ConfigFields({ ruleType, config, onChange, etablissementId }) {
   const set = (key, value) => onChange({ ...config, [key]: value });
 
   switch (ruleType) {
     case 'pointage_manquant':
       return (
-        <Field label="Délai après le début du shift (minutes)" required>
-          <input type="number" min={5} max={480} style={cts.input}
-            value={config.delay_minutes ?? 30}
-            onChange={(e) => set('delay_minutes', Number(e.target.value))} />
-          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
-            Déclenche l'alerte si un employé n'a pas pointé X minutes après le début de son shift.
-          </div>
-        </Field>
+        <>
+          <Field label="Délai après le début du shift (minutes)" required>
+            <input type="number" min={5} max={480} style={cts.input}
+              value={config.delay_minutes ?? 30}
+              onChange={(e) => set('delay_minutes', Number(e.target.value))} />
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+              Déclenche l'alerte si un employé n'a pas pointé X minutes après le début de son shift.
+            </div>
+          </Field>
+          <Field label="Destinataires">
+            <CheckRow
+              checked={config.notify_employee !== false}
+              onToggle={() => set('notify_employee', config.notify_employee === false)}
+              title="Prévenir aussi l'employé concerné"
+              subtitle="Il reçoit uniquement son alerte, pas celles de ses collègues."
+            />
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
+              L'alerte est nominative : une par employé qui n'a pas pointé. Les rôles choisis
+              à l'étape suivante (patron…) les voient toutes.
+            </div>
+          </Field>
+        </>
       );
 
     case 'haccp_manquant':
       return (
         <>
-          <Field label="Identifiant de la zone HACCP" required>
-            <input type="text" style={cts.input}
-              value={config.zone_id ?? ''}
-              onChange={(e) => set('zone_id', e.target.value)}
-              placeholder="ex: hz-001" />
+          <Field label="Zones HACCP à surveiller" required>
+            <ZonePicker
+              etablissementId={etablissementId}
+              selected={config.zone_ids ?? []}
+              onChange={(ids) => onChange({ ...config, zone_ids: ids, zone_id: undefined })}
+            />
           </Field>
-          <Field label="Contrôle attendu avant (heure UTC)" required>
+          <Field label="Contrôle attendu avant (heure de Zurich)" required>
             <input type="time" style={cts.input}
               value={config.expected_by ?? '12:00'}
               onChange={(e) => set('expected_by', e.target.value)} />
@@ -213,13 +361,22 @@ function Stepper({ current, total }) {
 }
 
 // ─── Composant principal ──────────────────────────────────────────
+/** Règles créées avant le sélecteur de zones : { zone_id } → { zone_ids }. */
+function normalizeConfig(config) {
+  const c = { ...(config ?? {}) };
+  if (!Array.isArray(c.zone_ids) && c.zone_id) c.zone_ids = [c.zone_id];
+  delete c.zone_id;
+  return c;
+}
+
 /**
- * @param {{ initialData?: object, onSave: (data) => Promise<boolean>, onClose: () => void }} props
- * - initialData : règle existante en mode édition, null en mode création
- * - onSave      : appelé avec les données finales ; retourne true si succès
- * - onClose     : ferme le formulaire
+ * @param {{ initialData?: object, etablissementId?: string, onSave: (data) => Promise<boolean>, onClose: () => void }} props
+ * - initialData      : règle existante en mode édition, null en mode création
+ * - etablissementId  : établissement courant (sélecteur de zones HACCP)
+ * - onSave           : appelé avec les données finales ; retourne true si succès
+ * - onClose          : ferme le formulaire
  */
-export default function AlertRuleForm({ initialData, onSave, onClose }) {
+export default function AlertRuleForm({ initialData, etablissementId, onSave, onClose }) {
   const isEdit = Boolean(initialData);
   const [step, setStep] = React.useState(1);
   const [saving, setSaving] = React.useState(false);
@@ -229,7 +386,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
     description:   initialData?.description   ?? '',
     severity:      initialData?.severity      ?? 'warning',
     rule_type:     initialData?.rule_type     ?? '',
-    rule_config:   initialData?.rule_config   ?? {},
+    rule_config:   normalizeConfig(initialData?.rule_config),
     schedule_type: initialData?.schedule_type ?? 'hourly',
     schedule_time: (initialData?.schedule_time ?? '08:00:00').slice(0, 5),
     schedule_days: initialData?.schedule_days ?? [1, 2, 3, 4, 5],
@@ -247,7 +404,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
       switch (form.rule_type) {
         case 'personnalisee':              return (c.message ?? '').trim().length > 0;
         case 'stock_critique':             return (c.product_name ?? '').trim().length > 0;
-        case 'haccp_manquant':             return (c.zone_id ?? '').trim().length > 0;
+        case 'haccp_manquant':             return (c.zone_ids ?? []).length > 0;
         case 'reservation_non_confirmee':  return (c.delay_hours ?? 0) > 0;
         case 'ventes_inactives':           return (c.inactive_days ?? 0) > 0;
         case 'pertes_elevees':             return (c.threshold_chf ?? 0) > 0;
@@ -265,7 +422,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
       description:   form.description.trim() || null,
       severity:      form.severity,
       rule_type:     form.rule_type,
-      rule_config:   form.rule_config,
+      rule_config:   normalizeConfig(form.rule_config),
       schedule_type: form.schedule_type,
       schedule_time: form.schedule_type === 'daily' ? form.schedule_time + ':00' : null,
       schedule_days: form.schedule_type === 'daily' && form.schedule_days.length ? form.schedule_days : null,
@@ -422,6 +579,7 @@ export default function AlertRuleForm({ initialData, onSave, onClose }) {
               ruleType={form.rule_type}
               config={form.rule_config}
               onChange={(cfg) => set('rule_config', cfg)}
+              etablissementId={etablissementId}
             />
           )}
 
