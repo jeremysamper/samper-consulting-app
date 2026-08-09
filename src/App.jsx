@@ -3,8 +3,10 @@ import BootScreen from './components/brand/BootScreen.jsx';
 import { ToastContainer, installToastGlobals, notify } from './components/toast/index.js';
 import AppLayout from './layouts/AppLayout.jsx';
 import Auth from './modules/auth/Auth.jsx';
+import ResetPassword from './modules/auth/ResetPassword.jsx';
 import LegacyModuleHost, { prefetchCommonModules } from './modules/LegacyModuleHost.jsx';
 import { useAuth } from './hooks/useAuth.js';
+import { usePasswordRecovery } from './hooks/usePasswordRecovery.js';
 import { useCurrentEtablissement } from './hooks/useCurrentEtablissement.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
 import SafeModule from './legacy/SafeModule.jsx';
@@ -76,6 +78,11 @@ export default function App() {
   const [legacyState, setLegacyState] = useState({ loading: true, error: null });
   const [legacyVersion, setLegacyVersion] = useState(0);
   const auth = useAuth();
+  // Arrivée depuis un lien « mot de passe oublié » : cet écran passe AVANT tout
+  // le reste, y compris une session déjà ouverte - le lien crée une session
+  // valide, sans quoi l'utilisateur atterrissait sur le tableau de bord sans
+  // jamais pouvoir choisir son nouveau mot de passe.
+  const recovery = usePasswordRecovery();
   const currentEtablissement = useCurrentEtablissement(auth.profile);
   const isMobile = useIsMobile();
 
@@ -188,7 +195,17 @@ export default function App() {
 
   let content;
 
-  if (auth.loading) {
+  if (recovery.active) {
+    content = (
+      <ResetPassword
+        ready={!auth.loading}
+        hasSession={Boolean(auth.session)}
+        email={auth.user?.email || auth.profile?.email || ''}
+        linkErrorCode={recovery.linkErrorCode}
+        onDismiss={recovery.dismiss}
+      />
+    );
+  } else if (auth.loading) {
     content = <BootScreen />;
   } else if (!auth.profile) {
     content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} onNavigateToDashboard={() => setPage('dashboard')} />;

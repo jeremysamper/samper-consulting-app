@@ -1,5 +1,5 @@
-import { getBrowserWindow, setLegacySB } from '../legacy/legacyApi.js';
-import { bootDedupeRead, getSupabaseConfig, invalidateBootRead, supabase } from './supabase.js';
+import { setLegacySB } from '../legacy/legacyApi.js';
+import { bootDedupeRead, buildPasswordResetRedirectUrl, getSupabaseConfig, invalidateBootRead, supabase } from './supabase.js';
 import { readText, writeText } from '../utils/storage.js';
 
 // ═══════════════════════════════════════════════════════════════
@@ -178,8 +178,10 @@ export function installLegacySupabase() {
     },
 
     async resetPassword(email) {
+      // Même URL de retour que authService.resetPassword : c'est elle qui
+      // déclenche l'écran « nouveau mot de passe » (src/hooks/usePasswordRecovery.js).
       const { error } = await client.auth.resetPasswordForEmail(email, {
-        redirectTo: (getBrowserWindow()?.location.origin || '') + '/vite-index.html?reset=true'
+        redirectTo: buildPasswordResetRedirectUrl()
       });
       if (error) throw error;
     },

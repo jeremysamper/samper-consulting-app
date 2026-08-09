@@ -47,6 +47,66 @@ if (config.source === 'fallback') {
   console.info('[Supabase] Config fallback utilisée (pas de .env ni window.SUPABASE_CONFIG).');
 }
 
+// ─── Empreinte des marqueurs d'auth présents dans l'URL d'arrivée ──────────
+// À lire ICI, avant createClient : dès que supabase-js a consommé le lien de
+// réinitialisation, il efface le fragment (#access_token=…&type=recovery) de la
+// barre d'adresse. Sans cette photo prise au tout premier import du module,
+// l'app ne saurait plus, une fois React monté, qu'elle a été ouverte depuis un
+// mail « mot de passe oublié ».
+function readLandingAuthFlags() {
+  const browserWindow = getBrowserWindow();
+  const empty = { recovery: false, errorCode: null, errorDescription: null };
+  if (!browserWindow?.location) return empty;
+
+  const hash = new URLSearchParams(String(browserWindow.location.hash || '').replace(/^#/, ''));
+  const query = new URLSearchParams(String(browserWindow.location.search || ''));
+
+  // reset=true est NOTRE marqueur (posé dans redirectTo). Contrairement au
+  // fragment, il survit aux deux flows (implicite et PKCE) ET au cas d'erreur :
+  // sur lien périmé, Supabase renvoie un #error=… sans aucun type=recovery.
+  const recovery = query.get('reset') === 'true'
+    || hash.get('type') === 'recovery'
+    || query.get('type') === 'recovery';
+
+  // Lien expiré ou déjà utilisé : retour sur redirectTo avec
+  // #error=access_denied&error_code=otp_expired&error_description=…
+  //
+  // Une erreur n'est retenue QUE si elle vient du fragment (c'est là que GoTrue
+  // pose les siennes) ou qu'elle accompagne notre marqueur reset=true. Sans ce
+  // garde-fou, n'importe quel ?error=… d'un autre flux ouvrirait l'écran de
+  // réinitialisation devant un utilisateur qui n'a rien demandé.
+  const fromQuery = query.get('reset') === 'true';
+  const errorCode = hash.get('error_code') || hash.get('error')
+    || (fromQuery ? (query.get('error_code') || query.get('error')) : null)
+    || null;
+  const errorDescription = hash.get('error_description')
+    || (fromQuery ? query.get('error_description') : null)
+    || null;
+
+  return { recovery, errorCode, errorDescription };
+}
+
+const LANDING_AUTH_FLAGS = readLandingAuthFlags();
+
+/** Marqueurs d'auth lus dans l'URL au démarrage (voir readLandingAuthFlags). */
+export function getLandingAuthFlags() {
+  return LANDING_AUTH_FLAGS;
+}
+
+/**
+ * URL de retour du mail de réinitialisation. Elle doit être servie par l'app :
+ * en prod tout est réécrit vers index.html (copie de vite-index.html au build),
+ * en dev seul /vite-index.html porte l'app React.
+ * Le `?reset=true` est ce qui déclenche l'écran « nouveau mot de passe ».
+ */
+export function buildPasswordResetRedirectUrl() {
+  const browserWindow = getBrowserWindow();
+  if (!browserWindow?.location) return undefined;
+  const currentPath = browserWindow.location.pathname || '/';
+  const resetPath = currentPath.includes('vite-index.html') ? '/vite-index.html' : '/';
+  return `${browserWindow.location.origin}${resetPath}?reset=true`;
+}
+
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
     persistSession: true,       // session conservée dans localStorage entre les ouvertures PWA
@@ -103,13 +163,27 @@ export const authService = {
   },
 
   async resetPassword(email) {
-    const browserWindow = getBrowserWindow();
-    const currentPath = browserWindow?.location?.pathname || '/';
-    const resetPath = currentPath.includes('vite-index.html') ? '/vite-index.html' : '/';
-    const redirectTo = browserWindow ? `${browserWindow.location.origin}${resetPath}?reset=true` : undefined;
+    const redirectTo = buildPasswordResetRedirectUrl();
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) throw error;
     return data;
+  },
+
+  // Pose le nouveau mot de passe du compte connecté. Deux appelants :
+  // l'écran de récupération (session ouverte par le lien du mail) et la modale
+  // « changer mon mot de passe » de l'app.
+  async updatePassword(newPassword) {
+    const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    return data;
+  },
+
+  // Revérifie le mot de passe actuel avant un changement volontaire : sans ça,
+  // un appareil laissé déverrouillé en cuisine suffirait à prendre le compte.
+  async verifyPassword(email, password) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return true;
   },
 
   async getSession() {

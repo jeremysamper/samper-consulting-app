@@ -12,6 +12,7 @@ import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import OfflineBanner from '../components/OfflineBanner.jsx';
 import HomeScreenIconBanner from '../components/HomeScreenIconBanner.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
+import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
@@ -62,6 +63,13 @@ export default function AppLayout({
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
+
+  // Modale « changer mon mot de passe » : rendue à l'identique dans la coque
+  // mobile et la coque desktop, qui ont deux arbres de rendu séparés.
+  const passwordModal = passwordModalOpen ? (
+    <ChangePasswordModal email={user.email} onClose={() => setPasswordModalOpen(false)} />
+  ) : null;
 
   // Logo applicatif = logo de l'établissement courant (stocké dans etablissements.logo_url DB).
   // Migration douce : si rien en DB et qu'il y a une valeur localStorage, on la pousse en DB.
@@ -524,8 +532,14 @@ export default function AppLayout({
             ))}
           </nav>
 
-          {/* Bouton déconnexion en bas */}
+          {/* Compte + déconnexion en bas */}
           <div style={mls.drawerFooter}>
+            <button
+              style={mls.accountBtn}
+              onClick={() => { setDrawerOpen(false); setPasswordModalOpen(true); }}
+            >
+              🔑 Changer mon mot de passe
+            </button>
             <button style={mls.logoutBtn} onClick={onLogout}>
               Se déconnecter
             </button>
@@ -536,6 +550,8 @@ export default function AppLayout({
         <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
           {children}
         </main>
+
+        {passwordModal}
       </div>
     );
   }
@@ -627,11 +643,16 @@ export default function AppLayout({
         </nav>
 
         <div style={ls.userArea}>
-          <div style={{ ...ls.avatar, background: roleInfo.couleur }}>{user.avatar}</div>
-          <div style={ls.userInfo}>
-            <div style={ls.userName}>{user.prenom} {user.nom}</div>
-            <div style={{ ...ls.userRole, color: roleInfo.couleur }}>{roleInfo.label}</div>
+          <div style={ls.userIdentity}>
+            <div style={{ ...ls.avatar, background: roleInfo.couleur }}>{user.avatar}</div>
+            <div style={ls.userInfo}>
+              <div style={ls.userName}>{user.prenom} {user.nom}</div>
+              <div style={{ ...ls.userRole, color: roleInfo.couleur }}>{roleInfo.label}</div>
+            </div>
           </div>
+          <button style={ls.accountBtn} onClick={() => setPasswordModalOpen(true)}>
+            🔑 Changer mon mot de passe
+          </button>
         </div>
       </aside>
 
@@ -696,6 +717,8 @@ export default function AppLayout({
 
         <main style={ls.content}>{children}</main>
       </div>
+
+      {passwordModal}
     </div>
   );
 }
@@ -736,7 +759,11 @@ const ls = {
   navActive: { background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700 },
   navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--accent)', borderRadius: 2 },
   navLabel: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  userArea: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' },
+  userArea: { display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' },
+  userIdentity: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
+  // flexShrink: 0 - la règle tactile globale (min-height 44px en pointer: coarse)
+  // écrase sinon la hauteur des boutons empilés en colonne sur iPad.
+  accountBtn: { flexShrink: 0, width: '100%', padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textAlign: 'center', boxSizing: 'border-box' },
   avatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
   userInfo: { overflow: 'hidden' },
   userName: { color: 'var(--text)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
@@ -897,12 +924,23 @@ const mls = {
   drawerFooter: {
     padding: '12px 14px',
     borderTop: '1px solid var(--border)',
+    display: 'flex', flexDirection: 'column', gap: 8,
+  },
+  // flexShrink: 0 sur les deux : empilés en colonne, ils se superposeraient
+  // sinon sous la règle tactile globale (min-height 44px en pointer: coarse).
+  accountBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
+    flexShrink: 0, padding: '11px 14px', background: 'var(--bg)',
+    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)',
+    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    boxSizing: 'border-box',
   },
   logoutBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
-    padding: '11px 14px', background: 'var(--bg)', border: '1px solid var(--border)',
-    borderRadius: 8, color: 'var(--text2)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    flexShrink: 0, padding: '11px 14px', background: 'var(--bg)',
+    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)',
+    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    boxSizing: 'border-box',
   },
 
   // minHeight 0 : sans lui, la taille minimale automatique d'un élément flex
