@@ -250,6 +250,12 @@ const HACCP = ({ user, etablissement }) => {
     }
     setZones(prev=>prev.filter(z=>z.id!==id));
   };
+  // Bascule actif/inactif persistée immédiatement : la configuration est lue
+  // par toute la brigade, un toggle qui ne vivrait qu'en mémoire mentirait au
+  // consultant qui quitte l'onglet - et le realtime le rembobinerait sous ses yeux.
+  const toggleZone = async (z) => {
+    await saveZone({ ...z, actif: !z.actif });
+  };
   const saveCtrl = async (c) => {
     const payload = { ...c, etablissementId: etabId };
     if (legacySB) {
@@ -269,6 +275,9 @@ const HACCP = ({ user, etablissement }) => {
       catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
     }
     setCtrlTpls(prev=>prev.filter(c=>c.id!==id));
+  };
+  const toggleCtrl = async (c) => {
+    await saveCtrl({ ...c, actif: !c.actif });
   };
 
   const deleteReleve = async (id) => {
@@ -727,7 +736,7 @@ const HACCP = ({ user, etablissement }) => {
                   </div>
                   {/* Toggle actif */}
                   <div style={{...hcfg.toggle,background:z.actif?'var(--accent)':'var(--border)'}}
-                    onClick={()=>setZones(prev=>prev.map(x=>x.id===z.id?{...x,actif:!x.actif}:x))}>
+                    onClick={()=>toggleZone(z)}>
                     <div style={{...hcfg.toggleThumb,left:z.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
                   <button style={hcfg.editBtn} onClick={()=>setZoneModal(z)}>Modifier</button>
@@ -761,7 +770,7 @@ const HACCP = ({ user, etablissement }) => {
                     </div>
                   </div>
                   <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}}
-                    onClick={()=>setCtrlTpls(prev=>prev.map(x=>x.id===c.id?{...x,actif:!x.actif}:x))}>
+                    onClick={()=>toggleCtrl(c)}>
                     <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
                   <button style={hcfg.editBtn} onClick={()=>setCtrlModal(c)}>Modifier</button>
