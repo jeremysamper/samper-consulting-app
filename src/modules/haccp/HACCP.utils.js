@@ -53,3 +53,50 @@ export function isReleveConforme(zone, valeur) {
   if (!Number.isNaN(max) && v > max) return false;
   return true;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Créneaux de relevé - rattachement d'une heure à une tournée
+// ═══════════════════════════════════════════════════════════════
+
+// 'HH:MM' → minutes depuis minuit. Retourne null si l'entrée est inexploitable.
+// Tolère 'HH:MM:SS' (format renvoyé par Postgres pour un `time`).
+export function heureEnMinutes(heure) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(heure || '').trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+// Créneau dont l'heure prévue est la plus proche d'une heure donnée.
+// Sert à deux choses : proposer le bon créneau par défaut au moment de la
+// saisie, et rattacher a posteriori un relevé à une tournée pour le suivi
+// « fait / à faire » du jour.
+//
+// Rattachement au plus proche SANS fenêtre de tolérance : un relevé pris à
+// 09:40 alors que les créneaux sont 07:00 et 18:00 compte pour la tournée du
+// matin. Une fenêtre stricte laisserait des relevés orphelins et afficherait
+// « 0 zone relevée » sur une tournée pourtant faite — pire que le décalage.
+//
+// Le rattachement est purement indicatif : l'heure réellement enregistrée sur
+// le relevé n'est jamais réécrite.
+export function creneauLePlusProche(creneaux, heure) {
+  const cible = heureEnMinutes(heure);
+  if (cible == null || !Array.isArray(creneaux) || creneaux.length === 0) return null;
+  let best = null;
+  let bestDist = Infinity;
+  for (const c of creneaux) {
+    const m = heureEnMinutes(c?.heure);
+    if (m == null) continue;
+    const dist = Math.abs(m - cible);
+    if (dist < bestDist) { best = c; bestDist = dist; }
+  }
+  return best;
+}
+
+// Tri d'affichage des créneaux : chronologique, comme la journée se déroule.
+export function trierCreneaux(creneaux) {
+  return (creneaux || []).slice().sort((a, b) =>
+    (heureEnMinutes(a.heure) ?? 0) - (heureEnMinutes(b.heure) ?? 0));
+}

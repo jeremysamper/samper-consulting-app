@@ -288,6 +288,29 @@ export const UI_GLOSSARY = {
   'Sam': 'Sat',
   'Dim': 'Sun',
 
+  // ── Créneaux de relevé (HACCP) ──
+  // Grille horaire des tournées de température : vocabulaire affiché à chaque
+  // saisie, il n'a rien à faire dans les appels IA.
+  'Créneaux de relevé': 'Reading time slots',
+  'Créneau de relevé': 'Reading time slot',
+  'Ajouter un créneau': 'Add a time slot',
+  'Modifier le créneau': 'Edit time slot',
+  'Créneau actif': 'Active time slot',
+  'Tournées de relevé': 'Reading rounds',
+  'Tournée': 'Round',
+  'Nom de la tournée': 'Round name',
+  'Heure prévue': 'Scheduled time',
+  'Relevée': 'Done',
+  'Maintenant': 'Now',
+  // « Ouverture » et « Fermeture » sont déjà déclarés plus haut (horaires
+  // d'établissement) : les redéclarer ici en ferait des clés en double.
+  'Avant service midi': 'Before lunch service',
+  'Après service midi': 'After lunch service',
+  'Avant service soir': 'Before dinner service',
+  'Après service soir': 'After dinner service',
+  'Service unique': 'Single service',
+  'Double service': 'Double service',
+
   // ── Étiquettes DLC (HACCP) ──
   'Étiquettes maison': 'House labels',
   'Étiquette maison': 'House label',
