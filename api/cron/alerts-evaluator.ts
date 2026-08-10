@@ -17,16 +17,40 @@ export const config = {
   maxDuration: 60,
 };
 
+/**
+ * Lit l'en-tête Authorization quel que soit le runtime.
+ *
+ * En runtime Node (celui déclaré ci-dessus), `req.headers` est un OBJET
+ * simple à clés minuscules, sans méthode `.get()`. L'ancienne version
+ * appelait `headers.get?.('authorization')`, qui rendait donc toujours
+ * undefined : la comparaison échouait pour tout le monde, Vercel Cron
+ * compris, dès que CRON_SECRET était défini.
+ */
+function readAuthHeader(req: unknown): string {
+  const h = (req as { headers?: unknown }).headers;
+  if (!h) return '';
+
+  if (typeof (h as Headers).get === 'function') {
+    return (h as Headers).get('authorization') ?? ''; // runtime Edge
+  }
+
+  const rec = h as Record<string, string | string[] | undefined>;
+  const raw = rec.authorization ?? rec.Authorization;
+  return Array.isArray(raw) ? raw[0] ?? '' : raw ?? '';
+}
+
 export default async function handler(
-  req: { method: string; headers: { get: (k: string) => string | null } },
+  req: { method: string; headers: unknown },
   res: { status: (code: number) => { json: (body: unknown) => void } }
 ) {
   const cronSecret  = process.env.CRON_SECRET;
-  const authHeader  = (req as unknown as Request).headers
-    ? (req as unknown as Request).headers.get?.('authorization') ?? ''
-    : '';
+  const authHeader  = readAuthHeader(req);
 
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // Diagnostic sans jamais journaliser le secret lui-même.
+    console.warn(
+      `[cron/alerts-evaluator] rejet 401 - en-tête authorization ${authHeader ? 'présent mais différent' : 'absent'}`,
+    );
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
