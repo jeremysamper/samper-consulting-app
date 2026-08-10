@@ -1,7 +1,8 @@
 import React from 'react';
 import { alertLegacy } from '../../legacy/legacyApi.js';
-import { CTRL_TYPES, FREQ_OPTIONS, ZONE_TYPES } from './HACCP.constants.js';
+import { CRENEAU_LABELS, CTRL_TYPES, FREQ_OPTIONS, ZONE_TYPES } from './HACCP.constants.js';
 import { hcfg, hs } from './HACCP.styles.js';
+import { heureEnMinutes } from './HACCP.utils.js';
 
 export const ZoneForm = ({ zone, onSave, onCancel }) => {
   const [f, setF] = React.useState(zone || { nom:'', type:'froid', cible:'', min:'', max:'', unite:'°C', icone:'❄', actif:true });
@@ -164,6 +165,75 @@ export const CtrlForm = ({ ctrl, onSave, onCancel }) => {
           <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:20}}>
             <button style={hs.cancelBtn} onClick={onCancel}>Annuler</button>
             <button style={hs.saveBtn} onClick={handleSave}>{ctrl?.id ? 'Enregistrer' : 'Ajouter le contrôle'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Formulaire créneau de relevé (add/edit) ───
+// L'unicité de l'heure est garantie en base (uq_haccp_creneaux_etab_heure) ;
+// on la vérifie aussi ici pour rendre un message lisible plutôt qu'une erreur
+// Postgres brute en pleine configuration.
+export const CreneauForm = ({ creneau, creneaux = [], onSave, onCancel }) => {
+  const [f, setF] = React.useState(creneau || { label: '', heure: '', actif: true });
+
+  const handleSave = () => {
+    if (!f.label.trim()) { alertLegacy('Nom du créneau obligatoire.'); return; }
+    if (heureEnMinutes(f.heure) == null) { alertLegacy('Renseignez une heure valide.'); return; }
+    const doublon = creneaux.find(c => c.id !== f.id && c.heure === f.heure);
+    if (doublon) { alertLegacy(`Un créneau existe déjà à ${f.heure} (« ${doublon.label} »).`); return; }
+    onSave({ ...f, label: f.label.trim(), id: f.id || 'hcr-' + Date.now() });
+  };
+
+  return (
+    <div className="modal-full-overlay" style={hs.overlay} onClick={onCancel}>
+      <div className="modal-full" style={{ ...hs.modal, width: 440 }} onClick={e => e.stopPropagation()}>
+        <div style={hs.modalHeader}>
+          <div style={hs.modalTitle}>{creneau?.id ? 'Modifier le créneau' : 'Ajouter un créneau'}</div>
+          <button style={hs.closeBtn} onClick={onCancel}>✕</button>
+        </div>
+        <div style={hs.modalBody}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={hs.field}>
+              <label style={hs.fLabel}>Nom de la tournée *</label>
+              <input style={hs.fInput} placeholder="ex. Ouverture, Avant service du soir…"
+                value={f.label} onChange={e => setF({ ...f, label: e.target.value })} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                {CRENEAU_LABELS.map(l => (
+                  <button key={l} onClick={() => setF({ ...f, label: l })}
+                    style={{
+                      padding: '5px 10px', fontSize: 11, borderRadius: 20, cursor: 'pointer', fontFamily: 'var(--font)',
+                      border: `1px solid ${f.label === l ? 'var(--accent)' : 'var(--border)'}`,
+                      background: f.label === l ? 'var(--accent-light)' : 'var(--surface)',
+                      color: f.label === l ? 'var(--accent)' : 'var(--text2)',
+                    }}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            <div style={hs.field}>
+              <label style={hs.fLabel}>Heure prévue *</label>
+              <input type="time" style={{ ...hs.fInput, fontSize: 18, fontWeight: 700, textAlign: 'center', color: 'var(--accent)' }}
+                value={f.heure} onChange={e => setF({ ...f, heure: e.target.value })} />
+              <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 }}>
+                Heure locale de l'établissement. Elle sert à pré-remplir la saisie et
+                à lister ce qui reste à relever : un relevé hors créneau reste possible.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ ...hcfg.toggle, background: f.actif ? 'var(--accent)' : 'var(--border)' }} onClick={() => setF({ ...f, actif: !f.actif })}>
+                <div style={{ ...hcfg.toggleThumb, left: f.actif ? 'calc(100% - 20px)' : '2px' }} />
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>Créneau actif (proposé à la saisie)</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+            <button style={hs.cancelBtn} onClick={onCancel}>Annuler</button>
+            <button style={hs.saveBtn} onClick={handleSave}>{creneau?.id ? 'Enregistrer' : 'Ajouter le créneau'}</button>
           </div>
         </div>
       </div>

@@ -1870,6 +1870,48 @@ export function installLegacySupabase() {
       };
     },
 
+    // ─── HACCP - Créneaux de relevé ───
+    // Grille horaire des tournées de température, propre à chaque établissement
+    // (un seul shift au Rucher, double service à Woodland). Liste vide = aucun
+    // créneau configuré : le module retombe sur la saisie libre. C'est aussi ce
+    // qui est renvoyé si la table n'existe pas encore (migration non appliquée),
+    // et c'est voulu : le front reste utilisable exactement comme avant.
+    async listHaccpCreneaux(etabId) {
+      let q = client.from('haccp_creneaux').select('*').order('heure');
+      if (etabId) q = q.eq('etablissement_id', etabId);
+      const { data, error } = await q;
+      if (error) { console.error('[listHaccpCreneaux]', error); return []; }
+      return (data || []).map(this.mapHaccpCreneauFromDB);
+    },
+    async upsertHaccpCreneau(creneau) {
+      const payload = {
+        id: creneau.id || ('hcr-' + Date.now() + Math.floor(Math.random() * 1000)),
+        etablissement_id: creneau.etablissementId,
+        label: creneau.label,
+        heure: creneau.heure,
+        actif: creneau.actif !== false,
+      };
+      const { data, error } = await client.from('haccp_creneaux').upsert(payload).select().single();
+      if (error) throw error;
+      return this.mapHaccpCreneauFromDB(data);
+    },
+    async deleteHaccpCreneau(id) {
+      const { error } = await client.from('haccp_creneaux').delete().eq('id', id);
+      if (error) throw error;
+    },
+    mapHaccpCreneauFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id,
+        etablissementId: row.etablissement_id,
+        label: row.label,
+        // Postgres renvoie 'HH:MM:SS' pour un `time` : on garde HH:MM, seul
+        // format manipulé par les <input type="time"> et par les relevés.
+        heure: row.heure ? String(row.heure).slice(0, 5) : '',
+        actif: !!row.actif,
+      };
+    },
+
     // ─── HACCP - Control templates ───
     async listHaccpTpls(etabId) {
       let q = client.from('haccp_ctrl_templates').select('*').order('label');

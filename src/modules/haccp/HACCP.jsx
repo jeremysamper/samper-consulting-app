@@ -2,11 +2,13 @@ import React from 'react';
 import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
-import { CTRL_TYPES, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
-import { CtrlForm, ZoneForm } from './ZoneForms.jsx';
+import { CRENEAUX_PRESETS, CTRL_TYPES, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
+import { CreneauForm, CtrlForm, ZoneForm } from './ZoneForms.jsx';
 import ZoneTile from './ZoneTile.jsx';
+import CreneauxDuJour from './CreneauxDuJour.jsx';
 import { hcfg, hs } from './HACCP.styles.js';
-import { isReleveConforme, parseHaccpNumber } from './HACCP.utils.js';
+import { creneauLePlusProche, heureEnMinutes, isReleveConforme, parseHaccpNumber, trierCreneaux } from './HACCP.utils.js';
+import { zurichClock, zurichToday } from '../../utils/zurichTime.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
@@ -32,9 +34,13 @@ const HACCP = ({ user, etablissement }) => {
   const [ctrlTpls, setCtrlTpls] = React.useState([]);
   const [releves, setReleves]   = React.useState([]);
   const [controls, setControls] = React.useState([]);
+  const [creneaux, setCreneaux] = React.useState([]);
   const [loading, setLoading]   = React.useState(true);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Jour courant à Zurich, pas la date UTC du device : après 22h en été,
+  // toISOString() bascule déjà au lendemain et le registre du soir se serait
+  // rangé sur le mauvais jour.
+  const todayStr = zurichToday();
 
   const [activeTab, setActiveTab] = React.useState('tableau');
   const [dateFilter, setDateFilter] = React.useState(todayStr);
@@ -44,6 +50,7 @@ const HACCP = ({ user, etablissement }) => {
   const [showControl, setShowControl]   = React.useState(false);
   const [zoneModal, setZoneModal]       = React.useState(null);
   const [ctrlModal, setCtrlModal]       = React.useState(null);
+  const [creneauModal, setCreneauModal] = React.useState(null);
 
   // Forms
   const [formRel, setFormRel]   = React.useState({ zoneId:'', date: todayStr, heure:'', valeur:'', commentaire:'' });
@@ -57,6 +64,9 @@ const HACCP = ({ user, etablissement }) => {
   const [showQuickReleves, setShowQuickReleves] = React.useState(false);
   const [quickReleves, setQuickReleves] = React.useState({});
   const [quickSaving, setQuickSaving] = React.useState(false);
+  // Heure appliquée aux relevés de la saisie groupée : celle du créneau choisi,
+  // ou l'heure courante quand l'établissement n'a pas de grille horaire.
+  const [quickHeure, setQuickHeure] = React.useState('');
 
   // ─── Export des relevés : choix de période (journalier / mensuel) ───
   // 'print' | 'pdf' = action demandée ; null = modale fermée.
@@ -83,6 +93,7 @@ const HACCP = ({ user, etablissement }) => {
       setCtrlTpls(INITIAL_CTRL_TPL.filter(c => (c.etablissementId || 'etab-1') === etabId));
       setReleves(INITIAL_RELEVES);
       setControls(INITIAL_CONTROLS);
+      setCreneaux([]);
       setLoading(false);
       return;
     }
@@ -92,17 +103,22 @@ const HACCP = ({ user, etablissement }) => {
 
     const reload = async () => {
       try {
-        const [zs, ts, rs, cs] = await Promise.all([
+        const [zs, ts, rs, cs, crs] = await Promise.all([
           legacySB.db.listHaccpZones(etabId),
           legacySB.db.listHaccpTpls(etabId),
           legacySB.db.listHaccpReleves(etabId),
           legacySB.db.listHaccpControls(etabId),
+          // Créneaux facultatifs : un bridge antérieur à cette version (ou une
+          // migration pas encore appliquée) renvoie une liste vide et le module
+          // retombe sur la saisie libre.
+          legacySB.db.listHaccpCreneaux ? legacySB.db.listHaccpCreneaux(etabId) : [],
         ]);
         if (!mounted) return;
         setZones(zs);
         setCtrlTpls(ts);
         setReleves(rs);
         setControls(cs);
+        setCreneaux(crs || []);
       } catch (err) { console.error('[HACCP load]', err); }
       finally { if (mounted) setLoading(false); }
     };
@@ -110,7 +126,7 @@ const HACCP = ({ user, etablissement }) => {
     reload();
 
     unsubs.push(legacySB.realtime.subscribeReload(
-      ['haccp_zones', 'haccp_ctrl_templates', 'haccp_releves', 'haccp_controls'],
+      ['haccp_zones', 'haccp_ctrl_templates', 'haccp_releves', 'haccp_controls', 'haccp_creneaux'],
       reload,
     ));
 
@@ -165,6 +181,47 @@ const HACCP = ({ user, etablissement }) => {
   const tauxConf    = releves.length > 0 ? Math.round(releves.filter(r=>r.conforme).length/releves.length*100) : 100;
   const todayReleves  = releves.filter(r=>r.date===dateFilter);
   const todayControls = controls.filter(c=>c.date===dateFilter);
+
+  // ─── Créneaux de relevé (grille horaire de l'établissement) ───
+  // Aucun créneau configuré = comportement historique : heure libre à la saisie,
+  // pas de suivi de tournée. Tout ce qui suit est donc purement additif.
+  const activeCreneaux = trierCreneaux(creneaux.filter(c => c.actif));
+  const aDesCreneaux   = activeCreneaux.length > 0;
+
+  // Tournée la plus proche de l'heure courante : proposée par défaut à la saisie.
+  const creneauProchain = aDesCreneaux ? creneauLePlusProche(activeCreneaux, zurichClock()) : null;
+
+  // Suivi de la journée affichée : pour chaque tournée, les zones actives déjà
+  // relevées. Le rattachement se fait sur l'heure enregistrée du relevé (au
+  // créneau le plus proche) : aucune colonne supplémentaire en base, et
+  // l'historique antérieur aux créneaux se répartit correctement.
+  const zonesActivesIds = new Set(activeZones.map(z => z.id));
+  const suiviCreneaux = activeCreneaux.map(c => {
+    const faites = new Set();
+    todayReleves.forEach(r => {
+      if (!zonesActivesIds.has(r.zoneId)) return;
+      if (creneauLePlusProche(activeCreneaux, r.heure)?.id === c.id) faites.add(r.zoneId);
+    });
+    return {
+      ...c,
+      faites: faites.size,
+      total: activeZones.length,
+      complet: activeZones.length > 0 && faites.size >= activeZones.length,
+    };
+  });
+
+  // Ouvre la saisie groupée sur une tournée donnée (ou sur la plus proche).
+  // Les valeurs cibles sont pré-remplies : l'opérateur ne corrige que ce qui
+  // s'écarte de la normale.
+  const ouvrirSaisieRapide = (heure) => {
+    const initial = {};
+    activeZones.forEach(z => {
+      if (z.cible != null && z.cible !== '') initial[z.id] = String(z.cible);
+    });
+    setQuickReleves(initial);
+    setQuickHeure(heure || creneauProchain?.heure || zurichClock());
+    setShowQuickReleves(true);
+  };
 
   // ─── Périodes d'export des relevés : jour sélectionné / mois du jour sélectionné ───
   const monthKey = dateFilter.slice(0, 7); // 'YYYY-MM'
@@ -269,6 +326,57 @@ const HACCP = ({ user, etablissement }) => {
       catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
     }
     setCtrlTpls(prev=>prev.filter(c=>c.id!==id));
+  };
+
+  // ─── Créneaux de relevé ───
+  const saveCreneau = async (c) => {
+    const payload = { ...c, etablissementId: etabId };
+    if (legacySB) {
+      try {
+        const saved = await legacySB.db.upsertHaccpCreneau(payload);
+        setCreneaux(prev => prev.find(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved]);
+      } catch (err) { notifyLegacy('Erreur créneau : ' + err.message, 'error'); return; }
+    } else {
+      setCreneaux(prev => prev.find(x => x.id === c.id) ? prev.map(x => x.id === c.id ? c : x) : [...prev, c]);
+    }
+    setCreneauModal(null);
+  };
+
+  const deleteCreneau = async (id) => {
+    if (!confirmLegacy('Supprimer ce créneau ? Les relevés déjà enregistrés sont conservés.')) return;
+    if (legacySB) {
+      try { await legacySB.db.deleteHaccpCreneau(id); }
+      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+    }
+    setCreneaux(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Bascule actif/inactif persistée immédiatement : la grille horaire est lue
+  // par toute la brigade, un toggle qui ne vivrait qu'en mémoire mentirait au
+  // consultant qui quitte l'onglet.
+  const toggleCreneau = async (c) => {
+    await saveCreneau({ ...c, actif: !c.actif });
+  };
+
+  // Application d'un modèle (service unique / double service) quand aucun
+  // créneau n'existe encore. Chaque créneau reste modifiable ensuite.
+  const appliquerPresetCreneaux = async (preset) => {
+    const nouveaux = preset.creneaux.map((c, i) => ({
+      id: 'hcr-' + Date.now() + '-' + i,
+      etablissementId: etabId,
+      label: c.label,
+      heure: c.heure,
+      actif: true,
+    }));
+    if (!legacySB) { setCreneaux(prev => [...prev, ...nouveaux]); return; }
+    const created = [];
+    for (const c of nouveaux) {
+      try { created.push(await legacySB.db.upsertHaccpCreneau(c)); }
+      catch (err) { console.error('[appliquerPresetCreneaux]', c.label, err); }
+    }
+    if (created.length === 0) { notifyLegacy('Aucun créneau créé.', 'error'); return; }
+    setCreneaux(prev => [...prev, ...created]);
+    notifyLegacy(`${created.length} créneaux créés (${preset.label}).`, 'success');
   };
 
   const deleteReleve = async (id) => {
@@ -383,9 +491,11 @@ const HACCP = ({ user, etablissement }) => {
   const submitInlineReleve = async (zone, valeur) => {
     const parsed = parseHaccpNumber(valeur);
     if (Number.isNaN(parsed)) return;
-    const now = new Date();
-    const today = now.toISOString().slice(0, 10);
-    const heure = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    // Relevé ponctuel sur la tuile : on enregistre l'heure réelle, pas celle du
+    // créneau. C'est un contrôle pris sur le vif, il doit rester daté comme tel ;
+    // le rattachement à la tournée la plus proche se fait à l'affichage.
+    const today = zurichToday();
+    const heure = zurichClock();
     const conforme = isConforme(zone, valeur);
     const newReleve = {
       etablissementId: etabId, zoneId: zone.id,
@@ -417,9 +527,11 @@ const HACCP = ({ user, etablissement }) => {
       return;
     }
     setQuickSaving(true);
-    const now = new Date();
-    const today = now.toISOString().slice(0, 10);
-    const heure = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const today = zurichToday();
+    // Heure de la tournée choisie dans la modale. Elle vaut pour tout le lot :
+    // une tournée d'ouverture doit se lire comme un bloc dans le registre, pas
+    // comme dix relevés étalés sur les quelques minutes de la saisie.
+    const heure = heureEnMinutes(quickHeure) != null ? quickHeure : zurichClock();
 
     const created = [];
     const errors = [];
@@ -461,11 +573,11 @@ const HACCP = ({ user, etablissement }) => {
 
     // Feedback
     if (errors.length > 0) {
-      notifyLegacy(`⚠ ${created.length} relevés enregistrés, ${errors.length} en erreur`, 'warning');
+      notifyLegacy(`⚠ ${created.length} relevés enregistrés à ${heure}, ${errors.length} en erreur`, 'warning');
     } else if (nbAnomalies > 0) {
-      notifyLegacy(`✓ ${created.length} relevés enregistrés (${nbAnomalies} anomalie${nbAnomalies > 1 ? 's' : ''})`, 'warning');
+      notifyLegacy(`✓ ${created.length} relevés enregistrés à ${heure} (${nbAnomalies} anomalie${nbAnomalies > 1 ? 's' : ''})`, 'warning');
     } else {
-      notifyLegacy(`✓ ${created.length} relevé${created.length > 1 ? 's' : ''} conforme${created.length > 1 ? 's' : ''} enregistré${created.length > 1 ? 's' : ''}`, 'success');
+      notifyLegacy(`✓ ${created.length} relevé${created.length > 1 ? 's' : ''} conforme${created.length > 1 ? 's' : ''} enregistré${created.length > 1 ? 's' : ''} à ${heure}`, 'success');
     }
   };
 
@@ -495,7 +607,7 @@ const HACCP = ({ user, etablissement }) => {
           {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
               première option mais le state reste vide → « Cible : undefined » et
               validation bloquée alors qu'une zone semble choisie. */}
-          {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>{setFormRel(f=>({...f, zoneId: f.zoneId || activeZones[0]?.id || ''}));setShowReleve(true);}}>+ Nouveau relevé</button>}
+          {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>{setFormRel(f=>({...f, zoneId: f.zoneId || activeZones[0]?.id || '', heure: f.heure || creneauProchain?.heure || zurichClock()}));setShowReleve(true);}}>+ Nouveau relevé</button>}
           {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>{setFormCtrl(f=>({...f, templateId: f.templateId || activeTpls[0]?.id || ''}));setShowControl(true);}}>+ Enregistrer contrôle</button>}
           {activeTab==='tracabilite' && canWrite && <button style={hs.addBtn} onClick={()=>triggerCapture && triggerCapture()}>+ Prendre une photo</button>}
           {activeTab==='config' && isConsultant && (
@@ -521,20 +633,19 @@ const HACCP = ({ user, etablissement }) => {
             <div style={hs.kpiCard}><div style={hs.kpiLbl}>Anomalies</div><div style={{...hs.kpiVal,color:(anomalies || []).length>0?'var(--danger-strong)':'var(--success-text)'}}>{(anomalies || []).length}</div></div>
             <div style={hs.kpiCard}><div style={hs.kpiLbl}>Contrôles aujourd'hui</div><div style={hs.kpiVal}>{todayControls.length}</div></div>
           </div>
+          {/* Tournées de relevé du jour (si l'établissement a une grille horaire) */}
+          {aDesCreneaux && <CreneauxDuJour
+            suivi={suiviCreneaux}
+            dateLabel={capitalize(fmtJour(dateFilter, false))}
+            saisissable={canWrite && dateFilter === todayStr && activeZones.length > 0}
+            onSaisir={ouvrirSaisieRapide}
+          />}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <div style={hs.sectionTitle}>État actuel des zones</div>
             {canWrite && activeZones.length > 0 && (
               <button
                 style={hs.quickBtn}
-                onClick={() => {
-                  // Préremplir avec les valeurs cibles (cible = température normale de la zone)
-                  const initial = {};
-                  activeZones.forEach(z => {
-                    if (z.cible != null && z.cible !== '') initial[z.id] = String(z.cible);
-                  });
-                  setQuickReleves(initial);
-                  setShowQuickReleves(true);
-                }}
+                onClick={() => ouvrirSaisieRapide()}
                 title="Saisir rapidement les températures de toutes les zones"
               >
                 ✓ Tout conforme - saisie rapide
@@ -568,6 +679,12 @@ const HACCP = ({ user, etablissement }) => {
       {/* ── RELEVÉS ── */}
       {activeTab==='releves' && (
         <div style={{display:'flex',flexDirection:'column',gap:12}} id="haccp-releves-print">
+          {aDesCreneaux && <CreneauxDuJour
+            suivi={suiviCreneaux}
+            dateLabel={capitalize(fmtJour(dateFilter, false))}
+            saisissable={canWrite && dateFilter === todayStr && activeZones.length > 0}
+            onSaisir={ouvrirSaisieRapide}
+          />}
           <div style={hs.zoneGrid}>{(activeZones || []).map(z=><ZoneTile key={z.id} zone={z} last={latestByZone[z.id]} trend={trendByZone[z.id]} inlineReleve={inlineReleve} inlineTempInput={inlineTempInput} canWrite={canWrite} setInlineReleve={setInlineReleve} setInlineTempInput={setInlineTempInput} submitInlineReleve={submitInlineReleve}/>)}</div>
           {canManage && !sel.active && todayReleves.length > 0 && (
             <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -703,6 +820,67 @@ const HACCP = ({ user, etablissement }) => {
             </div>
           </div>
 
+          {/* Créneaux de relevé - grille horaire propre à l'établissement */}
+          <div style={hcfg.section}>
+            <div style={hcfg.sectionHeader}>
+              <div>
+                <div style={hcfg.sectionTitle}>Créneaux de relevé</div>
+                <div style={hcfg.sectionSub}>
+                  {creneaux.length === 0
+                    ? "Aucun créneau - l'heure est saisie librement à chaque relevé"
+                    : `${creneaux.length} créneau${creneaux.length>1?'x':''} configuré${creneaux.length>1?'s':''} · ${activeCreneaux.length} actif${activeCreneaux.length>1?'s':''}`}
+                </div>
+              </div>
+              <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>+ Ajouter un créneau</button>
+            </div>
+
+            {creneaux.length === 0 ? (
+              <div style={{padding:'16px 18px'}}>
+                <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.55,marginBottom:14}}>
+                  Les heures de relevé ne sont pas les mêmes d'une maison à l'autre : un seul shift
+                  qui démarre à 6h ne se relève pas comme un double service midi et soir. Définissez
+                  ici la grille horaire de l'établissement - elle pré-remplit l'heure à la saisie et
+                  affiche les tournées restantes sur le tableau de bord. Un relevé hors créneau
+                  reste toujours possible.
+                </div>
+                <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                  {CRENEAUX_PRESETS.map(p=>(
+                    <button key={p.id} onClick={()=>appliquerPresetCreneaux(p)} style={{...hs.periodBtn,width:'auto',flex:'1 1 240px',maxWidth:340}}>
+                      <span style={{fontSize:20,flexShrink:0}}>⏱</span>
+                      <span style={{flex:1,minWidth:0}}>
+                        <span style={{display:'block',fontSize:13,fontWeight:700,color:'var(--text)'}}>{p.label}</span>
+                        <span style={{display:'block',fontSize:11,color:'var(--text2)',marginTop:2}}>{p.sub}</span>
+                        <span style={{display:'block',fontSize:11,color:'var(--accent)',marginTop:3,fontWeight:600}}>{p.creneaux.map(c=>c.heure).join(' · ')}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{display:'flex',flexDirection:'column',gap:0}}>
+                {trierCreneaux(creneaux).map(c=>(
+                  <div key={c.id} style={{...hcfg.row, opacity:c.actif?1:0.5}}>
+                    <div style={{...hcfg.rowIcon,width:58,fontSize:14,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--accent)'}}>{c.heure}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                        {c.label}
+                        {!c.actif && <span style={{fontSize:10,fontWeight:600,background:'var(--bg)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      </div>
+                      <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
+                        Tournée de {activeZones.length} zone{activeZones.length>1?'s':''} · heure locale
+                      </div>
+                    </div>
+                    <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}} onClick={()=>toggleCreneau(c)}>
+                      <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
+                    </div>
+                    <button style={hcfg.editBtn} onClick={()=>setCreneauModal(c)}>Modifier</button>
+                    <button style={hcfg.deleteBtn} onClick={()=>deleteCreneau(c.id)}>Supprimer</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Zones */}
           <div style={hcfg.section}>
             <div style={hcfg.sectionHeader}>
@@ -790,6 +968,20 @@ const HACCP = ({ user, etablissement }) => {
                   <div style={hs.field}><label style={hs.fLabel}>Date</label><input type="date" style={hs.fInput} value={formRel.date} onChange={e=>setFormRel({...formRel,date:e.target.value})}/></div>
                   <div style={hs.field}><label style={hs.fLabel}>Heure *</label><input type="time" style={hs.fInput} value={formRel.heure} onChange={e=>setFormRel({...formRel,heure:e.target.value})}/></div>
                 </div>
+                {/* Tournées de l'établissement : un tap pose l'heure prévue.
+                    Le champ Heure reste modifiable pour un contrôle hors tournée. */}
+                {aDesCreneaux && (
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+                    {activeCreneaux.map(c=>(
+                      <button key={c.id} type="button"
+                        onClick={()=>setFormRel({...formRel, heure:c.heure})}
+                        style={{...hs.creneauChip, ...(formRel.heure===c.heure ? hs.creneauChipOn : {})}}>
+                        {c.heure} · {c.label}
+                      </button>
+                    ))}
+                    <button type="button" onClick={()=>setFormRel({...formRel, heure:zurichClock()})} style={hs.creneauChip}>Maintenant</button>
+                  </div>
+                )}
                 <div style={hs.field}>
                   <label style={hs.fLabel}>Valeur mesurée * ({zones.find(z=>z.id===formRel.zoneId)?.unite})</label>
                   <input type="number" step="0.1" style={{...hs.fInput,fontSize:22,fontWeight:700,textAlign:'center',color:'var(--accent)'}}
@@ -855,6 +1047,7 @@ const HACCP = ({ user, etablissement }) => {
       {/* Zone add/edit */}
       {zoneModal && <ZoneForm zone={zoneModal==='new'?null:zoneModal} onSave={saveZone} onCancel={()=>setZoneModal(null)}/>}
       {ctrlModal && <CtrlForm ctrl={ctrlModal==='new'?null:ctrlModal} onSave={saveCtrl} onCancel={()=>setCtrlModal(null)}/>}
+      {creneauModal && <CreneauForm creneau={creneauModal==='new'?null:creneauModal} creneaux={creneaux} onSave={saveCreneau} onCancel={()=>setCreneauModal(null)}/>}
 
       {/* ─── Modale export relevés : période journalière ou mensuelle ─── */}
       {exportRelevesMode && (
@@ -903,6 +1096,27 @@ const HACCP = ({ user, etablissement }) => {
                 </div>
               </div>
               <button style={hs.qrCloseBtn} onClick={() => !quickSaving && setShowQuickReleves(false)}>✕</button>
+            </div>
+
+            {/* Heure appliquée à TOUT le lot : la tournée choisie, ou une heure
+                libre si l'établissement n'a pas de grille horaire configurée. */}
+            <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ ...hs.fLabel, flexShrink: 0 }}>{aDesCreneaux ? 'Tournée' : 'Heure'}</span>
+              {suiviCreneaux.map(c => (
+                <button key={c.id} type="button" disabled={quickSaving}
+                  onClick={() => setQuickHeure(c.heure)}
+                  style={{ ...hs.creneauChip, ...(quickHeure === c.heure ? hs.creneauChipOn : {}) }}>
+                  {c.heure} · {c.label}{c.complet ? ' ✓' : ''}
+                </button>
+              ))}
+              <button type="button" disabled={quickSaving}
+                onClick={() => setQuickHeure(zurichClock())}
+                style={{ ...hs.creneauChip, ...(aDesCreneaux && !activeCreneaux.some(c => c.heure === quickHeure) ? hs.creneauChipOn : {}) }}>
+                Maintenant
+              </button>
+              <input type="time" value={quickHeure} disabled={quickSaving}
+                onChange={e => setQuickHeure(e.target.value)}
+                style={{ ...hs.fInput, width: 116, flexShrink: 0 }} />
             </div>
 
             <div style={hs.qrBody}>

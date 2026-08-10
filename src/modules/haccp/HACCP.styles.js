@@ -64,6 +64,17 @@ export const hs = {
   qrFooter: { padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' },
   qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
   qrGhostBtn: { padding:'8px 14px', background:'none', color:'var(--text)', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', fontFamily:'var(--font)', fontSize:13 },
+
+  // ─── Créneaux de relevé (grille horaire de l'établissement) ───
+  // Bandeau des tournées du jour + sélecteur de tournée dans les saisies.
+  creneauStrip: { display:'flex', gap:8, flexWrap:'wrap', padding:'12px 16px' },
+  creneauCard: { display:'flex', flexDirection:'column', gap:2, alignItems:'flex-start', minWidth:132, padding:'10px 14px', border:'1px solid var(--border)', borderRadius:10, background:'var(--bg)', fontFamily:'var(--font)', textAlign:'left' },
+  creneauHeure: { fontSize:17, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)', lineHeight:1.1 },
+  creneauLabel: { fontSize:11, color:'var(--text2)', fontWeight:600 },
+  creneauEtat: { fontSize:10, fontWeight:700, marginTop:2 },
+  // Puce de sélection de tournée (modales de saisie).
+  creneauChip: { padding:'7px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)', display:'inline-flex', alignItems:'center', gap:6 },
+  creneauChipOn: { borderColor:'var(--accent)', background:'var(--accent-light)', color:'var(--accent)' },
 };
 
 export const hcfg = {

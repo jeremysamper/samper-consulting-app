@@ -23,6 +23,41 @@ export const FREQ_OPTIONS = [
   '2× / jour','Quotidien','Hebdomadaire','Mensuel','Sur demande',
 ];
 
+// ─── Créneaux de relevé ───
+// Libellés proposés à la création d'un créneau : la brigade reconnaît sa
+// tournée à son nom, pas à son heure. Liste indicative, la saisie reste libre.
+export const CRENEAU_LABELS = [
+  'Ouverture', 'Avant service midi', 'Après service midi',
+  'Avant service soir', 'Après service soir', 'Fermeture',
+];
+
+// Modèles proposés quand aucun créneau n'est configuré. Ils reproduisent les
+// deux organisations réelles du parc — un seul shift (Le Rucher d'Evolène,
+// départ 6h) et double service (Woodland Village) — et restent modifiables
+// créneau par créneau une fois appliqués.
+export const CRENEAUX_PRESETS = [
+  {
+    id: 'simple',
+    label: 'Service unique',
+    sub: 'Un seul shift : tournée d\'ouverture et tournée de fermeture',
+    creneaux: [
+      { label: 'Ouverture', heure: '06:30' },
+      { label: 'Fermeture', heure: '15:00' },
+    ],
+  },
+  {
+    id: 'double',
+    label: 'Double service',
+    sub: 'Midi et soir : ouverture, avant chaque service, fermeture',
+    creneaux: [
+      { label: 'Ouverture',           heure: '07:00' },
+      { label: 'Avant service midi',  heure: '11:30' },
+      { label: 'Avant service soir',  heure: '18:00' },
+      { label: 'Fermeture',           heure: '22:30' },
+    ],
+  },
+];
+
 export const INITIAL_ZONES = [
   { id:'z1', nom:'Chambre froide positive 1', type:'froid',   cible:4,   min:0,   max:6,   unite:'°C', icone:'❄', actif:true },
   { id:'z2', nom:'Chambre froide positive 2', type:'froid',   cible:3,   min:0,   max:6,   unite:'°C', icone:'❄', actif:true },
