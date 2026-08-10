@@ -9,6 +9,7 @@ import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
+import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 
 const Dashboard = ({ user, etablissement, setPage }) => {
   // Jour courant à Zurich (et non la date UTC du device) → frontière de minuit correcte.
@@ -104,7 +105,16 @@ const Dashboard = ({ user, etablissement, setPage }) => {
   const manquants = todayShifts.filter(s => !s.pointageDebut);
   const pertesNonVal = pertes.filter(p => !p.valide);
   const pertesTotal = pertes.reduce((s, p) => s + (p.quantite || 0) * (p.valeurUnit || 0), 0);
-  const inv = inventaires[0];
+  // Stock valorisé : un établissement tient plusieurs inventaires en parallèle
+  // (cuisine, boissons, matériel...). On somme le DERNIER de chaque périmètre —
+  // `inventaires[0]` seul n'afficherait que la dernière zone comptée, et
+  // additionner toute la liste compterait plusieurs fois le même stock.
+  const derniersInventaires = derniersParPerimetre(inventaires);
+  // Date de référence : le plus ancien des comptages retenus, c'est-à-dire la
+  // fraîcheur réelle de la photo consolidée.
+  const inventaireLePlusAncien = derniersInventaires
+    .slice()
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))[0];
   const controlsToday = (Array.isArray(haccpControls) ? haccpControls : []).filter(c => c.date === today);
   const relevesToday = (Array.isArray(haccpReleves) ? haccpReleves : []).filter(r => r.date === today);
   const haccpAlerts = [
@@ -116,7 +126,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
   const sopDoneToday = sopExecToday.filter(e => ['terminee', 'terminée', 'done', 'completed'].includes(String(e.statut || '').toLowerCase())).length;
   const plannedMinutes = todayShifts.reduce((total, shift) => total + getShiftMinutes(shift.debut, shift.fin), 0);
   const plannedHours = Math.round((plannedMinutes / 60) * 10) / 10;
-  const stockValue = Number(inv?.valeurTotale || inv?.valeur_totale || 0);
+  const stockValue = valeurStockConsolidee(inventaires);
   const weekShiftLoad = getWeekShiftLoad(shifts);
   const canNavigate = typeof setPage === 'function';
   const automationItems = buildAutomationItems({
@@ -429,8 +439,14 @@ const Dashboard = ({ user, etablissement, setPage }) => {
         </div>
         <div style={{ ...ds.kpiCard, borderLeft: '3px solid var(--accent)' }}>
           <div style={ds.kpiLabel}>Stock valorisé</div>
-          <div style={ds.kpiValue}>CHF {(inv?.valeurTotale || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-          <div style={ds.kpiSub}>{inv ? `Au ${new Date(inv.date + 'T12:00:00').toLocaleDateString('fr-CH')}` : 'Aucun inventaire'}</div>
+          <div style={ds.kpiValue}>CHF {stockValue.toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+          <div style={ds.kpiSub}>
+            {!inventaireLePlusAncien
+              ? 'Aucun inventaire'
+              : derniersInventaires.length > 1
+                ? `${derniersInventaires.length} périmètres, au plus ancien du ${new Date(inventaireLePlusAncien.date + 'T12:00:00').toLocaleDateString('fr-CH')}`
+                : `Au ${new Date(inventaireLePlusAncien.date + 'T12:00:00').toLocaleDateString('fr-CH')}`}
+          </div>
         </div>
       </div>
 

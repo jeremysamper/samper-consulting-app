@@ -93,6 +93,16 @@ export function installLegacySupabase() {
   const RELATION_ABSENTE = new Set(['42P01', 'PGRST205', 'PGRST202']);
   const _relationAbsente = (error) => RELATION_ABSENTE.has(error?.code);
 
+  // Colonne absente : même logique que RELATION_ABSENTE, à la colonne près. Sert
+  // aux écritures qui portent un champ ajouté par une migration pas encore
+  // appliquée — l'appelant réécrit sans ce champ au lieu de perdre la saisie.
+  // 42703 = undefined_column (Postgres), PGRST204 = colonne inconnue du cache
+  // de schéma PostgREST.
+  const _colonneAbsente = (error, colonne) => (
+    (error?.code === '42703' || error?.code === 'PGRST204') &&
+    new RegExp(`\\b${colonne}\\b`).test(String(error?.message || ''))
+  );
+
   // ─────────────────────────────────────────
   // CACHE COURT + DÉDUP IN-FLIGHT pour les lectures lourdes
   // ─────────────────────────────────────────
@@ -1470,11 +1480,12 @@ export function installLegacySupabase() {
     },
 
     // ─── INVENTAIRES ───
-    async listInventaires(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listInventaires(etabId, { strict = false } = {}) {
       let q = client.from('inventaires').select('*').order('date', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listInventaires]', error); return []; }
+      if (error) return _readFailed('[listInventaires]', error, strict);
       return (data || []).map(this.mapInventaireFromDB);
     },
 
@@ -1483,14 +1494,29 @@ export function installLegacySupabase() {
         id: inv.id || ('inv-' + Date.now()),
         etablissement_id: inv.etablissementId,
         date: inv.date,
+        // Périmètre (Cuisine, Boissons, Matériel...). Jamais vide ni null : la
+        // colonne est NOT NULL DEFAULT 'Général' côté base.
+        nom: (inv.nom || '').trim() || 'Général',
         statut: inv.statut || 'en cours',
         valide_par: inv.validePar || null,
         valeur_totale: inv.valeurTotale || 0,
         lignes: inv.lignes || [],
       };
       const { data, error } = await client.from('inventaires').upsert(payload).select().single();
-      if (error) throw error;
-      return this.mapInventaireFromDB(data);
+      if (!error) return this.mapInventaireFromDB(data);
+
+      // Colonne `nom` absente : la migration 20260810 n'est pas encore appliquée
+      // sur cette base. On réécrit sans le périmètre plutôt que de faire échouer
+      // une saisie d'inventaire en service - le périmètre est perdu, les stocks
+      // comptés ne le sont pas.
+      if (_colonneAbsente(error, 'nom')) {
+        console.warn('[upsertInventaire] colonne "nom" absente (migration 20260810 non appliquée) — écriture sans périmètre');
+        const { nom, ...sansNom } = payload;
+        const retry = await client.from('inventaires').upsert(sansNom).select().single();
+        if (retry.error) throw retry.error;
+        return this.mapInventaireFromDB(retry.data);
+      }
+      throw error;
     },
 
     async deleteInventaire(id) {
@@ -1504,6 +1530,9 @@ export function installLegacySupabase() {
         id: row.id,
         etablissementId: row.etablissement_id,
         date: row.date,
+        // Périmètre : absent tant que la migration 20260810 n'est pas appliquée.
+        // Le front replie sur PERIMETRE_DEFAUT (cf. utils/inventairePerimetres).
+        nom: row.nom || '',
         statut: row.statut,
         validePar: row.valide_par,
         valeurTotale: Number(row.valeur_totale) || 0,

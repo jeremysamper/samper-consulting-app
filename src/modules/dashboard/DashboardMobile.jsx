@@ -10,6 +10,7 @@ import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
+import { valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 
 const DashboardMobile = ({ user, etablissement, setPage }) => {
   // Jour courant à Zurich (et non la date UTC du device) → frontière de minuit correcte.
@@ -84,7 +85,10 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
   const activePointages = todayShifts.filter(s => s.pointageDebut && !s.pointageFin);
   const manquants = todayShifts.filter(s => !s.pointageDebut);
   const pertesNonVal = pertes.filter(p => !p.valide);
-  const inv = inventaires[0];
+  // Stock valorisé = dernier inventaire de CHAQUE périmètre (cuisine, boissons,
+  // matériel...). Le seul inventaire le plus récent ne montrerait que la
+  // dernière zone comptée.
+  const stockValue = valeurStockConsolidee(inventaires);
   const canNavigate = typeof setPage === 'function';
   const quickActions = [
     { id: 'pointage', label: myTodayShifts.length ? 'Pointer' : 'Planning', sub: myTodayShifts.length ? 'Arrivee / depart' : 'Voir mes horaires', page: 'planning', tone: 'var(--success-strong)' },
@@ -273,7 +277,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         </div>
         <div style={{ ...dm.kpi, borderLeft: '3px solid var(--accent)' }}>
           <div style={dm.kpiLbl}>Stock CHF</div>
-          <div style={dm.kpiVal}>{Math.round(inv?.valeurTotale || 0).toLocaleString('fr-CH')}</div>
+          <div style={dm.kpiVal}>{Math.round(stockValue).toLocaleString('fr-CH')}</div>
         </div>
       </div>
 

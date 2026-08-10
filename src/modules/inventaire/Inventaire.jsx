@@ -9,20 +9,89 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
+import { userDisplayName } from '../../utils/userDisplay.js';
 
-// INVENTAIRE MENSUEL
+const aujourdhui = () => new Date().toISOString().slice(0, 10);
+
+// Recalcule écarts et valeurs d'un inventaire (muté sur place, puis renvoyé).
+// Hors du composant : appelé aussi bien depuis l'écran « aucun inventaire »
+// (création du premier) que depuis l'écran garni.
+const recalcInventaire = (inventory) => {
+  inventory.lignes.forEach(l => {
+    l.ecart = +(l.stockReel - l.stockTheo).toFixed(2);
+    l.valeur = +(l.stockReel * l.prixUnit).toFixed(2);
+    l.ecartValeur = +(l.ecart * l.prixUnit).toFixed(2);
+  });
+  inventory.valeurTotale = +inventory.lignes.reduce((s, l) => s + l.valeur, 0).toFixed(2);
+  return inventory;
+};
+
+// Plus récent d'abord : la liste arrive déjà triée de la base, mais un
+// inventaire créé dans la session est simplement empilé en tête.
+const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date || ''));
+
+// Quantité saisie au comptage. La virgule est le séparateur décimal en Suisse
+// romande et le clavier numérique iOS en français en propose une :
+// `parseFloat('9,5')` vaut 9, la décimale disparaît sans que rien ne le signale.
+// Renvoie null si la saisie est vide ou illisible - l'appelant décide alors.
+const parseQuantite = (valeur) => {
+  const brut = String(valeur ?? '').trim().replace(',', '.');
+  if (brut === '') return null;
+  const nombre = Number.parseFloat(brut);
+  return Number.isFinite(nombre) ? nombre : null;
+};
+
+// INVENTAIRE - plusieurs périmètres en parallèle (cuisine, boissons, matériel...)
 const Inventaire = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   const [inventairesAll, setInventairesAll] = React.useState(() => legacySB ? [] : readLegacyStorage('sc_inventaires', demoData.inventaires));
+
+  // Miroir de la liste, tenu en avance sur le rendu.
+  // Une quantité comptée est enregistrée au blur du champ ; si l'utilisateur
+  // passe directement du champ à un bouton (« Valider l'inventaire »,
+  // « Supprimer »), le blur et le clic tombent dans le même geste. Une écriture
+  // qui repartirait de l'objet capturé au rendu précédent réécrirait l'ancienne
+  // quantité par-dessus celle qui vient d'être saisie. Toutes les écritures de
+  // la liste passent donc par `appliquerListe`, qui met le miroir à jour
+  // AVANT le rendu, et toutes les lectures d'écriture par `invCourant`.
+  const inventairesRef = React.useRef(inventairesAll);
+  const appliquerListe = React.useCallback((calculer) => {
+    // `calculer` doit être pure : elle est appliquée au miroir puis rejouée par
+    // React sur l'état (mise à jour fonctionnelle, composable avec la file).
+    inventairesRef.current = calculer(inventairesRef.current);
+    setInventairesAll(calculer);
+  }, []);
+
   // Filtrer par établissement courant
-  const inventaires = inventairesAll.filter(i => (i.etablissementId || 'etab-1') === etabId);
+  const inventairesEtab = inventairesAll.filter(i => (i.etablissementId || 'etab-1') === etabId);
+  // Périmètres ouverts dans l'établissement (Cuisine, Boissons, Matériel...)
+  const perimetres = listePerimetres(inventairesEtab);
+  const [perimetre, setPerimetre] = React.useState(() => readLegacyStorage('sc_inventaire_perimetre', PERIMETRE_DEFAUT));
+  // Le périmètre mémorisé peut avoir disparu (supprimé, ou autre établissement)
+  const perimetreActif = perimetres.includes(perimetre) ? perimetre : (perimetres[0] || PERIMETRE_DEFAUT);
+  // Un seul périmètre à l'écran : tout le module (sélecteur de date, KPI,
+  // comparaison vs précédent) ne travaille que sur cette pile.
+  const inventaires = inventairesEtab.filter(i => perimetreOf(i) === perimetreActif).sort(parDateDesc);
   const [selectedId, setSelectedId] = React.useState(() => readLegacyStorage('sc_inventaire_selected', inventaires[0]?.id));
   const [catFilter, setCatFilter] = React.useState('Tous');
   const [typeFilter, setTypeFilter] = React.useState('Tous');
   const [search, setSearch] = React.useState('');
   const [showNew, setShowNew] = React.useState(false);
+  // Formulaire « nouvel inventaire » : périmètre + date + modèle de base.
+  const [newInv, setNewInv] = React.useState({ nom: PERIMETRE_DEFAUT, nomLibre: '', date: aujourdhui(), base: 'dupliquer' });
+  // Renommage du périmètre affiché (réécrit toute sa pile d'inventaires).
+  const [showRename, setShowRename] = React.useState(false);
+  const [renameValue, setRenameValue] = React.useState('');
+  const [renameBusy, setRenameBusy] = React.useState(false);
+  // Saisie du stock compté, par ligne. Le champ garde le texte brut tant qu'il
+  // a le focus (« 9, » est un état de frappe valide) ; la ligne n'est écrite
+  // qu'au blur, sinon chaque frappe déclencherait un upsert et un rechargement
+  // realtime en retour.
+  const [stockDraft, setStockDraft] = React.useState({});
+  const stockRefs = React.useRef({});
   const [showAddLine, setShowAddLine] = React.useState(false);
   const [newLine, setNewLine] = React.useState({ produit: '', categorie: 'Autres', unite: 'pcs', stockTheo: 0, stockReel: 0, prixUnit: 0 });
   // Autocomplétion catalogue : index de la suggestion en cours de focus (-1 = aucune)
@@ -36,22 +105,29 @@ const Inventaire = ({ user, etablissement }) => {
   const [bulkBusy, setBulkBusy] = React.useState(false);
 
   // ═══ Load Supabase + Realtime ═══
+  // Lecture stricte : une erreur remonte au lieu de rendre []. Sans ça un JWT
+  // expiré au réveil d'une tablette affiche « Aucun inventaire » alors que la
+  // base est pleine — et la brigade recrée un périmètre en double par-dessus.
+  const [loadError, setLoadError] = React.useState(false);
+  const reloadRef = React.useRef(null);
   React.useEffect(() => {
     if (!legacySB) return;
     let unsub = null, mounted = true;
-    (async () => {
+    const reload = async () => {
       try {
-        const invs = await legacySB.db.listInventaires(etabId);
-        if (mounted) {
-          setInventairesAll(invs);
-          if (!selectedId && invs[0]) setSelectedId(invs[0].id);
-        }
-      } catch (err) { console.error('[Inventaire load]', err); }
-    })();
-    unsub = legacySB.realtime.subscribeReload('inventaires', async () => {
-      try { const invs = await legacySB.db.listInventaires(etabId); if (mounted) setInventairesAll(invs); } catch(e) {}
-    });
-    return () => { mounted = false; unsub && unsub(); };
+        const invs = await legacySB.db.listInventaires(etabId, { strict: true });
+        if (!mounted) return;
+        appliquerListe(() => invs);
+        setLoadError(false);
+      } catch (err) {
+        console.error('[Inventaire load]', err);
+        if (mounted) setLoadError(true);
+      }
+    };
+    reloadRef.current = reload;
+    reload();
+    unsub = legacySB.realtime.subscribeReload('inventaires', reload);
+    return () => { mounted = false; reloadRef.current = null; unsub && unsub(); };
   }, [etabId]);
 
   // ─── Catalogue produits (pour autocomplétion à l'ajout de ligne) ───
@@ -71,16 +147,17 @@ const Inventaire = ({ user, etablissement }) => {
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId]);
 
-  // Si l'inventaire sélectionné n'existe pas dans l'établissement courant, basculer sur le premier
+  // Si l'inventaire sélectionné n'appartient pas au périmètre affiché (changement
+  // d'onglet, d'établissement, suppression), basculer sur le plus récent.
   React.useEffect(() => {
-    if (!inventaires.find(i => i.id === selectedId) && inventaires[0]) {
-      setSelectedId(inventaires[0].id);
-    }
-  }, [etabId, inventairesAll.length]);
+    if (selectedId && inventaires.some(i => i.id === selectedId)) return;
+    setSelectedId(inventaires[0]?.id);
+  }, [etabId, perimetreActif, inventairesAll]);
 
   // Persistance : localStorage en fallback uniquement
   React.useEffect(() => { demoData.inventaires = inventairesAll; if (!legacySB) writeLegacyStorage('sc_inventaires', inventairesAll); }, [inventairesAll]);
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_selected', selectedId); }, [selectedId]);
+  React.useEffect(() => { writeLegacyStorage('sc_inventaire_perimetre', perimetreActif); }, [perimetreActif]);
 
   // Helper pour push un inventaire modifié vers Supabase
   const saveInv = async (inv) => {
@@ -89,49 +166,304 @@ const Inventaire = ({ user, etablissement }) => {
     catch (err) { console.error('[upsertInventaire]', err); notifyLegacy('Erreur sync : ' + err.message, 'error'); }
   };
 
+  // Écriture d'un inventaire dont le PÉRIMÈTRE compte (création, renommage).
+  // Renvoie false quand le bridge a dû réécrire sans la colonne `nom` : la
+  // migration 20260810 n'est pas appliquée et le périmètre n'a pas été
+  // enregistré. Silencieux, ce cas donne un renommage qui « marche » à l'écran
+  // et redevient faux au rechargement suivant.
+  const saveInvAvecPerimetre = async (inventaire) => {
+    if (!legacySB) return true;
+    const enregistre = await legacySB.db.upsertInventaire(inventaire);
+    return (enregistre?.nom || '') === (inventaire.nom || '');
+  };
+
+  const alertePerimetreNonEnregistre = () => notifyLegacy(
+    'Le périmètre n\'a pas pu être enregistré : la migration « 20260810_inventaires_perimetre » n\'est pas encore appliquée sur la base. '
+    + 'Les inventaires concernés réapparaîtront dans « Général » au prochain chargement.',
+    'warning', { duration: 9000 }
+  );
+
   const inv = inventaires.find(i => i.id === selectedId) || inventaires[0];
 
-  // Créer un inventaire vide (utilisé par le bouton "premier inventaire" et la modale showNew)
-  const createEmptyInventory = async () => {
-    const clone = {
-      id: 'inv-' + Date.now(),
-      etablissementId: etabId,
-      date: new Date().toISOString().slice(0, 10),
-      statut: 'en cours',
-      validePar: null,
-      valeurTotale: 0,
-      lignes: [],
-    };
-    setInventairesAll(prev => [clone, ...prev]);
+  // Un changement d'inventaire (autre date, autre périmètre) rend les saisies
+  // en cours caduques : elles portent sur des lignes qui ne sont plus à l'écran.
+  React.useEffect(() => { setStockDraft({}); stockRefs.current = {}; }, [inv?.id]);
+
+  const invCourant = () => inventairesRef.current.find(i => i.id === inv?.id) || inv;
+
+  // Applique une transformation à l'inventaire affiché puis l'enregistre.
+  // `transforme` doit être pure et rendre un nouvel objet.
+  const majInventaire = async (transforme) => {
+    const base = invCourant();
+    if (!base) return null;
+    const updated = transforme(base);
+    appliquerListe(liste => liste.map(i => (i.id === updated.id ? updated : i)));
+    await saveInv(updated);
+    return updated;
+  };
+
+  // Remplace les lignes de l'inventaire courant et recalcule écarts et valeurs.
+  // Les lignes non touchées sont recopiées : `recalcInventaire` écrit dans les
+  // objets qu'il reçoit, il ne doit pas atteindre ceux du rendu précédent.
+  const majLignes = (construireLignes) => majInventaire(base => recalcInventaire({
+    ...base,
+    lignes: construireLignes(base.lignes || []).map(l => ({ ...l })),
+  }));
+
+  // Ouvre la modale de création, pré-remplie sur le périmètre demandé
+  // (vide = « nouveau périmètre », l'utilisateur saisit son nom).
+  const openNewInventory = (nomPerimetre) => {
+    setNewInv({
+      nom: nomPerimetre === '' ? '__autre__' : (nomPerimetre || perimetreActif),
+      nomLibre: '',
+      date: aujourdhui(),
+      base: 'dupliquer',
+    });
+    setShowNew(true);
+  };
+
+  // Périmètre effectivement retenu par le formulaire de création
+  const nomPerimetreSaisi = () => (
+    (newInv.nom === '__autre__' ? newInv.nomLibre : newInv.nom) || ''
+  ).trim() || PERIMETRE_DEFAUT;
+
+  const createInventory = async () => {
+    const nom = nomPerimetreSaisi();
+    const date = newInv.date || aujourdhui();
+    // Deux comptages du même stock le même jour = double saisie neuf fois sur
+    // dix. On laisse passer, mais après confirmation explicite.
+    const doublon = inventairesEtab.find(i => perimetreOf(i) === nom && i.date === date);
+    if (doublon && !confirmLegacy(`Un inventaire « ${nom} » existe déjà au ${date}.\nEn créer un second quand même ?`)) return;
+
+    // Modèle : le dernier inventaire DU MÊME périmètre. Dupliquer la cuisine
+    // dans les boissons n'aurait aucun sens.
+    const source = newInv.base === 'dupliquer'
+      ? inventairesEtab.filter(i => perimetreOf(i) === nom).sort(parDateDesc)[0]
+      : null;
+    const clone = source ? JSON.parse(JSON.stringify(source)) : { lignes: [] };
+    clone.id = 'inv-' + Date.now();
+    clone.etablissementId = etabId;
+    clone.nom = nom;
+    clone.date = date;
+    clone.statut = 'en cours';
+    clone.validePar = null;
+    // Reprise : le stock réel compté devient le stock théorique attendu.
+    clone.lignes = (clone.lignes || []).map((l, idx) => ({ ...l, id: 'l' + Date.now() + idx, stockTheo: l.stockReel || 0, stockReel: l.stockReel || 0 }));
+    recalcInventaire(clone);
+    appliquerListe(liste => [clone, ...liste]);
+    setPerimetre(nom);
     setSelectedId(clone.id);
     setShowNew(false);
-    if (legacySB) {
-      try { await legacySB.db.upsertInventaire(clone); }
-      catch (err) { notifyLegacy('Erreur création inventaire : ' + err.message, 'error'); }
+    try {
+      if (!await saveInvAvecPerimetre(clone)) alertePerimetreNonEnregistre();
+    } catch (err) {
+      console.error('[createInventory]', err);
+      notifyLegacy('Erreur création inventaire : ' + err.message, 'error');
     }
+  };
+
+  // ─── Renommer le périmètre affiché ───
+  // Le périmètre n'est pas une entité à part : c'est le champ `nom` porté par
+  // chaque inventaire de la pile. Renommer = réécrire toute la pile.
+  const openRename = () => {
+    setRenameValue(perimetreActif);
+    setShowRename(true);
+  };
+
+  const renommerPerimetre = async () => {
+    const cible = (renameValue || '').trim();
+    if (!cible) { alertLegacy('Le nom du périmètre est requis.'); return; }
+    if (cible === perimetreActif) { setShowRename(false); return; }
+
+    const aRenommer = inventaires;
+    // Renommer vers un périmètre existant n'est pas une erreur : c'est une
+    // fusion (« Bar » qu'on rattache à « Boissons »). On la nomme pour que
+    // personne ne la déclenche par accident.
+    const fusion = perimetres.includes(cible);
+    const question = fusion
+      ? `« ${cible} » existe déjà.\n\nLes ${aRenommer.length} inventaire(s) de « ${perimetreActif} » y seront rattachés : les deux piles fusionnent et « ${perimetreActif} » disparaît.\n\nContinuer ?`
+      : `Renommer « ${perimetreActif} » en « ${cible} » ?\n${aRenommer.length} inventaire(s) concerné(s).`;
+    if (!confirmLegacy(question)) return;
+
+    setRenameBusy(true);
+    const renommes = aRenommer.map(i => ({ ...i, nom: cible }));
+    try {
+      let perimetreEnregistre = true;
+      for (const item of renommes) {
+        // Séquentiel : au premier échec on s'arrête, plutôt que de laisser une
+        // pile à moitié renommée éclatée sur deux onglets.
+        if (!await saveInvAvecPerimetre(item)) { perimetreEnregistre = false; break; }
+      }
+      if (!perimetreEnregistre) {
+        alertePerimetreNonEnregistre();
+      } else {
+        const parId = new Map(renommes.map(i => [i.id, i]));
+        appliquerListe(liste => liste.map(i => parId.get(i.id) || i));
+        setPerimetre(cible);
+        notifyLegacy(
+          fusion
+            ? `${renommes.length} inventaire(s) rattaché(s) à « ${cible} ».`
+            : `Périmètre renommé en « ${cible} ».`,
+          'success'
+        );
+      }
+    } catch (err) {
+      console.error('[renommerPerimetre]', err);
+      notifyLegacy('Erreur renommage : ' + err.message, 'error');
+    }
+    setRenameBusy(false);
+    setShowRename(false);
+  };
+
+  const renderRenameModal = () => {
+    if (!showRename) return null;
+    const cible = (renameValue || '').trim();
+    const fusion = cible && cible !== perimetreActif && perimetres.includes(cible);
+    return (
+      <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => !renameBusy && setShowRename(false)}>
+        <div className="modal-sheet" style={invs.modal} onClick={e => e.stopPropagation()}>
+          <div style={invs.modalHeader}>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Renommer le périmètre</div>
+            <button style={invs.closeBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>✕</button>
+          </div>
+          <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
+            <div>
+              <label style={invs.fieldLabel}>Nouveau nom</label>
+              <input
+                type="text"
+                autoFocus
+                style={invs.fieldInput}
+                value={renameValue}
+                onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !renameBusy) renommerPerimetre(); }}
+              />
+              <div style={invs.fieldHint}>
+                {fusion
+                  ? `« ${cible} » existe déjà : les ${inventaires.length} inventaire(s) de « ${perimetreActif} » y seront rattachés (fusion).`
+                  : `${inventaires.length} inventaire(s) de « ${perimetreActif} » seront renommés, historique compris.`}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
+              <button style={invs.exportBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>Annuler</button>
+              <button style={invs.addBtn} onClick={renommerPerimetre} disabled={renameBusy}>
+                {renameBusy ? 'Renommage…' : (fusion ? 'Fusionner' : 'Renommer')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Modale « nouvel inventaire ». Fonction et non sous-composant : un composant
+  // déclaré dans le rendu serait remonté à chaque frappe et perdrait le focus.
+  // Rendue aussi bien depuis l'écran vide que depuis l'écran garni.
+  const renderNewInventoryModal = () => {
+    if (!showNew) return null;
+    const nomRetenu = nomPerimetreSaisi();
+    const suggestions = PERIMETRES_SUGGERES.filter(p => !perimetres.includes(p));
+    const sourceDuplication = inventairesEtab.filter(i => perimetreOf(i) === nomRetenu).sort(parDateDesc)[0];
+    return (
+      <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => setShowNew(false)}>
+        <div className="modal-sheet" style={invs.modal} onClick={e => e.stopPropagation()}>
+          <div style={invs.modalHeader}>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Nouvel inventaire</div>
+            <button style={invs.closeBtn} onClick={() => setShowNew(false)}>✕</button>
+          </div>
+          <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
+            <div>
+              <label style={invs.fieldLabel}>Périmètre</label>
+              <select
+                style={invs.fieldInput}
+                value={newInv.nom}
+                onChange={e => setNewInv({ ...newInv, nom: e.target.value })}
+              >
+                {perimetres.length > 0 && (
+                  <optgroup label="Périmètres en cours">
+                    {perimetres.map(p => <option key={p} value={p}>{p}</option>)}
+                  </optgroup>
+                )}
+                {suggestions.length > 0 && (
+                  <optgroup label="Nouveaux périmètres">
+                    {suggestions.map(p => <option key={p} value={p}>{p}</option>)}
+                  </optgroup>
+                )}
+                <option value="__autre__">Autre (saisir un nom)…</option>
+              </select>
+              {newInv.nom === '__autre__' && (
+                <input
+                  type="text"
+                  autoFocus
+                  style={{ ...invs.fieldInput, marginTop: 8 }}
+                  value={newInv.nomLibre}
+                  placeholder="Ex : Cave à vin, Room service, Économat"
+                  onChange={e => setNewInv({ ...newInv, nomLibre: e.target.value })}
+                />
+              )}
+              <div style={invs.fieldHint}>
+                Chaque périmètre a sa propre pile d'inventaires et son propre historique de valeur.
+              </div>
+            </div>
+            <div>
+              <label style={invs.fieldLabel}>Date de l'inventaire</label>
+              <input
+                type="date"
+                style={invs.fieldInput}
+                value={newInv.date}
+                onChange={e => setNewInv({ ...newInv, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label style={invs.fieldLabel}>Contenu de départ</label>
+              <select style={invs.fieldInput} value={newInv.base} onChange={e => setNewInv({ ...newInv, base: e.target.value })}>
+                <option value="dupliquer">Reprendre les produits du dernier inventaire de ce périmètre</option>
+                <option value="vierge">Inventaire vierge</option>
+              </select>
+              <div style={invs.fieldHint}>
+                {newInv.base === 'vierge'
+                  ? 'Aucune ligne : les produits seront ajoutés un par un ou importés en XLSX.'
+                  : sourceDuplication
+                    ? `${(sourceDuplication.lignes || []).length} produit(s) repris de l'inventaire du ${sourceDuplication.date} — les stocks réels comptés deviennent les stocks théoriques.`
+                    : `Aucun inventaire précédent dans « ${nomRetenu} » : il démarrera vierge.`}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
+              <button style={invs.exportBtn} onClick={() => setShowNew(false)}>Annuler</button>
+              <button style={invs.addBtn} onClick={createInventory}>Créer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // ─── Comparaison vs inventaire précédent ───
   // ATTENTION : ce useMemo DOIT être déclaré AVANT le early return `if (!inv)`,
   // sinon React voit "1 hook de moins au premier render" et crash (error #310).
   // Tous les hooks doivent être appelés dans le même ordre à chaque render.
-  // On cherche l'inventaire de l'établissement avec la date juste antérieure à
-  // celle de l'inventaire courant. Sert à voir l'évolution de la valeur du stock.
+  // On cherche l'inventaire à la date juste antérieure DANS LE MÊME PÉRIMÈTRE
+  // (`inventaires` est déjà filtré) : comparer la cuisine à la cave donnerait
+  // une évolution de stock qui ne veut rien dire.
   const previousInv = React.useMemo(() => {
     if (!inv?.date) return null;
     const candidates = (inventaires || [])
       .filter(i => i.id !== inv.id && i.date && i.date < inv.date)
       .sort((a, b) => b.date.localeCompare(a.date));
     return candidates[0] || null;
-  }, [inv?.id, inv?.date, inventaires.length]);
+  }, [inv?.id, inv?.date, perimetreActif, inventaires.length]);
 
   if (!inv) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
         <div style={{ fontSize: 40, opacity: 0.4 }}>📦</div>
         <div style={{ fontSize: 16, fontWeight: 600, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>Créez votre premier inventaire pour commencer.</div>
-        {canManage && <button style={invs.addBtn} onClick={createEmptyInventory} type="button">+ Créer le premier inventaire</button>}
+        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
+          Créez un inventaire par périmètre : cuisine, boissons, matériel… chacun avec son propre rythme de comptage.
+        </div>
+        {loadError && <div style={invs.loadError}>Données indisponibles pour le moment — ne créez pas d'inventaire avant d'avoir réessayé.</div>}
+        {canManage && <button style={invs.addBtn} onClick={() => openNewInventory()} type="button">+ Créer le premier inventaire</button>}
+        {/* Pas de renommage ici : sans inventaire, il n'y a aucun périmètre à renommer. */}
+        {renderNewInventoryModal()}
       </div>
     );
   }
@@ -145,38 +477,94 @@ const Inventaire = ({ user, etablissement }) => {
   // Liste des types présents dans l'inventaire (pour afficher le filtre si au moins 1 ligne a un type)
   const hasTypes = inv.lignes.some(l => l.type);
 
-  const recalcInventaire = (inventory) => {
-    inventory.lignes.forEach(l => {
-      l.ecart = +(l.stockReel - l.stockTheo).toFixed(2);
-      l.valeur = +(l.stockReel * l.prixUnit).toFixed(2);
-      l.ecartValeur = +(l.ecart * l.prixUnit).toFixed(2);
+  // ─── Validation ───
+  // Un inventaire validé est une pièce comptable : il se fige. Les lignes ne
+  // bougent plus tant qu'il n'est pas explicitement rouvert — sinon la valeur
+  // de stock validée le mois dernier peut changer après coup sans trace.
+  const estValide = inv.statut === 'validé';
+  const canEditLignes = canManage && !estValide;
+  const validateurNom = inv.validePar ? userDisplayName(inv.validePar) : '';
+
+  // Gabarit de colonnes partagé par l'en-tête et les lignes : deux chaînes
+  // séparées finissaient toujours par diverger. « Stock réel » passe en
+  // minmax quand elle porte un champ de saisie : en fr pur, la colonne tombait
+  // à 54px sur tablette (police forcée à 16px par la règle tactile), soit
+  // quatre caractères visibles pour saisir une quantité. Le tableau déborde et
+  // défile dans son conteneur, la page ne pane pas pour autant.
+  const colonnesTableau = (sel.active ? '34px ' : '')
+    + `2fr 1fr 1fr ${canEditLignes ? 'minmax(124px, 1.6fr)' : '1fr'} 1fr 1.2fr 1.2fr`
+    + (canManage ? ' 90px' : '');
+
+  const validerInventaire = async () => {
+    if (!canManage || estValide) return;
+    if (!confirmLegacy(`Valider l'inventaire « ${perimetreActif} » du ${inv.date} ?\nLes lignes seront figées jusqu'à réouverture.`)) return;
+    await majInventaire(base => ({ ...base, statut: 'validé', validePar: user.id }));
+    notifyLegacy('Inventaire validé.', 'success');
+  };
+
+  const rouvrirInventaire = async () => {
+    if (!canManage || !estValide) return;
+    if (!confirmLegacy('Rouvrir cet inventaire ?\nIl repassera « en cours » et redeviendra modifiable.')) return;
+    await majInventaire(base => ({ ...base, statut: 'en cours', validePar: null }));
+    notifyLegacy('Inventaire rouvert.', 'info');
+  };
+
+  // ─── Saisie du stock compté ───
+  // Écrit la quantité d'une ligne. Appelée au blur du champ, donc aussi quand
+  // l'utilisateur quitte le champ en cliquant directement sur un bouton.
+  const commitStockReel = async (ligneId, valeurSaisie) => {
+    setStockDraft(prev => {
+      if (!(ligneId in prev)) return prev;
+      const suite = { ...prev };
+      delete suite[ligneId];
+      return suite;
     });
-    inventory.valeurTotale = +inventory.lignes.reduce((s,l) => s + l.valeur, 0).toFixed(2);
-    return inventory;
+    if (!canEditLignes) return;
+    const ligne = (invCourant()?.lignes || []).find(l => l.id === ligneId);
+    if (!ligne) return;
+
+    const quantite = parseQuantite(valeurSaisie);
+    if (quantite === null || quantite < 0) {
+      // Champ vidé ou illisible : on garde le comptage précédent plutôt que de
+      // le remettre à zéro. Un stock à 0 se saisit explicitement avec « 0 ».
+      if (String(valeurSaisie ?? '').trim() !== '') {
+        notifyLegacy(`Quantité illisible pour « ${ligne.produit} » : la valeur précédente est conservée.`, 'warning');
+      }
+      return;
+    }
+    if (quantite === ligne.stockReel) return;
+    await majLignes(lignes => lignes.map(l => (l.id === ligneId ? { ...l, stockReel: quantite } : l)));
+  };
+
+  // Entrée = ligne suivante : on compte une étagère de haut en bas sans lâcher
+  // le clavier de la tablette.
+  const focusLigneSuivante = (ligneId, lignesVisibles) => {
+    const index = lignesVisibles.findIndex(l => l.id === ligneId);
+    const suivante = lignesVisibles[index + 1];
+    const champ = suivante && stockRefs.current[suivante.id];
+    if (champ) { champ.focus(); champ.select(); }
   };
 
   const deleteLine = async (lineId) => {
-    if (!canManage || !confirmLegacy('Supprimer cette ligne d\'inventaire ?')) return;
-    const updated = recalcInventaire({ ...inv, lignes: (inv.lignes || []).filter(l => l.id !== lineId) });
-    setInventairesAll(prev => prev.map(i => i.id !== inv.id ? i : updated));
-    await saveInv(updated);
+    if (!canEditLignes || !confirmLegacy('Supprimer cette ligne d\'inventaire ?')) return;
+    await majLignes(lignes => lignes.filter(l => l.id !== lineId));
   };
 
   // ─── Mode sélection : suppression et export Excel en lot ───
   const supprimerLignesSelection = async () => {
-    if (!canManage || sel.count === 0) return;
+    if (!canEditLignes || sel.count === 0) return;
     if (!confirmLegacy(`Supprimer ${sel.count} ligne(s) d'inventaire ?`)) return;
     setBulkBusy(true);
-    const updated = recalcInventaire({ ...inv, lignes: (inv.lignes || []).filter(l => !sel.ids.has(l.id)) });
-    setInventairesAll(prev => prev.map(i => i.id !== inv.id ? i : updated));
-    await saveInv(updated);
+    await majLignes(lignes => lignes.filter(l => !sel.ids.has(l.id)));
     setBulkBusy(false);
     sel.exit();
     notifyLegacy('Lignes supprimées.', 'success');
   };
 
   const exporterLignesSelection = async () => {
-    const rows = (inv.lignes || []).filter(l => sel.ids.has(l.id));
+    // invCourant : exporter juste après une saisie doit sortir la quantité
+    // qui vient d'être tapée, pas celle du rendu précédent.
+    const rows = (invCourant()?.lignes || []).filter(l => sel.ids.has(l.id));
     if (!rows.length) return;
     setBulkBusy(true);
     const headers = ['Produit', 'Catégorie', 'Unité', 'Stock théorique', 'Stock réel', 'Écart', 'Prix unitaire (CHF)', 'Valeur (CHF)', 'Écart valeur (CHF)'];
@@ -190,32 +578,27 @@ const Inventaire = ({ user, etablissement }) => {
     setBulkBusy(false);
   };
 
+  // Supprimer l'inventaire affiché. Le garde-fou porte sur l'établissement
+  // entier et non sur le périmètre : vider un périmètre entier (une cave fermée,
+  // un inventaire matériel créé par erreur) est légitime tant qu'il reste au
+  // moins un inventaire ailleurs.
   const deleteInventory = async () => {
-    if (!canManage || inventaires.length <= 1 || !confirmLegacy('Supprimer cet inventaire ?')) return;
+    if (!canManage || inventairesEtab.length <= 1) return;
+    const dernierDuPerimetre = inventaires.length === 1;
+    const question = dernierDuPerimetre
+      ? `Supprimer cet inventaire ?\nC'est le dernier du périmètre « ${perimetreActif} » : le périmètre disparaîtra de la liste.`
+      : 'Supprimer cet inventaire ?';
+    if (!confirmLegacy(question)) return;
     const idToDelete = inv.id;
     if (legacySB) {
       try { await legacySB.db.deleteInventaire(idToDelete); }
       catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
     }
-    setInventairesAll(prev => prev.filter(i => i.id !== idToDelete));
+    appliquerListe(liste => liste.filter(i => i.id !== idToDelete));
     const remaining = inventaires.filter(i => i.id !== idToDelete);
-    if (remaining[0]) setSelectedId(remaining[0].id);
-  };
-
-  const createInventory = async () => {
-    const base = inventaires[0];
-    const clone = base ? JSON.parse(JSON.stringify(base)) : { lignes: [] };
-    clone.id = 'inv-' + Date.now();
-    clone.etablissementId = etabId;
-    clone.date = new Date().toISOString().slice(0, 10);
-    clone.statut = 'en cours';
-    clone.validePar = null;
-    clone.lignes = (clone.lignes || []).map((l, idx) => ({ ...l, id: 'l' + Date.now() + idx, stockTheo: l.stockReel || 0, stockReel: l.stockReel || 0 }));
-    recalcInventaire(clone);
-    setInventairesAll(prev => [clone, ...prev]);
-    setSelectedId(clone.id);
-    setShowNew(false);
-    await saveInv(clone);
+    // Plus rien dans ce périmètre : l'effet de réconciliation rebascule sur le
+    // premier périmètre restant.
+    setSelectedId(remaining[0]?.id);
   };
 
   // ═══ Ajout manuel d'un produit ═══
@@ -227,20 +610,19 @@ const Inventaire = ({ user, etablissement }) => {
   };
 
   const addLine = async () => {
+    if (!canEditLignes) return;
     if (!newLine.produit.trim()) { alertLegacy('Le nom du produit est requis.'); return; }
     const line = {
       id: 'l' + Date.now(),
       produit: newLine.produit.trim(),
       categorie: newLine.categorie || 'Autres',
       unite: newLine.unite || 'pcs',
-      stockTheo: parseFloat(newLine.stockTheo) || 0,
-      stockReel: parseFloat(newLine.stockReel) || 0,
-      prixUnit: parseFloat(newLine.prixUnit) || 0,
+      stockTheo: parseQuantite(newLine.stockTheo) || 0,
+      stockReel: parseQuantite(newLine.stockReel) || 0,
+      prixUnit: parseQuantite(newLine.prixUnit) || 0,
     };
-    const updated = recalcInventaire({ ...inv, lignes: [...(inv.lignes || []), line] });
-    setInventairesAll(prev => prev.map(i => i.id !== inv.id ? i : updated));
+    await majLignes(lignes => [...lignes, line]);
     setShowAddLine(false);
-    await saveInv(updated);
   };
 
   // ═══ Import / Template XLSX ═══
@@ -401,23 +783,26 @@ const Inventaire = ({ user, etablissement }) => {
             return;
           }
 
-          // Créer un nouvel inventaire (ne pas fusionner - c'est un import complet)
-          const newInv = {
+          // Créer un nouvel inventaire (ne pas fusionner - c'est un import complet).
+          // Il atterrit dans le périmètre affiché : on importe le classeur de la
+          // cuisine depuis l'onglet Cuisine, celui du bar depuis l'onglet Boissons.
+          const inventaireImporte = {
             id: 'inv-' + Date.now(),
             etablissementId: etabId,
-            date: new Date().toISOString().slice(0, 10),
+            nom: perimetreActif,
+            date: aujourdhui(),
             statut: 'en cours',
             validePar: null,
             valeurTotale: 0,
             lignes: allLignes,
           };
-          const updated = recalcInventaire(newInv);
-          setInventairesAll(prev => [updated, ...prev]);
+          const updated = recalcInventaire(inventaireImporte);
+          appliquerListe(liste => [updated, ...liste]);
           setSelectedId(updated.id);
           await saveInv(updated);
 
           notifyLegacy(
-            `✓ Inventaire importé avec succès\n\n` +
+            `✓ Inventaire importé dans « ${perimetreActif} »\n\n` +
             `• ${stats.sec} produit${stats.sec > 1 ? 's' : ''} Sec\n` +
             `• ${stats.positif} produit${stats.positif > 1 ? 's' : ''} Positif\n` +
             `• ${stats.negatif} produit${stats.negatif > 1 ? 's' : ''} Négatif\n\n` +
@@ -451,23 +836,29 @@ const Inventaire = ({ user, etablissement }) => {
 
         if (imported.length === 0) { alertLegacy('Aucun produit valide trouvé dans le fichier.'); return; }
 
+        // Ce format fusionne dans l'inventaire affiché — impossible s'il est
+        // validé. (Le format Samper multi-feuilles, lui, crée un inventaire
+        // neuf : il reste autorisé, plus haut dans cette fonction.)
+        if (estValide) {
+          alertLegacy(`L'inventaire « ${perimetreActif} » du ${inv.date} est validé : il est figé.\nRouvrez-le pour y importer des produits, ou créez un nouvel inventaire.`);
+          return;
+        }
+
         // Fusionner : mise à jour par nom si existe déjà, ajout sinon
-        const existingByName = new Map((inv.lignes || []).map(l => [l.produit.toLowerCase(), l]));
         let nouveaux = 0, misAJour = 0;
-        const newLignes = [...(inv.lignes || [])];
-        imported.forEach(impLine => {
-          const existing = existingByName.get(impLine.produit.toLowerCase());
-          if (existing) {
-            Object.assign(existing, { stockReel: impLine.stockReel, stockTheo: impLine.stockTheo, prixUnit: impLine.prixUnit, unite: impLine.unite, categorie: impLine.categorie });
+        await majLignes(lignes => {
+          const parNom = new Map(imported.map(l => [l.produit.toLowerCase(), l]));
+          const fusionnees = lignes.map(l => {
+            const impLine = parNom.get(String(l.produit || '').toLowerCase());
+            if (!impLine) return l;
             misAJour++;
-          } else {
-            newLignes.push(impLine);
-            nouveaux++;
-          }
+            parNom.delete(String(l.produit || '').toLowerCase());
+            return { ...l, stockReel: impLine.stockReel, stockTheo: impLine.stockTheo, prixUnit: impLine.prixUnit, unite: impLine.unite, categorie: impLine.categorie };
+          });
+          const restantes = Array.from(parNom.values());
+          nouveaux = restantes.length;
+          return [...fusionnees, ...restantes];
         });
-        const updated = recalcInventaire({ ...inv, lignes: newLignes });
-        setInventairesAll(prev => prev.map(i => i.id !== inv.id ? i : updated));
-        await saveInv(updated);
         notifyLegacy(`✓ Import terminé\n${nouveaux} produit${nouveaux > 1 ? 's' : ''} ajouté${nouveaux > 1 ? 's' : ''}\n${misAJour} produit${misAJour > 1 ? 's' : ''} mis à jour`, 'success');
       } catch (err) {
         console.error(err);
@@ -488,12 +879,17 @@ const Inventaire = ({ user, etablissement }) => {
     ? (deltaValeur / previousInv.valeurTotale * 100)
     : null;
 
+  // Le périmètre fait partie de l'identité du document : un PDF « Inventaire »
+  // sans mention Cuisine / Boissons / Matériel n'est pas exploitable en archive.
+  const titreDocument = `Inventaire ${perimetreActif} - ${inv.date}`;
+  const nomFichierPdf = `inventaire-${perimetreActif.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${inv.date}.pdf`;
+
   const printInventory = () => {
     if (!pdfUtils?.printElement) {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.printElement('inventaire-print', 'Inventaire mensuel', { etablissement, orientation: 'landscape' });
+    pdfUtils.printElement('inventaire-print', titreDocument, { etablissement, orientation: 'landscape' });
   };
 
   const exportInventoryPdf = () => {
@@ -501,22 +897,53 @@ const Inventaire = ({ user, etablissement }) => {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.exportElementToPdf('inventaire-print', 'inventaire.pdf', { etablissement, title: 'Inventaire mensuel', orientation: 'landscape' });
+    pdfUtils.exportElementToPdf('inventaire-print', nomFichierPdf, { etablissement, title: titreDocument, orientation: 'landscape' });
   };
+
+  const valeurTousPerimetres = valeurStockConsolidee(inventairesEtab);
 
   return (
     <div style={invs.root}>
+      {/* Périmètres : une pile d'inventaires par zone comptée. L'onglet actif
+          commande tout le reste de l'écran. */}
+      <div style={invs.perimetreBar} className="no-print">
+        <SegmentedTabs
+          size="sm"
+          active={perimetreActif}
+          onChange={(id) => (id === '__new__' ? openNewInventory('') : setPerimetre(id))}
+          tabs={[
+            ...perimetres.map(p => ({
+              id: p,
+              label: `${p} (${inventairesEtab.filter(i => perimetreOf(i) === p).length})`,
+            })),
+            ...(canManage ? [{ id: '__new__', label: '+ Périmètre' }] : []),
+          ]}
+        />
+      </div>
+
+      {loadError && (
+        <div style={invs.loadError} className="no-print">
+          Données indisponibles pour le moment — la liste affichée peut être incomplète.
+          <button style={{ ...invs.exportBtn, marginLeft: 10 }} onClick={() => reloadRef.current?.()}>Réessayer</button>
+        </div>
+      )}
+
       <div style={invs.header} className="no-print">
         <div style={invs.headerLeft}>
           <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
-            {(inventaires || []).map(i => <option key={i.id} value={i.id}>Inventaire {i.date} - {i.statut}</option>)}
+            {(inventaires || []).map(i => <option key={i.id} value={i.id}>{i.date} - {i.statut}</option>)}
           </select>
-          <span style={{...invs.badge, background: inv.statut==='validé' ? 'var(--success-bg)' : 'var(--warning-bg)', color: inv.statut==='validé' ? 'var(--success-text)' : 'var(--warning-text)'}}>{inv.statut === 'validé' ? '✓ Validé' : '⏳ En cours'}</span>
+          <span style={{...invs.badge, background: estValide ? 'var(--success-bg)' : 'var(--warning-bg)', color: estValide ? 'var(--success-text)' : 'var(--warning-text)'}}>
+            {estValide ? (validateurNom ? `✓ Validé par ${validateurNom}` : '✓ Validé') : '⏳ En cours'}
+          </span>
         </div>
         <div className="module-actions">
-          {canManage && <button style={invs.addBtn} onClick={() => setShowNew(true)}>+ Nouvel inventaire</button>}
-          {canManage && <button style={invs.exportBtn} onClick={openAddLine}>+ Ajouter produit</button>}
-          {canManage && !sel.active && <button style={invs.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>}
+          {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>✓ Valider l'inventaire</button>}
+          {canManage && estValide && <button style={invs.exportBtn} onClick={rouvrirInventaire}>↩ Rouvrir</button>}
+          {canManage && <button style={invs.addBtn} onClick={() => openNewInventory(perimetreActif)}>+ Nouvel inventaire</button>}
+          {canManage && <button style={invs.exportBtn} onClick={openRename}>✎ Renommer le périmètre</button>}
+          {canEditLignes && <button style={invs.exportBtn} onClick={openAddLine}>+ Ajouter produit</button>}
+          {canEditLignes && !sel.active && <button style={invs.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>}
           {canExport && <button style={invs.exportBtn} onClick={downloadInventoryTemplate}>📄 Template XLSX</button>}
           {canExport && (
             <label style={{...invs.exportBtn, cursor:'pointer'}}>
@@ -524,15 +951,34 @@ const Inventaire = ({ user, etablissement }) => {
               <input type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={handleImportInventoryXLSX}/>
             </label>
           )}
-          {canManage && inventaires.length > 1 && <button style={invs.deleteBtn} onClick={deleteInventory}>Supprimer inventaire</button>}
+          {canManage && inventairesEtab.length > 1 && <button style={invs.deleteBtn} onClick={deleteInventory}>Supprimer inventaire</button>}
           {canExport && <button style={invs.exportBtn} onClick={printInventory}>🖨 Imprimer</button>}
           {canExport && <button style={invs.exportBtn} onClick={exportInventoryPdf}>⬇ Export PDF</button>}
         </div>
       </div>
 
       <div id="inventaire-print">
+        {/* Identité du document : reprise telle quelle dans l'impression et le PDF,
+            où les onglets de périmètre (no-print) ont disparu. */}
+        <div style={invs.docTitle}>
+          <span style={invs.docTitlePerimetre}>{perimetreActif}</span>
+          <span style={invs.docTitleDate}>Inventaire du {inv.date}</span>
+          {/* Sur un document imprimé, « validé » sans nom de valideur ne prouve rien. */}
+          <span style={invs.docTitleDate}>
+            {estValide ? `· Validé${validateurNom ? ' par ' + validateurNom : ''}` : '· En cours'}
+          </span>
+        </div>
+
         <div style={invs.kpiBar}>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Valeur totale du stock</div><div style={invs.kpiVal}>CHF {inv.valeurTotale.toLocaleString('fr-CH', {minimumFractionDigits:2})}</div></div>
+          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Valeur du stock ({perimetreActif})</div><div style={invs.kpiVal}>CHF {inv.valeurTotale.toLocaleString('fr-CH', {minimumFractionDigits:2})}</div></div>
+          {/* Consolidé : dernier inventaire de CHAQUE périmètre. Additionner
+              toute la liste compterait plusieurs fois le même stock. */}
+          {perimetres.length > 1 && (
+            <div style={invs.kpiCard}>
+              <div style={invs.kpiLabel}>Stock total ({perimetres.length} périmètres)</div>
+              <div style={invs.kpiVal}>CHF {valeurTousPerimetres.toLocaleString('fr-CH', {minimumFractionDigits:2})}</div>
+            </div>
+          )}
           {/* Évolution vs inventaire précédent */}
           {previousInv && deltaValeur != null && (
             <div style={invs.kpiCard}>
@@ -596,8 +1042,15 @@ const Inventaire = ({ user, etablissement }) => {
           />
         )}
 
+        {canEditLignes && filtered.length > 0 && (
+          <div style={invs.saisieHint} className="no-print">
+            Tapez la quantité comptée dans la colonne « Stock réel ». La virgule est acceptée ;
+            Entrée passe à la ligne suivante. Écarts et valeurs se recalculent à la sortie du champ.
+          </div>
+        )}
+
         <div style={invs.tableWrap} className="grid-table-scroll">
-          <div className="grid-table-row" style={{...invs.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr')}}>
+          <div className="grid-table-row" style={{...invs.tableHead, gridTemplateColumns: colonnesTableau}}>
             {sel.active && <span className="no-print"/>}
             <span>Produit</span><span>Catégorie</span><span style={{textAlign:'right'}}>Stock théorique</span><span style={{textAlign:'right'}}>Stock réel</span><span style={{textAlign:'right'}}>Écart</span><span style={{textAlign:'right'}}>Valeur (CHF)</span><span style={{textAlign:'right'}}>Écart valeur</span>{canManage && <span className="no-print"/>}
           </div>
@@ -615,7 +1068,7 @@ const Inventaire = ({ user, etablissement }) => {
             return (
               <div key={l.id} className="grid-table-row" style={{
                 ...invs.tableRow,
-                gridTemplateColumns: (sel.active ? '34px ' : '') + (canManage ? '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr 90px' : '2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr'),
+                gridTemplateColumns: colonnesTableau,
                 ...(sel.active && sel.isSelected(l.id) ? { background: 'var(--bg)' } : {}),
               }}>
                 {sel.active && (
@@ -626,29 +1079,52 @@ const Inventaire = ({ user, etablissement }) => {
                 <span style={invs.prodName}>{l.produit}{typeBadge}</span>
                 <span style={invs.cell}><span style={invs.catTag}>{l.categorie}</span></span>
                 <span style={{...invs.cell, textAlign:'right'}}>{l.stockTheo} {l.unite}</span>
-                <span style={{...invs.cellBold, textAlign:'right'}}>{l.stockReel} {l.unite}</span>
+                <span style={{...invs.cellBold, textAlign:'right'}}>
+                  {canEditLignes ? (
+                    <span style={invs.stockSaisie}>
+                      <input
+                        // type="text" + inputMode="decimal" et non type="number" :
+                        // sur iOS le pavé numérique français propose une virgule que
+                        // type="number" rejette en silence (champ vidé au tap).
+                        type="text"
+                        inputMode="decimal"
+                        aria-label={`Stock réel - ${l.produit} (${l.unite})`}
+                        ref={el => { if (el) stockRefs.current[l.id] = el; else delete stockRefs.current[l.id]; }}
+                        value={stockDraft[l.id] ?? String(l.stockReel ?? '')}
+                        onChange={e => setStockDraft(d => ({ ...d, [l.id]: e.target.value }))}
+                        onFocus={e => e.target.select()}
+                        onBlur={e => commitStockReel(l.id, e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            commitStockReel(l.id, e.target.value);
+                            focusLigneSuivante(l.id, filtered);
+                          } else if (e.key === 'Escape') {
+                            // Abandon de la frappe : on revient à la quantité enregistrée.
+                            setStockDraft(d => { const suite = { ...d }; delete suite[l.id]; return suite; });
+                            e.target.blur();
+                          }
+                        }}
+                        style={invs.stockInput}
+                      />
+                      <span style={invs.stockUnite}>{l.unite}</span>
+                    </span>
+                  ) : (
+                    <>{l.stockReel} {l.unite}</>
+                  )}
+                </span>
                 <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</span>
                 <span style={{...invs.cellBold, textAlign:'right'}}>{l.valeur.toLocaleString('fr-CH', {minimumFractionDigits:2})}</span>
                 <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecartValeur > 0 ? '+' : ''}{l.ecartValeur.toFixed(2)}</span>
-                {canManage && <span className="no-print"><button style={invs.deleteBtn} onClick={() => deleteLine(l.id)}>Supprimer</button></span>}
+                {canManage && <span className="no-print">{canEditLignes && <button style={invs.deleteBtn} onClick={() => deleteLine(l.id)}>Supprimer</button>}</span>}
               </div>
             );
           })}
         </div>
       </div>
 
-      {showNew && (
-        <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => setShowNew(false)}>
-          <div className="modal-sheet" style={invs.modal} onClick={e=>e.stopPropagation()}>
-            <div style={invs.modalHeader}><div style={{fontWeight:700, fontSize:16, fontFamily:'var(--font-serif)'}}>Nouvel inventaire</div><button style={invs.closeBtn} onClick={() => setShowNew(false)}>✕</button></div>
-            <div style={{padding:'22px', display:'flex', flexDirection:'column', gap:16}}>
-              <div><label style={invs.fieldLabel}>Date de l'inventaire</label><input type="date" defaultValue={new Date().toISOString().slice(0,10)} style={invs.fieldInput}/></div>
-              <div><label style={invs.fieldLabel}>Modèle de base</label><select style={invs.fieldInput}><option>Dupliquer depuis l'inventaire courant</option><option>Inventaire vierge</option></select></div>
-              <div style={{display:'flex', gap:10, justifyContent:'flex-end', marginTop:4, flexWrap:'wrap'}}><button style={invs.exportBtn} onClick={() => setShowNew(false)}>Annuler</button><button style={invs.addBtn} onClick={createInventory}>Créer</button></div>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderNewInventoryModal()}
+      {renderRenameModal()}
 
       {/* Modale ajout produit manuel */}
       {showAddLine && (
@@ -821,8 +1297,23 @@ const Inventaire = ({ user, etablissement }) => {
 
 const invs = {
   root: {display:'flex',flexDirection:'column',gap:16}, header: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}, headerLeft: {display:'flex',alignItems:'center',gap:12}, headerRight: {display:'flex',gap:8,flexWrap:'wrap'},
+  // minWidth:0 : sans ça la barre d'onglets, enfant flex, est clampée à sa
+  // largeur de contenu et pousse la page en scroll horizontal sur mobile.
+  perimetreBar: {display:'flex',alignItems:'center',gap:10,minWidth:0,maxWidth:'100%'},
+  docTitle: {display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:4},
+  docTitlePerimetre: {fontSize:17,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
+  docTitleDate: {fontSize:12,color:'var(--text2)'},
+  loadError: {background:'var(--warning-bg)',color:'var(--warning-text)',border:'1px solid var(--warning-bd)',borderRadius:8,padding:'10px 14px',fontSize:12,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
+  fieldHint: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.45},
+  saisieHint: {fontSize:11,color:'var(--text2)',lineHeight:1.5,padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
+  // Le champ prend la largeur de sa cellule ; l'unité reste collée à droite et
+  // ne se comprime jamais (flexShrink 0), sinon « pcs » se coupe en « p… ».
+  stockSaisie: {display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,width:'100%',minWidth:0},
+  stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:600,fontFamily:'var(--font)',boxSizing:'border-box'},
+  stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',padding:'5px 12px',borderRadius:12,fontSize:12,fontWeight:600},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  validateBtn: {padding:'8px 16px',background:'var(--success-bg)',border:'1px solid var(--success-bd)',color:'var(--success-text)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn: {padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
