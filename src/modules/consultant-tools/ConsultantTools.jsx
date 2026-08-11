@@ -19,7 +19,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 // Interface simple : liste à gauche, éditeur à droite
 // ─────────────────────────────────────────────────────
 
-import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, adjustPrixUnitForUnit, convertFactor } from './ConsultantTools.constants.js';
+import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, convertFactor } from './ConsultantTools.constants.js';
 import { partitionAllergenes, normalizeAllergenes, labelAllergene } from '../../utils/allergenes.js';
 import { CATEGORIES_PLAT } from '../../utils/categoriesPlat.js';
 import PhotoUploader from './PhotoUploader.jsx';
@@ -29,7 +29,14 @@ import { cts } from './ConsultantTools.styles.js';
 import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
+import {
+  applyProductToIngredient,
+  buildProduitIndex,
+  computeCoutMatiere,
+  describePrixIngredient,
+} from '../../services/prixResolution.js';
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
+import BulkProductLinker from './components/BulkProductLinker.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
@@ -80,28 +87,8 @@ const clearRecipeDraft = (id) => {
   try { store.removeItem(RECIPE_DRAFT_PREFIX + id); } catch (e) { /* noop */ }
 };
 
-// Applique un produit catalogue à un ingrédient (lien + unité/prix cohérents).
-// Renvoie un nouvel objet ingrédient ; ne mute pas l'entrée.
-const applyProductToIngredient = (ing, product) => {
-  const catUnit = product.uniteRef || 'g';
-  const catPrice = Number(product.prixUnitaire) || 0;
-  let finalUnit = catUnit;
-  let finalPrix = catPrice;
-  if (ing.unite && ing.unite !== catUnit) {
-    const factor = convertFactor(catUnit, ing.unite);
-    if (factor !== null) { finalUnit = ing.unite; finalPrix = catPrice * factor; }
-  }
-  const next = {
-    ...ing,
-    nom: product.nom,
-    unite: finalUnit,
-    prixUnit: Math.round(finalPrix * 1000000) / 1000000,
-    produitId: product.id,
-  };
-  delete next.needsReview;
-  delete next.matchSuggestions;
-  return next;
-};
+// La liaison ingrédient -> produit vit dans prixResolution : elle est partagée
+// avec AmbiguousMatchReview et ne doit surtout pas diverger d'un écran à l'autre.
 
 const ConsultantToolsGate = (props) => {
   if (props.user?.role !== 'consultant') {
@@ -136,6 +123,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     });
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId]);
+
+  // Index du catalogue pour le calcul de coût : le prix d'un ingrédient lié se
+  // lit au catalogue, pas dans la copie figée de la recette. Tant que le
+  // catalogue n'est pas chargé, chaque ingrédient retombe sur son prixUnit -
+  // un repli, jamais un zéro qui ferait passer une recette pour gratuite.
+  const produitIndex = React.useMemo(() => buildProduitIndex(catalogue), [catalogue]);
 
   // ─── Plats (hiérarchie) ───
   const [plats, setPlats] = React.useState([]);
@@ -287,7 +280,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Recalcul des dérivés (foodCost, etc.) - local, pas de persistance auto
   React.useEffect(() => {
     recettes.forEach(r => {
-      r.coutMatiere = (r.ingredients || []).reduce((s, i) => s + (Number(i.quantite) || 0) * (Number(i.prixUnit) || 0), 0);
+      r.coutMatiere = computeCoutMatiere(r.ingredients, produitIndex);
       r.coutPortion = r.portions ? r.coutMatiere / r.portions : 0;
       r.foodCost = r.prixVente ? (r.coutPortion / r.prixVente * 100) : null;
       r.margeGrossePct = r.prixVente ? ((r.prixVente - r.coutPortion) / r.prixVente * 100) : null;
@@ -297,7 +290,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     });
     demoData.recettes = recettes;
     if (!legacySB) writeLegacyStorage('sc_recettes', recettes);
-  }, [recettes]);
+    // produitIndex en dépendance : quand le catalogue finit de charger, ou qu'un
+    // prix change en realtime, les coûts se recalculent sans réenregistrer les recettes.
+  }, [recettes, produitIndex]);
 
   const selected = recettes.find(r => r.id === selectedId);
   const searchValue = normalizeSearch(search);
@@ -308,6 +303,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Correspondances catalogue incertaines (héritées d'un import) : compteur
   // partagé entre la Vue d'ensemble et le menu « ⋯ » de la liste.
   const reviewCount = recettesEtab.reduce((s, r) => s + (r.ingredients || []).filter(i => i.needsReview).length, 0);
+  // Ingrédients sans lien catalogue : tant qu'ils sont majoritaires, un prix tenu
+  // au catalogue n'atteint presque aucune recette. C'est ce que débloque la liaison en masse.
+  const unlinkedCount = recettesEtab.reduce(
+    (s, r) => s + (r.ingredients || []).filter(i => i && !i.produitId && (i.nom || '').trim()).length,
+    0,
+  );
 
   // ═══ Sauvegarde différée + stabilité de la saisie ═══
   const saveTimerRef = React.useRef(null);
@@ -343,6 +344,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [pendingDrafts, setPendingDrafts] = React.useState([]);
   // Écran de résolution des correspondances catalogue ambiguës
   const [showMatchReview, setShowMatchReview] = React.useState(false);
+  const [showBulkLinker, setShowBulkLinker] = React.useState(false);
   // Mode sélection multiple de recettes (suppression / export en lot)
   const recSel = useSelection();
   const [recBulkBusy, setRecBulkBusy] = React.useState(false);
@@ -877,32 +879,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   };
 
   // Lie un produit du catalogue à un ingrédient (par index OU par id)
-  // Adapte le prixUnit en fonction de l'unité actuelle de l'ingrédient si elle existe
-  // et est compatible avec l'unité du catalogue. Sinon utilise l'unité du catalogue.
+  // Le nom de l'ingrédient est conservé : c'est du vocabulaire de cuisine, pas
+  // une référence fournisseur. Seuls l'unité, le prix de repli et le lien bougent.
   const linkProductToIngredient = (idx, p, opts = {}) => {
     const updated = [...(selected.ingredients || [])];
     if (idx < 0 || idx >= updated.length) return;
-    const ing = updated[idx];
-    const catUnit = p.uniteRef || 'g';
-    const catPrice = Number(p.prixUnitaire) || 0;
-    // Si l'ingrédient a déjà une unité compatible (g/kg ou ml/L), on garde cette unité
-    // et on convertit le prix. Sinon on adopte l'unité du catalogue.
-    let finalUnit = catUnit;
-    let finalPrix = catPrice;
-    if (ing.unite && ing.unite !== catUnit) {
-      const factor = convertFactor(catUnit, ing.unite);
-      if (factor !== null) {
-        finalUnit = ing.unite;
-        finalPrix = catPrice * factor;
-      }
-    }
-    updated[idx] = {
-      ...ing,
-      nom: p.nom,
-      unite: finalUnit,
-      prixUnit: Math.round(finalPrix * 1000000) / 1000000,
-      produitId: p.id,
-    };
+    updated[idx] = applyProductToIngredient(updated[idx], p);
     // ─── BUG FIX : un seul appel updateSelected pour éviter la race condition ───
     const patch = { ingredients: updated };
     if (p.allergenes && p.allergenes.length > 0 && !opts.skipAllergenes) {
@@ -1133,7 +1115,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   };
 
   // ── Calculs dérivés pour affichage live
-  const coutMatiere = selected ? (selected.ingredients || []).reduce((s, i) => s + (Number(i.quantite) || 0) * (Number(i.prixUnit) || 0), 0) : 0;
+  const coutMatiere = selected ? computeCoutMatiere(selected.ingredients, produitIndex) : 0;
   const coutPortion = (selected?.portions > 0) ? coutMatiere / Number(selected.portions) : 0;
   const foodCost = selected && selected.prixVente ? (coutPortion / selected.prixVente * 100) : null;
   const margeBrute = selected && selected.prixVente ? selected.prixVente - coutPortion : 0;
@@ -1167,6 +1149,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         // vers l'onglet Recettes (dont les modales font partie du rendu).
         const overview = (
           <ConsultantOverview
+            produitIndex={produitIndex}
             recettesActives={recettesActives}
             recettesArchivees={recettesArchivees}
             plats={plats}
@@ -1230,6 +1213,25 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               const recs = await legacySB.db.listRecettes(etabId);
               setRecettes(Array.isArray(recs) ? recs : []);
             } catch (e) { /* le realtime rafraîchira la liste */ }
+          }}
+        />
+      )}
+      {showBulkLinker && (
+        <BulkProductLinker
+          recettes={recettesEtab}
+          catalogue={catalogue}
+          legacySB={legacySB}
+          etabId={etabId}
+          onClose={() => setShowBulkLinker(false)}
+          onDone={async () => {
+            try {
+              const [recs, ps] = await Promise.all([
+                legacySB.db.listRecettes(etabId),
+                legacySB.db.listProduits(etabId),
+              ]);
+              if (Array.isArray(recs)) setRecettes(recs);
+              if (Array.isArray(ps)) setCatalogue(ps);
+            } catch (e) { /* le realtime rafraîchira les listes */ }
           }}
         />
       )}
@@ -1359,6 +1361,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                                 role="menuitem"
                                 onClick={() => { setOutilsMenuOpen(false); setShowMatchReview(true); }}
                               >⚠ Correspondances à valider ({reviewCount})</button>
+                            )}
+                            {unlinkedCount > 0 && (
+                              <button
+                                className="sc-menu-item"
+                                style={cts.menuItem}
+                                role="menuitem"
+                                onClick={() => { setOutilsMenuOpen(false); setShowBulkLinker(true); }}
+                              >⛓ Lier les ingrédients au catalogue ({unlinkedCount})</button>
                             )}
                           </div>
                         </>
@@ -1993,6 +2003,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           .slice(0, 5)
                       : [];
                     const isLinked = !!ing.produitId;
+                    // Prix effectivement retenu pour le coût matière. Sur une ligne
+                    // liée il vient du catalogue : le champ passe en lecture seule,
+                    // sinon on afficherait un prix modifiable que le calcul ignore.
+                    const prixInfo = describePrixIngredient(ing, produitIndex);
+                    const prixDuCatalogue = prixInfo.source === 'catalogue';
 
                     return (
                     <div key={ing.id} className="grid-table-row" style={{ ...cts.ingRow, position: 'relative' }}>
@@ -2070,8 +2085,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         if (factor !== null && factor !== 1) {
                           // Conversion automatique : on ajuste à la fois la quantité ET le prix
                           // Ex: 500 g à 0.005 CHF/g → 0.5 kg à 5 CHF/kg (cohérent)
-                          const newQty = (Number(ing.quantite) || 0) / factor;
-                          const newPrix = (Number(ing.prixUnit) || 0) * factor;
+                          //
+                          // Sens du facteur : convertFactor('g','kg') vaut 0,001 car
+                          // 1 g = 0,001 kg. Une quantité se multiplie par ce facteur,
+                          // un prix (grandeur inverse, CHF PAR unité) se divise.
+                          const newQty = (Number(ing.quantite) || 0) * factor;
+                          const newPrix = (Number(ing.prixUnit) || 0) / factor;
                           updated[idx] = {
                             ...updated[idx],
                             unite: newUnit,
@@ -2085,14 +2104,32 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       }} style={cts.ingInput}>
                         {UNITES_REC.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
-                      <DebouncedField
-                        type="number" min="0" step="0.001"
-                        value={ing.prixUnit}
-                        onCommit={v => updateIngredient(idx, 'prixUnit', Number(v))}
-                        style={cts.ingInput}
-                      />
+                      {prixDuCatalogue ? (
+                        <input
+                          type="text"
+                          readOnly
+                          value={prixInfo.prix.toFixed(3)}
+                          title={`Prix du catalogue (${prixInfo.produit?.nom || ''}) · délier la ligne pour saisir un prix à la main`}
+                          style={{ ...cts.ingInput, color: 'var(--text2)', background: 'var(--bg)', cursor: 'not-allowed' }}
+                        />
+                      ) : (
+                        <DebouncedField
+                          type="number" min="0" step="0.001"
+                          value={ing.prixUnit}
+                          onCommit={v => updateIngredient(idx, 'prixUnit', Number(v))}
+                          title={prixInfo.source === 'incompatible'
+                            ? `Unités non convertibles (catalogue en ${prixInfo.produit?.uniteRef}, ligne en ${ing.unite}) · prix saisi à la main`
+                            : undefined}
+                          style={{
+                            ...cts.ingInput,
+                            ...(prixInfo.source === 'incompatible'
+                              ? { borderColor: 'var(--warning-bd)', background: 'var(--warning-bg)' }
+                              : {}),
+                          }}
+                        />
+                      )}
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
-                        {((Number(ing.quantite) || 0) * (Number(ing.prixUnit) || 0)).toFixed(2)}
+                        {((Number(ing.quantite) || 0) * prixInfo.prix).toFixed(2)}
                       </span>
                       <button onClick={() => removeIngredient(idx)} style={cts.deleteLineBtn} title="Supprimer">✕</button>
                     </div>

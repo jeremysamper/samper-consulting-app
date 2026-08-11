@@ -1,23 +1,7 @@
 import React from 'react';
 import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
-import { convertFactor } from '../consultant-tools/ConsultantTools.constants.js';
-
-// Applique un produit catalogue à un ingrédient (lien + unité/prix cohérents).
-function applyProduct(ing, product) {
-  const catUnit = product.uniteRef || 'g';
-  const catPrice = Number(product.prixUnitaire) || 0;
-  let unite = catUnit;
-  let prixUnit = catPrice;
-  if (ing.unite && ing.unite !== catUnit) {
-    const factor = convertFactor(catUnit, ing.unite);
-    if (factor !== null) { unite = ing.unite; prixUnit = catPrice * factor; }
-  }
-  const next = { ...ing, nom: product.nom, unite, prixUnit: Math.round(prixUnit * 1e6) / 1e6, produitId: product.id };
-  delete next.needsReview;
-  delete next.matchSuggestions;
-  return next;
-}
+import { applyProductToIngredient as applyProduct } from '../../services/prixResolution.js';
 // Lève le drapeau sans lier de produit.
 function ignoreMatch(ing) {
   const next = { ...ing };

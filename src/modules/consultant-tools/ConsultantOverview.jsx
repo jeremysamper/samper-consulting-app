@@ -1,4 +1,5 @@
 import React from 'react';
+import { computeCoutMatiere } from '../../services/prixResolution.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Vue d'ensemble - cockpit d'arrivée des Outils consultant.
@@ -47,8 +48,10 @@ const SEV = {
 const SEV_ORDER = { danger: 0, warning: 1, info: 2 };
 
 // Mêmes formules que l'éditeur de recettes : coût matière → coût portion → FC.
-const foodCostOf = (r) => {
-  const coutMatiere = (r.ingredients || []).reduce((s, i) => s + (Number(i.quantite) || 0) * (Number(i.prixUnit) || 0), 0);
+// Le prix des ingrédients liés vient du catalogue via produitIndex, pas de la
+// copie figée dans la recette : les deux écrans doivent afficher le même chiffre.
+const foodCostOf = (r, produitIndex) => {
+  const coutMatiere = computeCoutMatiere(r.ingredients, produitIndex);
   const coutPortion = Number(r.portions) > 0 ? coutMatiere / Number(r.portions) : 0;
   return Number(r.prixVente) > 0 ? (coutPortion / Number(r.prixVente)) * 100 : null;
 };
@@ -65,6 +68,7 @@ export default function ConsultantOverview({
   pendingDrafts, reviewCount,
   onOpenRecette, onNewRecette, onNewPlat, onEditPlat, onImport,
   onMatchReview, onBulkAllergenes, onRestoreDrafts, onGoTab,
+  produitIndex,
 }) {
   const [expandedKey, setExpandedKey] = React.useState(null);
 
@@ -82,7 +86,7 @@ export default function ConsultantOverview({
   const sansPhoto = recettesActives.filter(r => !r.photoUrl);
   const aRelire = recettesActives.filter(r => (r.ingredients || []).some(i => i.needsReview));
 
-  const chiffrees = recettesActives.map(r => ({ r, fc: foodCostOf(r) })).filter(x => x.fc != null);
+  const chiffrees = recettesActives.map(r => ({ r, fc: foodCostOf(r, produitIndex) })).filter(x => x.fc != null);
   const fcMoyen = chiffrees.length ? chiffrees.reduce((s, x) => s + x.fc, 0) / chiffrees.length : null;
   const fcEleves = chiffrees.filter(x => x.fc >= 35);
 
@@ -251,7 +255,7 @@ export default function ConsultantOverview({
           {recentes.length === 0 ? (
             <div style={S.emptyHint}>Aucune recette pour cet établissement. Créez-en une ou importez un fichier.</div>
           ) : recentes.map(r => {
-            const fc = foodCostOf(r);
+            const fc = foodCostOf(r, produitIndex);
             return (
               <button key={r.id} style={S.recentRow} onClick={() => onOpenRecette(r.id)} title="Ouvrir la recette">
                 <div style={{ flex: 1, minWidth: 0 }}>

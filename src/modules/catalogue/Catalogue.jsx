@@ -7,6 +7,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { ALLERGENES } from '../../utils/allergenes.js';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { resolvePrixProduit } from '../../services/prixResolution.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -747,17 +748,64 @@ const ALLERGENES_OPTIONS = ALLERGENES.map(a => ({ ...a, emoji: ALLERGENE_EMOJIS[
 // ─── Formulaire Produit ───
 const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
   const legacySB = dbService.getBridge();
-  const [form, setForm] = React.useState(prod || {
+  const [form, setForm] = React.useState(() => (prod ? {
+    ...prod,
+    // mapProduitFromDB expose dans `prixUnitaire` un prix DÉJÀ résolu (celui du
+    // fournisseur principal quand il existe). Le champ ci-dessous édite la colonne
+    // produits.prix_unitaire, donc il doit partir de `prixUnitaireManuel`. Sans ça,
+    // ouvrir puis enregistrer une fiche à références écrasait le prix saisi par
+    // un prix fournisseur, et la stratégie « manuel » affichait le mauvais montant.
+    prixUnitaire: prod.prixUnitaireManuel ?? prod.prixUnitaire ?? '',
+    strategiePrix: prod.strategiePrix || 'max',
+    prixVerrouille: !!prod.prixVerrouille,
+  } : {
     nom: '', categorie: 'Épicerie sèche', sousCategorie: '', uniteRef: 'g',
     prixUnitaire: '', fournisseurId: '', referenceFourn: '', conditionnement: '',
     notes: '', actif: true, allergenes: [],
-  });
+    strategiePrix: 'max', prixVerrouille: false,
+  }));
+  const [historique, setHistorique] = React.useState(null); // null = pas encore demandé
+  const [histBusy, setHistBusy] = React.useState(false);
   const [pfRows, setPfRows] = React.useState(prod?.fournisseurs || []);
   const [showAddPF, setShowAddPF] = React.useState(false);
   const [newPF, setNewPF] = React.useState({ fournisseurId: '', prixAchat: '', conditionnement: '', quantiteCond: '', uniteCond: 'g', estPrincipal: false, reference: '' });
   const [saving, setSaving] = React.useState(false);
 
   const up = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Prix effectivement retenu, calculé sur l'état courant du formulaire (donc
+  // il bouge en direct quand on change de stratégie, avant même d'enregistrer).
+  const prixRetenu = React.useMemo(() => resolvePrixProduit({
+    ...form,
+    prixUnitaire: parseFloat(form.prixUnitaire) || 0,
+    prixUnitaireManuel: parseFloat(form.prixUnitaire) || 0,
+    fournisseurs: pfRows,
+  }), [form, pfRows]);
+
+  const provenancePrix = React.useMemo(() => {
+    const strategie = form.strategiePrix || 'max';
+    const refs = (pfRows || []).filter(pf => Number(pf.prixUnitaire) > 0);
+    if (strategie === 'manuel') return 'Prix saisi à la main, les références fournisseurs sont ignorées.';
+    if (!refs.length) return 'Aucune référence fournisseur chiffrée : le prix saisi à la main fait foi.';
+    if (strategie === 'moyenne') return `Moyenne de ${refs.length} référence(s) fournisseur.`;
+    const cible = refs.find(pf => Math.abs(Number(pf.prixUnitaire) - prixRetenu) < 1e-9);
+    const nom = cible?.fournisseurNom || 'fournisseur non nommé';
+    if (strategie === 'principal') return `Référence du fournisseur principal (${nom}).`;
+    return `Référence la plus chère sur ${refs.length} (${nom}).`;
+  }, [form.strategiePrix, pfRows, prixRetenu]);
+
+  const chargerHistorique = async () => {
+    if (!prod?.id || !legacySB) return;
+    setHistBusy(true);
+    try {
+      setHistorique(await legacySB.db.listPrixHistorique(prod.id));
+    } catch (err) {
+      notifyLegacy('Historique indisponible : ' + (err.message || err), 'error');
+      setHistorique([]);
+    } finally {
+      setHistBusy(false);
+    }
+  };
 
   const addPF = async () => {
     if (!newPF.fournisseurId || !newPF.prixAchat) { alertLegacy('Sélectionnez un fournisseur et renseignez un prix.'); return; }
@@ -776,7 +824,26 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
   const handleSave = async () => {
     if (!form.nom.trim()) { alertLegacy('Le nom est obligatoire.'); return; }
     setSaving(true);
-    await onSave(form);
+    // Le prix a-t-il vraiment bougé ? On ne date que les changements réels, sinon
+    // « modifié le » perdrait son sens dès qu'on corrige une faute dans le nom.
+    const avant = parseFloat(prod?.prixUnitaireManuel ?? prod?.prixUnitaire);
+    const apres = parseFloat(form.prixUnitaire);
+    const prixChange = (Number.isFinite(avant) ? avant : null) !== (Number.isFinite(apres) ? apres : null);
+    const payload = prixChange ? { ...form, prixMajLe: new Date().toISOString() } : form;
+
+    await onSave(payload);
+
+    // Trace du changement manuel, pour que l'historique ne montre pas que les scans.
+    if (prixChange && prod?.id && Number.isFinite(apres) && legacySB) {
+      try {
+        await legacySB.db.ajouterPrixHistorique({
+          produitId: prod.id,
+          fournisseurId: form.fournisseurId || null,
+          prixUnitaire: apres,
+          source: 'manuel',
+        });
+      } catch (e) { /* la fiche est enregistrée : l'historique ne doit pas bloquer */ }
+    }
     setSaving(false);
   };
 
@@ -811,14 +878,64 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               </select>
             </div>
             <div>
-              <label style={cat.lbl}>Prix unitaire (CHF / unité)</label>
+              <label style={cat.lbl}>Prix unitaire saisi (CHF / unité)</label>
               <input style={cat.inp} type="number" step="0.0001" value={form.prixUnitaire} onChange={e => up('prixUnitaire', e.target.value)} placeholder="ex: 0.0285 CHF/g" />
+              {pfRows.length > 0 && (
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
+                  Sert de repli. Les références fournisseurs priment, sauf stratégie « manuel ».
+                </div>
+              )}
             </div>
             <div>
               <label style={cat.lbl}>Conditionnement</label>
               <input style={cat.inp} value={form.conditionnement} onChange={e => up('conditionnement', e.target.value)} placeholder="Carton 5kg" />
             </div>
           </div>
+          {/* ─── Stratégie de prix ───
+              Le prix retenu quand plusieurs références fournisseurs coexistent.
+              Défaut « le plus cher » : chiffrer au moins-disant ferait annoncer
+              une marge qu'on ne réalisera pas si la commande part chez l'autre. */}
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <label style={{ ...cat.lbl, margin: 0 }}>Prix retenu pour le chiffrage</label>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
+                CHF {prixRetenu.toFixed(4)} <span style={{ color: 'var(--text2)', fontWeight: 400 }}>/{form.uniteRef}</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8 }}>{provenancePrix}</div>
+            <div style={cat.row2}>
+              <div>
+                <label style={cat.lbl}>Stratégie</label>
+                <select
+                  style={cat.inp}
+                  value={form.strategiePrix || 'max'}
+                  onChange={e => up('strategiePrix', e.target.value)}
+                >
+                  <option value="max">Le plus cher (recommandé)</option>
+                  <option value="principal">Celui du fournisseur principal</option>
+                  <option value="moyenne">Moyenne des références</option>
+                  <option value="manuel">Prix saisi ci-dessus uniquement</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer', fontSize: 12, color: 'var(--text)' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.prixVerrouille}
+                    onChange={e => up('prixVerrouille', e.target.checked)}
+                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  Verrouiller le prix
+                </label>
+              </div>
+            </div>
+            {form.prixVerrouille && (
+              <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6 }}>
+                Aucun scan de facture ni import ne modifiera ce prix.
+              </div>
+            )}
+          </div>
+
           <div style={cat.row2}>
             <div>
               <label style={cat.lbl}>Fournisseur principal</label>
@@ -879,7 +996,10 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                 <button style={cat.miniLink} onClick={() => setShowAddPF(true)}>+ Ajouter</button>
               </div>
               {pfRows.length > 0 && (
-                <table style={{ ...cat.table, fontSize: 11, marginBottom: 6 }}>
+                // 5 colonnes ne tiennent pas dans une modale de 375 px : la table
+                // scrolle dans son conteneur, la page ne pane jamais.
+                <div style={{ overflowX: 'auto', marginBottom: 6, WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ ...cat.table, fontSize: 11, minWidth: 480 }}>
                   <thead><tr>
                     <th style={cat.th}>Fournisseur</th><th style={cat.th}>Prix achat</th>
                     <th style={cat.th}>Conditionnement</th><th style={cat.th}>Prix/unité</th>
@@ -899,6 +1019,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
               {showAddPF && (
                 <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginTop: 6 }}>
@@ -932,6 +1053,64 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     <button style={cat.ghostBtn} onClick={() => setShowAddPF(false)}>Annuler</button>
                     <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none' }} onClick={addPF}>Ajouter</button>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── Historique des prix ───
+              Chargé à la demande : inutile de payer une requête sur chaque
+              ouverture de fiche alors qu'on vient le plus souvent corriger un nom. */}
+          {prod?.id && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ ...cat.lbl, margin: 0 }}>Historique des prix</label>
+                {historique === null && (
+                  <button style={cat.miniLink} onClick={chargerHistorique} disabled={histBusy}>
+                    {histBusy ? 'Chargement…' : 'Afficher'}
+                  </button>
+                )}
+              </div>
+              {historique !== null && historique.length === 0 && (
+                <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+                  Aucun relevé. L'historique se remplit au scan des factures et aux imports.
+                </div>
+              )}
+              {historique !== null && historique.length > 0 && (
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ ...cat.table, fontSize: 11, minWidth: 380 }}>
+                  <thead><tr>
+                    <th style={cat.th}>Date facture</th><th style={cat.th}>Fournisseur</th>
+                    <th style={cat.th}>Prix/unité</th><th style={cat.th}>Origine</th>
+                  </tr></thead>
+                  <tbody>
+                    {historique.map((h, i) => {
+                      // Écart avec le relevé précédent (la liste est du plus récent au plus ancien).
+                      const precedent = historique[i + 1];
+                      const delta = precedent && Number(precedent.prixUnitaire) > 0
+                        ? ((Number(h.prixUnitaire) - Number(precedent.prixUnitaire)) / Number(precedent.prixUnitaire)) * 100
+                        : null;
+                      return (
+                        <tr key={h.id} style={cat.tr}>
+                          <td style={cat.td}>{(h.releveLe || '').split('-').reverse().join('.')}</td>
+                          <td style={cat.td}>{h.fournisseurNom || '-'}</td>
+                          <td style={{ ...cat.td, fontWeight: 600 }}>
+                            {Number(h.prixUnitaire).toFixed(4)}
+                            {delta !== null && Math.abs(delta) >= 0.5 && (
+                              <span style={{
+                                marginLeft: 6, fontSize: 10, fontWeight: 700,
+                                color: delta > 0 ? 'var(--danger-text)' : 'var(--success-text)',
+                              }}>
+                                {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ ...cat.td, color: 'var(--text2)' }}>{h.source}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
                 </div>
               )}
             </div>

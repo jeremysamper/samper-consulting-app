@@ -2381,6 +2381,14 @@ export function installLegacySupabase() {
         conditionnement: p.conditionnement || null,
         actif: p.actif !== false, notes: p.notes || null,
         allergenes: p.allergenes || [],
+        // N'envoyées que si l'appelant les porte : un front déployé avant la
+        // migration 20260811 ne doit pas casser l'upsert en écrivant des colonnes absentes.
+        ...(Object.prototype.hasOwnProperty.call(p, 'strategiePrix')
+          ? { strategie_prix: p.strategiePrix || 'max' } : {}),
+        ...(Object.prototype.hasOwnProperty.call(p, 'prixVerrouille')
+          ? { prix_verrouille: !!p.prixVerrouille } : {}),
+        ...(Object.prototype.hasOwnProperty.call(p, 'prixMajLe')
+          ? { prix_maj_le: p.prixMajLe || null } : {}),
       };
       const { data, error } = await client.from('produits').upsert(payload).select().single();
       if (error) throw error;
@@ -2409,6 +2417,11 @@ export function installLegacySupabase() {
         conditionnement: row.conditionnement || '',
         actif: !!row.actif, notes: row.notes || '',
         allergenes: row.allergenes || [],
+        // Stratégie de prix (migration 20260811). Exposées seulement si les colonnes
+        // existent côté DB : un front déployé avant la migration ne doit rien voir.
+        ...(row.strategie_prix !== undefined ? { strategiePrix: row.strategie_prix } : {}),
+        ...(row.prix_verrouille !== undefined ? { prixVerrouille: !!row.prix_verrouille } : {}),
+        ...(row.prix_maj_le !== undefined ? { prixMajLe: row.prix_maj_le } : {}),
         fournisseurs: pfs.map(pf => ({
           id: pf.id, fournisseurId: pf.fournisseur_id,
           fournisseurNom: pf.fournisseurs?.nom || '',
@@ -2444,6 +2457,83 @@ export function installLegacySupabase() {
       const { error } = await client.from('produit_fournisseurs').delete().eq('id', id);
       if (error) throw error;
       _invalidateRead('produits');
+    },
+
+    // ─── HISTORIQUE DES PRIX (migration 20260811) ───
+    // Chaque changement de prix laisse une trace datée de la facture, pas de l'import.
+    async listPrixHistorique(produitId, limit = 50) {
+      if (!produitId) return [];
+      const { data, error } = await client
+        .from('produit_prix_historique')
+        .select('*, fournisseurs(nom)')
+        .eq('produit_id', produitId)
+        .order('releve_le', { ascending: false })
+        .limit(limit);
+      if (error) { console.error('[listPrixHistorique]', error); return []; }
+      return (data || []).map(r => ({
+        id: r.id, produitId: r.produit_id,
+        fournisseurId: r.fournisseur_id, fournisseurNom: r.fournisseurs?.nom || '',
+        prixUnitaire: r.prix_unitaire, prixAchat: r.prix_achat,
+        quantiteCond: r.quantite_cond, uniteCond: r.unite_cond,
+        source: r.source, scanId: r.scan_id, documentUrl: r.document_url,
+        releveLe: r.releve_le, createdAt: r.created_at, createdBy: r.created_by,
+      }));
+    },
+    async ajouterPrixHistorique(h) {
+      const payload = {
+        id: h.id || ('pph-' + Date.now() + Math.floor(Math.random() * 1000)),
+        produit_id: h.produitId,
+        fournisseur_id: h.fournisseurId || null,
+        prix_unitaire: parseFloat(h.prixUnitaire),
+        prix_achat: h.prixAchat != null ? parseFloat(h.prixAchat) : null,
+        quantite_cond: h.quantiteCond != null ? parseFloat(h.quantiteCond) : null,
+        unite_cond: h.uniteCond || null,
+        source: h.source || 'manuel',
+        scan_id: h.scanId || null,
+        document_url: h.documentUrl || null,
+        releve_le: h.releveLe || new Date().toISOString().slice(0, 10),
+        created_by: h.createdBy || null,
+      };
+      const { data, error } = await client.from('produit_prix_historique').insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+
+    // ─── ALIAS FOURNISSEURS (migration 20260811) ───
+    // « Ce libellé de facture désigne ce produit » : appris une fois, réutilisé sans IA.
+    async listProduitAlias(produitId) {
+      if (!produitId) return [];
+      const { data, error } = await client
+        .from('produit_alias')
+        .select('*, fournisseurs(nom)')
+        .eq('produit_id', produitId)
+        .order('created_at', { ascending: false });
+      if (error) { console.error('[listProduitAlias]', error); return []; }
+      return (data || []).map(r => ({
+        id: r.id, produitId: r.produit_id,
+        fournisseurId: r.fournisseur_id, fournisseurNom: r.fournisseurs?.nom || '',
+        libelle: r.libelle, libelleNorm: r.libelle_norm,
+        referenceFourn: r.reference_fourn || '', source: r.source, createdAt: r.created_at,
+      }));
+    },
+    async upsertProduitAlias(a) {
+      const payload = {
+        id: a.id || ('alias-' + Date.now() + Math.floor(Math.random() * 1000)),
+        produit_id: a.produitId,
+        fournisseur_id: a.fournisseurId || null,
+        libelle: a.libelle,
+        libelle_norm: a.libelleNorm,
+        reference_fourn: a.referenceFourn || null,
+        source: a.source || 'manuel',
+        created_by: a.createdBy || null,
+      };
+      const { data, error } = await client.from('produit_alias').upsert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+    async deleteProduitAlias(id) {
+      const { error } = await client.from('produit_alias').delete().eq('id', id);
+      if (error) throw error;
     },
   };
 
