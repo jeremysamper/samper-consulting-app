@@ -13,9 +13,10 @@
 //                       fournisseur choisi. Sinon défaut par fournisseur.
 // SUPABASE_URL / SUPABASE_ANON_KEY sont injectés automatiquement.
 //
-// Tâches : 'ocr-recipe' (vision), 'detect-allergens', 'generate-haccp',
-//          'suggest-recipe', 'match-product', 'generate-fiche-salle',
-//          'parse-catalogue', 'dedupe-commande', 'translate' (texte).
+// Tâches : 'ocr-recipe' (vision), 'parse-facture' (vision), 'detect-allergens',
+//          'generate-haccp', 'suggest-recipe', 'match-product',
+//          'generate-fiche-salle', 'parse-catalogue', 'dedupe-commande',
+//          'translate' (texte).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -186,6 +187,49 @@ Règles :
 - ne renvoie aucun produit inventé : uniquement ce qui est réellement dans le fichier
 - si aucun produit exploitable, renvoie {"produits":[]}`;
 
+const FACTURE_SYSTEM = `Tu lis la photo d'une facture ou d'un bon de livraison de fournisseur alimentaire (Suisse, montants en CHF) et tu en extrais les lignes de produits.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"fournisseur":"Transgourmet","numeroFacture":"FA-2026-12345","dateFacture":"2026-08-04","totalHT":412.60,"devise":"CHF","tauxTva":8.1,"lignes":[{"libelle":"FILET BOEUF IRL 2KG VAC","referenceFourn":"84512","quantite":2,"conditionnement":"2 kg","quantiteCond":2,"uniteCond":"kg","prixAchat":89.50,"confidence":92,"issues":[]}]}
+
+Champs de l'en-tête (null si absent ou illisible, jamais deviné) :
+- "fournisseur" : raison sociale de l'émetteur
+- "numeroFacture" : numéro de la facture ou du bon de livraison
+- "dateFacture" : date du document au format ISO AAAA-MM-JJ. Les dates suisses s'écrivent
+  JJ.MM.AAAA : 04.08.2026 devient "2026-08-04". Ne confonds jamais jour et mois.
+- "totalHT" : total hors taxes en nombre. "tauxTva" : taux appliqué (8.1, 2.6...)
+- "devise" : "CHF" sauf mention contraire explicite
+
+Champs par ligne, le point le plus important de la tâche :
+- "libelle" : le libellé produit EXACTEMENT tel qu'imprimé, abréviations et majuscules comprises.
+  Ne le corrige pas, ne le traduis pas, ne le complète pas : il sert à reconnaître le produit
+  d'une facture à l'autre.
+- "referenceFourn" : référence ou numéro d'article du fournisseur si imprimé, sinon null
+- "quantite" : nombre de colis, cartons ou pièces facturés
+- "conditionnement" : le conditionnement tel qu'écrit ("2 kg", "carton 6 x 1 L")
+- "quantiteCond" et "uniteCond" : contenu d'UN SEUL colis, décomposé en nombre + unité.
+  "uniteCond" vaut obligatoirement g, kg, ml, L ou pcs. Un carton de 6 bouteilles d'1 L donne
+  quantiteCond 6 et uniteCond "L". Si le conditionnement est illisible, mets les deux à null.
+- "prixAchat" : prix d'UN SEUL colis, hors taxes. ATTENTION : les factures affichent aussi le
+  total de la ligne (prix unitaire x quantité). C'est bien le PRIX UNITAIRE du colis qu'il faut,
+  jamais le total de ligne. Si seul le total est lisible, divise-le par la quantité et signale
+  "prix deduit du total" dans issues.
+- "confidence" : entier 0-100, ta certitude sur cette ligne
+- "issues" : libellés courts en français pour toute anomalie ("prix illisible", "quantite ambigue",
+  "conditionnement illisible", "ligne partiellement masquee", "prix deduit du total",
+  "ligne non produit"). Liste vide si la ligne est fiable.
+
+Règles STRICTES :
+- N'invente RIEN. Un champ que tu ne lis pas est null, accompagné d'une entrée dans "issues".
+  Une valeur plausible mais devinée est pire qu'un null : elle ira écraser un prix en base.
+- Ignore les lignes qui ne sont pas des produits : frais de port, consigne, emballage, remise
+  globale, acompte, arrondi, sous-totaux et lignes de TVA. En cas de doute, garde la ligne et
+  marque-la "ligne non produit" dans issues.
+- Les montants sont des nombres sans symbole ni séparateur de milliers. La virgule décimale
+  suisse devient un point : 1'234,50 devient 1234.50
+- Si plusieurs images sont fournies, ce sont les pages d'un MÊME document : renvoie un seul
+  en-tête et la totalité des lignes de toutes les pages, dans l'ordre.
+- Si aucune ligne de produit n'est lisible, renvoie {"lignes":[]} avec l'en-tête que tu as pu lire.`;
+
 const DEDUPE_SYSTEM = `Tu nettoies une liste de produits à commander pour une cuisine professionnelle. Plusieurs lignes désignent souvent le MÊME produit écrit différemment (singulier/pluriel, accents, casse, ordre des mots, synonyme courant, faute de frappe). Tu regroupes uniquement ces vrais doublons.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
 {"groupes":[{"canonique":"Tomate","variantes":["Tomate","Tomates","tomate"]}]}
@@ -223,6 +267,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'generate-fiche-salle':       { system: FICHE_SALLE_SYSTEM,  maxTokens: 2048 },
   'analyse-simulation-carte':   { system: SIMULATION_SYSTEM,   maxTokens: 2048 },
   'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
+  'parse-facture':              { system: FACTURE_SYSTEM,      maxTokens: 8192 },
   'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
   'translate':                  { system: TRANSLATE_SYSTEM,    maxTokens: 4096 },
 };
@@ -245,11 +290,16 @@ const TASK_ROLES: Record<string, string[]> = {
   'generate-fiche-salle':     CONSULTANT_ONLY,
   'analyse-simulation-carte': CONSULTANT_ONLY,
   'parse-catalogue':          CONSULTANT_ONLY,
+  'parse-facture':            CONSULTANT_ONLY,
   'dedupe-commande':          CONSULTANT_ONLY,
   'translate':                ALL_ROLES,
 };
 
 type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string; base64: string };
+
+// Garde-fou sur le nombre de pages d'une facture transmises en un appel : au-delà,
+// la charge utile devient énorme et le modèle perd en précision sur les montants.
+const MAX_PAGES_FACTURE = 5;
 
 // Construit le contenu utilisateur (texte + image) selon la tâche.
 function buildParts(task: string, payload: Record<string, unknown>): Part[] {
@@ -261,6 +311,37 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
       { kind: 'image', mediaType, base64: imageBase64 },
       { kind: 'text', text: 'Extrais la ou les recettes de cette image au format JSON demandé.' },
     ];
+  }
+  if (task === 'parse-facture') {
+    // Une facture fournisseur tient rarement sur une page : l'en-tête est sur la
+    // première, la suite des lignes sur les autres. On envoie les pages dans un
+    // seul appel pour que le modèle rattache les lignes au bon document.
+    const brut = Array.isArray(payload.images)
+      ? (payload.images as { imageBase64?: string; mediaType?: string }[])
+      : (payload.imageBase64 ? [{ imageBase64: payload.imageBase64 as string, mediaType: payload.mediaType as string }] : []);
+    const pages = brut
+      .filter(p => p && p.imageBase64 && p.mediaType)
+      .slice(0, MAX_PAGES_FACTURE);
+    if (!pages.length) throw new Error('Aucune image de facture exploitable.');
+
+    const parts: Part[] = pages.map(p => ({
+      kind: 'image' as const,
+      mediaType: p.mediaType as string,
+      base64: p.imageBase64 as string,
+    }));
+    // L'indice de fournisseur n'impose rien : le modèle lit ce qui est imprimé.
+    // Il sert à lever une ambiguïté quand l'en-tête est coupé ou illisible.
+    const indice = payload.fournisseurHint
+      ? `\nFournisseur probable, à confirmer sur le document : ${String(payload.fournisseurHint)}`
+      : '';
+    parts.push({
+      kind: 'text',
+      text: pages.length > 1
+        ? `Ces ${pages.length} images sont les pages d'une seule et même facture, dans l'ordre. `
+          + `Extrais l'en-tête une seule fois et toutes les lignes de produits.${indice}`
+        : `Extrais l'en-tête et les lignes de produits de cette facture.${indice}`,
+    });
+    return parts;
   }
   if (task === 'detect-allergens') {
     const ingredients = Array.isArray(payload.ingredients) ? (payload.ingredients as string[]) : [];
