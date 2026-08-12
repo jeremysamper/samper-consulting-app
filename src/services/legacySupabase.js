@@ -2472,6 +2472,90 @@ export function installLegacySupabase() {
       _invalidateRead('produits');
     },
 
+    // Upsert d'une reference fournisseur par COUPLE (produit, fournisseur).
+    //
+    // produit_fournisseurs porte un index unique idx_pf_unique (produit_id,
+    // fournisseur_id) : un produit n'a qu'une reference par fournisseur.
+    // upsertProduitFournisseur genere un id neuf a chaque appel et violerait
+    // donc cet index des la deuxieme facture du meme fournisseur. Ici on
+    // reutilise la ligne existante quand elle existe.
+    //
+    // prix_unitaire n'est jamais envoye : c'est une colonne GENEREE, calculee
+    // par Postgres depuis prix_achat, quantite_cond et unite_cond.
+    async upsertProduitFournisseurParCouple(pf) {
+      if (!pf?.produitId || !pf?.fournisseurId) throw new Error('Produit ou fournisseur manquant.');
+      const { data: existant, error: errLect } = await client
+        .from('produit_fournisseurs')
+        .select('id, est_principal')
+        .eq('produit_id', pf.produitId)
+        .eq('fournisseur_id', pf.fournisseurId)
+        .maybeSingle();
+      if (errLect) throw errLect;
+
+      const payload = {
+        id: existant?.id || ('pf-' + Date.now() + Math.floor(Math.random() * 1000)),
+        produit_id: pf.produitId,
+        fournisseur_id: pf.fournisseurId,
+        prix_achat: parseFloat(pf.prixAchat) || 0,
+        conditionnement: pf.conditionnement || null,
+        quantite_cond: pf.quantiteCond != null ? parseFloat(pf.quantiteCond) : null,
+        unite_cond: pf.uniteCond || null,
+        reference: pf.reference || null,
+        // On ne touche pas au drapeau principal d'une ligne existante : c'est un
+        // choix d'achat, pas une information de facture.
+        est_principal: existant ? existant.est_principal : !!pf.estPrincipal,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await client.from('produit_fournisseurs').upsert(payload).select().single();
+      if (error) throw error;
+      _invalidateRead('produits');
+      return data;
+    },
+
+    // ─── SESSIONS DE SCAN DE FACTURE (migration 20260811) ───
+    async listScansFacture(etabId, limit = 20) {
+      const { data, error } = await client
+        .from('scans_facture')
+        .select('*, fournisseurs(nom)')
+        .eq('etablissement_id', etabId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) { console.error('[listScansFacture]', error); return []; }
+      return (data || []).map(r => this.mapScanFactureFromDB(r));
+    },
+    async upsertScanFacture(s) {
+      const payload = {
+        id: s.id || ('scan-' + Date.now() + Math.floor(Math.random() * 1000)),
+        etablissement_id: s.etablissementId,
+        fournisseur_id: s.fournisseurId || null,
+        statut: s.statut || 'brouillon',
+        document_urls: s.documentUrls || [],
+        date_facture: s.dateFacture || null,
+        numero_facture: s.numeroFacture || null,
+        total_facture: s.totalFacture != null ? parseFloat(s.totalFacture) : null,
+        lignes: s.lignes || [],
+        nb_lignes: s.nbLignes ?? (Array.isArray(s.lignes) ? s.lignes.length : 0),
+        nb_appliquees: s.nbAppliquees ?? 0,
+        created_by: s.createdBy || null,
+        ...(s.statut === 'valide' ? { valide_le: new Date().toISOString() } : {}),
+      };
+      const { data, error } = await client.from('scans_facture').upsert(payload).select().single();
+      if (error) throw error;
+      return this.mapScanFactureFromDB(data);
+    },
+    mapScanFactureFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id, etablissementId: row.etablissement_id,
+        fournisseurId: row.fournisseur_id, fournisseurNom: row.fournisseurs?.nom || '',
+        statut: row.statut, documentUrls: row.document_urls || [],
+        dateFacture: row.date_facture, numeroFacture: row.numero_facture || '',
+        totalFacture: row.total_facture, lignes: row.lignes || [],
+        nbLignes: row.nb_lignes, nbAppliquees: row.nb_appliquees,
+        createdAt: row.created_at, createdBy: row.created_by, valideLe: row.valide_le,
+      };
+    },
+
     // ─── HISTORIQUE DES PRIX (migration 20260811) ───
     // Chaque changement de prix laisse une trace datée de la facture, pas de l'import.
     async listPrixHistorique(produitId, limit = 50) {
@@ -2527,6 +2611,22 @@ export function installLegacySupabase() {
         fournisseurId: r.fournisseur_id, fournisseurNom: r.fournisseurs?.nom || '',
         libelle: r.libelle, libelleNorm: r.libelle_norm,
         referenceFourn: r.reference_fourn || '', source: r.source, createdAt: r.created_at,
+      }));
+    },
+    // Tous les alias d'un etablissement, pour le rapprochement d'une facture.
+    // La jointure !inner sur produits porte le filtre d'etablissement ; la RLS
+    // de produit_alias passe deja par ce meme parent.
+    async listProduitAliasEtab(etabId) {
+      if (!etabId) return [];
+      const { data, error } = await client
+        .from('produit_alias')
+        .select('*, produits!inner(etablissement_id)')
+        .eq('produits.etablissement_id', etabId);
+      if (error) { console.error('[listProduitAliasEtab]', error); return []; }
+      return (data || []).map(r => ({
+        id: r.id, produitId: r.produit_id, fournisseurId: r.fournisseur_id,
+        libelle: r.libelle, libelleNorm: r.libelle_norm,
+        referenceFourn: r.reference_fourn || '', source: r.source,
       }));
     },
     async upsertProduitAlias(a) {

@@ -261,8 +261,74 @@ export async function dedupeCommande(produits) {
   return { groupes };
 }
 
+// Lecture d'une facture ou d'un bon de livraison fournisseur.
+//
+// `files` : les pages du MÊME document, dans l'ordre. Une facture Transgourmet
+// fait souvent 2 ou 3 pages, avec l'en-tête sur la première et la suite des
+// lignes sur les autres : les envoyer ensemble évite de recoller les morceaux.
+//
+// La compression n'est pas une optimisation de confort : une photo d'iPad brute
+// pèse 4 à 6 Mo, et trois pages dépassent la limite de charge utile de l'edge
+// function. On garde l'original en repli si la compression échoue.
+export async function parseFacture(files, options = {}) {
+  const liste = (Array.isArray(files) ? files : [files]).filter(Boolean).slice(0, 5);
+  if (!liste.length) throw new Error('Aucune image à analyser.');
+
+  const images = [];
+  for (const file of liste) {
+    let img = file;
+    try {
+      img = await imageCompression(file, { maxSizeMB: 1.5, maxWidthOrHeight: 2200, useWebWorker: true });
+    } catch (e) {
+      img = file;
+    }
+    const imageBase64 = await fileToBase64(img);
+    if (!imageBase64) continue;
+    let mediaType = (img.type || file.type || 'image/jpeg').toLowerCase();
+    if (!ACCEPTED_MEDIA.includes(mediaType)) mediaType = 'image/jpeg';
+    images.push({ imageBase64, mediaType });
+  }
+  if (!images.length) throw new Error('Images vides ou illisibles.');
+
+  const data = await callAi('parse-facture', {
+    images,
+    ...(options.fournisseurHint ? { fournisseurHint: options.fournisseurHint } : {}),
+  });
+  const r = (data && data.result) || {};
+  // Number(null) et Number('') valent 0, pas NaN. Sans ce filtre, un montant que
+  // l'IA a explicitement declare illisible (null) deviendrait un prix de zero,
+  // et creer le produit depuis cette ligne le ferait naitre a zero au catalogue.
+  const num = (v) => {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  return {
+    fournisseur: r.fournisseur ? String(r.fournisseur).trim() : '',
+    numeroFacture: r.numeroFacture ? String(r.numeroFacture).trim() : '',
+    dateFacture: /^\d{4}-\d{2}-\d{2}$/.test(String(r.dateFacture || '')) ? r.dateFacture : '',
+    totalHT: num(r.totalHT),
+    tauxTva: num(r.tauxTva),
+    devise: r.devise ? String(r.devise).trim() : 'CHF',
+    lignes: (Array.isArray(r.lignes) ? r.lignes : [])
+      .map((l, i) => ({
+        id: `fl-${i}`,
+        libelle: String((l && l.libelle) || '').trim(),
+        referenceFourn: l && l.referenceFourn ? String(l.referenceFourn).trim() : '',
+        quantite: num(l && l.quantite),
+        conditionnement: l && l.conditionnement ? String(l.conditionnement).trim() : '',
+        quantiteCond: num(l && l.quantiteCond),
+        uniteCond: l && l.uniteCond ? String(l.uniteCond).trim() : '',
+        prixAchat: num(l && l.prixAchat),
+        confidence: Math.max(0, Math.min(100, Math.round(num(l && l.confidence) ?? 0))),
+        issues: Array.isArray(l && l.issues) ? l.issues.map(x => String(x || '')).filter(Boolean) : [],
+      }))
+      .filter(l => l.libelle),
+  };
+}
+
 export const aiService = {
   ocrRecipe, detectAllergens, generateHaccp, suggestRecipe, matchProductSemantic,
-  generateFicheSalle, parseCatalogue, dedupeCommande,
+  generateFicheSalle, parseCatalogue, dedupeCommande, parseFacture,
 };
 export default aiService;

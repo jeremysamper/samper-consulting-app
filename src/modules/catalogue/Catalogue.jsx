@@ -3,6 +3,7 @@ import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi
 import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import CatalogueAiImporter from './import/CatalogueAiImporter.jsx';
+import ScanFacture from './scan/ScanFacture.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { ALLERGENES } from '../../utils/allergenes.js';
@@ -47,6 +48,7 @@ const Catalogue = ({ user, etablissement }) => {
   const [importing, setImporting] = React.useState(false);
   const [importReport, setImportReport] = React.useState(null); // { newItems, duplicates, aberrants }
   const [showAiImport, setShowAiImport] = React.useState(false);
+  const [showScan, setShowScan] = React.useState(false);
   const [selected, setSelected] = React.useState(new Set());
   const fileRef = React.useRef(null);
 
@@ -440,6 +442,11 @@ const Catalogue = ({ user, etablissement }) => {
         {canWrite && (
           <div className="module-actions">
             {isConsultant && (
+            <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowScan(true)}>
+              📷 Scanner une facture
+            </button>
+            )}
+            {isConsultant && (
             <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowAiImport(true)}>
               ✨ Import IA
             </button>
@@ -719,6 +726,24 @@ const Catalogue = ({ user, etablissement }) => {
           onCancel={() => setImportReport(null)}
           onConfirmSafe={() => confirmImport('safe')}
           onConfirmAll={() => confirmImport('all')}
+        />
+      )}
+
+      {/* ─── Modal Scan de facture ─── */}
+      {showScan && (
+        <ScanFacture
+          etabId={etabId}
+          fournisseurs={fournisseurs}
+          catalogue={produits}
+          legacySB={legacySB}
+          user={user}
+          onClose={() => setShowScan(false)}
+          onDone={async () => {
+            try {
+              const ps = await legacySB.db.listProduits(etabId);
+              if (Array.isArray(ps)) setProduits(ps);
+            } catch (e) { /* le realtime rafraichira la liste */ }
+          }}
         />
       )}
 
