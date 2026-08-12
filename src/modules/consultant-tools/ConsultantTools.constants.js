@@ -20,15 +20,10 @@ export const convertFactor = (from, to) => {
   return null; // incompatibles, on ne convertit pas
 };
 
-// Quand on lie un produit du catalogue à une ligne, ou quand on change l'unité d'un ingrédient,
-// on adapte le prixUnit pour qu'il reste correct dans la nouvelle unité.
-export const adjustPrixUnitForUnit = (currentPrix, currentUnit, targetUnit) => {
-  const factor = convertFactor(currentUnit, targetUnit);
-  if (factor === null || factor === 1) return currentPrix;
-  // prixUnit est en CHF/unitéCourante. En passant à targetUnit :
-  // si targetUnit est plus grande (ex: kg vs g, factor=1000), prix doit ÊTRE multiplié
-  // Ex: 0.005 CHF/g → 5 CHF/kg (× 1000)
-  return currentPrix * factor;
-};
+// Pour convertir un PRIX par unité, utiliser convertPrix() de
+// src/services/prixResolution.js : un prix est une grandeur inverse de la
+// quantité, il se divise là où une quantité se multiplie. L'ancien helper
+// adjustPrixUnitForUnit vivait ici avec la formule inversée ; il a été
+// supprimé plutôt que corrigé, pour ne laisser qu'une seule implémentation.
 
 // ─── PhotoUploader : composant d'upload d'image (recette ou plat) ───
