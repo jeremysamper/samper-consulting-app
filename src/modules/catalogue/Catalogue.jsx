@@ -829,7 +829,15 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
     const avant = parseFloat(prod?.prixUnitaireManuel ?? prod?.prixUnitaire);
     const apres = parseFloat(form.prixUnitaire);
     const prixChange = (Number.isFinite(avant) ? avant : null) !== (Number.isFinite(apres) ? apres : null);
-    const payload = prixChange ? { ...form, prixMajLe: new Date().toISOString() } : form;
+    // Le formulaire est une recopie du produit relu : il traine un
+    // `prixUnitaireManuel` d'origine que la saisie ne met pas a jour. La garde
+    // anti-ecrasement d'upsertProduit privilegie cette cle, il faut donc l'aligner
+    // sur la valeur saisie, sinon toute modification de prix serait ignoree.
+    const payload = {
+      ...form,
+      prixUnitaireManuel: form.prixUnitaire,
+      ...(prixChange ? { prixMajLe: new Date().toISOString() } : {}),
+    };
 
     await onSave(payload);
 
