@@ -2375,7 +2375,20 @@ export function installLegacySupabase() {
         nom: p.nom, categorie: p.categorie || 'Autres',
         sous_categorie: p.sousCategorie || null,
         unite_ref: p.uniteRef || 'g',
-        prix_unitaire: p.prixUnitaire != null ? parseFloat(p.prixUnitaire) : null,
+        // Garde anti-ecrasement du prix saisi.
+        //
+        // mapProduitFromDB expose dans `prixUnitaire` un prix DEJA RESOLU (celui du
+        // fournisseur principal quand il existe) et garde la colonne brute dans
+        // `prixUnitaireManuel`. Reecrire tel quel un produit relu de la base
+        // remplacerait donc le prix saisi a la main par un prix fournisseur, en
+        // silence : c'est ce qui se passait en attribuant un fournisseur depuis la
+        // liste du catalogue. On privilegie la colonne brute des qu'elle est portee.
+        //
+        // Les objets neufs (imports, formulaire, creation depuis la liaison en masse)
+        // ne portent pas la cle et retombent sur `prixUnitaire`, comme avant.
+        prix_unitaire: Object.prototype.hasOwnProperty.call(p, 'prixUnitaireManuel')
+          ? (p.prixUnitaireManuel != null ? parseFloat(p.prixUnitaireManuel) : null)
+          : (p.prixUnitaire != null ? parseFloat(p.prixUnitaire) : null),
         fournisseur_id: p.fournisseurId || null,
         reference_fourn: p.referenceFourn || null,
         conditionnement: p.conditionnement || null,
