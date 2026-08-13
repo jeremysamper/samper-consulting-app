@@ -67,15 +67,19 @@ antérieurs à cette opération, aucun sur les 59 nouveaux. Facteurs relevés : 
 (voir `data-20260811-prix-unit-inverses/`). Le passage au prix vivant les corrige
 d'office puisqu'il ignore la copie figée.
 
-**2. Un prix de catalogue est faux : `Economy Huile pour friture`.**
-Enregistré à `0.189 CHF/ml`, soit **189 CHF le litre**, pour une caisse de 20 l. À
-comparer aux autres huiles du même catalogue : tournesol 4,45 CHF/l, olive vierge extra
-7,09 CHF/l. La valeur correcte est vraisemblablement `0.00189` (facteur 100), qui est
-exactement le prix figé qu'on retrouve dans « Vinaigrette balsamique miel ».
+**2. Un prix de catalogue était faux : `Economy Huile pour friture`. CORRIGÉ le 12.08.2026**
+(voir `03-correction-prix-huile.sql`).
 
-Conséquence tant que ce n'est pas corrigé : cette recette affiche **1 890 CHF** pour ses
-10 litres d'huile, et « Huile de basilic » 189 CHF. **À corriger à la main dans le
-catalogue** — le prix n'a pas été modifié ici, un prix d'achat relève de Jérémy.
+Enregistré à `0.189 CHF/ml`, soit **189 CHF le litre** et 3 780 CHF la caisse de 20 l. À
+comparer aux autres huiles du même catalogue : tournesol 4,45 CHF/l, olive vierge extra
+7,09 CHF/l. Passé à `0.00189`, soit 1,89 CHF/l et 37,80 CHF la caisse — la seule des trois
+valeurs en présence qui donne un prix de caisse plausible, et celle qui était figée dans
+« Vinaigrette balsamique miel » avant que le catalogue ne dérive.
+
+Effet : « Vinaigrette balsamique miel » passe de 1 890 CHF à **18,90 CHF** pour ses 10
+litres d'huile, « Huile de basilic » de 189 à **1,89 CHF**. Plus aucun écart supérieur à
+×50 dans l'établissement. Les deux valeurs, avant et après, sont dans
+`produit_prix_historique` pour que la fiche produit montre d'où l'on vient.
 
 ## Restauration
 
