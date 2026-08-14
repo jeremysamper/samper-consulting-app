@@ -4,8 +4,9 @@ import { normalizeSearch } from '../../../utils/searchText.js';
 import { buildProduitIndex, resolvePrixProduit } from '../../../services/prixResolution.js';
 import {
   buildAliasIndex, rapprocherLigne, calculerImpact, estApplicable,
-  planScanWrites, prixUnitaireDepuisColis, SEUIL_ECART_PCT,
+  planScanWrites, prixUnitaireDepuisLigne, SEUIL_ECART_PCT,
 } from './scanFactureLogic.js';
+import { estPdf } from './pdfFacture.js';
 
 // Écran de lecture d'une facture fournisseur par photo.
 //
@@ -36,6 +37,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
   const [progress, setProgress] = React.useState(null);
   const [extra, setExtra] = React.useState([]); // produits créés en séance
   const fileRef = React.useRef(null);
+  const cameraRef = React.useRef(null);
   const abortRef = React.useRef(false);
 
   const catalogueComplet = React.useMemo(() => [...(catalogue || []), ...extra], [catalogue, extra]);
@@ -51,25 +53,21 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
   );
 
   // Les aperçus sont des URL d'objet : sans révocation, chaque photo reprise
-  // laisse un blob en mémoire pour toute la session.
-  React.useEffect(() => () => apercus.forEach(u => URL.revokeObjectURL(u)), [apercus]);
+  // laisse un blob en mémoire pour toute la session. Un PDF n'a pas d'aperçu
+  // image, on affiche une vignette de fichier à la place.
+  React.useEffect(() => () => apercus.forEach(a => a.url && URL.revokeObjectURL(a.url)), [apercus]);
 
-  const ajouterPhotos = (liste) => {
-    const nouveaux = [...fichiers, ...liste].slice(0, 5);
+  const rafraichirApercus = (nouveaux) => {
     setFichiers(nouveaux);
     setApercus(prev => {
-      prev.forEach(u => URL.revokeObjectURL(u));
-      return nouveaux.map(f => URL.createObjectURL(f));
+      prev.forEach(a => a.url && URL.revokeObjectURL(a.url));
+      return nouveaux.map(f => (estPdf(f)
+        ? { pdf: true, nom: f.name, url: null }
+        : { pdf: false, nom: f.name, url: URL.createObjectURL(f) }));
     });
   };
-  const retirerPhoto = (idx) => {
-    const nouveaux = fichiers.filter((_, i) => i !== idx);
-    setFichiers(nouveaux);
-    setApercus(prev => {
-      prev.forEach(u => URL.revokeObjectURL(u));
-      return nouveaux.map(f => URL.createObjectURL(f));
-    });
-  };
+  const ajouterPhotos = (liste) => rafraichirApercus([...fichiers, ...liste].slice(0, 5));
+  const retirerPhoto = (idx) => rafraichirApercus(fichiers.filter((_, i) => i !== idx));
 
   // ── Analyse ──
   const analyser = async () => {
@@ -135,11 +133,10 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
 
   const creerProduit = async (ligne) => {
     if (!legacySB) return;
-    // L'unité de référence suit celle du conditionnement : un colis en kg ou en
-    // L donne un prix par g ou par ml, comme la colonne générée en base.
-    const uniteRef = ligne.uniteCond === 'kg' || ligne.uniteCond === 'g' ? 'g'
-      : ligne.uniteCond === 'L' || ligne.uniteCond === 'ml' ? 'ml' : 'pcs';
-    const prix = prixUnitaireDepuisColis(ligne.prixAchat, ligne.quantiteCond, ligne.uniteCond);
+    // Le document donne déjà sa quantité en unité de base : le produit hérite
+    // directement de cette unité de référence, sans conversion à refaire.
+    const uniteRef = ['g', 'ml', 'pcs'].includes(ligne.uniteTotale) ? ligne.uniteTotale : 'pcs';
+    const prix = prixUnitaireDepuisLigne(ligne);
     try {
       const row = await legacySB.db.upsertProduit({
         etablissementId: etabId,
@@ -302,10 +299,14 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
               {etape === 'analyse' && 'Lecture en cours…'}
               {etape === 'revue' && entete && (
                 <>
-                  {entete.fournisseur || 'Fournisseur non lu'}
+                  <span data-no-translate>{entete.fournisseur || 'Fournisseur non lu'}</span>
                   {entete.numeroFacture ? ` · ${entete.numeroFacture}` : ''}
                   {entete.dateFacture ? ` · ${entete.dateFacture.split('-').reverse().join('.')}` : ''}
                   {entete.totalHT != null ? ` · total HT ${fmt(entete.totalHT, 2)}` : ''}
+                  {' · '}
+                  {entete.source === 'texte'
+                    ? 'texte du PDF'
+                    : `${entete.pages} page(s) en image`}
                 </>
               )}
             </div>
@@ -334,29 +335,49 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
               </div>
             </div>
 
+            {/* La caméra n'est proposée que sur mobile : sur un poste fixe elle
+                ouvre une webcam inutilisable pour un document. Le PDF est le cas
+                le plus courant, les fournisseurs envoient leurs factures ainsi. */}
             <input
-              ref={fileRef} type="file" accept="image/*" capture="environment" multiple
+              ref={fileRef} type="file" accept="image/*,application/pdf" multiple
               style={{ display: 'none' }}
               onChange={e => { ajouterPhotos([...e.target.files]); e.target.value = ''; }}
             />
-            <button
-              onClick={() => fileRef.current?.click()}
-              style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontWeight: 700, padding: '10px 16px', minHeight: 44 }}
-            >📷 Prendre une photo</button>
-            <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 10 }}>
-              {fichiers.length}/5 page(s). Une facture tient rarement sur une seule.
-            </span>
+            <input
+              ref={cameraRef} type="file" accept="image/*" capture="environment"
+              style={{ display: 'none' }}
+              onChange={e => { ajouterPhotos([...e.target.files]); e.target.value = ''; }}
+            />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                onClick={() => fileRef.current?.click()}
+                style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontWeight: 700, padding: '10px 16px', minHeight: 44 }}
+              >📄 Choisir un PDF ou une image</button>
+              <button
+                onClick={() => cameraRef.current?.click()}
+                style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', padding: '10px 16px', minHeight: 44 }}
+              >📷 Photographier</button>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                {fichiers.length}/5. Un PDF multi-pages compte pour un seul fichier.
+              </span>
+            </div>
 
             {apercus.length > 0 && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-                {apercus.map((src, i) => (
-                  <div key={src} style={{ position: 'relative' }}>
-                    <img src={src} alt={`Page ${i + 1}`} style={{ width: 110, height: 140, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                {apercus.map((a, i) => (
+                  <div key={a.nom + i} style={{ position: 'relative' }}>
+                    {a.pdf ? (
+                      <div style={{ width: 110, height: 140, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8 }}>
+                        <span style={{ fontSize: 26 }}>📄</span>
+                        <span data-no-translate style={{ fontSize: 9, color: 'var(--text2)', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>{a.nom}</span>
+                      </div>
+                    ) : (
+                      <img src={a.url} alt={a.nom} style={{ width: 110, height: 140, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                    )}
                     <button
-                      onClick={() => retirerPhoto(i)} title="Retirer cette page"
+                      onClick={() => retirerPhoto(i)} title="Retirer ce document"
                       style={{ position: 'absolute', top: -6, right: -6, width: 26, height: 26, borderRadius: 13, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontSize: 12 }}
                     >✕</button>
-                    <div style={{ position: 'absolute', bottom: 4, left: 4, fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(0,0,0,.6)', color: '#fff' }}>p.{i + 1}</div>
                   </div>
                 ))}
               </div>
@@ -385,6 +406,16 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                 );
               })}
             </div>
+
+            {/* Recoupement le moins cher qui existe, et le seul qui détecte une
+                ligne entière oubliée par la lecture. */}
+            {entete?.ecartTotal != null && Math.abs(entete.ecartTotal) > 0.05 && (
+              <div style={{ margin: '8px 18px 0', padding: '6px 10px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+                La somme des lignes lues fait {fmt(entete.sommeLignes, 2)}, le document annonce
+                {' '}{fmt(entete.totalHT, 2)} — écart de {fmt(Math.abs(entete.ecartTotal), 2)}.
+                Une ligne est probablement mal lue ou manquante.
+              </div>
+            )}
 
             <div style={{ padding: '8px 18px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'var(--text3)', flex: '1 1 200px', minWidth: 0 }}>{PILES.find(p => p.id === pile)?.hint}</span>
@@ -426,7 +457,10 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                           {l.referenceFourn ? `réf. ${l.referenceFourn} · ` : ''}
                           {l.quantite != null ? `${l.quantite} × ` : ''}
                           {l.conditionnement || '—'}
-                          {l.prixAchat != null ? ` · ${fmt(l.prixAchat, 2)} le colis` : ' · prix non lu'}
+                          {l.quantiteTotale != null ? ` · ${l.quantiteTotale} ${l.uniteTotale}` : ''}
+                          {l.montantLigne != null
+                            ? ` · total ${fmt(l.montantLigne, 2)}`
+                            : ' · montant non lu'}
                         </div>
                       </div>
                       {impact && (
@@ -452,6 +486,13 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                     {impact?.verrouille && (
                       <div style={{ marginTop: 7, fontSize: 11, color: 'var(--text3)' }}>
                         Produit verrouillé : son prix ne sera pas modifié.
+                      </div>
+                    )}
+                    {impact?.uniteDivergente && (
+                      <div style={{ marginTop: 7, padding: '5px 8px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+                        Le document compte en {impact.uniteDivergente.document}, le produit
+                        en {impact.uniteDivergente.produit}. Comparer les deux donnerait un prix
+                        faux : corrigez l'unité de référence du produit, ou choisissez-en un autre.
                       </div>
                     )}
                     {l.applique && l.produit && doublons.ids.has(l.produit.id) && (

@@ -272,10 +272,37 @@ export async function dedupeCommande(produits) {
 // function. On garde l'original en repli si la compression échoue.
 export async function parseFacture(files, options = {}) {
   const liste = (Array.isArray(files) ? files : [files]).filter(Boolean).slice(0, 5);
-  if (!liste.length) throw new Error('Aucune image à analyser.');
+  if (!liste.length) throw new Error('Aucun document à analyser.');
+
+  const { estPdf, preparerPdf } = await import('../modules/catalogue/scan/pdfFacture.js');
+
+  // Un PDF natif se lit par son texte, sans vision : plus fidèle sur les chiffres
+  // et bien moins cher. On ne bascule en image que si le PDF est un scan.
+  const seulPdf = liste.length === 1 && estPdf(liste[0]);
+  if (seulPdf) {
+    const prep = await preparerPdf(liste[0]);
+    if (prep.source === 'texte') {
+      const data = await callAi('parse-facture', {
+        texte: prep.texte,
+        ...(options.fournisseurHint ? { fournisseurHint: options.fournisseurHint } : {}),
+      });
+      return normaliserFacture(data, { source: 'texte', pages: prep.pages });
+    }
+    const data = await callAi('parse-facture', {
+      images: prep.images,
+      ...(options.fournisseurHint ? { fournisseurHint: options.fournisseurHint } : {}),
+    });
+    return normaliserFacture(data, { source: 'scan', pages: prep.pages });
+  }
 
   const images = [];
   for (const file of liste) {
+    if (estPdf(file)) {
+      // PDF mêlé à des photos : on ne prend que ses pages rendues.
+      const prep = await preparerPdf(file);
+      if (prep.source === 'scan') images.push(...prep.images);
+      continue;
+    }
     let img = file;
     try {
       img = await imageCompression(file, { maxSizeMB: 1.5, maxWidthOrHeight: 2200, useWebWorker: true });
@@ -288,13 +315,19 @@ export async function parseFacture(files, options = {}) {
     if (!ACCEPTED_MEDIA.includes(mediaType)) mediaType = 'image/jpeg';
     images.push({ imageBase64, mediaType });
   }
-  if (!images.length) throw new Error('Images vides ou illisibles.');
+  if (!images.length) throw new Error('Document vide ou illisible.');
 
   const data = await callAi('parse-facture', {
-    images,
+    images: images.slice(0, 5),
     ...(options.fournisseurHint ? { fournisseurHint: options.fournisseurHint } : {}),
   });
-  const r = (data && data.result) || {};
+  return normaliserFacture(data, { source: 'scan', pages: images.length });
+}
+
+// Normalise la réponse IA. Le modèle rend un TOTAL de ligne et une quantité
+// totale ; le prix unitaire s'en déduit, ce qui évite le piège de la colonne
+// « Prix » dont l'unité change d'une ligne à l'autre sur les vrais documents.
+function normaliserFacture(data, meta) {
   // Number(null) et Number('') valent 0, pas NaN. Sans ce filtre, un montant que
   // l'IA a explicitement declare illisible (null) deviendrait un prix de zero,
   // et creer le produit depuis cette ligne le ferait naitre a zero au catalogue.
@@ -303,27 +336,56 @@ export async function parseFacture(files, options = {}) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   };
-  return {
-    fournisseur: r.fournisseur ? String(r.fournisseur).trim() : '',
-    numeroFacture: r.numeroFacture ? String(r.numeroFacture).trim() : '',
-    dateFacture: /^\d{4}-\d{2}-\d{2}$/.test(String(r.dateFacture || '')) ? r.dateFacture : '',
-    totalHT: num(r.totalHT),
-    tauxTva: num(r.tauxTva),
-    devise: r.devise ? String(r.devise).trim() : 'CHF',
-    lignes: (Array.isArray(r.lignes) ? r.lignes : [])
-      .map((l, i) => ({
+  const UNITES = ['g', 'ml', 'pcs'];
+
+  const lignes = (Array.isArray(r.lignes) ? r.lignes : [])
+    .map((l, i) => {
+      const quantite = num(l && l.quantite);
+      const quantiteTotale = num(l && l.quantiteTotale);
+      const uniteBrute = l && l.uniteTotale ? String(l.uniteTotale).trim() : '';
+      // Le modèle doit déjà convertir en unité de base ; on rattrape le cas où
+      // il renvoie kg/L malgré la consigne plutôt que de perdre la ligne.
+      const conv = { kg: ['g', 1000], L: ['ml', 1000], l: ['ml', 1000], cl: ['ml', 10], dl: ['ml', 100] }[uniteBrute];
+      const uniteTotale = conv ? conv[0] : (UNITES.includes(uniteBrute) ? uniteBrute : '');
+      const totale = conv && quantiteTotale != null ? quantiteTotale * conv[1] : quantiteTotale;
+      const issues = Array.isArray(l && l.issues) ? l.issues.map(x => String(x || '')).filter(Boolean) : [];
+      if (conv) issues.push('unite convertie en ' + conv[0]);
+      return {
         id: `fl-${i}`,
         libelle: String((l && l.libelle) || '').trim(),
         referenceFourn: l && l.referenceFourn ? String(l.referenceFourn).trim() : '',
-        quantite: num(l && l.quantite),
+        // Nombre de colis : au moins 1, sinon la répartition du montant est impossible.
+        quantite: quantite != null && quantite > 0 ? quantite : null,
         conditionnement: l && l.conditionnement ? String(l.conditionnement).trim() : '',
-        quantiteCond: num(l && l.quantiteCond),
-        uniteCond: l && l.uniteCond ? String(l.uniteCond).trim() : '',
-        prixAchat: num(l && l.prixAchat),
+        quantiteTotale: totale != null && totale > 0 ? totale : null,
+        uniteTotale,
+        montantLigne: num(l && l.montantLigne),
         confidence: Math.max(0, Math.min(100, Math.round(num(l && l.confidence) ?? 0))),
-        issues: Array.isArray(l && l.issues) ? l.issues.map(x => String(x || '')).filter(Boolean) : [],
-      }))
-      .filter(l => l.libelle),
+        issues,
+      };
+    })
+    .filter(l => l.libelle);
+
+  // Recoupement avec le total du document : c'est le contrôle le moins cher qui
+  // existe, et le seul qui detecte une ligne entiere oubliee par la lecture.
+  const somme = lignes.reduce((s, l) => s + (l.montantLigne || 0), 0);
+  const totalHT = num(r.totalHT);
+  const ecartTotal = totalHT != null && totalHT > 0
+    ? Math.round((somme - totalHT) * 100) / 100
+    : null;
+
+  return {
+    source: meta?.source || 'scan',
+    pages: meta?.pages || 1,
+    fournisseur: r.fournisseur ? String(r.fournisseur).trim() : '',
+    numeroFacture: r.numeroFacture ? String(r.numeroFacture).trim() : '',
+    dateFacture: /^\d{4}-\d{2}-\d{2}$/.test(String(r.dateFacture || '')) ? r.dateFacture : '',
+    totalHT,
+    tauxTva: num(r.tauxTva),
+    devise: r.devise ? String(r.devise).trim() : 'CHF',
+    sommeLignes: Math.round(somme * 100) / 100,
+    ecartTotal,
+    lignes,
   };
 }
 

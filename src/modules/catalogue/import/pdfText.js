@@ -29,11 +29,19 @@ export async function pdfToText(arrayBuffer) {
       const y = Math.round(it.transform ? it.transform[5] : 0);
       let bucket = buckets.find(b => Math.abs(b.y - y) <= 3);
       if (!bucket) { bucket = { y, parts: [] }; buckets.push(bucket); }
-      bucket.parts.push(str);
+      // On garde l'abscisse : l'ordre du flux de contenu n'est pas celui de la
+      // page. Sans tri horizontal, les colonnes d'un tableau se mélangent et
+      // « Montant » peut atterrir avant « Prix » sur une facture.
+      bucket.parts.push({ x: it.transform ? it.transform[4] : 0, str });
     }
     const lines = buckets
       .sort((a, b) => b.y - a.y)
-      .map(b => b.parts.join(' ').replace(/\s+/g, ' ').trim())
+      .map(b => b.parts
+        .sort((u, v) => u.x - v.x)
+        .map(p => p.str)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim())
       .filter(Boolean);
     if (lines.length) pages.push(`# Page ${p}\n${lines.join('\n')}`);
   }

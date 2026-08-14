@@ -187,47 +187,75 @@ Règles :
 - ne renvoie aucun produit inventé : uniquement ce qui est réellement dans le fichier
 - si aucun produit exploitable, renvoie {"produits":[]}`;
 
-const FACTURE_SYSTEM = `Tu lis la photo d'une facture ou d'un bon de livraison de fournisseur alimentaire (Suisse, montants en CHF) et tu en extrais les lignes de produits.
+const FACTURE_SYSTEM = `Tu lis une facture, un bon de livraison ou une confirmation de commande d'un fournisseur alimentaire suisse (montants en CHF) et tu en extrais les lignes de produits.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
-{"fournisseur":"Transgourmet","numeroFacture":"FA-2026-12345","dateFacture":"2026-08-04","totalHT":412.60,"devise":"CHF","tauxTva":8.1,"lignes":[{"libelle":"FILET BOEUF IRL 2KG VAC","referenceFourn":"84512","quantite":2,"conditionnement":"2 kg","quantiteCond":2,"uniteCond":"kg","prixAchat":89.50,"confidence":92,"issues":[]}]}
+{"fournisseur":"A. Walker AG","numeroFacture":"170587","dateFacture":"2026-08-05","totalHT":443.00,"devise":"CHF","tauxTva":2.6,"lignes":[{"libelle":"Parmadoro Purée de tomates, 6 x 850 g","referenceFourn":"100389","quantite":1,"conditionnement":"6 x 850 g","quantiteTotale":5100,"uniteTotale":"g","montantLigne":38.80,"confidence":92,"issues":[]}]}
 
 Champs de l'en-tête (null si absent ou illisible, jamais deviné) :
-- "fournisseur" : raison sociale de l'émetteur
-- "numeroFacture" : numéro de la facture ou du bon de livraison
+- "fournisseur" : raison sociale de l'émetteur du document, pas du destinataire
+- "numeroFacture" : numéro de facture, de bon de livraison ou de commande
 - "dateFacture" : date du document au format ISO AAAA-MM-JJ. Les dates suisses s'écrivent
-  JJ.MM.AAAA : 04.08.2026 devient "2026-08-04". Ne confonds jamais jour et mois.
-- "totalHT" : total hors taxes en nombre. "tauxTva" : taux appliqué (8.1, 2.6...)
+  JJ.MM.AAAA : 05.08.2026 devient "2026-08-05". Ne confonds jamais jour et mois.
+- "totalHT" : total hors taxes. "tauxTva" : taux appliqué (2.6 pour l'alimentaire, 8.1 sinon)
 - "devise" : "CHF" sauf mention contraire explicite
 
-Champs par ligne, le point le plus important de la tâche :
-- "libelle" : le libellé produit EXACTEMENT tel qu'imprimé, abréviations et majuscules comprises.
-  Ne le corrige pas, ne le traduis pas, ne le complète pas : il sert à reconnaître le produit
-  d'une facture à l'autre.
-- "referenceFourn" : référence ou numéro d'article du fournisseur si imprimé, sinon null
-- "quantite" : nombre de colis, cartons ou pièces facturés
-- "conditionnement" : le conditionnement tel qu'écrit ("2 kg", "carton 6 x 1 L")
-- "quantiteCond" et "uniteCond" : contenu d'UN SEUL colis, décomposé en nombre + unité.
-  "uniteCond" vaut obligatoirement g, kg, ml, L ou pcs. Un carton de 6 bouteilles d'1 L donne
-  quantiteCond 6 et uniteCond "L". Si le conditionnement est illisible, mets les deux à null.
-- "prixAchat" : prix d'UN SEUL colis, hors taxes. ATTENTION : les factures affichent aussi le
-  total de la ligne (prix unitaire x quantité). C'est bien le PRIX UNITAIRE du colis qu'il faut,
-  jamais le total de ligne. Si seul le total est lisible, divise-le par la quantité et signale
-  "prix deduit du total" dans issues.
+Champs par ligne :
+- "libelle" : le libellé produit EXACTEMENT tel qu'imprimé, abréviations, majuscules et
+  conditionnement compris. Ne le corrige pas, ne le traduis pas, ne le complète pas : il sert
+  à reconnaître le produit d'un document à l'autre.
+- "referenceFourn" : numéro d'article du fournisseur si imprimé, sinon null
+- "quantite" : nombre de colis, cartons, sacs ou pièces commandés
+- "conditionnement" : le conditionnement tel qu'écrit, le plus souvent DANS le libellé
+  ("6 x 850 g", "2 x 2.5 kg", "10 kg", "250g"), sinon null
+
+LES DEUX CHAMPS QUI COMPTENT LE PLUS, lis attentivement :
+
+- "montantLigne" : le TOTAL de la ligne, hors taxes. C'est la colonne la plus à droite,
+  souvent intitulée "Montant", "Total" ou "Somme". PAS le prix unitaire.
+- "quantiteTotale" + "uniteTotale" : la quantité TOTALE de marchandise de cette ligne,
+  ramenée en unité de base. "uniteTotale" vaut obligatoirement "g", "ml" ou "pcs".
+  Convertis toi-même : 1 kg = 1000 g, 1 L = 1000 ml, 1 dl = 100 ml, 1 cl = 10 ml.
+
+  Exemples réels, à suivre à la lettre :
+  · "Parmadoro Purée de tomates, 6 x 850 g", 1 carton, montant 38.80
+    -> 1 x 6 x 850 = quantiteTotale 5100, uniteTotale "g"
+  · "Cuisse de poulet Halal - surg., 10 kg", 1 carton, montant 92.00
+    -> 10 kg = quantiteTotale 10000, uniteTotale "g"
+  · "Ditzler Petit pois, 2 x 2.5 kg", 1 carton, montant 22.50
+    -> 2 x 2.5 kg = 5 kg = quantiteTotale 5000, uniteTotale "g"
+  · "Nectaflor Amandes moulues, 1 kg", 2 sacs, montant 35.30
+    -> 2 x 1 kg = quantiteTotale 2000, uniteTotale "g"
+  · "Nectaflor Sirop de sureau, 5 dl.", 1 bouteille, montant 5.30
+    -> 5 dl = quantiteTotale 500, uniteTotale "ml"
+  · "Concombres CH pc", 1 pièce, montant 2.19
+    -> quantiteTotale 1, uniteTotale "pcs"
+
+  PIÈGE À ÉVITER ABSOLUMENT : sur beaucoup de documents, la colonne "Prix" est le prix de
+  l'unité livrée, et cette unité change d'une ligne à l'autre — tantôt le kilo, tantôt la
+  bouteille, tantôt le sac entier. Ne la prends jamais pour le prix du colis. Ne renseigne
+  que "montantLigne", le total, qui lui ne prête pas à confusion.
+  Contrôle systématique : montantLigne doit valoir prix unitaire x quantité de la colonne
+  d'unité livrée. Si ça ne tombe pas juste, mets "montant incoherent" dans issues.
+
 - "confidence" : entier 0-100, ta certitude sur cette ligne
-- "issues" : libellés courts en français pour toute anomalie ("prix illisible", "quantite ambigue",
-  "conditionnement illisible", "ligne partiellement masquee", "prix deduit du total",
-  "ligne non produit"). Liste vide si la ligne est fiable.
+- "issues" : libellés courts en français pour toute anomalie ("montant illisible",
+  "quantite ambigue", "conditionnement illisible", "ligne partiellement masquee",
+  "montant incoherent", "prix absent", "ligne non produit"). Liste vide si la ligne est fiable.
 
 Règles STRICTES :
 - N'invente RIEN. Un champ que tu ne lis pas est null, accompagné d'une entrée dans "issues".
   Une valeur plausible mais devinée est pire qu'un null : elle ira écraser un prix en base.
+- "Prix s.d.", "sur demande", un montant vide ou une quantité 0 signifient qu'il n'y a pas de
+  prix : montantLigne à null et "prix absent" dans issues.
 - Ignore les lignes qui ne sont pas des produits : frais de port, consigne, emballage, remise
-  globale, acompte, arrondi, sous-totaux et lignes de TVA. En cas de doute, garde la ligne et
-  marque-la "ligne non produit" dans issues.
+  globale, acompte, arrondi, sous-totaux, lignes de TVA et total général. En cas de doute,
+  garde la ligne et marque-la "ligne non produit" dans issues.
 - Les montants sont des nombres sans symbole ni séparateur de milliers. La virgule décimale
   suisse devient un point : 1'234,50 devient 1234.50
-- Si plusieurs images sont fournies, ce sont les pages d'un MÊME document : renvoie un seul
-  en-tête et la totalité des lignes de toutes les pages, dans l'ordre.
+- Si plusieurs images ou plusieurs pages sont fournies, c'est un SEUL document : renvoie un
+  seul en-tête et la totalité des lignes, dans l'ordre.
+- Vérifie enfin que la somme des "montantLigne" est proche de "totalHT". Si l'écart dépasse
+  quelques centimes, c'est qu'une ligne est mal lue : baisse sa confidence.
 - Si aucune ligne de produit n'est lisible, renvoie {"lignes":[]} avec l'en-tête que tu as pu lire.`;
 
 const DEDUPE_SYSTEM = `Tu nettoies une liste de produits à commander pour une cuisine professionnelle. Plusieurs lignes désignent souvent le MÊME produit écrit différemment (singulier/pluriel, accents, casse, ordre des mots, synonyme courant, faute de frappe). Tu regroupes uniquement ces vrais doublons.
@@ -313,33 +341,47 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     ];
   }
   if (task === 'parse-facture') {
-    // Une facture fournisseur tient rarement sur une page : l'en-tête est sur la
-    // première, la suite des lignes sur les autres. On envoie les pages dans un
-    // seul appel pour que le modèle rattache les lignes au bon document.
+    // L'indice de fournisseur n'impose rien : le modèle lit ce qui est imprimé.
+    // Il sert à lever une ambiguïté quand l'en-tête est coupé ou illisible.
+    const indice = payload.fournisseurHint
+      ? `\nFournisseur probable, à confirmer sur le document : ${String(payload.fournisseurHint)}`
+      : '';
+
+    // Voie TEXTE : le document est un PDF natif dont le texte est extractible.
+    // On ne passe alors pas par la vision — c'est plus fidèle sur les chiffres,
+    // et une colonne de montants mal alignée à l'oeil reste juste dans le texte.
+    const texte = typeof payload.texte === 'string' ? payload.texte.trim() : '';
+    if (texte) {
+      const borne = texte.length > 32000 ? texte.slice(0, 32000) : texte;
+      return [{
+        kind: 'text',
+        text: `Texte extrait d'un document fournisseur, ligne par ligne, colonnes séparées `
+          + `par des espaces. Extrais l'en-tête et les lignes de produits.${indice}\n\n${borne}`,
+      }];
+    }
+
+    // Voie VISION : photo ou PDF scanné, rendu page par page. Une facture tient
+    // rarement sur une page, l'en-tête est sur la première et la suite des lignes
+    // sur les autres : on envoie tout dans un seul appel.
     const brut = Array.isArray(payload.images)
       ? (payload.images as { imageBase64?: string; mediaType?: string }[])
       : (payload.imageBase64 ? [{ imageBase64: payload.imageBase64 as string, mediaType: payload.mediaType as string }] : []);
     const pages = brut
       .filter(p => p && p.imageBase64 && p.mediaType)
       .slice(0, MAX_PAGES_FACTURE);
-    if (!pages.length) throw new Error('Aucune image de facture exploitable.');
+    if (!pages.length) throw new Error('Aucune image ni texte de facture exploitable.');
 
     const parts: Part[] = pages.map(p => ({
       kind: 'image' as const,
       mediaType: p.mediaType as string,
       base64: p.imageBase64 as string,
     }));
-    // L'indice de fournisseur n'impose rien : le modèle lit ce qui est imprimé.
-    // Il sert à lever une ambiguïté quand l'en-tête est coupé ou illisible.
-    const indice = payload.fournisseurHint
-      ? `\nFournisseur probable, à confirmer sur le document : ${String(payload.fournisseurHint)}`
-      : '';
     parts.push({
       kind: 'text',
       text: pages.length > 1
-        ? `Ces ${pages.length} images sont les pages d'une seule et même facture, dans l'ordre. `
+        ? `Ces ${pages.length} images sont les pages d'un seul et même document, dans l'ordre. `
           + `Extrais l'en-tête une seule fois et toutes les lignes de produits.${indice}`
-        : `Extrais l'en-tête et les lignes de produits de cette facture.${indice}`,
+        : `Extrais l'en-tête et les lignes de produits de ce document.${indice}`,
     });
     return parts;
   }

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// scanFactureLogic - rapprochement des lignes d'une facture scannée
+// scanFactureLogic - rapprochement des lignes d'un document fournisseur
 // avec le catalogue produits, et calcul du nouveau prix.
 //
 // Le rapprochement se fait du moins cher au plus cher :
@@ -18,25 +18,39 @@ import { resolvePrixProduit } from '../../../services/prixResolution.js';
 // Seuil de signalement d'une hausse ou d'une baisse de prix.
 export const SEUIL_ECART_PCT = 15;
 
-// Reproduit À L'IDENTIQUE la colonne générée produit_fournisseurs.prix_unitaire.
+// Prix par unité de base (CHF/g, CHF/ml ou CHF/pcs) d'une ligne de document.
 //
-// L'expression vit en base ; on la rejoue ici uniquement pour montrer le prix
-// et son écart AVANT d'écrire. Toute divergence entre les deux ferait mentir
-// l'écran de revue : si l'expression change en base, corriger ici aussi.
-//   kg et L -> prix_achat / (quantite_cond * 1000)   (prix par g ou par ml)
-//   autre   -> prix_achat / quantite_cond
-//   sans conditionnement -> prix_achat tel quel
-export function prixUnitaireDepuisColis(prixAchat, quantiteCond, uniteCond) {
-  // Number(null) et Number('') valent 0, pas NaN : sans ce filtre, un prix
-  // illisible sur la facture deviendrait un prix de zero au catalogue, et
-  // ferait tomber le cout des recettes concernees sans rien signaler.
-  if (prixAchat == null || prixAchat === '') return null;
-  const p = Number(prixAchat);
-  if (!Number.isFinite(p)) return null;
-  const q = quantiteCond == null || quantiteCond === '' ? NaN : Number(quantiteCond);
-  if (!Number.isFinite(q) || q <= 0) return p;
-  if (uniteCond === 'kg' || uniteCond === 'L') return p / (q * 1000);
-  return p / q;
+// On divise le TOTAL de la ligne par la quantité TOTALE livrée. C'est le seul
+// calcul robuste : sur les vrais documents, la colonne « Prix » est le prix de
+// l'unité livrée et cette unité change d'une ligne à l'autre — tantôt le kilo,
+// tantôt la bouteille, tantôt le sac entier. Le total, lui, ne prête pas à
+// confusion et se recoupe avec le total du document.
+export function prixUnitaireDepuisLigne(ligne) {
+  if (!ligne) return null;
+  const montant = ligne.montantLigne;
+  const totale = ligne.quantiteTotale;
+  if (montant == null || montant === '' || totale == null || totale === '') return null;
+  const m = Number(montant);
+  const q = Number(totale);
+  if (!Number.isFinite(m) || !Number.isFinite(q) || q <= 0) return null;
+  return m / q;
+}
+
+// Traduit une ligne vers les colonnes de produit_fournisseurs.
+//
+// prix_unitaire y est GÉNÉRÉ par Postgres : prix_achat / quantite_cond quand
+// l'unité n'est ni kg ni L. On envoie donc le prix d'UN colis et le contenu d'UN
+// colis en unité de base, ce qui redonne exactement montantLigne / quantiteTotale.
+export function colisDepuisLigne(ligne) {
+  const prix = prixUnitaireDepuisLigne(ligne);
+  if (prix == null) return null;
+  const nbColis = Number(ligne.quantite) > 0 ? Number(ligne.quantite) : 1;
+  const unite = ['g', 'ml', 'pcs'].includes(ligne.uniteTotale) ? ligne.uniteTotale : 'pcs';
+  return {
+    prixAchat: Math.round((Number(ligne.montantLigne) / nbColis) * 1e6) / 1e6,
+    quantiteCond: Math.round((Number(ligne.quantiteTotale) / nbColis) * 1e6) / 1e6,
+    uniteCond: unite,
+  };
 }
 
 // Indexe les alias pour un rapprochement en O(1).
@@ -54,7 +68,7 @@ export function buildAliasIndex(alias) {
   return { parLibelle, parReference };
 }
 
-// Rapproche une ligne de facture. Renvoie la ligne enrichie.
+// Rapproche une ligne de document. Renvoie la ligne enrichie.
 //
 // statut :
 //   'alias'    reconnue par un alias, produit certain
@@ -105,8 +119,22 @@ export function rapprocherLigne(ligne, { catalogue, aliasIndex, produitIndex, fo
 // Renvoie null quand il n'y a rien de chiffrable.
 export function calculerImpact(ligne, produit) {
   if (!produit) return null;
-  const nouveau = prixUnitaireDepuisColis(ligne.prixAchat, ligne.quantiteCond, ligne.uniteCond);
+  const nouveau = prixUnitaireDepuisLigne(ligne);
   if (nouveau == null || !(nouveau > 0)) return null;
+
+  // Le prix du document est en CHF par unité de base de la ligne ; le produit a
+  // sa propre unité de référence. Comparer des CHF/g à des CHF/pcs n'a aucun sens.
+  const uniteProduit = produit.uniteRef || 'g';
+  if (ligne.uniteTotale && ligne.uniteTotale !== uniteProduit) {
+    return {
+      actuel: resolvePrixProduit(produit),
+      nouveau,
+      ecartPct: null,
+      alerte: false,
+      verrouille: !!produit.prixVerrouille,
+      uniteDivergente: { document: ligne.uniteTotale, produit: uniteProduit },
+    };
+  }
 
   const actuel = resolvePrixProduit(produit);
   const ecartPct = actuel > 0 ? ((nouveau - actuel) / actuel) * 100 : null;
@@ -118,6 +146,7 @@ export function calculerImpact(ligne, produit) {
     // que d'une vraie hausse : dans les deux cas il faut le regarder.
     alerte: ecartPct != null && Math.abs(ecartPct) >= SEUIL_ECART_PCT,
     verrouille: !!produit.prixVerrouille,
+    uniteDivergente: null,
   };
 }
 
@@ -127,7 +156,9 @@ export function estApplicable(ligne) {
   if (ligne.statut === 'ignoree') return false;
   if (ligne.produit.prixVerrouille) return false;
   const impact = calculerImpact(ligne, ligne.produit);
-  return !!impact;
+  // Une unité divergente rendrait le prix faux d'un facteur inconnu : on refuse.
+  if (!impact || impact.uniteDivergente) return false;
+  return true;
 }
 
 // Prépare les écritures d'une session validée.
@@ -140,15 +171,16 @@ export function planScanWrites(lignes, { scanId, fournisseurId, dateFacture, doc
 
   (lignes || []).forEach(l => {
     if (!estApplicable(l) || !l.applique) return;
-    const prixUnitaire = prixUnitaireDepuisColis(l.prixAchat, l.quantiteCond, l.uniteCond);
+    const colis = colisDepuisLigne(l);
+    if (!colis) return;
 
-    // prix_unitaire est GÉNÉRÉ en base : on n'envoie que les composants.
+    // prix_unitaire n'est JAMAIS envoyé : Postgres le génère depuis ces trois-là.
     refs.push({
       produitId: l.produit.id,
       fournisseurId,
-      prixAchat: l.prixAchat,
-      quantiteCond: l.quantiteCond,
-      uniteCond: l.uniteCond,
+      prixAchat: colis.prixAchat,
+      quantiteCond: colis.quantiteCond,
+      uniteCond: colis.uniteCond,
       conditionnement: l.conditionnement,
       reference: l.referenceFourn || null,
     });
@@ -156,10 +188,10 @@ export function planScanWrites(lignes, { scanId, fournisseurId, dateFacture, doc
     historique.push({
       produitId: l.produit.id,
       fournisseurId,
-      prixUnitaire,
-      prixAchat: l.prixAchat,
-      quantiteCond: l.quantiteCond,
-      uniteCond: l.uniteCond,
+      prixUnitaire: prixUnitaireDepuisLigne(l),
+      prixAchat: colis.prixAchat,
+      quantiteCond: colis.quantiteCond,
+      uniteCond: colis.uniteCond,
       source: 'scan',
       scanId,
       documentUrl: documentUrl || null,
