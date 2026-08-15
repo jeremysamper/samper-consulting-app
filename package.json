@@ -10,6 +10,7 @@
     "brand:icons": "node scripts/gen-icons.mjs",
     "brand:fonts": "node scripts/build-pdf-fonts.mjs",
     "lint": "eslint src",
+    "lint:borders": "node scripts/check-border-shorthand.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
