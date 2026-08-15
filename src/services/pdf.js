@@ -744,6 +744,25 @@ export const pdfUtils = {
     }
   },
 
+  // Folio des documents de CONFORMITE seulement (registre HACCP, checklist
+  // SOP). Ce n'est pas le pied de page que la DA proscrit : ni filet, ni
+  // signature, ni date repetee - le rang de la feuille et rien d'autre, pose
+  // dans la marge basse. Un registre presente en controle se feuillette, et une
+  // page detachee de la liasse doit pouvoir s'y remettre a sa place.
+  // A appeler en toute fin de rendu, le total n'etant connu qu'a ce moment.
+  _folio(doc) {
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    const PAGE_H = doc.internal.pageSize.getHeight();
+    const total = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= total; i += 1) {
+      doc.setPage(i);
+      setBrandFont(doc, 'label');
+      doc.setFontSize(BRAND.size.note);
+      doc.setTextColor(...PDF.stone);
+      this._texteCentre(doc, `${i} / ${total}`, PAGE_W / 2, PAGE_H - 10, BRAND.charSpace.label);
+    }
+  },
+
   // Bloc de visa : attendu sur un registre presente en controle. Ce n'est pas
   // un pied de page, c'est du contenu - il suit le dernier tableau.
   _blocVisa(doc, y) {
@@ -1698,6 +1717,8 @@ export const pdfUtils = {
       y += 6;
       this._blocVisa(doc, y);
     }
+
+    this._folio(doc);
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1878,6 +1899,8 @@ export const pdfUtils = {
     ensureSpace(18);
     y += 6;
     this._blocVisa(doc, y);
+
+    this._folio(doc);
   },
 };
 
