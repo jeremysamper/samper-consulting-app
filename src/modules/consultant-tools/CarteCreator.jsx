@@ -4,6 +4,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { writeText } from '../../utils/storage.js';
 import { ALLERGENES_OPTIONS } from './ConsultantTools.constants.js';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
 
 const MENU_CATEGORIES = ['Entrées', 'Plats', 'Fromages', 'Desserts', 'Boissons', 'Menus'];
 
@@ -211,6 +212,10 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
         etablissement,
         orientation: 'portrait',
         fitOnePage: items.length <= 12,
+        // La feuille porte déjà son en-tête complet (établissement, titre,
+        // sous-titre, date) : le PDF sort donc exactement comme l'aperçu à
+        // l'écran, sans le doubler d'un second titre.
+        noHeader: true,
       });
     } catch (err) {
       notifyLegacy('Erreur export PDF : ' + (err.message || err), 'error');
@@ -226,6 +231,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
         title: 'Tableau des allergènes',
         etablissement,
         orientation: 'landscape',
+        noHeader: true, // le tableau porte son propre en-tête (cf. handleExportPdf)
       });
     } catch (err) {
       notifyLegacy('Erreur export PDF : ' + (err.message || err), 'error');
@@ -235,7 +241,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
   };
 
   const handlePrintAllergenes = () => {
-    pdfUtils?.printElement('carte-allergenes-print', 'Tableau des allergènes', { etablissement, orientation: 'landscape' });
+    pdfUtils?.printElement('carte-allergenes-print', 'Tableau des allergènes', { etablissement, orientation: 'landscape', noHeader: true });
   };
 
   const handleSendDraft = async () => {
@@ -256,6 +262,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
         etablissement,
         orientation: 'portrait',
         fitOnePage: items.length <= 12,
+        noHeader: true, // même document que le téléchargement direct
       });
       const file = new File([blob], fileName, { type: 'application/pdf' });
       await legacySB.db.uploadFile({
@@ -458,21 +465,21 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
               </div>
             </div>
             <div style={{ padding: 16, overflow: 'auto' }}>
-              <div id="carte-allergenes-print" style={{ background: '#fff', color: '#1f2933', padding: '24px 28px' }}>
-                <div style={{ borderBottom: '2px solid #003042', paddingBottom: 12, marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#003042', fontWeight: 700 }}>{etablissement?.nom || 'Samper Consulting'}</div>
-                  <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, margin: '4px 0 0', color: '#111827' }}>Tableau des allergènes</h1>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{title} · {items.length} plat{items.length > 1 ? 's' : ''}</div>
+              <div id="carte-allergenes-print" style={mcs.matrixSheet}>
+                <div style={mcs.matrixHead}>
+                  <div style={mcs.matrixEyebrow}>{etablissement?.nom || 'Samper Consulting'}</div>
+                  <h1 style={mcs.matrixTitle}>Tableau des allergènes</h1>
+                  <div style={mcs.matrixMeta}>{title} · {items.length} plat{items.length > 1 ? 's' : ''}</div>
                 </div>
                 {items.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>La carte est vide.</div>
+                  <div style={mcs.matrixEmpty}>La carte est vide.</div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                  <table style={mcs.matrixTable}>
                     <thead>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '2px solid #003042', color: '#111827' }}>Plat</th>
+                        <th style={mcs.matrixTh}>Plat</th>
                         {ALLERGENES_OPTIONS.map((a) => (
-                          <th key={a.id} style={{ padding: '6px 3px', borderBottom: '2px solid #003042', color: '#111827', width: 58, fontSize: 9, lineHeight: 1.15 }}>{a.label}</th>
+                          <th key={a.id} style={mcs.matrixThAllergene}>{a.label}</th>
                         ))}
                       </tr>
                     </thead>
@@ -480,15 +487,15 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                       {groupedItems.map((group) => (
                         <React.Fragment key={group.category}>
                           <tr>
-                            <td colSpan={ALLERGENES_OPTIONS.length + 1} style={{ padding: '8px 8px 3px', fontFamily: 'Georgia, serif', fontSize: 13, color: '#003042', fontWeight: 700 }}>{group.category}</td>
+                            <td colSpan={ALLERGENES_OPTIONS.length + 1} style={mcs.matrixGroup}>{group.category}</td>
                           </tr>
                           {group.items.map((item) => {
                             const al = allergenesOf(item);
                             return (
                               <tr key={item.id}>
-                                <td style={{ padding: '5px 8px', borderBottom: '1px solid #f0ece4', color: '#111827', fontWeight: 600 }}>{item.name || 'Ligne sans nom'}</td>
+                                <td style={mcs.matrixCellName}>{item.name || 'Ligne sans nom'}</td>
                                 {ALLERGENES_OPTIONS.map((a) => (
-                                  <td key={a.id} style={{ padding: '5px 3px', borderBottom: '1px solid #f0ece4', textAlign: 'center', color: al.includes(a.id) ? '#003042' : '#d1d5db', fontWeight: 700 }}>
+                                  <td key={a.id} style={{ ...mcs.matrixCellMark, color: al.includes(a.id) ? BRAND.color.primary : BRAND.color.rule }}>
                                     {al.includes(a.id) ? '●' : '·'}
                                   </td>
                                 ))}
@@ -500,7 +507,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                     </tbody>
                   </table>
                 )}
-                <div style={{ marginTop: 14, fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
+                <div style={mcs.matrixLegend}>
                   ● = allergène présent. Tableau indicatif, à vérifier et tenir à jour. 14 allergènes à déclaration obligatoire (UE).
                 </div>
               </div>
@@ -551,22 +558,41 @@ const mcs = {
   previewSection: { marginTop: 16 },
   previewHeader: { display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 12, alignItems: 'start', marginBottom: 10 },
   noteInput: { width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', resize: 'vertical', boxSizing: 'border-box' },
-  printSheet: { background: '#fff', color: '#1f2933', border: '1px solid var(--border)', borderRadius: 10, padding: '34px 44px', maxWidth: 860, margin: '0 auto', boxShadow: '0 8px 26px rgba(0,0,0,0.06)' },
-  printTop: { display: 'flex', justifyContent: 'space-between', gap: 20, borderBottom: '2px solid #003042', paddingBottom: 18, marginBottom: 24 },
-  printEyebrow: { fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: '#003042', fontWeight: 700 },
-  printTitle: { fontFamily: 'Georgia, serif', fontSize: 34, margin: '4px 0 0', color: '#111827', lineHeight: 1.05 },
-  printSubtitle: { fontSize: 14, color: '#6b7280', marginTop: 8 },
-  printDate: { fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', paddingTop: 6 },
+  // ─── Feuille de carte : l'aperçu EST le PDF (capture de ce bloc), les deux
+  // partagent donc les mêmes tokens et les mêmes familles. Pas d'ombre ni
+  // d'arrondi marqué : rien de tout cela ne survit à l'impression.
+  printSheet: { background: BRAND.color.white, color: BRAND.color.ink, border: `0.5pt solid ${BRAND.color.rule}`, padding: '34px 44px', maxWidth: 860, margin: '0 auto', ...WEB_TYPE.data },
+  printTop: { display: 'flex', justifyContent: 'space-between', gap: 20, borderBottom: `1.6pt solid ${BRAND.color.primary}`, paddingBottom: 18, marginBottom: 24 },
+  printEyebrow: { fontSize: 9, color: BRAND.color.primary, ...WEB_TYPE.label },
+  printTitle: { fontSize: 30, margin: '6px 0 0', color: BRAND.color.primary, lineHeight: 1.1, ...WEB_TYPE.voice },
+  printSubtitle: { fontSize: 13, color: BRAND.color.stone, marginTop: 8, ...WEB_TYPE.voiceItalic },
+  printDate: { fontSize: 11, color: BRAND.color.stone, whiteSpace: 'nowrap', paddingTop: 6, ...WEB_TYPE.data },
   printGroup: { marginBottom: 24, pageBreakInside: 'avoid' },
-  printGroupTitle: { fontFamily: 'Georgia, serif', fontSize: 19, color: '#003042', margin: '0 0 10px', borderBottom: '1px solid #e7dfcf', paddingBottom: 5 },
-  printItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 100px', gap: 16, padding: '10px 0', borderBottom: '1px solid #f0ece4', alignItems: 'start' },
+  printGroupTitle: { fontSize: 9, color: BRAND.color.primary, margin: '0 0 10px', borderBottom: `0.5pt solid ${BRAND.color.rule}`, paddingBottom: 6, ...WEB_TYPE.label },
+  printItem: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 100px', gap: 16, padding: '10px 0', borderBottom: `0.5pt solid ${BRAND.color.ruleLight}`, alignItems: 'start' },
   printItemMain: { minWidth: 0 },
-  printItemName: { fontSize: 15, fontWeight: 700, color: '#111827' },
-  printItemDesc: { fontSize: 12, color: '#6b7280', marginTop: 3, lineHeight: 1.45 },
-  printAllergenes: { fontSize: 10, color: '#003042', marginTop: 4, fontWeight: 600 },
-  printPrice: { fontSize: 14, fontWeight: 700, color: '#111827', textAlign: 'right', whiteSpace: 'nowrap' },
-  printNote: { marginTop: 18, paddingTop: 12, borderTop: '1px solid #e7dfcf', fontSize: 12, color: '#6b7280', lineHeight: 1.5, fontStyle: 'italic' },
-  printEmpty: { padding: 30, textAlign: 'center', color: '#6b7280' },
+  printItemName: { fontSize: 14, color: BRAND.color.ink, ...WEB_TYPE.voice },
+  printItemDesc: { fontSize: 11, color: BRAND.color.stone, marginTop: 3, lineHeight: 1.45, ...WEB_TYPE.data },
+  printAllergenes: { fontSize: 8, color: BRAND.color.accent, marginTop: 5, ...WEB_TYPE.label },
+  // Un prix est un montant : il se lit en Lora, jamais en sans-serif.
+  printPrice: { fontSize: 14, color: BRAND.color.primary, textAlign: 'right', whiteSpace: 'nowrap', ...WEB_TYPE.voice },
+  printNote: { marginTop: 18, paddingTop: 12, borderTop: `0.5pt solid ${BRAND.color.rule}`, fontSize: 11, color: BRAND.color.stone, lineHeight: 1.5, ...WEB_TYPE.voiceItalic },
+  printEmpty: { padding: 30, textAlign: 'center', color: BRAND.color.stone, ...WEB_TYPE.data },
+
+  // ─── Tableau des allergènes (export paysage) ───
+  matrixSheet: { background: BRAND.color.white, color: BRAND.color.ink, padding: '24px 28px', ...WEB_TYPE.data },
+  matrixHead: { borderBottom: `1.6pt solid ${BRAND.color.primary}`, paddingBottom: 12, marginBottom: 16 },
+  matrixEyebrow: { fontSize: 9, color: BRAND.color.primary, ...WEB_TYPE.label },
+  matrixTitle: { fontSize: 22, margin: '6px 0 0', color: BRAND.color.primary, ...WEB_TYPE.voice },
+  matrixMeta: { fontSize: 11, color: BRAND.color.stone, marginTop: 5, ...WEB_TYPE.data },
+  matrixTable: { width: '100%', borderCollapse: 'collapse', fontSize: 10, border: `0.5pt solid ${BRAND.color.rule}` },
+  matrixTh: { textAlign: 'left', padding: '7px 8px', background: BRAND.color.primary, color: BRAND.color.white, fontSize: 8, ...WEB_TYPE.label },
+  matrixThAllergene: { padding: '7px 3px', background: BRAND.color.primary, color: BRAND.color.white, width: 58, fontSize: 7, lineHeight: 1.2, ...WEB_TYPE.label },
+  matrixGroup: { padding: '9px 8px 4px', fontSize: 9, color: BRAND.color.primary, background: BRAND.color.tint, ...WEB_TYPE.label },
+  matrixCellName: { padding: '5px 8px', borderBottom: `0.5pt solid ${BRAND.color.ruleLight}`, color: BRAND.color.ink, ...WEB_TYPE.data },
+  matrixCellMark: { padding: '5px 3px', borderBottom: `0.5pt solid ${BRAND.color.ruleLight}`, textAlign: 'center' },
+  matrixLegend: { marginTop: 14, fontSize: 9, color: BRAND.color.stone, ...WEB_TYPE.voiceItalic },
+  matrixEmpty: { padding: 24, textAlign: 'center', color: BRAND.color.stone, ...WEB_TYPE.data },
 };
 
 if (getBrowserWindow()?.innerWidth < 900) {

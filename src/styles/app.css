@@ -301,13 +301,13 @@ html[data-theme="dark"] {
   .route-progress { display: none; }
 }
 
+/* La direction artistique de l'impression (polices de marque, filets, tableaux)
+   est posée par src/design/installPrintStyles.js, construite depuis
+   src/design/brandTokens.js : aucune couleur d'export n'est écrite ici.
+   Ne reste que le masquage, qui ne dépend d'aucun token. */
 @media print {
   .no-print {
     display: none !important;
-  }
-
-  body {
-    background: #fff;
   }
 }
 

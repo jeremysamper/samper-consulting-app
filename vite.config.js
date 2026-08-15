@@ -81,7 +81,10 @@ export default defineConfig({
       workbox: {
         // Précache de tous les assets statiques compilés par Vite : app shell
         // servi cache-first, revalidé en arrière-plan à chaque release.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // ttf : les polices de marque embarquées dans les PDF (public/fonts).
+        // Sans elles dans le précache, un export lancé hors-ligne sortirait
+        // dans la police de repli - la cuisine imprime sans réseau.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,ttf}'],
         // Navigation offline → app shell précaché, l'app boote sans réseau.
         // Pas '/index.html' : la copie dist est faite par productionIndexPlugin
         // APRÈS la génération du SW, elle n'est donc pas dans le précache.

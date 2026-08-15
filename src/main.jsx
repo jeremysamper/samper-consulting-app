@@ -3,11 +3,17 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { initPwa } from './pwa/registerPwa.js';
 import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
+import { installBrandPrintStyles } from './design/installPrintStyles.js';
 import './styles/app.css';
 
 // Filet anti-crash après release : un chunk lazy introuvable (ancienne
 // version encore ouverte) déclenche un rechargement unique et transparent.
 installPreloadErrorRecovery();
+
+// DA d'impression : polices de marque + règles @media print, construites depuis
+// src/design/brandTokens.js. Couvre le Ctrl+P sur l'app ; les boutons d'export
+// ont leur propre feuille, écrite par pdfUtils dans la fenêtre d'impression.
+installBrandPrintStyles();
 
 class RootErrorBoundary extends React.Component {
   constructor(props) {

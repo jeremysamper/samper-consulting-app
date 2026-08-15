@@ -1,9 +1,37 @@
-// Style de cellule CCNT (hors objet pls car utilisé dans table HTML native)
+import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
+
+// ─── Relevé CCNT : styles du document imprimable ────────────────────────────
+// Document remis au collaborateur et opposable en cas de contrôle : il suit la
+// même DA que les autres exports (tokens de marque, trois niveaux, aucun gras),
+// et rien n'y est écrit en dur.
+// ccntCell vit hors de `pls` parce qu'il s'applique à une table HTML native.
 const ccntCell = {
-  border: '1px solid #000',
+  border: `0.5pt solid ${BRAND.color.ruleLight}`,
   padding: '3px 5px',
   fontSize: 9,
   verticalAlign: 'middle',
+  ...WEB_TYPE.data,
+};
+
+const ccnt = {
+  page: { position: 'absolute', left: -99999, top: 0, width: '180mm', background: BRAND.color.white, color: BRAND.color.ink, fontSize: 10, ...WEB_TYPE.data },
+  bloc: { border: `0.5pt solid ${BRAND.color.rule}`, borderLeft: `2.2pt solid ${BRAND.color.accent}`, padding: 10, marginBottom: 10 },
+  titreDoc: { fontSize: 16, marginBottom: 6, textAlign: 'center', color: BRAND.color.primary, ...WEB_TYPE.voice },
+  sousTitreDoc: { fontSize: 10, textAlign: 'center', marginBottom: 10, color: BRAND.color.stone, ...WEB_TYPE.voiceItalic },
+  identiteGrille: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 10 },
+  etiquette: { fontSize: 8, color: BRAND.color.stone, ...WEB_TYPE.label },
+  titreBloc: { fontSize: 8, marginBottom: 6, color: BRAND.color.primary, ...WEB_TYPE.label },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 9, marginBottom: 10, border: `0.5pt solid ${BRAND.color.rule}` },
+  tableInterne: { width: '100%', borderCollapse: 'collapse' },
+  th: { border: `0.5pt solid ${BRAND.color.primary}`, padding: '4px 5px', fontSize: 7, background: BRAND.color.primary, color: BRAND.color.white, verticalAlign: 'middle', ...WEB_TYPE.label },
+  ligneZebre: { background: BRAND.color.zebra },
+  ligneNormale: { background: BRAND.color.white },
+  ligneTotal: { background: BRAND.color.tint, borderTop: `1pt solid ${BRAND.color.primary}` },
+  // Les heures sont des montants : elles se lisent en Lora.
+  valeur: { textAlign: 'right', ...WEB_TYPE.voice },
+  depassement: { textAlign: 'right', color: BRAND.color.primary, ...WEB_TYPE.voice },
+  signatureLigne: { borderBottom: `0.5pt solid ${BRAND.color.rule}`, height: 40 },
+  mentionLegale: { fontSize: 8, color: BRAND.color.stone, marginTop: 8, textAlign: 'center', ...WEB_TYPE.data },
 };
 
 const pls = {
@@ -98,4 +126,4 @@ const pls = {
   selectionDeleteBtn: { padding: '10px 16px', background: 'var(--danger-strong)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
 };
 
-export { ccntCell, pls };
+export { ccnt, ccntCell, pls };

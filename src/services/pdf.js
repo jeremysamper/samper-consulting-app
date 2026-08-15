@@ -2,10 +2,19 @@ import { getDemoData } from '../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../legacy/legacyApi.js';
 import { readJson } from '../utils/storage.js';
 import { ETIQUETTE_FONTS, ETIQUETTE_MEDIA } from '../utils/etiquettesDlc.js';
+import {
+  BRAND, PDF, RULE, THEME_VAR_OVERRIDES, PRINT_FONT_FACES, WEB_FONT,
+} from '../design/brandTokens.js';
+import { loadBrandFonts, registerBrandFonts, setBrandFont } from '../design/registerPdfFonts.js';
 
 // ─────────────────────────────────────────────────────
 // PDF & IMPRESSION - Mise en page A4 professionnelle
 // ─────────────────────────────────────────────────────
+// Direction artistique unique : toute couleur et toute police viennent de
+// src/design/brandTokens.js, aucune valeur en dur ici. Trois niveaux
+// typographiques et rien d'autre - voix (Lora), etiquette (Poppins Medium
+// capitales interlettrees), donnee (Poppins Light) - et AUCUN gras : la
+// hierarchie passe par le corps, la couleur et le changement de famille.
 
 export const pdfUtils = {
 
@@ -21,6 +30,32 @@ export const pdfUtils = {
     return { html2canvas, jsPDF };
   },
 
+  // ─── Polices de marque cote WEB (capture html2canvas) ────────────────────
+  // Le container capture vit dans le document courant : ses @font-face doivent
+  // etre declarees dans CE document, et surtout resolues AVANT la capture.
+  // Sans cette attente, html2canvas photographie le rendu en police de
+  // substitution et le PDF sort dans une autre typographie que l'apercu.
+  async _ensureWebFontsLoaded() {
+    const win = getBrowserWindow();
+    if (!win?.document) return;
+    if (!win.document.getElementById('sc-brand-print-fonts')) {
+      const style = win.document.createElement('style');
+      style.id = 'sc-brand-print-fonts';
+      style.textContent = PRINT_FONT_FACES;
+      win.document.head.appendChild(style);
+    }
+    const fonts = win.document.fonts;
+    if (!fonts?.load) return;
+    try {
+      await Promise.all([
+        fonts.load("400 12pt 'Lora'"),
+        fonts.load("italic 400 12pt 'Lora'"),
+        fonts.load("300 12pt 'Poppins'"),
+        fonts.load("500 12pt 'Poppins'"),
+      ]);
+    } catch { /* police indisponible : le repli CSS prend le relais */ }
+  },
+
   // ─── Override CSS variables en HEX pour le rendu PDF / print ────────────
   // html2canvas v1.4 ne supporte PAS oklch() et plante avec
   // "Attempting to parse an unsupported color function oklch".
@@ -28,155 +63,141 @@ export const pdfUtils = {
   // toutes les `var(--text)`, `var(--bg)` etc. utilisées dans les inline styles
   // se résolvent en hex au moment où html2canvas lit les computed styles.
   // Pareil pour la fenêtre d'impression qui n'hérite pas des vars du document parent.
+  // Les valeurs sont celles de la MARQUE, pas celles de l'écran : une vue
+  // capturée doit sortir en document de marque, pas en copie d'écran.
   _getThemeVarOverrides() {
-    return `
-      .pdf-render-root, .pdf-render-root * {
-        --bg: #fbf8f3;
-        --bg2: #f5efe4;
-        --surface: #ffffff;
-        --surface2: #faf5ec;
-        --border: #d4c5a8;
-        --border2: #c8b994;
-        --text: #2c2620;
-        --text2: #6b5d4a;
-        --text3: #8a7d6a;
-        --accent: #003042;
-        --accent2: #2e6d84;
-        --accent-light: #f5efe4;
-        --accent-bd: #d4c5a8;
-        --nav: #2c2620;
-        --nav-text: rgba(255,255,255,0.7);
-        --nav-active: rgba(255,255,255,0.11);
-        --nav-border: rgba(255,255,255,0.06);
-        --success-bg: #dcfce7;
-        --success-bg-soft: #f0fdf4;
-        --success-text: #15803d;
-        --success-bd: #86efac;
-        --success-strong: #16a34a;
-        --danger-bg: #fee2e2;
-        --danger-bg-soft: #fef2f2;
-        --danger-text: #991b1b;
-        --danger-bd: #fca5a5;
-        --danger-strong: #dc2626;
-        --warning-bg: #fef3c7;
-        --warning-bg-soft: #fffbeb;
-        --warning-text: #92400e;
-        --warning-bd: #fcd34d;
-        --warning-strong: #f59e0b;
-        --info-bg: #dbeafe;
-        --info-bg-soft: #eff6ff;
-        --info-text: #1e40af;
-        --info-bd: #93c5fd;
-        --info-strong: #3b82f6;
-      }
-    `;
+    return THEME_VAR_OVERRIDES;
   },
 
   _getPrintStyles(orientation = 'portrait') {
     const isLandscape = orientation === 'landscape';
-    // ─── Palette Samper - DA sobre et éditoriale ───
-    // Crème (#fbf8f3) en fond, gris pierre (#2c2620) pour le texte,
-    // bleu petrole (#2e6d84) pour les filets et accents.
-    // Titres en italique serif éditorial (Georgia en fallback web-safe).
+    const C = BRAND.color;
+    // Trois niveaux typographiques, jamais plus, et aucun gras : la hierarchie
+    // vient du corps, de la couleur et du changement de famille. Ni ombre, ni
+    // degrade, ni arrondi marque - rien de tout cela ne survit a l'impression.
     return `
+      ${PRINT_FONT_FACES}
       ${this._getThemeVarOverrides()}
-      @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 18mm; }
+      @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: ${BRAND.page.marginMm}mm; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body {
-        font-family: 'Helvetica Neue', 'Inter', Arial, sans-serif;
-        color: #2c2620;
-        background: #fbf8f3;
+        font-family: ${WEB_FONT.body}; font-weight: 300;
+        color: ${C.ink};
+        background: ${C.white};
         margin: 0; padding: 0;
         font-size: 10pt;
         line-height: 1.5;
       }
-      .pdf-header {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        border-bottom: 1px solid #2e6d84;
-        padding-bottom: 14px; margin-bottom: 22px;
-      }
-      .pdf-brand { display: flex; align-items: center; gap: 14px; }
+      /* Aucun gras nulle part : le DOM capture en contient, on le neutralise
+         a la racine plutot que de compter sur chaque module. */
+      .pdf-render-root, .pdf-render-root * { font-weight: 300 !important; box-shadow: none !important; text-shadow: none !important; }
+      .pdf-render-root [style*="gradient"] { background-image: none !important; }
+
+      /* ─── En-tete : identite, titre en Lora centre, filet plein ${'1,6'} pt ─── */
+      .pdf-header { border-bottom: 1.6pt solid ${C.primary}; padding-bottom: 12px; margin-bottom: 22px; }
+      .pdf-identity { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+      .pdf-brand { display: flex; align-items: center; gap: 12px; }
       .pdf-logo {
-        width: 44px; height: 44px; border-radius: 8px;
-        background: #003042; color: #fff;
+        width: 40px; height: 40px;
+        background: ${C.primary}; color: ${C.white};
         display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 14pt; letter-spacing: 1.2px;
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        font-size: 12pt; letter-spacing: 0.09em;
         overflow: hidden;
       }
       .pdf-logo img { width: 100%; height: 100%; object-fit: cover; }
-      .pdf-brand-text .pdf-brand-name { font-size: 12pt; font-weight: 700; color: #2c2620; letter-spacing: 0.2px; }
-      .pdf-brand-text .pdf-brand-sub { font-size: 8.5pt; color: #8a7d6a; margin-top: 2px; font-style: italic; }
-      .pdf-meta { text-align: right; font-size: 9pt; color: #8a7d6a; }
-      .pdf-meta-title {
-        font-family: Georgia, 'Cormorant Garamond', serif;
-        font-style: italic;
-        font-size: 17pt; font-weight: 600;
-        color: #2c2620; margin-bottom: 4px;
-        letter-spacing: 0.2px;
+      .pdf-brand-name {
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        font-size: 8pt; color: ${C.primary};
+        text-transform: uppercase; letter-spacing: 0.13em;
       }
-      .pdf-meta-etab { font-weight: 600; color: #2e6d84; margin-top: 6px; letter-spacing: 0.3px; }
-      h1, h2, h3 { color: #2c2620; margin: 0 0 10px 0; page-break-after: avoid; }
-      h1 {
-        font-family: Georgia, 'Cormorant Garamond', serif;
-        font-style: italic;
-        font-size: 18pt; font-weight: 600;
+      .pdf-identity-meta {
+        text-align: right; font-size: 8pt; color: ${C.stone}; line-height: 1.45;
       }
+      .pdf-identity-etab {
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        color: ${C.primary}; text-transform: uppercase; letter-spacing: 0.09em;
+      }
+      .pdf-doc-title {
+        font-family: ${WEB_FONT.serif}; font-weight: 400 !important;
+        font-size: 20pt; color: ${C.primary};
+        text-align: center; letter-spacing: 0.02em; margin: 0;
+      }
+      .pdf-doc-date { text-align: center; font-size: 8pt; color: ${C.stone}; margin-top: 5px; }
+
+      /* ─── Voix / etiquette / donnee ─────────────────────────────────── */
+      h1, h2, h3 { margin: 0 0 10px 0; page-break-after: avoid; font-weight: 400 !important; }
+      h1 { font-family: ${WEB_FONT.serif}; font-size: 16pt; color: ${C.primary}; }
       h2 {
-        font-family: Georgia, serif;
-        font-size: 12pt; font-weight: 700;
-        margin-top: 18px;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #2e6d84;
-        border-bottom: 0.5px solid #d4c5a8;
-        padding-bottom: 4px;
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        font-size: 8pt; margin-top: 18px;
+        text-transform: uppercase; letter-spacing: 0.13em;
+        color: ${C.primary};
+        border-bottom: 0.5pt solid ${C.rule};
+        padding-bottom: 5px;
       }
-      h3 { font-size: 10.5pt; font-weight: 600; margin-top: 12px; color: #2c2620; }
+      h3 { font-family: ${WEB_FONT.serif}; font-size: 11pt; margin-top: 12px; color: ${C.ink}; }
       p { margin: 0 0 8px 0; }
-      strong { font-weight: 600; color: #2c2620; }
-      em { font-style: italic; color: #6b5d4a; }
-      table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; page-break-inside: auto; }
-      thead { display: table-header-group; background: transparent; }
+      strong { color: ${C.primary}; }
+      em { font-family: ${WEB_FONT.serif}; font-style: italic; color: ${C.stone}; }
+
+      /* ─── Tableaux : en-tete plein, alternance, filets internes ──────── */
+      table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; page-break-inside: auto; border: 0.5pt solid ${C.rule}; }
+      thead { display: table-header-group; }
       tr { page-break-inside: avoid; page-break-after: auto; }
       th {
-        text-align: left; font-size: 8.5pt; font-weight: 700;
-        color: #2e6d84; text-transform: uppercase; letter-spacing: 0.8px;
-        padding: 8px 8px 6px; border-bottom: 1px solid #2e6d84;
+        text-align: left; font-size: 7.2pt;
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        background: ${C.primary}; color: ${C.white};
+        text-transform: uppercase; letter-spacing: 0.13em;
+        padding: 7px 8px;
       }
-      td { padding: 7px 8px; font-size: 10pt; border-bottom: 0.5px solid #e8dfcd; color: #2c2620; }
-      .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 12px 0 18px; }
-      .kpi-card { border: 0.5px solid #d4c5a8; border-radius: 4px; padding: 12px 14px; background: rgba(255,255,255,0.5); }
-      .kpi-label { font-size: 7.5pt; font-weight: 700; color: #8a7d6a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
-      .kpi-value { font-family: Georgia, serif; font-size: 15pt; font-weight: 600; color: #2c2620; }
-      .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 8pt; font-weight: 600; background: rgba(46,109,132,0.12); color: #1e4d63; border: 0.5px solid #d4c5a8; }
+      td { padding: 6px 8px; font-size: 9pt; border-bottom: 0.5pt solid ${C.ruleLight}; color: ${C.ink}; }
+      tbody tr:nth-child(even) td { background: ${C.zebra}; }
+      tfoot td, tr.total td, tr[data-total] td {
+        background: ${C.tint}; border-top: 1pt solid ${C.primary};
+        font-family: ${WEB_FONT.serif};
+      }
+
+      /* ─── Blocs d'identite : barre laterale 2,2 pt en accent ─────────── */
+      .pdf-block, .kpi-card {
+        border: 0.5pt solid ${C.rule}; border-left: 2.2pt solid ${C.accent};
+        padding: 10px 12px; background: ${C.white};
+      }
+      .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 18px; }
+      .kpi-label {
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        font-size: 7.2pt; color: ${C.stone};
+        text-transform: uppercase; letter-spacing: 0.13em; margin-bottom: 5px;
+      }
+      .kpi-value { font-family: ${WEB_FONT.serif}; font-size: 13pt; color: ${C.primary}; }
+      .badge {
+        display: inline-block; padding: 2px 9px;
+        font-family: ${WEB_FONT.body}; font-weight: 500 !important;
+        font-size: 7.2pt; text-transform: uppercase; letter-spacing: 0.09em;
+        background: ${C.tint}; color: ${C.primary}; border: 0.5pt solid ${C.rule};
+      }
       .section { margin-bottom: 20px; page-break-inside: avoid; }
 
-      /* ─── Sublimer les cartes / sections existantes du DOM cloné ────
-         Les composants React utilisent inline background: var(--surface)
-         qui se résout maintenant en #ffffff via _getThemeVarOverrides.
-         On donne un look "carte" subtil à tout div qui a un background
-         ou un border inline, pour rendre la structure visible en print. */
+      /* ─── DOM clone : les composants React posent leurs propres cartes ──
+         Elles arrivent ici avec var(--surface) / var(--border) deja resolues
+         en tokens de marque ; on ne retouche que le trait et l'arrondi, qui
+         ne survivent pas a l'impression. */
       .pdf-content > div { margin-bottom: 12px; }
       .pdf-content div[style*="border"][style*="radius"] {
-        border-color: #d4c5a8 !important;
-        background: rgba(255,255,255,0.6) !important;
+        border-color: ${C.rule} !important;
+        border-radius: 0 !important;
+        background: ${C.white} !important;
       }
-      /* Liens et accents : conserver la couleur Samper */
-      .pdf-content a { color: #003042; text-decoration: none; }
+      .pdf-content a { color: ${C.primary}; text-decoration: none; }
       ul, ol { margin: 4px 0 12px 20px; padding: 0; }
-      li { margin-bottom: 4px; font-size: 10pt; }
+      li { margin-bottom: 4px; font-size: 9pt; }
       .no-print, button, .pls-tabs, [class*="no-print"] { display: none !important; }
       .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-      /* Planning grid pour l'impression */
-      [id*="planning-print"] > div > div:nth-child(1) { font-size: 14pt; font-weight: 700; margin-bottom: 8px; }
-      /* Input affiché comme texte */
+      [id*="planning-print"] > div > div:nth-child(1) { font-family: ${WEB_FONT.serif}; font-size: 13pt; margin-bottom: 8px; }
+      /* Champs de saisie rendus comme du texte */
       input, select, textarea { border: none !important; background: transparent !important; padding: 0 !important; font: inherit; color: inherit; }
-      input[type="date"], input[type="time"] { font-weight: 600; }
-      /* Couleurs de statut préservées */
-      [style*="background: #dcfce7"] { background: #dcfce7 !important; color: #15803d !important; }
-      [style*="background: #fef9c3"] { background: #fef9c3 !important; color: #92400e !important; }
-      [style*="background: #fee2e2"] { background: #fee2e2 !important; color: #dc2626 !important; }
-      [style*="background: #e0f2fe"] { background: #e0f2fe !important; color: #0369a1 !important; }
+      .pdf-field-value { font-family: ${WEB_FONT.body}; color: ${C.ink}; }
     `;
   },
 
@@ -194,19 +215,34 @@ export const pdfUtils = {
 
     return `
       <div class="pdf-header">
-        <div class="pdf-brand">
-          ${logoContent}
-          <div class="pdf-brand-text">
+        <div class="pdf-identity">
+          <div class="pdf-brand">
+            ${logoContent}
             <div class="pdf-brand-name">Samper Consulting</div>
-            <div class="pdf-brand-sub">Gestion culinaire professionnelle</div>
+          </div>
+          <div class="pdf-identity-meta">
+            ${etabName ? `<div class="pdf-identity-etab">${etabName}</div>` : ''}
+            ${etabAdresse ? `<div>${etabAdresse}</div>` : ''}
           </div>
         </div>
-        <div class="pdf-meta">
-          <div class="pdf-meta-title">${title}</div>
-          <div>${dateFmt}</div>
-          ${etabName ? `<div class="pdf-meta-etab">${etabName}</div>` : ''}
-          ${etabAdresse ? `<div style="font-size:8pt;">${etabAdresse}</div>` : ''}
-        </div>
+        <h1 class="pdf-doc-title">${title}</h1>
+        <div class="pdf-doc-date">${dateFmt}</div>
+      </div>
+    `;
+  },
+
+  // En-tete sobre : titre et date, sans le bloc d'identite Samper. Meme
+  // typographie et meme filet que l'en-tete complet - c'est la meme DA, on
+  // n'y retire que l'emetteur (releve CCNT remis au collaborateur).
+  _getPlainHeaderHTML(title, etablissement) {
+    const dateFmt = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
+    const etabName = etablissement?.nom || '';
+    const etabAdresse = etablissement?.adresse || '';
+    const sousTitre = [etabName, etabAdresse].filter(Boolean).join(' · ');
+    return `
+      <div class="pdf-header">
+        <h1 class="pdf-doc-title">${title}</h1>
+        <div class="pdf-doc-date">${sousTitre ? `${sousTitre}<br/>` : ''}${dateFmt}</div>
       </div>
     `;
   },
@@ -234,7 +270,7 @@ export const pdfUtils = {
         ? (el.options[el.selectedIndex]?.textContent || el.value || '')
         : (el.value || el.textContent || '');
       span.textContent = val;
-      span.style.cssText = 'font-weight: 600;';
+      span.className = 'pdf-field-value';
       el.replaceWith(span);
     });
     // Pas de strip des inline styles : les var() utilisées dans le DOM cloné
@@ -260,12 +296,12 @@ export const pdfUtils = {
     const clone = this._prepareClone(element);
 
     // noHeader = aucun en-tête du tout (le contenu cloné parle de lui-même)
-    // noBrand = un mini-header sobre avec juste titre + date, sans logo Samper
-    // par défaut = full header avec brand Samper + meta
+    // noBrand = en-tête sobre : titre + date, sans le bloc d'identité Samper
+    // par défaut = en-tête complet
     let headerHTML = '';
     if (!noHeader) {
       headerHTML = noBrand
-        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:16pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:10pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' - ' + etab.adresse : ''}</div>` : ''}<div style="font-size:9pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        ? this._getPlainHeaderHTML(title, etab)
         : this._getHeaderHTML(title, etab);
     }
 
@@ -284,7 +320,16 @@ export const pdfUtils = {
       </html>
     `);
     printWindow.document.close();
-    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
+    // On attend que les polices de marque soient resolues avant d'ouvrir la
+    // boite d'impression : lancer print() trop tot fige la page dans la police
+    // de substitution. Le delai reste un filet pour les navigateurs sans
+    // document.fonts.
+    const lancerImpression = () => { printWindow.focus(); printWindow.print(); };
+    if (printWindow.document.fonts?.ready) {
+      printWindow.document.fonts.ready.then(() => setTimeout(lancerImpression, 120));
+    } else {
+      setTimeout(lancerImpression, 500);
+    }
   },
 
   // ── EXPORT PDF
@@ -304,8 +349,9 @@ export const pdfUtils = {
     container.style.cssText = `
       position: fixed; left: -9999px; top: 0;
       width: ${orientation === 'landscape' ? '1120px' : '794px'};
-      background: #fff; padding: 40px;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: ${BRAND.color.white}; padding: 40px;
+      font-family: ${WEB_FONT.body}; font-weight: 300;
+      color: ${BRAND.color.ink};
       z-index: -1;
     `;
 
@@ -313,7 +359,7 @@ export const pdfUtils = {
     let headerHTML = '';
     if (!noHeader) {
       headerHTML = noBrand
-        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:15pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:9pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' - ' + etab.adresse : ''}</div>` : ''}<div style="font-size:8pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        ? this._getPlainHeaderHTML(title, etab)
         : this._getHeaderHTML(title, etab);
     }
 
@@ -326,10 +372,11 @@ export const pdfUtils = {
 
     try {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
+      await this._ensureWebFontsLoaded();
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#fbf8f3',
+        backgroundColor: BRAND.color.white,
         logging: false,
       });
 
@@ -370,20 +417,9 @@ export const pdfUtils = {
         }
       }
 
-      if (!noHeader) {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          pdf.setPage(i);
-          pdf.setFontSize(7.5);
-          pdf.setTextColor(138, 125, 106);
-          if (noBrand) {
-            pdf.text(totalPages > 1 ? `${i} / ${totalPages}` : '', margin, pageHeight - 6);
-          } else {
-            pdf.text(`Samper Consulting · ${i} / ${totalPages}`, margin, pageHeight - 6);
-          }
-          pdf.text(new Date().toLocaleDateString('fr-CH'), pageWidth - margin, pageHeight - 6, { align: 'right' });
-        }
-      }
+      // Aucun pied de page : l'identite, l'etablissement et la date vivent dans
+      // l'en-tete du document. Un filet et une signature repetes en bas de page
+      // n'appartiennent pas a la DA.
 
       pdf.save(fileName);
     } catch (err) {
@@ -412,8 +448,9 @@ export const pdfUtils = {
     container.style.cssText = `
       position: fixed; left: -9999px; top: 0;
       width: ${orientation === 'landscape' ? '1120px' : '794px'};
-      background: #fff; padding: 40px;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: ${BRAND.color.white}; padding: 40px;
+      font-family: ${WEB_FONT.body}; font-weight: 300;
+      color: ${BRAND.color.ink};
       z-index: -1;
     `;
 
@@ -421,7 +458,7 @@ export const pdfUtils = {
     let headerHTML = '';
     if (!noHeader) {
       headerHTML = noBrand
-        ? `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #d4c8a0;"><div style="font-size:15pt;font-weight:700;font-family:Georgia,serif;color:#333;">${title}</div>${etab?.nom ? `<div style="font-size:9pt;color:#666;margin-top:2px;">${etab.nom}${etab.adresse ? ' - ' + etab.adresse : ''}</div>` : ''}<div style="font-size:8pt;color:#888;margin-top:2px;">${new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>`
+        ? this._getPlainHeaderHTML(title, etab)
         : this._getHeaderHTML(title, etab);
     }
 
@@ -434,10 +471,11 @@ export const pdfUtils = {
 
     try {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
+      await this._ensureWebFontsLoaded();
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#fbf8f3',
+        backgroundColor: BRAND.color.white,
         logging: false,
       });
 
@@ -478,20 +516,9 @@ export const pdfUtils = {
         }
       }
 
-      if (!noHeader) {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          pdf.setPage(i);
-          pdf.setFontSize(7.5);
-          pdf.setTextColor(138, 125, 106);
-          if (noBrand) {
-            pdf.text(totalPages > 1 ? `${i} / ${totalPages}` : '', margin, pageHeight - 6);
-          } else {
-            pdf.text(`Samper Consulting · ${i} / ${totalPages}`, margin, pageHeight - 6);
-          }
-          pdf.text(new Date().toLocaleDateString('fr-CH'), pageWidth - margin, pageHeight - 6, { align: 'right' });
-        }
-      }
+      // Aucun pied de page : l'identite, l'etablissement et la date vivent dans
+      // l'en-tete du document. Un filet et une signature repetes en bas de page
+      // n'appartiennent pas a la DA.
 
       // Retourne le PDF sous forme de Blob (pas de download)
       return pdf.output('blob');
@@ -515,11 +542,220 @@ export const pdfUtils = {
   // (POS, J6b…) continuent d'utiliser exportElementToPdf.
   // ═══════════════════════════════════════════════════════════════
 
+  // jsPDF ET les polices de marque : les deux doivent etre en memoire avant le
+  // clic, puisque le dessin d'un lot d'etiquettes se fait ensuite sans le
+  // moindre await (cf. precharger et construireEtiquettesDlcSync).
   async _loadJsPdf() {
     if (this._jsPdf) return this._jsPdf;
-    const { jsPDF } = await import('jspdf');
+    const [{ jsPDF }] = await Promise.all([import('jspdf'), loadBrandFonts()]);
     this._jsPdf = jsPDF;
     return jsPDF;
+  },
+
+  // Document A4 portrait, polices de marque enregistrees. Point d'entree unique
+  // des generateurs vectoriels : aucun ne construit son jsPDF lui-meme, sinon
+  // un document finirait par sortir sans les polices.
+  _nouveauDocA4(jsPDF, orientation = 'portrait') {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation });
+    registerBrandFonts(doc);
+    return doc;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRIMITIVES DE LA DA - tous les generateurs vectoriels dessinent
+  // avec celles-ci. Aucune couleur, aucune police, aucune epaisseur
+  // de filet n'est ecrite ailleurs.
+  // ═══════════════════════════════════════════════════════════════
+
+  // Largeur reelle d'un texte interlettre : jsPDF mesure la chaine sans tenir
+  // compte de charSpace, un titre centre sortirait donc decale de la moitie de
+  // son interlettrage. On centre nous-memes a partir de la largeur vraie.
+  _largeurTexte(doc, text, charSpace = 0) {
+    const s = String(text || '');
+    if (!s) return 0;
+    return doc.getTextWidth(s) + charSpace * Math.max(0, s.length - 1);
+  },
+
+  _texteCentre(doc, text, cx, y, charSpace = 0) {
+    const s = String(text || '');
+    if (!s) return;
+    doc.text(s, cx - this._largeurTexte(doc, s, charSpace) / 2, y, charSpace ? { charSpace } : undefined);
+  },
+
+  // Meme raison que _texteCentre : l'option align:'right' de jsPDF cale la
+  // chaine sur sa largeur SANS interlettrage, la fin du mot depasse donc
+  // l'ancre de tout l'espacement accumule. Un libelle de colonne finissait
+  // rogne par le bord de la bande, une mention debordait dans la marge.
+  _texteDroite(doc, text, xDroite, y, charSpace = 0) {
+    const s = String(text || '');
+    if (!s) return;
+    doc.text(s, xDroite - this._largeurTexte(doc, s, charSpace), y, charSpace ? { charSpace } : undefined);
+  },
+
+  // En-tete commun : identite a gauche, etablissement a droite, titre en Lora
+  // centre, filet plein de 1,6 pt en dessous. Repete a chaque page d'un
+  // document multi-pages - une feuille separee du reste doit rester
+  // identifiable. Retourne l'ordonnee ou le contenu commence.
+  _enTeteDocument(doc, options = {}) {
+    const { titre = '', sousTitre = '', meta = '', logoDataUrl = null } = options;
+    const etab = (options.etablissement || '').toString();
+    const M = BRAND.page.marginMm;
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    const centreX = PAGE_W / 2;
+    const headerH = 12;
+
+    if (logoDataUrl) {
+      try {
+        const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+        doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
+      } catch (e) { /* logo illisible : le nom de l'etablissement suffit */ }
+    }
+    if (etab) {
+      setBrandFont(doc, 'label');
+      doc.setFontSize(BRAND.size.sectionLabel);
+      doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, etab.toUpperCase(), PAGE_W - M, M + 5, BRAND.charSpace.label);
+    }
+
+    let y = M + headerH + 4;
+    setBrandFont(doc, 'voice');
+    doc.setTextColor(...PDF.primary);
+    // Un nom de recette long ne doit ni deborder ni passer a la ligne : on
+    // descend le corps du titre jusqu'a ce qu'il tienne dans la justification.
+    const largeurMax = PAGE_W - 2 * M;
+    let corpsTitre = BRAND.size.title;
+    doc.setFontSize(corpsTitre);
+    while (corpsTitre > 9 && this._largeurTexte(doc, titre, BRAND.charSpace.title) > largeurMax) {
+      corpsTitre -= 0.25;
+      doc.setFontSize(corpsTitre);
+    }
+    this._texteCentre(doc, titre, centreX, y, BRAND.charSpace.title);
+
+    if (sousTitre) {
+      y += 5;
+      setBrandFont(doc, 'data');
+      doc.setFontSize(BRAND.size.note);
+      doc.setTextColor(...PDF.stone);
+      this._texteCentre(doc, sousTitre, centreX, y);
+    }
+    if (meta) {
+      y += 4;
+      setBrandFont(doc, 'data');
+      doc.setFontSize(BRAND.size.note);
+      doc.setTextColor(...PDF.stone);
+      this._texteCentre(doc, meta, centreX, y);
+    }
+
+    y += 4;
+    doc.setDrawColor(...PDF.primary);
+    doc.setLineWidth(RULE.strong);
+    doc.line(M, y, PAGE_W - M, y);
+    return y + 8;
+  },
+
+  // Titre de section : barre laterale d'accent de 2,2 pt, etiquette en
+  // capitales interlettrees, filet fin sous le bloc.
+  _titreSection(doc, label, x, y, w) {
+    doc.setDrawColor(...PDF.accent);
+    doc.setLineWidth(RULE.accentBar);
+    doc.line(x + RULE.accentBar / 2, y - 3.1, x + RULE.accentBar / 2, y + 0.6);
+    setBrandFont(doc, 'label');
+    doc.setFontSize(BRAND.size.sectionLabel);
+    doc.setTextColor(...PDF.primary);
+    doc.text(String(label || '').toUpperCase(), x + 3.2, y, { charSpace: BRAND.charSpace.sectionLabel });
+    doc.setDrawColor(...PDF.rule);
+    doc.setLineWidth(RULE.medium);
+    doc.line(x, y + 2.4, x + w, y + 2.4);
+    return y + 7;
+  },
+
+  // Titre de bloc en Lora : sert quand le bloc porte un nom propre (une
+  // categorie, une journee) plutot qu'une etiquette de rubrique.
+  _titreBloc(doc, texte, x, y, w) {
+    doc.setDrawColor(...PDF.accent);
+    doc.setLineWidth(RULE.accentBar);
+    doc.line(x + RULE.accentBar / 2, y - 3.4, x + RULE.accentBar / 2, y + 0.8);
+    setBrandFont(doc, 'voice');
+    doc.setFontSize(BRAND.size.blockTitle);
+    doc.setTextColor(...PDF.primary);
+    doc.text(String(texte || ''), x + 3.2, y);
+    doc.setDrawColor(...PDF.rule);
+    doc.setLineWidth(RULE.medium);
+    doc.line(x, y + 2.4, x + w, y + 2.4);
+    return y + 7;
+  },
+
+  // Bande d'en-tete de tableau : fond plein en couleur de marque, libelles
+  // blancs en capitales interlettrees. `colonnes` = [{ label, x, align? }].
+  _bandeTableau(doc, colonnes, x, y, w, h = 6) {
+    doc.setFillColor(...PDF.primary);
+    doc.rect(x, y, w, h, 'F');
+    setBrandFont(doc, 'label');
+    doc.setFontSize(BRAND.size.sectionLabel);
+    doc.setTextColor(...PDF.white);
+    const baseline = y + h / 2 + BRAND.size.sectionLabel * 0.3528 * 0.36;
+    colonnes.forEach((c) => {
+      const label = String(c.label || '').toUpperCase();
+      if (c.align === 'right') {
+        this._texteDroite(doc, label, c.x, baseline, BRAND.charSpace.label);
+      } else {
+        doc.text(label, c.x, baseline, { charSpace: BRAND.charSpace.label });
+      }
+    });
+    return y + h + 4;
+  },
+
+  // Alternance de lignes. Dessinee AVANT le texte, sinon elle le recouvre.
+  _fondZebre(doc, index, x, y, w, h) {
+    if (index % 2 === 0) return;
+    doc.setFillColor(...PDF.zebra);
+    doc.rect(x, y, w, h, 'F');
+  },
+
+  // Ligne de total : fond en teinte claire, filet superieur en couleur de
+  // marque. Le montant lui-meme reste en Lora, jamais en sans-serif.
+  _fondTotal(doc, x, y, w, h) {
+    doc.setFillColor(...PDF.tint);
+    doc.rect(x, y, w, h, 'F');
+    doc.setDrawColor(...PDF.primary);
+    doc.setLineWidth(RULE.strong);
+    doc.line(x, y, x + w, y);
+  },
+
+  _filetInterne(doc, x1, y, x2) {
+    doc.setDrawColor(...PDF.ruleLight);
+    doc.setLineWidth(RULE.hair);
+    doc.line(x1, y, x2, y);
+  },
+
+  // Case a cocher. Cochee : fond de marque et coche blanche. Vide : filet seul.
+  _caseACocher(doc, x, y, taille, cochee, couleurVide = PDF.stone) {
+    if (cochee) {
+      doc.setFillColor(...PDF.primary);
+      doc.rect(x, y, taille, taille, 'F');
+      doc.setDrawColor(...PDF.white);
+      doc.setLineWidth(0.45);
+      doc.line(x + taille * 0.24, y + taille * 0.53, x + taille * 0.42, y + taille * 0.76);
+      doc.line(x + taille * 0.42, y + taille * 0.76, x + taille * 0.81, y + taille * 0.29);
+    } else {
+      doc.setDrawColor(...couleurVide);
+      doc.setLineWidth(RULE.medium);
+      doc.rect(x, y, taille, taille, 'S');
+    }
+  },
+
+  // Bloc de visa : attendu sur un registre presente en controle. Ce n'est pas
+  // un pied de page, c'est du contenu - il suit le dernier tableau.
+  _blocVisa(doc, y) {
+    const M = BRAND.page.marginMm;
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    doc.setDrawColor(...PDF.rule);
+    doc.setLineWidth(RULE.medium);
+    doc.line(PAGE_W - M - 60, y, PAGE_W - M, y);
+    setBrandFont(doc, 'label');
+    doc.setFontSize(BRAND.size.note);
+    doc.setTextColor(...PDF.stone);
+    this._texteDroite(doc, 'DATE ET VISA DU RESPONSABLE', PAGE_W - M, y + 4, BRAND.charSpace.label);
   },
 
   // ─── Préchargement de jsPDF ───────────────────────────────────────────────
@@ -606,10 +842,10 @@ export const pdfUtils = {
       const logoDataUrl = options.logoDataUrl !== undefined
         ? options.logoDataUrl
         : await this._resolveLogoDataUrl(etab);
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const doc = this._nouveauDocA4(jsPDF);
       list.forEach((rec, i) => {
         if (i > 0) doc.addPage();
-        this._renderRecettePage(doc, rec, { ...options, etablissement: etab, logoDataUrl, pageNum: i + 1, pageCount: list.length });
+        this._renderRecettePage(doc, rec, { ...options, etablissement: etab, logoDataUrl });
       });
       if (options.autoPrint) {
         doc.autoPrint();
@@ -725,6 +961,7 @@ export const pdfUtils = {
     const format = [pageW, pageH];
     const orientation = pageW > pageH ? 'landscape' : 'portrait';
     const doc = new jsPDF({ unit: 'mm', format, orientation });
+    registerBrandFonts(doc);
     const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
     for (let i = 0; i < list.length; i += 1) {
@@ -764,7 +1001,7 @@ export const pdfUtils = {
   // comme le cadre d'une étiquette.
   _traitDeCoupe(doc, y, pageW, cfg) {
     const marge = cfg.marginXMm ?? 2;
-    doc.setDrawColor(0, 0, 0);
+    doc.setDrawColor(...PDF.thermalInk);
     doc.setLineWidth(cfg.traitCoupeMm ?? 0.15);
     doc.setLineDashPattern([1, 1.2], 0);
     doc.line(marge, y, pageW - marge, y);
@@ -797,12 +1034,16 @@ export const pdfUtils = {
     const usableW = cfg.widthMm - 2 * mx - 2 * padX;
     const usableH = cfg.heightMm - 2 * my - 2 * padY;
 
-    doc.setTextColor(0, 0, 0);
+    // Encre pleine, pas de couleur de marque : le media est monochrome, le bleu
+    // pétrole sortirait en trame grise et l'étiquette perdrait le contraste qui
+    // la rend lisible à bout de bras dans une chambre froide. L'identité passe
+    // ici par la typographie seule (cf. THERMAL dans brandTokens).
+    doc.setTextColor(...PDF.thermalInk);
 
     if (trait > 0) {
       // Le trait est centré sur le chemin : on rentre d'une demi-épaisseur pour
       // qu'il reste entièrement dans la zone que la tête d'impression couvre.
-      doc.setDrawColor(0, 0, 0);
+      doc.setDrawColor(...PDF.thermalInk);
       doc.setLineWidth(trait);
       doc.roundedRect(
         mx + trait / 2,
@@ -814,8 +1055,13 @@ export const pdfUtils = {
       );
     }
 
-    const widthAt = (text, size, bold) => {
-      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    // « bold » dans les données d'étiquette signifie « mention à faire
+    // ressortir » (l'avertissement obligatoire du mode Surgélation). La DA n'a
+    // pas de gras : c'est le changement de famille qui porte la hiérarchie,
+    // Poppins Medium contre Poppins Light. L'ajustement se fait sur des mesures
+    // réelles, il suit donc les métriques de la police retenue sans recalage.
+    const widthAt = (text, size, fort) => {
+      setBrandFont(doc, fort ? 'label' : 'data');
       doc.setFontSize(size);
       return doc.getTextWidth(text);
     };
@@ -835,8 +1081,10 @@ export const pdfUtils = {
 
     // Chaque ligne : segments + taille de police retenue.
     const lignes = etiquette.lignes.map((l) => {
+      // Le nom du produit est la ligne d'identification : elle passe en
+      // Poppins Medium comme les mentions à faire ressortir.
       const segments = (Array.isArray(l.segments) ? l.segments : [{ text: l.text, bold: l.bold }])
-        .map(s => ({ text: pdfSafeText(s.text || ''), bold: !!(s.bold ?? l.bold) }))
+        .map(s => ({ text: pdfSafeText(s.text || ''), bold: l.role === 'nom' || !!(s.bold ?? l.bold) }))
         .filter(s => s.text !== '');
       const measure = (size) => segments.reduce(
         (w, s, i) => w + widthAt(s.text, size, s.bold) + (i > 0 ? SEGMENT_GAP : 0), 0);
@@ -883,7 +1131,7 @@ export const pdfUtils = {
       y += hauteurs[i] * 0.8 + gap / 2;   // baseline
       let x = mx + padX;
       l.segments.forEach((s, j) => {
-        doc.setFont('helvetica', s.bold ? 'bold' : 'normal');
+        setBrandFont(doc, s.bold ? 'label' : 'data');
         doc.setFontSize(l.size);
         doc.text(s.text, x, y);
         if (j < l.segments.length - 1) x += doc.getTextWidth(s.text) + SEGMENT_GAP;
@@ -893,23 +1141,17 @@ export const pdfUtils = {
   },
 
   _buildRecettePDF(jsPDF, recette, options = {}) {
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const doc = this._nouveauDocA4(jsPDF);
     this._renderRecettePage(doc, recette, options);
     return doc;
   },
 
   // Rend UNE fiche recette sur la page courante de `doc`. Pour un export
   // multi-fiches, l'appelant fait doc.addPage() entre chaque appel.
-  // options.pageNum / options.pageCount alimentent la pagination du pied.
   _renderRecettePage(doc, recette, options = {}) {
     const MM_PER_PT = 0.3528;
-    const {
-      logoDataUrl = null,
-      accent = [0, 48, 66], // Bleu petrole Samper #003042 - charte app (défaut, hex/rgb jamais oklch)
-    } = options;
+    const { logoDataUrl = null } = options;
     const etablissement = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
-    const pageNum = options.pageNum || 1;
-    const pageCount = options.pageCount || 1;
 
     const plat       = pdfSafeText((recette.plat || recette.nom || 'Recette').toString().trim());
     const famille    = pdfSafeText((recette.famille || recette.categorie || '').toString().trim());
@@ -924,24 +1166,26 @@ export const pdfUtils = {
       .map(ing => ({ ...ing, nom: pdfSafeText(ing.nom), unite: pdfSafeText(ing.unite), qte: pdfSafeText(ing.qte) }));
     const etapes      = normalizeSteps(recette.etapes || recette.process || recette.steps).map(pdfSafeText);
 
-    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
     const contentW = PAGE_W - 2 * M;
-    const headerH = 12, footerH = 15;
 
-    const ACC  = accent;
-    const INK  = [26, 26, 28];
-    const MUTE = [121, 124, 126];
-    const HAIR = [215, 220, 224];
+    // ---- En-tete de marque, dessine d'abord : il fixe le haut du corps ----
+    const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
+    const metaTop = this._enTeteDocument(doc, {
+      titre: plat,
+      sousTitre: famille,
+      meta: dateStr,
+      etablissement,
+      logoDataUrl,
+    }) - 2;
 
-    // ---- Géométrie verticale (sans collision) ----
-    const ruleTopY  = M + headerH;
-    const titleY    = ruleTopY + 10;
-    const tUnderY   = titleY + 2.6;
-    const familleY  = tUnderY + 5;
-    const metaTop   = familleY + 3.5;
+    // ---- Geometrie verticale (sans collision) ----
     const metaH     = 11;
-    const bodyTop   = metaTop + metaH + 5;
-    const bodyBottom = PAGE_H - M - footerH;
+    const bodyTop   = metaTop + metaH + 6;
+    // Le bloc allergenes est du CONTENU, pas un pied de page : il ferme la
+    // fiche, ancre en bas puisque la page est unique par construction.
+    const allergY   = PAGE_H - M - 6;
+    const bodyBottom = allergY - 6;
     const bodyH = bodyBottom - bodyTop;
 
     // ---- Colonnes : gauche 40 % (ingrédients + notes), droite 58 % (process) ----
@@ -954,6 +1198,13 @@ export const pdfUtils = {
     // ---- Fit-to-page : corps 10 pt → -0,25 pt jusqu'à tenir, plancher 7 pt ----
     const LINE_FACTOR = 1.28;
     const BODY_MIN = 7;
+    // Les etiquettes de section ne suivent PAS la reduction du corps : elles
+    // constituent un niveau typographique fixe de la DA. D'ou headMm constant,
+    // exactement l'avance rendue par _titreSection.
+    const HEAD_MM = 7;
+    const setFonteQte = () => setBrandFont(doc, 'voice');
+    const setFonteCorps = () => setBrandFont(doc, 'data');
+
     let body = 10;
     let geom = layoutGeom(body);
     let L = measure(body, geom);
@@ -965,23 +1216,24 @@ export const pdfUtils = {
 
     function layoutGeom(fontPt) {
       const lineMm = fontPt * MM_PER_PT * LINE_FACTOR;
-      const headPt = Math.min(fontPt + 1, 10.5);
-      const headMm = headPt * MM_PER_PT * 1.3 + 2.5;
+      const headMm = HEAD_MM;
       const pastD  = Math.max(3.2, fontPt * 0.52);
       const pastInset = pastD + 2.5;
       const numPt  = Math.max(6, fontPt * 0.82);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(fontPt);
+      setFonteQte(); doc.setFontSize(fontPt);
       let qtyW = 0;
       ingredients.forEach((ing) => {
         const q = ing.qte ? `${ing.qte}${ing.unite ? ' ' + ing.unite : ''}` : '';
         qtyW = Math.max(qtyW, doc.getTextWidth(q));
       });
       qtyW = Math.min(qtyW + 2.5, 22);
-      return { lineMm, headPt, headMm, pastD, pastInset, numPt, qtyW };
+      return { lineMm, headMm, pastD, pastInset, numPt, qtyW };
     }
 
     function measure(fontPt, g) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(fontPt);
+      // Mesurer avec la police de RENDU : Poppins Light est plus large que la
+      // police standard, mesurer avec l'autre ferait deborder la colonne.
+      setFonteCorps(); doc.setFontSize(fontPt);
       // Colonne gauche : ingrédients (hanging indent) + notes (dressage/conservation)
       let leftH = g.headMm;
       ingredients.forEach((ing) => {
@@ -1003,118 +1255,87 @@ export const pdfUtils = {
     }
 
     // ---------- RENDU ----------
-    // En-tete : logo + etablissement (accent, capitales espacees)
-    if (logoDataUrl) {
-      try {
-        const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
-      } catch (e) { /* logo illisible, ignore */ }
-    }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
-    doc.text(etablissement.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
-    doc.setDrawColor(...ACC); doc.setLineWidth(0.8);
-    doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
+    // L'en-tete de marque est deja dessine plus haut (il fixait metaTop).
 
-    // Titre + soulignement accent, auto-reduit s'il est long
-    let tSize = 21;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(tSize);
-    while (doc.getTextWidth(plat) > contentW && tSize > 13) { tSize -= 0.5; doc.setFontSize(tSize); }
-    doc.setTextColor(...INK);
-    doc.text(plat, M, titleY);
-    doc.setDrawColor(...ACC); doc.setLineWidth(1.2);
-    doc.line(M, tUnderY, M + 26, tUnderY);
-    if (famille) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...MUTE);
-      doc.text(famille.toUpperCase(), M, familleY, { charSpace: 0.6 });
-    }
-
-    // Bandeau métadonnées - N cellules égales, séparateurs fins
+    // Bandeau metadonnees - N cellules egales, etiquette puis valeur en Lora
     if (metaCells.length) {
       const cellW = contentW / metaCells.length;
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3);
+      doc.setDrawColor(...PDF.rule); doc.setLineWidth(RULE.medium);
       doc.line(M, metaTop, M + contentW, metaTop);
       doc.line(M, metaTop + metaH, M + contentW, metaTop + metaH);
       metaCells.forEach((c, i) => {
         const cx = M + i * cellW + 3;
-        if (i > 0) { doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M + i * cellW, metaTop + 1.5, M + i * cellW, metaTop + metaH - 1.5); }
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...ACC);
-        doc.text(String(c.k), cx, metaTop + 4.3, { charSpace: 0.5 });
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...INK);
+        if (i > 0) {
+          doc.setDrawColor(...PDF.ruleLight); doc.setLineWidth(RULE.medium);
+          doc.line(M + i * cellW, metaTop + 1.5, M + i * cellW, metaTop + metaH - 1.5);
+        }
+        setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
+        doc.text(String(c.k).toUpperCase(), cx, metaTop + 4.3, { charSpace: BRAND.charSpace.label });
+        setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.ink);
         doc.text(String(c.v), cx, metaTop + 9, { maxWidth: cellW - 5 });
       });
     }
 
-    // Helper titre de section : carré accent + label espacé + filet
-    function sectionHead(label, x, yy, w, g) {
-      doc.setFillColor(...ACC);
-      doc.rect(x, yy - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(g.headPt); doc.setTextColor(...ACC);
-      doc.text(label, x + 3.4, yy, { charSpace: 0.5 });
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3);
-      doc.line(x, yy + 2, x + w, yy + 2);
-      return yy + g.headMm;
-    }
-
-    // Colonne gauche - INGRÉDIENTS (quantité accent gras + nom, hanging indent)
-    let ly = bodyTop + L.headPt * MM_PER_PT;
-    ly = sectionHead('INGRÉDIENTS', colLX, ly, colLW, L);
+    // Colonne gauche - INGREDIENTS (quantite en Lora + nom, hanging indent)
+    let ly = bodyTop;
+    ly = this._titreSection(doc, 'Ingrédients', colLX, ly, colLW);
     ingredients.forEach((ing) => {
       const q = ing.qte ? `${ing.qte}${ing.unite ? ' ' + ing.unite : ''}` : '';
-      if (q) { doc.setFont('helvetica', 'bold'); doc.setFontSize(L.fontPt); doc.setTextColor(...ACC); doc.text(q, colLX, ly); }
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fontPt); doc.setTextColor(...INK);
+      if (q) {
+        setBrandFont(doc, 'voice'); doc.setFontSize(L.fontPt); doc.setTextColor(...PDF.primary);
+        doc.text(q, colLX, ly);
+      }
+      setBrandFont(doc, 'data'); doc.setFontSize(L.fontPt); doc.setTextColor(...PDF.ink);
       const nameLines = doc.splitTextToSize(ing.nom || '', colLW - L.qtyW);
       nameLines.forEach((line, k) => { doc.text(line, colLX + L.qtyW, ly + k * L.lineMm); });
       ly += Math.max(1, nameLines.length) * L.lineMm;
     });
 
-    // Notes (Dressage / Conservation) sous les ingrédients
+    // Notes (Dressage / Conservation) sous les ingredients
     notes.forEach((n) => {
       ly += 4;
-      ly = sectionHead(String(n.label).toUpperCase(), colLX, ly, colLW, L);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fontPt); doc.setTextColor(...INK);
+      ly = this._titreSection(doc, n.label, colLX, ly, colLW);
+      setBrandFont(doc, 'data'); doc.setFontSize(L.fontPt); doc.setTextColor(...PDF.ink);
       doc.splitTextToSize(String(n.text), colLW).forEach((line) => { doc.text(line, colLX, ly); ly += L.lineMm; });
     });
 
-    // Colonne droite - PROCESS avec pastilles rondes numérotées
-    let ry = bodyTop + L.headPt * MM_PER_PT;
-    ry = sectionHead('PROCESS', colRX, ry, colRW, L);
+    // Colonne droite - PROCESS avec pastilles rondes numerotees
+    let ry = bodyTop;
+    ry = this._titreSection(doc, 'Process', colRX, ry, colRW);
     etapes.forEach((s, i) => {
+      setBrandFont(doc, 'data'); doc.setFontSize(L.fontPt);
       const lines = doc.splitTextToSize(s, colRW - L.pastInset);
       const txtH = lines.length * L.lineMm;
       const rowH = Math.max(L.pastD, txtH);
       const cx = colRX + L.pastD / 2;
       const cy = ry + L.pastD / 2 - 0.3;
-      doc.setFillColor(...ACC); doc.circle(cx, cy, L.pastD / 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(L.numPt); doc.setTextColor(255, 255, 255);
+      doc.setFillColor(...PDF.primary); doc.circle(cx, cy, L.pastD / 2, 'F');
+      setBrandFont(doc, 'label'); doc.setFontSize(L.numPt); doc.setTextColor(...PDF.white);
       doc.text(String(i + 1), cx, cy + L.numPt * MM_PER_PT * 0.36, { align: 'center' });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fontPt); doc.setTextColor(...INK);
+      setBrandFont(doc, 'data'); doc.setFontSize(L.fontPt); doc.setTextColor(...PDF.ink);
       lines.forEach((line, k) => { doc.text(line, colRX + L.pastInset, ry + L.lineMm * 0.78 + k * L.lineMm); });
       ry += rowH + 2.4;
     });
 
-    // Séparateur vertical entre colonnes
-    doc.setDrawColor(...HAIR); doc.setLineWidth(0.2);
+    // Separateur vertical entre colonnes
+    doc.setDrawColor(...PDF.ruleLight); doc.setLineWidth(RULE.hair);
     doc.line(colRX - gutter / 2, bodyTop, colRX - gutter / 2, bodyBottom);
 
-    // Pied : filet accent + ALLERGENES + signature etablissement, date, page
-    const fRule = PAGE_H - M - footerH;
-    doc.setDrawColor(...ACC); doc.setLineWidth(0.8);
-    doc.line(M, fRule, PAGE_W - M, fRule);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(...ACC);
-    doc.text('ALLERGÈNES', M, fRule + 4.5, { charSpace: 0.5 });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...INK);
-    doc.text(allergenes, M + 22, fRule + 4.5, { maxWidth: contentW - 24 });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-    const dateStr = new Date().toLocaleDateString('fr-CH');
-    doc.text(etablissement, M, fRule + 10);
-    doc.text(`${dateStr}   ·   ${pageNum}/${pageCount}`, PAGE_W - M, fRule + 10, { align: 'right' });
+    // Allergenes : contenu de la fiche, pas un pied de page. Bloc mis en avant
+    // sur fond teinte, filet superieur en couleur de marque.
+    this._fondTotal(doc, M, allergY - 4.6, contentW, 8);
+    setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
+    doc.text('ALLERGÈNES', M + 2.5, allergY, { charSpace: BRAND.charSpace.label });
+    const largeurLabel = this._largeurTexte(doc, 'ALLERGÈNES', BRAND.charSpace.label) + 7;
+    setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+    doc.text(allergenes, M + largeurLabel, allergY, { maxWidth: contentW - largeurLabel - 4 });
   },
 
   // ═══════════════════════════════════════════════════════════════
   // LISTE DE COMMANDE - génération jsPDF native (vectorielle, DA Samper)
-  // Bon de commande propre, multi-pages, dans la charte (bleu petrole #003042,
-  // titre serif, sections par catégorie, cases à cocher). Cohérent avec
-  // la fiche recette plutôt qu'une capture html2canvas de l'écran.
+  // Bon de commande propre, multi-pages, dans la charte de marque (titre en
+  // Lora, sections par catégorie, cases à cocher). Cohérent avec la fiche
+  // recette plutôt qu'une capture html2canvas de l'écran.
   // payload : { groups:[{categorie, items:[{nom, besoinText, qtyText, coche}]}], totalCount, cocheCount }
   // options : { etablissement, autoPrint, filename, logoDataUrl }
   // ═══════════════════════════════════════════════════════════════
@@ -1125,7 +1346,7 @@ export const pdfUtils = {
       const logoDataUrl = options.logoDataUrl !== undefined
         ? options.logoDataUrl
         : await this._resolveLogoDataUrl(etab);
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const doc = this._nouveauDocA4(jsPDF);
       this._renderCommande(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
       if (options.autoPrint) {
         doc.autoPrint();
@@ -1144,19 +1365,14 @@ export const pdfUtils = {
   },
 
   _renderCommande(doc, payload, options = {}) {
-    const ACC = [0, 48, 66];   // bleu petrole Samper
-    const INK = [26, 26, 28];
-    const MUTE = [121, 124, 126];
-    const HAIR = [215, 220, 224];
-    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
     const contentW = PAGE_W - 2 * M;
-    const headerH = 12;
-    const etabName = (options.etablissement?.nom || 'Samper Consulting').toString();
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
     const logoDataUrl = options.logoDataUrl || null;
     const groups = Array.isArray(payload.groups) ? payload.groups : [];
     const totalCount = payload.totalCount != null ? payload.totalCount : groups.reduce((s, g) => s + (g.items?.length || 0), 0);
     const cocheCount = payload.cocheCount || 0;
-    const cartesLabel = (payload.cartesLabel || '').toString().trim();
+    const cartesLabel = pdfSafeText((payload.cartesLabel || '').toString().trim());
     const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
 
     // Colonnes calquees sur la liste de reference : ingredient a gauche, colonne
@@ -1168,103 +1384,56 @@ export const pdfUtils = {
     const qtyRight = checkX - 4;           // quantite saisie, alignee a droite de la case
     const nomX = M;
     const nomMaxW = qtyRight - nomX - 20;  // laisse la place a la quantite manuscrite
-    const bodyBottom = PAGE_H - M - 12;
+    const bodyBottom = PAGE_H - M;
+    const LINE_H = 4.6;
 
-    const drawHeader = () => {
-      if (logoDataUrl) {
-        try {
-          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
-        } catch (e) { /* logo illisible */ }
-      }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
-      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
-      const ruleTopY = M + headerH;
-      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
-      doc.text('Liste de commande', M, ruleTopY + 9);
-      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
-      doc.text(`${dateStr}  ·  ${totalCount} produit${totalCount > 1 ? 's' : ''}  ·  ${cocheCount} coché${cocheCount > 1 ? 's' : ''}`, M, ruleTopY + 17);
-      if (cartesLabel) {
-        const line = doc.splitTextToSize(`Cartes : ${cartesLabel}`, contentW)[0];
-        doc.setFontSize(7.5); doc.setTextColor(...ACC);
-        doc.text(line, M, ruleTopY + 21.5);
-        return ruleTopY + 29;
-      }
-      return ruleTopY + 25;
-    };
-    const drawFooter = () => {
-      const fy = PAGE_H - M - 4;
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text('Samper Consulting', M, fy);
-      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
-    };
+    const drawHeader = () => this._enTeteDocument(doc, {
+      titre: 'Liste de commande',
+      sousTitre: cartesLabel ? `Cartes : ${cartesLabel}` : '',
+      meta: `${dateStr}  ·  ${totalCount} produit${totalCount > 1 ? 's' : ''}  ·  ${cocheCount} coché${cocheCount > 1 ? 's' : ''}`,
+      etablissement: etabName,
+      logoDataUrl,
+    });
 
     let y = drawHeader();
     const ensureSpace = (h) => {
-      if (y + h > bodyBottom) { drawFooter(); doc.addPage(); y = drawHeader(); }
-    };
-    const colLabels = () => {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...MUTE);
-      doc.text('INGRÉDIENT', nomX, y, { charSpace: 0.4 });
-      doc.text('COMMANDE', checkRight, y, { align: 'right', charSpace: 0.4 });
-      y += 4;
+      if (y + h > bodyBottom) { doc.addPage(); y = drawHeader(); }
     };
 
     if (!groups.length) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
       doc.text('Aucun produit dans la liste.', M, y + 4);
     }
 
     groups.forEach((group) => {
-      ensureSpace(16);
-      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...ACC);
-      doc.text(String(group.categorie || 'Autres'), M + 3.4, y);
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
-      y += 7;
-      colLabels();
+      ensureSpace(20);
+      y = this._titreBloc(doc, pdfSafeText(String(group.categorie || 'Autres')), M, y, contentW);
+      y = this._bandeTableau(doc, [
+        { label: 'Ingrédient', x: nomX + 2.5 },
+        { label: 'Commande', x: checkRight - 2.5, align: 'right' },
+      ], M, y - 4, contentW);
 
-      (group.items || []).forEach((it) => {
-        const nameLines = doc.splitTextToSize(String(it.nom || ''), nomMaxW);
-        const rowH = Math.max(7, nameLines.length * 4.6 + 2.4);
+      (group.items || []).forEach((it, index) => {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+        const nameLines = doc.splitTextToSize(pdfSafeText(String(it.nom || '')), nomMaxW);
+        const rowH = Math.max(7, nameLines.length * LINE_H + 2.4);
         ensureSpace(rowH);
+        this._fondZebre(doc, index, M, y - 4, contentW, rowH);
         const boxY = y - 3;
         // Nom de l'ingredient a gauche
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        nameLines.forEach((line, k) => doc.text(line, nomX, y + k * 4.6));
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+        nameLines.forEach((line, k) => doc.text(line, nomX + 2.5, y + k * LINE_H));
         // Quantite saisie (si renseignee) a gauche de la case ; sinon espace vierge a remplir
         if (it.qtyText) {
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-          doc.text(String(it.qtyText), qtyRight, y, { align: 'right' });
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+          doc.text(pdfSafeText(String(it.qtyText)), qtyRight, y, { align: 'right' });
         }
-        // Case a cocher a droite (colonne « Commande »)
-        if (it.coche) {
-          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
-          doc.rect(checkX, boxY, boxSize, boxSize, 'F');
-          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
-          doc.line(checkX + 0.9, boxY + 2.0, checkX + 1.6, boxY + 2.9);
-          doc.line(checkX + 1.6, boxY + 2.9, checkX + 3.1, boxY + 1.1);
-        } else {
-          doc.setDrawColor(...MUTE); doc.setLineWidth(0.3); doc.rect(checkX, boxY, boxSize, boxSize, 'S');
-        }
-        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
-        doc.line(nomX, y + rowH - 3.2, checkRight, y + rowH - 3.2);
+        this._caseACocher(doc, checkX, boxY, boxSize, it.coche);
+        this._filetInterne(doc, M, y + rowH - 4, M + contentW);
         y += rowH;
       });
-      y += 3;
+      y += 5;
     });
-
-    drawFooter();
-    // Pagination centrée, ajoutée une fois le nombre total de pages connu.
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
-    }
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1283,7 +1452,7 @@ export const pdfUtils = {
       const logoDataUrl = options.logoDataUrl !== undefined
         ? options.logoDataUrl
         : await this._resolveLogoDataUrl(etab);
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const doc = this._nouveauDocA4(jsPDF);
       this._renderMep(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
       if (options.autoPrint) {
         doc.autoPrint();
@@ -1302,21 +1471,15 @@ export const pdfUtils = {
   },
 
   _renderMep(doc, payload, options = {}) {
-    const ACC = [0, 48, 66];    // bleu petrole Samper
-    const INK = [26, 26, 28];
-    const MUTE = [121, 124, 126];
-    const HAIR = [215, 220, 224];
-    const WARN = [176, 96, 0];  // ambre discret pour « a qualifier »
-    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
     const contentW = PAGE_W - 2 * M;
-    const headerH = 12;
-    const etabName = (options.etablissement?.nom || 'Samper Consulting').toString();
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
     const logoDataUrl = options.logoDataUrl || null;
     const sections = Array.isArray(payload.sections) ? payload.sections : [];
     const totalCount = sections.reduce((s, g) => s + (g.items?.length || 0), 0);
     const faitCount = sections.reduce((s, g) => s + (g.items || []).filter(i => i.fait).length, 0);
-    const titre = (payload.titre || 'Liste de mise en place').toString();
-    const sousTitre = (payload.sousTitre || '').toString().trim();
+    const titre = pdfSafeText((payload.titre || 'Liste de mise en place').toString());
+    const sousTitre = pdfSafeText((payload.sousTitre || '').toString().trim());
     const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
 
     // Meme visuel que la liste de commande : preparation a gauche, colonne « fait »
@@ -1327,101 +1490,67 @@ export const pdfUtils = {
     const qtyRight = checkX - 4;
     const nomX = M;
     const nomMaxW = qtyRight - nomX - 24;
-    const bodyBottom = PAGE_H - M - 12;
+    const bodyBottom = PAGE_H - M;
+    const LINE_H = 4.6;
 
-    const drawHeader = () => {
-      if (logoDataUrl) {
-        try {
-          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
-        } catch (e) { /* logo illisible */ }
-      }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
-      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
-      const ruleTopY = M + headerH;
-      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
-      doc.text(titre, M, ruleTopY + 9);
-      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
-      const meta = `${sousTitre ? sousTitre + '  ·  ' : ''}${totalCount} préparation${totalCount > 1 ? 's' : ''}  ·  ${faitCount} faite${faitCount > 1 ? 's' : ''}`;
-      doc.text(meta, M, ruleTopY + 17);
-      return ruleTopY + 25;
-    };
-    const drawFooter = () => {
-      const fy = PAGE_H - M - 4;
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text('Samper Consulting', M, fy);
-      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
-    };
+    const drawHeader = () => this._enTeteDocument(doc, {
+      titre,
+      sousTitre,
+      meta: `${dateStr}  ·  ${totalCount} préparation${totalCount > 1 ? 's' : ''}  ·  ${faitCount} faite${faitCount > 1 ? 's' : ''}`,
+      etablissement: etabName,
+      logoDataUrl,
+    });
 
     let y = drawHeader();
     const ensureSpace = (h) => {
-      if (y + h > bodyBottom) { drawFooter(); doc.addPage(); y = drawHeader(); }
+      if (y + h > bodyBottom) { doc.addPage(); y = drawHeader(); }
     };
 
     if (!totalCount) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
       doc.text('Aucune préparation dans cette liste.', M, y + 4);
     }
 
     sections.forEach((section) => {
       if (!(section.items || []).length) return;
-      ensureSpace(18);
-      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...ACC);
-      doc.text(String(section.titre || ''), M + 3.4, y);
-      y += 4.5;
+      ensureSpace(22);
+      y = this._titreBloc(doc, pdfSafeText(String(section.titre || '')), M, y, contentW);
       if (section.hint) {
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(...MUTE);
-        doc.text(String(section.hint), M + 3.4, y);
-        y += 2.5;
+        setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+        doc.text(pdfSafeText(String(section.hint)), M + 3.2, y);
+        y += 8; // la bande d'en-tete se pose 4 mm au-dessus de la ligne suivante
       }
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y, M + contentW, y);
-      y += 5;
+      y = this._bandeTableau(doc, [
+        { label: 'Préparation', x: nomX + 2.5 },
+        { label: 'Fait', x: checkRight - 2.5, align: 'right' },
+      ], M, y - 4, contentW);
 
-      (section.items || []).forEach((it) => {
-        const nameLines = doc.splitTextToSize(String(it.label || ''), nomMaxW);
-        const rowH = Math.max(7, nameLines.length * 4.6 + 2.4);
+      (section.items || []).forEach((it, index) => {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+        const nameLines = doc.splitTextToSize(pdfSafeText(String(it.label || '')), nomMaxW);
+        const rowH = Math.max(7, nameLines.length * LINE_H + 2.4);
         ensureSpace(rowH);
+        this._fondZebre(doc, index, M, y - 4, contentW, rowH);
         const boxY = y - 3;
         // Nom de la preparation a gauche
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-        nameLines.forEach((line, k) => doc.text(line, nomX, y + k * 4.6));
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+        nameLines.forEach((line, k) => doc.text(line, nomX + 2.5, y + k * LINE_H));
         if (it.aQualifier) {
-          doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(...WARN);
-          doc.text('à qualifier', nomX + doc.getTextWidth(nameLines[0]) + 3, y);
+          const largeur = doc.getTextWidth(nameLines[0]);
+          setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.accent);
+          doc.text('à qualifier', nomX + 2.5 + largeur + 3, y);
         }
         // Quantite cible (si renseignee) a gauche de la case
         if (it.qtyText) {
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-          doc.text(String(it.qtyText), qtyRight, y, { align: 'right' });
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+          doc.text(pdfSafeText(String(it.qtyText)), qtyRight, y, { align: 'right' });
         }
-        // Case a cocher a droite
-        if (it.fait) {
-          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
-          doc.rect(checkX, boxY, boxSize, boxSize, 'F');
-          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
-          doc.line(checkX + 0.9, boxY + 2.0, checkX + 1.6, boxY + 2.9);
-          doc.line(checkX + 1.6, boxY + 2.9, checkX + 3.1, boxY + 1.1);
-        } else {
-          doc.setDrawColor(...MUTE); doc.setLineWidth(0.3); doc.rect(checkX, boxY, boxSize, boxSize, 'S');
-        }
-        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
-        doc.line(nomX, y + rowH - 3.2, checkRight, y + rowH - 3.2);
+        this._caseACocher(doc, checkX, boxY, boxSize, it.fait);
+        this._filetInterne(doc, M, y + rowH - 4, M + contentW);
         y += rowH;
       });
-      y += 4;
+      y += 5;
     });
-
-    drawFooter();
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
-    }
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1430,7 +1559,7 @@ export const pdfUtils = {
   // Généré en vectoriel (pas de capture html2canvas) : lignes jamais
   // coupées entre deux pages, en-têtes répétés, anomalies en rouge -
   // document présentable lors d'un contrôle d'hygiène. Même DA que la
-  // fiche recette et la liste de commande (bleu pétrole #003042).
+  // fiche recette et la liste de commande.
   // payload : { periodeLabel, stats:{total,conformes,anomalies,taux},
   //   days:[{ dateLabel, rows:[{zone,heure,valeur,operateur,conforme,commentaire}] }] }
   // options : { etablissement, autoPrint, filename, logoDataUrl }
@@ -1442,7 +1571,7 @@ export const pdfUtils = {
       const logoDataUrl = options.logoDataUrl !== undefined
         ? options.logoDataUrl
         : await this._resolveLogoDataUrl(etab);
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const doc = this._nouveauDocA4(jsPDF);
       this._renderHaccpReleves(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
       if (options.autoPrint) {
         doc.autoPrint();
@@ -1461,15 +1590,8 @@ export const pdfUtils = {
   },
 
   _renderHaccpReleves(doc, payload, options = {}) {
-    const ACC = [0, 48, 66];      // bleu pétrole Samper
-    const INK = [26, 26, 28];
-    const MUTE = [121, 124, 126];
-    const HAIR = [215, 220, 224];
-    const OK = [21, 128, 61];     // conforme (--success-text)
-    const KO = [220, 38, 38];     // anomalie (--danger-strong)
-    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
     const contentW = PAGE_W - 2 * M;
-    const headerH = 12;
     const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
     const logoDataUrl = options.logoDataUrl || null;
     const periodeLabel = pdfSafeText((payload.periodeLabel || '').toString());
@@ -1488,132 +1610,93 @@ export const pdfUtils = {
     const dateStr = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
 
     // Colonnes : Zone | Heure | Valeur (droite) | Opérateur | Statut | Commentaire
-    const zoneX = M,        zoneW = 40;
-    const heureX = M + 43;
-    const valRight = M + 71;
-    const opX = M + 75,     opW = 27;
-    const statutX = M + 105;
-    const commX = M + 126,  commW = contentW - 126;
-    const bodyBottom = PAGE_H - M - 12;
+    // Les libellés sont interlettrés : chaque colonne est dimensionnée sur la
+    // largeur RÉELLE de son étiquette, sans quoi « OPÉRATEUR » et « CONFORME »
+    // mordent sur la colonne voisine.
+    const zoneX = M + 2.5,  zoneW = 37;
+    const heureX = M + 42;
+    const valRight = M + 70;
+    const opX = M + 74,     opW = 26;
+    const statutX = M + 102;
+    const commX = M + 128,  commW = contentW - 130.5;
+    const bodyBottom = PAGE_H - M;
     const LINE_H = 4.3;
+    const COLONNES = [
+      { label: 'Zone', x: zoneX },
+      { label: 'Heure', x: heureX },
+      { label: 'Valeur', x: valRight, align: 'right' },
+      { label: 'Opérateur', x: opX },
+      { label: 'Statut', x: statutX },
+      { label: 'Commentaire', x: commX },
+    ];
 
-    const drawHeader = () => {
-      if (logoDataUrl) {
-        try {
-          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
-        } catch (e) { /* logo illisible */ }
-      }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
-      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
-      const ruleTopY = M + headerH;
-      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
-      doc.text('Relevés de température', M, ruleTopY + 9);
-      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ruleTopY + 11.5, M + 26, ruleTopY + 11.5);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
-      doc.text(periodeLabel, M, ruleTopY + 17);
-      if (stats && stats.total != null) {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
-        doc.text(
-          `${stats.total} relevé${stats.total > 1 ? 's' : ''}  ·  ${stats.conformes} conforme${stats.conformes > 1 ? 's' : ''}  ·  ${stats.anomalies} anomalie${stats.anomalies > 1 ? 's' : ''}  ·  taux de conformité ${stats.taux}%`,
-          M, ruleTopY + 21.5,
-        );
-        return ruleTopY + 28;
-      }
-      return ruleTopY + 23;
-    };
-    const drawFooter = () => {
-      const fy = PAGE_H - M - 4;
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text('Registre HACCP - Samper Consulting', M, fy);
-      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
-    };
+    const drawHeader = () => this._enTeteDocument(doc, {
+      titre: 'Relevés de température',
+      sousTitre: periodeLabel,
+      meta: stats && stats.total != null
+        ? `${stats.total} relevé${stats.total > 1 ? 's' : ''}  ·  ${stats.conformes} conforme${stats.conformes > 1 ? 's' : ''}  ·  ${stats.anomalies} anomalie${stats.anomalies > 1 ? 's' : ''}  ·  taux de conformité ${stats.taux}%`
+        : dateStr,
+      etablissement: etabName,
+      logoDataUrl,
+    });
 
     let y = drawHeader();
     const ensureSpace = (h, onNewPage) => {
       if (y + h > bodyBottom) {
-        drawFooter(); doc.addPage(); y = drawHeader();
+        doc.addPage(); y = drawHeader();
         if (onNewPage) onNewPage();
       }
     };
-    const colLabels = () => {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...MUTE);
-      doc.text('ZONE', zoneX, y, { charSpace: 0.4 });
-      doc.text('HEURE', heureX, y, { charSpace: 0.4 });
-      doc.text('VALEUR', valRight, y, { align: 'right', charSpace: 0.4 });
-      doc.text('OPÉRATEUR', opX, y, { charSpace: 0.4 });
-      doc.text('STATUT', statutX, y, { charSpace: 0.4 });
-      doc.text('COMMENTAIRE', commX, y, { charSpace: 0.4 });
-      y += 4;
-    };
     // En-tête de journée (répété avec « (suite) » quand un jour continue sur la page suivante)
     const dayHead = (label, suite = false) => {
-      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
-      doc.text((label + (suite ? ' (suite)' : '')).toUpperCase(), M + 3.4, y, { charSpace: 0.5 });
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
-      y += 7;
-      colLabels();
+      y = this._titreBloc(doc, label + (suite ? ' (suite)' : ''), M, y, contentW);
+      y = this._bandeTableau(doc, COLONNES, M, y - 4, contentW);
     };
 
     if (!days.length) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
       doc.text('Aucun relevé pour cette période.', M, y + 4);
     }
 
     days.forEach((day) => {
-      ensureSpace(20);
+      ensureSpace(24);
       dayHead(day.dateLabel);
-      day.rows.forEach((r) => {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9.5);
+      day.rows.forEach((r, index) => {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
         const zoneLines = doc.splitTextToSize(r.zone || '-', zoneW);
-        doc.setFontSize(8.5);
         const opLines = doc.splitTextToSize(r.operateur || '-', opW);
         const commLines = doc.splitTextToSize(r.commentaire || '-', commW);
         const nLines = Math.max(zoneLines.length, opLines.length, commLines.length, 1);
         const rowH = Math.max(6, nLines * LINE_H + 1.7);
         ensureSpace(rowH, () => dayHead(day.dateLabel, true));
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+        this._fondZebre(doc, index, M, y - 3.4, contentW, rowH);
+        // Une anomalie doit se voir sans lire : couleur d'alerte sur la valeur
+        // et sur le statut, le reste de la ligne reste en encre courante.
+        const statutColor = r.conforme ? PDF.ok : PDF.alert;
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.ink);
         zoneLines.forEach((l, k) => doc.text(l, zoneX, y + k * LINE_H));
-        doc.setFontSize(9); doc.setTextColor(...MUTE);
+        doc.setTextColor(...PDF.stone);
         doc.text(r.heure || '-', heureX, y);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
-        doc.setTextColor(...(r.conforme ? OK : KO));
+        setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...statutColor);
         doc.text(r.valeur || '-', valRight, y, { align: 'right' });
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTE);
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.stone);
         opLines.forEach((l, k) => doc.text(l, opX, y + k * LINE_H));
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
-        doc.setTextColor(...(r.conforme ? OK : KO));
-        doc.text(r.conforme ? 'Conforme' : 'Anomalie', statutX, y);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-        doc.setTextColor(...(r.commentaire ? (r.conforme ? INK : KO) : MUTE));
+        setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...statutColor);
+        doc.text(r.conforme ? 'CONFORME' : 'ANOMALIE', statutX, y, { charSpace: BRAND.charSpace.label });
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
+        doc.setTextColor(...(r.commentaire ? (r.conforme ? PDF.ink : PDF.alert) : PDF.stone));
         commLines.forEach((l, k) => doc.text(l, commX, y + k * LINE_H));
-        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
-        doc.line(M, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
+        this._filetInterne(doc, M, y + rowH - 3.2, M + contentW);
         y += rowH;
       });
-      y += 4;
+      y += 5;
     });
 
     // Visa du responsable : attendu sur un registre officiel présenté en contrôle
     if (days.length) {
       ensureSpace(18);
       y += 6;
-      doc.setDrawColor(...MUTE); doc.setLineWidth(0.3);
-      doc.line(PAGE_W - M - 60, y, PAGE_W - M, y);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text('Date et visa du responsable', PAGE_W - M, y + 3.5, { align: 'right' });
-    }
-
-    drawFooter();
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
+      this._blocVisa(doc, y);
     }
   },
 
@@ -1637,7 +1720,7 @@ export const pdfUtils = {
       const logoDataUrl = options.logoDataUrl !== undefined
         ? options.logoDataUrl
         : await this._resolveLogoDataUrl(etab);
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const doc = this._nouveauDocA4(jsPDF);
       this._renderSopExecution(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
       if (options.autoPrint) {
         doc.autoPrint();
@@ -1656,15 +1739,8 @@ export const pdfUtils = {
   },
 
   _renderSopExecution(doc, payload, options = {}) {
-    const ACC = [0, 48, 66];      // bleu petrole Samper
-    const INK = [26, 26, 28];
-    const MUTE = [121, 124, 126];
-    const HAIR = [215, 220, 224];
-    const OK = [21, 128, 61];
-    const KO = [220, 38, 38];
-    const PAGE_W = 210, PAGE_H = 297, M = 15;
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
     const contentW = PAGE_W - 2 * M;
-    const headerH = 12;
     const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
     const logoDataUrl = options.logoDataUrl || null;
 
@@ -1679,8 +1755,8 @@ export const pdfUtils = {
     const total   = Number(payload.total) || 0;
     const cochees = Number(payload.cochees) || 0;
     const taux    = total > 0 ? Math.round(cochees / total * 100) : 0;
-    // statutOk : true = conforme (vert), false = anomalie (rouge), null = neutre
-    const statutColor = payload.statutOk === true ? OK : payload.statutOk === false ? KO : MUTE;
+    // statutOk : true = conforme, false = anomalie, null = neutre
+    const statutColor = payload.statutOk === true ? PDF.ok : payload.statutOk === false ? PDF.alert : PDF.stone;
     const sections = (Array.isArray(payload.sections) ? payload.sections : []).map(s => ({
       titre: pdfSafeText((s.titre || '').toString()),
       etapes: (s.etapes || []).map(e => ({
@@ -1697,141 +1773,103 @@ export const pdfUtils = {
     const boxSize = 3.8;
     const labelX = M + 6.5;
     const heureRight = PAGE_W - M;
-    const critiqueRight = heureRight - 13;
-    const labelW = contentW - 6.5 - 33;
-    const bodyBottom = PAGE_H - M - 12;
+    const critiqueRight = heureRight - 15;
+    const labelW = contentW - 6.5 - 36;
+    const bodyBottom = PAGE_H - M;
     const LINE_H = 4.3;
 
     // L'en-tête est répété sur chaque page : un rapport d'audit doit être
     // identifiable page par page, même si les feuilles sont séparées.
     const drawHeader = () => {
-      if (logoDataUrl) {
-        try {
-          const fmt = logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-          doc.addImage(logoDataUrl, fmt, M, M - 1, 20, headerH);
-        } catch (e) { /* logo illisible */ }
-      }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ACC);
-      doc.text(etabName.toUpperCase(), PAGE_W - M, M + 6, { align: 'right', charSpace: 0.4 });
-      const ruleTopY = M + headerH;
-      doc.setDrawColor(...ACC); doc.setLineWidth(0.8); doc.line(M, ruleTopY, PAGE_W - M, ruleTopY);
-
-      let ty = ruleTopY + 9;
-      let tSize = 18;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(tSize); doc.setTextColor(...INK);
-      while (doc.getTextWidth(titre) > contentW && tSize > 11) { tSize -= 0.5; doc.setFontSize(tSize); }
-      doc.text(titre, M, ty);
-      doc.setDrawColor(...ACC); doc.setLineWidth(1.2); doc.line(M, ty + 2.5, M + 26, ty + 2.5);
-
-      ty += 8;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
-      doc.text(dateLabel + (categorie ? `   ·   ${categorie}` : ''), M, ty);
-
-      ty += 4.5;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
-      doc.text(`${heureDebut} -> ${heureFin}   ·   Opérateur : ${operateur}`, M, ty);
-
-      ty += 4.5;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...statutColor);
-      doc.text(statutLabel, M, ty);
-      const statutW = doc.getTextWidth(statutLabel);
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTE);
-      doc.text(`   ·   ${cochees}/${total} étape${total > 1 ? 's' : ''} validée${cochees > 1 ? 's' : ''} (${taux}%)`, M + statutW, ty);
-
-      return ty + 7;
-    };
-    const drawFooter = () => {
-      const fy = PAGE_H - M - 4;
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, fy - 3, PAGE_W - M, fy - 3);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text('Checklist SOP - Samper Consulting', M, fy);
-      doc.text(dateStr, PAGE_W - M, fy, { align: 'right' });
+      let ty = this._enTeteDocument(doc, {
+        titre,
+        sousTitre: dateLabel + (categorie ? `   ·   ${categorie}` : ''),
+        meta: `${heureDebut} -> ${heureFin}   ·   Opérateur : ${operateur}`,
+        etablissement: etabName,
+        logoDataUrl,
+      });
+      // Bandeau de statut : bloc mis en avant, barre laterale d'accent.
+      const h = 8;
+      doc.setFillColor(...PDF.tint);
+      doc.rect(M, ty - 4, contentW, h, 'F');
+      doc.setDrawColor(...PDF.accent);
+      doc.setLineWidth(RULE.accentBar);
+      doc.line(M + RULE.accentBar / 2, ty - 4, M + RULE.accentBar / 2, ty - 4 + h);
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...statutColor);
+      doc.text(statutLabel.toUpperCase(), M + 4, ty + 0.6, { charSpace: BRAND.charSpace.label });
+      const statutW = this._largeurTexte(doc, statutLabel.toUpperCase(), BRAND.charSpace.label);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+      doc.text(`   ·   ${cochees}/${total} étape${total > 1 ? 's' : ''} validée${cochees > 1 ? 's' : ''} (${taux}%)`, M + 4 + statutW, ty + 0.6);
+      return ty + h + 3;
     };
 
     let y = drawHeader();
     const ensureSpace = (h, onNewPage) => {
       if (y + h > bodyBottom) {
-        drawFooter(); doc.addPage(); y = drawHeader();
+        doc.addPage(); y = drawHeader();
         if (onNewPage) onNewPage();
       }
     };
     // Titre de section, répété avec « (suite) » quand elle déborde sur la page suivante
     const sectionHead = (sec, suite = false) => {
       const done = sec.etapes.filter(e => e.cochee).length;
-      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
-      doc.text(((sec.titre || 'Étapes') + (suite ? ' (suite)' : '')).toUpperCase(), M + 3.4, y, { charSpace: 0.5 });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
-      doc.text(`${done}/${sec.etapes.length}`, PAGE_W - M, y, { align: 'right' });
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
-      y += 7;
+      const yTitre = y;
+      y = this._titreSection(doc, (sec.titre || 'Étapes') + (suite ? ' (suite)' : ''), M, y, contentW);
+      setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+      doc.text(`${done}/${sec.etapes.length}`, PAGE_W - M, yTitre, { align: 'right' });
     };
 
     if (!sections.length) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUTE);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
       doc.text('Cette procédure ne contient aucune étape.', M, y + 4);
     }
 
     sections.forEach((sec) => {
       ensureSpace(18);
       sectionHead(sec);
-      sec.etapes.forEach((et) => {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+      sec.etapes.forEach((et, index) => {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
         const lines = doc.splitTextToSize(et.label || '-', labelW);
         const noteLines = et.note ? doc.splitTextToSize(et.note, labelW) : [];
         const rowH = Math.max(6.5, (lines.length + noteLines.length) * LINE_H + 2);
         ensureSpace(rowH, () => sectionHead(sec, true));
+        this._fondZebre(doc, index, M, y - 3.4, contentW, rowH);
 
-        // Case à cocher : pleine (accent + coche blanche) si validée, vide sinon
-        const boxY = y - 3;
-        if (et.cochee) {
-          doc.setFillColor(...ACC); doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
-          doc.rect(M, boxY, boxSize, boxSize, 'F');
-          doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5);
-          doc.line(M + 0.9, boxY + 2.0, M + 1.6, boxY + 2.9);
-          doc.line(M + 1.6, boxY + 2.9, M + 3.1, boxY + 1.1);
-        } else {
-          doc.setDrawColor(...(et.critique ? KO : MUTE)); doc.setLineWidth(0.3);
-          doc.rect(M, boxY, boxSize, boxSize, 'S');
-        }
-
-        // Une étape critique non validée est le signal d'audit : elle passe en rouge.
+        // Une étape critique non validée est le signal d'audit : la case, le
+        // libellé et la mention passent en couleur d'alerte.
         const manqueCritique = et.critique && !et.cochee;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
-        doc.setTextColor(...(manqueCritique ? KO : INK));
+        this._caseACocher(doc, M + 1, y - 3, boxSize, et.cochee, et.critique ? PDF.alert : PDF.stone);
+
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+        doc.setTextColor(...(manqueCritique ? PDF.alert : PDF.ink));
         lines.forEach((l, k) => doc.text(l, labelX, y + k * LINE_H));
 
         if (et.critique) {
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...KO);
-          doc.text('CRITIQUE', critiqueRight, y, { align: 'right', charSpace: 0.3 });
+          setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.alert);
+          this._texteDroite(doc, 'CRITIQUE', critiqueRight, y, BRAND.charSpace.label);
         }
         if (et.cochee && et.heure) {
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
           doc.text(et.heure, heureRight, y, { align: 'right' });
         }
         if (noteLines.length) {
-          doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(...MUTE);
+          setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
           noteLines.forEach((l, k) => doc.text(l, labelX, y + (lines.length + k) * LINE_H));
         }
 
-        doc.setDrawColor(...HAIR); doc.setLineWidth(0.15);
-        doc.line(M, y + rowH - 3.2, M + contentW, y + rowH - 3.2);
+        this._filetInterne(doc, M, y + rowH - 3.2, M + contentW);
         y += rowH;
       });
-      y += 4;
+      y += 5;
     });
 
     // Notes de l'exécution (anomalies relevées par l'opérateur)
     if (notes) {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
       const noteLines = doc.splitTextToSize(notes, contentW);
       ensureSpace(12 + noteLines.length * LINE_H);
-      doc.setFillColor(...ACC); doc.rect(M, y - 2.2, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...ACC);
-      doc.text('NOTES DE L\'OPÉRATEUR', M + 3.4, y, { charSpace: 0.5 });
-      doc.setDrawColor(...HAIR); doc.setLineWidth(0.3); doc.line(M, y + 2, M + contentW, y + 2);
-      y += 7;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+      y = this._titreSection(doc, 'Notes de l\'opérateur', M, y, contentW);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
       noteLines.forEach((l) => { doc.text(l, M, y); y += LINE_H; });
       y += 2;
     }
@@ -1839,26 +1877,21 @@ export const pdfUtils = {
     // Visa du responsable : attendu sur un document présenté en contrôle
     ensureSpace(18);
     y += 6;
-    doc.setDrawColor(...MUTE); doc.setLineWidth(0.3);
-    doc.line(PAGE_W - M - 60, y, PAGE_W - M, y);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-    doc.text('Date et visa du responsable', PAGE_W - M, y + 3.5, { align: 'right' });
-
-    drawFooter();
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTE);
-      doc.text(`${i} / ${totalPages}`, PAGE_W / 2, PAGE_H - M - 4, { align: 'center' });
-    }
+    this._blocVisa(doc, y);
   },
 };
 
 // ─── Assainissement texte pour jsPDF ────────────────────────────────
-// jsPDF + police standard helvetica n'encode que le jeu cp1252 (Latin-1 + extras
-// Windows). Les symboles hors de ce jeu (≈, ≤, ≥, flèches, fractions Unicode…)
-// ressortent en charabia (ex. « ≈ » affiché « "H »). On les remplace par un
-// équivalent ASCII lisible, et on translittère le reste plutôt que de corrompre.
+// Les polices de marque sont sous-ensemblees sur le jeu latin : il couvre tout
+// le francais (accents, ligature oe, euro) mais pas les symboles mathematiques,
+// les fleches ni les pictogrammes, qui ressortiraient en case vide. On les
+// remplace par un equivalent ASCII lisible et on translittere le reste plutot
+// que de corrompre. Meme filet quand le repli sur la police standard s'applique,
+// celle-ci n'encodant que le jeu cp1252.
+//
+// Les tirets cadratin et demi-cadratin sont ramenes au trait d'union : aucun
+// rendu client ne doit en porter, et le trait d'union ne change ni le sens ni
+// la lecture d'une plage de valeurs.
 const PDF_CHAR_REPLACEMENTS = {
   '≈': '~', '≃': '~', '≅': '~', '∼': '~',
   '≤': '<=', '≥': '>=', '≠': '#', '≡': '=',
@@ -1866,14 +1899,15 @@ const PDF_CHAR_REPLACEMENTS = {
   '→': '->', '←': '<-', '↔': '<->', '↑': 'haut', '↓': 'bas', '⇒': '=>',
   '⅓': '1/3', '⅔': '2/3', '⅕': '1/5', '⅖': '2/5', '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8',
   '′': "'", '″': '"', '‴': "'''",
-  '−': '-', '‐': '-', '‑': '-', '‒': '-', '⁄': '/',
+  '−': '-', '‐': '-', '‑': '-', '‒': '-', '–': '-', '—': '-', '⁄': '/',
   '✓': 'v', '✔': 'v', '✗': 'x', '✘': 'x', '★': '*', '☆': '*', '●': '-', '◦': '-',
 };
 
-// Codepoints Unicode > 0xFF mais représentables en cp1252 (à conserver tels quels).
+// Codepoints Unicode > 0xFF presents dans le sous-ensemble latin ET dans cp1252 :
+// conserves tels quels quelle que soit la police effectivement utilisee.
 const CP1252_EXTRA = new Set([
   0x20AC, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160,
-  0x2039, 0x0152, 0x017D, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+  0x2039, 0x0152, 0x017D, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022,
   0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x017E, 0x0178,
 ]);
 

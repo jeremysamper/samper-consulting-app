@@ -4,6 +4,7 @@ import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../.
 import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
+import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE FACTURES - Génération + envoi auto vers Documents
@@ -1253,9 +1254,9 @@ const FactureRender = ({ form, etablissement, textes }) => {
           {form.referenceContratDevis && (
             <tr><td style={fr.detailLabel}>Référence contrat / devis :</td><td style={fr.detailVal}>{form.referenceContratDevis}</td></tr>
           )}
-          <tr style={{ background: '#f5f0e1' }}>
-            <td style={{ ...fr.detailLabel, fontSize: 13, fontWeight: 700 }}>Montant total :</td>
-            <td style={{ ...fr.detailVal, fontSize: 14, fontWeight: 700, color: '#003042' }}>
+          <tr style={fr.totalRow}>
+            <td style={{ ...fr.detailLabel, ...fr.totalLabel }}>Montant total :</td>
+            <td style={{ ...fr.detailVal, ...fr.totalVal }}>
               {form.devise} {montantFormat} {form.htOuTtc}
             </td>
           </tr>
@@ -1440,26 +1441,59 @@ const fac = {
   },
 };
 
-// Styles facture imprimable (FR = facture render)
+// ─── Styles facture imprimable (FR = facture render) ──────────────────────
+// Document client : c'est la sortie la plus exposée de l'app, elle applique la
+// DA à la lettre. Trois niveaux typographiques, aucun gras, aucune couleur
+// hors marque, et les montants en Lora - un montant se lit comme une valeur,
+// pas comme une cellule de tableur.
 const fr = {
-  page: { background: '#fff', padding: '30px 36px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#222', maxWidth: 720, margin: '0 auto', fontSize: 11 },
-  titleBar: { textAlign: 'center', fontSize: 16, fontWeight: 700, padding: '10px 0', borderBottom: '2px solid #003042', marginBottom: 18, letterSpacing: 0.5, color: '#003042', fontFamily: 'Arial, Helvetica, sans-serif' },
+  page: {
+    background: BRAND.color.white, padding: '30px 36px',
+    ...WEB_TYPE.data, color: BRAND.color.ink,
+    maxWidth: 720, margin: '0 auto', fontSize: 11,
+  },
+  titleBar: {
+    textAlign: 'center', fontSize: 20, padding: '4px 0 12px',
+    borderBottom: `1.6pt solid ${BRAND.color.primary}`, marginBottom: 18,
+    letterSpacing: '0.02em', color: BRAND.color.primary, ...WEB_TYPE.voice,
+  },
   twoColTop: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 },
-  partyBox: { padding: '10px 12px', background: '#fafaf6', borderLeft: '3px solid #003042', borderRadius: 4 },
-  partyLabel: { fontSize: 10, fontWeight: 700, color: '#003042', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: 'Arial, Helvetica, sans-serif' },
-  partyText: { fontSize: 11, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' },
-  detailTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 18, fontSize: 11, fontFamily: 'Arial, Helvetica, sans-serif' },
-  detailLabel: { padding: '7px 12px', borderBottom: '1px solid #e8e0c8', fontWeight: 600, width: '38%', verticalAlign: 'top' },
-  detailVal: { padding: '7px 12px', borderBottom: '1px solid #e8e0c8' },
+  partyBox: {
+    padding: '10px 12px', background: BRAND.color.white,
+    border: `0.5pt solid ${BRAND.color.rule}`,
+    borderLeft: `2.2pt solid ${BRAND.color.accent}`,
+  },
+  partyLabel: { fontSize: 9, color: BRAND.color.primary, marginBottom: 5, ...WEB_TYPE.label },
+  partyText: { fontSize: 11, lineHeight: 1.5, ...WEB_TYPE.data },
+  detailTable: {
+    width: '100%', borderCollapse: 'collapse', marginBottom: 18, fontSize: 11,
+    border: `0.5pt solid ${BRAND.color.rule}`, ...WEB_TYPE.data,
+  },
+  detailLabel: {
+    padding: '7px 12px', borderBottom: `0.5pt solid ${BRAND.color.ruleLight}`,
+    width: '38%', verticalAlign: 'top', fontSize: 9,
+    color: BRAND.color.stone, ...WEB_TYPE.label,
+  },
+  detailVal: { padding: '7px 12px', borderBottom: `0.5pt solid ${BRAND.color.ruleLight}`, ...WEB_TYPE.data },
+  totalRow: { background: BRAND.color.tint, borderTop: `1pt solid ${BRAND.color.primary}` },
+  totalLabel: { fontSize: 9, color: BRAND.color.primary },
+  totalVal: { fontSize: 14, color: BRAND.color.primary, ...WEB_TYPE.voice },
   section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#003042', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #d4c8a0', fontFamily: 'Arial, Helvetica, sans-serif' },
-  bankTable: { width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'Arial, Helvetica, sans-serif' },
-  bankLabel: { padding: '4px 12px', fontWeight: 600, width: '38%', color: '#555' },
-  bankVal: { padding: '4px 12px', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 11 },
-  tva: { fontSize: 10, color: '#666', fontStyle: 'italic', textAlign: 'center', padding: '10px 0', borderTop: '1px dotted #d4c8a0', borderBottom: '1px dotted #d4c8a0', marginBottom: 14, fontFamily: 'Arial, Helvetica, sans-serif' },
-  signature: { marginTop: 14, fontSize: 11, fontFamily: 'Arial, Helvetica, sans-serif' },
+  sectionTitle: {
+    fontSize: 9, color: BRAND.color.primary, marginBottom: 7, paddingBottom: 5,
+    borderBottom: `0.5pt solid ${BRAND.color.rule}`, ...WEB_TYPE.label,
+  },
+  bankTable: { width: '100%', borderCollapse: 'collapse', fontSize: 11, ...WEB_TYPE.data },
+  bankLabel: { padding: '4px 12px', width: '38%', fontSize: 9, color: BRAND.color.stone, ...WEB_TYPE.label },
+  bankVal: { padding: '4px 12px', fontSize: 11, ...WEB_TYPE.data },
+  tva: {
+    fontSize: 10, color: BRAND.color.stone, textAlign: 'center', padding: '10px 0',
+    borderTop: `0.5pt solid ${BRAND.color.ruleLight}`, borderBottom: `0.5pt solid ${BRAND.color.ruleLight}`,
+    marginBottom: 14, ...WEB_TYPE.voiceItalic,
+  },
+  signature: { marginTop: 14, fontSize: 11, ...WEB_TYPE.data },
   signatureLine: { marginBottom: 18 },
-  signatureSig: { fontSize: 11, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' },
+  signatureSig: { fontSize: 11, lineHeight: 1.5, ...WEB_TYPE.data },
 };
 
 export default Factures;

@@ -3,7 +3,7 @@ import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import ShiftCell from './ShiftCell.jsx';
-import { ccntCell, pls } from './Planning.styles.js';
+import { ccnt, ccntCell, pls } from './Planning.styles.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { dbService } from '../../services/dbService.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -1471,78 +1471,76 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const data = buildCCNTData();
         if (!data) return null;
         return (
-          <div id="ccnt-print" style={{ position: 'absolute', left: -99999, top: 0, width: '180mm', background: '#fff', color: '#000', fontFamily: 'Arial, sans-serif', fontSize: 10 }}>
+          <div id="ccnt-print" style={ccnt.page}>
             {/* Bloc 1 : identité */}
-            <div style={{ border: '1.5px solid #000', padding: 10, marginBottom: 10 }}>
-              <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 6, textAlign: 'center' }}>
-                CONTRÔLE DE LA DURÉE DU TRAVAIL
-              </div>
-              <div style={{ fontSize: 10, textAlign: 'center', marginBottom: 10, fontStyle: 'italic' }}>
+            <div style={ccnt.bloc}>
+              <div style={ccnt.titreDoc}>Contrôle de la durée du travail</div>
+              <div style={ccnt.sousTitreDoc}>
                 Conformément aux articles 15 &amp; 21 CCNT hôtellerie-restauration suisse
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 10 }}>
-                <div><strong>Établissement :</strong> {data.etab?.nom || '-'}</div>
-                <div><strong>Adresse :</strong> {data.etab?.adresse || '-'}</div>
-                <div><strong>Collaborateur :</strong> {data.emp.prenom} {data.emp.nom}</div>
-                <div><strong>Fonction :</strong> {data.emp.poste || demoData.roles[data.emp.role]?.label || '-'}</div>
-                <div><strong>Mois :</strong> {data.moisLabel}</div>
-                <div><strong>Durée hebdomadaire contractuelle :</strong> {data.heuresHebdo} h</div>
+              <div style={ccnt.identiteGrille}>
+                <div><span style={ccnt.etiquette}>Établissement</span> {data.etab?.nom || '-'}</div>
+                <div><span style={ccnt.etiquette}>Adresse</span> {data.etab?.adresse || '-'}</div>
+                <div><span style={ccnt.etiquette}>Collaborateur</span> {data.emp.prenom} {data.emp.nom}</div>
+                <div><span style={ccnt.etiquette}>Fonction</span> {data.emp.poste || demoData.roles[data.emp.role]?.label || '-'}</div>
+                <div><span style={ccnt.etiquette}>Mois</span> {data.moisLabel}</div>
+                <div><span style={ccnt.etiquette}>Durée hebdomadaire contractuelle</span> {data.heuresHebdo} h</div>
               </div>
             </div>
 
             {/* Bloc 2 : tableau journalier */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginBottom: 10 }}>
+            <table style={ccnt.table}>
               <thead>
-                <tr style={{ background: '#e5e5e5' }}>
-                  <th style={ccntCell}>Date</th>
-                  <th style={ccntCell}>Jour</th>
-                  <th style={ccntCell}>Arrivée</th>
-                  <th style={ccntCell}>Départ</th>
-                  <th style={ccntCell}>Pause (min)</th>
-                  <th style={ccntCell}>Heures prévues</th>
-                  <th style={ccntCell}>Heures effectives</th>
-                  <th style={ccntCell}>Observations</th>
+                <tr>
+                  <th style={ccnt.th}>Date</th>
+                  <th style={ccnt.th}>Jour</th>
+                  <th style={ccnt.th}>Arrivée</th>
+                  <th style={ccnt.th}>Départ</th>
+                  <th style={ccnt.th}>Pause (min)</th>
+                  <th style={ccnt.th}>Heures prévues</th>
+                  <th style={ccnt.th}>Heures effectives</th>
+                  <th style={ccnt.th}>Observations</th>
                 </tr>
               </thead>
               <tbody>
                 {data.jours.map(j => (
-                  <tr key={j.date} style={{ background: j.isWeekend ? '#f8f8f8' : '#fff' }}>
+                  <tr key={j.date} style={j.isWeekend ? ccnt.ligneZebre : ccnt.ligneNormale}>
                     <td style={ccntCell}>{String(j.jour).padStart(2, '0')}</td>
                     <td style={ccntCell}>{j.dayName}</td>
                     <td style={ccntCell}>{j.shift?.pointageDebut || j.shift?.debut || ''}</td>
                     <td style={ccntCell}>{j.shift?.pointageFin || j.shift?.fin || ''}</td>
                     <td style={ccntCell}>{j.shift ? (j.shift.pause || 0) : ''}</td>
-                    <td style={{ ...ccntCell, textAlign: 'right' }}>{j.heuresPrev ? j.heuresPrev.toFixed(2) : ''}</td>
-                    <td style={{ ...ccntCell, textAlign: 'right', fontWeight: 600 }}>{j.heuresReel ? j.heuresReel.toFixed(2) : ''}</td>
+                    <td style={{ ...ccntCell, ...ccnt.valeur }}>{j.heuresPrev ? j.heuresPrev.toFixed(2) : ''}</td>
+                    <td style={{ ...ccntCell, ...ccnt.valeur }}>{j.heuresReel ? j.heuresReel.toFixed(2) : ''}</td>
                     <td style={ccntCell}></td>
                   </tr>
                 ))}
-                <tr style={{ background: '#ddd', fontWeight: 'bold' }}>
-                  <td style={ccntCell} colSpan={5}>TOTAL DU MOIS</td>
-                  <td style={{ ...ccntCell, textAlign: 'right' }}>{data.totalPrev} h</td>
-                  <td style={{ ...ccntCell, textAlign: 'right' }}>{data.totalMois} h</td>
+                <tr style={ccnt.ligneTotal}>
+                  <td style={{ ...ccntCell, ...ccnt.etiquette }} colSpan={5}>Total du mois</td>
+                  <td style={{ ...ccntCell, ...ccnt.valeur }}>{data.totalPrev} h</td>
+                  <td style={{ ...ccntCell, ...ccnt.valeur }}>{data.totalMois} h</td>
                   <td style={ccntCell}></td>
                 </tr>
               </tbody>
             </table>
 
             {/* Bloc 3 : récapitulatif hebdomadaire (détection dépassement 42h/sem) */}
-            <div style={{ border: '1px solid #000', padding: 8, marginBottom: 10, fontSize: 9 }}>
-              <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Récapitulatif hebdomadaire</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ ...ccnt.bloc, fontSize: 9 }}>
+              <div style={ccnt.titreBloc}>Récapitulatif hebdomadaire</div>
+              <table style={ccnt.tableInterne}>
                 <thead>
-                  <tr style={{ background: '#f0f0f0' }}>
-                    <th style={ccntCell}>Semaine</th>
-                    <th style={ccntCell}>Heures effectives</th>
-                    <th style={ccntCell}>Dépassement {data.heuresHebdo}h</th>
+                  <tr>
+                    <th style={ccnt.th}>Semaine</th>
+                    <th style={ccnt.th}>Heures effectives</th>
+                    <th style={ccnt.th}>Dépassement {data.heuresHebdo}h</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.semaines.map((s, i) => (
-                    <tr key={i}>
+                    <tr key={i} style={i % 2 ? ccnt.ligneZebre : ccnt.ligneNormale}>
                       <td style={ccntCell}>Du {s.debut} au {s.fin}</td>
-                      <td style={{ ...ccntCell, textAlign: 'right' }}>{s.heures.toFixed(2)} h</td>
-                      <td style={{ ...ccntCell, textAlign: 'right', color: s.depassement > 0 ? '#c00' : '#000', fontWeight: s.depassement > 0 ? 700 : 400 }}>{s.depassement > 0 ? '+' + s.depassement.toFixed(2) + ' h' : '-'}</td>
+                      <td style={{ ...ccntCell, ...ccnt.valeur }}>{s.heures.toFixed(2)} h</td>
+                      <td style={{ ...ccntCell, ...(s.depassement > 0 ? ccnt.depassement : ccnt.valeur) }}>{s.depassement > 0 ? '+' + s.depassement.toFixed(2) + ' h' : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1550,51 +1548,51 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
 
             {/* Bloc 4 : soldes */}
-            <div style={{ border: '1px solid #000', padding: 8, marginBottom: 10, fontSize: 10 }}>
-              <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Communication mensuelle des soldes (art. 15 ch. 5 CCNT)</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ ...ccnt.bloc, fontSize: 10 }}>
+              <div style={ccnt.titreBloc}>Communication mensuelle des soldes (art. 15 ch. 5 CCNT)</div>
+              <table style={ccnt.tableInterne}>
                 <tbody>
                   <tr>
                     <td style={{ ...ccntCell, width: '50%' }}>Solde d'heures supp. reporté du mois précédent</td>
-                    <td style={{ ...ccntCell, textAlign: 'right' }}>{data.soldePrec} h</td>
+                    <td style={{ ...ccntCell, ...ccnt.valeur }}>{data.soldePrec} h</td>
                   </tr>
-                  <tr>
+                  <tr style={ccnt.ligneZebre}>
                     <td style={ccntCell}>Heures supplémentaires effectuées ce mois</td>
-                    <td style={{ ...ccntCell, textAlign: 'right' }}>+{data.soldeHeuresSupp} h</td>
+                    <td style={{ ...ccntCell, ...ccnt.valeur }}>+{data.soldeHeuresSupp} h</td>
                   </tr>
-                  <tr style={{ background: '#f0f0f0', fontWeight: 'bold' }}>
-                    <td style={ccntCell}>Solde cumulé à fin {data.moisLabel}</td>
-                    <td style={{ ...ccntCell, textAlign: 'right' }}>{data.soldeCumule} h</td>
+                  <tr style={ccnt.ligneTotal}>
+                    <td style={{ ...ccntCell, ...ccnt.etiquette }}>Solde cumulé à fin {data.moisLabel}</td>
+                    <td style={{ ...ccntCell, ...ccnt.valeur }}>{data.soldeCumule} h</td>
                   </tr>
-                  <tr><td style={ccntCell}>Vacances - solde dû</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.vacances.solde} j</td></tr>
-                  <tr><td style={ccntCell}>Vacances - prises ce mois</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.vacances.pris} j</td></tr>
-                  <tr><td style={ccntCell}>Jours de repos dus / pris</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.joursRepos.dus} j / {data.joursRepos.pris} j</td></tr>
-                  <tr><td style={ccntCell}>Jours fériés dus / pris</td><td style={{ ...ccntCell, textAlign: 'right' }}>{data.joursFeries.dus} j / {data.joursFeries.pris} j</td></tr>
+                  <tr><td style={ccntCell}>Vacances - solde dû</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.vacances.solde} j</td></tr>
+                  <tr style={ccnt.ligneZebre}><td style={ccntCell}>Vacances - prises ce mois</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.vacances.pris} j</td></tr>
+                  <tr><td style={ccntCell}>Jours de repos dus / pris</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.joursRepos.dus} j / {data.joursRepos.pris} j</td></tr>
+                  <tr style={ccnt.ligneZebre}><td style={ccntCell}>Jours fériés dus / pris</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.joursFeries.dus} j / {data.joursFeries.pris} j</td></tr>
                 </tbody>
               </table>
             </div>
 
             {/* Bloc 5 : zone signatures */}
-            <div style={{ border: '1.5px solid #000', padding: 10, fontSize: 10 }}>
-              <div style={{ fontWeight: 'bold', marginBottom: 8 }}>Attestation et signatures</div>
+            <div style={ccnt.bloc}>
+              <div style={ccnt.titreBloc}>Attestation et signatures</div>
               <div style={{ marginBottom: 10, fontSize: 9, lineHeight: 1.5 }}>
                 Le/la soussigné(e) atteste avoir pris connaissance du présent décompte et confirme l'exactitude des heures enregistrées ci-dessus. Conformément à l'art. 21 ch. 4 CCNT, à défaut de signature mensuelle, les enregistrements personnels du collaborateur feront foi.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 14 }}>
                 <div>
-                  <div style={{ borderBottom: '1px solid #000', height: 40 }}></div>
-                  <div style={{ fontSize: 9, marginTop: 3 }}><strong>Signature du collaborateur</strong></div>
+                  <div style={ccnt.signatureLigne}></div>
+                  <div style={{ ...ccnt.etiquette, marginTop: 5 }}>Signature du collaborateur</div>
                   <div style={{ fontSize: 9, marginTop: 8 }}>Date : _____________________</div>
                 </div>
                 <div>
-                  <div style={{ borderBottom: '1px solid #000', height: 40 }}></div>
-                  <div style={{ fontSize: 9, marginTop: 3 }}><strong>Signature et timbre de l'employeur</strong></div>
+                  <div style={ccnt.signatureLigne}></div>
+                  <div style={{ ...ccnt.etiquette, marginTop: 5 }}>Signature et timbre de l'employeur</div>
                   <div style={{ fontSize: 9, marginTop: 8 }}>Date : _____________________</div>
                 </div>
               </div>
             </div>
 
-            <div style={{ fontSize: 8, color: '#666', marginTop: 8, textAlign: 'center' }}>
+            <div style={ccnt.mentionLegale}>
               Document à conserver 5 ans minimum - Art. 73 OLT 1 / Art. 21 CCNT
             </div>
           </div>
