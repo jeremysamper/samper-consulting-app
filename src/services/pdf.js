@@ -33,6 +33,25 @@ import { loadBrandFonts, registerBrandFonts, setBrandFont } from '../design/regi
 const CAPTURE_FORMAT = 'JPEG';
 const CAPTURE_QUALITE = 0.94;
 
+// ─── Échelle de capture ─────────────────────────────────────────────────────
+// 3 vise environ 318 dpi sur la largeur imprimable A4, la finesse qu'on attend
+// d'un document remis à un client. Le JPEG rend ce facteur abordable : ce qui
+// pesait 9 Mo en PNG à l'échelle 2 tient sous le mégaoctet à l'échelle 3.
+//
+// Mais un canvas a une aire maximale, et sur iOS elle est basse : au-delà,
+// Safari ne lève RIEN, il rend une image entièrement vide. Un inventaire de
+// deux cents lignes ou un planning en paysage atteignent ce plafond, et le
+// bug ne se verrait qu'au moment où la brigade ouvre le PDF. On vise donc 3
+// et on redescend juste ce qu'il faut pour rester sous les limites.
+const CAPTURE_ECHELLE = 3;
+// Limites de Safari iOS, la plateforme la plus contrainte du parc : 16,7 Mpx
+// d'aire et 8192 px de côté. Le côté valait 4096 jusqu'à iOS 11, une version
+// qui ne fait pas tourner cette PWA - retenir 4096 ferait retomber un long
+// inventaire sous l'échelle 2 d'avant, soit une perte de finesse pour parer un
+// risque qui n'existe plus.
+const CANVAS_AIRE_MAX = 16.7e6;
+const CANVAS_COTE_MAX = 8192;
+
 export const pdfUtils = {
 
   // ─── Chargement à la demande des libs lourdes (html2canvas + jsPDF) ──────
@@ -71,6 +90,19 @@ export const pdfUtils = {
         fonts.load("500 12pt 'Poppins'"),
       ]);
     } catch { /* police indisponible : le repli CSS prend le relais */ }
+  },
+
+  // Échelle réellement applicable à ce container : CAPTURE_ECHELLE tant que le
+  // canvas reste sous les limites, moins sinon. Mieux vaut un document un peu
+  // moins fin qu'un document blanc, et c'est un long inventaire ou un planning
+  // en paysage qui déclenchent le repli, jamais une facture.
+  _echelleCapture(largeurCss, hauteurCss) {
+    if (!largeurCss || !hauteurCss) return CAPTURE_ECHELLE;
+    const parAire = Math.sqrt(CANVAS_AIRE_MAX / (largeurCss * hauteurCss));
+    const parCote = Math.min(CANVAS_COTE_MAX / largeurCss, CANVAS_COTE_MAX / hauteurCss);
+    // Plancher à 1 : en dessous, le texte devient illisible et il vaut mieux
+    // laisser le navigateur échouer franchement que rendre un document inutile.
+    return Math.max(1, Math.min(CAPTURE_ECHELLE, parAire, parCote));
   },
 
   // ─── Override CSS variables en HEX pour le rendu PDF / print ────────────
@@ -391,7 +423,7 @@ export const pdfUtils = {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
       await this._ensureWebFontsLoaded();
       const canvas = await html2canvas(container, {
-        scale: 2,
+        scale: this._echelleCapture(container.offsetWidth, container.scrollHeight),
         useCORS: true,
         backgroundColor: BRAND.color.white,
         logging: false,
@@ -490,7 +522,7 @@ export const pdfUtils = {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
       await this._ensureWebFontsLoaded();
       const canvas = await html2canvas(container, {
-        scale: 2,
+        scale: this._echelleCapture(container.offsetWidth, container.scrollHeight),
         useCORS: true,
         backgroundColor: BRAND.color.white,
         logging: false,
