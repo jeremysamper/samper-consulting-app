@@ -222,7 +222,7 @@ const Factures = ({ user, etablissement }) => {
         if (!mounted) return;
         setEtabsAll((rows || []).map(r => ({
           id: r.id, nom: r.nom, type: r.type, adresse: r.adresse, tel: r.tel,
-          email: r.email, couleur: r.couleur, contact: r.contact || r.notes,
+          email: r.email, couleur: r.couleur,
         })));
       } catch (err) { console.error('[Factures etabs]', err); }
     })();
