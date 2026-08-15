@@ -61,6 +61,10 @@ const DEFAULT_FACTURE_TEXTS = {
 Téléphone : +41 76 626 54 00
 E-mail : jeremysamper.pro@gmail.com
 Adresse : Route de Collombé 24A, 1976 Erde, Suisse`,
+  // Vide = bloc client dérivé de la fiche établissement (nom + adresse). Dès
+  // qu'un texte est enregistré il prime : c'est là que vivent la personne de
+  // contact, une raison sociale différente ou une adresse de facturation.
+  client: '',
   prestationDefaut: 'Mission de consulting culinaire',
   adresseEmission: 'Route de Collombé 24A, 1976 Erde, Suisse',
   paiementTitre: 'Coordonnées de paiement',
@@ -76,6 +80,7 @@ SWIFT / BIC : BCVSCH2LXXX`,
 const FACTURE_TEXT_FIELDS = [
   { key: 'titre', label: 'Titre du document', rows: 0, hint: 'Le numéro de facture est ajouté automatiquement à la suite.' },
   { key: 'emetteur', label: 'Bloc émetteur', rows: 5 },
+  { key: 'client', label: 'Bloc client', rows: 4, hint: "Laisser vide pour reprendre le nom et l'adresse de la fiche établissement. Reste modifiable facture par facture dans le formulaire." },
   { key: 'prestationDefaut', label: 'Prestation par défaut', rows: 2, hint: 'Pré-remplit le détail de la prestation quand ce client est sélectionné.' },
   { key: 'adresseEmission', label: "Adresse d'émission", rows: 0, hint: 'Laisser vide pour masquer la ligne du tableau.' },
   { key: 'paiementTitre', label: 'Titre du bloc paiement', rows: 0 },
@@ -307,13 +312,14 @@ const Factures = ({ user, etablissement }) => {
     return lines.join('\n');
   };
 
-  // Quand on change l'établissement sélectionné, pré-remplir le destinataire
+  // Quand on change l'établissement sélectionné, pré-remplir le destinataire :
+  // le bloc client enregistré pour ce client prime, sinon on le reconstruit
+  // depuis sa fiche.
   React.useEffect(() => {
     const sel = etabsAll.find(e => e.id === selectedEtabId);
-    if (sel) {
-      setForm(prev => ({ ...prev, destinataire: buildDestinataireFromEtab(sel) }));
-    }
-  }, [selectedEtabId, etabsAll]);
+    if (!sel && !factureTexts.client) return;
+    setForm(prev => ({ ...prev, destinataire: factureTexts.client || buildDestinataireFromEtab(sel) }));
+  }, [selectedEtabId, etabsAll, factureTexts.client]);
 
   const [savedToDocs, setSavedToDocs] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -673,6 +679,10 @@ const Factures = ({ user, etablissement }) => {
     || (selectedEtabId === etabId ? etablissement?.nom : '')
     || 'cet établissement';
   const textsCustomized = isCustomFactureTexts(factureTexts);
+  // Bloc client dérivé de la fiche de l'établissement en cours d'édition :
+  // affiché en placeholder pour montrer ce qui sera utilisé tant que le champ
+  // reste vide, sans figer le texte à la première ouverture de l'éditeur.
+  const autoClientBlock = buildDestinataireFromEtab(etabsAll.find(e => e.id === textsEtabId));
 
   if (!isConsultant) {
     return (
@@ -792,8 +802,8 @@ const Factures = ({ user, etablissement }) => {
               {textsCustomized && <span style={fac.badge}>Personnalisés</span>}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
-              Émetteur, coordonnées de paiement, mention TVA et signature sont enregistrés
-              pour <strong>{selectedEtabNom}</strong>. Chaque client peut avoir ses propres textes.
+              Émetteur, bloc client, coordonnées de paiement, mention TVA et signature sont
+              enregistrés pour <strong>{selectedEtabNom}</strong>. Chaque client peut avoir ses propres textes.
             </div>
             <button style={fac.smallBtn} onClick={openTextsEditor}>
               ✎ Modifier les textes de la facture
@@ -1168,6 +1178,7 @@ const Factures = ({ user, etablissement }) => {
                       value={textsDraft[f.key] ?? ''}
                       onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
                       rows={f.rows}
+                      placeholder={f.key === 'client' ? autoClientBlock : undefined}
                       style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55 }}
                     />
                   ) : (
