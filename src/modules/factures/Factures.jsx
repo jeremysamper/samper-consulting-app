@@ -49,6 +49,77 @@ const renderEmailTemplate = (tpl, vars) => {
 // mise en forme du mail : on l'aplatit en une seule ligne.
 const flattenValue = (v) => String(v ?? '').replace(/\s*\n\s*/g, ' ').trim();
 
+// ─── Textes du document facture, par établissement client ───
+// Tout ce qui était figé dans le PDF (émetteur, coordonnées bancaires, mention
+// TVA, signature) est éditable et enregistré sur l'établissement sélectionné :
+// un client facturé depuis une autre entité ou avec un autre compte garde ses
+// propres textes. Stockage en user_settings sous une clé scopée par etabId,
+// donc pas de migration ni de colonne à ajouter.
+const DEFAULT_FACTURE_TEXTS = {
+  titre: 'FACTURE DE PRESTATION',
+  emetteur: `Jeremy SAMPER - Consultant Culinaire
+Téléphone : +41 76 626 54 00
+E-mail : jeremysamper.pro@gmail.com
+Adresse : Route de Collombé 24A, 1976 Erde, Suisse`,
+  prestationDefaut: 'Mission de consulting culinaire',
+  adresseEmission: 'Route de Collombé 24A, 1976 Erde, Suisse',
+  paiementTitre: 'Coordonnées de paiement',
+  paiement: `Titulaire : SAMPER Jérémy
+Banque : Banque Cantonale du Valais (BCVS)
+IBAN : CH33 0076 5001 0561 6551 0
+SWIFT / BIC : BCVSCH2LXXX`,
+  mentionTva: 'Numéro TVA : Non assujetti (activité indépendante en création)',
+  ville: 'Erde',
+  signature: 'Jeremy Samper - Consultant culinaire',
+};
+
+const FACTURE_TEXT_FIELDS = [
+  { key: 'titre', label: 'Titre du document', rows: 0, hint: 'Le numéro de facture est ajouté automatiquement à la suite.' },
+  { key: 'emetteur', label: 'Bloc émetteur', rows: 5 },
+  { key: 'prestationDefaut', label: 'Prestation par défaut', rows: 2, hint: 'Pré-remplit le détail de la prestation quand ce client est sélectionné.' },
+  { key: 'adresseEmission', label: "Adresse d'émission", rows: 0, hint: 'Laisser vide pour masquer la ligne du tableau.' },
+  { key: 'paiementTitre', label: 'Titre du bloc paiement', rows: 0 },
+  { key: 'paiement', label: 'Coordonnées de paiement', rows: 5, hint: 'Une ligne par entrée, au format « Libellé : valeur ».' },
+  { key: 'mentionTva', label: 'Mention TVA', rows: 2, hint: 'Laisser vide pour masquer la ligne.' },
+  { key: 'ville', label: "Ville d'émission", rows: 0, hint: 'Utilisée pour la ligne « Fait à… ».' },
+  { key: 'signature', label: 'Signature', rows: 2 },
+];
+
+const factureTextsKey = (etabId) => `facture_textes:${etabId}`;
+
+// Fusion avec les valeurs par défaut : une facture enregistrée avant l'ajout
+// d'un champ ne doit pas afficher un bloc vide.
+const mergeFactureTexts = (raw) => {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_FACTURE_TEXTS };
+  const out = { ...DEFAULT_FACTURE_TEXTS };
+  Object.keys(DEFAULT_FACTURE_TEXTS).forEach(k => {
+    if (typeof raw[k] === 'string') out[k] = raw[k];
+  });
+  return out;
+};
+
+const isCustomFactureTexts = (texts) =>
+  Object.keys(DEFAULT_FACTURE_TEXTS).some(k => (texts?.[k] ?? '') !== DEFAULT_FACTURE_TEXTS[k]);
+
+// Le bloc paiement est saisi en texte libre, une ligne par entrée au format
+// « Libellé : valeur ». On le rend en tableau deux colonnes pour conserver la
+// mise en page d'origine ; une ligne sans « : » occupe toute la largeur.
+const splitLabelledLines = (text) => String(text || '')
+  .split('\n')
+  .map(l => l.trim())
+  .filter(Boolean)
+  .map(line => {
+    const i = line.indexOf(':');
+    if (i === -1) return { label: '', value: line };
+    return { label: line.slice(0, i).trim(), value: line.slice(i + 1).trim() };
+  });
+
+// « Erde, le 15 Août 2026 ». Sans ville renseignée on garde juste la date.
+const buildFaitALe = (ville, dateStr) => {
+  const d = formatDateFr(dateStr);
+  return ville ? `${ville}, le ${d}` : `le ${d}`;
+};
+
 // ─── Ouverture d'un brouillon Gmail prérempli ───
 // view=cm : fenêtre de rédaction. fs=1&tf=1 : plein écran, pas la petite popup
 // d'angle. Pas de /u/0/ : Gmail utilise le compte déjà connecté dans le navigateur.
@@ -98,12 +169,12 @@ const Factures = ({ user, etablissement }) => {
     dateFacturation: todayStr,
     dateEcheance: addDaysToDate(todayStr, 11),
     destinataire: '',
-    prestation: 'Mission de consulting culinaire',
+    prestation: DEFAULT_FACTURE_TEXTS.prestationDefaut,
     referenceContratDevis: '',
     montant: '',
     devise: 'CHF',
     htOuTtc: 'HT',
-    faitALe: `Erde, le ${formatDateFr(todayStr)}`,
+    faitALe: buildFaitALe(DEFAULT_FACTURE_TEXTS.ville, todayStr),
   });
 
   // Pour éviter qu'au mount on incrémente le compteur DB plusieurs fois en cas de StrictMode/remount,
@@ -152,6 +223,75 @@ const Factures = ({ user, etablissement }) => {
     })();
     return () => { mounted = false; };
   }, []);
+
+  // ─── Textes du document, propres à l'établissement facturé ───
+  // Lecture synchrone quand le cache user_settings est hydraté (cas normal après
+  // login) ; sinon repli sur la lecture async qui interroge la DB.
+  const readFactureTextsSync = (id) => mergeFactureTexts(legacySB?.db?.getUserSettingSync?.(factureTextsKey(id)));
+  const [factureTexts, setFactureTexts] = React.useState(() => readFactureTextsSync(etabId));
+  const [showTextsEditor, setShowTextsEditor] = React.useState(false);
+  const [textsDraft, setTextsDraft] = React.useState(DEFAULT_FACTURE_TEXTS);
+  // L'établissement visé est figé à l'ouverture de l'éditeur : changer de
+  // destinataire pendant l'édition ne doit pas écrire sur le mauvais client.
+  const [textsEtabId, setTextsEtabId] = React.useState(etabId);
+  const [textsBusy, setTextsBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isConsultant || !selectedEtabId) return undefined;
+    // Changement de client = on repart de sa prestation type ; le champ reste
+    // librement modifiable pour la facture en cours.
+    const apply = (texts) => {
+      setFactureTexts(texts);
+      setForm(prev => ({ ...prev, prestation: texts.prestationDefaut }));
+    };
+    if (legacySB?.db?.isUserSettingsCacheReady?.()) {
+      apply(readFactureTextsSync(selectedEtabId));
+      return undefined;
+    }
+    let mounted = true;
+    (async () => {
+      try {
+        const raw = await legacySB?.db?.getUserSetting?.(factureTextsKey(selectedEtabId));
+        if (mounted) apply(mergeFactureTexts(raw));
+      } catch (err) {
+        console.warn('[Factures] lecture des textes de facture', err);
+        if (mounted) apply({ ...DEFAULT_FACTURE_TEXTS });
+      }
+    })();
+    return () => { mounted = false; };
+  }, [selectedEtabId]);
+
+  const openTextsEditor = () => {
+    setTextsEtabId(selectedEtabId || etabId);
+    setTextsDraft({ ...factureTexts });
+    setShowTextsEditor(true);
+  };
+
+  const saveFactureTexts = async () => {
+    const clean = mergeFactureTexts(textsDraft);
+    setTextsBusy(true);
+    try {
+      if (legacySB?.db?.setUserSetting) {
+        await legacySB.db.setUserSetting(factureTextsKey(textsEtabId), clean);
+      }
+      if (textsEtabId === selectedEtabId) {
+        // La prestation en cours suit le nouveau texte type seulement si elle
+        // n'a pas été retouchée pour cette facture-là.
+        const previousDefault = factureTexts.prestationDefaut;
+        setFactureTexts(clean);
+        setForm(prev => (prev.prestation === previousDefault
+          ? { ...prev, prestation: clean.prestationDefaut }
+          : prev));
+      }
+      setShowTextsEditor(false);
+      notifyLegacy('Textes de facture enregistrés pour cet établissement.', 'success');
+    } catch (err) {
+      console.error('[Factures] enregistrement des textes', err);
+      notifyLegacy('Enregistrement impossible : ' + err.message, 'error');
+    } finally {
+      setTextsBusy(false);
+    }
+  };
 
   // Construit automatiquement le bloc destinataire depuis un établissement
   const buildDestinataireFromEtab = (etab) => {
@@ -304,16 +444,17 @@ const Factures = ({ user, etablissement }) => {
 
   // Fermeture des modales avec la touche Échap (UX standard)
   React.useEffect(() => {
-    if (!showEmailModal && !showTemplateEditor) return;
+    if (!showEmailModal && !showTemplateEditor && !showTextsEditor) return;
     const onKey = (e) => {
       if (e.key === 'Escape') {
         if (showEmailModal) setShowEmailModal(false);
         else if (showTemplateEditor) setShowTemplateEditor(false);
+        else if (showTextsEditor) setShowTextsEditor(false);
       }
     };
     browserWindow?.addEventListener('keydown', onKey);
     return () => browserWindow?.removeEventListener('keydown', onKey);
-  }, [showEmailModal, showTemplateEditor]);
+  }, [showEmailModal, showTemplateEditor, showTextsEditor]);
 
   // Charger les factures récentes (depuis le dossier Factures dans Documents)
   React.useEffect(() => {
@@ -344,10 +485,11 @@ const Factures = ({ user, etablissement }) => {
 
   const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
-  // Recalculer le "Fait à Erde le..." quand la date de facturation change
+  // Recalculer le "Fait à Erde le..." quand la date de facturation ou la ville
+  // d'émission enregistrée pour ce client change
   React.useEffect(() => {
-    setForm(prev => ({ ...prev, faitALe: `Erde, le ${formatDateFr(prev.dateFacturation)}` }));
-  }, [form.dateFacturation]);
+    setForm(prev => ({ ...prev, faitALe: buildFaitALe(factureTexts.ville, prev.dateFacturation) }));
+  }, [form.dateFacturation, factureTexts.ville]);
 
   // ═══ Brouillon de notification client ═══
   // Objet et corps viennent des templates persistés ; les variables sont
@@ -508,12 +650,12 @@ const Factures = ({ user, etablissement }) => {
       dateFacturation: todayStr,
       dateEcheance: addDaysToDate(todayStr, 11),
       destinataire: form.destinataire,
-      prestation: 'Mission de consulting culinaire',
+      prestation: factureTexts.prestationDefaut,
       referenceContratDevis: '',
       montant: '',
       devise: 'CHF',
       htOuTtc: 'HT',
-      faitALe: `Erde, le ${formatDateFr(todayStr)}`,
+      faitALe: buildFaitALe(factureTexts.ville, todayStr),
     });
     setSavedToDocs(false);
     // Étape 2 : remplacer par le numéro DB (atomique multi-device)
@@ -526,6 +668,11 @@ const Factures = ({ user, etablissement }) => {
       }
     }
   };
+
+  const selectedEtabNom = etabsAll.find(e => e.id === selectedEtabId)?.nom
+    || (selectedEtabId === etabId ? etablissement?.nom : '')
+    || 'cet établissement';
+  const textsCustomized = isCustomFactureTexts(factureTexts);
 
   if (!isConsultant) {
     return (
@@ -640,6 +787,20 @@ const Factures = ({ user, etablissement }) => {
           </div>
 
           <div style={fac.section}>
+            <div style={{ ...fac.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span>Textes du document</span>
+              {textsCustomized && <span style={fac.badge}>Personnalisés</span>}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+              Émetteur, coordonnées de paiement, mention TVA et signature sont enregistrés
+              pour <strong>{selectedEtabNom}</strong>. Chaque client peut avoir ses propres textes.
+            </div>
+            <button style={fac.smallBtn} onClick={openTextsEditor}>
+              ✎ Modifier les textes de la facture
+            </button>
+          </div>
+
+          <div style={fac.section}>
             <div style={{ ...fac.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Notification client</span>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>
@@ -718,7 +879,7 @@ const Factures = ({ user, etablissement }) => {
         {/* ═══ Aperçu (droite) ═══ */}
         <div style={fac.previewCol}>
           <div style={fac.previewLabel}>Aperçu</div>
-          <FactureRender form={form} etablissement={etablissement} />
+          <FactureRender form={form} etablissement={etablissement} textes={factureTexts} />
         </div>
       </div>
 
@@ -978,6 +1139,76 @@ const Factures = ({ user, etablissement }) => {
           </div>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          MODALE 3 : Textes du document facture (par établissement)
+         ═══════════════════════════════════════════════════════════════ */}
+      {showTextsEditor && (
+        // Enregistrement explicite (pas d'auto-save comme le message type) :
+        // les textes visent un établissement précis, une écriture involontaire
+        // sur le mauvais client serait invisible jusqu'à la facture suivante.
+        <div className="modal-full-overlay" style={fac.overlay}>
+          <div className="modal-full" style={{ ...fac.modal, width: 640, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={fac.modalHeader}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Textes de la facture</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                  Enregistrés pour <strong>{selectedEtabNom}</strong>
+                </div>
+              </div>
+              <button style={fac.closeBtn} onClick={() => setShowTextsEditor(false)} title="Fermer (Échap)">✕</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {FACTURE_TEXT_FIELDS.map(f => (
+                <div key={f.key}>
+                  <label style={fac.modalLabel}>{f.label}</label>
+                  {f.rows > 0 ? (
+                    <textarea
+                      value={textsDraft[f.key] ?? ''}
+                      onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      rows={f.rows}
+                      style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55 }}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={textsDraft[f.key] ?? ''}
+                      onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      style={fac.modalInput}
+                    />
+                  )}
+                  {f.hint && (
+                    <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>{f.hint}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div style={fac.modalFooter}>
+              <button
+                style={fac.modalDangerBtn}
+                onClick={() => {
+                  if (confirmLegacy('Restaurer les textes par défaut pour cet établissement ?')) {
+                    setTextsDraft({ ...DEFAULT_FACTURE_TEXTS });
+                  }
+                }}
+              >
+                ↺ Réinitialiser
+              </button>
+              <div style={{ flex: 1 }} />
+              <button style={fac.modalGhostBtn} onClick={() => setShowTextsEditor(false)}>Annuler</button>
+              <button
+                style={{ ...fac.modalPrimaryBtn, opacity: textsBusy ? 0.6 : 1 }}
+                onClick={saveFactureTexts}
+                disabled={textsBusy}
+              >
+                {textsBusy ? '⏳ Enregistrement…' : '✓ Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -985,25 +1216,21 @@ const Factures = ({ user, etablissement }) => {
 // ═══════════════════════════════════════════════════════════════
 // Rendu de la facture (utilisé pour aperçu + export PDF)
 // ═══════════════════════════════════════════════════════════════
-const FactureRender = ({ form, etablissement }) => {
+const FactureRender = ({ form, etablissement, textes }) => {
+  const t = mergeFactureTexts(textes);
   const montantNum = parseFloat(form.montant || 0);
   const montantFormat = isNaN(montantNum) ? '-' : montantNum.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div id="facture-print" style={fr.page}>
       <div style={fr.titleBar}>
-        FACTURE DE PRESTATION N° {form.numero}
+        {t.titre} N° {form.numero}
       </div>
 
       <div style={fr.twoColTop}>
         <div style={fr.partyBox}>
           <div style={fr.partyLabel}>Émetteur :</div>
-          <div style={fr.partyText}>
-            Jeremy SAMPER - Consultant Culinaire<br/>
-            Téléphone : +41 76 626 54 00<br/>
-            E-mail : jeremysamper.pro@gmail.com<br/>
-            Adresse : Route de Collombé 24A, 1976 Erde, Suisse
-          </div>
+          <div style={{ ...fr.partyText, whiteSpace: 'pre-line' }}>{t.emetteur}</div>
         </div>
         <div style={fr.partyBox}>
           <div style={fr.partyLabel}>Client :</div>
@@ -1025,31 +1252,41 @@ const FactureRender = ({ form, etablissement }) => {
             </td>
           </tr>
           <tr><td style={fr.detailLabel}>Échéance paiement :</td><td style={fr.detailVal}>{formatDateFr(form.dateEcheance)}</td></tr>
-          <tr><td style={fr.detailLabel}>Adresse d'émission :</td><td style={fr.detailVal}>Route de Collombé 24A, 1976 Erde, Suisse</td></tr>
+          {t.adresseEmission && (
+            <tr><td style={fr.detailLabel}>Adresse d'émission :</td><td style={fr.detailVal}>{t.adresseEmission}</td></tr>
+          )}
         </tbody>
       </table>
 
-      <div style={fr.section}>
-        <div style={fr.sectionTitle}>Coordonnées de paiement</div>
-        <table style={fr.bankTable}>
-          <tbody>
-            <tr><td style={fr.bankLabel}>Titulaire :</td><td style={fr.bankVal}>SAMPER Jérémy</td></tr>
-            <tr><td style={fr.bankLabel}>Banque :</td><td style={fr.bankVal}>Banque Cantonale du Valais (BCVS)</td></tr>
-            <tr><td style={fr.bankLabel}>IBAN :</td><td style={fr.bankVal}>CH33 0076 5001 0561 6551 0</td></tr>
-            <tr><td style={fr.bankLabel}>SWIFT / BIC :</td><td style={fr.bankVal}>BCVSCH2LXXX</td></tr>
-          </tbody>
-        </table>
-      </div>
+      {t.paiement.trim() && (
+        <div style={fr.section}>
+          {t.paiementTitre && <div style={fr.sectionTitle}>{t.paiementTitre}</div>}
+          <table style={fr.bankTable}>
+            <tbody>
+              {splitLabelledLines(t.paiement).map((l, i) => (
+                <tr key={i}>
+                  {l.label ? (
+                    <>
+                      <td style={fr.bankLabel}>{l.label} :</td>
+                      <td style={fr.bankVal}>{l.value}</td>
+                    </>
+                  ) : (
+                    <td style={fr.bankVal} colSpan={2}>{l.value}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <div style={fr.tva}>
-        Numéro TVA : Non assujetti (activité indépendante en création)
-      </div>
+      {t.mentionTva.trim() && (
+        <div style={{ ...fr.tva, whiteSpace: 'pre-line' }}>{t.mentionTva}</div>
+      )}
 
       <div style={fr.signature}>
         <div style={fr.signatureLine}>Fait à {form.faitALe}</div>
-        <div style={fr.signatureSig}>
-          Jeremy Samper - Consultant culinaire
-        </div>
+        <div style={{ ...fr.signatureSig, whiteSpace: 'pre-line' }}>{t.signature}</div>
       </div>
     </div>
   );
@@ -1121,6 +1358,13 @@ const fac = {
   successBanner: { background: 'var(--success-bg)', border: '1px solid var(--success-bd)', color: 'var(--success-text)', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 },
 
   smallBtn: { padding: '7px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: 'var(--text)', fontFamily: 'var(--font)', fontWeight: 500 },
+
+  badge: {
+    padding: '2px 8px', borderRadius: 12, background: 'var(--info-bg-soft)',
+    border: '1px solid var(--info-bd)', color: 'var(--info-text)',
+    fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
+    fontFamily: 'var(--font)', whiteSpace: 'nowrap',
+  },
 
   recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--bg)', borderRadius: 5 },
 
