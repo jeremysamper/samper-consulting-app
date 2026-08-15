@@ -16,6 +16,23 @@ import { loadBrandFonts, registerBrandFonts, setBrandFont } from '../design/regi
 // capitales interlettrees), donnee (Poppins Light) - et AUCUN gras : la
 // hierarchie passe par le corps, la couleur et le changement de famille.
 
+// ─── Encodage des captures html2canvas ──────────────────────────────────────
+// jsPDF recopie un JPEG tel quel dans le fichier (DCTDecode), alors qu'il
+// DECODE un PNG et reecrit les pixels bruts, non compresses : une facture A4
+// pesait 9,1 Mo pour une image de 317 Ko, soit largeur x hauteur x 3 octets.
+// En JPEG le meme document tombe sous les 300 Ko.
+//
+// Qualite 0,94 : le document est du texte fin sur blanc, c'est le pire cas pour
+// un JPEG. En dessous, un halo apparait autour des capitales interlettrees et
+// les filets de 0,5 pt se salissent. Au-dessus, le fichier grossit sans gain
+// visible a l'impression. Verifie a l'oeil sur la facture et sur la carte.
+//
+// Ne concerne QUE les captures d'ecran. Le logo de l'etablissement reste en PNG
+// (aplats et transparence, que le JPEG detruirait) et les generateurs
+// vectoriels n'embarquent aucune image.
+const CAPTURE_FORMAT = 'JPEG';
+const CAPTURE_QUALITE = 0.94;
+
 export const pdfUtils = {
 
   // ─── Chargement à la demande des libs lourdes (html2canvas + jsPDF) ──────
@@ -384,7 +401,7 @@ export const pdfUtils = {
         throw new Error('Le rendu HTML→Canvas a produit une image vide. Vérifie que la zone à exporter contient du contenu visible.');
       }
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITE);
       const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
       const pageWidth = orientation === 'landscape' ? 297 : 210;
       const pageHeight = orientation === 'landscape' ? 210 : 297;
@@ -399,20 +416,20 @@ export const pdfUtils = {
           const finalWidth = imgWidth * scale;
           const finalHeight = availableHeight;
           const xOffset = margin + (imgWidth - finalWidth) / 2;
-          pdf.addImage(imgData, 'PNG', xOffset, margin, finalWidth, finalHeight);
+          pdf.addImage(imgData, CAPTURE_FORMAT, xOffset, margin, finalWidth, finalHeight);
         } else {
-          pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+          pdf.addImage(imgData, CAPTURE_FORMAT, margin, margin, imgWidth, imgHeight);
         }
       } else {
         let heightLeft = imgHeight;
         let position = margin;
-        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
         heightLeft -= (pageHeight - margin * 2);
 
         while (heightLeft > 0) {
           position = margin - (imgHeight - heightLeft);
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
           heightLeft -= (pageHeight - margin * 2);
         }
       }
@@ -483,7 +500,7 @@ export const pdfUtils = {
         throw new Error('Le rendu HTML→Canvas a produit une image vide.');
       }
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITE);
       const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
       const pageWidth = orientation === 'landscape' ? 297 : 210;
       const pageHeight = orientation === 'landscape' ? 210 : 297;
@@ -498,20 +515,20 @@ export const pdfUtils = {
           const finalWidth = imgWidth * scale;
           const finalHeight = availableHeight;
           const xOffset = margin + (imgWidth - finalWidth) / 2;
-          pdf.addImage(imgData, 'PNG', xOffset, margin, finalWidth, finalHeight);
+          pdf.addImage(imgData, CAPTURE_FORMAT, xOffset, margin, finalWidth, finalHeight);
         } else {
-          pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+          pdf.addImage(imgData, CAPTURE_FORMAT, margin, margin, imgWidth, imgHeight);
         }
       } else {
         let heightLeft = imgHeight;
         let position = margin;
-        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
         heightLeft -= (pageHeight - margin * 2);
 
         while (heightLeft > 0) {
           position = margin - (imgHeight - heightLeft);
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
           heightLeft -= (pageHeight - margin * 2);
         }
       }
