@@ -298,15 +298,12 @@ const Factures = ({ user, etablissement }) => {
     }
   };
 
-  // Construit automatiquement le bloc destinataire depuis un établissement
+  // Bloc destinataire dérivé de la fiche établissement, utilisé tant qu'aucun
+  // bloc client n'est enregistré. Personne de contact, raison sociale ou
+  // adresse de facturation se saisissent dans les textes du document.
   const buildDestinataireFromEtab = (etab) => {
     if (!etab) return '';
     const lines = [];
-    // Si on a un nom de contact (M./Mme + nom), on l'ajoute en première ligne
-    // Sinon on commence directement par le nom de l'établissement
-    if (etab.nom && etab.nom.toLowerCase().includes('woodland')) {
-      lines.push('M. et Mme. MULOT');
-    }
     if (etab.nom) lines.push(etab.nom);
     if (etab.adresse) lines.push(etab.adresse);
     return lines.join('\n');
