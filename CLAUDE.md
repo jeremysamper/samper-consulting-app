@@ -15,8 +15,13 @@ npm.cmd run dev
 # Production build
 npm.cmd run build
 
-# Lint (src/ only — no test suite)
+# Lint (src/ only — no test suite): eslint, then the border-shorthand check
 npm.cmd run lint
+
+# Border check alone. Fails when a style object keeps the `border` shorthand
+# while an active state adds `borderColor`: React warns on every toggle.
+# A "0 site" line is only meaningful next to the coverage count it prints.
+npm.cmd run lint:borders
 ```
 
 > Node LTS 22 is required. Node v25+ causes npm to loop without creating `node_modules`. A portable Node 22 is installed under `tools-node/node-v22.22.2-win-x64/` as a fallback.
