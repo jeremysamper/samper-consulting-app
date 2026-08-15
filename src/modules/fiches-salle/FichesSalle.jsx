@@ -1123,7 +1123,7 @@ const fss = {
   infoLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3},
   infoVal:{fontSize:13,color:'var(--text)',lineHeight:1.5},
   allergeneFull:{padding:'8px 12px',background:'var(--bg)',borderRadius:7,fontSize:13},
-  accordTab:{padding:'5px 14px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
+  accordTab:{padding:'5px 14px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   accordTabActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   accordCard:{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',display:'flex',gap:10,alignItems:'flex-start'},
   accordIcon:{fontSize:22,flexShrink:0},

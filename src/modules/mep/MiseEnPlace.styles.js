@@ -72,7 +72,7 @@ export const s = {
   uniteInput: { width: 78, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
 
   toggleGroup: { display: 'flex', gap: 6 },
-  toggleBtn: { padding: '8px 12px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  toggleBtn: { padding: '8px 12px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   toggleActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
 
   actionsRow: { display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' },

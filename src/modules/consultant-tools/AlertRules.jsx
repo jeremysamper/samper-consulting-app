@@ -166,7 +166,8 @@ export default function AlertRules({ etablissement }) {
   });
 
   const filterBtnBase = {
-    padding: '5px 14px', background: 'var(--surface)', border: '1px solid var(--border)',
+    padding: '5px 14px', background: 'var(--surface)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     borderRadius: 99, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)',
     color: 'var(--text2)', transition: 'all .12s',
   };

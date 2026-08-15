@@ -596,7 +596,7 @@ const s = {
   genHint: { fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 },
   selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   carteList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '46vh', overflowY: 'auto' },
-  carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer' },
+  carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer' },
   carteRowOn: { borderColor: 'var(--accent)', background: 'var(--success-bg)' },
   carteName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   carteMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },

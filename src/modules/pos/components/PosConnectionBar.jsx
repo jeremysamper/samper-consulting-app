@@ -52,7 +52,7 @@ function fmtDate(iso) {
 }
 
 const S = {
-  card:  { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px' },
+  card:  { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 12, padding: '14px 18px' },
   row:   { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
   title: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font)' },
   sub:   { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 },

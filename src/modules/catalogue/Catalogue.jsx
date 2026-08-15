@@ -1407,7 +1407,7 @@ const ipm = {
   kpiLabel: { fontSize: 10, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 4 },
   tabsBar: { display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid var(--border)' },
-  tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottom: '2px solid transparent' },
+  tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent' },
   tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
   body: { flex: 1, overflowY: 'auto', padding: '6px 20px' },
   summaryItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, marginBottom: 8, background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 8 },

@@ -436,7 +436,7 @@ const statsBanner = {
 const dropZone = {
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
   cursor: 'pointer', textAlign: 'center', padding: '34px 18px',
-  border: '2px dashed var(--border)', borderRadius: 12, background: 'var(--bg)',
+  borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--border)', borderRadius: 12, background: 'var(--bg)',
   transition: 'border-color 0.15s, background 0.15s',
 };
 const dropZoneActive = {

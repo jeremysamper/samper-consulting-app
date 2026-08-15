@@ -1842,7 +1842,7 @@ const rs = {
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
-  homeBtn: {padding:'6px 12px',border:'1px solid var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
   carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   catFilter: {display:'flex',gap:6,flexWrap:'wrap'},
@@ -1871,7 +1871,7 @@ const rs = {
   recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
-  congBtn: {padding:'7px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'#fff'},
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},

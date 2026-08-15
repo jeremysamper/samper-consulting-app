@@ -1380,7 +1380,8 @@ const fac = {
   etabChip: {
     display: 'inline-flex', alignItems: 'center', gap: 7,
     padding: '7px 12px', borderRadius: 18,
-    background: 'var(--bg)', border: '1px solid var(--border)',
+    background: 'var(--bg)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     color: 'var(--text)', fontSize: 12, fontWeight: 600,
     cursor: 'pointer', fontFamily: 'var(--font)',
     transition: 'all 0.15s',

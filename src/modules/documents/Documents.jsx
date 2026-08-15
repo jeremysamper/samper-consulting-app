@@ -615,7 +615,7 @@ const doc_s = {
 
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 },
   itemCard: {
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+    background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10,
     padding: '16px 12px', cursor: 'pointer', position: 'relative', transition: 'box-shadow 0.15s, transform 0.15s',
   },
   itemName: { fontSize: 13, fontWeight: 600, textAlign: 'center', marginTop: 6, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },

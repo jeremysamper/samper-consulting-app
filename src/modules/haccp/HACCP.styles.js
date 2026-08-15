@@ -73,7 +73,7 @@ export const hs = {
   creneauLabel: { fontSize:11, color:'var(--text2)', fontWeight:600 },
   creneauEtat: { fontSize:10, fontWeight:700, marginTop:2 },
   // Puce de sélection de tournée (modales de saisie).
-  creneauChip: { padding:'7px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)', display:'inline-flex', alignItems:'center', gap:6 },
+  creneauChip: { padding:'7px 12px', borderRadius:20, borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', background:'var(--surface)', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)', display:'inline-flex', alignItems:'center', gap:6 },
   creneauChipOn: { borderColor:'var(--accent)', background:'var(--accent-light)', color:'var(--accent)' },
 };
 

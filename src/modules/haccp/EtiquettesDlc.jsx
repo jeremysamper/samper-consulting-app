@@ -139,7 +139,7 @@ const es = {
   recapTitre: { padding: '10px 14px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   recapLigne: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
   recapInfo: { flex: 1, minWidth: 160, fontSize: 12.5, color: 'var(--text2)' },
-  dernierLot: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' },
+  dernierLot: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' },
   rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
   // Bloc épinglé des cases Divers : posé au-dessus de la recherche pour qu'il
   // reste visible quel que soit le filtre saisi.

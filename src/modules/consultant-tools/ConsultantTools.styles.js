@@ -48,7 +48,7 @@ export const cts = {
   smallBtn: { padding: '5px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   ingRow: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', alignItems: 'center' },
-  ingInput: { padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
+  ingInput: { padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
   scalingBar: { margin: '0 14px 8px', padding: '14px 16px', background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 },
   scalingBlock: { display: 'flex', flexDirection: 'column', gap: 4 },
   scalingBlockLabel: { fontSize: 10, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 },
