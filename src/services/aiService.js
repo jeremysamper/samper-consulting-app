@@ -328,6 +328,7 @@ export async function parseFacture(files, options = {}) {
 // totale ; le prix unitaire s'en déduit, ce qui évite le piège de la colonne
 // « Prix » dont l'unité change d'une ligne à l'autre sur les vrais documents.
 function normaliserFacture(data, meta) {
+  const r = (data && data.result) || {};
   // Number(null) et Number('') valent 0, pas NaN. Sans ce filtre, un montant que
   // l'IA a explicitement declare illisible (null) deviendrait un prix de zero,
   // et creer le produit depuis cette ligne le ferait naitre a zero au catalogue.
