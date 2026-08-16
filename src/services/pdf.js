@@ -52,6 +52,12 @@ const CAPTURE_ECHELLE = 3;
 const CANVAS_AIRE_MAX = 16.7e6;
 const CANVAS_COTE_MAX = 8192;
 
+// Échelle des bandes quand on pagine. Pas CAPTURE_ECHELLE : une bande par page
+// à l'échelle 3 donnait 11 Mo et 17 s sur un inventaire de quatre cents lignes,
+// un fichier que personne n'ouvre. 2 correspond à ce que l'app produisait avant
+// ce chantier, ce qui reste correct pour un tableau dense de service.
+const ECHELLE_PAGINEE = 2;
+
 export const pdfUtils = {
 
   // ─── Chargement à la demande des libs lourdes (html2canvas + jsPDF) ──────
@@ -92,10 +98,180 @@ export const pdfUtils = {
     } catch { /* police indisponible : le repli CSS prend le relais */ }
   },
 
-  // Échelle réellement applicable à ce container : CAPTURE_ECHELLE tant que le
-  // canvas reste sous les limites, moins sinon. Mieux vaut un document un peu
-  // moins fin qu'un document blanc, et c'est un long inventaire ou un planning
-  // en paysage qui déclenchent le repli, jamais une facture.
+  // ─── Conteneur de capture ───────────────────────────────────────────────
+  // Le DOM à photographier, monté hors écran avec la feuille de style d'export.
+  // L'appelant doit le retirer (finally) : il reste dans le document tant que
+  // html2canvas travaille dessus.
+  _monterConteneurCapture(element, { orientation, title, etablissement, noBrand, noHeader }) {
+    const container = document.createElement('div');
+    container.className = 'pdf-render-root';
+    // absolute, et surtout PAS fixed : html2canvas réancre un élément fixed sur
+    // le viewport du document qu'il clone, si bien qu'une capture décalée en y
+    // ne ramène que du blanc. En absolute, le conteneur a de vraies coordonnées
+    // documentaires et chaque bande tombe où on la demande.
+    container.style.cssText = `
+      position: absolute; left: -9999px; top: 0;
+      width: ${orientation === 'landscape' ? '1120px' : '794px'};
+      background: ${BRAND.color.white}; padding: 40px;
+      font-family: ${WEB_FONT.body}; font-weight: 300;
+      color: ${BRAND.color.ink};
+      z-index: -1; pointer-events: none;
+    `;
+    const clone = this._prepareClone(element);
+    let headerHTML = '';
+    if (!noHeader) {
+      headerHTML = noBrand
+        ? this._getPlainHeaderHTML(title, etablissement)
+        : this._getHeaderHTML(title, etablissement);
+    }
+    container.innerHTML = `
+      <style>${this._getPrintStyles(orientation)}</style>
+      ${headerHTML}
+      <div class="pdf-content">${clone.innerHTML}</div>
+    `;
+    document.body.appendChild(container);
+    return container;
+  },
+
+  // ─── Capture paginée ────────────────────────────────────────────────────
+  // UNE CAPTURE PAR PAGE, et non une image géante découpée à l'affichage.
+  //
+  // L'ancienne méthode photographiait le document entier puis reposait la même
+  // image sur chaque page avec un décalage négatif. Le rendu était correct,
+  // mais la hauteur du DOM devenait la hauteur du canvas : un inventaire de
+  // quatre cents lignes demandait 13 000 px de haut, au-delà de ce qu'un canvas
+  // accepte, et Safari rendait alors une page blanche sans lever d'erreur.
+  //
+  // En capturant bande par bande, la hauteur photographiée ne dépasse jamais
+  // celle d'une page. La limite du canvas cesse d'être atteignable par la
+  // longueur du document, et chaque bande étant courte, elle obtient l'échelle
+  // maximale : un long inventaire sort désormais aussi net qu'une facture.
+  //
+  // Les bandes reprennent exactement le découpage précédent, donc la coupure
+  // tombe au même endroit qu'avant : ce n'est pas une mise en page par lignes,
+  // une ligne à cheval reste coupée. La faire respirer relèverait d'un autre
+  // chantier, celui du contenu.
+  async _pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage }) {
+    const paysage = orientation === 'landscape';
+    const pdf = new jsPDF(paysage ? 'l' : 'p', 'mm', 'a4');
+    const pageWidth = paysage ? 297 : 210;
+    const pageHeight = paysage ? 210 : 297;
+    const margin = 10;
+    const imgWidth = pageWidth - margin * 2;
+
+    const largeurCss = container.offsetWidth;
+    const hauteurCss = container.scrollHeight;
+
+    // x et y sont RELATIFS À L'ÉLÉMENT, pas au document : le conteneur vit à
+    // left:-9999px, lui passer sa coordonnée documentaire ferait photographier
+    // 9999 px de vide à sa gauche. On ne décale donc que verticalement et on
+    // laisse html2canvas déduire x et la largeur.
+    const capturer = async (decalageY, hauteur, plafond) => {
+      const canvas = await html2canvas(container, {
+        scale: Math.min(plafond ?? CAPTURE_ECHELLE, this._echelleCapture(largeurCss, hauteur)),
+        y: decalageY,
+        height: hauteur,
+        useCORS: true,
+        backgroundColor: BRAND.color.white,
+        logging: false,
+      });
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Le rendu HTML→Canvas a produit une image vide. Vérifie que la zone à exporter contient du contenu visible.');
+      }
+      return canvas;
+    };
+    // Une capture mal cadrée ne lève rien : elle rend une image uniformément
+    // blanche, et le défaut ne se voit qu'à l'ouverture du fichier. C'est
+    // arrivé deux fois pendant la mise au point de ce découpage. On échantillonne
+    // donc la première bande sur une grille éparse - quelques centaines de
+    // points suffisent à distinguer une page de contenu d'une page vide, pour
+    // un coût négligeable devant la capture elle-même.
+    const estVide = (canvas) => {
+      try {
+        const ctx = canvas.getContext('2d');
+        const pas = Math.max(1, Math.floor(Math.min(canvas.width, canvas.height) / 24));
+        for (let y = 0; y < canvas.height; y += pas) {
+          for (let x = 0; x < canvas.width; x += pas) {
+            const [r, v, b] = ctx.getImageData(x, y, 1, 1).data;
+            if (r < 248 || v < 248 || b < 248) return false;
+          }
+        }
+        return true;
+      } catch { return false; } // canvas illisible : on ne bloque pas l'export
+    };
+
+    const poser = (canvas, y, hauteurMm) => {
+      pdf.addImage(canvas.toDataURL('image/jpeg', CAPTURE_QUALITE), CAPTURE_FORMAT,
+        margin, y, imgWidth, hauteurMm);
+    };
+
+    // fitOnePage : tout doit tenir sur une page, il faut donc une seule image
+    // réduite. Ces documents-là sont courts par construction (facture, carte).
+    if (fitOnePage) {
+      const canvas = await capturer(0, hauteurCss);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const hauteurDispo = pageHeight - margin * 2 - 8;
+      if (imgHeight > hauteurDispo) {
+        const reduction = hauteurDispo / imgHeight;
+        const largeurFinale = imgWidth * reduction;
+        pdf.addImage(canvas.toDataURL('image/jpeg', CAPTURE_QUALITE), CAPTURE_FORMAT,
+          margin + (imgWidth - largeurFinale) / 2, margin, largeurFinale, hauteurDispo);
+      } else {
+        poser(canvas, margin, imgHeight);
+      }
+      return pdf;
+    }
+
+    // Une capture par page coûte une passe html2canvas par page, et html2canvas
+    // reclone tout le DOM à chaque appel : sept pages, c'est 7 s contre 0,5 s
+    // pour un cliché unique. On ne pagine donc QUE lorsque le cliché unique est
+    // impossible, c'est-à-dire quand le document dépasse les limites du canvas
+    // même à l'échelle 1 - il n'y a alors plus d'arbitrage, l'autre voie ne
+    // produit rien d'exploitable. Tout le reste garde la voie rapide.
+    const clicheUniquePossible = hauteurCss <= CANVAS_COTE_MAX
+      && largeurCss <= CANVAS_COTE_MAX
+      && largeurCss * hauteurCss <= CANVAS_AIRE_MAX;
+    if (clicheUniquePossible) {
+      const canvas = await capturer(0, hauteurCss);
+      if (estVide(canvas)) {
+        throw new Error('La capture est ressortie vide : la zone à exporter n’a rien de visible, ou le cadrage de la capture est faux.');
+      }
+      const imgData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITE);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const bandeMm = pageHeight - margin * 2;
+      let reste = imgHeight;
+      let y = margin;
+      pdf.addImage(imgData, CAPTURE_FORMAT, margin, y, imgWidth, imgHeight);
+      reste -= bandeMm;
+      while (reste > 0) {
+        y = margin - (imgHeight - reste);
+        pdf.addPage();
+        pdf.addImage(imgData, CAPTURE_FORMAT, margin, y, imgWidth, imgHeight);
+        reste -= bandeMm;
+      }
+      return pdf;
+    }
+
+    const bandeCss = (pageHeight - margin * 2) * (largeurCss / imgWidth);
+    const nbPages = Math.max(1, Math.ceil(hauteurCss / bandeCss));
+    for (let p = 0; p < nbPages; p += 1) {
+      const decalage = p * bandeCss;
+      const hauteur = Math.min(bandeCss, hauteurCss - decalage);
+      if (hauteur < 1) break; // reliquat sous le pixel : pas de page vide
+      const canvas = await capturer(decalage, hauteur, ECHELLE_PAGINEE);
+      if (p === 0 && estVide(canvas)) {
+        throw new Error('La capture est ressortie vide : la zone à exporter n’a rien de visible, ou le cadrage de la capture est faux.');
+      }
+      if (p > 0) pdf.addPage();
+      poser(canvas, margin, (canvas.height * imgWidth) / canvas.width);
+    }
+    return pdf;
+  },
+
+  // Échelle réellement applicable à cette capture : CAPTURE_ECHELLE tant que le
+  // canvas reste sous les limites, moins sinon. Depuis la capture paginée, une
+  // bande fait au plus une page de haut, donc le repli ne se déclenche
+  // pratiquement plus - il reste le filet pour une page très dense.
   _echelleCapture(largeurCss, hauteurCss) {
     if (!largeurCss || !hauteurCss) return CAPTURE_ECHELLE;
     const parAire = Math.sqrt(CANVAS_AIRE_MAX / (largeurCss * hauteurCss));
@@ -393,78 +569,14 @@ export const pdfUtils = {
     const noHeader = !!options.noHeader;
     const fitOnePage = !!options.fitOnePage;
 
-    const container = document.createElement('div');
-    container.className = 'pdf-render-root';
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0;
-      width: ${orientation === 'landscape' ? '1120px' : '794px'};
-      background: ${BRAND.color.white}; padding: 40px;
-      font-family: ${WEB_FONT.body}; font-weight: 300;
-      color: ${BRAND.color.ink};
-      z-index: -1;
-    `;
-
-    const clone = this._prepareClone(element);
-    let headerHTML = '';
-    if (!noHeader) {
-      headerHTML = noBrand
-        ? this._getPlainHeaderHTML(title, etab)
-        : this._getHeaderHTML(title, etab);
-    }
-
-    container.innerHTML = `
-      <style>${this._getPrintStyles(orientation)}</style>
-      ${headerHTML}
-      <div class="pdf-content">${clone.innerHTML}</div>
-    `;
-    document.body.appendChild(container);
+    const container = this._monterConteneurCapture(element, {
+      orientation, title, etablissement: etab, noBrand, noHeader,
+    });
 
     try {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
       await this._ensureWebFontsLoaded();
-      const canvas = await html2canvas(container, {
-        scale: this._echelleCapture(container.offsetWidth, container.scrollHeight),
-        useCORS: true,
-        backgroundColor: BRAND.color.white,
-        logging: false,
-      });
-
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        throw new Error('Le rendu HTML→Canvas a produit une image vide. Vérifie que la zone à exporter contient du contenu visible.');
-      }
-
-      const imgData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITE);
-      const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
-      const pageWidth = orientation === 'landscape' ? 297 : 210;
-      const pageHeight = orientation === 'landscape' ? 210 : 297;
-      const margin = 10;
-      const imgWidth = pageWidth - margin * 2;
-      let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      if (fitOnePage) {
-        const availableHeight = pageHeight - margin * 2 - 8;
-        if (imgHeight > availableHeight) {
-          const scale = availableHeight / imgHeight;
-          const finalWidth = imgWidth * scale;
-          const finalHeight = availableHeight;
-          const xOffset = margin + (imgWidth - finalWidth) / 2;
-          pdf.addImage(imgData, CAPTURE_FORMAT, xOffset, margin, finalWidth, finalHeight);
-        } else {
-          pdf.addImage(imgData, CAPTURE_FORMAT, margin, margin, imgWidth, imgHeight);
-        }
-      } else {
-        let heightLeft = imgHeight;
-        let position = margin;
-        pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
-        heightLeft -= (pageHeight - margin * 2);
-
-        while (heightLeft > 0) {
-          position = margin - (imgHeight - heightLeft);
-          pdf.addPage();
-          pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
-          heightLeft -= (pageHeight - margin * 2);
-        }
-      }
+      const pdf = await this._pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage });
 
       // Aucun pied de page : l'identite, l'etablissement et la date vivent dans
       // l'en-tete du document. Un filet et une signature repetes en bas de page
@@ -492,78 +604,14 @@ export const pdfUtils = {
     const noHeader = !!options.noHeader;
     const fitOnePage = !!options.fitOnePage;
 
-    const container = document.createElement('div');
-    container.className = 'pdf-render-root';
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0;
-      width: ${orientation === 'landscape' ? '1120px' : '794px'};
-      background: ${BRAND.color.white}; padding: 40px;
-      font-family: ${WEB_FONT.body}; font-weight: 300;
-      color: ${BRAND.color.ink};
-      z-index: -1;
-    `;
-
-    const clone = this._prepareClone(element);
-    let headerHTML = '';
-    if (!noHeader) {
-      headerHTML = noBrand
-        ? this._getPlainHeaderHTML(title, etab)
-        : this._getHeaderHTML(title, etab);
-    }
-
-    container.innerHTML = `
-      <style>${this._getPrintStyles(orientation)}</style>
-      ${headerHTML}
-      <div class="pdf-content">${clone.innerHTML}</div>
-    `;
-    document.body.appendChild(container);
+    const container = this._monterConteneurCapture(element, {
+      orientation, title, etablissement: etab, noBrand, noHeader,
+    });
 
     try {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
       await this._ensureWebFontsLoaded();
-      const canvas = await html2canvas(container, {
-        scale: this._echelleCapture(container.offsetWidth, container.scrollHeight),
-        useCORS: true,
-        backgroundColor: BRAND.color.white,
-        logging: false,
-      });
-
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        throw new Error('Le rendu HTML→Canvas a produit une image vide.');
-      }
-
-      const imgData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITE);
-      const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
-      const pageWidth = orientation === 'landscape' ? 297 : 210;
-      const pageHeight = orientation === 'landscape' ? 210 : 297;
-      const margin = 10;
-      const imgWidth = pageWidth - margin * 2;
-      let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      if (fitOnePage) {
-        const availableHeight = pageHeight - margin * 2 - 8;
-        if (imgHeight > availableHeight) {
-          const scale = availableHeight / imgHeight;
-          const finalWidth = imgWidth * scale;
-          const finalHeight = availableHeight;
-          const xOffset = margin + (imgWidth - finalWidth) / 2;
-          pdf.addImage(imgData, CAPTURE_FORMAT, xOffset, margin, finalWidth, finalHeight);
-        } else {
-          pdf.addImage(imgData, CAPTURE_FORMAT, margin, margin, imgWidth, imgHeight);
-        }
-      } else {
-        let heightLeft = imgHeight;
-        let position = margin;
-        pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
-        heightLeft -= (pageHeight - margin * 2);
-
-        while (heightLeft > 0) {
-          position = margin - (imgHeight - heightLeft);
-          pdf.addPage();
-          pdf.addImage(imgData, CAPTURE_FORMAT, margin, position, imgWidth, imgHeight);
-          heightLeft -= (pageHeight - margin * 2);
-        }
-      }
+      const pdf = await this._pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage });
 
       // Aucun pied de page : l'identite, l'etablissement et la date vivent dans
       // l'en-tete du document. Un filet et une signature repetes en bas de page
