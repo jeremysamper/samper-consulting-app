@@ -133,6 +133,58 @@ export const pdfUtils = {
     return container;
   },
 
+  // ─── Où couper les pages ────────────────────────────────────────────────
+  // Le rendu est une image : la coupe tombait tous les 277 mm, au pixel près,
+  // sans regarder ce qu'il y avait là. Une ligne d'inventaire se retrouvait
+  // sciée en deux, moitié en bas d'une page, moitié en haut de la suivante.
+  //
+  // On relève donc les bords hauts des éléments qu'on ne veut pas couper -
+  // lignes de tableau, blocs, titres - et la page s'arrête au dernier qui
+  // tienne. Rien n'est déplacé ni retiré : c'est le même document, coupé
+  // ailleurs. La page se termine simplement un peu plus tôt, comme dans
+  // n'importe quel document paginé.
+  _pointsDeCoupe(container) {
+    const haut = container.getBoundingClientRect().top;
+    const points = new Set();
+    // Uniquement des frontières ENTRE FRÈRES : enfants directs du contenu,
+    // lignes d'un tableau, éléments d'une liste, blocs. Surtout pas un titre
+    // quelconque : un h3 vit à l'intérieur d'une carte, couper là scinderait
+    // la carte entre son étiquette et son titre (constaté sur le tableau de
+    // bord HACCP). Mieux vaut une page qui finit tôt qu'un bloc coupé.
+    container.querySelectorAll(
+      '.pdf-content > *, .pdf-content tbody > tr, .pdf-content li, .pdf-content .section, .pdf-content .pdf-block, .pdf-content .kpi-card',
+    ).forEach((el) => {
+      const y = Math.round(el.getBoundingClientRect().top - haut);
+      if (y > 0) points.add(y);
+    });
+    return [...points].sort((a, b) => a - b);
+  },
+
+  // Découpe en bandes calées sur ces points. Une bande ne dépasse jamais la
+  // hauteur d'une page ; elle s'arrête avant si un point de coupe s'y prête.
+  _bandesDePage(container, hauteurCss, bandeMaxCss) {
+    const points = this._pointsDeCoupe(container);
+    // Un élément plus haut qu'une page n'a aucun point de coupe utilisable :
+    // on tranche alors franchement, sans quoi la boucle n'avancerait pas.
+    // Ce plancher évite aussi les pages presque vides suivies d'un pavé.
+    const minUtile = bandeMaxCss * 0.15;
+    const bandes = [];
+    let debut = 0;
+    while (debut < hauteurCss - 1) {
+      const limite = debut + bandeMaxCss;
+      if (limite >= hauteurCss) { bandes.push([debut, hauteurCss - debut]); break; }
+      let coupe = 0;
+      for (const p of points) {
+        if (p > debut + minUtile && p <= limite) coupe = p;
+        else if (p > limite) break;
+      }
+      if (!coupe) coupe = limite;
+      bandes.push([debut, coupe - debut]);
+      debut = coupe;
+    }
+    return bandes.length ? bandes : [[0, hauteurCss]];
+  },
+
   // ─── Capture paginée ────────────────────────────────────────────────────
   // UNE CAPTURE PAR PAGE, et non une image géante découpée à l'affichage.
   //
@@ -231,34 +283,37 @@ export const pdfUtils = {
     const clicheUniquePossible = hauteurCss <= CANVAS_COTE_MAX
       && largeurCss <= CANVAS_COTE_MAX
       && largeurCss * hauteurCss <= CANVAS_AIRE_MAX;
+    const bandeMaxCss = (pageHeight - margin * 2) * (largeurCss / imgWidth);
+    const bandes = this._bandesDePage(container, hauteurCss, bandeMaxCss);
+
     if (clicheUniquePossible) {
+      // Un seul cliché, puis on y taille les bandes au ciseau. Le découpage
+      // d'un canvas déjà rendu est immédiat, sans rapport avec le coût d'une
+      // nouvelle passe html2canvas : la voie rapide le reste.
       const canvas = await capturer(0, hauteurCss);
       if (estVide(canvas)) {
         throw new Error('La capture est ressortie vide : la zone à exporter n’a rien de visible, ou le cadrage de la capture est faux.');
       }
-      const imgData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITE);
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const bandeMm = pageHeight - margin * 2;
-      let reste = imgHeight;
-      let y = margin;
-      pdf.addImage(imgData, CAPTURE_FORMAT, margin, y, imgWidth, imgHeight);
-      reste -= bandeMm;
-      while (reste > 0) {
-        y = margin - (imgHeight - reste);
-        pdf.addPage();
-        pdf.addImage(imgData, CAPTURE_FORMAT, margin, y, imgWidth, imgHeight);
-        reste -= bandeMm;
-      }
+      const echelle = canvas.width / largeurCss;
+      bandes.forEach(([debut, hauteur], p) => {
+        const bande = document.createElement('canvas');
+        bande.width = canvas.width;
+        bande.height = Math.max(1, Math.round(hauteur * echelle));
+        const ctx = bande.getContext('2d');
+        ctx.fillStyle = BRAND.color.white;
+        ctx.fillRect(0, 0, bande.width, bande.height);
+        ctx.drawImage(canvas, 0, Math.round(debut * echelle), canvas.width, bande.height,
+          0, 0, canvas.width, bande.height);
+        if (p > 0) pdf.addPage();
+        poser(bande, margin, (bande.height * imgWidth) / bande.width);
+      });
       return pdf;
     }
 
-    const bandeCss = (pageHeight - margin * 2) * (largeurCss / imgWidth);
-    const nbPages = Math.max(1, Math.ceil(hauteurCss / bandeCss));
-    for (let p = 0; p < nbPages; p += 1) {
-      const decalage = p * bandeCss;
-      const hauteur = Math.min(bandeCss, hauteurCss - decalage);
+    for (let p = 0; p < bandes.length; p += 1) {
+      const [debut, hauteur] = bandes[p];
       if (hauteur < 1) break; // reliquat sous le pixel : pas de page vide
-      const canvas = await capturer(decalage, hauteur, ECHELLE_PAGINEE);
+      const canvas = await capturer(debut, hauteur, ECHELLE_PAGINEE);
       if (p === 0 && estVide(canvas)) {
         throw new Error('La capture est ressortie vide : la zone à exporter n’a rien de visible, ou le cadrage de la capture est faux.');
       }
