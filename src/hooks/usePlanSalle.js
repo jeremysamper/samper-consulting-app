@@ -17,18 +17,40 @@ export const PLAN_H = 700;
 // alignées à l'unité près.
 export const PLAN_GRID = 10;
 
+// Le plan de salle repose sur des tables ajoutées par les migrations
+// 20260817. Tant qu'elles ne sont pas passées, PostgREST répond « relation
+// inconnue » — un cas qu'il faut nommer et non noyer dans un « erreur
+// technique » générique : c'est une installation incomplète, pas une panne,
+// et la personne qui la lit doit savoir quoi faire.
+const MESSAGE_SCHEMA_ABSENT =
+  'Le plan de salle n’est pas encore installé sur la base. '
+  + 'Les migrations 20260817_plan_salle et 20260817_plan_salle_espaces doivent être appliquées.';
+
 const MESSAGES = {
   '23505': 'Doublon : cette table est déjà attribuée, ou une salle porte déjà ce nom.',
   '23503': 'Réservation ou table introuvable.',
   '23514': 'Valeur hors limites (nom vide, places ou position invalides).',
   '42501': "Tu n'as pas les droits pour modifier le plan de salle.",
+  // Table absente : 42P01 côté Postgres, PGRST205 côté cache de schéma PostgREST
+  '42P01':    MESSAGE_SCHEMA_ABSENT,
+  'PGRST205': MESSAGE_SCHEMA_ABSENT,
+  // Colonne absente : la première migration est passée, pas la seconde
+  '42703':    MESSAGE_SCHEMA_ABSENT,
+  'PGRST204': MESSAGE_SCHEMA_ABSENT,
 };
 
 function mapError(error) {
   if (!error) return null;
   console.error('[usePlanSalle] erreur Supabase', error);
-  return MESSAGES[String(error.code || '')]
-    || 'Erreur technique. Réessaie ou contacte le support.';
+  const code = String(error.code || '');
+  if (MESSAGES[code]) return MESSAGES[code];
+  // Repli sur le texte : selon la version, PostgREST renvoie le détail dans
+  // `message` sans toujours renseigner un code exploitable.
+  const texte = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+  if (/schema cache|does not exist|relation .* does not exist/.test(texte)) {
+    return MESSAGE_SCHEMA_ABSENT;
+  }
+  return 'Erreur technique. Réessaie ou contacte le support.';
 }
 
 // Gabarits par forme : une table de 8 est plus grande qu'un deux-couverts, et
