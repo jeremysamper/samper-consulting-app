@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Btn } from '../../components/ui/index.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { useReservations } from '../../hooks/useReservations.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
+import PlanSalle from './PlanSalle.jsx';
 
 const SERVICES_ORDER = ['midi', 'soir', 'brunch'];
 const SERVICE_META = {
@@ -112,6 +114,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
   const [error,        setError]        = useState(null);
   const [selectedResa, setSelectedResa] = useState(null);
   const [editingResa,  setEditingResa]  = useState(null);
+  const [vue,          setVue]          = useState('liste'); // 'liste' | 'plan'
 
   async function load() {
     if (!etablissementId || !date) return;
@@ -153,6 +156,18 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
         </div>
       </div>
 
+      {/* ── Liste ↔ plan de salle ── */}
+      <SegmentedTabs
+        tabs={[
+          { id: 'liste', label: 'Liste' },
+          { id: 'plan',  label: 'Plan de salle' },
+        ]}
+        active={vue}
+        onChange={setVue}
+        size="sm"
+        style={{ marginBottom: 12 }}
+      />
+
       {/* ── Erreur ── */}
       {error && (
         <div style={{
@@ -173,8 +188,19 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
         </div>
       )}
 
+      {/* ── Plan de salle ── */}
+      {vue === 'plan' && !loading && !error && (
+        <PlanSalle
+          etablissementId={etablissementId}
+          date={date}
+          resas={actives}
+          canEdit={canEdit}
+          onOpenResa={setSelectedResa}
+        />
+      )}
+
       {/* ── État vide ── */}
-      {!loading && !error && actives.length === 0 && (
+      {vue === 'liste' && !loading && !error && actives.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{ fontSize: 36, opacity: 0.18, marginBottom: 10 }}>◐</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 6 }}>
@@ -187,7 +213,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
       )}
 
       {/* ── Résas regroupées par service ── */}
-      {!loading && actives.length > 0 && SERVICES_ORDER.map((svc) => {
+      {vue === 'liste' && !loading && actives.length > 0 && SERVICES_ORDER.map((svc) => {
         const groupe = actives
           .filter((r) => r.service === svc)
           .sort((a, b) => (a.heure_arrivee || '').localeCompare(b.heure_arrivee || ''));
