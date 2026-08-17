@@ -6,6 +6,9 @@ import {
   BRAND, PDF, RULE, THEME_VAR_OVERRIDES, PRINT_FONT_FACES, WEB_FONT,
 } from '../design/brandTokens.js';
 import { loadBrandFonts, registerBrandFonts, setBrandFont } from '../design/registerPdfFonts.js';
+import {
+  formaterIban, formaterReference, matriceQr, montantLisible, payloadSpc,
+} from './qrFacture.js';
 
 // ─────────────────────────────────────────────────────
 // PDF & IMPRESSION - Mise en page A4 professionnelle
@@ -57,6 +60,49 @@ const CANVAS_COTE_MAX = 8192;
 // un fichier que personne n'ouvre. 2 correspond à ce que l'app produisait avant
 // ce chantier, ce qui reste correct pour un tableau dense de service.
 const ECHELLE_PAGINEE = 2;
+
+// ─── Géométrie de la QR-facture suisse ──────────────────────────────────────
+// Toutes les cotes viennent du Style Guide de la QR-facture et sont
+// NORMATIVES : une banque refuse un récépissé mal dimensionné, et un scanner
+// de guichet cherche le QR code à sa place exacte. Rien ici n'est un choix de
+// mise en page, donc rien ici ne se règle à l'œil.
+//
+// A4 portrait. La QR-facture occupe toute la largeur sur les 105 mm du bas,
+// coupée en récépissé (62 mm) et section paiement (148 mm), marges de 5 mm.
+const QRB = {
+  haut: 192,          // 297 - 105
+  separation: 62,     // récépissé | section paiement
+  recepisseX: 5,      // 62 - 2 × 5 mm de marge = 52 mm utiles
+  recepisseL: 52,
+  paiementX: 67,      // colonne gauche : titre, QR code, montant (51 mm)
+  infoX: 118,         // colonne droite : informations (87 mm)
+  infoL: 87,
+  qrTaille: 46,       // hors zone de repos, elle-même de 5 mm
+  qrY: 209,           // 192 + 17
+  montantY: 260,      // 192 + 68, soit 5 mm sous le QR code
+  depotY: 274,        // 192 + 82
+  // Décalage de la colonne « Montant » par rapport à « Monnaie ». Il diffère
+  // entre les deux blocs parce que les corps diffèrent : 6 pt au récépissé,
+  // 8 pt à la section paiement, où « Monnaie » vient sinon toucher « Montant ».
+  montantX: 12,
+  montantXPaiement: 15,
+  // Le cadre du montant à remplir fait 40 mm de large et doit rester dans la
+  // colonne gauche, qui s'arrête à 118 mm : il commence donc plus à gauche que
+  // le libellé, sans quoi ses coins d'angle iraient se poser au milieu du bloc
+  // « Payable par ». Le libellé et la valeur, eux, restent à leur place.
+  champMontantXPaiement: 78,
+  // Interlignes imposés : 9 pt au récépissé, 11 pt à la section paiement.
+  pasRecepisse: 3.175,
+  pasPaiement: 3.881,
+};
+
+const MM_PAR_PT = 0.352778;
+
+// La QR-facture est le seul export de l'app qui sorte de la DA de marque, et
+// c'est voulu : la norme impose Helvetica/Arial, du GRAS pour les rubriques et
+// du noir pur. Lora, Poppins et le bleu pétrole n'ont pas cours ici.
+const QR_NOIR = 0;
+const QR_BLANC = 255;
 
 export const pdfUtils = {
 
@@ -203,7 +249,7 @@ export const pdfUtils = {
   // tombe au même endroit qu'avant : ce n'est pas une mise en page par lignes,
   // une ligne à cheval reste coupée. La faire respirer relèverait d'un autre
   // chantier, celui du contenu.
-  async _pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage }) {
+  async _pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage, qrFacture }) {
     const paysage = orientation === 'landscape';
     const pdf = new jsPDF(paysage ? 'l' : 'p', 'mm', 'a4');
     const pageWidth = paysage ? 297 : 210;
@@ -259,10 +305,19 @@ export const pdfUtils = {
 
     // fitOnePage : tout doit tenir sur une page, il faut donc une seule image
     // réduite. Ces documents-là sont courts par construction (facture, carte).
-    if (fitOnePage) {
+    //
+    // Une QR-facture emprunte forcément cette voie : le récépissé occupe les
+    // 105 mm du bas, le contenu se réduit pour tenir au-dessus. Paginer serait
+    // la seule alternative, mais un titre de paiement qui déborde sur une
+    // deuxième page n'existe pas dans la norme.
+    if (fitOnePage || qrFacture) {
       const canvas = await capturer(0, hauteurCss);
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const hauteurDispo = pageHeight - margin * 2 - 8;
+      // 6 mm de garde au-dessus du trait de découpe : la mention « à détacher »
+      // s'y loge, et le contenu ne vient jamais lécher les pointillés.
+      const hauteurDispo = qrFacture
+        ? QRB.haut - margin - 6
+        : pageHeight - margin * 2 - 8;
       if (imgHeight > hauteurDispo) {
         const reduction = hauteurDispo / imgHeight;
         const largeurFinale = imgWidth * reduction;
@@ -271,6 +326,7 @@ export const pdfUtils = {
       } else {
         poser(canvas, margin, imgHeight);
       }
+      if (qrFacture) this._dessinerQrFacture(pdf, qrFacture);
       return pdf;
     }
 
@@ -334,6 +390,214 @@ export const pdfUtils = {
     // Plancher à 1 : en dessous, le texte devient illisible et il vaut mieux
     // laisser le navigateur échouer franchement que rendre un document inutile.
     return Math.max(1, Math.min(CAPTURE_ECHELLE, parAire, parCote));
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // QR-FACTURE SUISSE - dessin vectoriel du bas de page
+  // ───────────────────────────────────────────────────────────────
+  // Vectoriel et non capture, pour deux raisons qui ne sont pas esthétiques :
+  // les cotes doivent tomber au dixième de millimètre, et un QR code raster
+  // redimensionné par un lecteur PDF perd des modules. Les données arrivent
+  // déjà construites et validées par services/qrFacture.js ; ici on ne fait
+  // que poser de l'encre.
+  // ═══════════════════════════════════════════════════════════════
+
+  // Encode la charge utile et charge l'encodeur QR (import à la demande, il ne
+  // sert qu'ici). Renvoie null quand aucune QR-facture n'est demandée, ce qui
+  // laisse le reste du pipeline strictement inchangé pour les autres exports.
+  async _preparerQrFacture(donnees) {
+    if (!donnees) return null;
+    return { donnees, matrice: await matriceQr(payloadSpc(donnees)) };
+  },
+
+  _dessinerQrFacture(doc, { donnees, matrice }) {
+    if (!donnees || !matrice) return;
+    // Le bloc va toujours sur la dernière page : c'est celle que le client a
+    // sous les yeux quand il détache le récépissé.
+    doc.setPage(doc.getNumberOfPages());
+
+    // Fond blanc opaque : si la capture au-dessus a débordé d'un cheveu, elle
+    // ne doit pas se retrouver derrière le QR code.
+    doc.setFillColor(QR_BLANC, QR_BLANC, QR_BLANC);
+    doc.rect(0, QRB.haut, 210, 105, 'F');
+    doc.setTextColor(QR_NOIR, QR_NOIR, QR_NOIR);
+    doc.setDrawColor(QR_NOIR, QR_NOIR, QR_NOIR);
+
+    this._separationsQrFacture(doc);
+    this._recepisseQrFacture(doc, donnees);
+    this._sectionPaiementQrFacture(doc, donnees, matrice);
+  },
+
+  // Écrit un texte (replié sur `largeur` si fournie) et renvoie le haut de la
+  // ligne suivante, pour empiler les blocs sans recompter les millimètres.
+  _texteQr(doc, texte, x, haut, { taille, gras = false, largeur, pas, align = 'left' } = {}) {
+    const t = pdfSafeText(texte);
+    if (!t) return haut;
+    doc.setFont('helvetica', gras ? 'bold' : 'normal');
+    doc.setFontSize(taille);
+    const interligne = pas || taille * MM_PAR_PT * 1.15;
+    const lignes = largeur ? doc.splitTextToSize(t, largeur) : [t];
+    lignes.forEach((ligne, i) => {
+      doc.text(ligne, x, haut + i * interligne, { baseline: 'top', align });
+    });
+    return haut + lignes.length * interligne;
+  },
+
+  // Adresse structurée sur trois lignes : nom / rue + n° / NPA + localité.
+  // Le pays n'est pas imprimé pour une adresse suisse - il l'est dans le QR,
+  // mais l'afficher sur un paiement domestique alourdit sans rien apporter.
+  _adresseQr(doc, adresse, x, haut, options) {
+    if (!adresse) return haut;
+    let y = this._texteQr(doc, adresse.nom, x, haut, options);
+    const rue = [adresse.rue, adresse.numero].filter(Boolean).join(' ');
+    y = this._texteQr(doc, rue, x, y, options);
+    const localite = [adresse.npa, adresse.localite].filter(Boolean).join(' ');
+    const prefixe = adresse.pays && adresse.pays !== 'CH' ? `${adresse.pays}-` : '';
+    return this._texteQr(doc, `${prefixe}${localite}`, x, y, options);
+  },
+
+  // Champ laissé à remplir à la main : la norme impose des coins d'angle, pas
+  // un cadre plein - un cadre plein ferait croire à une zone déjà servie.
+  _cadreVideQr(doc, x, y, largeur, hauteur) {
+    const bras = 3;
+    doc.setLineWidth(0.25);
+    doc.setDrawColor(QR_NOIR, QR_NOIR, QR_NOIR);
+    const coins = [
+      [[x, y + bras], [x, y], [x + bras, y]],
+      [[x + largeur - bras, y], [x + largeur, y], [x + largeur, y + bras]],
+      [[x + largeur, y + hauteur - bras], [x + largeur, y + hauteur], [x + largeur - bras, y + hauteur]],
+      [[x + bras, y + hauteur], [x, y + hauteur], [x, y + hauteur - bras]],
+    ];
+    coins.forEach(([a, b, c]) => {
+      doc.lines([[b[0] - a[0], b[1] - a[1]], [c[0] - b[0], c[1] - b[1]]], a[0], a[1]);
+    });
+  },
+
+  // Traits de découpe. Le symbole ciseaux n'existe pas dans l'encodage des
+  // polices standard de jsPDF : on prend la mention de remplacement, que la
+  // norme prévoit explicitement pour ce cas.
+  _separationsQrFacture(doc) {
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(QR_NOIR, QR_NOIR, QR_NOIR);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(0, QRB.haut, 210, QRB.haut);
+    doc.line(QRB.separation, QRB.haut, QRB.separation, 297);
+    doc.setLineDashPattern([], 0);
+    this._texteQr(doc, 'Avant le versement à détacher selon le trait pointillé',
+      205, QRB.haut - 3.5, { taille: 7, align: 'right' });
+  },
+
+  // ─── Récépissé (62 mm) ───────────────────────────────────────────────────
+  // Rubriques en 6 pt gras, valeurs en 8 pt, le tout sur une grille de 9 pt.
+  _recepisseQrFacture(doc, d) {
+    const x = QRB.recepisseX;
+    const largeur = QRB.recepisseL;
+    const pas = QRB.pasRecepisse;
+    const rubrique = { taille: 6, gras: true, largeur, pas };
+    const valeur = { taille: 8, largeur, pas };
+
+    this._texteQr(doc, 'Récépissé', x, QRB.haut + 5, { taille: 11, gras: true });
+
+    let y = QRB.haut + 12;
+    y = this._texteQr(doc, 'Compte / Payable à', x, y, rubrique);
+    y = this._texteQr(doc, formaterIban(d.iban), x, y, valeur);
+    y = this._adresseQr(doc, d.creancier, x, y, valeur) + pas * 0.5;
+
+    if (d.reference) {
+      y = this._texteQr(doc, 'Référence', x, y, rubrique);
+      y = this._texteQr(doc, formaterReference(d.reference), x, y, valeur) + pas * 0.5;
+    }
+
+    y = this._texteQr(doc, d.debiteur ? 'Payable par' : 'Payable par (nom/adresse)', x, y, rubrique);
+    if (d.debiteur) this._adresseQr(doc, d.debiteur, x, y, valeur);
+    else this._cadreVideQr(doc, x, y, largeur, 20);
+
+    const yMontant = QRB.montantY;
+    const xMontant = x + QRB.montantX;
+    this._texteQr(doc, 'Monnaie', x, yMontant, { taille: 6, gras: true });
+    this._texteQr(doc, 'Montant', xMontant, yMontant, { taille: 6, gras: true });
+    this._texteQr(doc, d.devise, x, yMontant + pas, { taille: 8 });
+    if (d.montant != null) this._texteQr(doc, montantLisible(d.montant), xMontant, yMontant + pas, { taille: 8 });
+    else this._cadreVideQr(doc, xMontant, yMontant + pas, 30, 10);
+
+    this._texteQr(doc, 'Point de dépôt', x + largeur, QRB.depotY, { taille: 6, gras: true, align: 'right' });
+  },
+
+  // ─── Section paiement (148 mm) ───────────────────────────────────────────
+  // Colonne gauche : titre, QR code, montant. Colonne droite : informations.
+  // Rubriques en 8 pt gras, valeurs en 10 pt, grille de 11 pt.
+  _sectionPaiementQrFacture(doc, d, matrice) {
+    const pas = QRB.pasPaiement;
+    const rubrique = { taille: 8, gras: true, largeur: QRB.infoL, pas };
+    const valeur = { taille: 10, largeur: QRB.infoL, pas };
+
+    this._texteQr(doc, 'Section paiement', QRB.paiementX, QRB.haut + 5, { taille: 11, gras: true });
+
+    this._modulesQr(doc, matrice, QRB.paiementX, QRB.qrY, QRB.qrTaille);
+    this._croixSuisseQr(doc, QRB.paiementX + QRB.qrTaille / 2, QRB.qrY + QRB.qrTaille / 2);
+
+    const yMontant = QRB.montantY;
+    const xMontant = QRB.paiementX + QRB.montantXPaiement;
+    this._texteQr(doc, 'Monnaie', QRB.paiementX, yMontant, { taille: 8, gras: true });
+    this._texteQr(doc, 'Montant', xMontant, yMontant, { taille: 8, gras: true });
+    this._texteQr(doc, d.devise, QRB.paiementX, yMontant + pas, { taille: 10 });
+    if (d.montant != null) {
+      this._texteQr(doc, montantLisible(d.montant), xMontant, yMontant + pas, { taille: 10 });
+    } else {
+      this._cadreVideQr(doc, QRB.champMontantXPaiement, yMontant + pas, 40, 15);
+    }
+
+    let y = QRB.haut + 5;
+    y = this._texteQr(doc, 'Compte / Payable à', QRB.infoX, y, rubrique);
+    y = this._texteQr(doc, formaterIban(d.iban), QRB.infoX, y, valeur);
+    y = this._adresseQr(doc, d.creancier, QRB.infoX, y, valeur) + pas * 0.5;
+
+    if (d.reference) {
+      y = this._texteQr(doc, 'Référence', QRB.infoX, y, rubrique);
+      y = this._texteQr(doc, formaterReference(d.reference), QRB.infoX, y, valeur) + pas * 0.5;
+    }
+    if (d.message) {
+      y = this._texteQr(doc, 'Informations supplémentaires', QRB.infoX, y, rubrique);
+      y = this._texteQr(doc, d.message, QRB.infoX, y, valeur) + pas * 0.5;
+    }
+
+    y = this._texteQr(doc, d.debiteur ? 'Payable par' : 'Payable par (nom/adresse)', QRB.infoX, y, rubrique);
+    if (d.debiteur) this._adresseQr(doc, d.debiteur, QRB.infoX, y, valeur);
+    else this._cadreVideQr(doc, QRB.infoX, y, 65, 25);
+  },
+
+  // Modules du QR code. On fusionne les suites horizontales en un seul
+  // rectangle : dix fois moins d'objets dans le fichier, et surtout aucun
+  // liseré blanc entre deux modules voisins - un défaut qui ne se voit pas à
+  // l'écran mais que les lecteurs de code accrochent.
+  _modulesQr(doc, matrice, x, y, taille) {
+    const pas = taille / matrice.taille;
+    doc.setFillColor(QR_NOIR, QR_NOIR, QR_NOIR);
+    for (let ligne = 0; ligne < matrice.taille; ligne += 1) {
+      let debut = -1;
+      for (let colonne = 0; colonne <= matrice.taille; colonne += 1) {
+        const noir = colonne < matrice.taille && matrice.estNoir(ligne, colonne);
+        if (noir && debut === -1) debut = colonne;
+        if (!noir && debut !== -1) {
+          doc.rect(x + debut * pas, y + ligne * pas, (colonne - debut) * pas, pas, 'F');
+          debut = -1;
+        }
+      }
+    }
+  },
+
+  // Croix suisse, 7 x 7 mm au centre du code : liseré blanc, carré noir, puis
+  // la croix aux proportions du drapeau fédéral (bras 6/32, longueur 20/32).
+  // Elle mange 2 % de la surface, très en dessous de ce que le niveau de
+  // correction M encaisse.
+  _croixSuisseQr(doc, cx, cy) {
+    doc.setFillColor(QR_BLANC, QR_BLANC, QR_BLANC);
+    doc.rect(cx - 3.5, cy - 3.5, 7, 7, 'F');
+    doc.setFillColor(QR_NOIR, QR_NOIR, QR_NOIR);
+    doc.rect(cx - 3.15, cy - 3.15, 6.3, 6.3, 'F');
+    doc.setFillColor(QR_BLANC, QR_BLANC, QR_BLANC);
+    doc.rect(cx - 0.59, cy - 1.97, 1.18, 3.94, 'F');
+    doc.rect(cx - 1.97, cy - 0.59, 3.94, 1.18, 'F');
   },
 
   // ─── Override CSS variables en HEX pour le rendu PDF / print ────────────
@@ -631,7 +895,8 @@ export const pdfUtils = {
     try {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
       await this._ensureWebFontsLoaded();
-      const pdf = await this._pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage });
+      const qrFacture = await this._preparerQrFacture(options.qrFacture);
+      const pdf = await this._pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage, qrFacture });
 
       // Aucun pied de page : l'identite, l'etablissement et la date vivent dans
       // l'en-tete du document. Un filet et une signature repetes en bas de page
@@ -666,7 +931,8 @@ export const pdfUtils = {
     try {
       const { html2canvas, jsPDF } = await this._loadPdfLibs();
       await this._ensureWebFontsLoaded();
-      const pdf = await this._pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage });
+      const qrFacture = await this._preparerQrFacture(options.qrFacture);
+      const pdf = await this._pdfDepuisConteneur(container, { html2canvas, jsPDF, orientation, fitOnePage, qrFacture });
 
       // Aucun pied de page : l'identite, l'etablissement et la date vivent dans
       // l'en-tete du document. Un filet et une signature repetes en bas de page

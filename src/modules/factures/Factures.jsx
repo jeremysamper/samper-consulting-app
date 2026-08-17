@@ -5,6 +5,10 @@ import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
+import {
+  construireQrFacture, formaterIban, formaterReference, matriceQr,
+  montantLisible, parserAdresse, payloadSpc, validerQrFacture,
+} from '../../services/qrFacture.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE FACTURES - Génération + envoi auto vers Documents
@@ -76,6 +80,20 @@ SWIFT / BIC : BCVSCH2LXXX`,
   mentionTva: 'Numéro TVA : Non assujetti (activité indépendante en création)',
   ville: 'Erde',
   signature: 'Jeremy Samper - Consultant culinaire',
+  // ─── QR-facture suisse ───
+  // L'adresse du créancier est saisie en champs séparés et non reprise du bloc
+  // émetteur : depuis novembre 2025 la norme n'accepte plus que les adresses
+  // structurées, et deviner rue / n° / NPA dans un texte libre qu'on maîtrise
+  // serait une fragilité gratuite. Le débiteur, lui, n'a pas ce luxe : il est
+  // analysé depuis le bloc client (cf. parserAdresse).
+  qrActive: true,
+  qrIban: 'CH33 0076 5001 0561 6551 0',
+  qrCreancierNom: 'SAMPER Jérémy',
+  qrCreancierRue: 'Route de Collombé',
+  qrCreancierNumero: '24A',
+  qrCreancierNpa: '1976',
+  qrCreancierLocalite: 'Erde',
+  qrCreancierPays: 'CH',
 };
 
 const FACTURE_TEXT_FIELDS = [
@@ -89,6 +107,15 @@ const FACTURE_TEXT_FIELDS = [
   { key: 'mentionTva', label: 'Mention TVA', rows: 2, hint: 'Laisser vide pour masquer la ligne.' },
   { key: 'ville', label: "Ville d'émission", rows: 0, hint: 'Utilisée pour la ligne « Fait à… ».' },
   { key: 'signature', label: 'Signature', rows: 2 },
+
+  { groupe: 'QR-facture', key: 'qrActive', label: 'Ajouter la QR-facture au bas du PDF', type: 'bool', hint: 'Récépissé et section paiement conformes à la norme suisse, générés depuis les champs ci-dessous.' },
+  { groupe: 'QR-facture', key: 'qrIban', label: 'IBAN de paiement', rows: 0, hint: 'Compte suisse ou liechtensteinois. Un QR-IBAN (institution 30000-31999) n\'est pas géré : il exigerait une référence QR.' },
+  { groupe: 'QR-facture', key: 'qrCreancierNom', label: 'Créancier : nom', rows: 0 },
+  { groupe: 'QR-facture', key: 'qrCreancierRue', label: 'Créancier : rue', rows: 0, hint: 'Sans le numéro, qui a son propre champ.' },
+  { groupe: 'QR-facture', key: 'qrCreancierNumero', label: 'Créancier : n°', rows: 0 },
+  { groupe: 'QR-facture', key: 'qrCreancierNpa', label: 'Créancier : NPA', rows: 0 },
+  { groupe: 'QR-facture', key: 'qrCreancierLocalite', label: 'Créancier : localité', rows: 0 },
+  { groupe: 'QR-facture', key: 'qrCreancierPays', label: 'Créancier : pays', rows: 0, hint: 'Code à deux lettres : CH, FR, DE…' },
 ];
 
 const factureTextsKey = (etabId) => `facture_textes:${etabId}`;
@@ -99,7 +126,10 @@ const mergeFactureTexts = (raw) => {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_FACTURE_TEXTS };
   const out = { ...DEFAULT_FACTURE_TEXTS };
   Object.keys(DEFAULT_FACTURE_TEXTS).forEach(k => {
-    if (typeof raw[k] === 'string') out[k] = raw[k];
+    // Le type doit correspondre à celui du défaut : l'interrupteur de la
+    // QR-facture est un booléen, et un `false` enregistré se perdrait sous un
+    // test qui n'accepte que les chaînes.
+    if (typeof raw[k] === typeof DEFAULT_FACTURE_TEXTS[k]) out[k] = raw[k];
   });
   return out;
 };
@@ -495,6 +525,38 @@ const Factures = ({ user, etablissement }) => {
     setForm(prev => ({ ...prev, faitALe: buildFaitALe(factureTexts.ville, prev.dateFacturation) }));
   }, [form.dateFacturation, factureTexts.ville]);
 
+  // ═══ QR-facture suisse ═══
+  // Reconstruite à chaque frappe : le QR montré dans l'aperçu est exactement
+  // celui qui part dans le PDF, pas une approximation qui divergerait un jour.
+  // Le débiteur est analysé depuis le bloc client saisi en texte libre ; quand
+  // l'analyse échoue, la norme prévoit un champ « Payable par » vide à remplir
+  // à la main, ce qui vaut mieux qu'une adresse devinée.
+  const debiteurQr = React.useMemo(() => parserAdresse(form.destinataire), [form.destinataire]);
+
+  const donneesQr = React.useMemo(() => {
+    if (!factureTexts.qrActive) return null;
+    const prestation = flattenValue(form.prestation).slice(0, 100);
+    return construireQrFacture({
+      iban: factureTexts.qrIban,
+      creancier: {
+        nom: factureTexts.qrCreancierNom,
+        rue: factureTexts.qrCreancierRue,
+        numero: factureTexts.qrCreancierNumero,
+        npa: factureTexts.qrCreancierNpa,
+        localite: factureTexts.qrCreancierLocalite,
+        pays: factureTexts.qrCreancierPays,
+      },
+      debiteur: debiteurQr,
+      montant: parseFloat(form.montant),
+      devise: form.devise,
+      numeroFacture: form.numero,
+      message: prestation ? `Facture ${form.numero} - ${prestation}` : `Facture ${form.numero}`,
+    });
+  }, [factureTexts, debiteurQr, form.montant, form.devise, form.numero, form.prestation]);
+
+  const erreursQr = React.useMemo(() => (donneesQr ? validerQrFacture(donneesQr) : []), [donneesQr]);
+  const qrPret = !!donneesQr && erreursQr.length === 0;
+
   // ═══ Brouillon de notification client ═══
   // Objet et corps viennent des templates persistés ; les variables sont
   // résolues sur la facture qui vient d'être envoyée.
@@ -526,6 +588,18 @@ const Factures = ({ user, etablissement }) => {
       alertLegacy('Le montant doit être un nombre.');
       return;
     }
+
+    // Une QR-facture mal formée ne se voit qu'au moment où le client essaie de
+    // payer. On l'annonce donc avant d'émettre, et on laisse sortir la facture
+    // sans QR : bloquer une facturation pour un NPA manquant serait pire.
+    if (donneesQr && !qrPret) {
+      const suite = confirmLegacy(
+        `La QR-facture ne peut pas être générée :\n\n- ${erreursQr.join('\n- ')}\n\nÉmettre la facture sans le récépissé de paiement ?`
+      );
+      if (!suite) return;
+    }
+    const qrFacture = qrPret ? donneesQr : null;
+
     setBusy(true);
     try {
       const fileName = `${form.dateFacturation}_${form.numero}_${(etablissement?.nom || 'client').replace(/\s+/g, '')}_${form.montant}${form.devise}.pdf`;
@@ -534,7 +608,7 @@ const Factures = ({ user, etablissement }) => {
         // Mode "Envoyer au module Documents"
         // On récupère le Blob généré pour le proposer en pièce jointe sans
         // repasser par un téléchargement depuis Documents.
-        const blob = await sendFactureToDocuments(fileName);
+        const blob = await sendFactureToDocuments(fileName, qrFacture);
         setSavedToDocs(true);
         setTimeout(() => setSavedToDocs(false), 4000);
 
@@ -554,6 +628,7 @@ const Factures = ({ user, etablissement }) => {
           noBrandHeader: true,
           noHeader: true,
           fitOnePage: true,
+          qrFacture,
         });
       }
     } catch (err) {
@@ -567,7 +642,7 @@ const Factures = ({ user, etablissement }) => {
   // ═══ Envoyer dans Documents ═══
   // On utilise l'établissement sélectionné (le destinataire de la facture), pas
   // forcément l'établissement actif dans le bandeau supérieur.
-  const sendFactureToDocuments = async (fileName) => {
+  const sendFactureToDocuments = async (fileName, qrFacture = null) => {
     if (!legacySB) throw new Error('Supabase non configuré');
     const targetEtabId = selectedEtabId || etabId;
 
@@ -578,8 +653,9 @@ const Factures = ({ user, etablissement }) => {
       title: `Facture ${form.numero}`,
       orientation: 'portrait',
       noBrandHeader: true,
-          noHeader: true,
+      noHeader: true,
       fitOnePage: true,
+      qrFacture,
     });
 
     // 2. S'assurer que la hiérarchie de dossiers existe : Factures > YYYY > MM - Mois
@@ -809,6 +885,69 @@ const Factures = ({ user, etablissement }) => {
           </div>
 
           <div style={fac.section}>
+            <div style={{ ...fac.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span>QR-facture</span>
+              {!donneesQr && <span style={fac.badge}>Désactivée</span>}
+              {donneesQr && qrPret && <span style={fac.badgeOk}>Conforme</span>}
+              {donneesQr && !qrPret && <span style={fac.badgeWarn}>À compléter</span>}
+            </div>
+
+            {!donneesQr ? (
+              <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+                Le PDF sort sans récépissé ni section paiement. Le client saisit l'IBAN à la main pour payer.
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+                  Récépissé et section paiement ajoutés au bas de la page, générés depuis le montant,
+                  le numéro de facture et le bloc client.
+                </div>
+                <div style={fac.qrLignes}>
+                  <div style={fac.qrLigne}>
+                    <span style={fac.qrLigneLabel}>Compte</span>
+                    <span style={fac.qrLigneVal}>{formaterIban(donneesQr.iban) || 'non renseigné'}</span>
+                  </div>
+                  <div style={fac.qrLigne}>
+                    <span style={fac.qrLigneLabel}>Référence</span>
+                    <span style={fac.qrLigneVal}>
+                      {donneesQr.reference ? formaterReference(donneesQr.reference) : 'Aucune'}
+                    </span>
+                  </div>
+                  <div style={fac.qrLigne}>
+                    <span style={fac.qrLigneLabel}>Payable par</span>
+                    <span style={fac.qrLigneVal}>
+                      {debiteurQr
+                        ? `${debiteurQr.nom}, ${debiteurQr.npa} ${debiteurQr.localite}`
+                        : 'Champ laissé vide, à remplir à la main'}
+                    </span>
+                  </div>
+                </div>
+
+                {!debiteurQr && (
+                  <div style={{ ...fac.noticeWarn, marginTop: 10 }}>
+                    L'adresse du client n'a pas pu être lue. La norme n'accepte que les adresses
+                    structurées : écrivez le bloc destinataire sur trois lignes : nom, rue et numéro,
+                    puis NPA et localité.
+                  </div>
+                )}
+
+                {erreursQr.length > 0 && (
+                  <div style={{ ...fac.noticeDanger, marginTop: 10 }}>
+                    <strong>QR impossible à générer :</strong>
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                      {erreursQr.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+
+            <button style={{ ...fac.smallBtn, marginTop: 10 }} onClick={openTextsEditor}>
+              ✎ Modifier les données de paiement
+            </button>
+          </div>
+
+          <div style={fac.section}>
             <div style={{ ...fac.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Notification client</span>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>
@@ -888,6 +1027,24 @@ const Factures = ({ user, etablissement }) => {
         <div style={fac.previewCol}>
           <div style={fac.previewLabel}>Aperçu</div>
           <FactureRender form={form} etablissement={etablissement} textes={factureTexts} />
+
+          {qrPret && (
+            <div style={fac.qrCard}>
+              <QrApercu payload={payloadSpc(donneesQr)} />
+              <div style={{ minWidth: 0 }}>
+                <div style={fac.previewLabel}>Swiss QR Code</div>
+                <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
+                  {donneesQr.montant != null
+                    ? `${donneesQr.devise} ${montantLisible(donneesQr.montant)}`
+                    : 'Montant laissé libre'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
+                  Scannez-le avec votre application bancaire pour vérifier le compte, le montant et
+                  la référence avant d'envoyer la facture.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1168,24 +1325,43 @@ const Factures = ({ user, etablissement }) => {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {FACTURE_TEXT_FIELDS.map(f => (
+              {FACTURE_TEXT_FIELDS.map((f, i) => (
                 <div key={f.key}>
-                  <label style={fac.modalLabel}>{f.label}</label>
-                  {f.rows > 0 ? (
-                    <textarea
-                      value={textsDraft[f.key] ?? ''}
-                      onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      rows={f.rows}
-                      placeholder={f.key === 'client' ? autoClientBlock : undefined}
-                      style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55 }}
-                    />
+                  {/* Intertitre au premier champ d'un groupe : la liste passe de
+                      dix à dix-huit champs, elle a besoin d'un repère. */}
+                  {f.groupe && f.groupe !== FACTURE_TEXT_FIELDS[i - 1]?.groupe && (
+                    <div style={fac.modalGroupTitle}>{f.groupe}</div>
+                  )}
+                  {f.type === 'bool' ? (
+                    <label style={fac.modalCheckRow}>
+                      <input
+                        type="checkbox"
+                        checked={!!textsDraft[f.key]}
+                        onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.checked }))}
+                        style={{ accentColor: 'var(--accent)', width: 18, height: 18, flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.label}</span>
+                    </label>
                   ) : (
-                    <input
-                      type="text"
-                      value={textsDraft[f.key] ?? ''}
-                      onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      style={fac.modalInput}
-                    />
+                    <>
+                      <label style={fac.modalLabel}>{f.label}</label>
+                      {f.rows > 0 ? (
+                        <textarea
+                          value={textsDraft[f.key] ?? ''}
+                          onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
+                          rows={f.rows}
+                          placeholder={f.key === 'client' ? autoClientBlock : undefined}
+                          style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55 }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={textsDraft[f.key] ?? ''}
+                          onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
+                          style={fac.modalInput}
+                        />
+                      )}
+                    </>
                   )}
                   {f.hint && (
                     <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>{f.hint}</div>
@@ -1219,6 +1395,72 @@ const Factures = ({ user, etablissement }) => {
         </div>
       )}
     </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Aperçu du Swiss QR Code
+// ───────────────────────────────────────────────────────────────
+// Même encodeur et même charge utile que le PDF : ce qui s'affiche ici est
+// scannable au téléphone, et vérifier une facture avant de l'envoyer ne
+// demande plus de la générer d'abord. Fond blanc en dur et non var(--surface) :
+// un QR code sur fond sombre ne se lit pas, thème ou pas.
+// ═══════════════════════════════════════════════════════════════
+const QrApercu = ({ payload, taille = 148 }) => {
+  const canvasRef = React.useRef(null);
+
+  React.useEffect(() => {
+    let annule = false;
+    (async () => {
+      let matrice;
+      try {
+        matrice = await matriceQr(payload);
+      } catch (err) {
+        console.warn('[Factures] aperçu QR', err);
+        return;
+      }
+      const canvas = canvasRef.current;
+      if (annule || !canvas) return;
+
+      const ratio = getBrowserWindow()?.devicePixelRatio || 1;
+      canvas.width = taille * ratio;
+      canvas.height = taille * ratio;
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, taille, taille);
+
+      // +0.5 px sur chaque module : à cette taille d'écran le pas tombe entre
+      // deux pixels, et sans ce recouvrement le code se strie de blanc.
+      const pas = taille / matrice.taille;
+      ctx.fillStyle = '#000000';
+      for (let ligne = 0; ligne < matrice.taille; ligne += 1) {
+        for (let colonne = 0; colonne < matrice.taille; colonne += 1) {
+          if (matrice.estNoir(ligne, colonne)) {
+            ctx.fillRect(colonne * pas, ligne * pas, pas + 0.5, pas + 0.5);
+          }
+        }
+      }
+
+      // Croix suisse : 7 mm sur les 46 mm du code, mêmes proportions que le PDF.
+      const croix = (taille * 7) / 46;
+      const centre = taille / 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(centre - croix / 2, centre - croix / 2, croix, croix);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(centre - croix * 0.45, centre - croix * 0.45, croix * 0.9, croix * 0.9);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(centre - croix * 0.0843, centre - croix * 0.2814, croix * 0.1686, croix * 0.5629);
+      ctx.fillRect(centre - croix * 0.2814, centre - croix * 0.0843, croix * 0.5629, croix * 0.1686);
+    })();
+    return () => { annule = true; };
+  }, [payload, taille]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: taille, height: taille, flexShrink: 0, background: '#ffffff', borderRadius: 4 }}
+    />
   );
 };
 
@@ -1375,7 +1617,33 @@ const fac = {
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
 
+  badgeOk: {
+    padding: '2px 8px', borderRadius: 12, background: 'var(--success-bg-soft)',
+    border: '1px solid var(--success-bd)', color: 'var(--success-text)',
+    fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
+    fontFamily: 'var(--font)', whiteSpace: 'nowrap',
+  },
+  badgeWarn: {
+    padding: '2px 8px', borderRadius: 12, background: 'var(--warning-bg)',
+    border: '1px solid var(--warning-bd)', color: 'var(--warning-text)',
+    fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
+    fontFamily: 'var(--font)', whiteSpace: 'nowrap',
+  },
+
   recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--bg)', borderRadius: 5 },
+
+  // ─── QR-facture ───
+  qrLignes: { display: 'flex', flexDirection: 'column', gap: 6 },
+  // Colonne d'étiquettes fixe, valeur souple : sans minmax(0,1fr) un IBAN long
+  // repousserait la colonne et ferait déborder le cadre sur mobile.
+  qrLigne: { display: 'grid', gridTemplateColumns: '78px minmax(0, 1fr)', gap: 8, alignItems: 'baseline' },
+  qrLigneLabel: { fontSize: 10, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 },
+  qrLigneVal: { fontSize: 12, color: 'var(--text)', wordBreak: 'break-word' },
+  qrCard: {
+    display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap',
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 10, padding: 14,
+  },
 
   etabPicker: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
   etabChip: {
@@ -1418,6 +1686,19 @@ const fac = {
   noticeWarn: {
     padding: '9px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)',
     color: 'var(--warning-text)', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+  },
+
+  noticeDanger: {
+    padding: '9px 12px', background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)',
+    color: 'var(--danger-strong)', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+  },
+
+  modalGroupTitle: {
+    fontSize: 12, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)',
+    paddingTop: 6, marginBottom: 10, borderTop: '1px solid var(--border)',
+  },
+  modalCheckRow: {
+    display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer',
   },
 
   attachBox: {
