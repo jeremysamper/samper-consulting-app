@@ -45,6 +45,33 @@ const PanneauEtat = ({ titre, texte, onRetry }) => (
   </div>
 );
 
+// ─── RecettePhoto : photo avec repli d'état ────────────────────────────────
+// Une URL cassée ou expirée bascule broken → on rend le placeholder de marque
+// (dégradé pétrole) au lieu de l'ancien display:none qui effaçait l'image en
+// silence et laissait le cadre se réagencer. Le placeholder est tokenisé :
+// l'ancien dégradé #2a2a2a→#1a1a1a rendait un rectangle quasi noir en clair.
+const RecettePhoto = ({ src, alt = '', placeholder = '🍽', style }) => {
+  const [broken, setBroken] = React.useState(false);
+  React.useEffect(() => { setBroken(false); }, [src]);
+  if (!src || broken) {
+    // background APRÈS ...style : le style appelant (vignette, héros) peut
+    // porter un fond neutre, le placeholder impose le dégradé de marque.
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', ...style, background: 'var(--grad-brand)' }} aria-label={alt}>
+        <span style={{ fontSize: 32, opacity: 0.55 }}>{placeholder}</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{ objectFit: 'cover', display: 'block', ...style }}
+      onError={() => setBroken(true)}
+    />
+  );
+};
+
 // ─── ScalingModal : modale de calculateur de quantités (portions OU grammage cible) ───
 const ScalingModal = ({ recette, onClose }) => {
   const [scalingPortions, setScalingPortions] = React.useState('');
@@ -619,27 +646,44 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
         )}
       </div>
       <div id='fiche-recette-print'>
-      <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
-        {recette.photoUrl && (
-          <img src={recette.photoUrl} alt={recette.nom}
-            style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
-            onError={e => e.currentTarget.style.display = 'none'}/>
-        )}
-        <div style={rs.detailMeta}>
-          <div style={rs.detailTitle}>{recette.nom}</div>
-          <div style={rs.detailSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
-          {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
-            <div style={{display:'flex', gap:14, marginTop:8, fontSize:12, color:'var(--text2)'}}>
-              {recette.tempsPreparation != null && <span>⏱ Prépa : <strong style={{color:'var(--text)'}}>{recette.tempsPreparation} min</strong></span>}
-              {recette.tempsCuisson != null && <span>🔥 Cuisson : <strong style={{color:'var(--text)'}}>{recette.tempsCuisson} min</strong></span>}
-              {recette.tempsTotal != null && <span>⏳ Total : <strong style={{color:'var(--accent)'}}>{recette.tempsTotal} min</strong></span>}
-            </div>
-          )}
+      {recette.photoUrl ? (
+        /* Bandeau héros : la photo porte la fiche, titre et méta posés sur le
+           voile. L'export PDF et Imprimer passent par le jsPDF vectoriel
+           (buildRecettePdfData) : ce héros est purement écran. */
+        <div style={{ ...rs.detailHero, height: isMobile ? 190 : 240 }}>
+          <RecettePhoto src={recette.photoUrl} alt={recette.nom} placeholder="📖" style={rs.detailHeroImg} />
+          <div style={rs.detailHeroScrim} aria-hidden="true" />
+          <span style={{...rs.badge, ...rs.detailHeroBadge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
+          <div style={rs.detailHeroText}>
+            <div style={rs.detailHeroTitle}>{recette.nom}</div>
+            <div style={rs.detailHeroSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
+            {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
+              <div style={rs.detailHeroTimes}>
+                {recette.tempsPreparation != null && <span>⏱ Prépa {recette.tempsPreparation} min</span>}
+                {recette.tempsCuisson != null && <span>🔥 Cuisson {recette.tempsCuisson} min</span>}
+                {recette.tempsTotal != null && <span>⏳ Total {recette.tempsTotal} min</span>}
+              </div>
+            )}
+          </div>
         </div>
-        <div style={rs.detailBadges}>
-          <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
+      ) : (
+        <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
+          <div style={rs.detailMeta}>
+            <div style={rs.detailTitle}>{recette.nom}</div>
+            <div style={rs.detailSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
+            {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
+              <div style={{display:'flex', gap:14, marginTop:8, fontSize:12, color:'var(--text2)', flexWrap:'wrap'}}>
+                {recette.tempsPreparation != null && <span>⏱ Prépa : <strong style={{color:'var(--text)'}}>{recette.tempsPreparation} min</strong></span>}
+                {recette.tempsCuisson != null && <span>🔥 Cuisson : <strong style={{color:'var(--text)'}}>{recette.tempsCuisson} min</strong></span>}
+                {recette.tempsTotal != null && <span>⏳ Total : <strong style={{color:'var(--accent)'}}>{recette.tempsTotal} min</strong></span>}
+              </div>
+            )}
+          </div>
+          <div style={rs.detailBadges}>
+            <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{...rs.detailGrid, gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr'}}>
         <div style={rs.detailCard}>
@@ -1623,24 +1667,26 @@ const Recettes = ({ user, etablissement }) => {
                     const allergsSet = new Set();
                     recettesPlat.forEach(r => (r.allergenesIds || []).forEach(a => allergsSet.add(a)));
                     const allergsList = [...allergsSet];
+                    // Temps le plus long des recettes liées : la donnée existe
+                    // depuis toujours mais n'était affichée nulle part en carte.
+                    const tempsMax = Math.max(0, ...recettesPlat.map(r => r.tempsTotal || 0));
 
                     return (
                       <div key={plat.id} style={rs.platCard}>
+                        {/* Tuile immersive : la photo remplit la zone, le nom se
+                            pose sur le voile (--grad-scrim). Le voile couvre
+                            aussi le placeholder : la crème reste lisible. */}
                         <div style={rs.platImgZone}>
-                          {plat.photoUrl ? (
-                            <img src={plat.photoUrl} alt={plat.nom}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={e => e.currentTarget.style.display = 'none'}/>
-                          ) : (
-                            <div style={rs.platImgPlaceholder}>
-                              <span style={{fontSize: 32, opacity: 0.4}}>🍽</span>
-                            </div>
-                          )}
+                          <RecettePhoto src={plat.photoUrl} alt={plat.nom} style={rs.platImg} />
+                          <div style={rs.platScrim} aria-hidden="true" />
+                          <div style={rs.platOverlay}>
+                            <div style={rs.platCardName}>{plat.nom}</div>
+                            {tempsMax > 0 && <div style={rs.platOverlayMeta}>⏱ {tempsMax} min</div>}
+                          </div>
                         </div>
                         <div style={rs.platBody}>
-                          <div style={rs.platCardName}>{plat.nom}</div>
                           {plat.description && (
-                            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, fontStyle: 'italic', lineHeight: 1.4 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4, marginBottom: 6 }}>
                               {plat.description}
                             </div>
                           )}
@@ -1738,11 +1784,7 @@ const Recettes = ({ user, etablissement }) => {
                     activerRecette(r);
                   }
                 }}>
-                {r.photoUrl ? (
-                  <img src={r.photoUrl} alt={r.nom} style={rs.thumb} onError={e => e.currentTarget.style.display = 'none'}/>
-                ) : (
-                  <div style={rs.thumbPlaceholder}>📖</div>
-                )}
+                <RecettePhoto src={r.photoUrl} alt={r.nom} placeholder="📖" style={rs.thumb} />
                 <div style={rs.recetteInfo}>
                   <div style={rs.recetteName}>{r.nom}</div>
                   <div style={rs.recetteMeta}>{r.categorie} · {r.portions} portions · v{r.version} · modifié {r.modifie}</div>
@@ -1783,11 +1825,7 @@ const Recettes = ({ user, etablissement }) => {
                             togglePlat(plat.id, isExpanded);
                           }
                         }}>
-                        {plat.photoUrl ? (
-                          <img src={plat.photoUrl} alt={plat.nom} style={rs.thumb} onError={e => e.currentTarget.style.display = 'none'}/>
-                        ) : (
-                          <div style={rs.thumbPlaceholder}>🍽</div>
-                        )}
+                        <RecettePhoto src={plat.photoUrl} alt={plat.nom} style={rs.thumb} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={rs.platName}>
                             <span style={{ marginRight: 8, fontSize: 12, color: 'var(--text2)' }}>{isExpanded ? '▼' : '▶'}</span>
@@ -1840,22 +1878,25 @@ const rs = {
   toolbarActionsMobile: {width:'100%',marginLeft:0},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
-  carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
+  carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',boxShadow:'var(--sh-xs)'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
   homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
   carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   catFilter: {display:'flex',gap:6,flexWrap:'wrap'},
-  catBtn: {padding:'6px 16px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   catSection: {display:'flex',flexDirection:'column',gap:12},
   catTitle: {fontSize:12,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.6,paddingLeft:2},
-  platGrid: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14},
-  platCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
-  platImgZone: {height:110,overflow:'hidden'},
-  platImgPlaceholder: {height:'100%',background:'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',display:'flex',alignItems:'center',justifyContent:'center'},
+  platGrid: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14},
+  platCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r-lg)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
+  // ─── Tuile immersive : la photo remplit la zone, le nom vit sur le voile ──
+  platImgZone: {position:'relative',height:172,overflow:'hidden'},
+  platImg: {position:'absolute',inset:0,width:'100%',height:'100%'},
+  platScrim: {position:'absolute',inset:0,background:'var(--grad-scrim)',pointerEvents:'none'},
+  platOverlay: {position:'absolute',left:12,right:12,bottom:10,pointerEvents:'none'},
+  platOverlayMeta: {fontSize:11,fontWeight:600,color:'rgba(241,235,225,0.82)',marginTop:3},
   platBody: {padding:'12px'},
-  platCardName: {fontSize:13,fontWeight:700,color:'var(--text)',lineHeight:1.3,marginBottom:6},
+  // Crème de marque sur voile sombre : identique quel que soit le thème.
+  platCardName: {fontSize:15,fontWeight:700,color:'#f1ebe1',fontFamily:'var(--font-serif)',lineHeight:1.25,letterSpacing:'-0.01em'},
   platAllergenes: {display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'},
   allergeneDot: {fontSize:10,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
   platFooter: {display:'flex',alignItems:'center',justifyContent:'space-between'},
@@ -1874,7 +1915,7 @@ const rs = {
   congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'#fff'},
   // Recettes list
-  recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
+  recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
   // flexWrap : sur mobile la rangee (vignette + nom + pastilles + statut +
   // chevron) depasse la largeur disponible. Sans wrap, soit le nom s'ecrase a
   // 0px, soit le contenu sort de la carte. En passant a la ligne, les elements
@@ -1905,8 +1946,9 @@ const rs = {
   // alors verticalement. Le nom est l'information qu'on cherche : c'est lui qui
   // garde un plancher, ce sont les pastilles qui se plafonnent.
   recetteInfo: {flex:'1 1 140px',minWidth:96},
-  thumb: { width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
-  thumbPlaceholder: { width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 24, color: 'var(--text2)', flexShrink: 0 },
+  // 72px : la photo redevient une information (60px la réduisait à un point de
+  // couleur). Le placeholder est rendu par RecettePhoto avec ce même style.
+  thumb: { width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
   platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--warning-bg-soft)', cursor: 'pointer' },
   platName: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
   orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
@@ -1915,14 +1957,23 @@ const rs = {
   recetteBadges: {display:'flex',gap:4,flexShrink:0},
   // Detail
   detailRoot: {display:'flex',flexDirection:'column',gap:18},
-  detailHeader: {display:'flex',alignItems:'center',gap:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'16px 20px'},
+  detailHeader: {display:'flex',alignItems:'center',gap:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'16px 20px',boxShadow:'var(--sh-xs)'},
+  // ─── Bandeau héros (fiche avec photo) ─────────────────────────────────────
+  detailHero: {position:'relative',borderRadius:'var(--r-lg)',overflow:'hidden',boxShadow:'var(--sh)'},
+  detailHeroImg: {position:'absolute',inset:0,width:'100%',height:'100%'},
+  detailHeroScrim: {position:'absolute',inset:0,background:'var(--grad-scrim)',pointerEvents:'none'},
+  detailHeroBadge: {position:'absolute',top:14,right:14},
+  detailHeroText: {position:'absolute',left:20,right:20,bottom:16},
+  detailHeroTitle: {fontSize:26,fontWeight:700,fontFamily:'var(--font-serif)',color:'#f1ebe1',letterSpacing:'-0.02em',lineHeight:1.12},
+  detailHeroSub: {fontSize:12,color:'rgba(241,235,225,0.75)',marginTop:4},
+  detailHeroTimes: {display:'flex',gap:12,marginTop:9,fontSize:12,fontWeight:600,color:'rgba(241,235,225,0.9)',flexWrap:'wrap'},
   backBtn: {background:'none',border:'1px solid var(--border)',borderRadius:7,padding:'6px 12px',cursor:'pointer',fontSize:12,color:'var(--text2)',fontFamily:'var(--font)',flexShrink:0},
   detailMeta: {flex:1},
   detailTitle: {fontSize:20,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
   detailSub: {fontSize:12,color:'var(--text2)',marginTop:3},
   detailBadges: {display:'flex',gap:6,flexShrink:0},
   detailGrid: {display:'grid',gridTemplateColumns:'1.2fr 1fr',gap:16},
-  detailCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
+  detailCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
   cardHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg)'},
   cardTitle: {fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4},
   portionsCtrl: {display:'flex',alignItems:'center',gap:8},

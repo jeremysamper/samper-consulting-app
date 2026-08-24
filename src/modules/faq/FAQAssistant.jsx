@@ -155,7 +155,7 @@ function getLocalAnswer(question, user, etablissement) {
 
 const fs = {
   root: { display: 'flex', flexDirection: 'column', gap: 16 },
-  header: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '14px 18px', background: 'linear-gradient(135deg,var(--accent-light),var(--surface))', border: '1px solid var(--accent-bd)', borderRadius: 8 },
+  header: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '14px 18px', background: 'var(--grad-accent-wash)', border: '1px solid var(--accent-bd)', borderRadius: 'var(--r-sm)' },
   avatar: { width: 44, height: 44, borderRadius: 10, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 },
   title: { fontSize: 18, fontWeight: 900, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   subtitle: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },

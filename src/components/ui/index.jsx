@@ -7,12 +7,15 @@ export function Card({ children, style = {}, onClick }) {
   return (
     <div
       onClick={onClick}
+      /* Les états hover/active vivent dans app.css (.ui-card--clickable) :
+         impossible de les écrire en style inline. */
+      className={onClick ? 'ui-card ui-card--clickable' : 'ui-card'}
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 8,
+        borderRadius: 'var(--r)',
         padding: '16px 18px',
-        boxShadow: '0 8px 24px rgba(31, 41, 51, 0.06)',
+        boxShadow: 'var(--sh-xs)',
         cursor: onClick ? 'pointer' : 'default',
         ...style
       }}
@@ -34,7 +37,9 @@ export function Btn({
   ariaLabel
 }) {
   const variants = {
-    primary: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
+    /* Dégradé accent2 → accent : donne au bouton principal un léger volume
+       (pétrole en light, aqua en dark) sans changer sa couleur perçue. */
+    primary: { background: 'linear-gradient(160deg, var(--accent2), var(--accent) 62%)', color: '#fff', border: '1px solid var(--accent)', boxShadow: 'var(--sh-xs)' },
     ghost: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
     danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
     success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' },
@@ -53,7 +58,7 @@ export function Btn({
          style ne peut la relever sur mobile sans !important. Cette classe donne
          un point d'accroche à la règle tactile de app.css (pointer: coarse),
          qui remonte les 32/38px à 44px sur tablette et téléphone. */
-      className="ui-btn"
+      className={`ui-btn ui-btn--${variants[variant] ? variant : 'ghost'}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -61,7 +66,7 @@ export function Btn({
         gap: 6,
         minHeight: small ? 32 : 38,
         padding: small ? '5px 10px' : '8px 14px',
-        borderRadius: 8,
+        borderRadius: 'var(--r-sm)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font)',
         fontSize: small ? 12 : 13,
@@ -84,11 +89,12 @@ export function Input({ value, onChange, placeholder, type = 'text', style = {},
       onChange={onChange}
       placeholder={placeholder}
       type={type}
+      className="ui-input"
       style={{
         width: '100%',
         padding: '8px 12px',
         border: '1px solid var(--border)',
-        borderRadius: 8,
+        borderRadius: 'var(--r-sm)',
         background: 'var(--bg)',
         color: 'var(--text)',
         fontFamily: 'var(--font)',
@@ -118,9 +124,15 @@ export function SectionHeader({ title, sub, action, style = {} }) {
   );
 }
 
-export function KpiCard({ label, value, sub, delta, color, chart, style = {} }) {
+export function KpiCard({ label, value, sub, delta, color, chart, glow = false, style = {} }) {
+  /* glow : liseré accent + halo (aqua en dark) façon chip lumineuse.
+     Surcharge du raccourci border COMPLET, jamais borderColor seul
+     (voir lint:borders). */
+  const glowStyle = glow
+    ? { border: '1px solid var(--accent-bd)', boxShadow: 'var(--glow-accent)' }
+    : {};
   return (
-    <Card style={{ display: 'flex', flexDirection: 'column', gap: 9, ...style }}>
+    <Card style={{ display: 'flex', flexDirection: 'column', gap: 9, ...glowStyle, ...style }}>
       <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0 }}>
         {label}
       </div>

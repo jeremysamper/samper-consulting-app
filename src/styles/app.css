@@ -20,15 +20,49 @@
   --accent2: #2e6d84;
   --accent-light: #eaf2f5;
   --accent-bd: #afcad4;
-  --nav: oklch(14% 0.012 55);
-  --nav-text: oklch(68% 0.007 50);
-  --nav-active: rgba(255, 255, 255, 0.11);
-  --nav-border: rgba(255, 255, 255, 0.06);
-  --r: 10px;
-  --r-sm: 6px;
-  --r-lg: 14px;
-  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --sh: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
+     La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
+     thèmes : c'est le geste signature de la refonte profondeur. L'aqua
+     (--nav-accent) est la seule lumière posée sur cette encre. */
+  --nav: #032a3a;
+  --nav-grad: linear-gradient(178deg, #07394d 0%, #032d3f 44%, #021621 100%);
+  --nav-text: rgba(214, 230, 236, 0.66);
+  --nav-text-active: #eaf4f7;
+  --nav-active: rgba(116, 174, 195, 0.14);
+  --nav-border: rgba(255, 255, 255, 0.07);
+  --nav-accent: #74aec3;
+  --nav-glow: 0 0 16px rgba(116, 174, 195, 0.28);
+  --r: 12px;
+  --r-sm: 8px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ── */
+  --sh-xs: 0 1px 2px rgba(9, 30, 40, 0.05), 0 2px 8px rgba(9, 30, 40, 0.04);
+  --sh-sm: 0 1px 3px rgba(9, 30, 40, 0.07), 0 4px 14px rgba(9, 30, 40, 0.05);
+  --sh: 0 2px 6px rgba(9, 30, 40, 0.07), 0 10px 30px rgba(9, 30, 40, 0.09);
+  --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.12), 0 24px 64px rgba(9, 30, 40, 0.16);
+
+  /* ─── Halos et lumière ────────────────────────────────────────────────
+     glow-accent = liseré + halo pour les surfaces mises en avant (chips
+     KPI, cartes actives). En light : anneau accent discret. En dark :
+     halo aqua façon Opal. */
+  --glow-accent: 0 0 0 1px var(--accent-bd), 0 4px 20px rgba(0, 48, 66, 0.12);
+  --glow-soft: 0 2px 14px rgba(0, 48, 66, 0.08);
+  --focus-ring: rgba(0, 48, 66, 0.14);
+
+  /* ─── Dégradés de marque ──────────────────────────────────────────────
+     grad-brand   : encre pétrole abyssale (splash, login, navigation)
+     grad-scrim   : voile posé sur une photo pour y écrire (tuiles plats)
+     grad-accent-wash : lavis accent → surface (blocs mis en avant) */
+  --grad-brand: radial-gradient(120% 95% at 50% 30%, #00394c 0%, #003042 42%, #001620 100%);
+  --grad-scrim: linear-gradient(180deg, rgba(0, 22, 32, 0) 30%, rgba(0, 22, 32, 0.42) 60%, rgba(0, 22, 32, 0.85) 100%);
+  --grad-accent-wash: linear-gradient(135deg, var(--accent-light), var(--surface));
+
+  /* Ambiance de page : lueur pétrole à peine perceptible en haut du
+     contenu. En dark elle devient la respiration abyssale de l'app. */
+  --ambient: radial-gradient(90% 55% at 50% 0%, rgba(0, 48, 66, 0.05) 0%, rgba(0, 48, 66, 0) 60%);
 
   /* ─── Tokens sémantiques de statut (light mode) ─────────────────────────
      bg = fond pâle pour badges/cards d'alerte
@@ -75,25 +109,38 @@
    ─────────────────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: oklch(14% 0.010 55);
-    --bg2: oklch(11% 0.006 50);
-    --surface: oklch(18% 0.012 55);
-    --surface2: oklch(21% 0.010 50);
-    --border: oklch(27% 0.012 55);
-    --border2: oklch(31% 0.010 50);
-    --text: oklch(89% 0.009 75);
-    --text2: oklch(70% 0.010 75);
-    --text3: oklch(48% 0.008 55);
+    /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
+       pour la teinte de la marque (~225). C'est ce virage qui donne au dark
+       son atmosphère « Opal » — profondeur froide, lumière aqua. */
+    --bg: oklch(13.5% 0.015 225);
+    --bg2: oklch(11% 0.012 225);
+    --surface: oklch(17.5% 0.018 225);
+    --surface2: oklch(20.5% 0.016 225);
+    --border: oklch(27% 0.018 225);
+    --border2: oklch(31% 0.016 225);
+    --text: oklch(90% 0.008 210);
+    --text2: oklch(71% 0.012 215);
+    --text3: oklch(50% 0.012 220);
     --accent: #74aec3;
     --accent2: #90bfd0;
     --accent-light: #192b34;
     --accent-bd: #335c6b;
-    --nav: oklch(10% 0.010 55);
-    --nav-text: oklch(55% 0.007 50);
-    --nav-active: rgba(255, 255, 255, 0.09);
-    --nav-border: rgba(255, 255, 255, 0.05);
-    --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.28);
-    --sh: 0 4px 16px rgba(0, 0, 0, 0.38);
+    --nav: #04222f;
+    --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
+    --nav-text: rgba(200, 222, 230, 0.60);
+    --nav-text-active: #e6f2f6;
+    --nav-active: rgba(116, 174, 195, 0.13);
+    --nav-border: rgba(255, 255, 255, 0.06);
+    --nav-accent: #74aec3;
+    --nav-glow: 0 0 18px rgba(116, 174, 195, 0.30);
+    --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.40), 0 4px 14px rgba(0, 0, 0, 0.30);
+    --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
+    --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
+    --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30), 0 0 24px rgba(116, 174, 195, 0.13);
+    --glow-soft: 0 0 18px rgba(116, 174, 195, 0.10);
+    --focus-ring: rgba(116, 174, 195, 0.30);
+    --ambient: radial-gradient(90% 60% at 50% 0%, rgba(23, 92, 130, 0.18) 0%, rgba(23, 92, 130, 0) 62%);
     --success-bg: oklch(28% 0.06 150);
     --success-bg-soft: oklch(22% 0.04 150);
     --success-text: oklch(80% 0.115 152);
@@ -123,25 +170,36 @@
 }
 
 html[data-theme="dark"] {
-  --bg: oklch(14% 0.010 55);
-  --bg2: oklch(11% 0.006 50);
-  --surface: oklch(18% 0.012 55);
-  --surface2: oklch(21% 0.010 50);
-  --border: oklch(27% 0.012 55);
-  --border2: oklch(31% 0.010 50);
-  --text: oklch(89% 0.009 75);
-  --text2: oklch(70% 0.010 75);
-  --text3: oklch(48% 0.008 55);
+  /* Contenu identique au bloc @media ci-dessus — voir le commentaire là-haut. */
+  --bg: oklch(13.5% 0.015 225);
+  --bg2: oklch(11% 0.012 225);
+  --surface: oklch(17.5% 0.018 225);
+  --surface2: oklch(20.5% 0.016 225);
+  --border: oklch(27% 0.018 225);
+  --border2: oklch(31% 0.016 225);
+  --text: oklch(90% 0.008 210);
+  --text2: oklch(71% 0.012 215);
+  --text3: oklch(50% 0.012 220);
   --accent: #74aec3;
   --accent2: #90bfd0;
   --accent-light: #192b34;
   --accent-bd: #335c6b;
-  --nav: oklch(10% 0.010 55);
-  --nav-text: oklch(55% 0.007 50);
-  --nav-active: rgba(255, 255, 255, 0.09);
-  --nav-border: rgba(255, 255, 255, 0.05);
-  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.28);
-  --sh: 0 4px 16px rgba(0, 0, 0, 0.38);
+  --nav: #04222f;
+  --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
+  --nav-text: rgba(200, 222, 230, 0.60);
+  --nav-text-active: #e6f2f6;
+  --nav-active: rgba(116, 174, 195, 0.13);
+  --nav-border: rgba(255, 255, 255, 0.06);
+  --nav-accent: #74aec3;
+  --nav-glow: 0 0 18px rgba(116, 174, 195, 0.30);
+  --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.40), 0 4px 14px rgba(0, 0, 0, 0.30);
+  --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
+  --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30), 0 0 24px rgba(116, 174, 195, 0.13);
+  --glow-soft: 0 0 18px rgba(116, 174, 195, 0.10);
+  --focus-ring: rgba(116, 174, 195, 0.30);
+  --ambient: radial-gradient(90% 60% at 50% 0%, rgba(23, 92, 130, 0.18) 0%, rgba(23, 92, 130, 0) 62%);
 
   /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
      Fonds nettement plus sombres (saturation faible, luminosité ~22-26%)
@@ -741,7 +799,9 @@ body {
 
 body {
   font-family: var(--font);
-  background: var(--bg);
+  /* Ambiance : lueur pétrole en haut de page, posée sous tout le contenu.
+     Deux couches — le radial (--ambient) puis la couleur de fond. */
+  background: var(--ambient) no-repeat, var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
@@ -888,7 +948,9 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(0, 48, 66, 0.12);
+  /* Anneau sur token : suit le thème (pétrole en light, aqua en dark —
+     l'ancien rgba(0,48,66,…) était invisible sur fond sombre). */
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 [style*="tableRow"]:hover,
@@ -915,11 +977,11 @@ a {
 
 .migration-panel {
   width: min(960px, 100%);
-  border: 1px solid #ded4c3;
-  border-radius: 8px;
-  background: #fffdfa;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   padding: clamp(24px, 4vw, 48px);
-  box-shadow: 0 18px 50px rgba(31, 41, 51, 0.10);
+  box-shadow: var(--sh-lg);
 }
 
 .compact-panel {
@@ -928,7 +990,7 @@ a {
 
 .eyebrow {
   margin: 0 0 10px;
-  color: #456b44;
+  color: var(--accent);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
@@ -945,199 +1007,30 @@ h1 {
 .intro {
   max-width: 720px;
   margin: 18px 0 0;
-  color: #52616f;
+  color: var(--text2);
   font-size: 18px;
   line-height: 1.6;
-}
-
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 32px 0;
-}
-
-.status-grid article {
-  min-height: 132px;
-  border: 1px solid #e5ddcf;
-  border-radius: 8px;
-  padding: 18px;
-  background: #f8f5ef;
-}
-
-.status-grid span,
-.status-grid small,
-.step-list span {
-  display: block;
-  color: #65717d;
-}
-
-.status-grid span {
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.status-grid strong {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 24px;
-}
-
-.status-grid small {
-  line-height: 1.45;
-}
-
-.step-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.step-list li {
-  border-left: 4px solid #003042;
-  padding: 12px 0 12px 16px;
-}
-
-.step-list strong {
-  display: block;
-  margin-bottom: 4px;
 }
 
 .error-box {
   overflow: auto;
   margin-top: 18px;
-  border-radius: 8px;
-  background: #1f2933;
+  border-radius: var(--r-sm);
+  background: var(--nav);
   color: #fff;
   padding: 16px;
 }
 
-.auth-screen {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #202226;
-}
-
-.auth-panel {
-  width: min(440px, 100%);
-  border: 1px solid #ded4c3;
-  border-radius: 8px;
-  background: #fffdfa;
-  padding: 32px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
-}
-
-.brand-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.brand-mark {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  background: #003042;
-  color: #fff;
-  font-weight: 800;
-}
-
-.brand-mark.small {
-  width: 38px;
-  height: 38px;
-  font-size: 13px;
-  overflow: hidden;
-}
-
-.brand-mark img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.brand-name,
-.brand-subtitle {
-  margin: 0;
-}
-
-.brand-name {
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.brand-name.light {
-  color: #fff;
-}
-
-.brand-subtitle {
-  margin-top: 2px;
-  color: #65717d;
-  font-size: 12px;
-}
-
-.brand-subtitle.light {
-  color: rgba(255, 255, 255, 0.56);
-}
-
-.auth-panel h1 {
-  margin: 0 0 20px;
-  font-size: 24px;
-}
-
-.auth-form {
-  display: grid;
-  gap: 14px;
-}
-
-.auth-form label,
-.sidebar-select {
-  display: grid;
-  gap: 6px;
-}
-
-.auth-form span,
-.sidebar-select span {
-  color: #65717d;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.auth-form input,
-.sidebar-select select {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid #ded4c3;
-  border-radius: 8px;
-  background: #f8f5ef;
-  color: #1f2933;
-  padding: 0 12px;
-}
-
 .primary-action,
-.ghost-button,
-.text-action,
-.icon-button,
-.sidebar-nav button,
-.toast {
+.ghost-button {
   min-height: 40px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   cursor: pointer;
 }
 
 .primary-action {
   border: 0;
-  background: #003042;
+  background: var(--accent);
   color: #fff;
   font-weight: 800;
   padding: 0 16px;
@@ -1150,16 +1043,6 @@ h1 {
 .primary-action:disabled {
   cursor: wait;
   opacity: 0.65;
-}
-
-.text-action {
-  display: block;
-  margin: 18px auto 0;
-  border: 0;
-  background: transparent;
-  color: #003042;
-  font-size: 13px;
-  font-weight: 800;
 }
 
 .form-alert {
@@ -1188,105 +1071,10 @@ h1 {
   color: var(--warning-text);
 }
 
-.app-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  background: #f4f1eb;
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  background: #202226;
-  color: #fff;
-  padding: 18px 14px;
-  overflow-y: auto;
-}
-
-.sidebar-brand,
-.user-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-card {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 14px 0;
-}
-
-.user-card strong,
-.user-card span {
-  display: block;
-}
-
-.user-card strong {
-  font-size: 14px;
-}
-
-.user-card span {
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 12px;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.sidebar-select {
-  color: #fff;
-}
-
-.sidebar-select select {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-}
-
-.sidebar-select option {
-  color: #1f2933;
-}
-
-.sidebar-nav {
-  display: grid;
-  gap: 4px;
-}
-
-.sidebar-nav button {
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.66);
-  padding: 0 12px;
-  text-align: left;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.sidebar-nav button.active,
-.sidebar-nav button:hover {
-  background: rgba(255, 255, 255, 0.10);
-  color: #fff;
-}
-
 .ghost-button {
-  border: 1px solid #ded4c3;
-  background: #fffdfa;
-  color: #52616f;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
   padding: 0 14px;
   font-size: 13px;
   font-weight: 800;
@@ -1295,46 +1083,6 @@ h1 {
 .ghost-button.compact {
   min-height: 36px;
   padding: 0 10px;
-}
-
-.ghost-button.logout {
-  margin-top: auto;
-  width: 100%;
-  border-color: rgba(255, 255, 255, 0.14);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.shell-main {
-  min-width: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.desktop-topbar,
-.mobile-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #ded4c3;
-  background: #fffdfa;
-  padding: 16px 24px;
-}
-
-.desktop-topbar h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.desktop-topbar p {
-  margin: 4px 0 0;
-  color: #65717d;
-  font-size: 13px;
-}
-
-.module-host {
-  overflow: auto;
-  padding: 24px;
 }
 
 .module-placeholder {
@@ -1351,59 +1099,8 @@ h1 {
 .module-placeholder p {
   max-width: 720px;
   margin: 12px 0 0;
-  color: #52616f;
+  color: var(--text2);
   line-height: 1.6;
-}
-
-.module-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-
-.module-meta div {
-  border: 1px solid #ded4c3;
-  border-radius: 8px;
-  background: #fffdfa;
-  padding: 16px;
-}
-
-.module-meta dt {
-  margin-bottom: 8px;
-  color: #65717d;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.module-meta dd {
-  margin: 0;
-  font-weight: 800;
-}
-
-.mobile-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  min-height: 58px;
-  padding: 10px 14px;
-}
-
-.icon-button {
-  width: 40px;
-  border: 0;
-  background: transparent;
-  display: grid;
-  place-items: center;
-  gap: 4px;
-}
-
-.hamburger-line {
-  width: 22px;
-  height: 2px;
-  border-radius: 2px;
-  background: #1f2933;
 }
 
 .drawer-backdrop {
@@ -1429,11 +1126,14 @@ h1 {
   align-items: flex-start;
   gap: 10px;
   width: 100%;
+  min-height: 40px;
   border: 1px solid transparent;
+  border-radius: var(--r);
   padding: 12px 14px;
   color: #fff;
   text-align: left;
-  box-shadow: 0 10px 28px rgba(31, 41, 51, 0.18);
+  cursor: pointer;
+  box-shadow: var(--sh-lg);
 }
 
 .toast-success {
@@ -1474,47 +1174,67 @@ h1 {
     place-items: stretch;
   }
 
-  .status-grid,
-  .module-meta {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-screen {
-    padding: 16px;
-  }
-
-  .auth-panel {
-    padding: 24px;
-  }
-
-  .app-shell {
-    display: block;
-  }
-
-  .sidebar.mobile {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 40;
-    width: min(320px, 84vw);
-    transform: translateX(-100%);
-    transition: transform 180ms ease;
-  }
-
-  .sidebar.mobile.open {
-    transform: translateX(0);
-  }
-
-  .shell-main {
-    display: block;
-  }
-
-  .module-host {
-    padding: 16px;
-  }
-
   .toast-stack {
     right: 12px;
     bottom: 12px;
     width: calc(100vw - 24px);
+  }
+}
+
+/* ─── Primitives UI (src/components/ui/index.jsx) : états interactifs ───────
+   Les styles de base des primitives restent en inline (JS). Le hover/active/
+   focus ne peut pas s'écrire en inline : il vit ici, accroché aux classes
+   posées par les composants. Hover réservé aux vrais pointeurs (souris) :
+   sur tactile, :hover colle après le tap. */
+.ui-btn {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.ui-btn--primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ui-card {
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-btn--primary:hover:not(:disabled) {
+    box-shadow: var(--sh-sm), var(--glow-soft);
+    transform: translateY(-1px);
+  }
+
+  .ui-btn--ghost:hover:not(:disabled) {
+    background: var(--surface2);
+    border-color: var(--border2);
+  }
+
+  .ui-card--clickable:hover {
+    box-shadow: var(--sh);
+    transform: translateY(-1px);
+    border-color: var(--border2);
+  }
+
+  .ui-card--clickable:active {
+    transform: translateY(0);
+    box-shadow: var(--sh-xs);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn,
+  .ui-card {
+    transition: none;
+  }
+
+  .ui-btn--primary:hover:not(:disabled),
+  .ui-btn--primary:active:not(:disabled),
+  .ui-card--clickable:hover {
+    transform: none;
   }
 }

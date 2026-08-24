@@ -464,8 +464,8 @@ export default function AppLayout({
                 {renderLogoMenu()}
               </div>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Samper</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)' }}>Consulting</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--nav-text-active)', fontFamily: 'var(--font-serif)' }}>Samper</div>
+                <div style={{ fontSize: 11, color: 'var(--nav-text)' }}>Consulting</div>
               </div>
             </div>
             <button style={mls.closeDrawer} onClick={() => setDrawerOpen(false)} aria-label="Fermer">✕</button>
@@ -475,7 +475,7 @@ export default function AppLayout({
           <div style={mls.userCard}>
             <div style={{ ...mls.drawerAvatar, background: roleInfo.couleur }}>{user.avatar}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.prenom} {user.nom}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--nav-text-active)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.prenom} {user.nom}</div>
               <div style={{ fontSize: 11, color: roleInfo.couleur, fontWeight: 600 }}>{roleInfo.label}</div>
             </div>
           </div>
@@ -494,7 +494,7 @@ export default function AppLayout({
                   >
                     <span style={{ ...mls.etabDot, background: et.couleur || 'var(--accent)' }} />
                     <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{et.nom}</span>
-                    {active && <span style={{ color: 'var(--accent)', fontSize: 14 }}>✓</span>}
+                    {active && <span style={{ color: 'var(--nav-accent)', fontSize: 14 }}>✓</span>}
                   </button>
                 );
               })}
@@ -524,7 +524,7 @@ export default function AppLayout({
                     >
                       <span style={{ flex: 1, textAlign: 'left' }}>{getLabelForModule(item.id, item.label)}</span>
                       {renderNavBadge(item.id)}
-                      {active && <span style={{ color: 'var(--accent)', fontSize: 16 }}>●</span>}
+                      {active && <span style={{ color: 'var(--nav-accent)', fontSize: 16 }}>●</span>}
                     </button>
                   );
                 })}
@@ -566,7 +566,7 @@ export default function AppLayout({
       <aside style={{
         ...ls.sidebar,
         width: sidebarOpen ? 234 : 0,
-        borderRight: sidebarOpen ? '1px solid var(--border)' : 'none',
+        borderRight: sidebarOpen ? '1px solid var(--nav-border)' : 'none',
         visibility: sidebarOpen ? 'visible' : 'hidden',
         transition: sidebarOpen
           ? 'width .2s cubic-bezier(.4,0,.2,1)'
@@ -605,7 +605,7 @@ export default function AppLayout({
                   >
                     <span style={{ ...ls.etabDot, background: et.couleur || 'var(--accent)' }} />
                     <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{et.nom}</span>
-                    {active && <span style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}>✓</span>}
+                    {active && <span style={{ color: 'var(--nav-accent)', fontSize: 13, flexShrink: 0 }}>✓</span>}
                   </button>
                 );
               })}
@@ -724,49 +724,52 @@ export default function AppLayout({
 }
 
 const ls = {
-  // Desktop - même langage visuel que le drawer mobile : tokens du thème
-  // (surface/text/border/accent) au lieu du fond sombre --nav + blancs en dur.
-  // Blanc en mode clair, surface sombre en mode sombre, sans couleur codée en dur.
+  // Desktop - navigation « encre pétrole » : la sidebar porte le dégradé de
+  // marque (--nav-grad) dans les DEUX thèmes, avec les tokens nav-* pour les
+  // textes et filets. Le tiroir mobile (mls) reçoit exactement le même
+  // traitement : la cohérence sidebar/drawer est préservée en les changeant
+  // ensemble. Fond transparent sur la coque : l'ambiance (--ambient) posée
+  // sur <body> respire sous le contenu.
   // height 100% et non 100vh : #root porte déjà les zones de sécurité iOS, une
   // coque en 100vh dépasse par le bas de la hauteur de l'indicateur d'accueil et
   // fait sortir de l'écran le bas de la zone de contenu (barres d'action posées).
-  root: { display: 'flex', height: '100%', fontFamily: 'var(--font)', background: 'var(--bg)', overflow: 'hidden' },
+  root: { display: 'flex', height: '100%', fontFamily: 'var(--font)', background: 'transparent', overflow: 'hidden' },
   // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
   // être bloquée par la taille min-content de ses enfants flex.
-  sidebar: { background: 'var(--surface)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
-  sidebarPeek: { position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 10px 18px 7px', background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 12px 12px 0', boxShadow: '2px 0 12px rgba(0,0,0,0.10)', color: 'var(--text2)', fontSize: 14, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', animation: 'sidebarPeekIn .25s ease .12s both' },
-  sidebarTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 14px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 },
+  sidebar: { background: 'var(--nav-grad)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
+  sidebarPeek: { position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 10px 18px 7px', background: 'var(--nav)', border: '1px solid var(--nav-border)', borderLeft: 'none', borderRadius: '0 12px 12px 0', boxShadow: 'var(--sh)', color: 'var(--nav-text)', fontSize: 14, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', animation: 'sidebarPeekIn .25s ease .12s both' },
+  sidebarTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 14px 12px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 },
   logoWrap: { display: 'flex', alignItems: 'center', gap: 10, overflow: 'visible' },
   logoText: { overflow: 'hidden' },
-  logoName: { color: 'var(--text)', fontWeight: 700, fontSize: 14, lineHeight: 1.2, whiteSpace: 'nowrap', fontFamily: 'var(--font-serif)' },
-  logoSub: { color: 'var(--text2)', fontSize: 10, whiteSpace: 'nowrap' },
-  logoMenu: { position: 'absolute', top: '100%', left: 0, marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.12)', width: 200, zIndex: 300, overflow: 'hidden' },
+  logoName: { color: 'var(--nav-text-active)', fontWeight: 700, fontSize: 14, lineHeight: 1.2, whiteSpace: 'nowrap', fontFamily: 'var(--font-serif)' },
+  logoSub: { color: 'var(--nav-text)', fontSize: 10, whiteSpace: 'nowrap' },
+  logoMenu: { position: 'absolute', top: '100%', left: 0, marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', width: 200, zIndex: 300, overflow: 'hidden' },
   logoMenuBtn: { width: '100%', display: 'block', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  toggleBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14, padding: 4, flexShrink: 0 },
-  etabWrap: { padding: '12px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 },
-  etabLabel: { color: 'var(--text2)', fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 },
+  toggleBtn: { background: 'none', border: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 14, padding: 4, flexShrink: 0 },
+  etabWrap: { padding: '12px 14px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 },
+  etabLabel: { color: 'var(--nav-text)', fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 },
   etabList: { display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 180, overflowY: 'auto' },
   // flexShrink:0 : dans une colonne flex scrollable, les <button> se font
   // comprimer par le min-height global mobile → lignes superposées.
-  etabOption: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', minHeight: 36, flexShrink: 0 },
-  etabOptionActive: { border: '1px solid var(--accent)', background: 'var(--accent-light)', color: 'var(--accent)' },
+  etabOption: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--nav-border)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600, color: 'var(--nav-text-active)', minHeight: 36, flexShrink: 0 },
+  etabOptionActive: { border: '1px solid var(--nav-accent)', background: 'var(--nav-active)', color: 'var(--nav-accent)', boxShadow: 'var(--nav-glow)' },
   etabDot: { width: 9, height: 9, borderRadius: '50%', flexShrink: 0 },
-  etabSingle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--text2)', padding: '2px 0' },
+  etabSingle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--nav-text)', padding: '2px 0' },
   nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
   navGroup: { marginBottom: 2 },
-  navGroupLabel: { fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--text3)', padding: '10px 8px 4px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 7, border: 'none', background: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
-  navActive: { background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700 },
-  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--accent)', borderRadius: 2 },
+  navGroupLabel: { fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--nav-text)', opacity: 0.72, padding: '10px 8px 4px' },
+  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
+  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 700, boxShadow: 'var(--nav-glow)' },
+  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--nav-accent)', borderRadius: 2, boxShadow: '0 0 8px rgba(116, 174, 195, 0.8)' },
   navLabel: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  userArea: { display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' },
+  userArea: { display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderTop: '1px solid var(--nav-border)', flexShrink: 0, boxSizing: 'border-box' },
   userIdentity: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
   // flexShrink: 0 - la règle tactile globale (min-height 44px en pointer: coarse)
   // écrase sinon la hauteur des boutons empilés en colonne sur iPad.
-  accountBtn: { flexShrink: 0, width: '100%', padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textAlign: 'center', boxSizing: 'border-box' },
+  accountBtn: { flexShrink: 0, width: '100%', padding: '8px 10px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--nav-border)', borderRadius: 8, color: 'var(--nav-text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textAlign: 'center', boxSizing: 'border-box' },
   avatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
   userInfo: { overflow: 'hidden' },
-  userName: { color: 'var(--text)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  userName: { color: 'var(--nav-text-active)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   userRole: { fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 18px', flexShrink: 0 },
@@ -780,7 +783,7 @@ const ls = {
   themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', padding: 0, borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   iconBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, position: 'relative', padding: 4 },
   notifDot: { position: 'absolute', top: 0, right: 0, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  notifPanel: { position: 'absolute', right: 0, top: 40, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 200 },
+  notifPanel: { position: 'absolute', right: 0, top: 40, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   topbarDivider: { width: 1, height: 20, background: 'var(--border)' },
@@ -813,7 +816,7 @@ const mls = {
   // repartaient donc tout en bas de la page au lieu de rester sous la main.
   // height 100% et non 100vh : #root est déjà borné aux zones de sécurité iOS,
   // 100vh déborderait par le bas de la hauteur de l'indicateur d'accueil.
-  root: { height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'var(--font)' },
+  root: { height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'transparent', fontFamily: 'var(--font)' },
 
   // Header fixe haut
   topbar: {
@@ -833,36 +836,38 @@ const mls = {
   themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, flexShrink: 0 },
   bellBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
-  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.15)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
+  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
 
-  // Overlay sombre quand drawer ouvert
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90, animation: 'fadeIn 0.2s' },
+  // Overlay pétrole + léger flou : ici le contenu passe réellement sous le
+  // voile, le backdrop-filter a donc un effet (contrairement aux topbars,
+  // que rien ne recouvre : elles restent opaques exprès).
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,22,32,0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 90, animation: 'fadeIn 0.2s' },
 
-  // Drawer latéral gauche
+  // Drawer latéral gauche - même encre pétrole que la sidebar desktop
   drawer: {
     position: 'fixed', top: 0, left: 0, bottom: 0, width: '80%', maxWidth: 320,
-    background: 'var(--surface)',
+    background: 'var(--nav-grad)',
     zIndex: 100,
     display: 'flex', flexDirection: 'column',
     transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '4px 0 24px rgba(0,0,0,0.12)',
+    boxShadow: 'var(--sh-lg)',
   },
   drawerHead: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '16px 18px',
-    borderBottom: '1px solid var(--border)',
+    borderBottom: '1px solid var(--nav-border)',
   },
   closeDrawer: {
     width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
-    cursor: 'pointer', fontSize: 16, color: 'var(--text2)',
+    background: 'rgba(255,255,255,0.06)', border: '1px solid var(--nav-border)', borderRadius: 8,
+    cursor: 'pointer', fontSize: 16, color: 'var(--nav-text)',
   },
   userCard: {
     display: 'flex', alignItems: 'center', gap: 12,
-    padding: '14px 18px', borderBottom: '1px solid var(--border)',
-    background: 'var(--bg)',
+    padding: '14px 18px', borderBottom: '1px solid var(--nav-border)',
+    background: 'rgba(255,255,255,0.04)',
   },
   drawerAvatar: {
     width: 42, height: 42, borderRadius: 10,
@@ -874,71 +879,72 @@ const mls = {
     display: 'flex', flexDirection: 'column', gap: 2,
   },
   drawerGroupLabel: {
-    fontSize: 10, fontWeight: 800, color: 'var(--text2)',
+    fontSize: 10, fontWeight: 800, color: 'var(--nav-text)', opacity: 0.72,
     textTransform: 'uppercase', letterSpacing: 0.6,
     padding: '10px 6px 5px',
   },
   etabSwitcher: {
     padding: '12px 14px',
-    borderBottom: '1px solid var(--border)',
-    background: 'var(--bg)',
+    borderBottom: '1px solid var(--nav-border)',
+    background: 'transparent',
   },
   etabSwitcherLabel: {
-    fontSize: 10, fontWeight: 700, color: 'var(--text2)',
+    fontSize: 10, fontWeight: 700, color: 'var(--nav-text)',
     textTransform: 'uppercase', letterSpacing: 0.5,
     marginBottom: 8,
   },
   etabOption: {
     display: 'flex', alignItems: 'center', gap: 10,
     width: '100%', padding: '10px 12px',
-    background: 'var(--surface)', border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--nav-border)',
     borderRadius: 8, marginBottom: 6,
     cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 13, fontWeight: 600, color: 'var(--text)',
+    fontSize: 13, fontWeight: 600, color: 'var(--nav-text-active)',
     minHeight: 40,
   },
   etabOptionActive: {
-    border: '1px solid var(--accent)', background: 'var(--accent-light)',
-    color: 'var(--accent)',
+    border: '1px solid var(--nav-accent)', background: 'var(--nav-active)',
+    color: 'var(--nav-accent)', boxShadow: 'var(--nav-glow)',
   },
   etabDot: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },
   etabSingle: {
     display: 'flex', alignItems: 'center', gap: 8,
     padding: '10px 14px',
-    borderBottom: '1px solid var(--border)',
-    background: 'var(--bg)',
-    fontSize: 12, fontWeight: 600, color: 'var(--text2)',
+    borderBottom: '1px solid var(--nav-border)',
+    background: 'transparent',
+    fontSize: 12, fontWeight: 600, color: 'var(--nav-text)',
   },
   drawerItem: {
     display: 'flex', alignItems: 'center', gap: 12,
     padding: '13px 14px', borderRadius: 8,
     background: 'none', border: 'none', width: '100%',
     cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 14, fontWeight: 600, color: 'var(--text)',
+    fontSize: 14, fontWeight: 600, color: 'var(--nav-text)',
     textAlign: 'left',
   },
   drawerItemActive: {
-    background: 'var(--accent-light)', color: 'var(--accent)',
+    background: 'var(--nav-active)', color: 'var(--nav-text-active)',
+    boxShadow: 'var(--nav-glow)',
   },
   drawerIcon: { fontSize: 17, width: 24, textAlign: 'center', flexShrink: 0 },
   drawerFooter: {
     padding: '12px 14px',
-    borderTop: '1px solid var(--border)',
+    borderTop: '1px solid var(--nav-border)',
     display: 'flex', flexDirection: 'column', gap: 8,
   },
   // flexShrink: 0 sur les deux : empilés en colonne, ils se superposeraient
   // sinon sous la règle tactile globale (min-height 44px en pointer: coarse).
   accountBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
-    flexShrink: 0, padding: '11px 14px', background: 'var(--bg)',
-    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)',
+    flexShrink: 0, padding: '11px 14px', background: 'rgba(255,255,255,0.06)',
+    border: '1px solid var(--nav-border)', borderRadius: 8, color: 'var(--nav-text)',
     cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
     boxSizing: 'border-box',
   },
   logoutBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
-    flexShrink: 0, padding: '11px 14px', background: 'var(--bg)',
-    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)',
+    flexShrink: 0, padding: '11px 14px', background: 'rgba(255,255,255,0.06)',
+    border: '1px solid var(--nav-border)', borderRadius: 8, color: 'var(--nav-text)',
     cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
     boxSizing: 'border-box',
   },

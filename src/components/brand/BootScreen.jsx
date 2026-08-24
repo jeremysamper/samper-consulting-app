@@ -18,17 +18,25 @@ import SamperMark from './SamperMark.jsx';
 export default function BootScreen({ title = 'Connexion à votre espace' }) {
   return (
     <main style={s.root}>
+      {/* Double halo : un large et diffus (atmosphère), un serré et plus vif
+          (la « gemme » qui éclaire le monogramme). Même classe : les deux
+          respirent ensemble et s'éteignent ensemble en mouvement réduit. */}
+      <div className="splash-aura" style={s.auraWide} aria-hidden="true" />
       <div className="splash-aura" style={s.aura} aria-hidden="true" />
 
       <div style={s.core}>
-        <SamperMark className="splash-mark" size={112} background="none" scale={1.08} title={null} />
+        <SamperMark className="splash-mark" size={118} background="none" scale={1.08} title={null} />
 
         <div className="splash-word" style={s.word}>
           <div style={s.name} data-no-translate="">Samper Consulting</div>
           <div style={s.rule} aria-hidden="true" />
           <div style={s.tagline}>Gestion culinaire</div>
         </div>
+      </div>
 
+      {/* Pied éditorial : l'état de chargement à gauche, la piste à droite —
+          la tension gauche/droite ancre la composition dans les bords. */}
+      <div style={s.foot}>
         <div className="splash-status" style={s.status} role="status" aria-live="polite">
           {title}
         </div>
@@ -42,6 +50,7 @@ export default function BootScreen({ title = 'Connexion à votre espace' }) {
 }
 
 const AURA_SIZE = 460;
+const AURA_WIDE_SIZE = 780;
 
 const s = {
   root: {
@@ -69,7 +78,18 @@ const s = {
     // neutraliser sans décaler le halo.
     marginTop: -(AURA_SIZE / 2) - 70,
     marginLeft: -(AURA_SIZE / 2),
-    background: 'radial-gradient(circle, rgba(155,199,219,0.13) 0%, rgba(155,199,219,0) 66%)',
+    background: 'radial-gradient(circle, rgba(155,199,219,0.15) 0%, rgba(155,199,219,0) 66%)',
+    pointerEvents: 'none',
+  },
+  auraWide: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: AURA_WIDE_SIZE,
+    height: AURA_WIDE_SIZE,
+    marginTop: -(AURA_WIDE_SIZE / 2) - 40,
+    marginLeft: -(AURA_WIDE_SIZE / 2),
+    background: 'radial-gradient(circle, rgba(23,92,130,0.22) 0%, rgba(23,92,130,0) 62%)',
     pointerEvents: 'none',
   },
   core: {
@@ -81,41 +101,52 @@ const s = {
     textAlign: 'center',
   },
   word: {
-    marginTop: 26,
+    marginTop: 30,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
   },
   name: {
-    fontSize: 21,
+    // Voix éditoriale : serif d'affichage, grand corps, tracking resserré.
+    fontSize: 'clamp(27px, 6vw, 38px)',
     fontWeight: 400,
     color: '#f1ebe1',
     fontFamily: 'var(--font-serif)',
-    letterSpacing: 0.6,
-    lineHeight: 1.2,
+    letterSpacing: '-0.02em',
+    lineHeight: 1.05,
   },
   rule: {
-    width: 34,
+    width: 46,
     height: 1,
-    margin: '13px 0 11px',
+    margin: '15px 0 12px',
     background: 'linear-gradient(90deg, rgba(201,188,163,0) 0%, rgba(201,188,163,0.85) 50%, rgba(201,188,163,0) 100%)',
   },
   tagline: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: 600,
-    color: 'rgba(241,235,225,0.52)',
+    color: 'rgba(241,235,225,0.55)',
     textTransform: 'uppercase',
-    letterSpacing: 2.6,
+    letterSpacing: 3.2,
+  },
+  foot: {
+    position: 'absolute',
+    left: 'max(26px, env(safe-area-inset-left))',
+    right: 'max(26px, env(safe-area-inset-right))',
+    bottom: 'calc(26px + env(safe-area-inset-bottom))',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 18,
   },
   status: {
-    marginTop: 34,
-    fontSize: 12.5,
+    fontSize: 12,
     color: 'rgba(241,235,225,0.62)',
     minHeight: 16,
+    textAlign: 'left',
   },
   track: {
-    marginTop: 16,
-    width: 116,
+    width: 132,
+    flexShrink: 0,
     height: 2,
     background: 'rgba(241,235,225,0.12)',
     borderRadius: 2,

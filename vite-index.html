@@ -31,8 +31,39 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+
+    <!-- Pré-splash : comble le trou blanc entre l'écran natif (manifest,
+         fond #003042) et le premier rendu React (BootScreen, même fond).
+         Retiré par src/main.jsx dès que React a peint. Les polygones sont
+         la géométrie exacte de src/components/brand/markGeometry.js. -->
+    <style>
+      #pre-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(120% 95% at 50% 36%, #00394c 0%, #003042 38%, #001620 100%);
+        transition: opacity 0.3s ease;
+      }
+      #pre-splash.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
   </head>
   <body>
+    <div id="pre-splash" aria-hidden="true">
+      <svg width="112" height="112" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="512,512 683,341 853,512" fill="#175C82"/>
+        <polygon points="512,512 853,512 683,683" fill="#EFE8DD"/>
+        <polygon points="512,512 683,683 512,853" fill="#04222D"/>
+        <polygon points="512,512 512,853 341,683" fill="#175C82"/>
+        <polygon points="512,512 171,512 341,341" fill="#C9BCA3"/>
+        <polygon points="512,512 341,341 512,171" fill="#175C82"/>
+      </svg>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

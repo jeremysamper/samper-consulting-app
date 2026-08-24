@@ -341,6 +341,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
 
       <div style={ds.pilotageGrid}>
         <KpiCard
+          glow
           label="Equipe en poste"
           value={(activePointages || []).length}
           color="var(--success-text)"
@@ -348,6 +349,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
           chart={<MiniBars data={weekShiftLoad} labels={['L', 'M', 'M', 'J', 'V', 'S', 'D']} color="var(--success-text)" />}
         />
         <KpiCard
+          glow
           label="Heures planifiees"
           value={`${plannedHours}h`}
           color="var(--warning-text)"
@@ -355,6 +357,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
           chart={<ProgressLine value={todayShifts.length ? activePointages.length / todayShifts.length : 0} color="var(--warning-strong)" />}
         />
         <KpiCard
+          glow
           label="Pertes du mois"
           value={`CHF ${pertesTotal.toLocaleString('fr-CH', { maximumFractionDigits: 0 })}`}
           color={(pertesNonVal || []).length ? 'var(--danger-text)' : 'var(--success-text)'}
@@ -362,6 +365,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
           chart={<ProgressLine value={pertesNonVal.length ? 0.78 : 0.22} color={(pertesNonVal || []).length ? 'var(--danger-strong)' : 'var(--success-strong)'} />}
         />
         <KpiCard
+          glow
           label="SOP / HACCP"
           value={`${sopDoneToday}/${Math.max(activeSops.length, sopDoneToday) || 0}`}
           color={haccpAlerts.length ? 'var(--danger-text)' : 'var(--accent)'}
@@ -667,12 +671,12 @@ const ds = {
   root: { display: 'flex', flexDirection: 'column', gap: 20 },
 
   greeting: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
-  greetingTitle: { fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
+  greetingTitle: { fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', letterSpacing: '-0.02em' },
   greetingSub: { fontSize: 13, color: 'var(--text2)', marginTop: 4, textTransform: 'capitalize' },
   headerRight: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
   etabBadge: { padding: '6px 14px', background: 'var(--accent-light)', color: 'var(--accent)', borderRadius: 20, fontSize: 12, fontWeight: 600 },
 
-  pointageSection: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 12, padding: 18 },
+  pointageSection: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 'var(--r-lg)', padding: 18, boxShadow: 'var(--sh-xs)' },
   pointageSectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--success-text)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 12 },
   errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
   myShiftsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 },
@@ -686,7 +690,7 @@ const ds = {
   posteHint: { fontSize: 11, color: 'var(--text2)', marginTop: 8 },
   bigActionBtn: { display: 'block', width: '100%', padding: '12px 16px', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)' },
 
-  messageSection: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 },
+  messageSection: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 18, boxShadow: 'var(--sh-xs)' },
   messageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   messageTitle: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
   editMessageBtn: { background: 'none', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
@@ -704,7 +708,7 @@ const ds = {
   automationTitle: { fontSize: 13, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   automationDetail: { fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   automationImpact: { fontSize: 10, color: 'var(--text2)', fontWeight: 700, whiteSpace: 'nowrap' },
-  assistantPreview: { display: 'flex', gap: 12, padding: 12, borderRadius: 8, background: 'linear-gradient(135deg,var(--accent-light),var(--surface))', border: '1px solid var(--accent-bd)' },
+  assistantPreview: { display: 'flex', gap: 12, padding: 12, borderRadius: 'var(--r-sm)', background: 'var(--grad-accent-wash)', border: '1px solid var(--accent-bd)' },
   assistantBadge: { width: 38, height: 38, borderRadius: 9, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0 },
   assistantTitle: { fontSize: 13, fontWeight: 800, color: 'var(--text)' },
   assistantText: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, marginTop: 4 },
@@ -712,12 +716,12 @@ const ds = {
   faqChip: { padding: '5px 9px', borderRadius: 999, background: 'var(--surface2)', border: '1px solid var(--border)', fontSize: 11, color: 'var(--text2)', fontWeight: 700 },
 
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 },
-  kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px' },
+  kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '16px 18px', boxShadow: 'var(--sh-xs)' },
   kpiLabel: { fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 },
   kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 4, color: 'var(--text)' },
   kpiSub: { fontSize: 11, color: 'var(--text2)', marginTop: 4 },
 
-  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 },
+  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 18, boxShadow: 'var(--sh-xs)' },
   sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sectionTitle: { fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   sectionSub: { fontSize: 11, color: 'var(--text2)', fontWeight: 600 },

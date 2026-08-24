@@ -3,8 +3,10 @@
 // restent rigoureusement identiques : c'est la première chose que voit un
 // nouveau membre de brigade.
 export const authStyles = {
-  screen: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)', fontFamily: 'var(--font)' },
-  panel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '32px 36px', width: 440, maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' },
+  // Même champ pétrole abyssal que le BootScreen : le splash fond dans le
+  // login sans rupture (l'ancien dégradé gris anthracite cassait la marque).
+  screen: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'radial-gradient(120% 95% at 50% 36%, #00394c 0%, #003042 38%, #001620 100%)', fontFamily: 'var(--font)' },
+  panel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 36px', width: 440, maxWidth: '100%', boxShadow: 'var(--sh-lg)' },
   logoWrap: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
   brandText: { flex: 1 },
   brandTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
@@ -12,8 +14,8 @@ export const authStyles = {
   title: { fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 18 },
   field: { marginBottom: 14 },
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  input: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
-  submitBtn: { width: '100%', padding: '12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 4 },
+  input: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
+  submitBtn: { width: '100%', padding: '12px', background: 'linear-gradient(160deg, var(--accent2), var(--accent) 62%)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 4, boxShadow: 'var(--sh-sm)' },
   linkBtn: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font)', padding: 4 },
   errorBox: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
   infoBox: { background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },

@@ -373,7 +373,7 @@ const dm = {
   greetingSub: { fontSize: 12, color: 'var(--text2)', marginTop: 2, textTransform: 'capitalize' },
 
   // Pointage - bloc en haut, priorité absolue
-  pointageBloc: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 12, padding: 14 },
+  pointageBloc: { background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 'var(--r-lg)', padding: 14, boxShadow: 'var(--sh-xs)' },
   pointageHead: { fontSize: 11, fontWeight: 700, color: 'var(--success-text)', letterSpacing: 0.5, marginBottom: 10 },
   errorBanner: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10 },
   pointageCard: { background: 'var(--surface)', border: '2px solid', borderRadius: 10, padding: 14, marginBottom: 8 },
@@ -386,7 +386,7 @@ const dm = {
   rangeHint: { fontSize: 10, color: 'var(--text2)', marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
 
   // Message consultant
-  messageBloc: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 },
+  messageBloc: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, boxShadow: 'var(--sh-xs)' },
   messageHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
   editMsgBtn: { width: 28, height: 28, border: '1px solid var(--accent)', background: 'none', color: 'var(--accent)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 700 },
   textarea: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'vertical' },
@@ -397,7 +397,7 @@ const dm = {
 
   // KPIs 2×2 - toutes les cases ont la même hauteur, contenu centré
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 },
-  kpi: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 76, boxSizing: 'border-box' },
+  kpi: { background: 'var(--surface)', border: '1px solid var(--accent-bd)', borderRadius: 'var(--r)', padding: '12px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 76, boxSizing: 'border-box', boxShadow: 'var(--glow-accent)' },
   kpiLbl: { fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600, lineHeight: 1.3 },
   kpiVal: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 6, color: 'var(--text)', lineHeight: 1 },
 
@@ -407,12 +407,12 @@ const dm = {
   quickDot: { width: 7, height: 7, borderRadius: 99, gridRow: '1 / span 2' },
   quickLabel: { fontSize: 13, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   quickSub: { fontSize: 10, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  assistantStrip: { marginTop: 10, padding: 10, borderRadius: 9, background: 'linear-gradient(135deg,var(--accent-light),var(--surface))', border: '1px solid var(--accent-bd)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  assistantStrip: { marginTop: 10, padding: 10, borderRadius: 'var(--r-sm)', background: 'var(--grad-accent-wash)', border: '1px solid var(--accent-bd)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   assistantStripTitle: { fontSize: 12, fontWeight: 800, color: 'var(--text)' },
   assistantStripSub: { fontSize: 10, color: 'var(--text2)', lineHeight: 1.35, marginTop: 2 },
 
   // Sections
-  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 },
+  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, boxShadow: 'var(--sh-xs)' },
   sectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 10 },
 
   shiftRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg)', borderRadius: 6 },

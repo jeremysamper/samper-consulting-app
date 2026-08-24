@@ -71,8 +71,8 @@ export default function ChangePasswordModal({ email, onClose }) {
         className="modal-sheet"
         style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 14, padding: '22px 24px', width: 420, maxWidth: '100%',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.35)', boxSizing: 'border-box',
+          borderRadius: 'var(--r-lg)', padding: '22px 24px', width: 420, maxWidth: '100%',
+          boxShadow: 'var(--sh-lg)', boxSizing: 'border-box',
         }}
         onClick={(event) => event.stopPropagation()}
       >

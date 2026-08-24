@@ -48,5 +48,22 @@ createRoot(document.getElementById('root')).render(
   </RootErrorBoundary>
 );
 
+// Pré-splash de vite-index.html : fondu puis retrait dès que React a peint son
+// premier cadre (le BootScreen partage le même fond, la transition est invisible).
+// Double rAF : le premier se cale sur le cadre en cours, le second garantit que
+// le rendu React est bien à l'écran avant de retirer le voile. Un onglet ouvert
+// en arrière-plan ne déclenche aucun rAF tant qu'il n'est pas affiché : la
+// minuterie sert de repli pour que le voile ne reste jamais posé sur l'app.
+const dismissPreSplash = () => {
+  const preSplash = document.getElementById('pre-splash');
+  if (!preSplash) return;
+  preSplash.classList.add('done');
+  setTimeout(() => preSplash.remove(), 400);
+};
+requestAnimationFrame(() => {
+  requestAnimationFrame(dismissPreSplash);
+});
+setTimeout(dismissPreSplash, 1500);
+
 // Service worker PWA : app shell hors-ligne + stratégie de mise à jour 'prompt'.
 initPwa();
