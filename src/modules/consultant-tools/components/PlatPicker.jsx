@@ -271,7 +271,7 @@ const ps = {
   empty: { padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 },
   carteHeader: { display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
   carteNom: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  carteCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1px 8px', flexShrink: 0 },
+  carteCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
   catHeader: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 20px 3px 34px' },
   catNom: { flex: 1, minWidth: 0, fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.6 },
   catAllBtn: { background: 'none', border: 'none', color: 'var(--accent)', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', flexShrink: 0 },

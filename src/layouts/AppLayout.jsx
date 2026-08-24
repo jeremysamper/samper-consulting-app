@@ -772,7 +772,7 @@ const ls = {
   userName: { color: 'var(--nav-text-active)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   userRole: { fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 18px', flexShrink: 0 },
+  topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 18px', flexShrink: 0, position: 'relative', zIndex: 5, boxShadow: 'var(--sh-xs)' },
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12 },
   titleBlock: { minWidth: 0 },
   pageTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
@@ -826,6 +826,7 @@ const mls = {
     background: 'var(--surface)',
     borderBottom: '1px solid var(--border)',
     minHeight: 56,
+    boxShadow: 'var(--sh-xs)',
   },
   hamburger: {
     width: 44, height: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,

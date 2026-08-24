@@ -193,7 +193,7 @@ const cs = {
   foodCostBar: {
     display: 'flex', alignItems: 'center', gap: 10,
     padding: '10px 16px', background: 'var(--surface)',
-    border: '1px solid var(--border)', borderRadius: 10, marginBottom: 14,
+    border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', marginBottom: 14,
   },
   foodCostLabel: {
     fontSize: 11, fontWeight: 700, color: 'var(--text2)',
@@ -210,7 +210,7 @@ const cs = {
   },
   simCard: {
     background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 12, padding: 18,
+    borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 18,
   },
 
   sectionTitle: {
@@ -221,7 +221,7 @@ const cs = {
 
   section: {
     background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 12, padding: 18, marginBottom: 14,
+    borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 18, marginBottom: 14,
   },
 
   errorBox: {

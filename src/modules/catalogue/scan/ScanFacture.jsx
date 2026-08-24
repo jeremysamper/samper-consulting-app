@@ -569,7 +569,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
 
       {progress && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9100, background: 'rgba(20,16,12,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', width: 'min(420px,94vw)', padding: 20 }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Mise à jour des prix</div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
               {progress.done}/{progress.total} produit(s){progress.echecs ? ` · ${progress.echecs} échec(s)` : ''}

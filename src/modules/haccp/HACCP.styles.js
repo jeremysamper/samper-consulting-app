@@ -7,7 +7,7 @@ export const hs = {
   addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiRow:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12},
-  kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'},
+  kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
   kpiLbl:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
   kpiVal:{fontSize:26,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   sectionTitle:{fontSize:12,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.5},
@@ -23,7 +23,7 @@ export const hs = {
   anomHeader:{padding:'12px 16px',fontWeight:700,fontSize:13,color:'var(--danger-strong)',borderBottom:'1px solid var(--danger-bd)'},
   anomRow:{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 16px',borderBottom:'1px solid var(--danger-bd)'},
   anomIcon:{fontSize:20,flexShrink:0,marginTop:2},
-  tableCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
+  tableCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden'},
   tableCardHeader:{padding:'13px 18px',borderBottom:'1px solid var(--border)',fontSize:13,fontWeight:700,color:'var(--text)',background:'var(--bg)'},
   empty:{padding:'18px',color:'var(--text2)',fontSize:13},
   relHead:{display:'grid',gridTemplateColumns:'2fr 60px 90px 120px 110px 2fr',padding:'8px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
@@ -78,7 +78,7 @@ export const hs = {
 };
 
 export const hcfg = {
-  section:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'},
+  section:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden'},
   sectionHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'var(--bg)'},
   sectionTitle:{fontSize:14,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
   sectionSub:{fontSize:12,color:'var(--text2)',marginTop:2},

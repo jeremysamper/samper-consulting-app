@@ -7,19 +7,21 @@
 :root {
   --font: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", Georgia, serif;
-  --bg: oklch(96.5% 0.008 75);
-  --bg2: oklch(94% 0.008 60);
+  /* Fond légèrement creusé (95.8 vs surface 99.2) : c'est cet écart, plus
+     que les ombres, qui fait flotter les cartes blanches en mode clair. */
+  --bg: oklch(95.8% 0.009 75);
+  --bg2: oklch(93.2% 0.010 60);
   --surface: oklch(99.2% 0.004 75);
   --surface2: oklch(97.5% 0.005 60);
-  --border: oklch(88% 0.010 75);
-  --border2: oklch(84% 0.010 60);
+  --border: oklch(86.5% 0.012 75);
+  --border2: oklch(82.5% 0.012 60);
   --text: oklch(18% 0.012 55);
   --text2: oklch(48% 0.010 55);
   --text3: oklch(60% 0.008 50);
   --accent: #003042;
   --accent2: #2e6d84;
-  --accent-light: #eaf2f5;
-  --accent-bd: #afcad4;
+  --accent-light: #e4eef3;
+  --accent-bd: #9fc0cd;
   /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
      La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
      thèmes : c'est le geste signature de la refonte profondeur. L'aqua
@@ -39,17 +41,17 @@
   --r-full: 999px;
 
   /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ── */
-  --sh-xs: 0 1px 2px rgba(9, 30, 40, 0.05), 0 2px 8px rgba(9, 30, 40, 0.04);
-  --sh-sm: 0 1px 3px rgba(9, 30, 40, 0.07), 0 4px 14px rgba(9, 30, 40, 0.05);
-  --sh: 0 2px 6px rgba(9, 30, 40, 0.07), 0 10px 30px rgba(9, 30, 40, 0.09);
-  --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.12), 0 24px 64px rgba(9, 30, 40, 0.16);
+  --sh-xs: 0 1px 2px rgba(9, 30, 40, 0.06), 0 2px 10px rgba(9, 30, 40, 0.05);
+  --sh-sm: 0 1px 3px rgba(9, 30, 40, 0.09), 0 4px 16px rgba(9, 30, 40, 0.07);
+  --sh: 0 2px 6px rgba(9, 30, 40, 0.09), 0 12px 32px rgba(9, 30, 40, 0.11);
+  --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.14), 0 24px 64px rgba(9, 30, 40, 0.18);
 
   /* ─── Halos et lumière ────────────────────────────────────────────────
      glow-accent = liseré + halo pour les surfaces mises en avant (chips
      KPI, cartes actives). En light : anneau accent discret. En dark :
      halo aqua façon Opal. */
-  --glow-accent: 0 0 0 1px var(--accent-bd), 0 4px 20px rgba(0, 48, 66, 0.12);
-  --glow-soft: 0 2px 14px rgba(0, 48, 66, 0.08);
+  --glow-accent: 0 0 0 1px var(--accent-bd), 0 6px 24px rgba(0, 48, 66, 0.14);
+  --glow-soft: 0 2px 16px rgba(0, 48, 66, 0.10);
   --focus-ring: rgba(0, 48, 66, 0.14);
 
   /* ─── Dégradés de marque ──────────────────────────────────────────────
@@ -60,9 +62,9 @@
   --grad-scrim: linear-gradient(180deg, rgba(0, 22, 32, 0) 30%, rgba(0, 22, 32, 0.42) 60%, rgba(0, 22, 32, 0.85) 100%);
   --grad-accent-wash: linear-gradient(135deg, var(--accent-light), var(--surface));
 
-  /* Ambiance de page : lueur pétrole à peine perceptible en haut du
-     contenu. En dark elle devient la respiration abyssale de l'app. */
-  --ambient: radial-gradient(90% 55% at 50% 0%, rgba(0, 48, 66, 0.05) 0%, rgba(0, 48, 66, 0) 60%);
+  /* Ambiance de page : lueur pétrole en haut du contenu. En dark elle
+     devient la respiration abyssale de l'app. */
+  --ambient: radial-gradient(95% 60% at 50% 0%, rgba(0, 48, 66, 0.07) 0%, rgba(0, 48, 66, 0) 62%);
 
   /* ─── Tokens sémantiques de statut (light mode) ─────────────────────────
      bg = fond pâle pour badges/cards d'alerte
@@ -565,7 +567,7 @@ html[data-theme="dark"] {
 }
 .segmented-tabs--sm .segmented-tab { padding: 5px 11px; font-size: 12px; }
 
-.segmented-tab:hover:not(.is-active) { color: var(--text); }
+.segmented-tab:hover:not(.is-active) { color: var(--text); background: rgba(125, 145, 155, 0.10); }
 
 .segmented-tab.is-active {
   background: var(--surface);
@@ -1178,6 +1180,76 @@ h1 {
     right: 12px;
     bottom: 12px;
     width: calc(100vw - 24px);
+  }
+}
+
+/* ─── Affordance cliquable généralisée ──────────────────────────────────────
+   Les modules posent leurs boutons en styles inline (fond, bordure) sans le
+   moindre état : rien n'indique qu'on peut cliquer. filter et transform ne
+   sont jamais posés en inline dans l'app, une feuille de style peut donc
+   donner un retour visuel à TOUS les boutons sans toucher aux modules.
+   - :active partout, tablette comprise : c'est le retour de tap.
+   - :hover réservé aux vrais pointeurs (sur tactile il colle après le tap).
+   - Sens inversé selon le thème : en clair on assombrit (un blanc ne peut
+     pas s'éclaircir), en sombre on éclaircit (un presque-noir ne peut pas
+     s'assombrir visiblement). */
+button {
+  transition-property: filter, transform, box-shadow, background, color, border-color, opacity;
+  transition-duration: 0.12s;
+  transition-timing-function: ease;
+}
+
+button:not(:disabled):active {
+  filter: brightness(0.93);
+}
+
+html[data-theme="dark"] button:not(:disabled):active {
+  filter: brightness(1.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) button:not(:disabled):active {
+    filter: brightness(1.3);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover {
+    filter: brightness(0.96);
+  }
+
+  html[data-theme="dark"] button:not(:disabled):hover {
+    filter: brightness(1.16);
+  }
+
+  /* Les boutons des barres de module gagnent en plus un léger décollement. */
+  .module-actions > button:not(:disabled):hover,
+  .module-toolbar > button:not(:disabled):hover {
+    box-shadow: var(--sh-sm);
+    transform: translateY(-1px);
+  }
+
+  .module-actions > button:not(:disabled):active,
+  .module-toolbar > button:not(:disabled):active {
+    box-shadow: none;
+    transform: translateY(0);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) button:not(:disabled):hover {
+    filter: brightness(1.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+
+  .module-actions > button:not(:disabled):hover,
+  .module-toolbar > button:not(:disabled):hover {
+    transform: none;
   }
 }
 

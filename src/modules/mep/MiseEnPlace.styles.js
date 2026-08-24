@@ -16,7 +16,7 @@ export const s = {
 
   // Liste des listes
   cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 },
-  listeCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left', fontFamily: 'var(--font)' },
+  listeCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left', fontFamily: 'var(--font)' },
   listeNom: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   listeDate: { fontSize: 12, color: 'var(--accent)', fontWeight: 600 },
   listeMeta: { fontSize: 12, color: 'var(--text2)' },
@@ -29,7 +29,7 @@ export const s = {
   empty: { padding: '28px 18px', textAlign: 'center', color: 'var(--text2)', fontSize: 14, background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12 },
 
   // Sections detail
-  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' },
+  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
   sectionHead: { padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
   sectionTitleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
   sectionTitle: { fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
@@ -49,7 +49,7 @@ export const s = {
   itemDel: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 18, cursor: 'pointer', flexShrink: 0, lineHeight: 1, padding: 4 },
 
   // Editeur
-  editorCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 },
+  editorCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 },
   field: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   fieldLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   input: { padding: '11px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box', minWidth: 0 },

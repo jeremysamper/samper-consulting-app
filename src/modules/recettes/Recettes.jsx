@@ -30,7 +30,7 @@ const RETRY_MAX_MS = 30000;
 // comme un établissement vide : la brigade croyait ses cartes perdues au
 // réveil de la tablette.
 const PanneauEtat = ({ titre, texte, onRetry }) => (
-  <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12}}>
+  <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)'}}>
     <div style={{fontSize:40, opacity:0.4}}>🍽</div>
     <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>{titre}</div>
     <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>{texte}</div>

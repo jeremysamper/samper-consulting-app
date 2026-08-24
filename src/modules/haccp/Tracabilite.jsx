@@ -34,7 +34,7 @@ const gStyles = {
   crumb: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', marginBottom: 4 },
   crumbBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: 13, padding: 0, fontFamily: 'var(--font)' },
   tileGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 },
-  tile: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 12px', textAlign: 'center', cursor: 'pointer', fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' },
+  tile: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 12px', textAlign: 'center', cursor: 'pointer', fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' },
   tileCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 400, marginTop: 4 },
   photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 },
   photoTile: { position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer', aspectRatio: '1', background: 'var(--bg)' },

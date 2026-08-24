@@ -1590,7 +1590,7 @@ const fac = {
   previewCol: { display: 'flex', flexDirection: 'column', gap: 8 },
   previewLabel: { fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 },
 
-  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 },
+  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 16 },
   sectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 12 },
 
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4, marginTop: 10 },
@@ -1642,7 +1642,7 @@ const fac = {
   qrCard: {
     display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap',
     background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 10, padding: 14,
+    borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 14,
   },
 
   etabPicker: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 },

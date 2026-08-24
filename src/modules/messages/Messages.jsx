@@ -315,7 +315,7 @@ const ms = {
   desktopGrid: { display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)', gap: 14, alignItems: 'start' },
 
   // Liste destinataires
-  listPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
+  listPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
   recipientList: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '62vh', overflowY: 'auto' },
   recipientRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56 },
   recipientRowActive: { border: '1px solid var(--accent)', background: 'var(--accent-light)' },
@@ -326,7 +326,7 @@ const ms = {
   unreadPill: { fontSize: 10, fontWeight: 700, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-strong)', padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
 
   // Fil de discussion
-  threadPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, display: 'flex', flexDirection: 'column', minWidth: 0 },
+  threadPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', flexDirection: 'column', minWidth: 0 },
   threadEmpty: { background: 'var(--surface)', border: '2px dashed var(--border)', borderRadius: 12, padding: '40px 20px', textAlign: 'center' },
   threadHead: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' },
   backBtn: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 18, color: 'var(--text)', cursor: 'pointer', flexShrink: 0, fontFamily: 'var(--font)' },
@@ -343,7 +343,7 @@ const ms = {
 
   // Boîte de réception
   inboxList: { display: 'flex', flexDirection: 'column', gap: 10 },
-  inboxCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' },
+  inboxCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px' },
   inboxCardNew: { border: '1px solid var(--accent)', background: 'var(--accent-light)' },
   inboxCardHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
   inboxSender: { fontSize: 12, fontWeight: 700, color: 'var(--accent)' },

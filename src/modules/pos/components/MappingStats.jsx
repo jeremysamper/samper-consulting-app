@@ -18,7 +18,7 @@ export function MappingStats({ total, mapped, auto: autoCount, suggested, manual
     <div style={{
       background:   'var(--surface)',
       border:       '1px solid var(--border)',
-      borderRadius: 12,
+      borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)',
       padding:      '14px 20px',
       display:      'flex',
       alignItems:   'center',

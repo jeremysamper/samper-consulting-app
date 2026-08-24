@@ -12,7 +12,7 @@ import { computeCoutMatiere } from '../../services/prixResolution.js';
 const S = {
   root: { display: 'flex', flexDirection: 'column', gap: 16 },
   kpiRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 },
-  kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
+  kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   kpiLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   kpiValue: { fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.1 },
   kpiSub: { fontSize: 11, color: 'var(--text3)' },
@@ -20,7 +20,7 @@ const S = {
   primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   ghostBtn: { padding: '9px 16px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   twoCols: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' },
-  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', minWidth: 0 },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', minWidth: 0 },
   cardTitle: { padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   okBanner: { padding: '14px 16px', fontSize: 13, color: 'var(--success-text)', background: 'var(--success-bg)', display: 'flex', alignItems: 'center', gap: 8 },
   alertHead: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },

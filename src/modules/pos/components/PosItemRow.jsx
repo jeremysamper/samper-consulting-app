@@ -85,7 +85,7 @@ export function PosItemRow({
       <div style={{
         background:    'var(--surface)',
         border:        '1px solid var(--border)',
-        borderRadius:  10,
+        borderRadius:  'var(--r)', boxShadow: 'var(--sh-xs)',
         padding:       '12px 16px',
         display:       'flex',
         alignItems:    'center',

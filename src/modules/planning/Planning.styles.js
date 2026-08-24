@@ -47,7 +47,7 @@ const pls = {
   datePicker: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontFamily: 'var(--font)', fontSize: 13 },
   smallBtn: { padding: '7px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
   smallBtnActive: { background: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--accent)' },
-  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 16 },
   grid: { display: 'grid', gap: 0 },
   empColHeader: { height: 48, borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
   dayHeader: { height: 48, borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 },
@@ -70,7 +70,7 @@ const pls = {
   // Mobile
   mobilePlanList: { display: 'flex', flexDirection: 'column', gap: 10 },
   mobileTitle: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', padding: '4px 0' },
-  mobileDayBlock: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' },
+  mobileDayBlock: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
   mobileDayHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' },
   mobileDayAdd: { width: 26, height: 26, borderRadius: 6, background: 'var(--accent)', color: '#fff', border: 'none', fontSize: 15, cursor: 'pointer', fontFamily: 'var(--font)' },
   mobileShiftCard: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },

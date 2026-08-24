@@ -52,7 +52,7 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
     <div style={{
       display: 'flex', gap: 14, padding: '14px 16px',
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 10, borderLeft: `3px solid ${sev.color}`,
+      borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', borderLeft: `3px solid ${sev.color}`,
       opacity: rule.is_active ? 1 : 0.6,
       transition: 'opacity .15s',
     }}>

@@ -91,7 +91,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
     <div style={{
       background:    'var(--surface)',
       border:        '1px solid var(--border)',
-      borderRadius:  12,
+      borderRadius:  'var(--r)', boxShadow: 'var(--sh-xs)',
       padding:       '40px 32px',
       display:       'flex',
       flexDirection: 'column',
