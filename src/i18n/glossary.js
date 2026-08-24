@@ -114,6 +114,10 @@ export const UI_GLOSSARY = {
   'Partager': 'Share',
   'Archiver': 'Archive',
   'Restaurer': 'Restore',
+  // Cartes cachées : visibles du seul consultant.
+  'Cacher': 'Hide',
+  'Rendre visible': 'Make visible',
+  'Cachée': 'Hidden',
   'Dupliquer la recette': 'Duplicate recipe',
   // Étiquettes DLC (HACCP). « + Ajouter une étiquette » se résout ici : les
   // affixes sont retirés avant lookup, le « + » est réappliqué après.

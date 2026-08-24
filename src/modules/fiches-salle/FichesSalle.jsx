@@ -160,7 +160,9 @@ const FichesSalle = ({ user, etablissement }) => {
 
   // Cartes (menus) - onglets de filtrage. '__all__' = toutes les fiches.
   const ALL_TAB = '__all__';
-  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId);
+  // Rôle transmis au hook : une carte cachée depuis « Cartes & Recettes »
+  // disparaît aussi des onglets d'ici pour tout le monde sauf le consultant.
+  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId, { role: user.role });
   const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
 
   const canEdit = canManageModule(user.role, 'fiches_salle');

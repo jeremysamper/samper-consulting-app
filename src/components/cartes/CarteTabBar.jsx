@@ -12,6 +12,12 @@ import { confirmLegacy } from '../../legacy/legacyApi.js';
 // tout (liaisons comprises) : la carte sort des onglets et se restaure depuis
 // la modale « Archives ».
 //
+// canHide + onHideCarte(id, masked) ajoutent le bouton « Cacher / Rendre
+// visible » (consultant seul) : la carte disparaît des onglets de tous les
+// autres rôles sans rien perdre. Elle reste dans CETTE barre, préfixée d'un œil
+// barré, pour que le consultant sache d'un coup d'œil ce que la brigade ne voit
+// pas. Archiver et cacher sont indépendants : cacher ne range pas la carte.
+//
 // onReorderCartes (optionnel) active le bouton « ⇄ Ordre » : une modale où l'on
 // déplace chaque carte d'un cran vers la gauche ou vers la droite. Pas de
 // glisser-déposer : la barre défile horizontalement sur tablette, et un drag y
@@ -34,6 +40,10 @@ export default function CarteTabBar({
   // le bouton « Archiver » de la modale d'édition et la modale « Archives ».
   archivedCartes = [],
   onArchiveCarte,
+  // Optionnel : masquage. canHide (consultant) + onHideCarte(id, masked)
+  // activent le bouton « Cacher » de la modale d'édition.
+  canHide = false,
+  onHideCarte,
   // Optionnel : id de la carte « d'accueil » → préfixe ★ sur l'onglet.
   // Additif : les autres usages (Fiches salle) ne passent rien → aucun marqueur.
   homeId = null,
@@ -93,6 +103,18 @@ export default function CarteTabBar({
     close();
   };
 
+  // Carte en cours d'édition, relue dans la liste courante : son état masqué
+  // reste juste même si un collègue l'a changé (realtime) modale ouverte.
+  const carteEditee = modal?.mode === 'edit'
+    ? (cartes.find(c => c.id === modal.carte.id) || modal.carte)
+    : null;
+
+  const toggleHide = async () => {
+    if (!carteEditee || !onHideCarte) return;
+    const ok = await onHideCarte(carteEditee.id, carteEditee.masquee !== true);
+    if (ok !== false) close();
+  };
+
   // ─── Réagencement des onglets ───
   const ordreActuel = cartes.map(c => c.id);
   // Le brouillon est resynchronisé sur la liste réelle à chaque rendu : une
@@ -136,7 +158,9 @@ export default function CarteTabBar({
             className={'segmented-tab' + (active ? ' is-active' : '')}
             onClick={() => onSelect?.(carte.id)}
           >
-            <span>{carte.id === homeId && '★ '}{carte.nom}</span>
+            {/* 🙈 : carte cachée. Seul le consultant reçoit ces cartes, le
+                marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
+            <span>{carte.masquee === true && '🙈 '}{carte.id === homeId && '★ '}{carte.nom}</span>
             {canManage && active && (
               <button
                 className="mini"
@@ -217,6 +241,15 @@ export default function CarteTabBar({
                   onClick={archive}
                   title="Retirer la carte des onglets sans rien supprimer (restaurable via Archives)"
                 >🗄 Archiver</button>
+              )}
+              {modal.mode === 'edit' && canHide && onHideCarte && (
+                <button
+                  style={carteEditee?.masquee === true ? { ...s.ghostBtn, ...s.hideBtnActive } : s.ghostBtn}
+                  onClick={toggleHide}
+                  title={carteEditee?.masquee === true
+                    ? 'Rendre cette carte visible par toute l\'équipe'
+                    : 'Cacher cette carte : elle ne sera visible que par le consultant. Rien n\'est supprimé.'}
+                >{carteEditee?.masquee === true ? '👁 Rendre visible' : '🙈 Cacher'}</button>
               )}
               <div style={{ flex: 1 }} />
               <button style={s.ghostBtn} onClick={close}>Annuler</button>
@@ -357,6 +390,11 @@ const s = {
   dateRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   dateCol: { flex: '1 1 140px', minWidth: 0 },
   modalFooter: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '12px 20px', borderTop: '1px solid var(--border)' },
-  ghostBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  // Bordure en propriétés longues (pas le raccourci `border`) : « Supprimer » et
+  // « Cacher » surchargent borderColor, et mélanger les deux fait warner React
+  // à chaque bascule (cf. npm run lint:borders).
+  ghostBtn: { padding: '8px 14px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  // Carte actuellement cachée : le bouton porte l'état, pas seulement l'action.
+  hideBtnActive: { background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' },
   primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
 };

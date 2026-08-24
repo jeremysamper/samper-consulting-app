@@ -14,6 +14,14 @@ import { useResumeRefresh } from './useResumeRefresh.js';
 // `archivedCartes` (restaurables via archiveCarte(id, false)). L'archivage ne
 // touche à aucune liaison carte_plats / carte_fiches_salle.
 //
+// Cartes cachées (colonne `cartes.masquee`, migration 20260825) : une carte
+// masquée n'est servie qu'au rôle `consultant`. Le filtrage se fait ICI, dans la
+// source unique, pour qu'aucun appelant ne puisse l'oublier - et il est
+// fail-closed : `useCartes(etabId)` sans rôle explicite masque les cartes
+// cachées. Le rôle se passe en option : `useCartes(etabId, { role: user.role })`.
+// Masquer n'est pas archiver : la carte reste vivante et éditable pour le
+// consultant, elle disparaît simplement de la vue de la brigade.
+//
 // L'ordre des onglets (colonne `cartes.ordre`, migration 20260805) est une
 // donnée d'établissement partagée par toute la brigade, pas une préférence
 // utilisateur : `reorderCartes` l'écrit pour tout le monde. Tant que la
@@ -34,8 +42,9 @@ import { useResumeRefresh } from './useResumeRefresh.js';
 const RETRY_MIN_MS = 4000;
 const RETRY_MAX_MS = 30000;
 
-export function useCartes(etabId) {
+export function useCartes(etabId, { role } = {}) {
   const legacySB = dbService.getBridge();
+  const voitCartesMasquees = role === 'consultant';
   const demoData = getDemoData();
   const [allCartes, setAllCartes] = React.useState(() =>
     legacySB ? [] : (readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId)
@@ -99,8 +108,14 @@ export function useCartes(etabId) {
   // realtime a pu mourir pendant la veille, on refait une lecture.
   useResumeRefresh(reload);
 
-  const cartes = React.useMemo(() => allCartes.filter(c => !c.archive), [allCartes]);
-  const archivedCartes = React.useMemo(() => allCartes.filter(c => c.archive === true), [allCartes]);
+  // Cartes cachées : retirées des DEUX listes pour les non-consultants, sinon
+  // une carte masquée puis archivée réapparaîtrait dans la modale « Archives ».
+  const visibles = React.useMemo(
+    () => (voitCartesMasquees ? allCartes : allCartes.filter(c => c.masquee !== true)),
+    [allCartes, voitCartesMasquees],
+  );
+  const cartes = React.useMemo(() => visibles.filter(c => !c.archive), [visibles]);
+  const archivedCartes = React.useMemo(() => visibles.filter(c => c.archive === true), [visibles]);
 
   // Rang d'affichage à donner à une carte créée : juste après la dernière.
   // Renvoie undefined si AUCUNE carte ne porte de rang, c'est-à-dire tant que
@@ -179,6 +194,41 @@ export function useCartes(etabId) {
     return true;
   }, [legacySB, demoData]);
 
+  // Cache (masked=true) ou réaffiche (masked=false) une carte : elle sort des
+  // onglets de tous les rôles sauf consultant. Rien n'est supprimé ni délié - la
+  // carte reste complète et le consultant continue de la voir et de l'éditer.
+  // Renvoie false si l'écriture a échoué (l'appelant garde alors l'état courant).
+  const masquerCarte = React.useCallback(async (id, masked) => {
+    const flag = masked !== false;
+    if (legacySB) {
+      try { await legacySB.db.setCarteMasquee(id, flag); }
+      catch (err) {
+        // 42703 / PGRST204 = colonne `masquee` absente : migration 20260825 pas
+        // encore appliquée. Message lisible plutôt qu'un code SQL brut.
+        const colonneAbsente = err?.code === '42703' || err?.code === 'PGRST204';
+        notifyLegacy(
+          colonneAbsente
+            ? 'Masquage de carte indisponible : la mise à jour de la base n\'a pas encore été appliquée.'
+            : 'Erreur masquage de carte : ' + (err.message || err),
+          'error',
+        );
+        return false;
+      }
+    } else {
+      const all = (readLegacyStorage('sc_cartes', demoData.cartes) || []).map(c => (c.id === id ? { ...c, masquee: flag } : c));
+      demoData.cartes = all;
+      writeLegacyStorage('sc_cartes', all);
+    }
+    setAllCartes(prev => prev.map(c => (c.id === id ? { ...c, masquee: flag } : c)));
+    notifyLegacy(
+      flag
+        ? 'Carte cachée : seul le consultant la voit désormais.'
+        : 'Carte de nouveau visible par toute l\'équipe.',
+      'success',
+    );
+    return true;
+  }, [legacySB, demoData]);
+
   // Réordonne les onglets. `orderedIds` = les cartes ACTIVES dans leur nouvel
   // ordre, de gauche à droite. Renvoie true si l'ordre est bien enregistré.
   //
@@ -231,5 +281,5 @@ export function useCartes(etabId) {
     setAllCartes(prev => prev.filter(c => c.id !== id));
   }, [legacySB, demoData]);
 
-  return { cartes, archivedCartes, status, reload, addCarte, renameCarte, archiveCarte, deleteCarte, reorderCartes };
+  return { cartes, archivedCartes, status, reload, addCarte, renameCarte, archiveCarte, masquerCarte, deleteCarte, reorderCartes };
 }

@@ -1366,13 +1366,17 @@ const Recettes = ({ user, etablissement }) => {
   const [catFilter, setCatFilter] = React.useState('Tous');
   const perms = demoData.permissions[user.role] || {};
   const canManageCartes = canManageModule(user.role, 'recettes');
+  // Cacher une carte est réservé au consultant : lui seul continue de la voir.
+  const isConsultant = user.role === 'consultant';
 
   // Cartes (menus) de l'établissement - source unique partagée + realtime.
   // `cartesStatus` distingue « pas encore chargé / lecture en échec » de
   // « réellement aucune carte » : au réveil d'une tablette la lecture peut
   // repartir en 401 et il ne faut surtout pas annoncer un établissement vide.
+  // Le rôle est passé au hook : les cartes cachées ne sont servies qu'au consultant.
   const { cartes, archivedCartes, status: cartesStatus, reload: reloadCartes,
-          addCarte, renameCarte, archiveCarte, deleteCarte, reorderCartes } = useCartes(etabId);
+          addCarte, renameCarte, archiveCarte, masquerCarte, deleteCarte,
+          reorderCartes } = useCartes(etabId, { role: user.role });
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)
   const [recettes, setRecettes] = React.useState([]);
@@ -1558,6 +1562,8 @@ const Recettes = ({ user, etablissement }) => {
             onDeleteCarte={deleteCarte}
             archivedCartes={archivedCartes}
             onArchiveCarte={archiveCarte}
+            canHide={isConsultant}
+            onHideCarte={masquerCarte}
             homeId={defaultCarteId}
             onReorderCartes={reorderCartes}
           />
@@ -1636,7 +1642,14 @@ const Recettes = ({ user, etablissement }) => {
                     : (isMobile ? '☆ Par défaut' : '☆ Définir par défaut')}
                 </button>
               )}
-              <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
+              {/* Une carte cachée n'est servie qu'au consultant : le badge dit
+                  explicitement que la brigade ne la voit pas, sinon rien ne
+                  distingue à l'écran une carte publiée d'une carte masquée. */}
+              {activeCarte.masquee === true ? (
+                <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)', padding:'6px 16px', fontSize:12}} title="Visible du consultant uniquement">🙈 Cachée</span>
+              ) : (
+                <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
+              )}
             </div>
           </div>
 

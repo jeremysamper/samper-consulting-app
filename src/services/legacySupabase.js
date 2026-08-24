@@ -1389,6 +1389,18 @@ export function installLegacySupabase() {
       if (error) throw error;
     },
 
+    // Masque / réaffiche une carte. Une carte masquée n'est plus servie qu'au
+    // rôle consultant (filtrage dans useCartes) : la brigade ne la voit ni dans
+    // les onglets, ni dans les archives, ni dans le sélecteur de mise en place.
+    // Update ciblé comme setCarteArchive - upsertCarte n'envoie jamais cette
+    // colonne, elle survit donc aux renommages et aux syncs de plats.
+    async setCarteMasquee(id, masquee) {
+      const { error } = await client.from('cartes')
+        .update({ masquee: masquee === true })
+        .eq('id', id);
+      if (error) throw error;
+    },
+
     // Écrit le rang d'affichage des onglets : `orderedIds` est la liste des
     // cartes dans leur nouvel ordre, de gauche à droite. Update ciblé et non
     // upsert : `etablissement_id` est NOT NULL sans défaut, un upsert partiel
@@ -1471,6 +1483,10 @@ export function installLegacySupabase() {
         dateFin: row.date_fin,
         plats: row.plats || [],
         archive: row.archive === true,
+        // Carte cachée (migration 20260825). Colonne absente = undefined,
+        // donc `false` : tant que la migration n'est pas appliquée toutes les
+        // cartes restent visibles. Jamais renvoyée par upsertCarte.
+        masquee: row.masquee === true,
         // Rang d'affichage : clé exposée UNIQUEMENT si la colonne existe, pour
         // qu'un upsert issu d'un objet carte (renommage, sync de plats) ne
         // tente pas de l'écrire tant que la migration 20260805 n'est pas
