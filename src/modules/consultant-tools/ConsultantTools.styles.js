@@ -49,9 +49,23 @@ export const cts = {
   ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   ingRow: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', alignItems: 'center' },
   ingInput: { padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
-  scalingBar: { margin: '0 14px 8px', padding: '14px 16px', background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 },
-  scalingBlock: { display: 'flex', flexDirection: 'column', gap: 4 },
-  scalingBlockLabel: { fontSize: 10, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  // ─── Barre de recalcul des quantités (carte Ingrédients) ──────────────────
+  // Posée sous l'en-tête de la carte, jamais par-dessus la fiche : c'est ce qui
+  // remplace l'ancienne modale « Calculateur ». Bordure en longhand, l'état
+  // actif ne surchargeant que sa couleur (cf. npm run lint:borders).
+  echelleBar: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 16px', background: 'var(--bg)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
+  echelleBarActive: { background: 'var(--warning-bg)', borderBottomColor: 'var(--warning-bd)' },
+  echelleLabel: { fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  echelleTexte: { fontSize: 12, color: 'var(--text2)' },
+  // Pas de filet séparateur : la barre passe à la ligne sous 1000px et le trait
+  // se retrouvait collé au bord gauche, à séparer de rien.
+  echelleSep: { fontSize: 12, color: 'var(--text2)', marginLeft: 6, fontStyle: 'italic' },
+  echelleInput: { width: 72, padding: '5px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 7, fontSize: 13, fontWeight: 700, textAlign: 'center', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none', flexShrink: 0 },
+  echelleSelect: { maxWidth: 220, padding: '5px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', cursor: 'pointer' },
+  echelleFacteur: { fontSize: 12, fontWeight: 700, color: 'var(--warning-text)' },
+  echelleReset: { marginLeft: 'auto', padding: '5px 12px', background: 'none', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)', borderRadius: 7, color: 'var(--warning-text)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  // Aperçu recalculé sous la quantité enregistrée : jamais écrit en base.
+  ingQteRecalc: { marginTop: 3, fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textAlign: 'right' },
   suggestions: { position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: '0 0 8px 8px', zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxHeight: 200, overflowY: 'auto' },
   suggItem: { padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
   // Version compacte (autocomplétion discrète)

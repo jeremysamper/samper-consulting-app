@@ -14,6 +14,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { categorieDuPlat, categoriesPresentes, platCatRank } from '../../utils/categoriesPlat.js';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { dureesVie } from '../../utils/etiquettesDlc.js';
+import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 
 
 // CARTES & RECETTES
@@ -72,159 +73,14 @@ const RecettePhoto = ({ src, alt = '', placeholder = '🍽', style }) => {
   );
 };
 
-// ─── ScalingModal : modale de calculateur de quantités (portions OU grammage cible) ───
-const ScalingModal = ({ recette, onClose }) => {
-  const [scalingPortions, setScalingPortions] = React.useState('');
-  const [scalingTarget, setScalingTarget] = React.useState({ ingId: '', targetQty: '' });
-
-  const basePortions = Number(recette.portions) || 1;
-  const ings = recette.ingredients || [];
-  const targetIng = scalingTarget.ingId ? ings.find(i => i.id === scalingTarget.ingId) : null;
-  const targetQty = parseFloat(scalingTarget.targetQty);
-  const useGramMode = targetIng && !isNaN(targetQty) && targetQty > 0 && Number(targetIng.quantite) > 0;
-
-  let ratio = 1;
-  if (useGramMode) {
-    ratio = targetQty / Number(targetIng.quantite);
-  } else {
-    const targetP = parseFloat(scalingPortions);
-    if (!isNaN(targetP) && targetP > 0) ratio = targetP / basePortions;
-  }
-  const isScaled = ratio !== 1;
-  const finalPortions = useGramMode ? Math.round(basePortions * ratio * 100) / 100 : (parseFloat(scalingPortions) || basePortions);
-  const candidateIngs = ings.filter(i => Number(i.quantite) > 0 && i.nom);
-
-  const fmt = (q, unite) => {
-    if (q === 0) return '-';
-    if (q >= 1000 && unite === 'g') return `${(q/1000).toFixed(q % 1000 === 0 ? 0 : 2)} kg`;
-    if (q >= 1000 && unite === 'ml') return `${(q/1000).toFixed(q % 1000 === 0 ? 0 : 2)} L`;
-    if (q % 1 === 0) return `${q} ${unite || ''}`;
-    if (q < 1) return `${Math.round(q * 1000) / 1000} ${unite || ''}`;
-    return `${Math.round(q * 10) / 10} ${unite || ''}`;
-  };
-
-  return (
-    <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
-      <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
-        <div style={smStyle.header}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⚖ Calculateur de quantités</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Les valeurs de base de la recette ne sont pas modifiées</div>
-          </div>
-          <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
-        </div>
-
-        {/* Méthode 1 : par portions */}
-        <div style={{ ...smStyle.method, background: useGramMode ? 'var(--bg)' : 'var(--warning-bg-soft)' }}>
-          <div style={smStyle.methodLabel}>Méthode 1 : Par nombre de portions</div>
-          <div style={smStyle.methodInputs}>
-            <span style={{ fontSize: 13, color: 'var(--text2)' }}>
-              Base : <strong style={{ color: 'var(--text)' }}>{basePortions} portion{basePortions > 1 ? 's' : ''}</strong>
-            </span>
-            <span style={{ fontSize: 16, color: 'var(--text2)' }}>→</span>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Pour :</label>
-            <input
-              type="number" min="0.1" step="1"
-              value={scalingPortions}
-              onChange={e => { setScalingPortions(e.target.value); setScalingTarget({ ingId: '', targetQty: '' }); }}
-              placeholder={String(basePortions)}
-              style={{ ...smStyle.numInput, borderColor: useGramMode ? 'var(--border)' : 'var(--accent)' }}
-            />
-            <span style={{ fontSize: 13, color: 'var(--text2)' }}>portions</span>
-          </div>
-        </div>
-
-        {/* Méthode 2 : par quantité cible */}
-        <div style={{ ...smStyle.method, background: useGramMode ? 'var(--warning-bg-soft)' : 'var(--bg)' }}>
-          <div style={smStyle.methodLabel}>Méthode 2 : Par quantité cible d'un ingrédient</div>
-          <div style={smStyle.methodInputs}>
-            <span style={{ fontSize: 13, color: 'var(--text2)' }}>Avec</span>
-            <select
-              value={scalingTarget.ingId}
-              onChange={e => { setScalingTarget({ ingId: e.target.value, targetQty: '' }); setScalingPortions(''); }}
-              style={smStyle.select}
-            >
-              <option value="">Choisir un ingrédient</option>
-              {candidateIngs.map(i => <option key={i.id} value={i.id}>{i.nom} ({i.quantite} {i.unite})</option>)}
-            </select>
-            {scalingTarget.ingId && targetIng && (
-              <>
-                <span style={{ fontSize: 13, color: 'var(--text2)' }}>=</span>
-                <input
-                  type="number" min="0" step="0.01"
-                  value={scalingTarget.targetQty}
-                  onChange={e => { setScalingTarget(prev => ({ ...prev, targetQty: e.target.value })); setScalingPortions(''); }}
-                  placeholder={String(targetIng.quantite)}
-                  style={{ ...smStyle.numInput, borderColor: useGramMode ? 'var(--accent)' : 'var(--border)' }}
-                />
-                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{targetIng.unite}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Résultat */}
-        {isScaled && (
-          <div style={smStyle.result}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)' }}>
-              Facteur : × {ratio < 1 ? ratio.toFixed(3) : Number.isInteger(ratio) ? ratio : ratio.toFixed(2)}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--warning-text)' }}>→ {finalPortions} portion{finalPortions > 1 ? 's' : ''}</div>
-            <button
-              style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600 }}
-              onClick={() => { setScalingPortions(''); setScalingTarget({ ingId: '', targetQty: '' }); }}
-            >Réinitialiser</button>
-          </div>
-        )}
-
-        {/* Tableau ingrédients */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          <div style={smStyle.tableHead}>
-            <span>Ingrédient</span>
-            <span style={{ textAlign: 'right' }}>Base ({basePortions} p.)</span>
-            <span style={{ textAlign: 'right', color: isScaled ? 'var(--warning-text)' : 'var(--text2)' }}>{isScaled ? 'Recalculé' : '-'}</span>
-          </div>
-          {ings.map((ing, idx) => {
-            const qBase = Number(ing.quantite) || 0;
-            const qCalc = qBase * ratio;
-            const isTargetIng = useGramMode && ing.id === scalingTarget.ingId;
-            return (
-              <div key={ing.id || idx}
-                style={{ ...smStyle.tableRow, background: isTargetIng ? 'var(--warning-bg)' : (idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)') }}>
-                <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: isTargetIng ? 700 : 500 }}>
-                  {isTargetIng && '🎯 '}{ing.nom || '-'}
-                </span>
-                <span style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'right' }}>{fmt(qBase, ing.unite)}</span>
-                <span style={{ fontSize: 13, fontWeight: isScaled ? 700 : 400, color: isScaled ? 'var(--warning-text)' : 'var(--text2)', textAlign: 'right' }}>
-                  {isScaled ? fmt(qCalc, ing.unite) : '-'}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={smStyle.footer}>
-          <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>Les valeurs de base restent inchangées.</span>
-          <button style={smStyle.ghostBtn} onClick={onClose}>Fermer</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
+// ─── smStyle : habillage commun des modales du module ─────────────────────
+// Partagé par DuplicateRecetteModal, ExportMultipleModal et
+// IngredientSearchModal (chacune surcharge sa largeur si besoin).
 const smStyle = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
   modal: { background: 'var(--surface)', borderRadius: 12, width: 620, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
   header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
-  method: { padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
-  methodLabel: { fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  methodInputs: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  numInput: { width: 80, padding: '7px 10px', border: '2px solid var(--border)', borderRadius: 8, fontSize: 16, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' },
-  select: { padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 240, cursor: 'pointer' },
-  result: { padding: '10px 20px', background: 'var(--warning-bg)', borderBottom: '1px solid var(--warning-bd)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  tableHead: { display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '6px 20px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 },
-  tableRow: { display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: 4, padding: '9px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center' },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' },
   ghostBtn: { padding: '8px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer' },
 };
@@ -506,11 +362,64 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 
 // ─── RecetteDetail : composant global (extrait hors de Recettes) ───
 const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
-  const [portions, setPortions] = React.useState(recette.portions);
-  const [showCalc, setShowCalc] = React.useState(false);
   const [showDuplicate, setShowDuplicate] = React.useState(false);
   const isMobile = useIsMobile();
-  const ratio = portions / (recette.portions || 1);
+
+  // ─── Recalcul des quantités, dans la fiche ────────────────────────────────
+  // Il y avait une modale « Calculateur » : elle recouvrait les étapes et le
+  // reste de la fiche, donc on faisait l'aller-retour pour chaque quantité.
+  // Tout se règle maintenant sur place, et les deux entrées d'origine sont
+  // conservées : le nombre de portions, ou la quantité réelle d'un ingrédient.
+  // `portions` reste l'unique source de vérité (le ratio en découle) : l'export
+  // PDF et l'impression reflètent donc exactement ce qui est à l'écran.
+  // Formatage et parsing viennent de utils/echelleRecette.js, partagés avec
+  // l'éditeur de recette d'Outils consultant.
+  const basePortions = basePortionsDe(recette);
+  const [portions, setPortions] = React.useState(basePortions);
+  // Index de l'ingrédient qui a servi de référence au dernier recalcul (🎯).
+  const [refIdx, setRefIdx] = React.useState(null);
+  // Saisies en cours : tant qu'un champ a le focus, on affiche la frappe brute.
+  // Sans cela la valeur recalculée réécrirait le champ à chaque caractère
+  // (taper « 750 » sur une base de 500 renvoyait « 7 » puis « 75 » recalculés).
+  const [saisiePortions, setSaisiePortions] = React.useState(null);
+  const [saisieQte, setSaisieQte] = React.useState(null); // { idx, texte }
+
+  const ratio = portions > 0 ? portions / basePortions : 1;
+  const isScaled = estRecalcule(ratio);
+  const facteurAffiche = fmtFacteur(ratio);
+  const rappelBase = `${basePortions > 1 ? 'portions' : 'portion'} · fiche enregistrée inchangée`;
+
+  const revenirBase = () => {
+    setPortions(basePortions);
+    setRefIdx(null);
+    setSaisiePortions(null);
+    setSaisieQte(null);
+  };
+
+  // Entrée 1 : le nombre de portions. Les pas ± repartent d'un entier même si
+  // l'échelle courante vient d'une quantité (6,67 → 7 / 6).
+  const changePortions = (n) => {
+    if (!(n > 0)) return;
+    setPortions(n);
+    setRefIdx(null);
+  };
+  const pasPortions = (sens) => {
+    setSaisiePortions(null);
+    changePortions(sens > 0 ? Math.floor(portions) + 1 : Math.max(1, Math.ceil(portions) - 1));
+  };
+
+  // Entrée 2 : la quantité réelle d'un ingrédient. Toute la recette se cale
+  // dessus — l'ancienne « méthode 2 » (choisir l'ingrédient dans une liste puis
+  // saisir la cible) tient désormais dans la case qu'on lit déjà.
+  const changeQuantite = (idx, base, texte) => {
+    setSaisieQte({ idx, texte });
+    const n = parseNombre(texte);
+    if (n > 0 && base > 0) {
+      setPortions(basePortions * (n / base));
+      setRefIdx(idx);
+      setSaisiePortions(null);
+    }
+  };
 
   // ─── Flag congelation (utilise par le module Mise en place) ───
   // Editable par consultant/patron uniquement ; les autres roles voient le statut.
@@ -595,7 +504,9 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   // Pas de food cost : la fiche sortie d'ici est une fiche de production pour la
   // brigade. Le chiffrage reste dans Outils consultant, qui appelle le même
   // helper avec isConsultant.
-  const pdfOpts = { portions };
+  // Arrondi : une échelle posée depuis une quantité donne des portions
+  // décimales (6,666…), qui partiraient telles quelles dans l'entête du PDF.
+  const pdfOpts = { portions: Math.round(portions * 100) / 100 };
 
   const printRecipe = () => {
     if (!pdfUtils?.exportRecettePdf) {
@@ -618,13 +529,13 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
   // Styles inline → pas de @media : on bascule via le hook useIsMobile.
   // Grille 2 col → 1 col, en-tête empilé, colonnes ingrédients resserrées
   // et police agrandie pour rester lisible sous 400 px.
-  const ingCols = isMobile ? '1fr 54px 38px' : '1fr 80px 60px';
+  // Colonne quantité élargie : elle porte un champ, et sur tablette la règle
+  // globale « pointer: coarse » impose 16px de police (anti-zoom iOS).
+  const ingCols = isMobile ? '1fr 78px 34px' : '1fr 96px 60px';
   const sIngName = { ...rs.ingName, ...(isMobile ? { fontSize: 15 } : null) };
-  const sIngQty = { ...rs.ingQty, ...(isMobile ? { fontSize: 15 } : null) };
 
   return (
     <div style={rs.detailRoot}>
-      {showCalc && <ScalingModal recette={recette} onClose={() => setShowCalc(false)}/>}
       {showDuplicate && (
         <DuplicateRecetteModal
           recette={recette}
@@ -635,10 +546,6 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
       )}
       <div className="module-actions no-print" style={{ marginBottom: 16 }}>
         <button style={rs.backBtn} onClick={onBack}>← Retour</button>
-        <button
-          style={{ ...rs.printBtn, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}
-          onClick={() => setShowCalc(true)}
-        >Calculer</button>
         <button style={rs.printBtn} onClick={printRecipe}>Imprimer</button>
         <button style={rs.printBtn} onClick={exportRecipePdf}>Export PDF</button>
         {canDuplicate && (
@@ -687,25 +594,79 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
 
       <div style={{...rs.detailGrid, gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr'}}>
         <div style={rs.detailCard}>
-          <div style={rs.cardHeader}>
+          <div style={{...rs.cardHeader, ...(isMobile ? { flexWrap: 'wrap', gap: 10 } : null)}}>
             <span style={rs.cardTitle}>Ingrédients</span>
-            <div style={rs.portionsCtrl}>
+            <div className="no-print" style={rs.portionsCtrl}>
               <span style={{fontSize:12, color:'var(--text2)'}}>Portions :</span>
-              <button style={rs.portBtn} onClick={() => setPortions(p => Math.max(1, p-1))}>−</button>
-              <span style={{fontWeight:700, fontSize:15, minWidth:24, textAlign:'center'}}>{portions}</span>
-              <button style={rs.portBtn} onClick={() => setPortions(p => p+1)}>+</button>
-              {ratio !== 1 && <span style={{fontSize:11, color:'var(--accent)', fontWeight:600}}>×{ratio.toFixed(2)}</span>}
+              <button type="button" className="touch-target" style={rs.portBtn} onClick={() => pasPortions(-1)} aria-label="Une portion de moins">−</button>
+              <input
+                type="number" min="0.1" step="1" inputMode="decimal"
+                value={saisiePortions !== null ? saisiePortions : fmtPortions(portions)}
+                onChange={e => { setSaisiePortions(e.target.value); changePortions(parseNombre(e.target.value)); }}
+                onFocus={e => e.target.select()}
+                onWheel={e => e.target.blur()}
+                onBlur={() => setSaisiePortions(null)}
+                style={rs.portInput}
+                aria-label="Nombre de portions"
+              />
+              <button type="button" className="touch-target" style={rs.portBtn} onClick={() => pasPortions(1)} aria-label="Une portion de plus">+</button>
             </div>
+          </div>
+          {/* Barre d'échelle : remplace l'ancienne modale « Calculateur ». Elle
+              dit d'où l'on part, où l'on en est, et comment revenir en arrière,
+              sans jamais masquer les étapes. */}
+          <div className="no-print" style={{...rs.echelleBar, ...(isScaled ? rs.echelleBarActive : null)}}>
+            {isScaled ? (
+              <>
+                {/* Les nombres sont isolés en data-no-translate, et les mots
+                    restants forment UN seul nœud texte : sans cela le moteur
+                    i18n verrait « Recalculé × 1.50 » comme une phrase inédite
+                    et paierait une traduction IA par facteur affiché. */}
+                <span style={{fontWeight:700, color:'var(--warning-text)'}}>
+                  Recalculé <span data-no-translate>{facteurAffiche}</span>
+                </span>
+                <span style={{color:'var(--warning-text)'}}>
+                  base <span data-no-translate>{basePortions}</span> {rappelBase}
+                </span>
+                <button type="button" style={rs.echelleReset} onClick={revenirBase}>Revenir à la base</button>
+              </>
+            ) : (
+              <span>Change les portions, ou tape la quantité que tu as sur une ligne : toute la recette suit.</span>
+            )}
           </div>
           <div style={rs.ingTable}>
             <div style={{...rs.ingHead, gridTemplateColumns: ingCols}}><span>Ingrédient</span><span>Quantité</span><span>Unité</span></div>
-            {(recette.ingredients || []).map(i => (
-              <div key={i.id} style={{...rs.ingRow, gridTemplateColumns: ingCols}}>
-                <span style={sIngName}>{i.nom}</span>
-                <span style={sIngQty}>{((i.quantite||0) * ratio % 1 === 0 ? ((i.quantite||0) * ratio).toFixed(0) : ((i.quantite||0) * ratio).toFixed(1))}</span>
-                <span style={{fontSize: isMobile ? 14 : 13, color:'var(--text2)'}}>{i.unite}</span>
-              </div>
-            ))}
+            {(recette.ingredients || []).map((i, idx) => {
+              const base = Number(i.quantite) || 0;
+              const estRef = isScaled && refIdx === idx;
+              const enSaisie = saisieQte && saisieQte.idx === idx;
+              return (
+                <div key={i.id || idx} style={{...rs.ingRow, gridTemplateColumns: ingCols, ...(estRef ? rs.ingRowRef : null)}}>
+                  <span style={sIngName}>{estRef ? '🎯 ' : ''}{i.nom}</span>
+                  {base > 0 ? (
+                    <div style={{minWidth:0}}>
+                      <input
+                        type="number" min="0" step="any" inputMode="decimal"
+                        value={enSaisie ? saisieQte.texte : fmtQte(base * ratio)}
+                        onChange={e => changeQuantite(idx, base, e.target.value)}
+                        onFocus={e => e.target.select()}
+                        /* Molette : au-dessus d'un champ nombre focalisé, un
+                           simple défilement de la fiche modifierait la valeur
+                           sans que personne ne le voie. On rend la main. */
+                        onWheel={e => e.target.blur()}
+                        onBlur={() => setSaisieQte(null)}
+                        style={{...rs.ingQtyInput, ...(estRef ? rs.ingQtyInputRef : null), ...(isMobile ? { fontSize: 15 } : null)}}
+                        aria-label={`Quantité de ${i.nom || 'l’ingrédient'} — modifier pour recalculer la recette`}
+                      />
+                      {isScaled && <div style={rs.ingQtyBase}>base <span data-no-translate>{fmtQte(base)}</span></div>}
+                    </div>
+                  ) : (
+                    <span style={{...rs.ingQty, ...(isMobile ? { fontSize: 15 } : null)}}>{fmtQte(base)}</span>
+                  )}
+                  <span style={{fontSize: isMobile ? 14 : 13, color:'var(--text2)'}}>{i.unite}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1989,16 +1950,32 @@ const rs = {
   detailCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
   cardHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg)'},
   cardTitle: {fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4},
-  portionsCtrl: {display:'flex',alignItems:'center',gap:8},
-  portBtn: {width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',cursor:'pointer',fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'},
+  portionsCtrl: {display:'flex',alignItems:'center',gap:6},
+  portBtn: {minWidth:30,height:30,borderRadius:8,borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontSize:16,fontWeight:700,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'var(--font)'},
+  portInput: {width:64,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text)',fontSize:15,fontWeight:700,textAlign:'center',fontFamily:'var(--font)',flexShrink:0},
+  // ─── Barre d'échelle sous l'en-tête des ingrédients ───────────────────────
+  // Au repos : la phrase qui apprend le geste (taper sur une quantité).
+  // Active : d'où l'on part, de combien, et le retour en arrière.
+  echelleBar: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 16px',background:'var(--bg)',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--border)',fontSize:11,color:'var(--text2)',lineHeight:1.4},
+  echelleBarActive: {background:'var(--warning-bg)',borderBottomColor:'var(--warning-bd)'},
+  echelleReset: {marginLeft:'auto',padding:'5px 12px',background:'none',borderWidth:1,borderStyle:'solid',borderColor:'var(--warning-bd)',borderRadius:7,color:'var(--warning-text)',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   ingTable: {display:'flex',flexDirection:'column'},
   ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 16px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
   ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'9px 16px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
+  ingRowRef: {background:'var(--warning-bg-soft)'},
   ingName: {fontSize:13,color:'var(--text)'},
-  ingQty: {fontSize:13,fontWeight:600,color:'var(--text)'},
+  // Ligne sans quantité chiffrée (« 1 feuille de laurier ») : pas de champ,
+  // mais le même alignement à droite que les champs voisins.
+  ingQty: {fontSize:13,fontWeight:600,color:'var(--text)',textAlign:'right'},
+  // Le champ porte le recalcul : il reste discret (fond de carte, bord léger)
+  // pour ne pas se lire comme une modification de la fiche enregistrée.
+  ingQtyInput: {width:'100%',minWidth:0,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:7,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:600,textAlign:'right',fontFamily:'var(--font)'},
+  ingQtyInputRef: {borderColor:'var(--warning-bd)',background:'var(--warning-bg)',color:'var(--warning-text)'},
+  ingQtyBase: {fontSize:10,color:'var(--text3)',textAlign:'right',marginTop:2},
   etapeRow: {display:'flex',gap:14,marginBottom:12,alignItems:'flex-start'},
   etapeNum: {width:24,height:24,borderRadius:'50%',background:'var(--accent)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1},
   etapeTxt: {fontSize:13,color:'var(--text)',lineHeight:1.6},
 };
 
 export default Recettes;
+

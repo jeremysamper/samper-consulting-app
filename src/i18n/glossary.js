@@ -200,6 +200,16 @@ export const UI_GLOSSARY = {
   'Étapes': 'Steps',
   'Portions': 'Servings',
   'Portion': 'Serving',
+  // ── Recalcul des quantités dans la fiche recette ──
+  'base': 'base',
+  'portion': 'serving',
+  'portions': 'servings',
+  'Recalculé': 'Rescaled',
+  'Revenir à la base': 'Back to base',
+  'Change les portions, ou tape la quantité que tu as sur une ligne : toute la recette suit.':
+    'Change the servings, or type the quantity you actually have on any line: the whole recipe follows.',
+  'portion · fiche enregistrée inchangée': 'serving · saved recipe unchanged',
+  'portions · fiche enregistrée inchangée': 'servings · saved recipe unchanged',
   'Allergènes': 'Allergens',
   'Allergène': 'Allergen',
   'Tableau des allergènes': 'Allergen table',
