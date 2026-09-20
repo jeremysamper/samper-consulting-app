@@ -1,5 +1,7 @@
 # Réparation des `produitId` orphelins — APPLIQUÉE EN PROD le 11.08.2026
 
+> **Sauvegarde supprimée le 20.09.2026.** La table `backup_recettes_ingredients_20260811` a été fermée puis supprimée (migrations `20260920_securiser_tables_sauvegarde` et `20260920_drop_tables_sauvegarde`) : elle était exposée à tout compte connecté. `99-rollback.sql` n'est donc plus exécutable tel quel. Copie hors dépôt : `_sauvegardes-supabase/tables-sauvegarde-avant-drop-20260920.json`.
+
 ## Le problème
 
 Le catalogue a été ré-importé le **20.05.2026** : les produits ont été supprimés

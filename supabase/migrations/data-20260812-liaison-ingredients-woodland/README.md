@@ -1,5 +1,7 @@
 # Liaison en masse des ingrédients au catalogue — Woodland Village
 
+> **Sauvegarde supprimée le 20.09.2026.** La table `bak_20260812_liaison_ingredients` a été supprimée (migration `20260920_drop_tables_sauvegarde`), comme toutes les tables de sauvegarde laissées dans le schéma `public`. `99-rollback.sql` n'est plus exécutable tel quel. Copie hors dépôt : `_sauvegardes-supabase/tables-sauvegarde-avant-drop-20260920.json`.
+
 Opération de données appliquée en production le **12.08.2026**. Ce dossier est une
 trace : la CLI ne rejoue pas les sous-dossiers de `migrations/`.
 
