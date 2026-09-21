@@ -39,6 +39,22 @@ function joursValides(value, defaut) {
 // les lectures du bridge rendent [] en cas d'échec, un refetch sans réseau
 // remplacerait des données encore affichées par du vide.
 
+// Pointage refusé en 401 alors que l'appareil a toujours sa session : la RPC est
+// partie SANS JWT utilisateur (refresh du jeton pas encore abouti au réveil,
+// auth-js gardant son échec en cache jusqu'à 60 s), et elle n'est pas
+// exécutable en anonyme. PostgREST ne répond 401 que sur un problème
+// d'authentification (un refus métier répond 400 ou 403) : ce n'est donc pas un
+// refus. Rendue sans code, comme une coupure réseau, l'erreur fait mettre le
+// pointage en file par punchOnlineOrQueue ; pointer_offline le rejouera en
+// revérifiant les droits et en gardant l'heure du geste. Un pointage n'est
+// jamais bloqué.
+function punchRpcError(error, status) {
+  if (status !== 401 || !readPersistedAuthUser()) return error;
+  const err = new Error('Session en cours de rétablissement : pointage mis en file');
+  err.cause = error;
+  return err;
+}
+
 export function installLegacySupabase() {
   const client = supabase;
 
@@ -499,14 +515,14 @@ export function installLegacySupabase() {
 
     // Pointage sécurisé via RPC (l'heure est générée côté serveur, pas manipulable par le client)
     async pointerArrivee(shiftId) {
-      const { data, error } = await client.rpc('pointer_arrivee', { shift_id: shiftId });
-      if (error) throw error;
+      const { data, error, status } = await client.rpc('pointer_arrivee', { shift_id: shiftId });
+      if (error) throw punchRpcError(error, status);
       return data;
     },
 
     async pointerDepart(shiftId) {
-      const { data, error } = await client.rpc('pointer_depart', { shift_id: shiftId });
-      if (error) throw error;
+      const { data, error, status } = await client.rpc('pointer_depart', { shift_id: shiftId });
+      if (error) throw punchRpcError(error, status);
       return data;
     },
 

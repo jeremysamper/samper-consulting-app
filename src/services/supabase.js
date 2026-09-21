@@ -175,9 +175,15 @@ export function forgetAuthRefreshFailure() {
   return true;
 }
 
-/** Vrai si auth-js garde en cache l'échec d'un refresh (voir ci-dessus). */
+/**
+ * Vrai si auth-js garde en cache l'échec d'un refresh encore actif (voir
+ * ci-dessus). auth-js ne remet pas le champ à zéro à l'expiration de la
+ * fenêtre, il compare seulement son échéance : une entrée périmée ne compte pas.
+ */
 export function hasAuthRefreshFailure() {
-  return Boolean(refreshFailureHolder()?.lastRefreshFailure);
+  const failure = refreshFailureHolder()?.lastRefreshFailure;
+  if (!failure) return false;
+  return typeof failure.expiresAt !== 'number' || Date.now() < failure.expiresAt;
 }
 
 function refreshFailureHolder() {
