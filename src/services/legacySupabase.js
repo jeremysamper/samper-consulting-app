@@ -1,5 +1,5 @@
 import { setLegacySB } from '../legacy/legacyApi.js';
-import { bootDedupeRead, buildPasswordResetRedirectUrl, getSupabaseConfig, invalidateBootRead, supabase } from './supabase.js';
+import { bootDedupeRead, buildPasswordResetRedirectUrl, getSupabaseConfig, invalidateBootRead, readPersistedAuthUser, supabase } from './supabase.js';
 import { resilientFetch } from './netResilience.js';
 import { subscribeResume } from './resumeCoordinator.js';
 import { readText, writeText } from '../utils/storage.js';
@@ -163,7 +163,9 @@ export function installLegacySupabase() {
 
     async signOut() {
       const { error } = await client.auth.signOut();
-      if (error) throw error;
+      // Même règle que authService.signOut : depuis supabase-js 2.110.2, la
+      // session locale est effacée même quand /logout échoue (hors-ligne).
+      if (error && readPersistedAuthUser()) throw error;
     },
 
     async resetPassword(email) {

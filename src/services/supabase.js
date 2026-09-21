@@ -114,8 +114,9 @@ const AUTH_STORAGE_KEY = 'samper-auth';
 
 /**
  * Utilisateur de la session PERSISTÉE par supabase-js, lu sans passer par le
- * client (donc sans réseau ni verrou). auth-js n'efface cette entrée que sur
- * une vraie fin de session (déconnexion, refresh token révoqué) : tant qu'elle
+ * client (donc sans réseau ni attente). auth-js n'efface cette entrée que sur
+ * une vraie fin de session (déconnexion, même hors-ligne ; refresh refusé par
+ * le serveur alors que le JWT a expiré) : tant qu'elle
  * existe, un getSession() qui rend null veut dire « refresh impossible pour
  * l'instant » (réseau), pas « déconnecté ».
  */
@@ -131,9 +132,11 @@ export function readPersistedAuthUser() {
 
 export const supabase = createClient(config.url, config.anonKey, {
   // fetch borné + porte de grâce au réveil, pour auth, PostgREST, storage et
-  // functions d'un coup. Sans lui, un refresh de JWT parti sur un réseau pas
-  // encore remonté ne se réglait jamais : auth-js gardait son verrou et toute
-  // l'app restait en chargement infini jusqu'à être tuée (src/services/netResilience.js).
+  // functions d'un coup. auth-js ne pose aucun timeout sur ses fetch : sans lui,
+  // un refresh de JWT parti sur un réseau pas encore remonté peut ne jamais se
+  // régler, et comme chaque requête de l'app passe d'abord par getSession(), qui
+  // rejoint le refresh en cours, tout reste en chargement infini jusqu'à ce que
+  // l'app soit tuée (src/services/netResilience.js).
   global: { fetch: resilientFetch },
   auth: {
     persistSession: true,       // session conservée dans localStorage entre les ouvertures PWA
@@ -145,6 +148,48 @@ export const supabase = createClient(config.url, config.anonKey, {
     params: { eventsPerSecond: 10 }
   }
 });
+
+/**
+ * Oublie l'échec de refresh du JWT qu'auth-js garde en cache.
+ *
+ * Depuis auth-js 2.108.2, un refresh raté est mémorisé 60 s pour ce refresh
+ * token : pendant cette fenêtre, tout getSession() qui aurait besoin d'un
+ * refresh (JWT stocké à moins de 90 s de son expiration) reçoit cet échec sans
+ * rien retenter, même si le réseau est revenu entre-temps, et rend une session
+ * nulle dès que le JWT a réellement expiré. Au réveil d'une tablette restée sans réseau,
+ * l'app restait ainsi jusqu'à une minute de plus sans session (lectures parties
+ * avec la clé anonyme, donc refusées ou vides) alors que le réseau répondait
+ * déjà.
+ * Le coordinateur de reprise ne l'appelle QUE juste après une sonde réussie :
+ * hors de ce cas, le garde-fou d'auth-js contre les rafales de /token reste
+ * entier.
+ *
+ * Champ interne d'auth-js, sans API publique : si une version future le
+ * renomme, ces fonctions ne font plus rien et l'app retombe sur l'attente de
+ * 60 s, sans rien casser. Rend vrai si un échec en cache a été oublié.
+ */
+export function forgetAuthRefreshFailure() {
+  const auth = refreshFailureHolder();
+  if (!auth?.lastRefreshFailure) return false;
+  auth.lastRefreshFailure = null;
+  return true;
+}
+
+/** Vrai si auth-js garde en cache l'échec d'un refresh (voir ci-dessus). */
+export function hasAuthRefreshFailure() {
+  return Boolean(refreshFailureHolder()?.lastRefreshFailure);
+}
+
+function refreshFailureHolder() {
+  const auth = supabase.auth;
+  return auth && 'lastRefreshFailure' in auth ? auth : null;
+}
+
+// Garde-fou de montée de version : sans ce champ, le contournement ci-dessus
+// ne fait plus rien, en silence. Le signaler dès le démarrage.
+if (!refreshFailureHolder()) {
+  console.warn('[Supabase] auth-js sans lastRefreshFailure : forgetAuthRefreshFailure inopérant, revoir src/services/resumeCoordinator.js');
+}
 
 // ─────────────────────────────────────────
 // Dédup in-flight + TTL court pour les lectures d'AMORÇAGE (boot)
@@ -186,7 +231,11 @@ export const authService = {
 
   async signOut() {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Depuis supabase-js 2.110.2, la session locale est effacée (SIGNED_OUT
+    // émis) MÊME quand l'appel /logout échoue (hors-ligne) : l'erreur ne porte
+    // plus que sur la révocation côté serveur. L'appareil est bien déconnecté,
+    // la suite de la déconnexion (purge des caches du compte) doit donc passer.
+    if (error && readPersistedAuthUser()) throw error;
   },
 
   async resetPassword(email) {

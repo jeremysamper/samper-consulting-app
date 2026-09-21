@@ -27,12 +27,16 @@
 
 import { notifyLegacy } from '../legacy/legacyApi.js';
 import { afterWakeGrace, onNetworkFailure, onWake, probeNetwork } from './netResilience.js';
-import { readPersistedAuthUser, supabase } from './supabase.js';
+import { forgetAuthRefreshFailure, hasAuthRefreshFailure, readPersistedAuthUser, supabase } from './supabase.js';
 
 const MIN_INTERVAL_MS = 10000;
-// auth-js réessaie un refresh en échec pendant ~30 s (verrou tenu), et au réveil
-// notre getSession passe DERRIÈRE le sien : l'attente légitime atteint 50 à 60 s.
-// Cette échéance ne déclenche donc rien à elle seule, voir checkSession.
+// Attente légitime d'un getSession() au réveil avec un JWT expiré : tous les
+// appels concurrents partagent UN refresh, qu'auth-js réessaie tant qu'un
+// nouvel essai peut partir avant 30 s, chaque essai étant borné par
+// netResilience. Mesuré : ~26 s réseau coupé, ~30 s refresh pendu. Si le
+// dernier essai reçoit ses en-têtes puis bloque sur le corps, le budget corps
+// (30 s) s'ajoute : jusqu'à ~68 s. Cette échéance ne déclenche donc rien à
+// elle seule, voir checkSession.
 const SESSION_DEADLINE_MS = 45000;
 const RETRY_DELAYS_MS = [3000, 6000, 12000, 24000, 30000];
 const PROBE_DELAYS_MS = [4000, 8000, 15000, 30000];
@@ -58,6 +62,20 @@ let probing = false;
 let probeStep = 0;
 let recoveryStreak = 0;
 let lastRecoveryAt = 0;
+// Droit d'oublier l'échec de refresh gardé en cache par auth-js (voir
+// retryCachedRefreshFailure). Réarmé par un réveil, par l'event `online` et par
+// toute sonde en échec : un seul refresh forcé par vrai retour du réseau. Si
+// /token échoue alors que la sonde répond (incident côté Supabase), on ne
+// relance donc pas un cycle complet à chaque réessai, sur chaque tablette de la
+// cuisine : le garde-fou de 60 s d'auth-js reprend la main.
+let forgetArmed = true;
+
+// Sonde réseau qui réarme ce droit quand elle échoue.
+async function probe() {
+  const reachable = await probeNetwork();
+  if (!reachable) forgetArmed = true;
+  return reachable;
+}
 
 const isHidden = () => hasWindow && document.visibilityState === 'hidden';
 const isOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
@@ -77,34 +95,68 @@ export function subscribeResume(fn) {
 // 'wedged'      : getSession() ne se règle pas alors que le réseau répond.
 const DEADLINE = Symbol('deadline');
 
-async function checkSession() {
-  if (!readPersistedAuthUser()) return 'signed-out';
-  const startedAt = Date.now();
-  // UNE seule promesse, attendue en deux temps. getSession peut aussi LEVER
-  // (verrou volé par une autre requête).
+// Un getSession() attendu en plusieurs temps : rend la fonction qui l'attend au
+// plus `ms`, ou DEADLINE. getSession peut aussi LEVER sur une erreur qui n'est
+// pas une AuthError (localStorage plein au moment d'enregistrer le jeton,
+// abonné onAuthStateChange qui lève pendant TOKEN_REFRESHED) : même traitement
+// qu'une absence de session.
+function startGetSession() {
   const pending = supabase.auth.getSession().catch(() => ({ data: { session: null } }));
-  const settleWithin = (ms) => {
+  return (ms) => {
     let timer = null;
     const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve(DEADLINE), ms); });
     return Promise.race([pending, deadline]).finally(() => clearTimeout(timer));
   };
+}
+
+async function checkSession() {
+  if (!readPersistedAuthUser()) return 'signed-out';
+  const startedAt = Date.now();
+  const settleWithin = startGetSession();
 
   let result = await settleWithin(SESSION_DEADLINE_MS);
   if (result === DEADLINE) {
     // L'appareil s'est rendormi pendant l'attente : le délai ne prouve rien.
     if (lastWakeAt > startedAt) return 'unreachable';
-    if (!(await probeNetwork())) return 'unreachable';
-    // Le réseau répond, mais ça ne suffit pas à conclure : au réveil avec un JWT
-    // expiré, auth-js a pris son verrou AVANT nous et exécute les getSession en
-    // SÉRIE, chacun avec son propre cycle de refresh. Deux cycles en échec font
-    // déjà 50 à 60 s. Réseau revenu, un client vivant se règle à son prochain
-    // essai (au pire ~13 s de backoff + 7 s de budget) : on lui laisse un sursis.
-    // Seul celui qui ne se règle TOUJOURS pas est réellement figé.
+    if (!(await probe())) return 'unreachable';
+    // Le réseau répond, mais un refresh dont le dernier essai a reçu ses
+    // en-têtes puis bloque sur son corps tient légitimement jusqu'à ~68 s : on
+    // laisse un sursis (90 s au total) avant de conclure. Un rechargement à
+    // tort en plein service coûterait plus cher que l'attente. Seul celui qui
+    // ne se règle TOUJOURS pas est réellement figé.
     result = await settleWithin(SESSION_DEADLINE_MS);
     if (result === DEADLINE) return lastWakeAt > startedAt ? 'unreachable' : 'wedged';
   }
-  if (result?.data?.session) return 'ok';
+  if (result?.data?.session) {
+    // JWT encore valide, mais son refresh vient d'échouer (typiquement : refresh
+    // en vol pendant la veille, abandonné au réveil) : il expirerait pendant le
+    // cache d'échec d'auth-js. On relance en arrière-plan, sans retarder les
+    // refetch : ce jeton suffit pour eux.
+    if (hasAuthRefreshFailure()) void retryCachedRefreshFailure();
+    return 'ok';
+  }
+  if (!readPersistedAuthUser()) return 'signed-out';
+  // Refresh jeté par auth-js parce qu'un autre onglet a tourné le jeton pendant
+  // ce temps : la session fraîche est déjà en stockage, une relecture suffit.
+  if (result?.error?.name === 'AuthRefreshDiscardedError') {
+    const reread = await startGetSession()(SESSION_DEADLINE_MS);
+    if (reread !== DEADLINE && reread?.data?.session) return 'ok';
+  }
+  if (await retryCachedRefreshFailure()) return 'ok';
   return readPersistedAuthUser() ? 'unreachable' : 'signed-out';
+}
+
+// auth-js garde l'échec d'un refresh en cache 60 s et le rend à tout
+// getSession() de la fenêtre sans rien retenter, même réseau revenu. Si on en a
+// le droit (forgetArmed) et que la sonde prouve que le réseau répond, on
+// l'oublie et on retente une fois tout de suite (voir forgetAuthRefreshFailure).
+// Rend la session obtenue, ou null.
+async function retryCachedRefreshFailure() {
+  if (!forgetArmed || !hasAuthRefreshFailure() || !(await probe())) return null;
+  if (!forgetArmed || !forgetAuthRefreshFailure()) return null;
+  forgetArmed = false;
+  const retried = await startGetSession()(SESSION_DEADLINE_MS);
+  return retried === DEADLINE ? null : retried?.data?.session || null;
 }
 
 // Dernier recours : le réseau répond mais le client Supabase ne rend plus la
@@ -190,7 +242,7 @@ function scheduleProbe(delay) {
     // seconde chaîne de sondage en parallèle.
     probing = true;
     let reachable = false;
-    try { reachable = await probeNetwork(); } finally { probing = false; }
+    try { reachable = await probe(); } finally { probing = false; }
     if (reachable) {
       probeStep = 0;
       recoveryStreak += 1;
@@ -209,12 +261,14 @@ if (hasWindow) {
   onWake(() => {
     lastWakeAt = Date.now();
     recoveryStreak = 0;
+    forgetArmed = true;
     cancelProbe();
     requestResume();
   });
 
   window.addEventListener('online', () => {
     recoveryStreak = 0;
+    forgetArmed = true;
     cancelProbe();
     requestResume();
   });
