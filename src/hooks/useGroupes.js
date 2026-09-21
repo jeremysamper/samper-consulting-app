@@ -238,7 +238,31 @@ export function useGroupes(etablissementId) {
       return { data: mapGroupeFromDB(data), error: null };
     }
 
-    return { creer, modifier, changerStatut, annuler };
+    // Suppression DÉFINITIVE, réservée à un groupe déjà annulé : le filtre
+    // annule = true fait que même un clic parti d'un écran périmé (groupe
+    // rétabli entre-temps sur une autre tablette) ne peut pas effacer un
+    // groupe actif. La base limite par ailleurs la suppression au patron et au
+    // consultant (politique groupe_evenements_delete).
+    //
+    // Une suppression refusée par la RLS ne lève AUCUNE erreur : elle touche
+    // simplement zéro ligne. On relit donc ce qui a été supprimé pour ne pas
+    // annoncer une suppression qui n'a pas eu lieu.
+    async function supprimer(id) {
+      const { data, error } = await supabase
+        .from(TABLE)
+        .delete()
+        .eq('id', id)
+        .eq('annule', true)
+        .select('id');
+      if (error) return { error: messageErreur(error) };
+      if (!data || !data.length) {
+        return { error: "Suppression impossible : ce groupe n'est plus annulé, a déjà été supprimé, ou ton rôle ne le permet pas." };
+      }
+      setGroupes((liste) => liste.filter((g) => g.id !== id));
+      return { error: null };
+    }
+
+    return { creer, modifier, changerStatut, annuler, supprimer };
   }, [etablissementId]);
 
   return { groupes, status, reload, assurerDepuis, ...actions };

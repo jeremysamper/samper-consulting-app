@@ -31,7 +31,7 @@ function horodatage(iso) {
 
 export default function GroupeFiche({
   groupe, menu, menusStatus = 'ready', cuisine, etablissement, canEdit = false,
-  onStatut, onEdit, onAnnuler, onClose,
+  onStatut, onEdit, onAnnuler, onSupprimer, onClose,
 }) {
   const [onglet, setOnglet] = useState('fiche');
   const [statutEnCours, setStatutEnCours] = useState(false);
@@ -130,7 +130,12 @@ export default function GroupeFiche({
         <div style={st.corps}>
         <div style={st.colonne}>
           {groupe.annule && (
-            <div style={{ ...st.encart, ...st.encartDanger }}>Ce groupe est annulé.</div>
+            <div style={{ ...st.encart, ...st.encartDanger }}>
+              Ce groupe est annulé : il reste barré dans « groupes annulés ».
+              {canEdit && ' Tu peux le rétablir'}
+              {canEdit && onSupprimer && ' ou le supprimer définitivement'}
+              {canEdit && '.'}
+            </div>
           )}
 
           {/* ── État de préparation ── */}
@@ -278,6 +283,16 @@ export default function GroupeFiche({
               style={{ ...st.bouton, ...(groupe.annule ? null : st.boutonDanger) }}
             >
               {groupe.annule ? 'Rétablir le groupe' : 'Annuler le groupe'}
+            </button>
+          )}
+          {/* Seulement une fois barré : annuler d'abord, supprimer ensuite. */}
+          {canEdit && groupe.annule && onSupprimer && (
+            <button
+              type="button"
+              onClick={() => onSupprimer(groupe)}
+              style={{ ...st.bouton, ...st.boutonDanger }}
+            >
+              Supprimer définitivement
             </button>
           )}
         </div>

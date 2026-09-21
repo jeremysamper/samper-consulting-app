@@ -422,6 +422,8 @@ export const UI_GLOSSARY = {
   'Courses PDF': 'Shopping list PDF',
   'Annuler le groupe': 'Cancel group',
   'Rétablir le groupe': 'Restore group',
+  'Supprimer définitivement': 'Delete permanently',
+  'Groupe supprimé définitivement.': 'Group permanently deleted.',
   'Enregistrer le groupe': 'Save group',
   'Enregistrer les modifications': 'Save changes',
   'Enregistrer le menu': 'Save menu',

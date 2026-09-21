@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { SectionHeader, SegmentedTabs } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
@@ -31,6 +32,10 @@ import {
 // l'état (c'est la brigade qui passe la case au vert). Créer, modifier et
 // annuler un groupe relève du droit « gérer » du module (Rôles & accès →
 // Droits d'action ; défaut consultant / patron / resp. cuisine / hôte).
+//
+// Annuler n'efface rien : le groupe reste visible, barré, dans « groupes
+// annulés », et se rétablit d'un tap avec ses allergies. Ce n'est qu'une fois
+// barré qu'il peut être supprimé définitivement, par le patron ou le consultant.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MOIS = [
@@ -43,6 +48,9 @@ const MOIS = [
 // rôle afficherait un bouton qui finit sur un refus de la base.
 const ROLES_GESTION = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 const ROLES_MENUS = ['consultant', 'patron', 'resp_cuisine'];
+// Miroir de la politique groupe_evenements_delete : une suppression refusée par
+// la RLS ne renvoie pas d'erreur, le bouton ne doit donc apparaître qu'à ces rôles.
+const ROLES_SUPPRESSION = ['consultant', 'patron'];
 // Densité des cases du mois, d'après la largeur du calendrier lui-même et non
 // de la fenêtre : sur desktop la barre latérale en mange une partie.
 // < 620 : téléphone (« M4 ») · < 910 : iPad debout (« Apéro n°1 ») · au-delà :
@@ -122,6 +130,7 @@ export default function Groupes({ user, etablissement }) {
   const etabId = etablissement?.id || null;
   const canEdit = ROLES_GESTION.includes(user?.role) && canManageModule(user?.role, 'groupes');
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
+  const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
 
   const aujourdhui = zurichToday();
   const [onglet, setOnglet] = useState('calendrier');
@@ -134,7 +143,9 @@ export default function Groupes({ user, etablissement }) {
   const [jourOuvert, setJourOuvert] = useState(null); // ISO d'un jour à plusieurs groupes
   const [voirAnnules, setVoirAnnules] = useState(false);
 
-  const { groupes, status, reload, assurerDepuis, creer, modifier, changerStatut, annuler } = useGroupes(etabId);
+  const {
+    groupes, status, reload, assurerDepuis, creer, modifier, changerStatut, annuler, supprimer,
+  } = useGroupes(etabId);
   const { status: menusStatus, reload: reloadMenus, menuDe, enregistrer: enregistrerMenu } = useGroupeMenus(etabId);
   const cuisine = useCuisine(etabId);
   const [refCalendrier, largeurCalendrier] = useLargeur();
@@ -196,8 +207,24 @@ export default function Groupes({ user, etablissement }) {
     if (annule && !window.confirm(`Annuler le groupe « ${g.nom} » du ${dateComplete(g.dateEvenement)} ?`)) return;
     const { error } = await annuler(g.id, annule);
     if (error) { notify(error, 'error'); return; }
-    notify(annule ? 'Groupe annulé.' : 'Groupe rétabli.', 'success');
+    notify(
+      annule ? 'Groupe annulé : il reste barré dans « groupes annulés ».' : 'Groupe rétabli.',
+      'success'
+    );
     if (annule) setFicheId(null);
+  }
+
+  async function supprimerDefinitivement(g) {
+    if (!g.annule) return;
+    const ok = window.confirm(
+      `Supprimer définitivement le groupe « ${g.nom} » du ${dateComplete(g.dateEvenement)} ?\n\n`
+      + "Il disparaîtra de la liste des annulés et ne pourra plus être rétabli."
+    );
+    if (!ok) return;
+    const { error } = await supprimer(g.id);
+    if (error) { notify(error, 'error'); reload(); return; }
+    notify('Groupe supprimé définitivement.', 'success');
+    setFicheId(null);
   }
 
   if (!etabId) {
@@ -307,7 +334,14 @@ export default function Groupes({ user, etablissement }) {
                 </button>
                 {voirAnnules && (
                   <div style={{ ...st.liste, marginTop: 8 }}>
-                    {duMoisAnnules.map((g) => <LigneGroupe key={g.id} groupe={g} onClick={() => setFicheId(g.id)} />)}
+                    {duMoisAnnules.map((g) => (
+                      <LigneGroupe
+                        key={g.id}
+                        groupe={g}
+                        onClick={() => setFicheId(g.id)}
+                        onSupprimer={canSupprimer ? () => supprimerDefinitivement(g) : undefined}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -365,6 +399,7 @@ export default function Groupes({ user, etablissement }) {
           onStatut={changerStatut}
           onEdit={(g) => setFormulaire({ groupe: g })}
           onAnnuler={basculerAnnulation}
+          onSupprimer={canSupprimer ? supprimerDefinitivement : undefined}
           onClose={() => setFicheId(null)}
         />
       )}
@@ -384,10 +419,34 @@ export default function Groupes({ user, etablissement }) {
   );
 }
 
-function LigneGroupe({ groupe, onClick }) {
+function LigneGroupe({ groupe, onClick, onSupprimer }) {
+  const ligne = <CorpsLigneGroupe groupe={groupe} onClick={onClick} enRangee={Boolean(onSupprimer)} />;
+  if (!onSupprimer) return ligne;
+  return (
+    <div style={st.ligneAvecAction}>
+      {ligne}
+      <button
+        type="button"
+        onClick={onSupprimer}
+        title="Supprimer définitivement"
+        aria-label={`Supprimer définitivement le groupe ${groupe.nom}`}
+        style={st.boutonSupprimer}
+      >
+        <Trash2 size={16} aria-hidden="true" />
+        <span>Supprimer</span>
+      </button>
+    </div>
+  );
+}
+
+function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
   const m = metaStatut(groupe.statut);
   return (
-    <button type="button" onClick={onClick} style={{ ...st.ligne, opacity: groupe.annule ? 0.6 : 1 }}>
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ ...st.ligne, ...(enRangee ? st.ligneEnRangee : null), opacity: groupe.annule ? 0.6 : 1 }}
+    >
       <span aria-hidden="true" style={{ ...st.ligneBarre, background: groupe.annule ? 'var(--border)' : m.barre }} />
       <span style={st.ligneDate}>
         <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>{formatJourSemaine(groupe.dateEvenement)}</span>
@@ -468,6 +527,14 @@ const st = {
     fontFamily: 'var(--font)', color: 'var(--text)',
   },
   ligneBarre: { alignSelf: 'stretch', width: 5, flexShrink: 0, margin: '-8px 0' },
+  ligneAvecAction: { display: 'flex', alignItems: 'stretch', gap: 6, minWidth: 0, flexShrink: 0 },
+  ligneEnRangee: { flex: '1 1 auto', width: 'auto' },
+  boutonSupprimer: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    flexShrink: 0, minHeight: 56, padding: '0 12px', borderRadius: 10, cursor: 'pointer',
+    background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
+    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+  },
   ligneDate: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     width: 46, flexShrink: 0, lineHeight: 1.15,
