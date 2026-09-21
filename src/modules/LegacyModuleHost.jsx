@@ -14,6 +14,7 @@ const loadDocuments = () => import('./documents/Documents.jsx');
 const loadFactures = () => import('./factures/Factures.jsx');
 const loadFAQAssistant = () => import('./faq/FAQAssistant.jsx');
 const loadFichesSalle = () => import('./fiches-salle/FichesSalle.jsx');
+const loadGroupes = () => import('./groupes/Groupes.jsx');
 const loadHACCP = () => import('./haccp/HACCP.jsx');
 const loadInventaire = () => import('./inventaire/Inventaire.jsx');
 const loadKds = () => import('./kds/Kds.jsx');
@@ -37,6 +38,7 @@ const Documents = lazy(loadDocuments);
 const Factures = lazy(loadFactures);
 const FAQAssistant = lazy(loadFAQAssistant);
 const FichesSalle = lazy(loadFichesSalle);
+const Groupes = lazy(loadGroupes);
 const HACCP = lazy(loadHACCP);
 const Inventaire = lazy(loadInventaire);
 const Kds = lazy(loadKds);
@@ -170,6 +172,11 @@ export default function LegacyModuleHost({
     case 'previsions': {
       return permissions.previsions === true
         ? wrap('Prévisions', <Previsions user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'groupes': {
+      return permissions.groupes !== false
+        ? wrap('Groupes', <Groupes user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'fiches_salle': {

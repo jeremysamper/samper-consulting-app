@@ -1824,10 +1824,20 @@ export const pdfUtils = {
     const bodyBottom = PAGE_H - M;
     const LINE_H = 4.6;
 
+    // Titre et sous-titre surchargeables : la liste de courses d'un groupe
+    // (module Groupes) sort dans cette meme mise en page. Elle n'a pas de
+    // compteur de coches, une liste fraichement calculee n'en ayant aucune.
+    const titreDoc = pdfSafeText((payload.titre || 'Liste de commande').toString());
+    const sousTitreDoc = payload.sousTitre != null
+      ? pdfSafeText(String(payload.sousTitre).trim())
+      : (cartesLabel ? `Cartes : ${cartesLabel}` : '');
+    const compteurs = [`${totalCount} produit${totalCount > 1 ? 's' : ''}`];
+    if (!payload.sansCompteurCoche) compteurs.push(`${cocheCount} coché${cocheCount > 1 ? 's' : ''}`);
+
     const drawHeader = () => this._enTeteDocument(doc, {
-      titre: 'Liste de commande',
-      sousTitre: cartesLabel ? `Cartes : ${cartesLabel}` : '',
-      meta: `${dateStr}  ·  ${totalCount} produit${totalCount > 1 ? 's' : ''}  ·  ${cocheCount} coché${cocheCount > 1 ? 's' : ''}`,
+      titre: titreDoc,
+      sousTitre: sousTitreDoc,
+      meta: [dateStr, ...compteurs].join('  ·  '),
       etablissement: etabName,
       logoDataUrl,
     });
@@ -1870,6 +1880,20 @@ export const pdfUtils = {
         y += rowH;
       });
       y += 5;
+    });
+
+    // Remarques de fin de liste : ce que le calcul n'a PAS pu chiffrer. Une
+    // liste incomplete qui ne le dit pas est plus dangereuse que pas de liste.
+    const remarques = (Array.isArray(payload.remarques) ? payload.remarques : [])
+      .filter((r) => r && r.label && r.texte);
+    remarques.forEach((r) => {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+      const lignes = doc.splitTextToSize(pdfSafeText(String(r.texte)), contentW - 3.2);
+      ensureSpace(10 + lignes.length * LINE_H);
+      y = this._titreSection(doc, pdfSafeText(String(r.label)), M, y + 2, contentW);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      lignes.forEach((ligne) => { doc.text(ligne, M + 3.2, y); y += LINE_H; });
+      y += 3;
     });
   },
 
@@ -1987,6 +2011,222 @@ export const pdfUtils = {
         y += rowH;
       });
       y += 5;
+    });
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // GROUPES - fiche menu d'un evenement (jsPDF natif, vectoriel, DA Samper)
+  // Sert deux usages avec le meme rendu : la fiche d'un groupe reserve (avec
+  // date, couverts, allergies, modifications) et le menu seul, imprime depuis
+  // l'onglet Menus, ou les blocs d'evenement sont simplement absents.
+  // Le menu est compose au centre comme une carte : etiquette de service,
+  // intitules en Lora, precisions en italique. Tout le reste est aligne a
+  // gauche, dans le registre des autres documents de cuisine.
+  // payload : { titre, sousTitre, meta, cellules:[{k,v}], menuNom,
+  //   menuDescription, sections:[{ label, lignes:[{ libelle, description, mention }] }],
+  //   blocs:[{ label, accroche, texte, alerte }] }
+  // options : { etablissement, autoPrint, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportGroupeMenuPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = this._nouveauDocA4(jsPDF);
+      this._renderGroupeMenu(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'menu-groupe.pdf');
+      } else {
+        doc.save(options.filename || 'menu-groupe.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportGroupeMenuPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderGroupeMenu(doc, payload, options = {}) {
+    const MM_PER_PT = 0.3528;
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const centreX = PAGE_W / 2;
+    const bodyBottom = PAGE_H - M;
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
+    const logoDataUrl = options.logoDataUrl || null;
+
+    const titre = pdfSafeText((payload.titre || 'Menu de groupe').toString());
+    const sousTitre = pdfSafeText((payload.sousTitre || '').toString().trim());
+    const meta = pdfSafeText((payload.meta || '').toString().trim());
+    const cellules = (Array.isArray(payload.cellules) ? payload.cellules : [])
+      .filter((c) => c && c.k && c.v)
+      .map((c) => ({ k: pdfSafeText(String(c.k)), v: pdfSafeText(String(c.v)) }));
+    const menuNom = pdfSafeText((payload.menuNom || '').toString().trim());
+    const menuDescription = pdfSafeText((payload.menuDescription || '').toString().trim());
+    const sections = (Array.isArray(payload.sections) ? payload.sections : [])
+      .map((s) => ({
+        label: pdfSafeText(String(s?.label || '')),
+        lignes: (Array.isArray(s?.lignes) ? s.lignes : [])
+          .map((l) => ({
+            libelle: pdfSafeText(String(l?.libelle || '').trim()),
+            description: pdfSafeText(String(l?.description || '').trim()),
+            mention: pdfSafeText(String(l?.mention || '').trim()),
+          }))
+          .filter((l) => l.libelle),
+      }))
+      .filter((s) => s.lignes.length);
+    const blocs = (Array.isArray(payload.blocs) ? payload.blocs : [])
+      .map((b) => ({
+        label: pdfSafeText(String(b?.label || '')),
+        accroche: pdfSafeText(String(b?.accroche || '').trim()),
+        texte: pdfSafeText(String(b?.texte || '').trim()),
+        alerte: !!b?.alerte,
+      }))
+      .filter((b) => b.label && (b.accroche || b.texte));
+
+    const drawHeader = () => this._enTeteDocument(doc, {
+      titre, sousTitre, meta, etablissement: etabName, logoDataUrl,
+    });
+    let y = drawHeader();
+    const ensureSpace = (h) => {
+      if (y + h > bodyBottom) { doc.addPage(); y = drawHeader(); }
+    };
+
+    // ---- Bandeau d'identite : meme dessin que celui de la fiche recette ----
+    if (cellules.length) {
+      const top = y - 2;
+      const bandeH = 11;
+      const cellW = contentW / cellules.length;
+      doc.setDrawColor(...PDF.rule); doc.setLineWidth(RULE.medium);
+      doc.line(M, top, M + contentW, top);
+      doc.line(M, top + bandeH, M + contentW, top + bandeH);
+      cellules.forEach((c, i) => {
+        const cx = M + i * cellW + 3;
+        if (i > 0) {
+          doc.setDrawColor(...PDF.ruleLight); doc.setLineWidth(RULE.medium);
+          doc.line(M + i * cellW, top + 1.5, M + i * cellW, top + bandeH - 1.5);
+        }
+        setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
+        doc.text(c.k.toUpperCase(), cx, top + 4.3, { charSpace: BRAND.charSpace.label });
+        setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.ink);
+        // Une valeur trop longue (nom de societe) est raccourcie plutot que de
+        // deborder sur la cellule voisine. '...' ASCII : jsPDF ne rend pas l'ellipse.
+        // On serre d'abord le corps (une date complete doit garder son annee),
+        // on ne tronque qu'en dernier recours.
+        let valeur = c.v;
+        let corpsValeur = BRAND.size.amount;
+        while (corpsValeur > 6.5 && doc.getTextWidth(valeur) > cellW - 5) {
+          corpsValeur -= 0.25;
+          doc.setFontSize(corpsValeur);
+        }
+        while (valeur.length > 4 && doc.getTextWidth(valeur) > cellW - 5) valeur = valeur.slice(0, -4) + '...';
+        doc.text(valeur, cx, top + 9);
+      });
+      y = top + bandeH + 11;
+    }
+
+    // ---- Menu, compose au centre ----
+    const corpsPlat = BRAND.size.amountLarge;
+    const pasPlat = corpsPlat * MM_PER_PT * 1.32;
+    const pasNote = BRAND.size.body * MM_PER_PT * 1.4;
+    const largeurMenu = contentW * 0.82;
+
+    if (menuNom) {
+      ensureSpace(14);
+      setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.blockTitle + 1.4); doc.setTextColor(...PDF.accent);
+      this._texteCentre(doc, menuNom, centreX, y);
+      y += 5;
+      if (menuDescription) {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+        doc.splitTextToSize(menuDescription, largeurMenu).forEach((ligne) => {
+          this._texteCentre(doc, ligne, centreX, y);
+          y += pasNote;
+        });
+      }
+      y += 5;
+    }
+
+    if (!sections.length) {
+      ensureSpace(10);
+      setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      this._texteCentre(doc, 'Menu à composer.', centreX, y + 2);
+      y += 12;
+    }
+
+    sections.forEach((section, index) => {
+      // Hauteur du service entier : on ne coupe jamais une entree de son
+      // etiquette, ni un plat de sa precision.
+      const mesures = section.lignes.map((l) => {
+        setBrandFont(doc, 'voice'); doc.setFontSize(corpsPlat);
+        const nom = doc.splitTextToSize(l.mention ? `${l.libelle}  (${l.mention})` : l.libelle, largeurMenu);
+        setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.body);
+        const note = l.description ? doc.splitTextToSize(l.description, largeurMenu) : [];
+        return { nom, note, h: nom.length * pasPlat + note.length * pasNote + 2.6 };
+      });
+      const hauteur = 7 + mesures.reduce((s, m) => s + m.h, 0) + 8;
+      const pagesAvant = doc.internal.getNumberOfPages();
+      ensureSpace(Math.min(hauteur, bodyBottom - M - 40));
+      // Apres un saut de page il n'y a plus de service au-dessus a separer.
+      const nouvellePage = doc.internal.getNumberOfPages() !== pagesAvant;
+
+      if (index > 0 && !nouvellePage) {
+        doc.setDrawColor(...PDF.rule); doc.setLineWidth(RULE.medium);
+        doc.line(centreX - 9, y - 3.5, centreX + 9, y - 3.5);
+        y += 4;
+      }
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.accent);
+      this._texteCentre(doc, section.label.toUpperCase(), centreX, y, BRAND.charSpace.sectionLabel);
+      y += 7;
+
+      mesures.forEach((m) => {
+        ensureSpace(m.h);
+        setBrandFont(doc, 'voice'); doc.setFontSize(corpsPlat); doc.setTextColor(...PDF.primary);
+        m.nom.forEach((ligne) => { this._texteCentre(doc, ligne, centreX, y); y += pasPlat; });
+        if (m.note.length) {
+          setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+          m.note.forEach((ligne) => { this._texteCentre(doc, ligne, centreX, y - 0.6); y += pasNote; });
+        }
+        y += 2.6;
+      });
+      y += 5;
+    });
+
+    // ---- Blocs d'evenement : allergies, modifications, commentaires ----
+    const pasCorps = BRAND.size.body * MM_PER_PT * 1.45;
+    if (blocs.length) y += 3;
+    blocs.forEach((bloc) => {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+      const lignes = bloc.texte ? doc.splitTextToSize(bloc.texte, contentW - 3.2) : [];
+      ensureSpace(9 + (bloc.accroche ? 6 : 0) + Math.min(lignes.length, 4) * pasCorps);
+      y = this._titreSection(doc, bloc.label, M, y, contentW);
+      if (bloc.accroche) {
+        const poserAccroche = () => {
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount + 1);
+          doc.setTextColor(...(bloc.alerte ? PDF.alert : PDF.primary));
+        };
+        poserAccroche();
+        doc.splitTextToSize(bloc.accroche, contentW - 3.2).forEach((ligne) => {
+          ensureSpace(pasCorps + 1);
+          poserAccroche(); // un saut de page laisse la police de l'en-tete
+          doc.text(ligne, M + 3.2, y);
+          y += pasCorps + 0.8;
+        });
+        y += 0.8;
+      }
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      lignes.forEach((ligne) => {
+        ensureSpace(pasCorps);
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+        doc.text(ligne, M + 3.2, y);
+        y += pasCorps;
+      });
+      y += 6;
     });
   },
 

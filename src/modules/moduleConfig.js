@@ -8,12 +8,12 @@ export const roles = {
 };
 
 export const defaultPermissions = {
-  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true },
-  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true },
-  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true },
-  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true },
-  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true },
-  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true },
+  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true },
+  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true },
+  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true },
+  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true },
+  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true },
+  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -21,6 +21,9 @@ export const defaultPermissions = {
 // `defaultRoles` : rôles autorisés tant qu'aucun droit explicite n'est stocké
 // en base ; sans cette clé, defaultManageRoles s'applique. Les défauts
 // reproduisent les gardes historiques de chaque module.
+// groupes : « gérer » = créer / modifier / annuler un groupe. Faire avancer
+// l'état (à lire → lu → prêt) reste ouvert à tous les rôles, c'est le principe
+// du code couleur. Défaut calqué sur le trigger de la migration 20260920.
 // Volontairement absents : dashboard et messages (aucune action à restreindre),
 // commande (la génération = IA, consultant only), kds (écran opérationnel du
 // passe) et les pages consultant-only (garde dure par rôle dans LegacyModuleHost).
@@ -35,6 +38,7 @@ export const manageableModules = [
   { id: 'documents', label: 'Documents' },
   { id: 'catalogue', label: 'Catalogue produits' },
   { id: 'previsions', label: 'Prévisions', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
+  { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
   { id: 'mep', label: 'Mise en place', defaultRoles: ['resp_cuisine', 'cuisinier'] },
   { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
 ];
@@ -63,6 +67,7 @@ export const navItems = [
   { id: 'catalogue', label: 'Catalogue produits', icon: '◇', group: 'Consultant', permKey: 'catalogue' },
   { id: 'consultant_tools', label: 'Outils consultant', mobileLabel: 'Outils', icon: '◆', group: 'Consultant', permKey: 'consultant_tools' },
   { id: 'previsions', label: 'Prévisions', icon: '◐', group: 'Cuisine', permKey: 'previsions' },
+  { id: 'groupes', label: 'Groupes', icon: '▤', group: 'Cuisine', permKey: 'groupes' },
   { id: 'commande', label: 'Commande', mobileLabel: 'Commande', icon: '◰', group: 'Cuisine', permKey: 'commande' },
   { id: 'mep', label: 'Mise en place', mobileLabel: 'Mise en place', icon: '◲', group: 'Cuisine', permKey: 'mep' },
   { id: 'pos', label: 'Ventes POS', icon: '◑', group: 'Cuisine', permKey: 'pos' },

@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useUnreadPrivateMessages } from '../hooks/useUnreadPrivateMessages.js';
+import { useGroupesAlerte } from '../hooks/useGroupesAlerte.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
@@ -196,15 +197,38 @@ export default function AppLayout({
 
   // Badge messages privés non lus (consultant → utilisateur) sur l'item de nav
   const unreadMessages = useUnreadPrivateMessages(user?.id);
-  const renderNavBadge = (itemId) => (
-    itemId === 'messages' && unreadMessages > 0 ? (
-      <span style={{
-        background: 'var(--danger-strong)', color: '#fff', fontSize: 10, fontWeight: 700,
-        padding: '2px 7px', borderRadius: 99, minWidth: 14, textAlign: 'center',
-        lineHeight: 1.4, flexShrink: 0,
-      }}>{unreadMessages}</span>
-    ) : null
-  );
+  // Groupes des 14 prochains jours pas encore prêts : l'alerte d'anticipation
+  // doit se voir depuis n'importe quel module, sinon elle ne prévient personne.
+  // Aucune requête pour un rôle qui n'a pas le module dans son menu.
+  const groupesAPreparer = useGroupesAlerte(etablissement?.id, {
+    enabled: visibleNav.some((item) => item.id === 'groupes'),
+  });
+  const navBadgeStyle = {
+    fontSize: 10, fontWeight: 700,
+    padding: '2px 7px', borderRadius: 99, minWidth: 14, textAlign: 'center',
+    lineHeight: 1.4, flexShrink: 0,
+  };
+  const renderNavBadge = (itemId) => {
+    if (itemId === 'messages' && unreadMessages > 0) {
+      return <span style={{ ...navBadgeStyle, color: '#fff', background: 'var(--danger-strong)' }}>{unreadMessages}</span>;
+    }
+    if (itemId === 'groupes' && groupesAPreparer > 0) {
+      return (
+        <span
+          title="Groupes à préparer dans les 14 prochains jours"
+          /* Texte foncé sur ambre clair : du blanc sur --warning-strong tombait
+             à ~2:1 de contraste, illisible de loin sur l'iPad du passe. */
+          style={{
+            ...navBadgeStyle, background: 'var(--warning-bg)', color: 'var(--warning-text)',
+            boxShadow: 'inset 0 0 0 1px var(--warning-bd)',
+          }}
+        >
+          {groupesAPreparer}
+        </span>
+      );
+    }
+    return null;
+  };
 
   const handleSetPage = (p) => { setPage(p); setDrawerOpen(false); };
 

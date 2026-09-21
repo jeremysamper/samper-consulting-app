@@ -20,7 +20,7 @@ const slug = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, '-');
 
 // Unité canonique + facteur de conversion depuis l'unité d'un ingrédient.
 // Masse → g, volume → ml ; sinon on garde l'unité (pcs, cs, cc…) telle quelle.
-function toCanonical(unite) {
+export function toCanonical(unite) {
   const u = unite || '';
   const toG = convertFactor(u, 'g');
   if (toG !== null) return { canonical: 'g', factor: toG };
