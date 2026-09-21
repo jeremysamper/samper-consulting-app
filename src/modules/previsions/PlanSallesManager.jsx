@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
@@ -24,6 +24,11 @@ export default function PlanSallesManager({
   const [editNom,  setEditNom]  = useState('');
   const [confirm,  setConfirm]  = useState(null);
   const [loading,  setLoading]  = useState(false);
+  // Une écriture lente se termine peut-être après qu'on est passé à une autre
+  // salle (renommage ouvert, confirmation, nouveau nom tapé) : elle ne remet à
+  // zéro que ce qui la concerne.
+  const editIdRef = useRef(editId);
+  editIdRef.current = editId;
 
   async function ajouter() {
     const nom = nouveau.trim();
@@ -31,7 +36,7 @@ export default function PlanSallesManager({
     setLoading(true);
     try {
       const ok = await onCreate(nom);
-      if (ok) setNouveau('');
+      if (ok) setNouveau((cur) => (cur.trim() === nom ? '' : cur));
     } finally { setLoading(false); }
   }
 
@@ -41,7 +46,7 @@ export default function PlanSallesManager({
     setLoading(true);
     try {
       const ok = await onRename(id, nom);
-      if (ok) { setEditId(null); setEditNom(''); }
+      if (ok && editIdRef.current === id) { setEditId(null); setEditNom(''); }
     } finally { setLoading(false); }
   }
 
@@ -49,7 +54,7 @@ export default function PlanSallesManager({
     setLoading(true);
     try {
       const ok = await onDelete(id);
-      if (ok) setConfirm(null);
+      if (ok) setConfirm((cur) => (cur === id ? null : cur));
     } finally { setLoading(false); }
   }
 

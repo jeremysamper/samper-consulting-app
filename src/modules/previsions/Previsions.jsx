@@ -37,9 +37,12 @@ export default function Previsions({ user, etablissement }) {
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 
+  // Fait relire les vues (semaine ou jour, via refreshKey) et rien d'autre : le
+  // formulaire se ferme lui-même s'il est encore ouvert. Le fermer ici cassait
+  // « + Saisir une autre » et, après une fermeture en cours d'enregistrement,
+  // fermait le formulaire rouvert entre-temps.
   function handleSaved() {
     setRefreshKey((k) => k + 1);
-    setShowForm(false);
   }
 
   return (
@@ -97,6 +100,7 @@ export default function Previsions({ user, etablissement }) {
               date={selectedDate}
               onBack={() => setSelectedDate(null)}
               onResaUpdated={() => setRefreshKey((k) => k + 1)}
+              refreshKey={refreshKey}
               canEdit={canEdit}
             />
           )}

@@ -6,6 +6,7 @@ import {
   getLundiSemaine, addDays, formatJourSemaine,
   formatDateCourte, isAujourdhui,
 } from '../../utils/dateHelpers.js';
+import BandeauNonActualise from './BandeauNonActualise.jsx';
 
 const SEUIL_ALERTE = 40;
 
@@ -182,7 +183,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
 export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) {
   const isMobile = useIsMobile();
   const [dateDebut, setDateDebut] = useState(() => getLundiSemaine(new Date()));
-  const { semaine, loading, error, fetchSemaine } = usePrevisionsSemaine(etablissementId);
+  const { semaine, loading, error, nonActualise, fetchSemaine } = usePrevisionsSemaine(etablissementId);
 
   useEffect(() => { ensureSkeletonStyle(); }, []);
 
@@ -213,7 +214,9 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Btn small onClick={() => setDateDebut(getLundiSemaine(new Date()))}>Cette semaine</Btn>
-          {totalSemaine > 0 && (
+          {/* Masqué pendant un changement de semaine : ce total-là, sans date
+              à côté, serait encore celui de la semaine précédente. */}
+          {totalSemaine > 0 && !loading && (
             <span style={{ fontSize: 12, color: 'var(--text2)' }}>
               {totalSemaine} couvert{totalSemaine > 1 ? 's' : ''} / sem.
             </span>
@@ -233,6 +236,9 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
           <Btn small variant="danger" onClick={() => fetchSemaine(dateDebut)}>Réessayer</Btn>
         </div>
       )}
+
+      {/* ── Relecture en échec : la semaine affichée reste en place ── */}
+      {nonActualise && <BandeauNonActualise onRetry={() => fetchSemaine(dateDebut)} />}
 
       {/* ── Skeleton (premier chargement uniquement) ── */}
       {loading && semaine === null && (

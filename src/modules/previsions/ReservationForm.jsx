@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 import { useReservationTags } from '../../hooks/useReservationTags.js';
@@ -55,6 +55,29 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
   const reservations = useReservations(etablissementId);
   const tags = useReservationTags();
 
+  // Faux dès que le formulaire est fermé. Le bouton de pied (« Fermer » pendant
+  // l'enregistrement) et × restent actifs : l'écriture lancée va à son terme et
+  // son issue s'affiche en toast, mais elle ne pilote plus l'interface (refermer
+  // ou remettre à zéro toucherait le formulaire rouvert entre-temps).
+  const ouvertRef = useRef(true);
+  useEffect(() => {
+    ouvertRef.current = true;
+    return () => { ouvertRef.current = false; };
+  }, []);
+  // Formulaire déjà fermé : le toast doit dire de quelle réservation il parle
+  // et ce qui n'a pas été enregistré (« partiel » : la résa l'est, pas ses tags).
+  const echec = (msg, { partiel = false } = {}) => {
+    if (ouvertRef.current) { notify(msg, 'error'); return; }
+    const nom  = form.nom.trim();
+    const quoi = initialResa
+      ? `Modification de la résa ${nom} ${partiel ? 'incomplète' : 'non enregistrée'}`
+      : `Résa ${nom} non enregistrée`;
+    notify(`${quoi} : ${msg}`, 'error');
+  };
+  // Dernier état saisi, lu à la fin d'un enregistrement (voir keepOpen).
+  const formRef = useRef(form);
+  formRef.current = form;
+
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
 
   function changeService(s) {
@@ -74,6 +97,7 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
   async function submit(keepOpen) {
     const { ok, errors } = validateForm(form);
     if (!ok) { errors.forEach((e) => notify(e, 'error')); return; }
+    const envoye = form;
 
     setLoading(true);
     try {
@@ -91,22 +115,22 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
       if (initialResa) {
         // ── MODE ÉDITION ──
         const { error: eUpd } = await reservations.update(initialResa.id, payload);
-        if (eUpd) { notify(eUpd, 'error'); return; }
+        if (eUpd) { echec(eUpd); return; }
         // Remplacement des tags : supprime tous → recrée
         const { error: eDel } = await tags.deleteByReservationId(initialResa.id);
-        if (eDel) { notify(eDel, 'error'); return; }
+        if (eDel) { echec(eDel, { partiel: true }); return; }
         if (form.tags.length > 0) {
           const { error: eTags } = await tags.bulkCreate(initialResa.id, form.tags);
-          if (eTags) { notify(eTags, 'error'); return; }
+          if (eTags) { echec(eTags, { partiel: true }); return; }
         }
         notify(`Résa ${form.nom.trim()} · ${form.couverts} pax · ${form.heure.slice(0, 5)} modifiée ✓`, 'success');
         onSaved?.();
-        onClose();
+        if (ouvertRef.current) onClose();
       } else {
         // ── MODE CRÉATION ──
         const { data: resa, error: eResa } = await reservations.create({ ...payload, statut: 'confirme' });
         if (eResa || !resa) {
-          notify(eResa || 'Erreur lors de la création de la réservation.', 'error');
+          echec(eResa || 'Erreur lors de la création de la réservation.');
           return;
         }
         if (form.tags.length > 0) {
@@ -123,7 +147,7 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
                 'error'
               );
             } else {
-              notify(eTags || 'Erreur tags - réservation annulée.', 'error');
+              echec(eTags || 'Erreur tags - réservation annulée.');
             }
             return;
           }
@@ -131,7 +155,22 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
         const h = resa.heure_arrivee?.slice(0, 5) ?? form.heure;
         notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée ✓`, 'success');
         onSaved?.(resa);
-        keepOpen ? resetForNext() : onClose();
+        if (!ouvertRef.current) return;
+        if (!keepOpen) { onClose(); return; }
+        // Réseau lent : ce qui a été tapé pendant l'enregistrement appartient
+        // déjà à la résa suivante. Seuls les champs restés tels qu'envoyés sont
+        // remis à zéro : un tag allergène de la résa précédente ne doit pas
+        // glisser sur la suivante, et rien de ce qui vient d'être tapé ne se
+        // perd.
+        const tape = formRef.current;
+        resetForNext();
+        if (tape !== envoye) {
+          setForm((p) => {
+            const suite = { ...p };
+            Object.keys(envoye).forEach((k) => { if (tape[k] !== envoye[k]) suite[k] = tape[k]; });
+            return suite;
+          });
+        }
       }
     } finally {
       setLoading(false);
@@ -342,9 +381,12 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
             </button>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" disabled={loading} onClick={onClose}
+            {/* Jamais désactivé, même pendant l'enregistrement (voir ouvertRef).
+                L'écriture partie ne s'arrête pas : le bouton dit alors
+                « Fermer », « Annuler » ferait croire la résa abandonnée. */}
+            <button type="button" onClick={onClose}
               style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>
-              Annuler
+              {loading ? 'Fermer' : 'Annuler'}
             </button>
             <button type="button" disabled={loading} onClick={() => submit(false)}
               style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent)', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, opacity: loading ? 0.7 : 1 }}>

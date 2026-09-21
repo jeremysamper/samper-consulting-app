@@ -4,6 +4,8 @@ import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { usePlanSalle, PLAN_W, PLAN_H, PLAN_GRID } from '../../hooks/usePlanSalle.js';
+import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
+import BandeauNonActualise from './BandeauNonActualise.jsx';
 import PlanTableForm from './PlanTableForm.jsx';
 import PlanSallesManager from './PlanSallesManager.jsx';
 
@@ -219,6 +221,9 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
 // ── Composant principal ────────────────────────────────────────────────────
 export default function PlanSalle({
   etablissementId, date, resas, canEdit = false, onOpenResa,
+  // Relecture des résas en échec côté VueJour : un seul bandeau en vue plan,
+  // qui relit les deux (les résas placées viennent de VueJour).
+  resasNonActualisees = false, onRelireResas,
 }) {
   const isMobile = useIsMobile();
   const plan     = usePlanSalle(etablissementId);
@@ -232,6 +237,7 @@ export default function PlanSalle({
   const [liens,   setLiens]   = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
+  const [nonActualise, setNonActualise] = useState(false);
   const [drag,    setDrag]    = useState(null);
   const [editTable,  setEditTable]  = useState(null); // table en cours de réglage
   const [gestionSalles, setGestionSalles] = useState(false);
@@ -254,19 +260,36 @@ export default function PlanSalle({
   );
   const resasRef = useRef(resas);
   resasRef.current = resas;
+  // Realtime, reprise après veille et changement de résas relancent `load` en
+  // rafale : voir useOrdreLectures pour l'ordre d'application des réponses.
+  const lectures = useOrdreLectures();
 
   const load = useCallback(async () => {
     if (!etablissementId) return;
-    setLoading(true);
-    setError(null);
+    // Clé = établissement + résas du jour : une lecture faite pour l'ancienne
+    // liste de résas ne s'affiche plus une fois la liste changée.
+    const lecture = lectures.lancer(`${etablissementId}|${resaIdsKey}`);
+    // Plan déjà à l'écran (relecture realtime ou de reprise) : il reste affiché
+    // pendant la lecture et, si elle échoue, n'est pas remplacé par l'erreur.
+    const silencieux = tablesRef.current !== null;
+    const echec = (e) => {
+      if (!lecture.signalerEchec()) return;
+      setLoading(false);
+      if (silencieux) setNonActualise(true);
+      else setError(e);
+    };
+    if (!silencieux) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const { data: s, error: eS } = await plan.listSalles();
-      if (eS) { setError(eS); return; }
+      if (eS) { echec(eS); return; }
       const { data: t, error: eT } = await plan.listTables();
-      if (eT) { setError(eT); return; }
+      if (eT) { echec(eT); return; }
       const ids = (resasRef.current || []).map((r) => r.id);
       const { data: l, error: eL } = await plan.listLiensPourResas(ids);
-      if (eL) { setError(eL); return; }
+      if (eL) { echec(eL); return; }
       // Adoption des tables orphelines (salle_id null : posées par un bundle
       // antérieur à la migration des salles, ou dont la salle a été
       // supprimée). Tant qu'elles restent orphelines, l'affichage les
@@ -277,24 +300,29 @@ export default function PlanSalle({
       // Réservé aux rôles qui écrivent : un cuisinier en lecture seule se
       // heurterait à la RLS. Pour lui, le repli d'affichage suffit.
       const orphelines = (t || []).filter((x) => !x.salle_id);
+      let tablesLues = t;
       if (canEdit && orphelines.length > 0 && (s || []).length > 0) {
         const cible = s[0].id;
         const adoptees = await Promise.all(orphelines.map((x) =>
           plan.updateTable(x.id, { salle_id: cible })));
         const parId = new Map();
         adoptees.forEach((r, i) => { if (r?.data) parId.set(orphelines[i].id, r.data); });
-        setTables((t || []).map((x) => parId.get(x.id) || x));
-      } else {
-        setTables(t);
+        tablesLues = (t || []).map((x) => parId.get(x.id) || x);
       }
+      if (!lecture.appliquer()) return;
+      setTables(tablesLues);
       setSalles(s);
       setLiens(l);
-    } finally {
       setLoading(false);
+      setError(null);
+      setNonActualise(false);
+    } catch (e) {
+      console.error('[PlanSalle] lecture du plan', e);
+      echec('Erreur technique. Réessaie ou contacte le support.');
     }
     // resaIdsKey pilote le rechargement : une réservation ajoutée ou annulée
     // change la clé, une simple re-création du tableau ne la change pas.
-  }, [etablissementId, plan, resaIdsKey, canEdit]);
+  }, [etablissementId, plan, resaIdsKey, canEdit, lectures]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -675,8 +703,14 @@ export default function PlanSalle({
     });
     if (e) { notify(e, 'error'); return; }
     setTables((prev) => [...(prev || []), data]);
-    setEditTable(data);
+    // Création lente : si l'on a ouvert les réglages d'une autre table en
+    // attendant, on ne les lui prend pas.
+    setEditTable((cur) => cur ?? data);
   }
+
+  // Nom d'une table pour les messages d'échec : le formulaire de réglage a pu
+  // être fermé pendant l'écriture, le toast doit dire de quelle table il parle.
+  const nomTable = (id) => (tablesRef.current || []).find((t) => t.id === id)?.nom ?? '';
 
   // Duplication : même gabarit, numéro suivant, décalée pour rester visible.
   async function dupliquerTable(modele) {
@@ -687,7 +721,7 @@ export default function PlanSalle({
       pos_x: decale(Number(modele.pos_x) || 0, PLAN_W - Number(modele.largeur || 90)),
       pos_y: decale(Number(modele.pos_y) || 0, PLAN_H - Number(modele.hauteur || 90)),
     });
-    if (e) { notify(e, 'error'); return false; }
+    if (e) { notify(`Duplication de la table ${modele.nom} impossible : ${e}`, 'error'); return false; }
     setTables((prev) => [...(prev || []), data]);
     notify(`Table ${data.nom} créée`, 'success');
     return true;
@@ -742,16 +776,19 @@ export default function PlanSalle({
 
   async function enregistrerTable(id, patch) {
     const { data, error: e } = await plan.updateTable(id, patch);
-    if (e) { notify(e, 'error'); return false; }
+    if (e) { notify(`Réglages de la table ${nomTable(id)} non enregistrés : ${e}`, 'error'); return false; }
     setTables((prev) => (prev || []).map((t) => (t.id === id ? data : t)));
     return true;
   }
 
   async function supprimerTable(id) {
     const { error: e } = await plan.deleteTable(id);
-    if (e) { notify(e, 'error'); return false; }
+    if (e) { notify(`Table ${nomTable(id)} non supprimée : ${e}`, 'error'); return false; }
     setTables((prev) => (prev || []).filter((t) => t.id !== id));
     setLiens((prev) => (prev || []).filter((l) => l.table_id !== id));
+    // Réglages rouverts entre-temps sur CETTE table (formulaire fermé pendant
+    // la suppression) : ils portent sur une table qui n'existe plus.
+    setEditTable((cur) => (cur?.id === id ? null : cur));
     return true;
   }
 
@@ -801,6 +838,11 @@ export default function PlanSalle({
 
   return (
     <div>
+      {/* ── Relecture en échec (plan ou résas) : l'affichage reste en place ── */}
+      {(nonActualise || resasNonActualisees) && (
+        <BandeauNonActualise onRetry={() => Promise.all([onRelireResas?.(), load()])} />
+      )}
+
       {/* ── Barre : service + bascule mode plan ── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
@@ -1039,9 +1081,13 @@ export default function PlanSalle({
         </div>
       )}
 
-      {/* ── Réglages d'une table ── */}
+      {/* ── Réglages d'une table ──
+          key : une instance par table ouverte. Sans elle, passer d'une table
+          à l'autre réutiliserait le formulaire (champs et écriture en cours
+          de la précédente). */}
       {editTable && (
         <PlanTableForm
+          key={editTable.id}
           table={editTable}
           salles={salles || []}
           onClose={() => setEditTable(null)}

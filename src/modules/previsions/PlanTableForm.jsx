@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { tailleParDefaut } from '../../hooks/usePlanSalle.js';
@@ -35,6 +35,16 @@ export default function PlanTableForm({
   const [loading, setLoading] = useState(false);
   const [confirmSuppr, setConfirmSuppr] = useState(false);
 
+  // Faux dès que le formulaire est fermé. Le bouton de pied (« Fermer » pendant
+  // une écriture) et × restent actifs : l'écriture va à son terme (le plan se
+  // met à jour), mais ne referme plus rien - ce serait le réglage d'une autre
+  // table, ouvert entre-temps.
+  const ouvertRef = useRef(true);
+  useEffect(() => {
+    ouvertRef.current = true;
+    return () => { ouvertRef.current = false; };
+  }, []);
+
   function tailleFinale() {
     // La taille suit la forme et le nombre de places, sauf si ni l'une ni
     // l'autre n'a bougé : on garde alors ce qui est en base.
@@ -69,7 +79,7 @@ export default function PlanTableForm({
         largeur: taille.largeur,
         hauteur: taille.hauteur,
       });
-      if (ok) onClose();
+      if (ok && ouvertRef.current) onClose();
     } finally {
       setLoading(false);
     }
@@ -85,7 +95,7 @@ export default function PlanTableForm({
         largeur: taille.largeur, hauteur: taille.hauteur,
         pos_x: Number(table.pos_x), pos_y: Number(table.pos_y),
       });
-      if (ok) onClose();
+      if (ok && ouvertRef.current) onClose();
     } finally {
       setLoading(false);
     }
@@ -95,7 +105,10 @@ export default function PlanTableForm({
     setLoading(true);
     try {
       const ok = await onDelete(table.id);
-      if (ok) { notify(`Table ${table.nom} supprimée`, 'info'); onClose(); }
+      if (ok) {
+        notify(`Table ${table.nom} supprimée`, 'info');
+        if (ouvertRef.current) onClose();
+      }
     } finally {
       setLoading(false);
     }
@@ -313,13 +326,16 @@ export default function PlanTableForm({
             }}>
               Dupliquer
             </button>
-            <button type="button" disabled={loading} onClick={onClose} style={{
+            {/* Jamais désactivé, même pendant une écriture (voir ouvertRef).
+                L'écriture partie ne s'arrête pas : le bouton dit alors
+                « Fermer », « Annuler » ferait croire les réglages abandonnés. */}
+            <button type="button" onClick={onClose} style={{
               padding: '10px 18px', borderRadius: 8,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
               background: 'var(--surface)', color: 'var(--text)',
               cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
             }}>
-              Annuler
+              {loading ? 'Fermer' : 'Annuler'}
             </button>
             <button type="button" disabled={loading} onClick={enregistrer} style={{
               padding: '10px 20px', borderRadius: 8,

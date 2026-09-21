@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Btn } from '../../components/ui/index.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { useReservations } from '../../hooks/useReservations.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
+import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
+import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import PlanSalle from './PlanSalle.jsx';
@@ -106,30 +109,75 @@ function ResaCard({ resa, isMobile, onClick }) {
 }
 
 // ── Composant principal ────────────────────────────────────
-export default function VueJour({ etablissementId, date, onBack, onResaUpdated, canEdit = true }) {
+export default function VueJour({ etablissementId, date, onBack, onResaUpdated, refreshKey, canEdit = true }) {
   const isMobile    = useIsMobile();
   const reservations = useReservations(etablissementId);
   const [resas,        setResas]        = useState(null);
-  const [loading,      setLoading]      = useState(false);
+  // Vrai d'entrée : sans ça le premier rendu, avant la première lecture,
+  // annonçait « Aucune réservation ce jour ».
+  const [loading,      setLoading]      = useState(Boolean(etablissementId && date));
   const [error,        setError]        = useState(null);
+  const [nonActualise, setNonActualise] = useState(false);
   const [selectedResa, setSelectedResa] = useState(null);
   const [editingResa,  setEditingResa]  = useState(null);
   const [vue,          setVue]          = useState('liste'); // 'liste' | 'plan'
 
+  // Reprise, retour d'une modification et bouton « Réessayer » peuvent lancer
+  // des lectures qui se croisent : voir useOrdreLectures.
+  const lectures   = useOrdreLectures();
+  // Jour (établissement + date) dont les réservations sont à l'écran.
+  const afficheRef = useRef(null);
+
   async function load() {
     if (!etablissementId || !date) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error: err } = await reservations.findByDate(date);
-      if (err) { setError(err); return; }
-      setResas((data || []).filter((r) => r.statut !== 'annule'));
-    } finally {
-      setLoading(false);
+    const cle     = `${etablissementId}|${date}`;
+    const lecture = lectures.lancer(cle);
+    // Ce jour est déjà affiché (reprise après veille, retour d'une
+    // modification) : relecture SILENCIEUSE. La liste et le plan de salle
+    // restent montés, sans « Chargement… », et sont remplacés à l'arrivée.
+    // Sinon on repart de zéro : les résas d'un autre jour sous ce titre
+    // mentiraient.
+    const silencieux = afficheRef.current === cle;
+    if (!silencieux) {
+      afficheRef.current = null;
+      setResas(null);
+      setLoading(true);
+      setError(null);
+      setNonActualise(false);
     }
+
+    let res;
+    try {
+      res = await reservations.findByDate(date);
+    } catch (e) {
+      console.error('[VueJour] lecture des réservations', e);
+      res = { data: null, error: 'Erreur technique. Réessaie ou contacte le support.' };
+    }
+
+    if (res.error) {
+      if (!lecture.signalerEchec()) return;
+      setLoading(false);
+      // Une liste valide n'est jamais écrasée par un échec : elle reste
+      // affichée, avec un bandeau qui dit qu'elle n'a pas pu être actualisée.
+      if (silencieux) setNonActualise(true);
+      else setError(res.error);
+      return;
+    }
+    if (!lecture.appliquer()) return;
+    afficheRef.current = cle;
+    setResas((res.data || []).filter((r) => r.statut !== 'annule'));
+    setLoading(false);
+    setError(null);
+    setNonActualise(false);
   }
 
-  useEffect(() => { load(); }, [date, etablissementId]); // load est défini dans le composant, stable par construction
+  // refreshKey : une résa créée depuis le bandeau du module (ou modifiée par
+  // une modale fermée avant la fin de son écriture) doit aussi apparaître ici.
+  useEffect(() => { load(); }, [date, etablissementId, refreshKey]); // load est défini dans le composant, stable par construction
+
+  // Réveil de la tablette, retour du réseau : resumeCoordinator décide du
+  // moment (session saine d'abord), la relecture est silencieuse.
+  useResumeRefresh(load);
 
   const actives       = resas || [];
   const totalCouverts = actives.reduce((s, r) => s + (r.nb_couverts || 0), 0);
@@ -181,6 +229,10 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
         </div>
       )}
 
+      {/* ── Relecture en échec : la liste affichée reste en place. En vue
+             plan, c'est PlanSalle qui porte l'unique bandeau. ── */}
+      {nonActualise && vue !== 'plan' && <BandeauNonActualise onRetry={load} />}
+
       {/* ── Loading ── */}
       {loading && (
         <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 13 }}>
@@ -196,6 +248,8 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
           resas={actives}
           canEdit={canEdit}
           onOpenResa={setSelectedResa}
+          resasNonActualisees={nonActualise}
+          onRelireResas={load}
         />
       )}
 
@@ -254,13 +308,25 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
         );
       })}
 
-      {/* ── Modal détail ── */}
+      {/* ── Modal détail ──
+          onResaUpdated / onSaved relisent sans refermer à l'aveugle : c'est la
+          modale qui se ferme elle-même, et seulement si elle est encore
+          ouverte. Fermée pendant l'écriture, son écriture aboutit quand même,
+          et refermer ici fermerait la modale ouverte entre-temps. Seule
+          exception : une fiche rouverte sur la résa que l'on vient d'annuler. */}
       {selectedResa && (
         <ReservationDetailModal
           resa={selectedResa}
           onClose={() => setSelectedResa(null)}
           onEdit={canEdit ? (resa) => { setSelectedResa(null); setEditingResa(resa); } : undefined}
-          onResaUpdated={() => { setSelectedResa(null); load(); onResaUpdated?.(); }}
+          onResaUpdated={(annuleeId) => {
+            if (annuleeId) {
+              setSelectedResa((cur) => (cur?.id === annuleeId ? null : cur));
+              setEditingResa((cur) => (cur?.id === annuleeId ? null : cur));
+            }
+            load();
+            onResaUpdated?.();
+          }}
           canEdit={canEdit}
         />
       )}
@@ -271,7 +337,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
           etablissementId={etablissementId}
           initialResa={editingResa}
           onClose={() => setEditingResa(null)}
-          onSaved={() => { setEditingResa(null); load(); onResaUpdated?.(); }}
+          onSaved={() => { load(); onResaUpdated?.(); }}
         />
       )}
     </div>

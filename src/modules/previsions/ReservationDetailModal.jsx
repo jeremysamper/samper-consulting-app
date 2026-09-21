@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 
@@ -28,16 +28,33 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
     );
   }
 
+  // Faux dès que la modale est fermée. On peut la fermer pendant l'annulation
+  // (le fetch est borné, mais 25 s au doigt c'est long) : l'écriture va quand
+  // même à son terme et son résultat s'affiche en toast, mais elle ne pilote
+  // plus l'interface - elle refermerait la modale ouverte entre-temps.
+  const ouverteRef = useRef(true);
+  useEffect(() => {
+    ouverteRef.current = true;
+    return () => { ouverteRef.current = false; };
+  }, []);
+
   async function handleDelete() {
     setDeleting(true);
-    const { error } = await reservations.delete(resa.id);
-    setDeleting(false);
-    if (error) {
-      notify(error, 'error');
-      return; // modal reste ouvert → l'utilisateur peut réessayer
+    let res;
+    try {
+      res = await reservations.delete(resa.id);
+    } finally {
+      setDeleting(false);
+    }
+    if (res.error) {
+      // Encore ouverte : on y reste pour laisser réessayer. Déjà fermée : le
+      // toast doit dire de quelle réservation il s'agit.
+      notify(ouverteRef.current ? res.error : `Annulation de la réservation ${resa.nom} impossible : ${res.error}`, 'error');
+      return;
     }
     notify(`Réservation ${resa.nom} annulée`, 'success');
-    onResaUpdated?.();
+    onResaUpdated?.(resa.id);
+    if (ouverteRef.current) onClose();
   }
 
   return (
@@ -180,17 +197,19 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
               {resa.heure_arrivee ? ` à ${(resa.heure_arrivee).slice(0, 5)}` : ''} ?
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              {/* Jamais désactivé. Une fois l'annulation partie, revenir en
+                  arrière ne l'arrêterait pas : le bouton devient « Fermer »
+                  et le toast donnera l'issue. */}
               <button
-                type="button" onClick={() => setShowConfirm(false)} disabled={deleting}
+                type="button" onClick={deleting ? onClose : () => setShowConfirm(false)}
                 style={{
                   padding: '8px 16px', borderRadius: 8,
                   border: '1px solid var(--border)', background: 'var(--surface)',
-                  color: 'var(--text)', cursor: deleting ? 'not-allowed' : 'pointer',
+                  color: 'var(--text)', cursor: 'pointer',
                   fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
-                  opacity: deleting ? 0.5 : 1,
                 }}
               >
-                Annuler
+                {deleting ? 'Fermer' : 'Annuler'}
               </button>
               <button
                 type="button" onClick={handleDelete} disabled={deleting}
