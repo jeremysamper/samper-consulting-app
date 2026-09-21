@@ -4,11 +4,13 @@
 // Bug d'origine : iPad, téléphone ou PC mis en veille, écran rallumé sur l'app
 // → chargement infini, obligé de tuer l'app. Deux faits se combinaient :
 //
-//   1. supabase-js ne pose AUCUN timeout sur ses fetch. Un fetch parti sur un
-//      réseau pas encore remonté (socket zombie après veille) peut ne jamais se
-//      régler. Quand c'est le refresh du JWT, auth-js garde son verrou interne
-//      pour toujours et CHAQUE supabase.from() attend derrière lui : plus rien
-//      ne charge jusqu'au redémarrage de l'app.
+//   1. supabase-js ne pose AUCUN timeout sur ses fetch et n'abandonne jamais un
+//      fetch en vol. Un fetch parti sur un réseau pas encore remonté (socket
+//      zombie après veille) peut ne jamais se régler. Quand c'est le refresh du
+//      JWT, CHAQUE supabase.from() attend derrière lui (sous le verrou interne
+//      d'auth-js jusqu'en 2.106, en partageant ce refresh depuis 2.107 : même
+//      effet, vérifié en 2.116) : plus rien ne charge jusqu'au redémarrage de
+//      l'app.
 //   2. Safari iOS 18 : un fetch lancé dans le handler `visibilitychange`, à
 //      l'instant où la page redevient visible, n'échoue qu'après 20 à 40 s
 //      (« Load failed »). Le même fetch lancé quelques centaines de ms plus
@@ -35,8 +37,9 @@ const nativeFetch = (...args) => globalThis.fetch(...args);
 // envois storage est dimensionné sur la taille du fichier (voir uploadBudgetMs).
 //   refresh   : très court - auth-js réessaie tout seul (backoff, 30 s max) et
 //               garde la session sur une erreur réseau. Un refresh pendu est LE
-//               cas qui figeait toute l'app : il tient le verrou d'auth, donc
-//               chaque seconde de ce budget est une seconde de gel général.
+//               cas qui figeait toute l'app : toutes les requêtes attendent le
+//               refresh en cours, donc chaque seconde de ce budget est une
+//               seconde de gel général.
 //   auth      : le reste (connexion, mot de passe) n'est pas réessayé d'office.
 //   rest GET  : doit rester > networkTimeoutSeconds du service worker (6-10 s)
 //               pour que le repli sur le cache hors-ligne ait le temps de répondre.
@@ -258,7 +261,7 @@ export async function probeNetwork(timeoutMs = 5000) {
  * (retirée avant l'appel natif) pour les appels dont on connaît la durée.
  *
  * Nom de l'erreur de timeout : postgrest-js réessaie seul les GET sur toute
- * erreur réseau SAUF `AbortError` (3 essais, 1/2/4 s). Le premier essai rend
+ * erreur réseau SAUF `AbortError` (3 réessais, après 1/2/4 s). Le premier essai rend
  * donc `TimeoutError` (→ un réessai transparent pour le module), et le réessai
  * - reconnaissable à son en-tête X-Retry-Count - rend `AbortError` pour
  * arrêter là : pire cas d'une lecture ≈ 2 budgets, pas 4.

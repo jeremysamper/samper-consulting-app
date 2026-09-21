@@ -6,9 +6,13 @@ import { getBrowserWindow } from '../legacy/legacyApi.js';
 // une fois le mot de passe changé (ou l'écran quitté), un rafraîchissement ne
 // doit pas rouvrir l'écran de réinitialisation.
 //
-// Volontairement JAMAIS appelé au montage : supabase-js lit `#access_token=…`
-// (flow implicite) et `?code=…` (flow PKCE) de façon asynchrone au démarrage.
-// Nettoyer trop tôt lui retirerait le jeton sous les pieds.
+// Volontairement JAMAIS appelé au montage : `?reset=true` doit survivre à un
+// rechargement tant que le mot de passe n'est pas choisi, les marqueurs n'étant
+// lus qu'au chargement du module (getLandingAuthFlags). Jusqu'en supabase-js
+// 2.106, auth-js ne lisait en plus `#access_token=…` (flow implicite) et
+// `?code=…` (flow PKCE) qu'après avoir pris son verrou, donc après le montage :
+// nettoyer à ce moment-là lui retirait le jeton sous les pieds. Depuis 2.107,
+// il lit l'URL dès createClient.
 function cleanAuthParamsFromUrl() {
   const browserWindow = getBrowserWindow();
   if (!browserWindow?.location || !browserWindow.history?.replaceState) return;

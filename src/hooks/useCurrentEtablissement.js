@@ -78,9 +78,9 @@ export function useCurrentEtablissement(user) {
         // rafraîchi, démarrage sur le dernier profil connu), la requête est partie
         // avec la clé anonyme et c'est la RLS qui a rendu du vide - à ne pas
         // prendre pour « aucun établissement ». La session n'est lue QUE dans ce
-        // cas : hors-ligne avec un JWT expiré, chaque getSession() coûte un cycle
-        // de refresh complet, qu'on ne paie pas quand le cache du service worker
-        // a déjà rendu la liste (l'app doit démarrer dessus).
+        // cas : hors-ligne avec un JWT expiré, un getSession() peut coûter un
+        // cycle de refresh complet (~30 s), qu'on ne paie pas quand le cache du
+        // service worker a déjà rendu la liste (l'app doit démarrer dessus).
         if (!rows.length && !hasLoadedRef.current) {
           const session = await authService.getSession().catch(() => null);
           if (!mounted) return;

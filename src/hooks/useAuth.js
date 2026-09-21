@@ -102,7 +102,8 @@ export function useAuth() {
     // session est en localStorage, on démarre sur le dernier profil connu de ce
     // user plutôt que d'afficher le login à quelqu'un qui EST connecté (il y
     // retapait son mot de passe, et la connexion pendait à son tour). Dès que
-    // le réseau revient, le refresh aboutit et TOKEN_REFRESHED pose la session.
+    // le réseau revient, le refresh aboutit (relancé au besoin par
+    // src/services/resumeCoordinator.js) et TOKEN_REFRESHED pose la session.
     const bootFromSnapshot = () => {
       const persistedUser = readPersistedAuthUser();
       const snapshot = persistedUser ? readProfileSnapshot(persistedUser.id) : null;
@@ -124,8 +125,9 @@ export function useAuth() {
     // (setTimeout 0), jamais attendu depuis le callback d'auth - voir plus bas.
     //
     // L'écran de démarrage est libéré par le chargement le plus RÉCENT, quel que
-    // soit l'événement qui l'a lancé : au boot auth-js émet SIGNED_IN et
-    // INITIAL_SESSION, dans un ordre qui dépend du moment. Si seul le chargement
+    // soit l'événement qui l'a lancé : au boot auth-js peut émettre SIGNED_IN ou
+    // TOKEN_REFRESHED en plus d'INITIAL_SESSION, selon le moment où cet écouteur
+    // s'inscrit et l'état du JWT stocké. Si seul le chargement
     // « initial » libérait l'écran, un événement arrivé juste après lui prendrait
     // son numéro et l'écran de démarrage ne partirait plus jamais.
     const loadAndApplyProfile = async (nextSession) => {
@@ -152,14 +154,17 @@ export function useAuth() {
     let unsubscribe = () => {};
     try {
       // ─── RÈGLE : aucun appel Supabase n'est ATTENDU dans ce callback ───
-      // auth-js appelle ses abonnés en TENANT son verrou interne, et attend leur
-      // retour. Or tout supabase.from() commence par getSession(), qui attend ce
-      // même verrou : un `await getProfile()` ici s'attendait donc lui-même.
-      // Comme auth-js ré-émet SIGNED_IN à CHAQUE retour au premier plan, chaque
-      // rallumage d'écran gelait toutes les requêtes de l'app pendant 15 s (le
-      // timeout de loadProfileSafe). Le callback reste donc synchrone et tout
-      // chargement part en différé, une fois le verrou relâché - c'est le
-      // contournement documenté par Supabase.
+      // auth-js attend le retour de ses abonnés. Il notifie TOKEN_REFRESHED
+      // AVANT de rendre la main aux getSession() qui attendent ce refresh : un
+      // `await` ici retient donc toutes les requêtes parties pendant ce refresh
+      // (au réveil, toutes), et un
+      // refreshSession() lancé depuis TOKEN_REFRESHED s'attend lui-même
+      // (interblocage reconnu par Supabase). Jusqu'en supabase-js 2.106, c'était
+      // pire : les abonnés étaient appelés sous le verrou interne d'auth-js, et
+      // comme SIGNED_IN est ré-émis à CHAQUE retour au premier plan, un
+      // `await getProfile()` ici gelait l'app 15 s à chaque rallumage d'écran.
+      // Le callback reste donc synchrone et tout chargement part en différé
+      // (setTimeout 0) - le contournement documenté par Supabase.
       unsubscribe = authService.onAuthChange((event, nextSession) => {
         if (!mounted) return;
 
@@ -168,10 +173,13 @@ export function useAuth() {
 
         // ─── INITIAL_SESSION : premier état auth déterminé - débloque le chargement ───
         //
-        // Supabase JS v2 émet INITIAL_SESSION dès qu'un écouteur est enregistré
-        // (précédé d'un SIGNED_IN quand une session est restaurée). Il représente
-        // l'état initial lu en localStorage (session valide, token expiré mais
-        // rafraîchi, ou absence de session).
+        // Supabase JS v2 émet INITIAL_SESSION à chaque écouteur, une fois son
+        // initialisation terminée : quelques ms au boot normal, jusqu'à ~30 s si
+        // le refresh du JWT échoue faute de réseau. Il est précédé d'un SIGNED_IN
+        // ou d'un TOKEN_REFRESHED quand cette initialisation, qui relit ou
+        // rafraîchit la session restaurée, se termine après l'inscription de
+        // l'écouteur. Il représente l'état initial lu en localStorage (session
+        // valide, token expiré mais rafraîchi, ou absence de session).
         //
         // FIX flash login : loading ne passe à false qu'avec un profil posé, ou
         // une fois l'absence de session établie. Le Login n'est donc jamais
