@@ -11,6 +11,7 @@
 // La synchro manuelle passe donc par pos-backfill.
 // ================================================================
 import { supabase, getSupabaseConfig } from '../../../services/supabase.js';
+import { resilientFetch } from '../../../services/netResilience.js';
 
 export const POS_OAUTH_FN       = 'pos-oauth';
 export const POS_BACKFILL_FN    = 'pos-backfill';
@@ -42,7 +43,11 @@ export async function callPosEdge(fnName, action, body = {}) {
   if (!session) throw new Error('Non authentifie');
 
   const { url } = getSupabaseConfig();
-  const res = await fetch(`${url}/functions/v1/${fnName}`, {
+  // fetch borné : le poll du KDS tourne toutes les 15 s, un appel pendu au
+  // réveil de la tablette du passe empilait des promesses sans jamais échouer.
+  // Seul l'import d'historique (pos-backfill) est long par nature.
+  const res = await resilientFetch(`${url}/functions/v1/${fnName}`, {
+    timeoutMs: fnName === POS_BACKFILL_FN ? 150000 : 25000,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

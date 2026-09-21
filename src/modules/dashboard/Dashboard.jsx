@@ -7,6 +7,7 @@ import { Btn, Card, KpiCard, SectionHeader } from '../../components/ui/index.jsx
 import { getDemoData } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
@@ -33,6 +34,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
   const [messageDraft, setMessageDraft] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [pointageError, setPointageError] = React.useState('');
+  const reloadAllRef = React.useRef(null);
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -50,44 +52,57 @@ const Dashboard = ({ user, etablissement, setPage }) => {
     let mounted = true;
     const unsubs = [];
 
-    (async () => {
+    // Chargement complet, rejoué tel quel au réveil de l'appareil. Avant, seul
+    // le montage chargeait tout : après une veille (ou un premier chargement
+    // parti sur un réseau pas encore remonté), inventaires / HACCP / SOP
+    // restaient figés ou vides jusqu'au redémarrage de l'app.
+    // allSettled + strict : une lecture en échec ne touche pas à son état (une
+    // liste valide n'est jamais écrasée par du vide) et ne bloque pas les autres.
+    const loadAll = async () => {
       try {
-        const [shiftRows, pertesRows, invRows, msgRow, haccpControlsRows, haccpRelevesRows, sopRows, sopExecutionRows] = await Promise.all([
-          legacySB.db.listShifts(etabId),
-          legacySB.db.listPertes(etabId),
-          legacySB.db.listInventaires(etabId),
-          legacySB.db.getConsultantMessage(etabId),
-          legacySB.db.listHaccpControls?.(etabId) || Promise.resolve(readLegacyStorage('sc_haccp_controls', [])),
-          legacySB.db.listHaccpReleves?.(etabId) || Promise.resolve(readLegacyStorage('sc_haccp_releves', [])),
-          legacySB.db.listSops?.(etabId) || Promise.resolve(readLegacyStorage('sc_sops', [])),
-          legacySB.db.listSopExecutions?.(etabId) || Promise.resolve(readLegacyStorage('sc_sop_executions', [])),
+        const results = await Promise.allSettled([
+          legacySB.db.listShifts(etabId, { strict: true }),
+          legacySB.db.listPertes(etabId, { strict: true }),
+          legacySB.db.listInventaires(etabId, { strict: true }),
+          legacySB.db.getConsultantMessage(etabId, { strict: true }),
+          legacySB.db.listHaccpControls?.(etabId, { strict: true }) || Promise.resolve(readLegacyStorage('sc_haccp_controls', [])),
+          legacySB.db.listHaccpReleves?.(etabId, { strict: true }) || Promise.resolve(readLegacyStorage('sc_haccp_releves', [])),
+          legacySB.db.listSops?.(etabId, { strict: true }) || Promise.resolve(readLegacyStorage('sc_sops', [])),
+          legacySB.db.listSopExecutions?.(etabId, { strict: true }) || Promise.resolve(readLegacyStorage('sc_sop_executions', [])),
         ]);
         if (!mounted) return;
-        setShifts((shiftRows || []).map(r => legacySB.db.mapShiftFromDB(r)));
-        setPertes(pertesRows || []);
-        setInventaires(invRows || []);
-        setHaccpControls(haccpControlsRows || []);
-        setHaccpReleves(haccpRelevesRows || []);
-        setSops(sopRows || []);
-        setSopExecutions(sopExecutionRows || []);
-        // Toujours setter le message, même null : sinon l'ancien message
-        // reste affiché quand le nouvel établissement n'en a pas.
-        const nextMsg = msgRow || { message: '', updatedBy: null, updatedAt: null };
-        setMessage(nextMsg);
-        if (!editingMessageRef.current) setMessageDraft(nextMsg.message);
+        const [shiftRes, pertesRes, invRes, msgRes, controlsRes, relevesRes, sopRes, sopExecRes] = results;
+        const ok = (res) => res.status === 'fulfilled';
+        if (ok(shiftRes)) setShifts((shiftRes.value || []).map(r => legacySB.db.mapShiftFromDB(r)));
+        if (ok(pertesRes)) setPertes(pertesRes.value || []);
+        if (ok(invRes)) setInventaires(invRes.value || []);
+        if (ok(controlsRes)) setHaccpControls(controlsRes.value || []);
+        if (ok(relevesRes)) setHaccpReleves(relevesRes.value || []);
+        if (ok(sopRes)) setSops(sopRes.value || []);
+        if (ok(sopExecRes)) setSopExecutions(sopExecRes.value || []);
+        if (ok(msgRes)) {
+          // Toujours setter le message, même null : sinon l'ancien message
+          // reste affiché quand le nouvel établissement n'en a pas.
+          const nextMsg = msgRes.value || { message: '', updatedBy: null, updatedAt: null };
+          setMessage(nextMsg);
+          if (!editingMessageRef.current) setMessageDraft(nextMsg.message);
+        }
+        results.forEach((res) => { if (!ok(res)) console.error('[Dashboard load]', res.reason); });
       } catch (err) { console.error('[Dashboard load]', err); }
       finally { if (mounted) setLoading(false); }
-    })();
+    };
+    reloadAllRef.current = loadAll;
+    loadAll();
 
     unsubs.push(legacySB.realtime.subscribeReload('shifts', async () => {
-      try { const rows = await legacySB.db.listShifts(etabId); if (mounted) setShifts((rows || []).map(r => legacySB.db.mapShiftFromDB(r))); } catch (e) {}
+      try { const rows = await legacySB.db.listShifts(etabId, { strict: true }); if (mounted) setShifts((rows || []).map(r => legacySB.db.mapShiftFromDB(r))); } catch (e) {}
     }));
     unsubs.push(legacySB.realtime.subscribeReload('pertes', async () => {
-      try { const rows = await legacySB.db.listPertes(etabId); if (mounted) setPertes(rows || []); } catch (e) {}
+      try { const rows = await legacySB.db.listPertes(etabId, { strict: true }); if (mounted) setPertes(rows || []); } catch (e) {}
     }));
     unsubs.push(legacySB.realtime.subscribeReload('consultant_messages', async () => {
       try {
-        const m = await legacySB.db.getConsultantMessage(etabId);
+        const m = await legacySB.db.getConsultantMessage(etabId, { strict: true });
         if (mounted) {
           const next = m || { message: '', updatedBy: null, updatedAt: null };
           setMessage(next);
@@ -96,8 +111,10 @@ const Dashboard = ({ user, etablissement, setPage }) => {
       } catch (e) {}
     }));
 
-    return () => { mounted = false; unsubs.forEach(u => u && u()); };
+    return () => { mounted = false; reloadAllRef.current = null; unsubs.forEach(u => u && u()); };
   }, [etabId]);
+
+  useResumeRefresh(() => { reloadAllRef.current && reloadAllRef.current(); });
 
   const todayShifts = shifts.filter(s => s.date === today);
   const myTodayShifts = todayShifts.filter(s => s.userId === user.id);

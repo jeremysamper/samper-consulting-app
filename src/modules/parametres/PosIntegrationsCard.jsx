@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, getSupabaseConfig } from '../../services/supabase.js';
+import { resilientFetch } from '../../services/netResilience.js';
 import { notify } from '../../components/toast/index.js';
 import LightspeedSetupGuide from './LightspeedSetupGuide.jsx';
 
@@ -44,7 +45,7 @@ async function callEdgeFn(fnName, action, body) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Non authentifié');
   const { url: supabaseUrl } = getSupabaseConfig();
-  const res = await fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
+  const res = await resilientFetch(`${supabaseUrl}/functions/v1/${fnName}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -147,7 +148,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
       const { data: { session } } = await supabase.auth.getSession();
       const { url: supabaseUrl } = getSupabaseConfig();
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/${POS_BACKFILL_FN}`, {
+      const res = await resilientFetch(`${supabaseUrl}/functions/v1/${POS_BACKFILL_FN}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -344,7 +345,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setSecrets(null); return; }
       const { url: supabaseUrl, anonKey } = getSupabaseConfig();
-      fetch(`${supabaseUrl}/functions/v1/${POS_OAUTH_FN}?action=ping`, {
+      resilientFetch(`${supabaseUrl}/functions/v1/${POS_OAUTH_FN}?action=ping`, {
         headers: { Authorization: `Bearer ${session.access_token}`, apikey: anonKey },
       })
         .then(r => r.json())

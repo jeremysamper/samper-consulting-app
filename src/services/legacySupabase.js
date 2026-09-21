@@ -1,5 +1,7 @@
 import { setLegacySB } from '../legacy/legacyApi.js';
 import { bootDedupeRead, buildPasswordResetRedirectUrl, getSupabaseConfig, invalidateBootRead, supabase } from './supabase.js';
+import { resilientFetch } from './netResilience.js';
+import { subscribeResume } from './resumeCoordinator.js';
 import { readText, writeText } from '../utils/storage.js';
 
 // ═══════════════════════════════════════════════════════════════
@@ -27,38 +29,15 @@ function joursValides(value, defaut) {
 // derniers modules visités montés, l'écran reste figé jusqu'au rechargement de
 // l'app. C'était la cause du bug « Aucune carte » de Cartes & Recettes.
 //
-// On rejoue donc les refetch enregistrés par subscribeReload quand l'onglet
-// redevient visible, à la restauration bfcache (iOS) et au retour du réseau.
-// C'est sûr par construction : le contrat de subscribeReload est justement que
-// reloadFn soit un refetch complet et idempotent.
+// On rejoue donc les refetch enregistrés par subscribeReload quand l'appareil
+// revient. C'est sûr par construction : le contrat de subscribeReload est
+// justement que reloadFn soit un refetch complet et idempotent.
 //
-// Les écouteurs sont posés UNE fois pour toute l'app (pas un jeu par
-// abonnement) et le déclenchement est limité à un par 10 s : au réveil les
-// trois événements arrivent souvent groupés.
-const _resumeHandlers = new Set();
-const RESUME_MIN_INTERVAL_MS = 10000;
-let _lastResumeAt = 0;
-
-function _fireResume() {
-  // Garde-fou : hors-ligne, on ne rejoue RIEN. Les lectures du bridge rendent []
-  // en cas d'échec, donc un refetch sans réseau remplacerait des données encore
-  // affichées par du vide - exactement ce qu'on cherche à éviter. Le retour du
-  // réseau déclenche l'event 'online', qui rejouera les refetch à ce moment-là.
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-  const now = Date.now();
-  if (now - _lastResumeAt < RESUME_MIN_INTERVAL_MS) return;
-  _lastResumeAt = now;
-  // Copie : un handler peut se désabonner pendant la boucle (module démonté).
-  [..._resumeHandlers].forEach((fn) => {
-    try { fn(); } catch (err) { console.warn('[resume reload]', err); }
-  });
-}
-
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) _fireResume(); });
-  window.addEventListener('pageshow', (e) => { if (e.persisted) _fireResume(); });
-  window.addEventListener('online', _fireResume);
-}
+// QUAND rejouer est décidé par src/services/resumeCoordinator.js, commun avec
+// le hook useResumeRefresh : réveil, retour en ligne, réseau revenu après un
+// échec - et seulement une fois la session saine. Hors-ligne il ne rejoue RIEN :
+// les lectures du bridge rendent [] en cas d'échec, un refetch sans réseau
+// remplacerait des données encore affichées par du vide.
 
 export function installLegacySupabase() {
   const client = supabase;
@@ -1025,7 +1004,7 @@ export function installLegacySupabase() {
       form.append('etabId', etabId || '');
       form.append('type', type || 'plat');
       form.append('id', String(id ?? ''));
-      const res = await fetch(`${supabaseUrl}/functions/v1/upload-recette-photo`, {
+      const res = await resilientFetch(`${supabaseUrl}/functions/v1/upload-recette-photo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, apikey: anonKey },
         body: form,
@@ -1101,7 +1080,7 @@ export function installLegacySupabase() {
     // ═══════════════════════════════════════════════════════════════
     // SOPs (Standard Operating Procedures) + checklists
     // ═══════════════════════════════════════════════════════════════
-    async listSops(etabId) {
+    async listSops(etabId, { strict = false } = {}) {
       const { data, error } = await client
         .from('sops')
         .select('*')
@@ -1109,7 +1088,7 @@ export function installLegacySupabase() {
         .not('is_template', 'is', true) // exclut les SOP placées en bibliothèque de templates
         .order('ordre', { ascending: true })
         .order('titre', { ascending: true });
-      if (error) { console.error('[listSops]', error); return []; }
+      if (error) return _readFailed('[listSops]', error, strict);
       return (data || []).map(this.mapSopFromDB);
     },
 
@@ -1167,7 +1146,7 @@ export function installLegacySupabase() {
       q = q.order('heure_debut', { ascending: false });
       if (opts.limit) q = q.limit(opts.limit);
       const { data, error } = await q;
-      if (error) { console.error('[listSopExecutions]', error); return []; }
+      if (error) return _readFailed('[listSopExecutions]', error, opts.strict);
       return (data || []).map(this.mapSopExecFromDB);
     },
 
@@ -1557,11 +1536,11 @@ export function installLegacySupabase() {
     },
 
     // ─── PERTES ───
-    async listPertes(etabId) {
+    async listPertes(etabId, { strict = false } = {}) {
       let q = client.from('pertes').select('*').order('date', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listPertes]', error); return []; }
+      if (error) return _readFailed('[listPertes]', error, strict);
       return (data || []).map(this.mapPerteFromDB);
     },
 
@@ -1783,9 +1762,9 @@ export function installLegacySupabase() {
     },
 
     // ─── CONSULTANT MESSAGES (1 message par établissement) ───
-    async getConsultantMessage(etabId) {
+    async getConsultantMessage(etabId, { strict = false } = {}) {
       const { data, error } = await client.from('consultant_messages').select('*').eq('etablissement_id', etabId).maybeSingle();
-      if (error) { console.error('[getConsultantMessage]', error); return null; }
+      if (error) { console.error('[getConsultantMessage]', error); if (strict) throw error; return null; }
       if (!data) return null;
       return {
         etablissementId: data.etablissement_id,
@@ -1997,11 +1976,11 @@ export function installLegacySupabase() {
     },
 
     // ─── HACCP - Relevés ───
-    async listHaccpReleves(etabId) {
+    async listHaccpReleves(etabId, { strict = false } = {}) {
       let q = client.from('haccp_releves').select('*').order('date', { ascending: false }).order('heure', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listHaccpReleves]', error); return []; }
+      if (error) return _readFailed('[listHaccpReleves]', error, strict);
       return (data || []).map(this.mapHaccpReleveFromDB);
     },
     async upsertHaccpReleve(releve) {
@@ -2040,11 +2019,11 @@ export function installLegacySupabase() {
     },
 
     // ─── HACCP - Contrôles ───
-    async listHaccpControls(etabId) {
+    async listHaccpControls(etabId, { strict = false } = {}) {
       let q = client.from('haccp_controls').select('*').order('date', { ascending: false }).order('heure', { ascending: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listHaccpControls]', error); return []; }
+      if (error) return _readFailed('[listHaccpControls]', error, strict);
       return (data || []).map(this.mapHaccpControlFromDB);
     },
     async upsertHaccpControl(ctrl) {
@@ -2113,7 +2092,7 @@ export function installLegacySupabase() {
         const { url: supabaseUrl, anonKey } = getSupabaseConfig();
         let res = null;
         try {
-          res = await fetch(`${supabaseUrl}/functions/v1/upload-haccp-photo`, {
+          res = await resilientFetch(`${supabaseUrl}/functions/v1/upload-haccp-photo`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${session.access_token}`,
@@ -2162,7 +2141,7 @@ export function installLegacySupabase() {
       const form = new FormData();
       form.append('file', file);
       form.append('etabId', etabId || '');
-      const res = await fetch(`${supabaseUrl}/functions/v1/upload-haccp-photo`, {
+      const res = await resilientFetch(`${supabaseUrl}/functions/v1/upload-haccp-photo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, apikey: anonKey },
         body: form,
@@ -2708,7 +2687,7 @@ export function installLegacySupabase() {
     // imperceptible à l'usage tout en divisant la charge sous forte activité.
     //
     // Le même reloadFn est aussi rejoué au réveil de l'appareil (cf.
-    // _resumeHandlers en haut de fichier) : pendant la veille le canal realtime
+    // subscribeResume en haut de fichier) : pendant la veille le canal realtime
     // est mort, aucun event n'arrive, et sans ça le module resterait figé sur
     // les données d'avant la veille - ou vide si sa dernière lecture a échoué.
     subscribeReload(tables, reloadFn, { debounceMs = 500 } = {}) {
@@ -2725,10 +2704,10 @@ export function installLegacySupabase() {
         timer = setTimeout(() => { timer = null; if (!cancelled) reloadFn(); }, debounceMs);
       };
       const unsubs = list.map(t => this.subscribe(t, schedule));
-      _resumeHandlers.add(schedule);
+      const offResume = subscribeResume(schedule);
       return () => {
         cancelled = true;
-        _resumeHandlers.delete(schedule);
+        offResume();
         if (timer) { clearTimeout(timer); timer = null; }
         unsubs.forEach(u => u && u());
       };

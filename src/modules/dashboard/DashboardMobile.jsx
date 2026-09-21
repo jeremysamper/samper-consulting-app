@@ -8,6 +8,7 @@ import { Btn, Card, SectionHeader } from '../../components/ui/index.jsx';
 import { getDemoData } from '../../data/demoData.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
@@ -30,6 +31,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
   const [messageDraft, setMessageDraft] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [pointageError, setPointageError] = React.useState('');
+  const reloadAllRef = React.useRef(null);
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -41,35 +43,45 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
     }
     let mounted = true;
     const unsubs = [];
-    (async () => {
+    // Chargement complet, rejoué tel quel au réveil de l'appareil (cf. Dashboard).
+    // allSettled + strict : une lecture en échec ne touche pas à son état (une
+    // liste valide n'est jamais écrasée par du vide) et ne bloque pas les autres.
+    const loadAll = async () => {
       try {
-        const [shiftRows, pertesRows, invRows, msgRow] = await Promise.all([
-          legacySB.db.listShifts(etabId),
-          legacySB.db.listPertes(etabId),
-          legacySB.db.listInventaires(etabId),
-          legacySB.db.getConsultantMessage(etabId),
+        const results = await Promise.allSettled([
+          legacySB.db.listShifts(etabId, { strict: true }),
+          legacySB.db.listPertes(etabId, { strict: true }),
+          legacySB.db.listInventaires(etabId, { strict: true }),
+          legacySB.db.getConsultantMessage(etabId, { strict: true }),
         ]);
         if (!mounted) return;
-        setShifts((shiftRows || []).map(r => legacySB.db.mapShiftFromDB(r)));
-        setPertes(pertesRows || []);
-        setInventaires(invRows || []);
-        // Toujours setter le message, même null : sinon l'ancien message
-        // reste affiché quand le nouvel établissement n'en a pas.
-        const nextMsg = msgRow || { message: '', updatedBy: null, updatedAt: null };
-        setMessage(nextMsg);
-        if (!editingMessageRef.current) setMessageDraft(nextMsg.message);
+        const [shiftRes, pertesRes, invRes, msgRes] = results;
+        const ok = (res) => res.status === 'fulfilled';
+        if (ok(shiftRes)) setShifts((shiftRes.value || []).map(r => legacySB.db.mapShiftFromDB(r)));
+        if (ok(pertesRes)) setPertes(pertesRes.value || []);
+        if (ok(invRes)) setInventaires(invRes.value || []);
+        if (ok(msgRes)) {
+          // Toujours setter le message, même null : sinon l'ancien message
+          // reste affiché quand le nouvel établissement n'en a pas.
+          const nextMsg = msgRes.value || { message: '', updatedBy: null, updatedAt: null };
+          setMessage(nextMsg);
+          if (!editingMessageRef.current) setMessageDraft(nextMsg.message);
+        }
+        results.forEach((res) => { if (!ok(res)) console.error('[DashboardMobile]', res.reason); });
       } catch (err) { console.error('[DashboardMobile]', err); }
       finally { if (mounted) setLoading(false); }
-    })();
+    };
+    reloadAllRef.current = loadAll;
+    loadAll();
     unsubs.push(legacySB.realtime.subscribeReload('shifts', async () => {
-      try { const rows = await legacySB.db.listShifts(etabId); if (mounted) setShifts((rows || []).map(r => legacySB.db.mapShiftFromDB(r))); } catch (e) {}
+      try { const rows = await legacySB.db.listShifts(etabId, { strict: true }); if (mounted) setShifts((rows || []).map(r => legacySB.db.mapShiftFromDB(r))); } catch (e) {}
     }));
     unsubs.push(legacySB.realtime.subscribeReload('pertes', async () => {
-      try { const rows = await legacySB.db.listPertes(etabId); if (mounted) setPertes(rows || []); } catch (e) {}
+      try { const rows = await legacySB.db.listPertes(etabId, { strict: true }); if (mounted) setPertes(rows || []); } catch (e) {}
     }));
     unsubs.push(legacySB.realtime.subscribeReload('consultant_messages', async () => {
       try {
-        const m = await legacySB.db.getConsultantMessage(etabId);
+        const m = await legacySB.db.getConsultantMessage(etabId, { strict: true });
         if (mounted) {
           const next = m || { message: '', updatedBy: null, updatedAt: null };
           setMessage(next);
@@ -77,8 +89,10 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
         }
       } catch (e) {}
     }));
-    return () => { mounted = false; unsubs.forEach(u => u && u()); };
+    return () => { mounted = false; reloadAllRef.current = null; unsubs.forEach(u => u && u()); };
   }, [etabId]);
+
+  useResumeRefresh(() => { reloadAllRef.current && reloadAllRef.current(); });
 
   const todayShifts = shifts.filter(s => s.date === today);
   const myTodayShifts = todayShifts.filter(s => s.userId === user.id);

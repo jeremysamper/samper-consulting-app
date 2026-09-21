@@ -392,6 +392,10 @@ export const UI_GLOSSARY = {
   'Copié': 'Copied',
   'Hors ligne': 'Offline',
   'En ligne': 'Online',
+  // État dégradé au réveil : le réseau est justement incertain, donc pas d'IA.
+  // Clés SANS ponctuation finale (splitAffixes la retire avant la recherche).
+  'Reconnexion en cours': 'Reconnecting',
+  'Connexion bloquée. Fermez puis rouvrez l\'application': 'Connection blocked. Close and reopen the app',
 
   // ── Groupes ──
   'Groupes': 'Groups',

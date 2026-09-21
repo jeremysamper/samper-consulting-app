@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getBrowserWindow, readLegacyGlobal } from '../legacy/legacyApi.js';
+import { configureNetProbe, resilientFetch } from './netResilience.js';
 
 function readLegacyConfig() {
   return readLegacyGlobal('SUPABASE_CONFIG') || {};
@@ -107,12 +108,38 @@ export function buildPasswordResetRedirectUrl() {
   return `${browserWindow.location.origin}${resetPath}?reset=true`;
 }
 
+configureNetProbe({ url: config.url, apikey: config.anonKey });
+
+const AUTH_STORAGE_KEY = 'samper-auth';
+
+/**
+ * Utilisateur de la session PERSISTÉE par supabase-js, lu sans passer par le
+ * client (donc sans réseau ni verrou). auth-js n'efface cette entrée que sur
+ * une vraie fin de session (déconnexion, refresh token révoqué) : tant qu'elle
+ * existe, un getSession() qui rend null veut dire « refresh impossible pour
+ * l'instant » (réseau), pas « déconnecté ».
+ */
+export function readPersistedAuthUser() {
+  try {
+    const raw = getBrowserWindow()?.localStorage?.getItem(AUTH_STORAGE_KEY);
+    const user = raw ? JSON.parse(raw)?.user : null;
+    return user?.id ? user : null;
+  } catch {
+    return null;
+  }
+}
+
 export const supabase = createClient(config.url, config.anonKey, {
+  // fetch borné + porte de grâce au réveil, pour auth, PostgREST, storage et
+  // functions d'un coup. Sans lui, un refresh de JWT parti sur un réseau pas
+  // encore remonté ne se réglait jamais : auth-js gardait son verrou et toute
+  // l'app restait en chargement infini jusqu'à être tuée (src/services/netResilience.js).
+  global: { fetch: resilientFetch },
   auth: {
     persistSession: true,       // session conservée dans localStorage entre les ouvertures PWA
     autoRefreshToken: true,     // refresh silencieux du token - pas de reconnexion manuelle
     detectSessionInUrl: true,   // pour les magic links (si activés plus tard)
-    storageKey: 'samper-auth',  // clé dédiée dans localStorage - évite les conflits multi-projet
+    storageKey: AUTH_STORAGE_KEY, // clé dédiée dans localStorage - évite les conflits multi-projet
   },
   realtime: {
     params: { eventsPerSecond: 10 }

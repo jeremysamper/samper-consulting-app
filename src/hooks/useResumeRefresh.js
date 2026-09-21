@@ -1,4 +1,5 @@
 import React from 'react';
+import { subscribeResume } from '../services/resumeCoordinator.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useResumeRefresh - rejoue une lecture quand l'appareil « revient ».
@@ -9,37 +10,28 @@ import React from 'react';
 // chargeaient qu'au montage restaient alors sur des données figées - ou vides
 // si cette première requête avait échoué.
 //
-// On rejoue donc `onResume` quand l'onglet redevient visible, quand la page est
-// restaurée depuis le bfcache (iOS : `pageshow` sans `visibilitychange`) et au
-// retour du réseau. `minIntervalMs` évite les rafales : au réveil les trois
-// événements arrivent souvent groupés.
+// `onResume` est rejoué par src/services/resumeCoordinator.js : réveil de
+// l'appareil (y compris bfcache iOS et veille d'un PC dont l'onglet est resté
+// visible), retour du réseau, réseau revenu après un échec. Le coordinateur
+// attend que la session soit saine avant de tirer : ne pas poser d'écouteur
+// visibilitychange / online à la main dans un module, ils partent trop tôt.
 //
-// Le callback est lu via une ref : pas besoin qu'il soit stable, et les
-// écouteurs ne sont posés qu'une fois.
+// Le callback est lu via une ref : pas besoin qu'il soit stable.
+// `minIntervalMs` borne en plus les tirs de CE hook (le coordinateur bride déjà
+// l'ensemble à un par 10 s).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useResumeRefresh(onResume, { minIntervalMs = 10000 } = {}) {
+export function useResumeRefresh(onResume, { minIntervalMs = 0 } = {}) {
   const callbackRef = React.useRef(onResume);
   React.useEffect(() => { callbackRef.current = onResume; }, [onResume]);
 
   React.useEffect(() => {
     let lastFiredAt = 0;
-    const fire = () => {
+    return subscribeResume(() => {
       const now = Date.now();
       if (now - lastFiredAt < minIntervalMs) return;
       lastFiredAt = now;
       callbackRef.current && callbackRef.current();
-    };
-    const onVisible = () => { if (!document.hidden) fire(); };
-    const onPageShow = (e) => { if (e.persisted) fire(); };
-
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', onPageShow);
-    window.addEventListener('online', fire);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', onPageShow);
-      window.removeEventListener('online', fire);
-    };
+    });
   }, [minIntervalMs]);
 }

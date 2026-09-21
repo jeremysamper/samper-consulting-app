@@ -78,6 +78,7 @@ export default function App() {
   const [legacyState, setLegacyState] = useState({ loading: true, error: null });
   const [legacyVersion, setLegacyVersion] = useState(0);
   const auth = useAuth();
+  const hasSession = Boolean(auth.session);
   // Arrivée depuis un lien « mot de passe oublié » : cet écran passe AVANT tout
   // le reste, y compris une session déjà ouverte - le lien crée une session
   // valide, sans quoi l'utilisateur atterrissait sur le tableau de bord sans
@@ -122,7 +123,12 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [auth.profile, legacyState.loading, legacyState.error]);
+    // hasSession : un démarrage sur le dernier profil connu (réseau absent, JWT
+    // pas encore rafraîchi) fait tourner cette synchro SANS session - réglages
+    // et permissions partent alors à vide. Elle est rejouée quand la session
+    // arrive ; le booléen ne bascule qu'une fois par connexion (pas à chaque
+    // TOKEN_REFRESHED) et, au boot normal, session et profil sont posés ensemble.
+  }, [auth.profile, hasSession, legacyState.loading, legacyState.error]);
 
   useEffect(() => {
     let mounted = true;
@@ -244,6 +250,7 @@ export default function App() {
               isMobile={isMobile}
               loadingEtablissement={currentEtablissement.loading}
               error={currentEtablissement.error}
+              onRetryEtablissement={currentEtablissement.retry}
               setPage={setPage}
               legacyVersion={legacyVersion}
               isActivePage={p === visiblePage}

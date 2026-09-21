@@ -95,6 +95,7 @@ export default function LegacyModuleHost({
   isMobile,
   loadingEtablissement,
   error,
+  onRetryEtablissement,
   setPage,
   legacyVersion,
   // Keep-alive : true seulement pour le module réellement affiché. Permet aux
@@ -109,7 +110,19 @@ export default function LegacyModuleHost({
   }
 
   if (error) {
-    return <div className="form-alert error">{error.message || String(error)}</div>;
+    // L'établissement n'a pas pu être chargé (typiquement : réseau pas encore
+    // remonté au réveil). useCurrentEtablissement réessaie déjà tout seul ; le
+    // bouton évite d'attendre le prochain palier.
+    return (
+      <div className="form-alert error">
+        {error.message || String(error)}
+        {typeof onRetryEtablissement === 'function' && (
+          <button type="button" className="primary-action inline" style={{ marginLeft: 12 }} onClick={onRetryEtablissement}>
+            Réessayer
+          </button>
+        )}
+      </div>
+    );
   }
 
   const accessDenied = <AccessDenied />;

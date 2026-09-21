@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { authService, profileService } from '../services/supabase.js';
+import { authService, profileService, readPersistedAuthUser } from '../services/supabase.js';
 import { readJson, removeStorageKeys, writeJson } from '../utils/storage.js';
 
 // ─── withTimeout : course Promise vs setTimeout ───
@@ -30,6 +30,10 @@ const PROFILE_LOAD_FAILED = Symbol('profile-load-failed');
 // snapshot n'est jamais servi pour un autre user.id et il est effacé à la
 // déconnexion explicite. Aucun changement de comportement online.
 const PROFILE_SNAPSHOT_KEY = 'sc_profile_snapshot';
+
+// Supabase ré-émet SIGNED_IN à chaque retour au premier plan : le profil n'est
+// relu en arrière-plan qu'au plus une fois par minute.
+const PROFILE_REFRESH_MIN_MS = 60000;
 
 function readProfileSnapshot(userId) {
   const snapshot = readJson(PROFILE_SNAPSHOT_KEY, null);
@@ -87,16 +91,76 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    // Chaque chargement de profil prend un numéro : une réponse arrivée après un
+    // événement plus récent (déconnexion, autre chargement) est ignorée.
+    let epoch = 0;
+    let lastProfileLoadAt = 0;
 
-    // ─── Garde-fou : si INITIAL_SESSION ne se déclenche jamais (défaillance client Supabase),
-    // débloque l'affichage après 20 s pour éviter un spinner infini.
+    // ─── Session persistée mais pas encore confirmée par Supabase ───
+    // Réseau absent ou lent au démarrage : auth-js ne peut pas rafraîchir le
+    // JWT, mais il ne l'efface que sur une vraie fin de session. Tant que la
+    // session est en localStorage, on démarre sur le dernier profil connu de ce
+    // user plutôt que d'afficher le login à quelqu'un qui EST connecté (il y
+    // retapait son mot de passe, et la connexion pendait à son tour). Dès que
+    // le réseau revient, le refresh aboutit et TOKEN_REFRESHED pose la session.
+    const bootFromSnapshot = () => {
+      const persistedUser = readPersistedAuthUser();
+      const snapshot = persistedUser ? readProfileSnapshot(persistedUser.id) : null;
+      if (!snapshot) return false;
+      setUser(persistedUser);
+      applyProfile(snapshot);
+      return true;
+    };
+
+    // ─── Garde-fou : INITIAL_SESSION tarde (refresh du JWT sur un réseau qui ne
+    // répond pas). On ne laisse pas l'écran de démarrage indéfiniment.
     const safetyTimer = globalThis.setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 20000);
+      if (!mounted) return;
+      if (!profileRef.current) bootFromSnapshot();
+      setLoading(false);
+    }, 15000);
+
+    // Charge le profil puis pose session + profil. TOUJOURS appelé en différé
+    // (setTimeout 0), jamais attendu depuis le callback d'auth - voir plus bas.
+    //
+    // L'écran de démarrage est libéré par le chargement le plus RÉCENT, quel que
+    // soit l'événement qui l'a lancé : au boot auth-js émet SIGNED_IN et
+    // INITIAL_SESSION, dans un ordre qui dépend du moment. Si seul le chargement
+    // « initial » libérait l'écran, un événement arrivé juste après lui prendrait
+    // son numéro et l'écran de démarrage ne partirait plus jamais.
+    const loadAndApplyProfile = async (nextSession) => {
+      const myEpoch = ++epoch;
+      lastProfileLoadAt = Date.now();
+      const nextProfile = await loadProfileSafe(nextSession.user);
+      if (!mounted || myEpoch !== epoch) return;
+
+      setSession(nextSession);
+      setUser(nextSession.user);
+
+      if (nextProfile === PROFILE_LOAD_FAILED) {
+        // Timeout / erreur transitoire : on garde le profil en mémoire, sinon le
+        // dernier profil connu de ce user. Ne JAMAIS déconnecter pour ça.
+        if (!profileRef.current) applyProfile(readProfileSnapshot(nextSession.user.id));
+      } else {
+        applyProfile(nextProfile);
+        writeProfileSnapshot(nextProfile);
+      }
+      globalThis.clearTimeout(safetyTimer);
+      setLoading(false);
+    };
 
     let unsubscribe = () => {};
     try {
-      unsubscribe = authService.onAuthChange(async (event, nextSession) => {
+      // ─── RÈGLE : aucun appel Supabase n'est ATTENDU dans ce callback ───
+      // auth-js appelle ses abonnés en TENANT son verrou interne, et attend leur
+      // retour. Or tout supabase.from() commence par getSession(), qui attend ce
+      // même verrou : un `await getProfile()` ici s'attendait donc lui-même.
+      // Comme auth-js ré-émet SIGNED_IN à CHAQUE retour au premier plan, chaque
+      // rallumage d'écran gelait toutes les requêtes de l'app pendant 15 s (le
+      // timeout de loadProfileSafe). Le callback reste donc synchrone et tout
+      // chargement part en différé, une fois le verrou relâché - c'est le
+      // contournement documenté par Supabase.
+      unsubscribe = authService.onAuthChange((event, nextSession) => {
         if (!mounted) return;
 
         // Log temporaire pour diagnostic en prod - à retirer dans 2 semaines une fois validé.
@@ -104,44 +168,45 @@ export function useAuth() {
 
         // ─── INITIAL_SESSION : premier état auth déterminé - débloque le chargement ───
         //
-        // Supabase JS v2 émet toujours INITIAL_SESSION en premier dès qu'un écouteur
-        // est enregistré. Il représente l'état initial lu en localStorage (session valide,
-        // token expiré mais rafraîchi, ou absence de session).
+        // Supabase JS v2 émet INITIAL_SESSION dès qu'un écouteur est enregistré
+        // (précédé d'un SIGNED_IN quand une session est restaurée). Il représente
+        // l'état initial lu en localStorage (session valide, token expiré mais
+        // rafraîchi, ou absence de session).
         //
-        // FIX flash login : loading ne passe jamais à false avant cet event.
-        // Le Login n'est donc jamais affiché avant que Supabase ait répondu de façon
-        // définitive - même si le rafraîchissement JWT prend plusieurs secondes.
+        // FIX flash login : loading ne passe à false qu'avec un profil posé, ou
+        // une fois l'absence de session établie. Le Login n'est donc jamais
+        // affiché avant que Supabase ait répondu de façon définitive - même si
+        // le rafraîchissement JWT prend plusieurs secondes.
         if (event === 'INITIAL_SESSION') {
-          globalThis.clearTimeout(safetyTimer);
-
           if (nextSession?.user) {
-            const nextProfile = await loadProfileSafe(nextSession.user);
-            if (!mounted) return;
-            setSession(nextSession);
-            setUser(nextSession.user);
-            if (nextProfile === PROFILE_LOAD_FAILED) {
-              // Boot hors-ligne : dernier profil connu de ce user (sinon login).
-              setProfile(readProfileSnapshot(nextSession.user.id));
-            } else {
-              setProfile(nextProfile);
-              writeProfileSnapshot(nextProfile);
-            }
-          } else {
-            // Pas de session → état propre. Login s'affichera après loading = false.
-            setSession(null);
+            // Le safetyTimer reste armé : il couvre aussi ce chargement de profil.
+            globalThis.setTimeout(() => { if (mounted) loadAndApplyProfile(nextSession); }, 0);
+            return;
+          }
+
+          // Pas de session rendue. Session encore persistée = refresh impossible
+          // pour l'instant : dernier profil connu. Sinon état propre → login.
+          globalThis.clearTimeout(safetyTimer);
+          epoch += 1;
+          setSession(null);
+          if (!bootFromSnapshot()) {
             setUser(null);
             setProfile(null);
           }
-
           setLoading(false);
           return;
         }
 
         // ─── Déconnexion explicite : on vide tout ───
         if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          // L'état est déterminé (personne de connecté) : le login peut s'afficher,
+          // y compris si un chargement de profil en cours vient d'être périmé.
+          epoch += 1;
+          globalThis.clearTimeout(safetyTimer);
           setSession(null);
           setUser(null);
           setProfile(null);
+          setLoading(false);
           return;
         }
 
@@ -153,33 +218,31 @@ export function useAuth() {
         // ─── TOKEN_REFRESHED / USER_UPDATED : mise à jour session/user uniquement ───
         // Le profil reste tel quel. On ne refait PAS d'appel DB inutile.
         // C'est la correction clé du bug de déconnexion intempestive.
+        // Exception : aucun profil en mémoire (démarrage sans réseau ni profil
+        // connu) → ce refresh réussi est le moment de le charger.
         if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           setSession(nextSession);
           setUser(nextSession?.user || null);
-          return;
-        }
-
-        // ─── SIGNED_IN (login manuel via Auth.jsx) : charger le profil ───
-        // Si signIn() est en cours, c'est LUI qui charge le profil + pose la session
-        // → on évite un second getProfile (dédup à la source).
-        if (signingInRef.current) return;
-        const nextProfile = await loadProfileSafe(nextSession?.user);
-        if (!mounted) return;
-
-        setSession(nextSession);
-        setUser(nextSession?.user || null);
-
-        // Si l'appel profil a échoué ET qu'on avait déjà un profil → on le préserve.
-        // Ne déconnecte JAMAIS l'utilisateur à cause d'un timeout/erreur transitoire.
-        if (nextProfile === PROFILE_LOAD_FAILED) {
-          if (!profileRef.current) {
-            setProfile(null);
+          if (!profileRef.current && nextSession?.user) {
+            globalThis.setTimeout(() => { if (mounted) loadAndApplyProfile(nextSession); }, 0);
           }
           return;
         }
 
-        applyProfile(nextProfile);
-        writeProfileSnapshot(nextProfile);
+        // ─── SIGNED_IN : login, ou simple retour au premier plan ───
+        // Si signIn() est en cours, c'est LUI qui charge le profil + pose la session
+        // → on évite un second getProfile (dédup à la source).
+        if (signingInRef.current || !nextSession?.user) return;
+
+        // Même utilisateur déjà chargé = ré-émission au refocus. La session est
+        // posée tout de suite ; le profil n'est relu (rôle, compte désactivé)
+        // qu'en arrière-plan et au plus une fois par minute.
+        if (profileRef.current && profileRef.current.id === nextSession.user.id) {
+          setSession(nextSession);
+          setUser(nextSession.user);
+          if (Date.now() - lastProfileLoadAt < PROFILE_REFRESH_MIN_MS) return;
+        }
+        globalThis.setTimeout(() => { if (mounted) loadAndApplyProfile(nextSession); }, 0);
       });
     } catch (err) {
       console.warn('[Auth] Ecoute auth indisponible', err);
