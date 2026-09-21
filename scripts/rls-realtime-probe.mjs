@@ -28,12 +28,15 @@ const RUN_MS = Number(process.env.RUN_MS || 15000);
 
 if (!URL || !KEY) { console.error('SB_URL et SB_KEY requis'); process.exit(2); }
 
+// Identité de l'abonné (sinon anon). Depuis supabase-js 2.112.1,
+// sb.realtime.setAuth(TOKEN) ne tient plus : au join puis à chaque heartbeat,
+// realtime relit le jeton auprès du client, qui n'a aucune session ici, et le
+// canal repassait en silence sur la clé anon. Le callback accessToken est la
+// source que realtime (et REST) relisent à chaque fois.
 const sb = createClient(URL, KEY, {
   realtime: { params: { eventsPerSecond: 20 } },
-  global: TOKEN ? { headers: { Authorization: `Bearer ${TOKEN}` } } : undefined,
+  ...(TOKEN ? { accessToken: async () => TOKEN } : {}),
 });
-// Realtime authorise le canal avec ce token (sinon anon).
-if (TOKEN) sb.realtime.setAuth(TOKEN);
 
 const received = [];
 const ts = () => new Date().toISOString().slice(11, 23);
@@ -50,9 +53,9 @@ for (const table of TABLES) {
 }
 ch.subscribe((status, err) => log('STATUS', status, err ? String(err) : ''));
 
-log(`Sonde démarrée — identité=${TOKEN ? 'user(token)' : 'anon'} tables=${TABLES.join(',')} durée=${RUN_MS}ms`);
+log(`Sonde démarrée : identité=${TOKEN ? 'user(token)' : 'anon'} tables=${TABLES.join(',')} durée=${RUN_MS}ms`);
 setTimeout(async () => {
-  log('DONE — events reçus =', received.length);
+  log('DONE : events reçus =', received.length);
   console.log('RESULT_JSON', JSON.stringify(received));
   try { await sb.removeChannel(ch); } catch {}
   process.exit(0);
