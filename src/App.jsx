@@ -19,6 +19,7 @@ import { dbService } from './services/dbService.js';
 import { setNavigationHandler } from './services/navigationService.js';
 import { pushPage, startHistory } from './services/historyNav.js';
 import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
+import { startInventaireSync } from './services/offline/inventaireSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 import { clearTranslationCache } from './i18n/domTranslator.js';
 
@@ -95,8 +96,9 @@ export default function App() {
   useEffect(() => {
     installToastGlobals();
     writeLegacyGlobal('SafeModule', SafeModule);
-    // File de punches hors-ligne : rejeu au retour du réseau + compteur global.
+    // Files hors-ligne : rejeu au retour du réseau + compteur global.
     startPunchSync();
+    startInventaireSync();
   }, []);
 
   useEffect(() => {

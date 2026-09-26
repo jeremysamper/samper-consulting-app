@@ -11,6 +11,13 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
+import {
+  getPendingSaisieCount,
+  listPendingSaisies,
+  saisirStockOnlineOrQueue,
+  subscribePendingSaisies,
+} from '../../services/offline/inventaireSync.js';
+import { isNetworkError } from '../../services/offline/offlineNet.js';
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
@@ -40,6 +47,30 @@ const parseQuantite = (valeur) => {
   if (brut === '') return null;
   const nombre = Number.parseFloat(brut);
   return Number.isFinite(nombre) ? nombre : null;
+};
+
+// Réapplique les quantités encore en file par-dessus une liste venue du serveur
+// (ou du cache du service worker). Une quantité comptée en chambre froide reste
+// affichée tant qu'elle n'est pas synchronisée : elle n'existe alors nulle part
+// ailleurs que dans IndexedDB.
+const recouvrirSaisiesEnAttente = (liste, saisies) => {
+  if (!saisies?.length) return liste;
+  const parInventaire = new Map();
+  saisies.forEach((s) => {
+    if (!parInventaire.has(s.inventaireId)) parInventaire.set(s.inventaireId, new Map());
+    parInventaire.get(s.inventaireId).set(s.ligneId, s);
+  });
+  return liste.map((inv) => {
+    const parLigne = parInventaire.get(inv.id);
+    if (!parLigne) return inv;
+    return recalcInventaire({
+      ...inv,
+      lignes: (inv.lignes || []).map((l) => {
+        const saisie = parLigne.get(l.id);
+        return saisie ? { ...l, stockReel: saisie.stockReel } : { ...l };
+      }),
+    });
+  });
 };
 
 // INVENTAIRE - plusieurs périmètres en parallèle (cuisine, boissons, matériel...)
@@ -103,6 +134,9 @@ const Inventaire = ({ user, etablissement }) => {
   const canExport = ['consultant', 'patron'].includes(user.role);
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
+  // Quantités comptées pas encore parties. Affiché DANS le module en plus du
+  // bandeau global : c'est ici qu'on se demande si son comptage est bien parti.
+  const saisiesEnAttente = React.useSyncExternalStore(subscribePendingSaisies, getPendingSaisieCount, () => 0);
 
   // ═══ Load Supabase + Realtime ═══
   // Lecture stricte : une erreur remonte au lieu de rendre []. Sans ça un JWT
@@ -117,7 +151,12 @@ const Inventaire = ({ user, etablissement }) => {
       try {
         const invs = await legacySB.db.listInventaires(etabId, { strict: true });
         if (!mounted) return;
-        appliquerListe(() => invs);
+        // Les quantités encore en file priment sur ce que dit le serveur :
+        // sans ce recouvrement, un rechargement (ou le cache hors-ligne du SW)
+        // réaffiche l'ancienne valeur et le comptage semble perdu.
+        const enAttente = await listPendingSaisies();
+        if (!mounted) return;
+        appliquerListe(() => recouvrirSaisiesEnAttente(invs, enAttente));
         setLoadError(false);
       } catch (err) {
         console.error('[Inventaire load]', err);
@@ -159,11 +198,26 @@ const Inventaire = ({ user, etablissement }) => {
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_selected', selectedId); }, [selectedId]);
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_perimetre', perimetreActif); }, [perimetreActif]);
 
-  // Helper pour push un inventaire modifié vers Supabase
+  // Helper pour push un inventaire modifié vers Supabase.
+  // Porte les modifications de STRUCTURE (création, validation, ajout ou
+  // suppression de ligne, renommage, import) : elles réécrivent l'inventaire
+  // entier et exigent le réseau. Seul le COMPTAGE des quantités fonctionne
+  // hors-ligne, par la file (cf. commitStockReel).
   const saveInv = async (inv) => {
     if (!legacySB) return;
     try { await legacySB.db.upsertInventaire(inv); }
-    catch (err) { console.error('[upsertInventaire]', err); notifyLegacy('Erreur sync : ' + err.message, 'error'); }
+    catch (err) {
+      console.error('[upsertInventaire]', err);
+      if (isNetworkError(err)) {
+        notifyLegacy(
+          'Réseau indisponible : cette modification n\'a pas été enregistrée. '
+          + 'La saisie des quantités, elle, fonctionne hors-ligne et se synchronise au retour du réseau.',
+          'warning', { duration: 7000 }
+        );
+      } else {
+        notifyLegacy('Erreur sync : ' + err.message, 'error');
+      }
+    }
   };
 
   // Écriture d'un inventaire dont le PÉRIMÈTRE compte (création, renommage).
@@ -202,9 +256,23 @@ const Inventaire = ({ user, etablissement }) => {
     return updated;
   };
 
-  // Remplace les lignes de l'inventaire courant et recalcule écarts et valeurs.
-  // Les lignes non touchées sont recopiées : `recalcInventaire` écrit dans les
-  // objets qu'il reçoit, il ne doit pas atteindre ceux du rendu précédent.
+  // Applique des lignes LOCALEMENT, sans écrire en base. Les lignes non
+  // touchées sont recopiées : `recalcInventaire` écrit dans les objets qu'il
+  // reçoit, il ne doit pas atteindre ceux du rendu précédent.
+  const majLignesLocal = (construireLignes) => {
+    const base = invCourant();
+    if (!base) return null;
+    const updated = recalcInventaire({
+      ...base,
+      lignes: construireLignes(base.lignes || []).map(l => ({ ...l })),
+    });
+    appliquerListe(liste => liste.map(i => (i.id === updated.id ? updated : i)));
+    return updated;
+  };
+
+  // Idem, suivi de l'écriture de l'inventaire entier (modifications de
+  // structure). Le comptage des quantités ne passe PAS par ici : il a son
+  // propre chemin ligne à ligne, qui survit à l'absence de réseau.
   const majLignes = (construireLignes) => majInventaire(base => recalcInventaire({
     ...base,
     lignes: construireLignes(base.lignes || []).map(l => ({ ...l })),
@@ -533,7 +601,43 @@ const Inventaire = ({ user, etablissement }) => {
       return;
     }
     if (quantite === ligne.stockReel) return;
-    await majLignes(lignes => lignes.map(l => (l.id === ligneId ? { ...l, stockReel: quantite } : l)));
+
+    // 1. Affichage immédiat : écarts et valeurs recalculés sur l'appareil.
+    //    Le comptage ne doit jamais attendre le réseau pour s'afficher.
+    const updated = majLignesLocal(lignes => lignes.map(l => (l.id === ligneId ? { ...l, stockReel: quantite } : l)));
+    if (!updated || !legacySB) return;
+
+    // 2. Persistance ligne à ligne : RPC si le réseau répond, file IndexedDB
+    //    sinon. Jamais la réécriture de l'inventaire entier : deux heures de
+    //    comptage en cave écraseraient tout ce qui a bougé au pass entre-temps.
+    try {
+      const resultat = await saisirStockOnlineOrQueue({
+        inventaireId: updated.id,
+        ligneId,
+        stockReel: quantite,
+        produit: ligne.produit,
+        unite: ligne.unite,
+        userId: user.id,
+        etablissementId: etabId,
+        // Repli tant que la migration 20260810_inventaire_saisie_offline n'est
+        // pas appliquée : on retombe sur l'écriture historique.
+        sauvegardeHistorique: () => saveInv(updated),
+      });
+      // Le serveur a gardé une autre valeur : quelqu'un a compté ce produit
+      // APRÈS vous (stale), ou la ligne a été supprimée (not_applied). On le
+      // dit et on réaffiche l'état réel, sinon l'écran montre une quantité
+      // qui n'existe nulle part.
+      if (resultat?.statut === 'stale') {
+        notifyLegacy(`« ${ligne.produit} » a été recompté plus récemment par quelqu'un d'autre : sa quantité est conservée.`, 'warning', { duration: 7000 });
+        reloadRef.current?.();
+      } else if (resultat?.statut === 'not_applied') {
+        notifyLegacy(`« ${ligne.produit} » n'existe plus dans cet inventaire : quantité non enregistrée.`, 'warning', { duration: 7000 });
+        reloadRef.current?.();
+      }
+    } catch (err) {
+      console.error('[commitStockReel]', err);
+      notifyLegacy(`Quantité non enregistrée pour « ${ligne.produit} » : ${err.message}`, 'error');
+    }
   };
 
   // Entrée = ligne suivante : on compte une étagère de haut en bas sans lâcher
@@ -928,6 +1032,14 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
       )}
 
+      {saisiesEnAttente > 0 && (
+        <div style={invs.saisiesAttente} className="no-print">
+          {saisiesEnAttente > 1
+            ? `⏳ ${saisiesEnAttente} quantités comptées en attente de synchronisation. Elles partiront seules au retour du réseau : vous pouvez fermer l'app.`
+            : "⏳ 1 quantité comptée en attente de synchronisation. Elle partira seule au retour du réseau : vous pouvez fermer l'app."}
+        </div>
+      )}
+
       <div style={invs.header} className="no-print">
         <div style={invs.headerLeft}>
           <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
@@ -1306,6 +1418,7 @@ const invs = {
   loadError: {background:'var(--warning-bg)',color:'var(--warning-text)',border:'1px solid var(--warning-bd)',borderRadius:8,padding:'10px 14px',fontSize:12,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
   fieldHint: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.45},
   saisieHint: {fontSize:11,color:'var(--text2)',lineHeight:1.5,padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
+  saisiesAttente: {fontSize:12,lineHeight:1.5,padding:'10px 14px',borderRadius:8,background:'var(--info-bg, var(--warning-bg))',color:'var(--info-text, var(--warning-text))',border:'1px solid var(--info-bd, var(--warning-bd))'},
   // Le champ prend la largeur de sa cellule ; l'unité reste collée à droite et
   // ne se comprime jamais (flexShrink 0), sinon « pcs » se coupe en « p… ».
   stockSaisie: {display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,width:'100%',minWidth:0},
