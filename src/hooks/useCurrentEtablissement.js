@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { authService, etablissementService, invalidateBootRead, settingsService } from '../services/supabase.js';
+import { dbService } from '../services/dbService.js';
 import { readJson } from '../utils/storage.js';
 import { useResumeRefresh } from './useResumeRefresh.js';
 
@@ -11,7 +12,34 @@ function readLegacyCurrentEtablissementId() {
   return readJson(LEGACY_STORAGE_KEY, null);
 }
 
-export function useCurrentEtablissement(user) {
+// Comparaison champ à champ d'un établissement mappé (valeurs plates, sauf la
+// liste modulesActifs). Sert à garder le MÊME objet quand une relecture ne
+// change rien : les modules gardés montés dépendent de l'objet établissement,
+// un nouvel objet identique les ferait tous relire leurs données.
+function sameEtablissement(a, b) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    const va = a[key];
+    const vb = b[key];
+    if (Array.isArray(va) || Array.isArray(vb)) {
+      if (!Array.isArray(va) || !Array.isArray(vb) || va.join('|') !== vb.join('|')) return false;
+    } else if (va !== vb) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function keepUnchanged(prev, rows) {
+  const next = rows.map((row) => {
+    const old = prev.find((etab) => etab.id === row.id);
+    return old && sameEtablissement(old, row) ? old : row;
+  });
+  const identical = next.length === prev.length && next.every((etab, i) => etab === prev[i]);
+  return identical ? prev : next;
+}
+
+export function useCurrentEtablissement(user, { bridgeReady = true } = {}) {
   const [etablissements, setEtablissements] = useState([]);
   const [currentId, setCurrentId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +126,7 @@ export function useCurrentEtablissement(user) {
         const fallbackId = rows[0]?.id || null;
         const nextId = rows.some((row) => row.id === preferredId) ? preferredId : fallbackId;
 
-        setEtablissements(rows);
+        setEtablissements((prev) => keepUnchanged(prev, rows));
         setCurrentId(nextId);
         setError(null);
         hasLoadedRef.current = true;
@@ -124,6 +152,31 @@ export function useCurrentEtablissement(user) {
       if (retryTimer) globalThis.clearTimeout(retryTimer);
     };
   }, [user]);
+
+  // Fiche d'un établissement modifiée (modules activés, nom, couleur…) :
+  // relecture silencieuse, sur cet appareil comme sur ceux de la brigade. Sans
+  // ça, le menu et les modules gardaient les réglages de la connexion jusqu'au
+  // redémarrage de l'app. On ne relit QUE la liste : l'établissement choisi
+  // n'est pas remis en jeu (pas de relecture de current_etab_id).
+  useEffect(() => {
+    if (!user || !bridgeReady) return undefined;
+    const realtime = dbService.getRealtime();
+    if (!realtime?.subscribeReload) return undefined;
+    let active = true;
+    const off = realtime.subscribeReload('etablissements', async () => {
+      if (!hasLoadedRef.current) return;
+      try {
+        const rows = await etablissementService.listForUser(user);
+        // Liste vide = lecture en échec ou session en cours de refresh : on
+        // garde l'état courant plutôt que de vider le sélecteur.
+        if (!active || !rows.length) return;
+        setEtablissements((prev) => keepUnchanged(prev, rows));
+      } catch {
+        // Relecture de confort : l'état courant reste valable.
+      }
+    });
+    return () => { active = false; off(); };
+  }, [user, bridgeReady]);
 
   // Réveil de l'appareil / retour du réseau : on retente tout de suite un
   // premier chargement resté en échec, sans attendre le prochain palier.

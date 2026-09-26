@@ -2,7 +2,7 @@ import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
 import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
-import { navItems as NAV_ITEMS } from '../../modules/moduleConfig.js';
+import { navItems as NAV_ITEMS, etabToggleableModules } from '../../modules/moduleConfig.js';
 import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 
@@ -11,10 +11,87 @@ import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 // + Maintenance des données
 // ─────────────────────────────────────────────────────
 
-const EtabForm = ({ etab, onSave, onCancel }) => {
+const ALL_MODULE_KEYS = etabToggleableModules.map((item) => item.permKey);
+const MODULE_GROUPS = [...new Set(etabToggleableModules.map((item) => item.group))];
+
+// hasModulesColumn : la ligne porte la colonne modules_actifs (migration
+// 20260927 appliquée). Sans elle, Paramètres n'envoie pas la colonne : un
+// upsert avec une colonne inconnue ferait échouer toute la sauvegarde.
+const mapEtabFromRow = (r) => ({
+  id: r.id,
+  nom: r.nom,
+  type: r.type,
+  adresse: r.adresse,
+  tel: r.tel,
+  email: r.email,
+  couleur: r.couleur,
+  actif: r.actif,
+  notes: r.notes,
+  ccntHeuresSemaine: r.ccnt_heures_semaine,
+  modulesActifs: Array.isArray(r.modules_actifs) ? r.modules_actifs : null,
+  hasModulesColumn: Object.prototype.hasOwnProperty.call(r, 'modules_actifs'),
+});
+
+const moduleCountLabel = (modulesActifs) => {
+  if (!Array.isArray(modulesActifs)) return 'Tous les modules';
+  const n = ALL_MODULE_KEYS.filter((key) => modulesActifs.includes(key)).length;
+  return n === 1 ? '1 module activé' : `${n} modules activés`;
+};
+
+const EtabModulesPicker = ({ value, onChange, getLabel }) => {
+  // null = tous les modules : on affiche tout coché.
+  const selected = Array.isArray(value) ? value : ALL_MODULE_KEYS;
+  const set = (keys) => {
+    const next = ALL_MODULE_KEYS.filter((key) => keys.includes(key));
+    // Tout coché = null : les modules ajoutés plus tard à l'app apparaîtront
+    // d'office pour cet établissement, comme avant le réglage.
+    onChange(next.length === ALL_MODULE_KEYS.length ? null : next);
+  };
+  const toggle = (key) => set(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
+
+  return (
+    <div style={ps.field}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+        <label style={ps.fLabel}>Modules affichés dans le menu</label>
+        <div style={{ display:'flex', gap:6 }}>
+          <button type="button" style={ps.linkBtn} onClick={() => set(ALL_MODULE_KEYS)}>Tout cocher</button>
+          <button type="button" style={ps.linkBtn} onClick={() => set([])}>Tout décocher</button>
+        </div>
+      </div>
+      <div style={{ fontSize:12, color:'var(--text2)', lineHeight:1.5 }}>
+        L'équipe ne voit que les modules cochés, en plus des droits de son rôle. Le tableau de bord et vos outils consultant restent toujours affichés.
+      </div>
+      {MODULE_GROUPS.map((group) => (
+        <div key={group} style={{ marginTop:6 }}>
+          <div style={{ fontSize:11, color:'var(--text3)', marginBottom:6 }}>{group}</div>
+          <div style={ps.moduleGrid}>
+            {etabToggleableModules.filter((item) => item.group === group).map((item) => {
+              const checked = selected.includes(item.permKey);
+              return (
+                <label key={item.id} style={{ ...ps.moduleChip, ...(checked ? ps.moduleChipOn : null) }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(item.permKey)}
+                    style={{ width:18, height:18, margin:0, flexShrink:0, accentColor:'var(--accent)' }}
+                  />
+                  <span style={{ width:18, textAlign:'center', flexShrink:0 }} aria-hidden="true">{item.icon}</span>
+                  <span style={{ minWidth:0 }}>{getLabel ? getLabel(item.id, item.label) : item.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div style={{ fontSize:12, color:'var(--text2)', marginTop:4 }}>{moduleCountLabel(value)}</div>
+    </div>
+  );
+};
+
+const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
   const [f, setF] = React.useState(etab || {
     id:'', nom:'', type:'Restaurant', adresse:'', tel:'', email:'',
-    couleur:'#003042', actif:true, notes:''
+    couleur:'#003042', actif:true, notes:'', modulesActifs:null
   });
 
   const TYPES = ['Restaurant gastronomique','Brasserie','Bistrot','Hôtel-Restaurant','Hôtel','Café-Restaurant','Traiteur','Collectivité','Autre'];
@@ -82,6 +159,17 @@ const EtabForm = ({ etab, onSave, onCancel }) => {
               </div>
               <span style={{ fontSize:13, color:'var(--text)', fontWeight:500 }}>Établissement actif (visible dans l'application)</span>
             </div>
+            {modulesReady ? (
+              <EtabModulesPicker
+                value={f.modulesActifs ?? null}
+                onChange={(modulesActifs) => setF({ ...f, modulesActifs })}
+                getLabel={getLabel}
+              />
+            ) : (
+              <div style={{ fontSize:12, color:'var(--text2)', lineHeight:1.5 }}>
+                Choix des modules par établissement : disponible une fois la migration 20260927_etablissements_modules_actifs appliquée.
+              </div>
+            )}
           </div>
           <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:20 }}>
             <button style={ps.cancelBtn} onClick={onCancel}>Annuler</button>
@@ -141,18 +229,7 @@ const Parametres = ({ user, etablissement }) => {
       try {
         const rows = await legacySB.db.listEtablissements();
         if (!mounted) return;
-        const mapped = (rows || []).map(r => ({
-          id: r.id,
-          nom: r.nom,
-          type: r.type,
-          adresse: r.adresse,
-          tel: r.tel,
-          email: r.email,
-          couleur: r.couleur,
-          actif: r.actif,
-          notes: r.notes,
-          ccntHeuresSemaine: r.ccnt_heures_semaine,
-        }));
+        const mapped = (rows || []).map(mapEtabFromRow);
         setEtablissements(mapped);
         demoData.etablissements = mapped;
       } catch (err) { console.error('[Parametres load]', err); }
@@ -162,6 +239,9 @@ const Parametres = ({ user, etablissement }) => {
     unsub = legacySB.realtime.subscribeReload('etablissements', reload);
     return () => { mounted = false; unsub && unsub(); };
   }, []);
+
+  // Colonne modules_actifs présente en base (lue sur n'importe quelle ligne).
+  const modulesReady = etablissements.some((e) => e.hasModulesColumn);
 
   const openAdd = () => { if (!canEdit) return; setEditEtab(null); setShowForm(true); };
   const openEdit = (e) => { if (!canEdit) return; setEditEtab(e); setShowForm(true); };
@@ -187,6 +267,7 @@ const Parametres = ({ user, etablissement }) => {
       notes: etab.notes || null,
       ccnt_heures_semaine: etab.ccntHeuresSemaine || 42,
     };
+    if (modulesReady) payload.modules_actifs = Array.isArray(etab.modulesActifs) ? etab.modulesActifs : null;
     if (legacySB) {
       try {
         const saved = await legacySB.db.upsertEtablissement(payload);
@@ -197,11 +278,7 @@ const Parametres = ({ user, etablissement }) => {
         // Force un reload local pour ne pas attendre le realtime
         try {
           const rows = await legacySB.db.listEtablissements();
-          const mapped = (rows || []).map(r => ({
-            id: r.id, nom: r.nom, type: r.type, adresse: r.adresse, tel: r.tel,
-            email: r.email, couleur: r.couleur, actif: r.actif, notes: r.notes,
-            ccntHeuresSemaine: r.ccnt_heures_semaine,
-          }));
+          const mapped = (rows || []).map(mapEtabFromRow);
           setEtablissements(mapped);
           demoData.etablissements = mapped;
         } catch (e) { console.warn('[Parametres] reload fail', e); }
@@ -266,6 +343,7 @@ const Parametres = ({ user, etablissement }) => {
               </div>
               <div style={ps.etabMeta}>{etab.type} · {etab.adresse || 'Adresse non renseignée'}</div>
               {etab.tel && <div style={ps.etabMeta}>{etab.tel}{etab.email && ` · ${etab.email}`}</div>}
+              {modulesReady && <div style={ps.etabMeta}>{moduleCountLabel(etab.modulesActifs)}</div>}
             </div>
             <div style={{display:'flex',gap:8,flexShrink:0}}>
               <button style={ps.ghostBtn} onClick={()=>openEdit(etab)}>Modifier</button>
@@ -418,7 +496,7 @@ const Parametres = ({ user, etablissement }) => {
         </div>
       </div>
 
-      {showForm && <EtabForm etab={editEtab} onSave={save} onCancel={()=>setShowForm(false)}/>}
+      {showForm && <EtabForm etab={editEtab} onSave={save} onCancel={()=>setShowForm(false)} modulesReady={modulesReady} getLabel={getLabelForModule}/>}
 
       {showConfirm && (
         <div className="modal-sheet-overlay" style={ps.overlay} onClick={()=>setShowConfirm(null)}>
@@ -477,6 +555,11 @@ const ps = {
   closeBtn: { background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text2)' },
   modalBody: { padding:'22px' },
   cancelBtn: { padding:'9px 16px', background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, fontSize:13, cursor:'pointer', fontFamily:'var(--font)' },
+  linkBtn: { padding:'6px 10px', background:'none', border:'none', color:'var(--accent)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  moduleGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:8 },
+  // Base en borderWidth/Style/Color : l'état coché ne surcharge que borderColor.
+  moduleChip: { display:'flex', alignItems:'center', gap:8, minHeight:44, padding:'8px 12px', borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', borderRadius:8, background:'var(--bg)', fontSize:13, color:'var(--text2)', cursor:'pointer', boxSizing:'border-box', minWidth:0 },
+  moduleChipOn: { borderColor:'var(--accent)', background:'var(--surface)', color:'var(--text)' },
   saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
 };
 

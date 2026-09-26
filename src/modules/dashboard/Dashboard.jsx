@@ -5,6 +5,7 @@
 import React from 'react';
 import { Btn, Card, KpiCard, SectionHeader } from '../../components/ui/index.jsx';
 import { getDemoData } from '../../data/demoData.js';
+import { isPageActiveForEtab } from '../moduleConfig.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
@@ -154,7 +155,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
     activeSops,
     sopDoneToday,
     canNavigate,
-  });
+  }).filter((item) => isPageActiveForEtab(etablissement, item.page));
 
   const dateLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const hourLabel = new Date().toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });

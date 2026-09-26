@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { navItems } from './moduleConfig.js';
+import { isPageActiveForEtab, navItems } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 
@@ -137,6 +137,13 @@ export default function LegacyModuleHost({
     </SafeModule>
   );
   const DashboardComponent = isMobile ? DashboardMobile : Dashboard;
+
+  // Module non activé pour cet établissement (Paramètres) : page mémorisée
+  // d'une session précédente, lien d'un autre module ou changement
+  // d'établissement. On le dit plutôt que d'ouvrir un module caché du menu.
+  if (!isPageActiveForEtab(etablissement, page)) {
+    return <ModuleInactif page={page} etablissement={etablissement} user={user} setPage={setPage} />;
+  }
 
   switch (page) {
     case 'dashboard':
@@ -284,6 +291,36 @@ function AccessDenied() {
   return (
     <section className="module-placeholder">
       <div className="form-alert warning">Acces refuse pour ce module.</div>
+    </section>
+  );
+}
+
+function ModuleInactif({ page, etablissement, user, setPage }) {
+  const current = navItems.find((item) => item.id === page) || (page === 'pointage' ? navItems.find((item) => item.id === 'planning') : null);
+  const canGoHome = typeof setPage === 'function';
+  return (
+    <section className="module-placeholder">
+      <div>
+        <h2>{current?.label || page}</h2>
+        <p>
+          Ce module n'est pas activé pour {etablissement?.nom || 'cet établissement'}.
+          {user.role === 'consultant'
+            ? ' Vous pouvez l\'activer dans Paramètres, fiche de l\'établissement.'
+            : ' Demandez à votre consultant de l\'activer si vous en avez besoin.'}
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+          {canGoHome && (
+            <button type="button" className="primary-action inline" onClick={() => setPage('dashboard')}>
+              Retour à l'accueil
+            </button>
+          )}
+          {canGoHome && user.role === 'consultant' && (
+            <button type="button" className="primary-action inline" onClick={() => setPage('parametres')}>
+              Ouvrir les paramètres
+            </button>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

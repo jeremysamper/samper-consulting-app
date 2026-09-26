@@ -77,6 +77,38 @@ export const navItems = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Modules activés par établissement (colonne etablissements.modules_actifs).
+// Le consultant choisit, établissement par établissement, les modules proposés
+// dans le menu. Se cumule avec les permissions par rôle : un module doit être
+// activé pour l'établissement ET permis au rôle pour apparaître.
+//
+// Toujours présents, jamais désactivables : le tableau de bord (page d'accueil,
+// point de chute de toute navigation) et les outils du consultant, qui
+// travaillent sur tous ses établissements.
+// ─────────────────────────────────────────────────────────────────────────────
+export const alwaysOnModuleKeys = ['dashboard', 'consultant_tools', 'faq'];
+
+// Modules que le consultant peut activer ou non, dans l'ordre du menu par défaut.
+export const etabToggleableModules = navItems.filter((item) => !alwaysOnModuleKeys.includes(item.permKey));
+
+// modulesActifs null / absent = tous les modules (établissement jamais réglé).
+export function isModuleActiveForEtab(etablissement, permKey) {
+  if (!permKey || alwaysOnModuleKeys.includes(permKey)) return true;
+  const actifs = etablissement?.modulesActifs;
+  if (!Array.isArray(actifs)) return true;
+  return actifs.includes(permKey);
+}
+
+// Même règle à partir d'un identifiant de page (raccourcis, liens internes).
+// Les pages hors menu (paramètres, rôles, factures) ne sont jamais filtrées.
+const pagePermKeys = { pointage: 'planning' };
+export function isPageActiveForEtab(etablissement, page) {
+  const id = normalizePage(page);
+  const permKey = pagePermKeys[id] || navItems.find((item) => item.id === id)?.permKey;
+  return isModuleActiveForEtab(etablissement, permKey);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Modules consultant-only - non présents dans navItems ni defaultPermissions.
 // Leur accès est géré par condition directe dans LegacyModuleHost.jsx :
 //   user.role === 'consultant' && permissions.consultant_tools !== false

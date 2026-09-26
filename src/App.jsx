@@ -85,7 +85,11 @@ export default function App() {
   // valide, sans quoi l'utilisateur atterrissait sur le tableau de bord sans
   // jamais pouvoir choisir son nouveau mot de passe.
   const recovery = usePasswordRecovery();
-  const currentEtablissement = useCurrentEtablissement(auth.profile);
+  // bridgeReady : l'abonnement temps réel aux établissements passe par le
+  // bridge SB, installé par loadLegacyModules souvent APRÈS le profil.
+  const currentEtablissement = useCurrentEtablissement(auth.profile, {
+    bridgeReady: !legacyState.loading && !legacyState.error,
+  });
   const isMobile = useIsMobile();
 
   useEffect(() => {

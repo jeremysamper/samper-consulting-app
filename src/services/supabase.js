@@ -255,7 +255,9 @@ function mapEtablissementFromDB(row) {
     actif: row.actif,
     notes: row.notes,
     ccntHeuresSemaine: row.ccnt_heures_semaine,
-    logo_url: row.logo_url
+    logo_url: row.logo_url,
+    // Modules proposés dans le menu (null = tous, cf. isModuleActiveForEtab).
+    modulesActifs: Array.isArray(row.modules_actifs) ? row.modules_actifs : null
   };
 }
 

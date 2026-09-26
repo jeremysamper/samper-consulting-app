@@ -6,6 +6,7 @@
 import React from 'react';
 import { Btn, Card, SectionHeader } from '../../components/ui/index.jsx';
 import { getDemoData } from '../../data/demoData.js';
+import { isPageActiveForEtab } from '../moduleConfig.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
@@ -109,7 +110,7 @@ const DashboardMobile = ({ user, etablissement, setPage }) => {
     { id: 'haccp', label: 'HACCP', sub: 'Controle rapide', page: 'haccp', tone: 'var(--accent)' },
     { id: 'sop', label: 'SOPs', sub: 'Procedures du jour', page: 'sop', tone: '#1a5276' },
     { id: 'assistant', label: 'Assistant', sub: 'FAQ metier', page: 'faq', tone: '#6c3483' },
-  ];
+  ].filter((action) => isPageActiveForEtab(etablissement, action.page));
 
   const dateLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
 

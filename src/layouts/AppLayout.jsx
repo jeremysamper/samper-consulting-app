@@ -1,5 +1,5 @@
 import React from 'react';
-import { navItems as NAV_ITEMS } from '../modules/moduleConfig.js';
+import { navItems as NAV_ITEMS, isModuleActiveForEtab } from '../modules/moduleConfig.js';
 import { getDemoData } from '../data/demoData.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useTheme } from '../hooks/useTheme.js';
@@ -183,6 +183,9 @@ export default function AppLayout({
     // KDS : rôles cuisine uniquement (miroir de la RLS kds_orders), la clé kds
     // n'existant pas encore dans la table permissions en BDD.
     if (item.id === 'kds' && !['consultant', 'resp_cuisine', 'cuisinier'].includes(user.role)) return false;
+    // Modules choisis pour l'établissement courant (Paramètres), pour tous les
+    // rôles consultant compris : le menu montre ce que l'équipe utilise.
+    if (!isModuleActiveForEtab(etablissement, item.permKey)) return false;
     const permVal = perms[item.permKey];
     if (permVal === false) return false;
     if (permVal === true) return true;
@@ -190,7 +193,7 @@ export default function AppLayout({
     const defaultPerms = (DEMO_DATA.permissions && DEMO_DATA.permissions[user.role]) || {};
     if (defaultPerms[item.permKey] === false) return false;
     return true;
-  }), [perms, user.role, navOrder]);
+  }), [perms, user.role, navOrder, etablissement]);
   const groupedNav = React.useMemo(() => visibleNav.reduce((groups, item) => {
     const groupName = item.group || 'Modules';
     const group = groups.find((entry) => entry.label === groupName);
