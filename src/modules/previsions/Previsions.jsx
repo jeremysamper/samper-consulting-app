@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { SectionHeader } from '../../components/ui/index.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import ReservationForm from './ReservationForm.jsx';
+import ReservationDetailModal from './ReservationDetailModal.jsx';
+import RechercheResas from './RechercheResas.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 
@@ -16,6 +19,16 @@ export default function Previsions({ user, etablissement }) {
   const [showForm,     setShowForm]     = useState(false);
   const [selectedDate, setSelectedDate] = useState(null); // null = vue semaine
   const [refreshKey,   setRefreshKey]   = useState(0);
+  const [recherche,     setRecherche]     = useState('');
+  const [resaTrouvee,   setResaTrouvee]   = useState(null);
+  const [resaEnEdition, setResaEnEdition] = useState(null);
+  // Relance la recherche après une modification : sans ça, la liste continue
+  // d'afficher la version d'avant la modification qu'on vient de faire.
+  const [rechercheKey,  setRechercheKey]  = useState(0);
+  const bumpRecherche = () => {
+    setRechercheKey((k) => k + 1);
+    setRefreshKey((k) => k + 1);
+  };
 
   if (!ROLES_AUTORISES.includes(user?.role)) {
     return (
@@ -52,8 +65,15 @@ export default function Previsions({ user, etablissement }) {
           title="Prévisions"
           sub={selectedDate ? null : 'Vue semaine cuisine - couverts et particularités par jour'}
         />
-        {canEdit && (
-          <div className="module-actions">
+        <div className="module-actions">
+          {etabId && (
+            <SearchToggle
+              value={recherche}
+              onChange={setRecherche}
+              placeholder="Nom ou téléphone…"
+            />
+          )}
+          {canEdit && (
             <button
               type="button"
               onClick={() => etabId ? setShowForm(true) : null}
@@ -69,8 +89,8 @@ export default function Previsions({ user, etablissement }) {
               }}>
               + Nouvelle réservation
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Bannière si pas d'établissement */}
@@ -84,8 +104,21 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
+      {/* ── Recherche : elle prend toute la place tant qu'elle est ouverte,
+             plutôt que de s'ajouter sous la semaine où on la perdrait de vue.
+             Fermer la loupe efface le filtre et rend la vue normale. ── */}
+      {etabId && recherche.trim() !== '' && (
+        <RechercheResas
+          etablissementId={etabId}
+          terme={recherche}
+          refreshKey={rechercheKey}
+          onOuvrir={setResaTrouvee}
+          onAllerAuJour={(d) => { setRecherche(''); setSelectedDate(d); }}
+        />
+      )}
+
       {/* ── Routeur local : vue semaine ↔ vue jour ── */}
-      {etabId && (
+      {etabId && recherche.trim() === '' && (
         <>
           {!selectedDate && (
             <VueSemaine
@@ -126,8 +159,33 @@ export default function Previsions({ user, etablissement }) {
       {canEdit && showForm && etabId && (
         <ReservationForm
           etablissementId={etabId}
+          // Pré-remplie sur le jour consulté : quand on regarde samedi, le
+          // formulaire ne doit pas s'ouvrir sur aujourd'hui.
+          initialDate={selectedDate || undefined}
           onClose={() => setShowForm(false)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {/* Fiche ouverte depuis un résultat de recherche. Modifiable : décaler
+          une résa qu'on vient de retrouver au téléphone est précisément ce
+          pour quoi on l'a cherchée. */}
+      {resaTrouvee && (
+        <ReservationDetailModal
+          resa={resaTrouvee}
+          canEdit={canEdit}
+          onEdit={canEdit ? (r) => { setResaTrouvee(null); setResaEnEdition(r); } : undefined}
+          onClose={() => setResaTrouvee(null)}
+          onResaUpdated={() => { setResaTrouvee(null); bumpRecherche(); }}
+        />
+      )}
+
+      {canEdit && resaEnEdition && etabId && (
+        <ReservationForm
+          etablissementId={etabId}
+          initialResa={resaEnEdition}
+          onClose={() => setResaEnEdition(null)}
+          onSaved={() => { setResaEnEdition(null); bumpRecherche(); }}
         />
       )}
     </section>

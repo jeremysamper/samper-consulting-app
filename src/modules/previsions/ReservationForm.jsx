@@ -3,6 +3,9 @@ import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 import { useReservationTags } from '../../hooks/useReservationTags.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { zurichToday } from '../../utils/zurichTime.js';
+import { addDays, isoDate, formatDateLongue, parseLocalDate } from '../../utils/dateHelpers.js';
+import { serviceParDefaut } from './statutsReservation.js';
 import ReservationTagSelector from './ReservationTagSelector.jsx';
 
 const SUGGESTIONS = {
@@ -11,13 +14,18 @@ const SUGGESTIONS = {
   brunch: ['10:30', '11:00', '11:30', '12:00'],
 };
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+// Heure la plus demandée de chaque service, et non la première de la liste :
+// personne ne réserve à 19:00 par défaut, on vise 20:00.
+const HEURE_DEFAUT = { midi: '12:30', soir: '20:00', brunch: '11:00' };
 
-function defaultState() {
+// `zurichToday` et non `new Date()` : l'heure du device peut être n'importe
+// quoi, et .toISOString() bascule la date d'un jour dès qu'on est à l'est de
+// Greenwich en soirée.
+function defaultState(dateInitiale, serviceInitial) {
+  const date    = dateInitiale || zurichToday();
+  const service = serviceInitial || serviceParDefaut(date);
   return {
-    date: todayISO(), service: 'soir', heure: '20:00', heureCustom: false,
+    date, service, heure: HEURE_DEFAUT[service], heureCustom: false,
     couverts: 2, nom: '', telephone: '', groupe: false, tags: [], notes: '',
   };
 }
@@ -35,7 +43,7 @@ function formFromResa(resa) {
   const heure   = (resa.heure_arrivee || '').slice(0, 5);
   const service = resa.service || 'soir';
   return {
-    date:        resa.date_service  || todayISO(),
+    date:        resa.date_service  || zurichToday(),
     service,
     heure,
     heureCustom: !(SUGGESTIONS[service] || []).includes(heure),
@@ -48,9 +56,14 @@ function formFromResa(resa) {
   };
 }
 
-export default function ReservationForm({ etablissementId, onClose, onSaved, initialResa = null }) {
+export default function ReservationForm({
+  etablissementId, onClose, onSaved, initialResa = null,
+  initialDate = null, initialService = null,
+}) {
   const isMobile = useIsMobile();
-  const [form, setForm] = useState(() => initialResa ? formFromResa(initialResa) : defaultState());
+  const [form, setForm] = useState(() => initialResa
+    ? formFromResa(initialResa)
+    : defaultState(initialDate, initialService));
   const [loading, setLoading] = useState(false);
   const reservations = useReservations(etablissementId);
   const tags = useReservationTags();
@@ -81,18 +94,44 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
 
   function changeService(s) {
-    setForm((p) => ({ ...p, service: s, heure: SUGGESTIONS[s][0], heureCustom: false }));
+    // serviceTouche : à partir d'ici, un changement de date ne réécrit plus le
+    // service. L'utilisateur a tranché, on ne le contredit pas.
+    setForm((p) => ({
+      ...p, service: s, heure: HEURE_DEFAUT[s], heureCustom: false, serviceTouche: true,
+    }));
+  }
+
+  // Changer de date peut changer le service pertinent : passer d'aujourd'hui
+  // 16h à demain ne doit pas laisser « soir » choisi par l'horloge si
+  // l'utilisateur n'y a pas touché lui-même.
+  function changeDate(d) {
+    setForm((p) => {
+      if (p.serviceTouche) return { ...p, date: d };
+      const s = serviceParDefaut(d);
+      return { ...p, date: d, service: s, heure: HEURE_DEFAUT[s], heureCustom: false };
+    });
   }
 
   function resetForNext() {
     setForm((p) => ({
-      ...defaultState(),
-      date: p.date,
-      service: p.service,
+      ...defaultState(p.date, p.service),
       heure: p.heure,
       heureCustom: p.heureCustom,
+      serviceTouche: p.serviceTouche,
     }));
   }
+
+  const aujourdhui = zurichToday();
+  // parseLocalDate d'abord : addDays fait new Date(str), qui parse une chaîne
+  // ISO en UTC et peut donc rendre la veille selon l'heure.
+  const demain     = isoDate(addDays(parseLocalDate(aujourdhui), 1));
+  // Raccourcis de date : une réservation se prend presque toujours pour
+  // aujourd'hui ou demain. Le sélecteur natif reste pour le reste - il est
+  // large et lent au doigt, ce n'est pas le chemin par défaut.
+  const RACCOURCIS = [
+    { id: aujourdhui, label: "Aujourd'hui" },
+    { id: demain,     label: 'Demain' },
+  ];
 
   async function submit(keepOpen) {
     const { ok, errors } = validateForm(form);
@@ -224,14 +263,43 @@ export default function ReservationForm({ etablissementId, onClose, onSaved, ini
         {/* ── Corps scrollable ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Date + Service. Plancher a 200px : le champ date rendu par iOS
-              occupe ~192px et ne rétrécit pas. A 150px il debordait de sa
-              colonne et passait sous les boutons Midi/Soir/Brunch. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <div>
-              <label style={lbl}>Date</label>
-              <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} style={inp} />
+          {/* Date : deux raccourcis couvrent la quasi-totalité des appels, le
+              sélectionneur natif reste dessous pour le reste. La date choisie
+              est rappelée en toutes lettres - « 2026-08-23 » ne dit pas si
+              c'est un samedi, et c'est ce que demande la personne au bout du
+              fil. */}
+          <div>
+            <label style={lbl}>Date</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {RACCOURCIS.map((r) => {
+                const actif = form.date === r.id;
+                return (
+                  <button key={r.id} type="button" onClick={() => changeDate(r.id)}
+                    style={{
+                      padding: '9px 14px', borderRadius: 8, cursor: 'pointer', minHeight: 44,
+                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 600,
+                      borderWidth: 1, borderStyle: 'solid',
+                      borderColor: actif ? 'var(--accent)' : 'var(--border)',
+                      background:  actif ? 'var(--accent)' : 'var(--bg)',
+                      color:       actif ? '#fff' : 'var(--text)',
+                    }}>
+                    {r.label}
+                  </button>
+                );
+              })}
+              <input
+                type="date" value={form.date}
+                onChange={(e) => e.target.value && changeDate(e.target.value)}
+                aria-label="Autre date"
+                style={{ ...inp, width: 'auto', flex: '1 1 200px', minHeight: 44 }}
+              />
             </div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>
+              {formatDateLongue(form.date)}
+            </div>
+          </div>
+
+          <div>
             <div>
               <label style={lbl}>Service</label>
               <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>

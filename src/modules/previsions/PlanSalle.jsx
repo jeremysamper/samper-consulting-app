@@ -127,7 +127,13 @@ function TableShape({
           onPointerDown={mode === 'service' && canEdit ? (e) => onPointerDownOccupant(e, lien, resa) : undefined}
           style={{
             maxWidth: '100%', padding: '1px 5px', borderRadius: 20,
-            background: 'var(--accent)', color: '#fff',
+            // Une table occupée par des clients déjà assis se distingue de
+            // celle qui les attend : c'est la question qu'on se pose en
+            // regardant le plan pendant le service.
+            background: resa.statut === 'arrive' ? 'var(--success-text)'
+                      : resa.statut === 'parti'  ? 'var(--text3)'
+                      : 'var(--accent)',
+            color: '#fff',
             fontSize: 9, fontWeight: 700, lineHeight: 1.35,
             fontFamily: 'var(--font)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
