@@ -8,13 +8,15 @@
 //   * au logout : tout, y compris profil/permissions (sb-boot), pour
 //     qu'un autre utilisateur du même appareil ne relise rien.
 //
-// La file de punches (IndexedDB) n'est volontairement PAS purgée ici :
-// les punches non synchronisés d'un utilisateur repartent à sa prochaine
-// session (jamais perdus, jamais rejoués sous un autre compte : le rejeu
-// filtre sur l'utilisateur de la session et la RPC re-vérifie côté base).
+// Les files IndexedDB (punches, saisies d'inventaire) ne sont volontairement
+// PAS purgées ici : les écritures non synchronisées d'un utilisateur repartent
+// à sa prochaine session (jamais perdues, jamais rejouées sous un autre compte :
+// le rejeu filtre sur l'utilisateur de la session et la RPC re-vérifie côté
+// base). Purger au logout ferait perdre un inventaire compté en chambre froide
+// par quelqu'un qui se déconnecte avant d'avoir retrouvé du réseau.
 // ─────────────────────────────────────────────────────────────
 
-const ETAB_SCOPED_CACHES = ['sb-recettes', 'sb-shifts', 'sb-photos', 'supabase-cache'];
+const ETAB_SCOPED_CACHES = ['sb-recettes', 'sb-shifts', 'sb-inventaires', 'sb-photos', 'supabase-cache'];
 const ALL_DATA_CACHES = [...ETAB_SCOPED_CACHES, 'sb-boot'];
 
 async function purge(names) {

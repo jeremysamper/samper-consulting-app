@@ -18,7 +18,12 @@
 
 import { supabase } from '../supabase.js';
 import { punchQueue } from './punchQueue.js';
+import { generateUuid, isNetworkError, withTimeout } from './offlineNet.js';
 import { zurichClock } from '../../utils/zurichTime.js';
+
+// Noms historiques conservés : ces primitives sont désormais partagées avec la
+// file de saisie d'inventaire (offlineNet.js), le comportement est inchangé.
+export { isNetworkError as isNetworkPunchError, withTimeout as withPunchTimeout };
 
 const RETRY_DELAY_MS = 60 * 1000;
 // Un punch refusé par une erreur métier répétée (élément malformé) finit par
@@ -55,41 +60,6 @@ function scheduleRetry() {
       syncPendingPunches();
     }, RETRY_DELAY_MS);
   }
-}
-
-function generateUuid() {
-  const cryptoObj = globalThis.crypto;
-  if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
-  // Fallback v4 (vieux WebView) : aléa suffisant pour une clé d'idempotence.
-  const bytes = new Uint8Array(16);
-  if (cryptoObj?.getRandomValues) {
-    cryptoObj.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < 16; i += 1) bytes[i] = Math.floor(Math.random() * 256);
-  }
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-// Erreur réseau (fetch échoué, timeout) : pas de code PostgREST. Une erreur
-// métier ou d'infrastructure porte toujours un code (P0001, PGRST..., 22...).
-export function isNetworkPunchError(error) {
-  return !error?.code;
-}
-
-// Course en cas de réseau lent : au-delà de `ms`, le punch part en file.
-// Si l'appel online aboutit malgré tout côté serveur, le rejeu du punch mis
-// en file est sans effet (anti-double SQL) : zéro doublon possible.
-export function withPunchTimeout(promise, ms = 8000) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('réseau trop lent, pointage mis en file')), ms);
-    promise.then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (err) => { clearTimeout(timer); reject(err); }
-    );
-  });
 }
 
 // Met un punch en file, horodaté MAINTENANT (heure du geste, jamais regénérée
@@ -144,7 +114,7 @@ export async function syncPendingPunches() {
 
       // Réseau tombé en cours de rejeu, RPC pas encore déployée (PGRST202)
       // ou JWT en cours de rafraîchissement (PGRST301) : file intacte, retry.
-      if (isNetworkPunchError(error) || error.code === 'PGRST202' || error.code === 'PGRST301') {
+      if (isNetworkError(error) || error.code === 'PGRST202' || error.code === 'PGRST301') {
         break;
       }
 
@@ -173,11 +143,11 @@ export async function syncPendingPunches() {
 export async function punchOnlineOrQueue({ call, shiftId, type, userId, etablissementId }) {
   if (typeof navigator === 'undefined' || navigator.onLine !== false) {
     try {
-      const row = await withPunchTimeout(call());
+      const row = await withTimeout(call());
       if (getPendingPunchCount() > 0) syncPendingPunches();
       return { mode: 'online', row };
     } catch (err) {
-      if (!isNetworkPunchError(err)) throw err;
+      if (!isNetworkError(err)) throw err;
     }
   }
   const queued = await queuePunch({ shiftId, type, userId, etablissementId });

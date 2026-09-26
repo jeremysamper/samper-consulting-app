@@ -134,6 +134,21 @@ export default defineConfig({
             },
           },
           {
+            // Inventaires : on compte en chambre froide, en cave, en réserve,
+            // là où il n'y a pas de réseau. La pile de l'établissement doit
+            // donc être lisible hors-ligne pour que les lignes s'affichent et
+            // que les quantités puissent être saisies (file IndexedDB).
+            // Secours 30 jours : un inventaire mensuel préparé au pass doit
+            // survivre jusqu'au comptage suivant.
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/inventaires\b/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'sb-inventaires',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Photos de recettes (bucket public, chemins immuables) : cache-first.
             urlPattern: /^https:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/recette-photos\//i,
             handler: 'CacheFirst',
