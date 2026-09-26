@@ -3,7 +3,7 @@ import { alertLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacy
 import { pdfUtils } from '../../services/pdf.js';
 import { writeText } from '../../utils/storage.js';
 import { ALLERGENES_OPTIONS } from './ConsultantTools.constants.js';
-import { normalizeSearch } from '../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
 
 const MENU_CATEGORIES = ['Entrées', 'Plats', 'Fromages', 'Desserts', 'Boissons', 'Menus'];
@@ -159,10 +159,11 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
     }))
     .filter((group) => group.items.length > 0), [items, categories]);
 
+  // Par mots, dans n'importe quel ordre, sur le nom et la description.
+  const matchSource = makeSearchMatcher(search);
   const filteredSources = sourceItems.filter((item) => {
     const matchesCategory = filterCategory === 'Tous' || item.category === filterCategory;
-    const term = normalizeSearch(search.trim());
-    const matchesSearch = !term || normalizeSearch(item.name).includes(term) || normalizeSearch(item.description).includes(term);
+    const matchesSearch = matchSource(item.name, item.description);
     return matchesCategory && matchesSearch && !items.some((menuItem) => menuItem.sourceId === item.sourceId && menuItem.sourceType === item.sourceType);
   });
 

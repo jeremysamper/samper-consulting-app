@@ -18,7 +18,7 @@
 import { useState, useMemo } from 'react';
 import { Input, Btn } from '../../../components/ui/index.jsx';
 import { diceScore } from '../lib/dice-coefficient.js';
-import { normalizeSearch } from '../../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../../utils/searchText.js';
 
 export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelect, onClose }) {
   const [search, setSearch] = useState('');
@@ -28,8 +28,9 @@ export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelec
     const q = normalizeSearch(search.trim());
     if (!q) return [...recettes].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
 
+    const match = makeSearchMatcher(q);
     return recettes
-      .filter((r) => normalizeSearch(r.nom).includes(q))
+      .filter((r) => match(r.nom))
       .map((r) => ({ ...r, _score: diceScore(q, r.nom) }))
       .sort((a, b) => b._score - a._score);
   }, [recettes, search]);

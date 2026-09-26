@@ -12,7 +12,7 @@ import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { categorieDuPlat, categoriesPresentes, platCatRank } from '../../utils/categoriesPlat.js';
-import { normalizeSearch } from '../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { dureesVie } from '../../utils/etiquettesDlc.js';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 
@@ -817,7 +817,8 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
   const [expandedCartes, setExpandedCartes] = React.useState(() => new Set());
   const [busy, setBusy] = React.useState(false);
 
-  const q = normalizeSearch(query.trim());
+  const match = makeSearchMatcher(query);
+  const q = match.active;
 
   const recetteById = React.useMemo(() => {
     const m = new Map();
@@ -912,13 +913,13 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
     return [...m.entries()].sort((a, b) => exportCatRank(a[0]) - exportCatRank(b[0]) || a[0].localeCompare(b[0]));
   };
 
-  const cartesVisibles = (cartes || []).filter(c => q === '' || normalizeSearch(c.nom).includes(q));
+  const cartesVisibles = (cartes || []).filter(c => match(c.nom));
   const platGroups = groupByCat(platsActifs
-    .filter(p => q === '' || normalizeSearch(p.nom).includes(q))
+    .filter(p => match(p.nom))
     .slice()
     .sort((a, b) => (a.ordre || 0) - (b.ordre || 0) || (a.nom || '').localeCompare(b.nom || '')));
   const recetteGroups = groupByCat((recettes || [])
-    .filter(r => q === '' || normalizeSearch(r.nom).includes(q))
+    .filter(r => match(r.nom))
     .slice()
     .sort((a, b) => (a.nom || '').localeCompare(b.nom || '')));
 
@@ -1217,9 +1218,11 @@ const IngredientSearchModal = ({ recettes, plats, onPick, onClose }) => {
   const q = normalizeSearch(query.trim());
   const results = React.useMemo(() => {
     if (q.length < 2) return [];
+    // Par mots : « beurre doux » trouve « Doux beurre » et « Beurre demi-sel doux ».
+    const match = makeSearchMatcher(q);
     return (recettes || []).map(r => {
-      const matchedIngs = (r.ingredients || []).filter(i => normalizeSearch(i.nom).includes(q));
-      const matchedAllerg = (r.allergenesIds || []).filter(a => normalizeSearch(ALLERGENES_MAP[a] || a).includes(q));
+      const matchedIngs = (r.ingredients || []).filter(i => match(i.nom));
+      const matchedAllerg = (r.allergenesIds || []).filter(a => match(ALLERGENES_MAP[a] || a));
       if (!matchedIngs.length && !matchedAllerg.length) return null;
       return { recette: r, matchedIngs, matchedAllerg };
     }).filter(Boolean);
@@ -1477,14 +1480,40 @@ const Recettes = ({ user, etablissement }) => {
   // absente de la nouvelle carte, on retombe sur « Tous » plutôt que d'afficher
   // une carte vide sans onglet actif.
   const catFilterEff = cats.includes(catFilter) ? catFilter : 'Tous';
-  // Recherche insensible aux accents, à la casse et aux espaces parasites
-  // (« creme » trouve « Crème brûlée »).
-  const q = normalizeSearch(search.trim());
+  // Recherche par mots, dans n'importe quel ordre, sans accents ni petits mots
+  // (« confit de sanglier » trouve « Sanglier confit »). Sur une carte, elle
+  // porte sur le nom du plat ET sur les recettes qui le composent : avant,
+  // seul le nom du plat comptait, une recette cherchée par son nom ne sortait
+  // jamais. Pendant une recherche, l'onglet de catégorie est ignoré (sinon un
+  // plat rangé dans un autre onglet semblait introuvable).
+  const match = makeSearchMatcher(search);
+  const q = match.active;
+  const recetteNomById = React.useMemo(() => {
+    const m = new Map();
+    recettesEtab.forEach(r => m.set(r.id, r.nom));
+    return m;
+  }, [recettesEtab]);
+  const platMatches = (p) => match(p.nom, (p.recettes || []).map(pr => recetteNomById.get(pr.recetteId)));
   const filteredPlats = platsCarte.filter(p =>
     p.actif !== false &&
-    (catFilterEff === 'Tous' || categorieDuPlat(p) === catFilterEff) &&
-    (q === '' || normalizeSearch(p.nom).includes(q))
+    (q || catFilterEff === 'Tous' || categorieDuPlat(p) === catFilterEff) &&
+    platMatches(p)
   );
+  // Résultats hors de la carte affichée (autres cartes, bibliothèque) : on les
+  // compte pour proposer d'y aller, plutôt que de laisser un écran vide.
+  // Une recette déjà comptée via son plat n'est pas recomptée : le nombre
+  // annoncé correspond aux blocs que l'on verra dans la bibliothèque.
+  const ailleursCount = (() => {
+    if (!q || isLibrary) return 0;
+    const platsAilleurs = (plats || []).filter(p => p.actif !== false && !(p.carteIds || []).includes(activeCarte?.id) && platMatches(p));
+    const dejaVues = new Set([...platsCarte, ...platsAilleurs].flatMap(p => (p.recettes || []).map(pr => pr.recetteId)));
+    return platsAilleurs.length + recettesEtab.filter(r => match(r.nom) && !dejaVues.has(r.id)).length;
+  })();
+  const voirDansBibliotheque = ailleursCount > 0 ? (
+    <button type="button" style={rs.searchElsewhereBtn} onClick={() => setActiveTab(LIBRARY_TAB)}>
+      {ailleursCount} autre{ailleursCount > 1 ? 's' : ''} résultat{ailleursCount > 1 ? 's' : ''} hors de cette carte : voir dans la bibliothèque ›
+    </button>
+  ) : null;
 
   if (selectedRecette) return <RecetteDetail recette={selectedRecette} user={user} etablissement={etablissement} onBack={() => setSelectedRecette(null)}/>;
 
@@ -1616,7 +1645,7 @@ const Recettes = ({ user, etablissement }) => {
 
           {/* Cat filter - une seule catégorie sur la carte : l'onglet unique
               ferait doublon avec le titre de section, on le masque. */}
-          {catsCarte.length > 1 && (
+          {catsCarte.length > 1 && !q && (
             <SegmentedTabs
               size="sm"
               active={catFilterEff}
@@ -1624,6 +1653,14 @@ const Recettes = ({ user, etablissement }) => {
               tabs={cats.map(c => ({ id: c, label: c }))}
             />
           )}
+
+          {q && filteredPlats.length === 0 && (
+            <div style={rs.searchEmpty}>
+              Aucun plat de « {activeCarte.nom} » ne correspond à « {search.trim()} ».
+              {voirDansBibliotheque}
+            </div>
+          )}
+          {q && filteredPlats.length > 0 && voirDansBibliotheque}
 
           {/* Plats by category */}
           {catsCarte.map(cat => {
@@ -1725,12 +1762,13 @@ const Recettes = ({ user, etablissement }) => {
             const allLinkedRecetteIds = new Set();
             (plats || []).forEach(p => (p.recettes || []).forEach(pr => allLinkedRecetteIds.add(pr.recetteId)));
             const orphelines = recettesEtab.filter(r =>
-              !allLinkedRecetteIds.has(r.id) && (q === '' || normalizeSearch(r.nom).includes(q))
+              !allLinkedRecetteIds.has(r.id) && match(r.nom)
             );
+            // Un plat sort si son nom correspond, ou si l'une de ses recettes
+            // correspond : il est alors déplié d'office pour la montrer.
+            const recetteTrouvee = (p) => q && (recettesParPlat[p.id] || []).some(r => match(r.nom));
             const visiblePlats = (plats || []).filter(p =>
-              q === '' ||
-              normalizeSearch(p.nom).includes(q) ||
-              recettesParPlat[p.id]?.some(r => normalizeSearch(r.nom).includes(q))
+              match(p.nom, (recettesParPlat[p.id] || []).map(r => r.nom))
             );
 
             // La ligne reste un <div> plutôt qu'un <button> : la convertir
@@ -1782,9 +1820,14 @@ const Recettes = ({ user, etablissement }) => {
 
             return (
               <>
+                {q && visiblePlats.length === 0 && orphelines.length === 0 && (
+                  <div style={rs.searchEmpty}>
+                    Aucun plat ni recette ne correspond à « {search.trim()} ».
+                  </div>
+                )}
                 {visiblePlats.map(plat => {
                   const platRecettes = recettesParPlat[plat.id] || [];
-                  const isExpanded = expandedPlats.has(plat.id);
+                  const isExpanded = expandedPlats.has(plat.id) || recetteTrouvee(plat);
                   return (
                     <div key={plat.id}>
                       <div style={rs.platBlock}
@@ -1845,6 +1888,8 @@ const Recettes = ({ user, etablissement }) => {
 
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
+  searchEmpty: {display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'28px 16px',textAlign:'center',color:'var(--text2)',fontSize:13,background:'var(--surface)',border:'1px dashed var(--border)',borderRadius:'var(--r)'},
+  searchElsewhereBtn: {alignSelf:'flex-start',padding:'8px 12px',borderRadius:8,border:'1px solid var(--accent-bd)',background:'var(--accent-light)',color:'var(--accent)',fontFamily:'var(--font)',fontSize:12.5,fontWeight:600,cursor:'pointer',textAlign:'left'},
   toolbar: {display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'},
   tabsWrap: {minWidth:0},
   tabsWrapMobile: {width:'100%',minWidth:0},

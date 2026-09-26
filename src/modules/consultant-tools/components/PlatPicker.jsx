@@ -1,6 +1,6 @@
 import React from 'react';
 import { grouperParCategorie, categorieDuPlat } from '../../../utils/categoriesPlat.js';
-import { normalizeSearch } from '../../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../../utils/searchText.js';
 import { cts } from '../ConsultantTools.styles.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,12 +60,12 @@ export default function PlatPicker({
 
   const q = normalizeSearch(query.trim());
 
-  // Un plat matche sur son nom ou sa catégorie (« boisson » sort la rubrique).
-  const platsVisibles = React.useMemo(() => (plats || []).filter(p =>
-    q === '' ||
-    normalizeSearch(p.nom).includes(q) ||
-    normalizeSearch(categorieDuPlat(p)).includes(q)
-  ), [plats, q]);
+  // Un plat matche sur son nom ou sa catégorie (« boisson » sort la rubrique),
+  // mot par mot et dans n'importe quel ordre.
+  const platsVisibles = React.useMemo(() => {
+    const match = makeSearchMatcher(q);
+    return (plats || []).filter(p => match(p.nom, categorieDuPlat(p)));
+  }, [plats, q]);
 
   // Dossiers : une carte active par menu + « Hors carte » pour les plats qui
   // n'en ont aucune (ou dont toutes les cartes sont archivées) - sans quoi ils

@@ -2,7 +2,7 @@ import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
-import { normalizeSearch } from '../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
@@ -403,9 +403,10 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // filtre, sinon on imprimerait un lot dont une partie a disparu de l'écran.
   const filtrer = React.useCallback((liste, q) => {
     if (!q) return liste;
+    const match = makeSearchMatcher(q);
     return liste.filter(r => {
       if (Object.prototype.hasOwnProperty.call(quantites, r.id)) return true;
-      return normalizeSearch(`${r.nom || ''} ${r.categorie || ''}`).includes(q);
+      return match(r.nom, r.categorie);
     });
   }, [quantites]);
 

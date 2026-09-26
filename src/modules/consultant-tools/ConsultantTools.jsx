@@ -45,7 +45,7 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
 import AlertRules from './AlertRules.jsx';
 import ConsultantOverview from './ConsultantOverview.jsx';
-import { normalizeSearch } from '../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 
 const CONSULTANT_TOOLS_TABS = ['vue', 'recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures', 'alertes'];
 // Dernier onglet visité, restauré à l'ouverture du module (préférence UI locale).
@@ -297,9 +297,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   const selected = recettes.find(r => r.id === selectedId);
 
-  const searchValue = normalizeSearch(search);
-  const filtered = recettesActives.filter(r => searchValue === '' || normalizeSearch(r.nom).includes(searchValue));
-  const archiveesFiltrees = recettesArchivees.filter(r => searchValue === '' || normalizeSearch(r.nom).includes(searchValue));
+  // Par mots, dans n'importe quel ordre (« confit de sanglier » trouve « Sanglier confit »).
+  const matchRecette = makeSearchMatcher(search);
+  const filtered = recettesActives.filter(r => matchRecette(r.nom));
+  const archiveesFiltrees = recettesArchivees.filter(r => matchRecette(r.nom));
   // Section « Archivées » de la liste : repliée par défaut.
   const [showArchivees, setShowArchivees] = React.useState(false);
   // Correspondances catalogue incertaines (héritées d'un import) : compteur
@@ -1487,7 +1488,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             );
 
             // Un plat est visible si son nom matche ou s'il a une recette filtrée.
-            const platMatches = (p) => searchValue === '' || normalizeSearch(p.nom).includes(searchValue) || (recettesParPlat[p.id]?.length > 0);
+            const platMatches = (p) => matchRecette(p.nom) || (recettesParPlat[p.id]?.length > 0);
 
             // Retire le plat d'UNE carte (lien carte↔plat) sans supprimer le plat
             // ni ses recettes : il reste dans l'établissement et sur les autres cartes.
@@ -1573,10 +1574,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 {/* ─── Cartes ▸ Plats ▸ Recettes ─── */}
                 {folders.map(folder => {
                   // En recherche, on masque les dossiers vides ; sinon « Non classés » n'apparaît que s'il a des plats.
-                  if (folder.plats.length === 0 && (searchValue !== '' || folder.id === '__none__')) return null;
+                  if (folder.plats.length === 0 && (matchRecette.active || folder.id === '__none__')) return null;
                   // En recherche, les dossiers restants s'ouvrent d'office :
                   // sinon on ne verrait que des en-têtes de cartes.
-                  const collapsed = searchValue === '' && !expandedCartes.has(folder.id);
+                  const collapsed = !matchRecette.active && !expandedCartes.has(folder.id);
                   return (
                     <div key={folder.id}>
                       <div

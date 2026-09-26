@@ -13,7 +13,7 @@ import {
   ALLERGENE_IDS, ALLERGENES_LABELS, labelAllergene,
   normalizeAllergenes, partitionAllergenes,
 } from '../../utils/allergenes.js';
-import { normalizeSearch } from '../../utils/searchText.js';
+import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -223,10 +223,11 @@ const FichesSalle = ({ user, etablissement }) => {
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
+  const matchFiche = makeSearchMatcher(search);
   const filtered = fiches.filter(f =>
     (catFilter === 'Tous' || f.categorie === catFilter) &&
     (activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab)) &&
-    (search === '' || normalizeSearch(f.nom).includes(normalizeSearch(search)))
+    matchFiche(f.nom)
   );
 
   const todayStr = new Date().toISOString().slice(0, 10);

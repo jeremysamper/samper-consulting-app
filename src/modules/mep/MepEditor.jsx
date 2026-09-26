@@ -3,6 +3,7 @@ import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { useCartes } from '../../hooks/useCartes.js';
 import { s } from './MiseEnPlace.styles.js';
+import { makeSearchMatcher } from '../../utils/searchText.js';
 
 let _tmpSeq = 0;
 const tmpKey = () => `tmp-${Date.now()}-${_tmpSeq++}`;
@@ -180,9 +181,10 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
     return <span style={{ ...s.chipCong, background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)' }}>À qualifier</span>;
   };
 
-  const q = search.trim().toLowerCase();
+  // Même recherche que partout : sans accents, par mots, dans n'importe quel ordre.
+  const matchRecette = makeSearchMatcher(search);
   const recettesFiltered = (recettes || [])
-    .filter(r => q === '' || (r.nom || '').toLowerCase().includes(q))
+    .filter(r => matchRecette(r.nom))
     .slice(0, 60);
 
   return (
