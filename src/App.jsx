@@ -17,6 +17,7 @@ import { getConsultantToolsTabForPage, normalizePage } from './modules/moduleCon
 import { readText, UI_STORAGE_KEYS, writeText } from './utils/storage.js';
 import { dbService } from './services/dbService.js';
 import { setNavigationHandler } from './services/navigationService.js';
+import { pushPage, startHistory } from './services/historyNav.js';
 import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 import { clearTranslationCache } from './i18n/domTranslator.js';
@@ -155,7 +156,17 @@ export default function App() {
     const normalized = normalizePage(nextPage);
     setPageState(normalized);
     writeText(UI_STORAGE_KEYS.page, normalized);
+    pushPage(normalized);
   }
+
+  // Retour / avancer du navigateur (geste Android, glissé depuis le bord,
+  // Alt+←, boutons de souris) : on affiche la page de l'entrée atteinte, sans
+  // reposer d'entrée d'historique.
+  useEffect(() => startHistory(readInitialPage(), (historyPage) => {
+    const normalized = normalizePage(historyPage);
+    setPageState(normalized);
+    writeText(UI_STORAGE_KEYS.page, normalized);
+  }), []);
 
   useEffect(() => {
     setNavigationHandler(setPage);

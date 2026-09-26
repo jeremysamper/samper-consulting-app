@@ -23,6 +23,20 @@ export default function SearchToggle({ value, onChange, placeholder = 'Recherche
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  // Raccourci « / » (KeyboardShortcuts) : seule la loupe VISIBLE répond - les
+  // modules gardés montés en arrière-plan sont en display:none.
+  const rootRef = React.useRef(null);
+  React.useEffect(() => {
+    const onFocusSearch = (e) => {
+      if (e.defaultPrevented || !rootRef.current?.getClientRects().length) return;
+      e.preventDefault();
+      if (open) inputRef.current?.focus();
+      else setOpen(true);
+    };
+    window.addEventListener('sc:focus-search', onFocusSearch);
+    return () => window.removeEventListener('sc:focus-search', onFocusSearch);
+  }, [open]);
+
   const close = () => {
     onChange('');
     setOpen(false);
@@ -31,6 +45,7 @@ export default function SearchToggle({ value, onChange, placeholder = 'Recherche
   if (!open) {
     return (
       <button
+        ref={rootRef}
         type="button"
         className="search-toggle-btn no-print"
         style={style}
@@ -44,7 +59,7 @@ export default function SearchToggle({ value, onChange, placeholder = 'Recherche
   }
 
   return (
-    <div className="search-toggle no-print" style={style}>
+    <div ref={rootRef} className="search-toggle no-print" style={style}>
       <Search size={14} style={{ flexShrink: 0, opacity: 0.6 }} />
       <input
         ref={inputRef}

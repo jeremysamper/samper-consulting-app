@@ -14,6 +14,11 @@ import OfflineBanner from '../components/OfflineBanner.jsx';
 import HomeScreenIconBanner from '../components/HomeScreenIconBanner.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
+import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
+import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
+import { Bell, KeyRound, Search } from 'lucide-react';
+import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
+import { goBack } from '../services/historyNav.js';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
@@ -65,6 +70,17 @@ export default function AppLayout({
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  // Décalage du tiroir pendant un glissé vers la gauche (null = au repos).
+  const [drawerDrag, setDrawerDrag] = React.useState(null);
+  const drawerGestureRef = React.useRef(null);
+  const canGoBack = useCanGoBack();
+
+  // Tiroir mobile ouvert = une entrée d'historique : le geste retour
+  // (Android, glissé depuis le bord) le referme au lieu de quitter le module.
+  const closeDrawer = React.useCallback(() => setDrawerOpen(false), []);
+  useBackLayer(isMobile && drawerOpen, closeDrawer, 'drawer');
 
   // Modale « changer mon mot de passe » : rendue à l'identique dans la coque
   // mobile et la coque desktop, qui ont deux arbres de rendu séparés.
@@ -239,6 +255,93 @@ export default function AppLayout({
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
   const { getLabelForModule } = useModuleLabels();
 
+  // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
+  const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
+  const togglePalette = React.useCallback((forceOpen) => {
+    setHelpOpen(false);
+    setPaletteOpen((o) => (forceOpen === true ? true : !o));
+  }, []);
+  const openHelp = React.useCallback(() => { setPaletteOpen(false); setHelpOpen(true); }, []);
+  useGlobalShortcuts({
+    navItems: visibleNav,
+    onNavigate: handleSetPage,
+    onTogglePalette: togglePalette,
+    onOpenHelp: openHelp,
+    onToggleSidebar: isMobile ? null : toggleSidebar,
+  });
+
+  // Échap referme ce que la coque a ouvert (panneau d'alertes, menu du logo,
+  // tiroir). Les modales des modules gèrent leur propre Échap.
+  React.useEffect(() => {
+    if (!notifOpen && !logoMenuOpen && !drawerOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      setNotifOpen(false);
+      setLogoMenuOpen(false);
+      setDrawerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [notifOpen, logoMenuOpen, drawerOpen]);
+
+  // Une navigation (clic, raccourci, retour) referme les panneaux flottants.
+  React.useEffect(() => {
+    setNotifOpen(false);
+    setHelpOpen(false);
+  }, [currentPage]);
+
+  const paletteEntries = React.useMemo(() => (paletteOpen ? buildPaletteEntries({
+    navItems: visibleNav,
+    getLabel: getLabelForModule,
+    currentPage,
+    onNavigate: handleSetPage,
+    etabs,
+    currentEtabId: etablissement?.id,
+    onSelectEtab: setEtablissement,
+    isDark,
+    onToggleTheme: toggleTheme,
+    onToggleSidebar: isMobile ? null : toggleSidebar,
+    sidebarOpen,
+    onOpenHelp: openHelp,
+    onBack: goBack,
+    canGoBack,
+  }) : []), [paletteOpen, visibleNav, currentPage, etabs, etablissement?.id, isDark, isMobile, sidebarOpen, canGoBack]);
+
+  const shortcutsLayer = (
+    <>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} entries={paletteEntries} />
+      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} touch={isEdgeSwipeEnabled()} />
+      <EdgeSwipeBack onRootSwipe={() => (isMobile ? setDrawerOpen(true) : setSidebarOpen(true))} />
+    </>
+  );
+
+  // Glisser le tiroir vers la gauche pour le refermer : il suit le doigt.
+  const drawerTouch = {
+    onTouchStart: (e) => {
+      const t = e.touches[0];
+      drawerGestureRef.current = { x0: t.clientX, y0: t.clientY, horizontal: null };
+    },
+    onTouchMove: (e) => {
+      const g = drawerGestureRef.current;
+      if (!g) return;
+      const t = e.touches[0];
+      const dx = t.clientX - g.x0;
+      const dy = t.clientY - g.y0;
+      if (g.horizontal === null) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        g.horizontal = Math.abs(dx) > Math.abs(dy);
+      }
+      if (g.horizontal) setDrawerDrag(Math.min(0, dx));
+    },
+    onTouchEnd: () => {
+      const g = drawerGestureRef.current;
+      drawerGestureRef.current = null;
+      if (g?.horizontal && drawerDrag !== null && drawerDrag < -70) setDrawerOpen(false);
+      setDrawerDrag(null);
+    },
+  };
+  drawerTouch.onTouchCancel = drawerTouch.onTouchEnd;
+
   // ── Bandeau alerte token POS expiré ────────────────────────────
   // Visible uniquement pour consultant / patron / resp_cuisine.
   // Les rôles cuisinier, serveur, hôte ne voient JAMAIS ce bandeau.
@@ -405,7 +508,14 @@ export default function AppLayout({
           <div
             key={alert.id}
             style={{ ...itemStyle, borderLeft: `3px solid ${severityColor(alert.severity)}`, cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'flex-start' }}
+            className="mini"
+            role="button"
+            tabIndex={0}
             onClick={() => handleAlertClick(alert)}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAlertClick(alert); }
+            }}
           >
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{alert.title}</div>
@@ -463,8 +573,13 @@ export default function AppLayout({
             >
               {isDark ? '☀' : '◑'}
             </button>
-            <button style={mls.bellBtn} onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}>
-              <span style={{ fontSize: 20 }}>🔔</span>
+            <button
+              style={mls.bellBtn}
+              onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+              aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
+              aria-expanded={notifOpen}
+            >
+              <Bell size={20} strokeWidth={2} aria-hidden="true" />
               {unreadCount > 0 && <div style={mls.notifDot}>{unreadCount}</div>}
             </button>
             {notifOpen && renderAlertPanel(mls.notifPanel, mls.notifHeader, mls.notifItem)}
@@ -479,7 +594,19 @@ export default function AppLayout({
         {drawerOpen && <div style={mls.overlay} onClick={() => setDrawerOpen(false)} />}
 
         {/* ─── Drawer latéral gauche ─── */}
-        <aside style={{ ...mls.drawer, transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+        {/* inert fermé : hors écran, le tiroir restait atteignable au clavier
+            et par le lecteur d'écran. */}
+        <aside
+          className="app-drawer"
+          inert={drawerOpen ? undefined : ''}
+          aria-label="Menu principal"
+          {...drawerTouch}
+          style={{
+            ...mls.drawer,
+            transform: drawerOpen ? `translateX(${drawerDrag || 0}px)` : 'translateX(-100%)',
+            transition: drawerDrag !== null ? 'none' : mls.drawer.transition,
+          }}
+        >
           {/* Header drawer : logo + nom consulting + fermeture */}
           <div style={mls.drawerHead}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -562,7 +689,8 @@ export default function AppLayout({
               style={mls.accountBtn}
               onClick={() => { setDrawerOpen(false); setPasswordModalOpen(true); }}
             >
-              🔑 Changer mon mot de passe
+              <KeyRound size={15} aria-hidden="true" style={{ marginRight: 8, flexShrink: 0 }} />
+              Changer mon mot de passe
             </button>
             <button style={mls.logoutBtn} onClick={onLogout}>
               Se déconnecter
@@ -576,6 +704,7 @@ export default function AppLayout({
         </main>
 
         {passwordModal}
+        {shortcutsLayer}
       </div>
     );
   }
@@ -675,7 +804,8 @@ export default function AppLayout({
             </div>
           </div>
           <button style={ls.accountBtn} onClick={() => setPasswordModalOpen(true)}>
-            🔑 Changer mon mot de passe
+            <KeyRound size={13} aria-hidden="true" style={{ marginRight: 6, verticalAlign: '-2px' }} />
+            Changer mon mot de passe
           </button>
         </div>
       </aside>
@@ -717,6 +847,19 @@ export default function AppLayout({
             )}
           </div>
           <div style={ls.topbarRight}>
+            {/* Porte d'entrée visible de la palette : le raccourci s'apprend en
+                le voyant écrit à côté. */}
+            <button
+              type="button"
+              className="cmdk-trigger"
+              onClick={(e) => { e.stopPropagation(); togglePalette(true); }}
+              aria-label="Aller à un module"
+              aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+K' : 'Control+K'}
+            >
+              <Search size={15} aria-hidden="true" />
+              <span>Aller à…</span>
+              <kbd className="sc-kbd" data-no-translate>{MOD_LABEL} K</kbd>
+            </button>
             <LanguageToggle etablissementId={etablissement?.id || null} />
             <button
               type="button"
@@ -728,8 +871,14 @@ export default function AppLayout({
               {isDark ? '☀' : '◑'}
             </button>
             <div style={{ position: 'relative' }}>
-              <button style={ls.iconBtn} onClick={(e) => { e.stopPropagation(); const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}>
-                <span>🔔</span>
+              <button
+                style={ls.iconBtn}
+                onClick={(e) => { e.stopPropagation(); const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+                aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
+                aria-expanded={notifOpen}
+                title="Alertes"
+              >
+                <Bell size={18} strokeWidth={2} aria-hidden="true" />
                 {unreadCount > 0 && <div style={ls.notifDot}>{unreadCount}</div>}
               </button>
               {notifOpen && renderAlertPanel(ls.notifPanel, ls.notifHeader, ls.notifItem)}
@@ -743,6 +892,7 @@ export default function AppLayout({
       </div>
 
       {passwordModal}
+      {shortcutsLayer}
     </div>
   );
 }
@@ -805,9 +955,9 @@ const ls = {
   etabBadgeDot: { width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 },
   topbarRight: { display: 'flex', alignItems: 'center', gap: 12 },
   themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', padding: 0, borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
-  iconBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, position: 'relative', padding: 4 },
+  iconBtn: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 0, right: 0, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  notifPanel: { position: 'absolute', right: 0, top: 40, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
+  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   topbarDivider: { width: 1, height: 20, background: 'var(--border)' },
