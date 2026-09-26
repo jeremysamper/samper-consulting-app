@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Btn } from '../../components/ui/index.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
+import { metaStatut, estPresent } from './statutsReservation.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
@@ -25,9 +27,12 @@ const TAG_COLORS = {
 };
 
 // ── Carte réservation ──────────────────────────────────────
-function ResaCard({ resa, isMobile, onClick }) {
+function ResaCard({ resa, isMobile, onClick, onStatut, canEdit }) {
   const [hovered, setHovered] = useState(false);
   const tags = Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [];
+  const statut = resa.statut || 'confirme';
+  const meta   = metaStatut(statut);
+  const traite = statut !== 'confirme';
 
   return (
     <div
@@ -36,11 +41,16 @@ function ResaCard({ resa, isMobile, onClick }) {
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
         padding: '10px 14px', borderRadius: 8,
-        border: '1px solid var(--border)',
+        borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+        // Un liseré de statut plutôt qu'un fond teinté : la carte reste
+        // lisible et l'état se lit d'un coup d'œil en balayant la colonne.
+        borderLeftWidth: 3,
+        borderLeftColor: traite ? meta.bordure : 'transparent',
         background: hovered ? 'var(--bg)' : 'var(--surface)',
+        opacity: statut === 'parti' || statut === 'no_show' ? 0.6 : 1,
         cursor: 'pointer', transition: 'background 0.1s',
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '60px 1fr 20px',
+        gridTemplateColumns: isMobile ? '1fr' : '60px 1fr auto',
         gap: isMobile ? 3 : 12, alignItems: 'center',
       }}
     >
@@ -100,10 +110,40 @@ function ResaCard({ resa, isMobile, onClick }) {
         )}
       </div>
 
-      {/* Chevron desktop */}
-      {!isMobile && (
-        <div style={{ fontSize: 16, color: 'var(--text3)' }}>›</div>
-      )}
+      {/* Statut : un tap suffit pour asseoir la table, le reste des états
+          (parti, no-show) vit dans la fiche détail. Pendant le coup de feu on
+          n'ouvre pas une modale pour cocher une arrivée. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        justifySelf: isMobile ? 'start' : 'end',
+        marginTop: isMobile ? 4 : 0,
+      }}>
+        {canEdit && statut === 'confirme' && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onStatut?.(resa, 'arrive'); }}
+            style={{
+              padding: '6px 12px', borderRadius: 20, minHeight: 32,
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
+              background: 'var(--success-bg-soft)', color: 'var(--success-text)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+              whiteSpace: 'nowrap',
+            }}>
+            Arrivé
+          </button>
+        )}
+        {traite && (
+          <span style={{
+            padding: '3px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+            borderWidth: 1, borderStyle: 'solid', borderColor: meta.bordure,
+            background: meta.bg, color: meta.texte, fontFamily: 'var(--font)',
+            whiteSpace: 'nowrap',
+          }}>
+            {meta.court}
+          </span>
+        )}
+        {!isMobile && <span style={{ fontSize: 16, color: 'var(--text3)' }}>›</span>}
+      </div>
     </div>
   );
 }
@@ -121,6 +161,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
   const [selectedResa, setSelectedResa] = useState(null);
   const [editingResa,  setEditingResa]  = useState(null);
   const [vue,          setVue]          = useState('liste'); // 'liste' | 'plan'
+  const [creating,     setCreating]     = useState(false);
 
   // Reprise, retour d'une modification et bouton « Réessayer » peuvent lancer
   // des lectures qui se croisent : voir useOrdreLectures.
@@ -179,9 +220,37 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
   // moment (session saine d'abord), la relecture est silencieuse.
   useResumeRefresh(load);
 
+  // Mise à jour optimiste : pendant le service, cocher une arrivée doit
+  // répondre au doigt et non au réseau. En cas d'échec on remet l'état
+  // d'avant plutôt que de laisser l'écran mentir.
+  async function changerStatut(resa, statut) {
+    const avant = resa.statut;
+    setResas((prev) => (prev || []).map((r) => (r.id === resa.id ? { ...r, statut } : r)));
+    const { error: err } = await reservations.setStatut(resa.id, statut);
+    if (err) {
+      setResas((prev) => (prev || []).map((r) => (r.id === resa.id ? { ...r, statut: avant } : r)));
+      notify(err, 'error');
+      return;
+    }
+    notify(`${resa.nom} · ${metaStatut(statut).label.toLowerCase()}`, 'success');
+    // Un no-show sort des couverts prévus (trigger côté base) : la vue
+    // semaine doit s'en apercevoir.
+    if (statut === 'no_show' || avant === 'no_show') onResaUpdated?.();
+  }
+
   const actives       = resas || [];
-  const totalCouverts = actives.reduce((s, r) => s + (r.nb_couverts || 0), 0);
-  const totalGroupes  = actives.filter((r) => r.est_groupe).length;
+  // Un no-show n'est pas un couvert : le trigger l'exclut déjà de
+  // previsions_jour, donc de la vue semaine. Le compter ici afficherait 14 au
+  // jour et 10 à la semaine pour le même service. Les no-shows restent
+  // visibles dans la liste - c'est le total qui les ignore.
+  const comptees      = actives.filter((r) => r.statut !== 'no_show');
+  const totalCouverts = comptees.reduce((s, r) => s + (r.nb_couverts || 0), 0);
+  const totalGroupes  = comptees.filter((r) => r.est_groupe).length;
+  const attables      = actives.filter((r) => r.statut === 'arrive')
+    .reduce((s, r) => s + (r.nb_couverts || 0), 0);
+  const resteAVenir   = actives.filter((r) => r.statut === 'confirme')
+    .reduce((s, r) => s + (r.nb_couverts || 0), 0);
+  const serviceEnCours = actives.some((r) => !estPresent(r.statut) || r.statut === 'arrive');
 
   return (
     <div>
@@ -191,7 +260,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
         marginTop: 16, marginBottom: 14, flexWrap: 'wrap',
       }}>
         <Btn small onClick={onBack}>← Semaine</Btn>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
             {formatDateLongue(date)}
           </div>
@@ -199,9 +268,34 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 1 }}>
               {totalCouverts} couvert{totalCouverts > 1 ? 's' : ''}
               {totalGroupes > 0 ? ` · ${totalGroupes} groupe${totalGroupes > 1 ? 's' : ''}` : ''}
+              {serviceEnCours && attables > 0 && (
+                <>
+                  {' · '}
+                  <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>
+                    {attables} à table
+                  </span>
+                  {resteAVenir > 0 ? ` · ${resteAVenir} attendu${resteAVenir > 1 ? 's' : ''}` : ''}
+                </>
+              )}
             </div>
           )}
         </div>
+        {/* Ajout depuis le jour affiché : le bouton du bandeau de module
+            ouvrait toujours le formulaire sur aujourd'hui, obligeant à
+            resaisir la date qu'on avait justement sous les yeux. */}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            style={{
+              padding: '9px 16px', borderRadius: 8, border: 'none', minHeight: 44,
+              background: 'var(--accent)', color: '#fff',
+              fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+              cursor: 'pointer', flexShrink: 0,
+            }}>
+            + Réservation
+          </button>
+        )}
       </div>
 
       {/* ── Liste ↔ plan de salle ── */}
@@ -272,7 +366,9 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
           .filter((r) => r.service === svc)
           .sort((a, b) => (a.heure_arrivee || '').localeCompare(b.heure_arrivee || ''));
         if (!groupe.length) return null;
-        const sub  = groupe.reduce((s, r) => s + (r.nb_couverts || 0), 0);
+        // Même règle que le total du jour : le no-show ne compte pas.
+        const sub  = groupe.filter((r) => r.statut !== 'no_show')
+          .reduce((s, r) => s + (r.nb_couverts || 0), 0);
         const meta = SERVICE_META[svc];
 
         return (
@@ -300,6 +396,8 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
                   key={resa.id}
                   resa={resa}
                   isMobile={isMobile}
+                  canEdit={canEdit}
+                  onStatut={changerStatut}
                   onClick={() => setSelectedResa(resa)}
                 />
               ))}
@@ -316,9 +414,10 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
           exception : une fiche rouverte sur la résa que l'on vient d'annuler. */}
       {selectedResa && (
         <ReservationDetailModal
-          resa={selectedResa}
+          resa={actives.find((r) => r.id === selectedResa.id) || selectedResa}
           onClose={() => setSelectedResa(null)}
           onEdit={canEdit ? (resa) => { setSelectedResa(null); setEditingResa(resa); } : undefined}
+          onStatut={canEdit ? changerStatut : undefined}
           onResaUpdated={(annuleeId) => {
             if (annuleeId) {
               setSelectedResa((cur) => (cur?.id === annuleeId ? null : cur));
@@ -328,6 +427,16 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
             onResaUpdated?.();
           }}
           canEdit={canEdit}
+        />
+      )}
+
+      {/* ── Création pour le jour affiché ── */}
+      {canEdit && creating && (
+        <ReservationForm
+          etablissementId={etablissementId}
+          initialDate={date}
+          onClose={() => setCreating(false)}
+          onSaved={() => { load(); onResaUpdated?.(); }}
         />
       )}
 

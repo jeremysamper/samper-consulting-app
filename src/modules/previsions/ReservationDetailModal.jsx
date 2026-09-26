@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
+import { formatDateLongue } from '../../utils/dateHelpers.js';
+import { STATUTS, metaStatut } from './statutsReservation.js';
 
-export default function ReservationDetailModal({ resa, onClose, onResaUpdated, onEdit, canEdit = true }) {
+export default function ReservationDetailModal({
+  resa, onClose, onResaUpdated, onEdit, onStatut, canEdit = true,
+}) {
   const reservations  = useReservations(resa.etablissement_id);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
@@ -101,11 +105,54 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
 
         {/* Corps scrollable */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 18px' }}>
-          <LigneDetail label="Date"      valeur={resa.date_service} />
+          {/* Suivi du service. Ces états existaient en base depuis l'origine
+              sans qu'aucun écran ne les expose : on ne pouvait pas savoir qui
+              était déjà à table. */}
+          {canEdit && onStatut && (
+            <div style={{ paddingBottom: 12, marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginBottom: 6 }}>
+                Statut
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {STATUTS.map((s) => {
+                  const m     = metaStatut(s);
+                  const actif = (resa.statut || 'confirme') === s;
+                  return (
+                    <button
+                      key={s} type="button"
+                      onClick={() => onStatut(resa, s)}
+                      style={{
+                        padding: '8px 13px', borderRadius: 20, minHeight: 40,
+                        borderWidth: 1, borderStyle: 'solid',
+                        borderColor: actif ? m.bordure : 'var(--border)',
+                        background:  actif ? m.bg : 'var(--surface)',
+                        color:       actif ? m.texte : 'var(--text2)',
+                        fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+                        cursor: 'pointer',
+                      }}>
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <LigneDetail label="Date"      valeur={resa.date_service && formatDateLongue(resa.date_service)} />
           <LigneDetail label="Service"   valeur={resa.service && (resa.service.charAt(0).toUpperCase() + resa.service.slice(1))} />
           <LigneDetail label="Heure"     valeur={(resa.heure_arrivee || '').slice(0, 5)} />
           <LigneDetail label="Couverts"  valeur={`${resa.nb_couverts} pax`} />
-          <LigneDetail label="Téléphone" valeur={resa.telephone} />
+          {/* Numéro appelable : quand un groupe n'est pas arrivé à 20h30, on
+              le rappelle depuis l'iPad, on ne recopie pas le numéro. */}
+          <LigneDetail
+            label="Téléphone"
+            valeur={resa.telephone && (
+              <a href={`tel:${String(resa.telephone).replace(/\s/g, '')}`}
+                 style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+                {resa.telephone}
+              </a>
+            )}
+          />
           {resa.est_groupe && <LigneDetail label="Type" valeur="Groupe" />}
           <LigneDetail label="Notes"     valeur={resa.notes_libres} />
           {tags.length > 0 && (
@@ -156,16 +203,21 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
                 >
                   Modifier
                 </button>
+                {/* « Annuler » et non « Supprimer » : l'action passe le
+                    statut à 'annule', la ligne reste en base pour l'historique
+                    et le prévisionnel se recalcule. Le libellé disait le
+                    contraire de ce que fait le bouton. */}
                 <button
                   type="button" onClick={() => setShowConfirm(true)}
                   style={{
                     padding: '9px 18px', borderRadius: 8,
-                    border: '1px solid var(--danger-bd)', background: 'var(--danger-bg-soft)',
+                    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
+                    background: 'var(--danger-bg-soft)',
                     color: 'var(--danger-text)', cursor: 'pointer',
                     fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
                   }}
                 >
-                  Supprimer
+                  Annuler la résa
                 </button>
               </div>
             )}
@@ -193,7 +245,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
           }}>
             <div style={{ fontSize: 13, color: 'var(--danger-text)', fontWeight: 600, lineHeight: 1.4 }}>
               Annuler la réservation de {resa.nom}
-              {resa.date_service ? ` pour le ${resa.date_service}` : ''}
+              {resa.date_service ? ` du ${formatDateLongue(resa.date_service).toLowerCase()}` : ''}
               {resa.heure_arrivee ? ` à ${(resa.heure_arrivee).slice(0, 5)}` : ''} ?
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -222,7 +274,7 @@ export default function ReservationDetailModal({ resa, onClose, onResaUpdated, o
                   opacity: deleting ? 0.7 : 1,
                 }}
               >
-                {deleting ? 'Suppression…' : 'Confirmer la suppression'}
+                {deleting ? 'Annulation…' : "Confirmer l'annulation"}
               </button>
             </div>
           </div>
