@@ -31,7 +31,8 @@ import {
 // Droits : tout rôle ayant accès au module lit le calendrier et fait avancer
 // l'état (c'est la brigade qui passe la case au vert). Créer, modifier et
 // annuler un groupe relève du droit « gérer » du module (Rôles & accès →
-// Droits d'action ; défaut consultant / patron / resp. cuisine / hôte).
+// Droits d'action ; défaut consultant / patron / resp. cuisine / cuisinier /
+// hôte). Le prix des menus reste hors de vue du cuisinier.
 //
 // Annuler n'efface rien : le groupe reste visible, barré, dans « groupes
 // annulés », et se rétablit d'un tap avec ses allergies. Ce n'est qu'une fois
@@ -43,11 +44,14 @@ const MOIS = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 // Rôles que la BASE autorise à créer / modifier un groupe (politique INSERT et
-// trigger de la migration 20260920) et à composer un menu. Le droit « gérer »
-// de Rôles & accès ne peut que RETIRER dans ces listes : l'accorder à un autre
-// rôle afficherait un bouton qui finit sur un refus de la base.
-const ROLES_GESTION = ['consultant', 'patron', 'resp_cuisine', 'hote'];
+// trigger, migrations 20260920 et 20260926 pour le cuisinier) et à composer un
+// menu. Le droit « gérer » de Rôles & accès ne peut que RETIRER dans ces
+// listes : l'accorder à un autre rôle afficherait un bouton qui finit sur un
+// refus de la base.
+const ROLES_GESTION = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote'];
 const ROLES_MENUS = ['consultant', 'patron', 'resp_cuisine'];
+// Prix par personne des menus : la gestion commerciale, pas la brigade.
+const ROLES_PRIX = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 // Miroir de la politique groupe_evenements_delete : une suppression refusée par
 // la RLS ne renvoie pas d'erreur, le bouton ne doit donc apparaître qu'à ces rôles.
 const ROLES_SUPPRESSION = ['consultant', 'patron'];
@@ -131,6 +135,7 @@ export default function Groupes({ user, etablissement }) {
   const canEdit = ROLES_GESTION.includes(user?.role) && canManageModule(user?.role, 'groupes');
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
   const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
+  const voirPrix = canEdit && ROLES_PRIX.includes(user?.role);
 
   const aujourdhui = zurichToday();
   const [onglet, setOnglet] = useState('calendrier');
@@ -359,7 +364,7 @@ export default function Groupes({ user, etablissement }) {
           platsStatus={cuisine.status}
           etablissement={etablissement}
           canEditMenus={canEditMenus}
-          voirPrix={canEdit}
+          voirPrix={voirPrix}
         />
       )}
 
@@ -410,7 +415,7 @@ export default function Groupes({ user, etablissement }) {
           dateInitiale={formulaire.date || null}
           menuDe={menuDe}
           menusStatus={menusStatus}
-          voirPrix={canEdit}
+          voirPrix={voirPrix}
           onSave={sauver}
           onClose={() => setFormulaire(null)}
         />

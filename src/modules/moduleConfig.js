@@ -23,7 +23,8 @@ export const defaultPermissions = {
 // reproduisent les gardes historiques de chaque module.
 // groupes : « gérer » = créer / modifier / annuler un groupe. Faire avancer
 // l'état (à lire → lu → prêt) reste ouvert à tous les rôles, c'est le principe
-// du code couleur. Défaut calqué sur le trigger de la migration 20260920.
+// du code couleur. Défaut calqué sur le trigger (migration 20260920, élargie
+// au cuisinier par 20260926).
 // Volontairement absents : dashboard et messages (aucune action à restreindre),
 // commande (la génération = IA, consultant only), kds (écran opérationnel du
 // passe) et les pages consultant-only (garde dure par rôle dans LegacyModuleHost).
@@ -38,7 +39,7 @@ export const manageableModules = [
   { id: 'documents', label: 'Documents' },
   { id: 'catalogue', label: 'Catalogue produits' },
   { id: 'previsions', label: 'Prévisions', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
-  { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
+  { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote'] },
   { id: 'mep', label: 'Mise en place', defaultRoles: ['resp_cuisine', 'cuisinier'] },
   { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
 ];
