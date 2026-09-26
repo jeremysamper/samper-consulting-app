@@ -1786,7 +1786,7 @@ export function installLegacySupabase() {
       return data;
     },
 
-    // ─── MESSAGES PRIVÉS (sens unique : consultant → utilisateur) ───
+    // ─── MESSAGES PRIVÉS (messagerie à deux sens, RLS : participants seulement) ───
     mapPrivateMessageFromDB(row) {
       return {
         id: row.id,
@@ -1807,8 +1807,8 @@ export function installLegacySupabase() {
       return (data || []).map(r => this.mapPrivateMessageFromDB(r));
     },
 
-    // Vue consultant : derniers messages tous destinataires confondus
-    // (RLS : seuls le consultant et chaque destinataire voient leurs lignes).
+    // Toutes MES conversations, envoyés et reçus (RLS : seuls les deux
+    // participants d'un message le voient, consultant compris).
     async listAllPrivateMessages() {
       const { data, error } = await client.from('private_messages')
         .select('*')
@@ -1836,11 +1836,14 @@ export function installLegacySupabase() {
       return this.mapPrivateMessageFromDB(data);
     },
 
-    async markPrivateMessagesRead(recipientId) {
-      const { error } = await client.from('private_messages')
+    // senderId (optionnel) : ne marque lue qu'UNE conversation, celle ouverte.
+    async markPrivateMessagesRead(recipientId, senderId = null) {
+      let q = client.from('private_messages')
         .update({ read_at: new Date().toISOString() })
         .eq('recipient_id', recipientId)
         .is('read_at', null);
+      if (senderId) q = q.eq('sender_id', senderId);
+      const { error } = await q;
       if (error) console.error('[markPrivateMessagesRead]', error);
     },
 

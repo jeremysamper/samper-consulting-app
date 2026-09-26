@@ -2,8 +2,8 @@ import React from 'react';
 import { dbService } from '../services/dbService.js';
 
 // Nombre de messages privés non lus pour l'utilisateur courant.
-// Realtime : recompte à chaque changement sur private_messages (envoi
-// consultant ou marquage lu depuis un autre device).
+// Realtime : recompte à chaque changement sur private_messages (nouveau
+// message reçu, ou marquage lu depuis un autre appareil).
 export function useUnreadPrivateMessages(userId) {
   const [count, setCount] = React.useState(0);
 
@@ -21,7 +21,10 @@ export function useUnreadPrivateMessages(userId) {
     };
     load();
     const unsub = legacySB.realtime.subscribeReload('private_messages', load);
-    return () => { mounted = false; unsub && unsub(); };
+    // Lecture faite dans CET appareil : recompte tout de suite, sans attendre
+    // l'aller-retour realtime.
+    window.addEventListener('sc:messages-read', load);
+    return () => { mounted = false; unsub && unsub(); window.removeEventListener('sc:messages-read', load); };
   }, [userId]);
 
   return count;

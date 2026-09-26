@@ -14,7 +14,7 @@ export interface AlertRule {
   rule_config: Record<string, unknown>;
   severity: string;          // 'info' | 'warning' | 'critical'
   schedule_type: string;     // 'hourly' | 'daily'
-  schedule_time: string | null; // "HH:MM:SS" (PostgreSQL time, UTC)
+  schedule_time: string | null; // "HH:MM:SS" (PostgreSQL time, heure de Zurich)
   schedule_days: number[] | null; // 1=Lun … 7=Dim ; null = tous les jours
   target_roles: string[] | null;  // défaut : ['consultant', 'patron']
 }

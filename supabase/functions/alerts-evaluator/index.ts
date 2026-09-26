@@ -65,23 +65,33 @@ async function evaluate(
 
 // ── Vérification du planning journalier ──────────────────────────
 /**
- * Pour les règles 'daily', vérifie si l'heure courante (UTC)
- * correspond à l'heure configurée dans schedule_time (stockée UTC).
+ * Pour les règles 'daily', vérifie si l'heure courante À ZURICH correspond à
+ * l'heure configurée (schedule_time, heure de Zurich), et le jour de même.
+ * Auparavant l'heure était lue en UTC : une règle « 20:00 » partait à 22:00
+ * l'été et 21:00 l'hiver. Aucune règle n'existait encore au changement.
  */
+const TZ = 'Europe/Zurich';
+const ISO_DAY: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+
+function zurichHourAndDay(now: Date): { hour: number; isoDay: number } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ, hour: '2-digit', hourCycle: 'h23', weekday: 'short',
+  }).formatToParts(now);
+  const hour = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+  const isoDay = ISO_DAY[parts.find((p) => p.type === 'weekday')?.value ?? 'Mon'] ?? 1;
+  return { hour, isoDay };
+}
+
 function shouldRunDaily(rule: AlertRule): boolean {
   if (!rule.schedule_time) return false;
 
-  const now = new Date();
-  const currentHourUtc = now.getUTCHours();
+  const { hour, isoDay } = zurichHourAndDay(new Date());
   const scheduleHour = parseInt(rule.schedule_time.split(':')[0], 10);
 
-  if (currentHourUtc !== scheduleHour) return false;
+  if (hour !== scheduleHour) return false;
 
-  // Vérification du jour si schedule_days est défini
+  // Jours ISO 1=Lun…7=Dim ; null ou vide = tous les jours
   if (rule.schedule_days && rule.schedule_days.length > 0) {
-    // JS getUTCDay() : 0=Dim, 1=Lun … 6=Sam → convertir en ISO 1=Lun…7=Dim
-    const jsDay = now.getUTCDay();
-    const isoDay = jsDay === 0 ? 7 : jsDay;
     if (!rule.schedule_days.includes(isoDay)) return false;
   }
 

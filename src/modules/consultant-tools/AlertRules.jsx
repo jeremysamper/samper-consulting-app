@@ -1,4 +1,5 @@
 import React from 'react';
+import { Bell, Pencil, Trash2 } from 'lucide-react';
 import { useAlertRules } from '../../hooks/useAlertRules.js';
 import { notify } from '../../components/toast/index.js';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
@@ -17,10 +18,12 @@ const RULE_TYPE_LABELS = {
 };
 
 const SEVERITY_CONFIG = {
-  info:     { label: 'Info',      color: 'var(--color-info, var(--info-strong))',    bg: 'rgba(59,130,246,.1)' },
-  warning:  { label: 'Attention', color: 'var(--color-warning, var(--warning-strong))', bg: 'rgba(245,158,11,.1)' },
-  critical: { label: 'Critique',  color: 'var(--color-error, var(--danger-strong))',   bg: 'rgba(239,68,68,.1)'  },
+  info:     { label: 'Info',      color: 'var(--info-strong)',    text: 'var(--info-text)',    bg: 'var(--info-bg)' },
+  warning:  { label: 'Attention', color: 'var(--warning-strong)', text: 'var(--warning-text)', bg: 'var(--warning-bg)' },
+  critical: { label: 'Critique',  color: 'var(--danger-strong)',  text: 'var(--danger-text)',  bg: 'var(--danger-bg)' },
 };
+
+const DAY_LABELS = ['', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
 
 function formatRelativeTime(isoString) {
   if (!isoString) return '';
@@ -35,9 +38,12 @@ function formatRelativeTime(isoString) {
 }
 
 function scheduleLabel(rule) {
-  if (rule.schedule_type === 'hourly') return 'Évaluation horaire';
+  if (rule.schedule_type === 'hourly') return 'Vérifiée toutes les heures';
   const time = (rule.schedule_time || '00:00:00').slice(0, 5);
-  return `Quotidienne à ${time} UTC`;
+  const days = rule.schedule_days?.length && rule.schedule_days.length < 7
+    ? ' (' + [...rule.schedule_days].sort().map((d) => DAY_LABELS[d]).join(', ') + ')'
+    : '';
+  return `Chaque jour à ${time}${days}`;
 }
 
 // ─── AlertRuleCard ───────────────────────────────────────────────
@@ -69,7 +75,7 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
           </span>
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-            background: sev.bg, color: sev.color,
+            background: sev.bg, color: sev.text,
           }}>
             {sev.label}
           </span>
@@ -90,8 +96,8 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
 
       {/* Boutons action */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', flexShrink: 0, flexWrap: 'wrap' }}>
-        <button style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px' }} onClick={onEdit}>
-          ✏ Éditer
+        <button style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={onEdit}>
+          <Pencil size={13} aria-hidden="true" /> Modifier
         </button>
         <button
           style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: rule.is_active ? 'var(--warning-strong)' : 'var(--success-strong)' }}
@@ -102,8 +108,10 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
         <button
           style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
           onClick={onDelete}
+          aria-label={`Supprimer la règle ${rule.name}`}
+          title="Supprimer"
         >
-          ✕
+          <Trash2 size={14} aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -183,7 +191,7 @@ export default function AlertRules({ etablissement }) {
             Alertes configurées
           </div>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
-            Règles d'alerte évaluées automatiquement par le cron horaire.
+            Vérifiées automatiquement toutes les heures ; les alertes arrivent dans la cloche des personnes choisies.
           </div>
         </div>
         <button style={cts.newBtn} onClick={openCreate}>+ Nouvelle règle</button>
@@ -223,7 +231,7 @@ export default function AlertRules({ etablissement }) {
       {/* ─── Empty state ─── */}
       {!loading && rules.length === 0 && (
         <div style={cts.emptyState}>
-          <div style={{ fontSize: 40, opacity: 0.3 }}>🔔</div>
+          <Bell size={40} strokeWidth={1.5} aria-hidden="true" style={{ opacity: 0.3, color: 'var(--text2)' }} />
           <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             Aucune règle d'alerte configurée
           </div>

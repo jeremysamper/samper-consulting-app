@@ -1,16 +1,22 @@
 import React from 'react';
+import { BarChart3, CalendarCheck, Clock, Package, StickyNote, Thermometer, TrendingDown } from 'lucide-react';
 import { cts } from './ConsultantTools.styles.js';
 import { dbService } from '../../services/dbService.js';
+import { roles as ROLE_CONFIG } from '../moduleConfig.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 
 // ─── Constantes ───────────────────────────────────────────────────
+// 'reservation_non_confirmee' : masqué du choix (hidden). Toute réservation
+// saisie est confirmée d'emblée dans l'app, la condition ne peut pas se
+// produire. Gardé pour afficher une règle éventuellement créée avant.
 const RULE_TYPES = [
-  { id: 'pointage_manquant',         label: 'Pointage manquant',         icon: '🕐' },
-  { id: 'haccp_manquant',            label: 'Relevé HACCP manquant',     icon: '🌡' },
-  { id: 'reservation_non_confirmee', label: 'Réservation non confirmée', icon: '📅' },
-  { id: 'stock_critique',            label: 'Stock critique',            icon: '📦' },
-  { id: 'ventes_inactives',          label: 'Ventes inactives',          icon: '📊' },
-  { id: 'pertes_elevees',            label: 'Pertes élevées',            icon: '⚠' },
-  { id: 'personnalisee',             label: 'Rappel personnalisé',       icon: '📝' },
+  { id: 'pointage_manquant',         label: 'Pointage manquant',         icon: Clock },
+  { id: 'haccp_manquant',            label: 'Relevé HACCP manquant',     icon: Thermometer },
+  { id: 'reservation_non_confirmee', label: 'Réservation non confirmée', icon: CalendarCheck, hidden: true },
+  { id: 'stock_critique',            label: 'Stock critique',            icon: Package },
+  { id: 'ventes_inactives',          label: 'Ventes inactives',          icon: BarChart3 },
+  { id: 'pertes_elevees',            label: 'Pertes élevées',            icon: TrendingDown },
+  { id: 'personnalisee',             label: 'Rappel personnalisé',       icon: StickyNote },
 ];
 
 const SEVERITIES = [
@@ -25,13 +31,9 @@ const DAYS = [
   { id: 7, label: 'Dim' },
 ];
 
-const ROLES_OPTIONS = [
-  { id: 'consultant',   label: 'Consultant'    },
-  { id: 'patron',       label: 'Patron'        },
-  { id: 'resp_cuisine', label: 'Resp. cuisine' },
-  { id: 'cuisinier',    label: 'Chef'          },
-  { id: 'serveur',      label: 'Service'       },
-];
+// Tous les rôles de l'app, mêmes libellés que partout ailleurs (l'hôte
+// manquait : impossible de lui adresser une alerte).
+const ROLES_OPTIONS = Object.entries(ROLE_CONFIG).map(([id, r]) => ({ id, label: r.label }));
 
 const TOTAL_STEPS = 4;
 
@@ -176,6 +178,77 @@ function ZonePicker({ etablissementId, selected, onChange }) {
   );
 }
 
+// ─── Produits connus des inventaires ─────────────────────────────
+// Le nom doit correspondre EXACTEMENT à une ligne d'inventaire : en texte libre,
+// une faute de frappe donnait une règle qui ne se déclenchait jamais, sans
+// aucun signe. On propose les produits réellement inventoriés.
+function useInventoryProducts(etablissementId) {
+  const [products, setProducts] = React.useState(null);
+  React.useEffect(() => {
+    let mounted = true;
+    if (!etablissementId) { setProducts([]); return undefined; }
+    (async () => {
+      try {
+        const list = await dbService.getDb()?.listInventaires(etablissementId);
+        const names = new Map();
+        (list || []).forEach((inv) => (inv.lignes || []).forEach((l) => {
+          const name = (l.produit || '').trim();
+          if (name && !names.has(name.toLowerCase())) names.set(name.toLowerCase(), { name, unite: l.unite || '' });
+        }));
+        if (mounted) setProducts([...names.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+      } catch {
+        if (mounted) setProducts([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [etablissementId]);
+  return products;
+}
+
+function StockFields({ config, set, onChange, etablissementId }) {
+  const products = useInventoryProducts(etablissementId);
+  const typed = (config.product_name ?? '').trim().toLowerCase();
+  const match = products?.find((p) => p.name.toLowerCase() === typed);
+  const pick = (value) => {
+    const found = products?.find((p) => p.name.toLowerCase() === value.trim().toLowerCase());
+    onChange({ ...config, product_name: value, ...(found && !config.unite ? { unite: found.unite } : {}) });
+  };
+  return (
+    <>
+      <Field label="Produit (tel qu'il figure dans l'inventaire)" required>
+        <input type="text" style={cts.input} list="alert-stock-products"
+          value={config.product_name ?? ''}
+          onChange={(e) => pick(e.target.value)}
+          placeholder={products?.length ? 'Commencez à taper pour choisir…' : 'ex: Farine T55'} />
+        <datalist id="alert-stock-products">
+          {(products || []).map((p) => <option key={p.name} value={p.name} />)}
+        </datalist>
+        {typed && products && (
+          <div style={{ fontSize: 11, marginTop: 4, color: match ? 'var(--success-text)' : 'var(--warning-text)' }}>
+            {match
+              ? '✓ Produit trouvé dans les inventaires.'
+              : "Produit introuvable dans les inventaires : l'alerte ne pourra pas se déclencher tant qu'il n'y figure pas."}
+          </div>
+        )}
+      </Field>
+      <Field label="Seuil critique" required>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input type="number" min={0} style={{ ...cts.input, flex: 1 }}
+            value={config.threshold ?? 5}
+            onChange={(e) => set('threshold', Number(e.target.value))} />
+          <input type="text" style={{ ...cts.input, width: 80 }}
+            value={config.unite ?? ''}
+            onChange={(e) => set('unite', e.target.value)}
+            placeholder="kg" />
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+          Déclenche si le stock compté passe sous ce seuil (dernier inventaire validé de chaque périmètre, additionnés).
+        </div>
+      </Field>
+    </>
+  );
+}
+
 // ─── Champs dynamiques selon rule_type (Étape 3) ─────────────────
 function ConfigFields({ ruleType, config, onChange, etablissementId }) {
   const set = (key, value) => onChange({ ...config, [key]: value });
@@ -241,30 +314,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
       );
 
     case 'stock_critique':
-      return (
-        <>
-          <Field label="Nom exact du produit (tel que dans l'inventaire)" required>
-            <input type="text" style={cts.input}
-              value={config.product_name ?? ''}
-              onChange={(e) => set('product_name', e.target.value)}
-              placeholder="ex: Farine T55" />
-          </Field>
-          <Field label="Seuil critique" required>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="number" min={0} style={{ ...cts.input, flex: 1 }}
-                value={config.threshold ?? 5}
-                onChange={(e) => set('threshold', Number(e.target.value))} />
-              <input type="text" style={{ ...cts.input, width: 80 }}
-                value={config.unite ?? ''}
-                onChange={(e) => set('unite', e.target.value)}
-                placeholder="kg" />
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
-              Déclenche si le stock réel est inférieur à ce seuil dans le dernier inventaire validé.
-            </div>
-          </Field>
-        </>
-      );
+      return <StockFields config={config} set={set} onChange={onChange} etablissementId={etablissementId} />;
 
     case 'ventes_inactives':
       return (
@@ -395,6 +445,15 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
+  // Geste retour (Android, glissé depuis le bord, Alt+←) et Échap ferment la
+  // modale au lieu de quitter le module.
+  useBackLayer(true, onClose, 'alert-rule-form');
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !saving) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, saving]);
+
   // ── Validation par étape ────────────────────────────────────────
   const canProceed = () => {
     if (step === 1) return form.name.trim().length > 0;
@@ -408,6 +467,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
         case 'reservation_non_confirmee':  return (c.delay_hours ?? 0) > 0;
         case 'ventes_inactives':           return (c.inactive_days ?? 0) > 0;
         case 'pertes_elevees':             return (c.threshold_chf ?? 0) > 0;
+        case 'pointage_manquant':          return (c.delay_minutes ?? 30) >= 5 && (c.delay_minutes ?? 30) <= 480;
         default:                           return true;
       }
     }
@@ -468,6 +528,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
       onClick={onClose}
     >
       <div className={modalClass} onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label={isEdit ? 'Modifier la règle' : "Nouvelle règle d'alerte"}
         style={{
           display: 'flex', flexDirection: 'column',
           background: 'var(--surface)', border: '1px solid var(--border)',
@@ -550,7 +611,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
           {step === 2 && (
             <Field label="Quel événement surveiller ?" required>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {RULE_TYPES.map((rt) => (
+                {RULE_TYPES.filter((rt) => !rt.hidden || rt.id === form.rule_type).map((rt) => (
                   <button
                     key={rt.id}
                     type="button"
@@ -565,7 +626,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                     }}
                     onClick={() => { set('rule_type', rt.id); set('rule_config', {}); }}
                   >
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>{rt.icon}</span>
+                    <rt.icon size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
                     <span style={{ lineHeight: 1.3 }}>{rt.label}</span>
                   </button>
                 ))}
@@ -621,7 +682,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
 
               {form.schedule_type === 'daily' && (
                 <>
-                  <Field label="Heure d'évaluation (UTC)">
+                  <Field label="Heure d'évaluation (heure de Zurich)">
                     <input type="time" style={cts.input}
                       value={form.schedule_time}
                       onChange={(e) => set('schedule_time', e.target.value)} />

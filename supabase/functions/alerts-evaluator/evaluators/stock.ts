@@ -1,8 +1,13 @@
 // ================================================================
 // evaluators/stock.ts
 //
-// Condition : dans le dernier inventaire validé, le stock réel
-//             d'un produit est inférieur au seuil configuré.
+// Condition : le stock réel consolidé d'un produit est inférieur au seuil.
+//             Stock consolidé = dernier inventaire validé de CHAQUE périmètre
+//             (inventaires.nom : Cuisine, Boissons…), additionnés - même
+//             règle que l'écran Inventaire.
+//
+// Le front enregistre statut = 'validé' (accentué) : l'ancien filtre sur
+// 'valide' ne trouvait jamais rien, l'alerte ne pouvait pas se déclencher.
 //
 // rule_config attendu :
 //   { product_name: string, threshold: number, unite?: string }
@@ -36,14 +41,13 @@ export async function evalStock(
     return { shouldFire: false };
   }
 
-  // Dernier inventaire validé pour cet établissement
+  // Inventaires validés, du plus récent au plus ancien
   const { data: invRows, error } = await sb
     .from('inventaires')
-    .select('id, lignes')
+    .select('id, nom, lignes, created_at')
     .eq('etablissement_id', rule.etablissement_id)
-    .eq('statut', 'valide')
-    .order('created_at', { ascending: false })
-    .limit(1);
+    .in('statut', ['validé', 'valide'])
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('[alerts/stock]', error.message);
@@ -52,19 +56,32 @@ export async function evalStock(
 
   if (!invRows?.length) return { shouldFire: false }; // Pas d'inventaire validé
 
-  const lignes: LigneMvt[] = invRows[0].lignes ?? [];
-  const nameNorm = product_name.toLowerCase().trim();
+  // Le plus récent de chaque périmètre
+  const seen = new Set<string>();
+  const latest = invRows.filter((inv) => {
+    const key = (inv.nom ?? '').trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
-  const ligne = lignes.find(
-    (l) => (l.produit ?? '').toLowerCase().trim() === nameNorm,
+  const nameNorm = product_name.toLowerCase().trim();
+  const matches: LigneMvt[] = latest.flatMap((inv) =>
+    ((inv.lignes ?? []) as LigneMvt[]).filter(
+      (l) => (l.produit ?? '').toLowerCase().trim() === nameNorm,
+    ),
   );
 
-  if (!ligne) return { shouldFire: false }; // Produit non trouvé dans l'inventaire
+  if (!matches.length) {
+    // Visible dans les logs de la fonction : la règle vise un produit absent.
+    console.warn(`[alerts/stock] rule ${rule.id} : produit « ${product_name} » absent des inventaires validés`);
+    return { shouldFire: false };
+  }
 
-  const stockReel = Number(ligne.stockReel) || 0;
+  const stockReel = matches.reduce((sum, l) => sum + (Number(l.stockReel) || 0), 0);
   if (stockReel >= threshold) return { shouldFire: false };
 
-  const uniteStr = unite || ligne.unite || '';
+  const uniteStr = unite || matches[0].unite || '';
   return {
     shouldFire: true,
     title: `Stock critique : ${product_name}`,

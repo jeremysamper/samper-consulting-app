@@ -16,9 +16,11 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, KeyRound, Search } from 'lucide-react';
+import { ArrowUpDown, Bell, KeyRound, Search } from 'lucide-react';
 import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack } from '../services/historyNav.js';
+import NavOrganizer from '../components/nav/NavOrganizer.jsx';
+import { applyNavOrder, useNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
@@ -170,7 +172,11 @@ export default function AppLayout({
   // Nav filtrée : on cache TOUT module dont la permission est explicitement false.
   // Si la permission n'existe pas (undefined) → on suit la valeur par défaut du rôle dans DEMO_DATA.
   // Si la valeur par défaut est aussi absente → on affiche par défaut (nouveau module ajouté côté code).
-  const visibleNav = React.useMemo(() => NAV_ITEMS.filter(item => {
+  // Ordre du menu choisi par le consultant (partagé par tous les comptes).
+  const { order: navOrder, save: saveNavOrder } = useNavOrder();
+  const [organizing, setOrganizing] = React.useState(false);
+  const isConsultant = user.role === 'consultant';
+  const visibleNav = React.useMemo(() => applyNavOrder(NAV_ITEMS, navOrder).filter(item => {
     // IA / assistant / outils consultant : réservés au consultant culinaire,
     // même si la table permissions accorde le module à un autre rôle.
     if ((item.id === 'faq' || item.id === 'consultant_tools') && user.role !== 'consultant') return false;
@@ -184,7 +190,7 @@ export default function AppLayout({
     const defaultPerms = (DEMO_DATA.permissions && DEMO_DATA.permissions[user.role]) || {};
     if (defaultPerms[item.permKey] === false) return false;
     return true;
-  }), [perms, user.role]);
+  }), [perms, user.role, navOrder]);
   const groupedNav = React.useMemo(() => visibleNav.reduce((groups, item) => {
     const groupName = item.group || 'Modules';
     const group = groups.find((entry) => entry.label === groupName);
@@ -211,7 +217,7 @@ export default function AppLayout({
     setDrawerOpen(false);
   }, [currentPage, isMobile]);
 
-  // Badge messages privés non lus (consultant → utilisateur) sur l'item de nav
+  // Badge messages privés non lus (reçus, tous expéditeurs) sur l'item de nav
   const unreadMessages = useUnreadPrivateMessages(user?.id);
   // Groupes des 14 prochains jours pas encore prêts : l'alerte d'anticipation
   // doit se voir depuis n'importe quel module, sinon elle ne prévient personne.
@@ -254,6 +260,56 @@ export default function AppLayout({
   // Labels personnalisés globaux (module_labels table - portée tous établissements)
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
   const { getLabelForModule } = useModuleLabels();
+
+  // ── Organiser le menu (consultant) ───────────────────────────────
+  const defaultNavGroups = React.useMemo(() => [...new Set(NAV_ITEMS.map((item) => item.group))], []);
+  const startOrganizing = React.useCallback(() => {
+    if (isMobile) setDrawerOpen(true);
+    else setSidebarOpen(true);
+    setOrganizing(true);
+  }, [isMobile]);
+  // Tiroir refermé = rangement abandonné (rien n'est enregistré).
+  React.useEffect(() => {
+    if (isMobile && !drawerOpen) setOrganizing(false);
+  }, [isMobile, drawerOpen]);
+  const handleSaveOrder = async (order) => {
+    try {
+      // Les modules que le consultant ne voit pas gardent leur place enregistrée.
+      const kept = (navOrder || []).filter((entry) => !order.some((o) => o.id === entry.id));
+      await saveNavOrder([...order, ...kept]);
+      setOrganizing(false);
+      notifyLegacy('Ordre du menu enregistré pour tous les comptes', 'success');
+    } catch (err) {
+      notifyLegacy('Enregistrement impossible : ' + (err?.message || err), 'error');
+    }
+  };
+  const handleResetOrder = async () => {
+    if (!confirmLegacy("Revenir à l'ordre par défaut du menu pour tous les comptes ?")) return;
+    try {
+      await saveNavOrder(null);
+      setOrganizing(false);
+      notifyLegacy('Ordre par défaut rétabli', 'success');
+    } catch (err) {
+      notifyLegacy('Enregistrement impossible : ' + (err?.message || err), 'error');
+    }
+  };
+  const renderOrganizer = (variant) => (
+    <NavOrganizer
+      items={visibleNav}
+      defaultGroups={defaultNavGroups}
+      getLabel={getLabelForModule}
+      onSave={handleSaveOrder}
+      onCancel={() => setOrganizing(false)}
+      onReset={handleResetOrder}
+      variant={variant}
+    />
+  );
+  const organizeButton = isConsultant ? (
+    <button type="button" className="nav-organize-btn" onClick={() => setOrganizing(true)}>
+      <ArrowUpDown size={14} aria-hidden="true" />
+      Organiser le menu
+    </button>
+  ) : null;
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
   const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
@@ -305,7 +361,8 @@ export default function AppLayout({
     onOpenHelp: openHelp,
     onBack: goBack,
     canGoBack,
-  }) : []), [paletteOpen, visibleNav, currentPage, etabs, etablissement?.id, isDark, isMobile, sidebarOpen, canGoBack]);
+    onOrganize: isConsultant ? startOrganizing : null,
+  }) : []), [paletteOpen, visibleNav, currentPage, etabs, etablissement?.id, isDark, isMobile, sidebarOpen, canGoBack, isConsultant, startOrganizing]);
 
   const shortcutsLayer = (
     <>
@@ -600,7 +657,7 @@ export default function AppLayout({
           className="app-drawer"
           inert={drawerOpen ? undefined : ''}
           aria-label="Menu principal"
-          {...drawerTouch}
+          {...(organizing ? {} : drawerTouch)}
           style={{
             ...mls.drawer,
             transform: drawerOpen ? `translateX(${drawerDrag || 0}px)` : 'translateX(-100%)',
@@ -661,8 +718,8 @@ export default function AppLayout({
           )}
 
           {/* Liste des modules */}
-          <nav style={mls.drawerNav}>
-            {groupedNav.map(group => (
+          <nav style={mls.drawerNav} data-nav-scroll>
+            {organizing ? renderOrganizer('mobile') : groupedNav.map(group => (
               <div key={group.label}>
                 <div style={mls.drawerGroupLabel}>{group.label}</div>
                 {group.items.map(item => {
@@ -681,6 +738,7 @@ export default function AppLayout({
                 })}
               </div>
             ))}
+            {!organizing && organizeButton}
           </nav>
 
           {/* Compte + déconnexion en bas */}
@@ -775,8 +833,8 @@ export default function AppLayout({
           </div>
         )}
 
-        <nav style={ls.nav}>
-          {groupedNav.map(group => (
+        <nav style={ls.nav} data-nav-scroll>
+          {organizing ? renderOrganizer('desktop') : groupedNav.map(group => (
             <div key={group.label} style={ls.navGroup}>
               <div style={ls.navGroupLabel}>{group.label}</div>
               {group.items.map(item => {
@@ -793,6 +851,7 @@ export default function AppLayout({
               })}
             </div>
           ))}
+          {!organizing && organizeButton}
         </nav>
 
         <div style={ls.userArea}>

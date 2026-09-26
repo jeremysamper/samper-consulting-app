@@ -1550,3 +1550,155 @@ html[data-theme="dark"] button:not(:disabled):active {
   .cmdk-trigger { transition: none; }
   .app-drawer { transition: none !important; }
 }
+
+/* ─── Organiser le menu (NavOrganizer, consultant) ──────────────────────────
+   Posé sur le dégradé de navigation : tokens nav-* uniquement. */
+.nav-organize-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-shrink: 0;
+  margin: 10px 4px 2px;
+  padding: 8px 10px;
+  border: 1px dashed var(--nav-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nav-text);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.nav-organize-btn:hover { opacity: 1; border-style: solid; }
+.nav-organize-btn:focus-visible,
+.nav-organizer button:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
+
+.nav-organizer { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
+.nav-organizer-intro {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--nav-text);
+  padding: 6px 6px 8px;
+}
+.nav-organizer-group { padding-bottom: 4px; }
+.nav-organizer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 4px 8px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--nav-text);
+}
+.nav-organizer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 0 2px 0 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--nav-border);
+  margin-bottom: 4px;
+  color: var(--nav-text-active);
+  font-size: 13px;
+  font-weight: 500;
+  transition: opacity 0.12s ease;
+}
+.nav-organizer-row.is-dragging { opacity: 0.4; }
+.nav-organizer-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 36px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--nav-text);
+  cursor: grab;
+  touch-action: none;
+  border-radius: 6px;
+}
+.nav-organizer-grip:active { cursor: grabbing; }
+.nav-organizer-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-organizer-arrows { display: flex; gap: 2px; flex-shrink: 0; }
+.nav-organizer-arrows button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--nav-text);
+  cursor: pointer;
+}
+.nav-organizer-arrows button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); color: var(--nav-text-active); }
+.nav-organizer-arrows button:disabled { opacity: 0.25; cursor: default; }
+.nav-organizer-empty {
+  font-size: 11.5px;
+  color: var(--nav-text);
+  opacity: 0.75;
+  padding: 10px;
+  border: 1px dashed var(--nav-border);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.nav-organizer-drop {
+  height: 3px;
+  margin: -2px 4px 2px;
+  border-radius: 2px;
+  background: var(--nav-accent);
+  box-shadow: 0 0 8px var(--nav-accent);
+}
+.nav-organizer-actions {
+  position: sticky;
+  bottom: -12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 2px 12px;
+  background: var(--nav-grad);
+}
+.nav-organizer-save {
+  flex: 1 1 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--nav-accent);
+  color: var(--nav);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nav-organizer-ghost {
+  flex: 1 1 0;
+  padding: 7px 8px;
+  border: 1px solid var(--nav-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nav-text);
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nav-organizer-save:disabled,
+.nav-organizer-ghost:disabled { opacity: 0.6; cursor: default; }
+/* Tiroir mobile : cibles tactiles pleines (poignée et flèches à 44 px). */
+.nav-organizer.is-mobile .nav-organizer-row { min-height: 48px; font-size: 14px; }
+.nav-organizer.is-mobile .nav-organizer-grip { width: 44px; height: 44px; }
+.nav-organizer.is-mobile .nav-organizer-arrows button { width: 40px; height: 40px; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-organizer-row { transition: none; }
+}

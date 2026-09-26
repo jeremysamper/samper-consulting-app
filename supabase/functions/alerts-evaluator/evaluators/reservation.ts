@@ -1,8 +1,14 @@
 // ================================================================
 // evaluators/reservation.ts
 //
-// Condition : réservations non confirmées depuis plus de delay_hours
-//             (statut != 'confirmee', 'arrivee', 'annule', 'en_cours').
+// Condition : réservations non confirmées depuis plus de delay_hours.
+//
+// Les statuts réels de l'app sont 'confirme', 'arrive', 'parti', 'no_show'
+// et 'annule' (src/modules/previsions/statutsReservation.js) : toute
+// réservation saisie est d'emblée confirmée. L'ancienne liste ('confirmee',
+// 'arrivee'…) ne correspondait à rien et comptait CHAQUE réservation comme
+// non confirmée. Le type est retiré du formulaire ; l'évaluateur reste juste
+// pour une règle éventuellement créée avant.
 //
 // rule_config attendu :
 //   { delay_hours?: number }   ex: { delay_hours: 24 }
@@ -10,7 +16,11 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import type { AlertRule, EvalResult } from '../types.ts';
 
-const CONFIRMED_STATUTS = ['confirmee', 'arrivee', 'annule', 'en_cours'];
+const CONFIRMED_STATUTS = [
+  'confirme', 'arrive', 'parti', 'no_show', 'annule',
+  // anciennes graphies, par prudence
+  'confirmee', 'arrivee', 'en_cours',
+];
 
 export async function evalReservation(
   sb: SupabaseClient,

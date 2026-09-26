@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Building2, CornerDownLeft, Keyboard, Moon, PanelLeft, Search, Sun } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Building2, CornerDownLeft, Keyboard, Moon, PanelLeft, Search, Sun } from 'lucide-react';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ export function ShortcutsHelp({ open, onClose, touch }) {
 }
 
 // Construit les entrées de la palette depuis l'état de la coque.
-export function buildPaletteEntries({ navItems, getLabel, currentPage, onNavigate, etabs, currentEtabId, onSelectEtab, isDark, onToggleTheme, onToggleSidebar, sidebarOpen, onOpenHelp, onBack, canGoBack }) {
+export function buildPaletteEntries({ navItems, getLabel, currentPage, onNavigate, etabs, currentEtabId, onSelectEtab, isDark, onToggleTheme, onToggleSidebar, sidebarOpen, onOpenHelp, onBack, canGoBack, onOrganize }) {
   const entries = navItems.map((item, i) => ({
     id: `nav:${item.id}`,
     group: 'Modules',
@@ -333,6 +333,9 @@ export function buildPaletteEntries({ navItems, getLabel, currentPage, onNavigat
   entries.push({ id: 'act:theme', group: 'Actions', label: isDark ? 'Passer en mode clair' : 'Passer en mode sombre', keywords: 'theme sombre clair dark light', icon: isDark ? Sun : Moon, run: onToggleTheme });
   if (onToggleSidebar) {
     entries.push({ id: 'act:sidebar', group: 'Actions', label: sidebarOpen ? 'Masquer le menu latéral' : 'Afficher le menu latéral', keywords: 'sidebar barre laterale menu', icon: PanelLeft, hint: `${MOD_LABEL} B`, run: onToggleSidebar });
+  }
+  if (onOrganize) {
+    entries.push({ id: 'act:organize', group: 'Actions', label: 'Organiser le menu', keywords: 'ordre ranger modules sidebar trier deplacer', icon: ArrowUpDown, run: onOrganize });
   }
   entries.push({ id: 'act:help', group: 'Actions', label: 'Voir les raccourcis clavier', keywords: 'aide clavier shortcuts', icon: Keyboard, hint: '?', run: onOpenHelp });
   return entries;
