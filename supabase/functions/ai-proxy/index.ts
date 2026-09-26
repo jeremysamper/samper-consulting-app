@@ -16,7 +16,7 @@
 // Tâches : 'ocr-recipe' (vision), 'parse-facture' (vision), 'detect-allergens',
 //          'generate-haccp', 'suggest-recipe', 'match-product',
 //          'generate-fiche-salle', 'parse-catalogue', 'dedupe-commande',
-//          'translate' (texte).
+//          'translate' (texte ; payload.target = 'en' par défaut, ou 'es').
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -286,6 +286,37 @@ Règles :
 - vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigade" ; "carte" → "menu" ; "fiche technique" → "spec sheet" ; "fiche salle" → "service sheet" ; "perte" → "waste" ; "pointage" → "time clock" ; "inventaire" → "inventory" ; "établissement" → "site" ; "commande" → "ordering" ; "prévisions" → "forecasts" ; "dressage" → "plating" ; "conservation" → "storage" ; "régénération" → "reheating"
 - ne commente jamais, ne pose jamais de question : traduis.`;
 
+// Même contrat que TRANSLATE_SYSTEM, cible espagnole. Vocabulaire aligné sur le
+// glossaire statique du front (src/i18n/glossaryEs.js).
+const TRANSLATE_SYSTEM_ES = `Tu traduis du français vers l'espagnol les textes d'une application de gestion de cuisine professionnelle (restauration, HACCP, recettes, planning, inventaire).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"t":["Eliminar","Recetas"]}
+Règles :
+- "t" contient EXACTEMENT autant d'éléments que la liste fournie, dans le MÊME ordre. C'est impératif : un décalage casse l'affichage.
+- traduis chaque entrée indépendamment ; n'en fusionne, n'en ajoute et n'en supprime aucune
+- registre : espagnol de cuisine professionnelle (castillan), compréhensible par un cuisinier latino-américain ; concis, ton d'interface logicielle (pas de phrase explicative) ; actions et boutons à l'infinitif ("Guardar", "Eliminar") ; tutoiement ("tú") quand le texte s'adresse à l'utilisateur, jamais "vosotros"
+- garde TEL QUEL : noms propres, noms de personnes, d'établissements, de lieux et de plats signature, marques (Lightspeed, Metro, Transgourmet), sigles (HACCP, DLC, SOP, POS, KDS, MEP, CHF, TVA), unités (g, kg, ml, L, pcs, cs, cc), nombres, dates, heures et prix
+- conserve la casse d'origine (une entrée TOUT EN MAJUSCULES le reste) et la ponctuation finale
+- si une entrée est déjà en espagnol, ou n'a rien à traduire, renvoie-la à l'identique
+- vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigada" ; "carte" → "carta" ; "fiche technique" → "ficha técnica" ; "fiche salle" → "ficha de sala" ; "perte" → "merma" ; "pointage" → "fichaje" ; "inventaire" → "inventario" ; "établissement" → "establecimiento" ; "commande" → "pedido" ; "prévisions" → "previsiones" ; "dressage" → "emplatado" ; "conservation" → "conservación" ; "régénération" → "regeneración" ; "portion" → "ración" ; "préparation" (recette de base) → "elaboración" ; "chef de partie" → "jefe de partida" ; "commis" → "ayudante de cocina"
+- ne commente jamais, ne pose jamais de question : traduis.`;
+
+// Langues cibles de la tâche translate. `target` absent = 'en' : les fronts
+// déjà ouverts (qui envoient 'en' ou rien) gardent exactement leur comportement.
+const TRANSLATE_TARGETS: Record<string, { system: string; nom: string }> = {
+  en: { system: TRANSLATE_SYSTEM, nom: 'anglais' },
+  es: { system: TRANSLATE_SYSTEM_ES, nom: 'espagnol' },
+};
+
+function translateTarget(payload: Record<string, unknown>): string {
+  const raw = payload.target;
+  const target = raw === undefined || raw === null || raw === '' ? 'en' : String(raw);
+  if (!Object.prototype.hasOwnProperty.call(TRANSLATE_TARGETS, target)) {
+    throw new Error(`Langue cible non prise en charge : ${target}`);
+  }
+  return target;
+}
+
 const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'ocr-recipe': { system: OCR_SYSTEM, maxTokens: 4096 },
   'detect-allergens': { system: ALLERGEN_SYSTEM, maxTokens: 1024 },
@@ -307,7 +338,8 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
 const AUTHORING_ROLES = ['consultant', 'patron', 'resp_cuisine'];
 const CONSULTANT_ONLY = ['consultant'];
 // Traduction : ouverte à tous les rôles connectés. C'est le sens même du mode
-// English - qu'un cuisinier anglophone puisse lire recettes, MEP et HACCP.
+// English / Español - qu'un cuisinier anglophone ou hispanophone puisse lire
+// recettes, MEP et HACCP.
 const ALL_ROLES = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote'];
 const TASK_ROLES: Record<string, string[]> = {
   'ocr-recipe':               AUTHORING_ROLES,
@@ -471,12 +503,13 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
     return [{ kind: 'text', text: `Lignes brutes du fichier fournisseur :\n${text}` }];
   }
   if (task === 'translate') {
+    const { nom } = TRANSLATE_TARGETS[translateTarget(payload)];
     const texts = Array.isArray(payload.texts) ? (payload.texts as string[]) : [];
     const list = texts.map(t => String(t || '')).filter(Boolean).slice(0, 60);
     if (!list.length) throw new Error('Rien à traduire.');
     return [{
       kind: 'text',
-      text: `Traduis en anglais ces ${list.length} entrées, dans le même ordre :\n`
+      text: `Traduis en ${nom} ces ${list.length} entrées, dans le même ordre :\n`
         + list.map((t, i) => `${i + 1}. ${t}`).join('\n'),
     }];
   }
@@ -580,8 +613,15 @@ Deno.serve(async (req: Request) => {
   }
 
   let parts: Part[];
+  let system = cfg.system;
+  let target: string | undefined;
   try {
     parts = buildParts(task, payload);
+    // La langue cible choisit le prompt système (validée par buildParts).
+    if (task === 'translate') {
+      target = translateTarget(payload);
+      system = TRANSLATE_TARGETS[target].system;
+    }
   } catch (e) {
     return json({ error: (e as Error).message }, 400);
   }
@@ -590,8 +630,8 @@ Deno.serve(async (req: Request) => {
   let text: string;
   try {
     text = provider === 'openai'
-      ? await callOpenAI(apiKey, model, cfg.system, parts, cfg.maxTokens)
-      : await callAnthropic(apiKey, model, cfg.system, parts, cfg.maxTokens);
+      ? await callOpenAI(apiKey, model, system, parts, cfg.maxTokens)
+      : await callAnthropic(apiKey, model, system, parts, cfg.maxTokens);
   } catch (e) {
     console.error('[ai-proxy]', e);
     return json({ error: 'Erreur du service IA.' }, 502);
@@ -604,5 +644,8 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Réponse IA non exploitable.', raw: text.slice(0, 400) }, 502);
   }
 
-  return json({ task, provider, result });
+  // `target` renvoyé pour translate : le front vérifie que la langue traitée est
+  // bien celle demandée avant de mettre en cache (une version antérieure de la
+  // fonction répondait toujours en anglais).
+  return json(target ? { task, provider, target, result } : { task, provider, result });
 });

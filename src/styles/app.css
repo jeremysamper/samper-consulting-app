@@ -244,10 +244,19 @@ html[data-theme="dark"] {
   }
 }
 
-/* Pastille du bouton Original / English pendant une traduction en cours */
+/* Pastille du sélecteur de langue pendant une traduction en cours */
 @keyframes scLangPulse {
   0%, 100% { opacity: 0.25; }
   50%      { opacity: 0.9; }
+}
+
+/* Sélecteur de langue desktop (LanguageToggle) : libellés complets en grand
+   écran, codes FR / EN / ES en dessous de 1280 px. Avec trois libellés
+   complets, le titre de page passait sur deux lignes à 1024 px. */
+.lang-seg-code { display: none; }
+@media (max-width: 1279.98px) {
+  .lang-seg-full { display: none; }
+  .lang-seg-code { display: inline; }
 }
 
 /* ─── Écran de démarrage (src/components/brand/BootScreen.jsx) ──────────────

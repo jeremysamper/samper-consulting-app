@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// Glossaire statique FR → EN.
+// Glossaire statique FR → EN (le pendant espagnol vit dans glossaryEs.js).
 //
 // Couvre le vocabulaire d'interface le plus fréquent (navigation, actions,
 // statuts, en-têtes de tableaux, catégories produits). Ces chaînes sont
@@ -14,6 +14,7 @@
 // gérés par le moteur : inutile de les répéter ici.
 // ════════════════════════════════════════════════════════════════
 import { normalizeSearch } from '../utils/searchText.js';
+import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
   // ── Navigation / modules ──
@@ -470,32 +471,51 @@ export const UI_GLOSSARY = {
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
-// Le moteur les laisse telles quelles, même en mode English.
+// Le moteur les laisse telles quelles, quelle que soit la langue affichée.
 export const DO_NOT_TRANSLATE = new Set([
   'Samper Consulting', 'Lightspeed', 'Supabase', 'Vercel', 'PDF', 'CSV', 'Excel',
   'HACCP', 'DLC', 'DLU', 'SOP', 'SOPs', 'POS', 'KDS', 'MEP', 'CHF', 'TVA', 'IA', 'AI',
   'g', 'kg', 'ml', 'L', 'cl', 'pcs', 'cs', 'cc', '°C', '%', 'min', 'h',
 ]);
 
+// Une table par langue cible, toutes indexées sur la même chaîne française.
+const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES };
+
 // Recherche insensible à la casse et aux accents, en repli de la clé exacte.
 // On réutilise le normaliseur partagé de l'app (même repli ligatures/accents
-// que la recherche des modules) plutôt qu'une variante locale.
-const NORMALIZED = new Map();
-for (const [fr, en] of Object.entries(UI_GLOSSARY)) {
-  const key = normalizeSearch(fr);
-  if (!NORMALIZED.has(key)) NORMALIZED.set(key, en);
+// que la recherche des modules) plutôt qu'une variante locale. L'index d'une
+// langue est construit à sa première recherche : un appareil resté en English
+// ne paie jamais celui de l'espagnol.
+const NORMALIZED = {};
+function normalizedIndex(lang) {
+  if (!NORMALIZED[lang]) {
+    const index = new Map();
+    for (const [fr, out] of Object.entries(TABLES[lang])) {
+      const key = normalizeSearch(fr);
+      if (!index.has(key)) index.set(key, out);
+    }
+    NORMALIZED[lang] = index;
+  }
+  return NORMALIZED[lang];
 }
 
 /**
- * Traduit une chaîne via le glossaire statique.
- * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE »).
+ * Traduit une chaîne via le glossaire statique de la langue demandée.
+ * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE » / « ELIMINAR »).
+ * @param {string} source chaîne française
+ * @param {'en'|'es'} [lang='en'] langue cible
  * @returns {string|null} la traduction, ou null si absente du glossaire.
  */
-export function lookupGlossary(source) {
-  const exact = UI_GLOSSARY[source];
+export function lookupGlossary(source, lang = 'en') {
+  const table = TABLES[lang];
+  if (!table) return null;
+  // Propriété propre seulement : un texte affiché « constructor » ne doit pas
+  // remonter le prototype (hasOwnProperty.call plutôt qu'Object.hasOwn, absent
+  // des iPad restés sous iOS < 15.4).
+  const exact = Object.prototype.hasOwnProperty.call(table, source) ? table[source] : null;
   if (exact) return exact;
 
-  const hit = NORMALIZED.get(normalizeSearch(source));
+  const hit = normalizedIndex(lang).get(normalizeSearch(source));
   if (!hit) return null;
 
   // « SUPPRIMER » (tout en majuscules, plus d'un caractère) → « DELETE »

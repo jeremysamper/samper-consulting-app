@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  getLanguage, initTranslator, setEtablissement, setLanguage, subscribe,
+  getLanguage, initTranslator, setEtablissement, setLanguage, subscribe, TARGET_LANGS,
 } from '../i18n/domTranslator.js';
 import { readText, UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
 
@@ -8,13 +8,16 @@ import { readText, UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
 // plusieurs composants montent le hook.
 let bootstrapped = false;
 
+// 'fr' = mode Original ; toute valeur inconnue y retombe.
+const normalizeLang = (lang) => (TARGET_LANGS.includes(lang) ? lang : 'fr');
+
 function readInitialLang() {
-  return readText(UI_STORAGE_KEYS.lang, 'fr') === 'en' ? 'en' : 'fr';
+  return normalizeLang(readText(UI_STORAGE_KEYS.lang, 'fr'));
 }
 
 /**
- * Mode d'affichage « Original » (français, tel que saisi) ou « English »
- * (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
+ * Mode d'affichage « Original » (français, tel que saisi), « English » ou
+ * « Español » (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
  */
 export function useLanguage(etablissementId) {
   const [state, setState] = useState(() => ({ lang: getLanguage(), translating: false, degraded: false }));
@@ -34,19 +37,17 @@ export function useLanguage(etablissementId) {
   }, [etablissementId]);
 
   function changeLang(next) {
-    const lang = next === 'en' ? 'en' : 'fr';
+    const lang = normalizeLang(next);
     writeText(UI_STORAGE_KEYS.lang, lang);
     setLanguage(lang);
   }
 
   return {
     lang: state.lang,
-    isEnglish: state.lang === 'en',
     translating: state.translating,
     // true = service de traduction injoignable : seul le glossaire s'applique.
     degraded: state.degraded,
     setLang: changeLang,
-    toggleLang: () => changeLang(state.lang === 'en' ? 'fr' : 'en'),
   };
 }
 

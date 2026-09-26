@@ -15,7 +15,8 @@ npm.cmd run dev
 # Production build
 npm.cmd run build
 
-# Lint (src/ only — no test suite): eslint, then the border-shorthand check
+# Lint (src/ only — no test suite): eslint, then the border-shorthand check,
+# then the English/Spanish glossary parity check
 npm.cmd run lint
 
 # Border check alone. Fails when a style object keeps the `border` shorthand
@@ -108,17 +109,18 @@ All styles are plain JS objects (inline `style={...}` props) — no CSS modules,
 
 `notify(message, type)` (types: `'info'`, `'success'`, `'warning'`, `'error'`) is installed as a global in `App.jsx` via `installToastGlobals()`. In new React modules, import `notify` directly from `src/components/toast/index.js`. In legacy components, `window.notify` is available.
 
-### Language (Original / English)
+### Language (Original / English / Español)
 
-The header toggle switches the whole app between `Original` (French, as typed) and `English`. There is no i18n refactor and no `t()` calls: `src/i18n/domTranslator.js` translates the rendered DOM in place and re-applies itself on every React re-render via a `MutationObserver`. Modules stay written in French and are translated for free, including data typed by the teams (recipe steps, notes, custom labels).
+The header selector switches the whole app between `Original` (French, as typed), `English` and `Español`. There is no i18n refactor and no `t()` calls: `src/i18n/domTranslator.js` translates the rendered DOM in place and re-applies itself on every React re-render via a `MutationObserver`. Modules stay written in French and are translated for free, including data typed by the teams (recipe steps, notes, custom labels). The source is always the original French: switching English → Español restores the French first, then translates it.
 
-Resolution order per string: static glossary (`src/i18n/glossary.js`, instant/offline/free) → `localStorage` cache → `translate` task on the `ai-proxy` edge function, then cached. Affixes are stripped before lookup, so `Supprimer`, `🗑 Supprimer` and `Supprimer…` share one entry.
+Resolution order per string, kept separately for each language: static glossary (`src/i18n/glossary.js` for English, `src/i18n/glossaryEs.js` for Spanish, instant/offline/free) → `localStorage` cache → shared `traductions` table (per establishment, `langue` column) → `translate` task on the `ai-proxy` edge function (`payload.target` = `'en'` | `'es'`), then cached. Affixes are stripped before lookup, so `Supprimer`, `🗑 Supprimer` and `Supprimer…` share one entry. The two glossaries use the same French keys: `npm.cmd run lint:glossary` (part of `lint`) fails when one has a key the other lacks.
 
 Invariants to preserve when touching UI code:
 - The engine writes text nodes and the `placeholder` / `title` / `aria-label` / `alt` attributes **only**. It never touches an `input`/`textarea` value — that is business data. Keep it that way.
 - Wrap anything that must never be translated (brand names, a control whose label identifies the current mode) in `data-no-translate`.
 - Vector PDFs (recipe sheet, DLC labels, MEP, ordering) are built from data, not the DOM, so they stay French — correct for HACCP and labelling records. `exportElementToPdf` captures the DOM and therefore follows the on-screen language.
-- Add high-frequency UI wording to the glossary rather than letting it hit the AI: it is instant, works offline, and costs nothing.
+- Add high-frequency UI wording to the glossary rather than letting it hit the AI: it is instant, works offline, and costs nothing. Add it to both `glossary.js` and `glossaryEs.js`.
+- For a non-English target, `ai-proxy` echoes `target` in its response and the front rejects any answer that does not confirm it (an older deployed function always answered in English, which would have filled the Spanish cache with English). Deploy `ai-proxy` before the front whenever the translate contract changes.
 
 ## Adding a new module
 

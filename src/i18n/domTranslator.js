@@ -1,14 +1,20 @@
 // ════════════════════════════════════════════════════════════════
-// Moteur de traduction à la volée du DOM (mode « Original » / « English »).
+// Moteur de traduction à la volée du DOM (modes « Original », « English »,
+// « Español »).
 //
 // Principe, identique aux widgets de traduction des sites web : on ne réécrit
 // AUCUN module. Le moteur traduit le DOM rendu et se remet à jour à chaque
 // re-rendu React via un MutationObserver.
 //
-// Trois niveaux, du moins cher au plus cher :
-//   1. glossaire statique  → instantané, hors-ligne, gratuit (voir glossary.js)
+// Trois niveaux, du moins cher au plus cher, chacun tenu PAR LANGUE :
+//   1. glossaire statique  → instantané, hors-ligne, gratuit (glossary.js,
+//                            glossaryEs.js)
 //   2. cache localStorage  → instantané, hors-ligne, gratuit (déjà traduit ici)
 //   3. edge function IA    → une seule fois par phrase, puis mis en cache
+//
+// La source est TOUJOURS le français d'origine : passer d'English à Español
+// restaure d'abord le français, puis retraduit. On ne traduit jamais une
+// traduction.
 //
 // FLUIDITÉ - deux règles qui gouvernent tout ce fichier :
 //
@@ -34,9 +40,17 @@
 import { DO_NOT_TRANSLATE, lookupGlossary } from './glossary.js';
 import { fetchSharedTranslations, pushSharedTranslations, translateTexts } from '../services/translationService.js';
 
-const CACHE_KEY = 'sc_i18n_en_v1';
-const SYNC_KEY = 'sc_i18n_sync_';       // + id d'établissement
-const CACHE_MAX = 5000;      // entrées conservées en localStorage
+// Langues cibles. 'fr' n'en est pas une : c'est le mode Original, sans moteur.
+export const TARGET_LANGS = ['en', 'es'];
+
+// Clé du cache local par langue. L'anglais garde sa clé historique : les
+// appareils déjà en English ne reperdent pas ce qu'ils ont traduit.
+const CACHE_KEY_PREFIX = 'sc_i18n_';
+const cacheKey = (lang) => `${CACHE_KEY_PREFIX}${lang}_v1`;
+// Repère de synchro du cache partagé : + id d'établissement pour l'anglais
+// (clé historique), + 'es_' + id pour l'espagnol.
+const SYNC_KEY = 'sc_i18n_sync_';
+const CACHE_MAX = 5000;      // entrées conservées en localStorage, par langue
 const BATCH_SIZE = 40;       // phrases par appel IA
 const MAX_BATCHES = 10;      // plafond par passe → 400 phrases max
 const FETCH_DELAY = 120;     // ms de regroupement avant l'appel IA
@@ -59,7 +73,9 @@ const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 const ATTR_SELECTOR = '[placeholder],[title],[aria-label],[alt]';
 
 // ── État ──────────────────────────────────────────────────────────
-const memCache = new Map();                 // 'Supprimer' → 'Delete'
+// Cache mémoire par langue : { en: 'Supprimer' → 'Delete', es: 'Supprimer' → 'Eliminar' }
+const memCaches = Object.fromEntries(TARGET_LANGS.map((l) => [l, new Map()]));
+const cacheLoaded = new Set();              // langues dont le cache local est chargé
 const originals = new WeakMap();            // nœud texte  → source française
 const written = new WeakMap();              // nœud texte  → dernière valeur écrite par nous
 const attrState = new WeakMap();            // élément     → Map(attr → { src, out })
@@ -80,32 +96,37 @@ let failures = 0;                           // échecs consécutifs (mode hors-l
 let mutedUntil = 0;                         // pause après échecs répétés
 let degraded = false;                       // service IA injoignable → glossaire seul
 let etabId = null;                          // établissement courant (scope du cache partagé)
-let sharedLoaded = false;                   // cache partagé déjà rapatrié pour cet établissement
+const sharedLoaded = new Set();             // langues dont le cache partagé est rapatrié pour cet établissement
 const listeners = new Set();
 
+const isTarget = (lang) => TARGET_LANGS.includes(lang);
+
 // ── Cache persistant ──────────────────────────────────────────────
-function loadCache() {
+function loadCache(lang) {
+  if (cacheLoaded.has(lang)) return;
+  cacheLoaded.add(lang);
+  const cache = memCaches[lang];
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(cacheKey(lang));
     if (!raw) return;
     const obj = JSON.parse(raw);
-    for (const [fr, en] of Object.entries(obj || {})) {
-      if (typeof en === 'string') memCache.set(fr, en);
+    for (const [fr, out] of Object.entries(obj || {})) {
+      if (typeof out === 'string' && !cache.has(fr)) cache.set(fr, out);
     }
   } catch {
     // Cache illisible ou quota : on repart d'un cache vide, sans casser l'app.
   }
 }
 
-let saveTimer = null;
-function saveCacheSoon() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
+const saveTimers = {};
+function saveCacheSoon(lang) {
+  clearTimeout(saveTimers[lang]);
+  saveTimers[lang] = setTimeout(() => {
     try {
       // On borne la taille : les entrées les plus anciennes sautent en premier.
-      const entries = [...memCache.entries()];
+      const entries = [...memCaches[lang].entries()];
       const kept = entries.length > CACHE_MAX ? entries.slice(-CACHE_MAX) : entries;
-      localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(kept)));
+      localStorage.setItem(cacheKey(lang), JSON.stringify(Object.fromEntries(kept)));
     } catch {
       // Quota dépassé : le cache mémoire suffit pour la session en cours.
     }
@@ -119,23 +140,24 @@ function saveCacheSoon() {
  * une phrase traduite par un collègue arrive ici sans appel IA.
  *
  * Synchro incrémentale : on ne redemande que ce qui a été ajouté depuis le
- * dernier import de CET appareil.
+ * dernier import de CET appareil, langue par langue.
  */
-async function ensureSharedCache() {
-  if (sharedLoaded || !etabId) return;
-  sharedLoaded = true;   // une seule tentative par établissement et par session
+async function ensureSharedCache(lang) {
+  if (sharedLoaded.has(lang) || !etabId) return;
+  sharedLoaded.add(lang);   // une seule tentative par langue, établissement et session
 
-  const key = SYNC_KEY + etabId;
+  const key = SYNC_KEY + (lang === 'en' ? '' : `${lang}_`) + etabId;
+  const cache = memCaches[lang];
   try {
     const since = localStorage.getItem(key) || null;
-    const { pairs, latest } = await fetchSharedTranslations(etabId, since);
-    for (const [fr, en] of pairs) {
-      if (!memCache.has(fr)) memCache.set(fr, en);
+    const { pairs, latest } = await fetchSharedTranslations(etabId, since, lang);
+    for (const [fr, out] of pairs) {
+      if (!cache.has(fr)) cache.set(fr, out);
     }
     if (latest) {
       try { localStorage.setItem(key, latest); } catch { /* quota : on resyncera */ }
     }
-    if (pairs.length) saveCacheSoon();
+    if (pairs.length) saveCacheSoon(lang);
   } catch {
     // Base injoignable (hors ligne, RLS, table absente) : on continue sur le
     // cache local. La traduction ne doit jamais dépendre de cette optimisation.
@@ -249,11 +271,15 @@ function collectTargets(root, texts, attrs) {
 }
 
 // ── Résolution / écriture ─────────────────────────────────────────
-/** Traduction connue (glossaire puis cache), ou null s'il faut appeler l'IA. */
-function resolve(core) {
-  const fromGlossary = lookupGlossary(core);
+/**
+ * Traduction connue (glossaire puis cache), ou null s'il faut appeler l'IA.
+ * Langue affichée par défaut ; fetchPending passe la sienne, figée avant ses
+ * await, pour ne jamais ranger une réponse dans le cache d'une autre langue.
+ */
+function resolve(core, lang = currentLang) {
+  const fromGlossary = lookupGlossary(core, lang);
   if (fromGlossary) return fromGlossary;
-  const cached = memCache.get(core);
+  const cached = memCaches[lang].get(core);
   return cached === undefined ? null : cached;
 }
 
@@ -289,13 +315,13 @@ function applyTargets(texts, attrs) {
     if (!isTranslatable(core)) continue;
 
     originals.set(node, value);
-    const en = resolve(core);
-    if (en === null) {
+    const out = resolve(core);
+    if (out === null) {
       pendingStrings.add(core);
       deferredTexts.push(node);
       anyMissing = true;
-    } else if (en !== core) {
-      writeTextNode(node, pre + en + post);
+    } else if (out !== core) {
+      writeTextNode(node, pre + out + post);
     }
   }
 
@@ -312,20 +338,20 @@ function applyTargets(texts, attrs) {
 
     if (!map) { map = new Map(); attrState.set(el, map); }
     map.set(attr, { src: value, out: undefined });
-    const en = resolve(core);
-    if (en === null) {
+    const out = resolve(core);
+    if (out === null) {
       pendingStrings.add(core);
       deferredAttrs.push(pair);
       anyMissing = true;
-    } else if (en !== core) {
-      writeAttr(el, attr, pre + en + post);
+    } else if (out !== core) {
+      writeAttr(el, attr, pre + out + post);
     }
   }
 
   return anyMissing;
 }
 
-/** Passe complète : uniquement au basculement en English. */
+/** Passe complète : uniquement au basculement vers une langue traduite. */
 function fullSweep() {
   if (typeof document === 'undefined' || !document.body) return false;
   const texts = [];
@@ -343,7 +369,7 @@ function restore() {
     const src = originals.get(node);
     if (typeof src === 'string') {
       node.nodeValue = src;
-      // On oublie notre écriture, sinon un retour en English verrait le nœud
+      // On oublie notre écriture, sinon un retour en langue traduite verrait le nœud
       // comme « déjà traduit » et le laisserait en français.
       written.delete(node);
     }
@@ -374,17 +400,21 @@ function chunk(list, size) {
 }
 
 async function fetchPending() {
-  if (currentLang !== 'en' || !pendingStrings.size) return;
+  // Langue figée pour toute la passe : si l'utilisateur change de langue
+  // pendant l'appel, la réponse va quand même dans le bon cache, et n'est pas
+  // appliquée à l'écran (voir la garde en fin de fonction).
+  const lang = currentLang;
+  if (!isTarget(lang) || !pendingStrings.size) return;
   if (Date.now() < mutedUntil) return;
 
   const wanted = [...pendingStrings];
   pendingStrings.clear();
 
   // Avant tout appel IA : récupérer ce que la brigade a déjà traduit.
-  await ensureSharedCache();
+  await ensureSharedCache(lang);
 
   // Ce que la synchro vient de rapatrier n'a plus rien à faire dans le lot.
-  const stillMissing = wanted.filter(s => resolve(s) === null);
+  const stillMissing = wanted.filter(s => resolve(s, lang) === null);
   const batches = chunk(stillMissing, BATCH_SIZE).slice(0, MAX_BATCHES);
   const fraisTraduits = [];
 
@@ -394,7 +424,7 @@ async function fetchPending() {
     try {
       const results = await Promise.all(batches.map(async (batch) => {
         try {
-          const out = await translateTexts(batch);
+          const out = await translateTexts(batch, lang);
           failures = 0;
           if (degraded) { degraded = false; emit(); }
           return { batch, out };
@@ -412,13 +442,14 @@ async function fetchPending() {
         }
       }));
 
+      const cache = memCaches[lang];
       for (const res of results) {
         if (!res) continue;
         res.batch.forEach((fr, i) => {
-          const en = res.out[i];
-          if (typeof en === 'string' && en.trim()) {
-            memCache.set(fr, en.trim());
-            fraisTraduits.push([fr, en.trim()]);
+          const out = res.out[i];
+          if (typeof out === 'string' && out.trim()) {
+            cache.set(fr, out.trim());
+            fraisTraduits.push([fr, out.trim()]);
           }
         });
       }
@@ -429,13 +460,15 @@ async function fetchPending() {
   }
 
   if (fraisTraduits.length) {
-    saveCacheSoon();
+    saveCacheSoon(lang);
     // Ce qu'on vient de payer, la brigade n'aura pas à le repayer.
     // En arrière-plan : un échec d'écriture ne doit pas retarder l'affichage.
-    if (etabId) pushSharedTranslations(etabId, fraisTraduits).catch(() => {});
+    if (etabId) pushSharedTranslations(etabId, fraisTraduits, lang).catch(() => {});
   }
 
-  if (currentLang !== 'en') return;
+  // Langue changée entre-temps : les cibles différées ont été vidées par
+  // restore(), et la nouvelle langue a lancé sa propre passe.
+  if (currentLang !== lang) return;
 
   // Réapplique UNIQUEMENT les cibles mises de côté. Aucun rescan.
   const texts = deferredTexts;
@@ -455,7 +488,7 @@ function startObserver() {
   if (observer || typeof MutationObserver === 'undefined' || !document.body) return;
 
   observer = new MutationObserver((records) => {
-    if (currentLang !== 'en') return;
+    if (!isTarget(currentLang)) return;
 
     const texts = [];
     const attrs = [];
@@ -540,32 +573,44 @@ export function setEtablissement(id) {
   const next = id || null;
   if (next === etabId) return;
   etabId = next;
-  sharedLoaded = false;
-  if (currentLang === 'en' && fullSweep()) scheduleFetch();
+  sharedLoaded.clear();
+  if (isTarget(currentLang) && fullSweep()) scheduleFetch();
 }
 
 /**
- * Vide le cache local. Appelé à la déconnexion : une tablette de passe est
- * partagée, les noms de recettes d'un établissement n'ont pas à y rester.
+ * Vide le cache local, toutes langues. Appelé à la déconnexion : une tablette
+ * de passe est partagée, les noms de recettes d'un établissement n'ont pas à y
+ * rester.
  */
 export function clearTranslationCache() {
-  memCache.clear();
-  sharedLoaded = false;
+  for (const lang of TARGET_LANGS) {
+    memCaches[lang].clear();
+    clearTimeout(saveTimers[lang]);
+  }
+  cacheLoaded.clear();
+  sharedLoaded.clear();
   try {
-    localStorage.removeItem(CACHE_KEY);
     for (let i = localStorage.length - 1; i >= 0; i -= 1) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(SYNC_KEY)) localStorage.removeItem(k);
+      if (!k) continue;
+      // Couvre sc_i18n_en_v1, sc_i18n_es_v1 et tous les repères sc_i18n_sync_*.
+      if (k.startsWith(SYNC_KEY) || TARGET_LANGS.some((l) => k === cacheKey(l))) {
+        localStorage.removeItem(k);
+      }
     }
   } catch {
     // Mode privé ou quota : le cache mémoire est déjà vidé, c'est l'essentiel.
   }
 }
 
-/** Bascule l'app en 'en' (traduction à la volée) ou 'fr' (texte d'origine). */
+/**
+ * Bascule l'app en 'en' ou 'es' (traduction à la volée) ou 'fr' (texte
+ * d'origine). Toute autre valeur vaut 'fr'.
+ */
 export function setLanguage(lang) {
-  const next = lang === 'en' ? 'en' : 'fr';
+  const next = isTarget(lang) ? lang : 'fr';
   if (next === currentLang) return;
+  const prev = currentLang;
   currentLang = next;
 
   if (typeof document !== 'undefined' && document.documentElement) {
@@ -574,8 +619,16 @@ export function setLanguage(lang) {
     document.documentElement.setAttribute('lang', next);
   }
 
-  if (next === 'en') {
-    if (!memCache.size) loadCache();
+  // Quitter une langue traduite, c'est d'abord revenir au français d'origine :
+  // English → Español retraduit depuis la source, jamais depuis l'anglais.
+  // L'observateur est coupé avant restore() pour ne pas recevoir nos propres
+  // réécritures (disconnect jette les enregistrements en attente).
+  stopObserver();
+  clearTimeout(fetchTimer);
+  if (isTarget(prev)) restore();
+
+  if (isTarget(next)) {
+    loadCache(next);
     // Nouvelle tentative : on repart d'une ardoise propre, pour que l'alerte
     // puisse se redéclencher si le service est toujours injoignable.
     failures = 0;
@@ -585,17 +638,13 @@ export function setLanguage(lang) {
     emit();
     if (fullSweep()) scheduleFetch();
   } else {
-    stopObserver();
-    clearTimeout(fetchTimer);
-    restore();
     emit();
   }
 }
 
 /** Appelé au démarrage : réapplique la langue mémorisée. */
 export function initTranslator(lang) {
-  loadCache();
-  if (lang === 'en') setLanguage('en');
+  if (isTarget(lang)) setLanguage(lang);
   else if (typeof document !== 'undefined' && document.documentElement) {
     document.documentElement.setAttribute('lang', 'fr');
   }

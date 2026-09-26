@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// translationService - traduction FR → EN d'un lot de chaînes.
+// translationService - traduction FR → EN / ES d'un lot de chaînes.
 //
 // Utilisé par le moteur de traduction à la volée (src/i18n/domTranslator.js)
 // pour tout ce que le glossaire statique ne couvre pas : contenu saisi par les
@@ -20,22 +20,25 @@ import { supabase } from './supabase.js';
 const SHARED_LIMIT = 5000;
 
 /**
- * Lit le cache partagé de l'établissement (table `traductions`).
+ * Lit le cache partagé de l'établissement (table `traductions`) pour une langue.
  *
  * `since` = date ISO du dernier import connu de cet appareil : on ne redemande
  * alors QUE les nouveautés ajoutées entre-temps par les collègues, au lieu de
  * retélécharger tout le cache à chaque session.
  *
+ * @param {string} etablissementId
+ * @param {string|null} since
+ * @param {'en'|'es'} [langue='en']
  * @returns {Promise<{pairs: [string,string][], latest: string|null}>}
  */
-export async function fetchSharedTranslations(etablissementId, since) {
+export async function fetchSharedTranslations(etablissementId, since, langue = 'en') {
   if (!etablissementId) return { pairs: [], latest: since || null };
 
   let query = supabase
     .from('traductions')
     .select('source, cible, created_at')
     .eq('etablissement_id', etablissementId)
-    .eq('langue', 'en')
+    .eq('langue', langue)
     .order('created_at', { ascending: true })
     .limit(SHARED_LIMIT);
   if (since) query = query.gt('created_at', since);
@@ -57,11 +60,11 @@ export async function fetchSharedTranslations(etablissementId, since) {
  * Deux appareils qui traduisent la même phrase en même temps produisent un
  * doublon : il est ignoré, la première écriture fait foi.
  */
-export async function pushSharedTranslations(etablissementId, entries) {
+export async function pushSharedTranslations(etablissementId, entries, langue = 'en') {
   if (!etablissementId || !entries || !entries.length) return;
 
   const rows = entries.map(([source, cible]) => ({
-    etablissement_id: etablissementId, langue: 'en', source, cible,
+    etablissement_id: etablissementId, langue, source, cible,
   }));
   const { error } = await supabase
     .from('traductions')
@@ -69,11 +72,22 @@ export async function pushSharedTranslations(etablissementId, entries) {
   if (error) throw new Error(error.message || 'Écriture du cache de traduction impossible.');
 }
 
-export async function translateTexts(texts) {
+/**
+ * @param {string[]} texts chaînes françaises
+ * @param {'en'|'es'} [target='en'] langue cible
+ */
+export async function translateTexts(texts, target = 'en') {
   const list = (texts || []).map((s) => String(s || '')).filter(Boolean);
   if (!list.length) return [];
 
-  const data = await callAiProxy('translate', { texts: list, target: 'en' });
+  const data = await callAiProxy('translate', { texts: list, target });
+  // La fonction confirme la langue traitée. Une version antérieure d'ai-proxy
+  // ignorait `target` et répondait en anglais : sans ce contrôle, de l'anglais
+  // serait rangé dans le cache espagnol, local ET partagé avec la brigade.
+  // (Seul 'en' est admis sans confirmation : c'était le comportement d'origine.)
+  if (target !== 'en' && (!data || data.target !== target)) {
+    throw new Error(`Service de traduction pas encore disponible pour « ${target} ».`);
+  }
   const raw = (data && data.result && data.result.t) || [];
 
   if (!Array.isArray(raw) || raw.length !== list.length) {
