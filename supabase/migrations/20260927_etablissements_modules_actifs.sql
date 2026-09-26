@@ -18,6 +18,9 @@
 -- fonctionnel sans elle (Paramètres n'envoie la colonne que si la ligne la
 -- porte). Écriture couverte par la policy existante etabs_write (consultant).
 --
+-- APPLIQUÉ EN PROD via MCP le 26.09.2026, avant le front : colonne nullable,
+-- 7 établissements sur 7 à NULL (aucun changement visible). Miroir repo == prod.
+--
 -- Ce n'est PAS une barrière de sécurité : la RLS de chaque table reste la
 -- seule garde des données. La colonne ne règle que ce qui est proposé à l'écran.
 -- ============================================================================
