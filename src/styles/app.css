@@ -1371,6 +1371,24 @@ html[data-theme="dark"] button:not(:disabled):active {
   .cmdk-trigger > span { display: none; }
 }
 
+/* ─── Header desktop entre 768 et 1023 px (AppLayout, .topbar-*) ───────────
+   Barre latérale ouverte, il reste moins de 500 px au header : il débordait
+   (« Déconnexion » coupé) et le titre s'écrasait sur quatre lignes. En dessous
+   de 1024 px : loupe seule pour la palette (un raccourci clavier ne sert à
+   rien sur une tablette), Déconnexion en icône, espacements resserrés, et
+   badge d'établissement masqué tant que la barre latérale l'affiche déjà.
+   !important : les styles de ces éléments sont inline. */
+.topbar-logout-icon { display: none; }
+@media (max-width: 1023.98px) {
+  .cmdk-trigger { padding: 0 10px; }
+  .cmdk-trigger > .sc-kbd { display: none; }
+  .topbar-right { gap: 8px !important; }
+  .topbar-logout { width: 40px; height: 40px; padding: 0 !important; }
+  .topbar-logout-icon { display: block; }
+  .topbar-logout-label { display: none; }
+  .topbar-desktop[data-sidebar="open"] .topbar-etab-badge { display: none !important; }
+}
+
 .cmdk-overlay {
   position: fixed;
   inset: 0;

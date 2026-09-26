@@ -16,7 +16,7 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { ArrowUpDown, Bell, KeyRound, Search } from 'lucide-react';
+import { ArrowUpDown, Bell, KeyRound, LogOut, Search } from 'lucide-react';
 import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
@@ -895,20 +895,24 @@ export default function AppLayout({
         {/* Bandeau d'état hors-ligne / sync pointages / mise à jour */}
         <OfflineBanner />
         <HomeScreenIconBanner />
-        <header style={ls.topbar}>
+        {/* Entre 768 et 1023 px, le header se compacte (app.css, .topbar-*) :
+            sinon il débordait et le titre s'écrasait sur plusieurs lignes.
+            data-sidebar : le badge d'établissement n'est masqué que si la
+            barre latérale, qui l'affiche déjà, est ouverte. */}
+        <header style={ls.topbar} className="topbar-desktop" data-sidebar={sidebarOpen ? 'open' : 'closed'}>
           <div style={ls.topbarLeft}>
             <div style={ls.titleBlock}>
               <div style={ls.pageTitle}>{getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}</div>
               <div style={ls.topbarSub}>{todayLabel}</div>
             </div>
             {etablissement && (
-              <div style={ls.etabBadge}>
+              <div style={ls.etabBadge} className="topbar-etab-badge">
                 <span style={ls.etabBadgeDot} />
                 {etablissement.nom}
               </div>
             )}
           </div>
-          <div style={ls.topbarRight}>
+          <div style={ls.topbarRight} className="topbar-right">
             {/* Porte d'entrée visible de la palette : le raccourci s'apprend en
                 le voyant écrit à côté. */}
             <button
@@ -946,7 +950,11 @@ export default function AppLayout({
               {notifOpen && renderAlertPanel(ls.notifPanel, ls.notifHeader, ls.notifItem)}
             </div>
             <div style={ls.topbarDivider} />
-            <button style={ls.logoutBtn} onClick={onLogout}>Déconnexion</button>
+            {/* Libellé en grand écran, icône seule sous 1024 px (app.css). */}
+            <button style={ls.logoutBtn} className="topbar-logout" onClick={onLogout} aria-label="Déconnexion" title="Déconnexion">
+              <LogOut size={16} strokeWidth={2} className="topbar-logout-icon" aria-hidden="true" />
+              <span className="topbar-logout-label">Déconnexion</span>
+            </button>
           </div>
         </header>
 
@@ -1009,21 +1017,23 @@ const ls = {
   userRole: { fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 18px', flexShrink: 0, position: 'relative', zIndex: 5, boxShadow: 'var(--sh-xs)' },
-  topbarLeft: { display: 'flex', alignItems: 'center', gap: 12 },
-  titleBlock: { minWidth: 0 },
-  pageTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
-  topbarSub: { fontSize: 11, color: 'var(--text3)', textTransform: 'capitalize', marginTop: 1 },
-  etabBadge: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, whiteSpace: 'nowrap' },
+  // Le côté gauche cède la place (titre en points de suspension), le côté
+  // droit jamais : ses boutons écrasés devenaient intouchables.
+  topbarLeft: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto', marginRight: 12 },
+  titleBlock: { minWidth: 0, overflow: 'hidden' },
+  pageTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  topbarSub: { fontSize: 11, color: 'var(--text3)', textTransform: 'capitalize', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  etabBadge: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
   etabBadgeDot: { width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 },
-  topbarRight: { display: 'flex', alignItems: 'center', gap: 12 },
-  themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', padding: 0, borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
+  topbarRight: { display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 },
+  themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', padding: 0, borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
   iconBtn: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 0, right: 0, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   topbarDivider: { width: 1, height: 20, background: 'var(--border)' },
-  logoutBtn: { background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
+  logoutBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0, background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
   content: { flex: 1, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%', padding: '24px' },
 
   // Mobile
