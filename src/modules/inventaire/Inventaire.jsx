@@ -18,36 +18,63 @@ import {
   subscribePendingSaisies,
 } from '../../services/offline/inventaireSync.js';
 import { isNetworkError } from '../../services/offline/offlineNet.js';
+import {
+  recalcInventaire, parseQuantite, estCompte, cleProduit,
+  ligneDepuisProduit, ligneLibre, lignesReprises,
+} from './inventaireLignes.js';
+import ComptageRapide from './ComptageRapide.jsx';
+import AjoutProduitsModal from './AjoutProduitsModal.jsx';
+
+// L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
+// seulement quand on l'ouvre, le comptage reste léger sur la tablette.
+const AchatsPanel = React.lazy(() => import('./AchatsPanel.jsx'));
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
-
-// Recalcule écarts et valeurs d'un inventaire (muté sur place, puis renvoyé).
-// Hors du composant : appelé aussi bien depuis l'écran « aucun inventaire »
-// (création du premier) que depuis l'écran garni.
-const recalcInventaire = (inventory) => {
-  inventory.lignes.forEach(l => {
-    l.ecart = +(l.stockReel - l.stockTheo).toFixed(2);
-    l.valeur = +(l.stockReel * l.prixUnit).toFixed(2);
-    l.ecartValeur = +(l.ecart * l.prixUnit).toFixed(2);
-  });
-  inventory.valeurTotale = +inventory.lignes.reduce((s, l) => s + l.valeur, 0).toFixed(2);
-  return inventory;
-};
 
 // Plus récent d'abord : la liste arrive déjà triée de la base, mais un
 // inventaire créé dans la session est simplement empilé en tête.
 const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date || ''));
 
-// Quantité saisie au comptage. La virgule est le séparateur décimal en Suisse
-// romande et le clavier numérique iOS en français en propose une :
-// `parseFloat('9,5')` vaut 9, la décimale disparaît sans que rien ne le signale.
-// Renvoie null si la saisie est vide ou illisible - l'appelant décide alors.
-const parseQuantite = (valeur) => {
-  const brut = String(valeur ?? '').trim().replace(',', '.');
-  if (brut === '') return null;
-  const nombre = Number.parseFloat(brut);
-  return Number.isFinite(nombre) ? nombre : null;
-};
+// Vues du module. « Comptage » est la vue par défaut : c'est ce que la
+// brigade fait 95 % du temps dans ce module.
+const VUES = [
+  { id: 'comptage', label: 'Comptage' },
+  { id: 'ecarts', label: 'Écarts & valeur' },
+  { id: 'achats', label: 'Achats & consommation' },
+];
+
+// Menu « Plus » : les actions rares (import, export, renommage...) sortent de
+// la barre, qui n'en montrait pas moins de onze d'un coup.
+function MenuPlus({ items }) {
+  const [ouvert, setOuvert] = React.useState(false);
+  const visibles = items.filter(Boolean);
+  if (!visibles.length) return null;
+  return (
+    <div style={{ position: 'relative' }}>
+      <button type="button" style={invs.exportBtn} onClick={() => setOuvert(o => !o)} aria-expanded={ouvert}>
+        ⋯ Plus
+      </button>
+      {ouvert && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 900 }} onClick={() => setOuvert(false)} />
+          <div style={invs.menu} role="menu">
+            {visibles.map(it => (
+              <button
+                key={it.label}
+                type="button"
+                role="menuitem"
+                style={{ ...invs.menuItem, ...(it.danger ? { color: 'var(--danger-strong)' } : {}) }}
+                onClick={() => { setOuvert(false); it.onClick(); }}
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Réapplique les quantités encore en file par-dessus une liste venue du serveur
 // (ou du cache du service worker). Une quantité comptée en chambre froide reste
@@ -123,11 +150,16 @@ const Inventaire = ({ user, etablissement }) => {
   // realtime en retour.
   const [stockDraft, setStockDraft] = React.useState({});
   const stockRefs = React.useRef({});
-  const [showAddLine, setShowAddLine] = React.useState(false);
-  const [newLine, setNewLine] = React.useState({ produit: '', categorie: 'Autres', unite: 'pcs', stockTheo: 0, stockReel: 0, prixUnit: 0 });
-  // Autocomplétion catalogue : index de la suggestion en cours de focus (-1 = aucune)
-  const [autocompleteFocus, setAutocompleteFocus] = React.useState(-1);
-  const [autocompleteOpen, setAutocompleteOpen] = React.useState(false);
+  // Sélecteur d'ajout en masse depuis le catalogue.
+  const [showAjout, setShowAjout] = React.useState(false);
+  const [vue, setVue] = React.useState(() => {
+    const memo = readLegacyStorage('sc_inventaire_vue', 'comptage');
+    return VUES.some(v => v.id === memo) ? memo : 'comptage';
+  });
+  // L'onglet Achats reste monté une fois ouvert : une lecture de factures en
+  // cours ne doit pas s'arrêter parce qu'on repasse au comptage.
+  const [achatsOuvert, setAchatsOuvert] = React.useState(vue === 'achats');
+  const importXlsxRef = React.useRef(null);
   const perms = demoData.permissions[user.role] || {};
   const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
   // Actions d'import/export/impression réservées à consultant + patron
@@ -197,6 +229,10 @@ const Inventaire = ({ user, etablissement }) => {
   React.useEffect(() => { demoData.inventaires = inventairesAll; if (!legacySB) writeLegacyStorage('sc_inventaires', inventairesAll); }, [inventairesAll]);
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_selected', selectedId); }, [selectedId]);
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_perimetre', perimetreActif); }, [perimetreActif]);
+  React.useEffect(() => {
+    writeLegacyStorage('sc_inventaire_vue', vue);
+    if (vue === 'achats') setAchatsOuvert(true);
+  }, [vue]);
 
   // Helper pour push un inventaire modifié vers Supabase.
   // Porte les modifications de STRUCTURE (création, validation, ajout ou
@@ -315,13 +351,18 @@ const Inventaire = ({ user, etablissement }) => {
     clone.date = date;
     clone.statut = 'en cours';
     clone.validePar = null;
-    // Reprise : le stock réel compté devient le stock théorique attendu.
-    clone.lignes = (clone.lignes || []).map((l, idx) => ({ ...l, id: 'l' + Date.now() + idx, stockTheo: l.stockReel || 0, stockReel: l.stockReel || 0 }));
+    // Reprise : même liste de produits, le stock compté la dernière fois
+    // devient le stock théorique et l'indication « préc. ». Le stock réel
+    // repart vide : chaque produit est à recompter (« = » le reprend d'un tap).
+    clone.lignes = lignesReprises(clone.lignes);
     recalcInventaire(clone);
     appliquerListe(liste => [clone, ...liste]);
     setPerimetre(nom);
     setSelectedId(clone.id);
     setShowNew(false);
+    setVue('comptage');
+    // Parti du catalogue : on enchaîne directement sur le choix des produits.
+    if (newInv.base === 'catalogue') setShowAjout(true);
     try {
       if (!await saveInvAvecPerimetre(clone)) alertePerimetreNonEnregistre();
     } catch (err) {
@@ -485,14 +526,17 @@ const Inventaire = ({ user, etablissement }) => {
               <label style={invs.fieldLabel}>Contenu de départ</label>
               <select style={invs.fieldInput} value={newInv.base} onChange={e => setNewInv({ ...newInv, base: e.target.value })}>
                 <option value="dupliquer">Reprendre les produits du dernier inventaire de ce périmètre</option>
+                <option value="catalogue">Choisir les produits dans le catalogue</option>
                 <option value="vierge">Inventaire vierge</option>
               </select>
               <div style={invs.fieldHint}>
                 {newInv.base === 'vierge'
-                  ? 'Aucune ligne : les produits seront ajoutés un par un ou importés en XLSX.'
-                  : sourceDuplication
-                    ? `${(sourceDuplication.lignes || []).length} produit(s) repris de l'inventaire du ${sourceDuplication.date} — les stocks réels comptés deviennent les stocks théoriques.`
-                    : `Aucun inventaire précédent dans « ${nomRetenu} » : il démarrera vierge.`}
+                  ? 'Aucune ligne : les produits s\'ajoutent ensuite en tapant leur nom ou depuis le catalogue.'
+                  : newInv.base === 'catalogue'
+                    ? 'Le choix des produits s\'ouvre juste après : cochez des catégories entières ou quelques produits.'
+                    : sourceDuplication
+                      ? `${(sourceDuplication.lignes || []).length} produit(s) repris de l'inventaire du ${sourceDuplication.date}. Les quantités sont à recompter ; celle du dernier comptage s'affiche en indication.`
+                      : `Aucun inventaire précédent dans « ${nomRetenu} » : il démarrera vierge.`}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
@@ -565,8 +609,17 @@ const Inventaire = ({ user, etablissement }) => {
 
   const validerInventaire = async () => {
     if (!canManage || estValide) return;
-    if (!confirmLegacy(`Valider l'inventaire « ${perimetreActif} » du ${inv.date} ?\nLes lignes seront figées jusqu'à réouverture.`)) return;
-    await majInventaire(base => ({ ...base, statut: 'validé', validePar: user.id }));
+    const nonComptes = (invCourant()?.lignes || []).filter(l => !estCompte(l)).length;
+    const question = nonComptes > 0
+      ? `${nonComptes} produit${nonComptes > 1 ? 's ne sont' : ' n\'est'} pas encore compté${nonComptes > 1 ? 's' : ''} : ${nonComptes > 1 ? 'ils seront validés' : 'il sera validé'} à 0.\n\nValider quand même l'inventaire « ${perimetreActif} » du ${inv.date} ? Les lignes seront figées jusqu'à réouverture.`
+      : `Valider l'inventaire « ${perimetreActif} » du ${inv.date} ?\nLes lignes seront figées jusqu'à réouverture.`;
+    if (!confirmLegacy(question)) return;
+    await majInventaire(base => recalcInventaire({
+      ...base,
+      statut: 'validé',
+      validePar: user.id,
+      lignes: (base.lignes || []).map(l => (estCompte(l) ? { ...l } : { ...l, stockReel: 0 })),
+    }));
     notifyLegacy('Inventaire validé.', 'success');
   };
 
@@ -600,7 +653,9 @@ const Inventaire = ({ user, etablissement }) => {
       }
       return;
     }
-    if (quantite === ligne.stockReel) return;
+    // Même quantité sur un produit déjà compté : rien à écrire. Sur un produit
+    // pas encore compté, retaper la quantité précédente EST un comptage.
+    if (estCompte(ligne) && quantite === Number(ligne.stockReel)) return;
 
     // 1. Affichage immédiat : écarts et valeurs recalculés sur l'appareil.
     //    Le comptage ne doit jamais attendre le réseau pour s'afficher.
@@ -705,28 +760,80 @@ const Inventaire = ({ user, etablissement }) => {
     setSelectedId(remaining[0]?.id);
   };
 
-  // ═══ Ajout manuel d'un produit ═══
-  // (les states showAddLine/newLine sont déclarés en haut du composant pour respecter les règles des hooks)
-
-  const openAddLine = () => {
-    setNewLine({ produit: '', categorie: cats.find(c => c !== 'Tous') || 'Autres', unite: 'pcs', stockTheo: 0, stockReel: 0, prixUnit: 0 });
-    setShowAddLine(true);
+  // ═══ Ajout de produits ═══
+  // Trois chemins, du plus rapide au plus complet : taper un nom dans le
+  // comptage (catalogue reconnu = unité et prix repris), cocher en masse dans
+  // le catalogue, ou reprendre les produits lus sur les factures (onglet Achats).
+  // Un produit déjà présent n'est jamais ajouté deux fois.
+  const ajouterLignes = async (nouvelles) => {
+    if (!canEditLignes || !nouvelles.length) return [];
+    const presents = new Set((invCourant()?.lignes || []).map(l => cleProduit(l.produit)));
+    const aAjouter = [];
+    nouvelles.forEach(l => {
+      const cle = cleProduit(l.produit);
+      if (!cle || presents.has(cle)) return;
+      presents.add(cle);
+      aAjouter.push(l);
+    });
+    if (aAjouter.length) await majLignes(lignes => [...lignes, ...aAjouter]);
+    return aAjouter;
   };
 
-  const addLine = async () => {
+  const ajouterDepuisCatalogue = async (produits, nomsLibres = []) => {
+    const ajoutees = await ajouterLignes([
+      ...produits.map(ligneDepuisProduit),
+      ...nomsLibres.map(nom => ligneLibre(nom)),
+    ]);
+    setShowAjout(false);
+    const ignores = produits.length + nomsLibres.length - ajoutees.length;
+    notifyLegacy(
+      `${ajoutees.length} produit${ajoutees.length > 1 ? 's' : ''} ajouté${ajoutees.length > 1 ? 's' : ''}`
+      + (ignores > 0 ? ` (${ignores} déjà présent${ignores > 1 ? 's' : ''})` : '') + '.',
+      'success'
+    );
+  };
+
+  // Ajout rapide depuis le comptage. Renvoie l'id de la ligne à compter,
+  // nouvelle ou déjà présente, pour y poser le curseur.
+  const ajoutRapide = async (nom) => {
+    const cle = cleProduit(nom);
+    const existante = (invCourant()?.lignes || []).find(l => cleProduit(l.produit) === cle);
+    if (existante) {
+      notifyLegacy(`« ${existante.produit} » est déjà dans l'inventaire.`, 'info');
+      return existante.id;
+    }
+    const produit = catalogue.find(p => p?.nom && cleProduit(p.nom) === cle);
+    const [ligne] = await ajouterLignes([produit ? ligneDepuisProduit(produit) : ligneLibre(nom)]);
+    return ligne?.id || null;
+  };
+
+  const changerUnite = async (ligneId, unite) => {
     if (!canEditLignes) return;
-    if (!newLine.produit.trim()) { alertLegacy('Le nom du produit est requis.'); return; }
-    const line = {
-      id: 'l' + Date.now(),
-      produit: newLine.produit.trim(),
-      categorie: newLine.categorie || 'Autres',
-      unite: newLine.unite || 'pcs',
-      stockTheo: parseQuantite(newLine.stockTheo) || 0,
-      stockReel: parseQuantite(newLine.stockReel) || 0,
-      prixUnit: parseQuantite(newLine.prixUnit) || 0,
-    };
-    await majLignes(lignes => [...lignes, line]);
-    setShowAddLine(false);
+    await majLignes(lignes => lignes.map(l => (l.id === ligneId ? { ...l, unite } : l)));
+  };
+
+  // Matériel, consommables : ce qui n'a pas bougé se reprend d'un geste.
+  const reprendreRestants = async () => {
+    if (!canEditLignes) return;
+    const restants = (invCourant()?.lignes || []).filter(l => !estCompte(l) && l.precedent != null);
+    if (!restants.length) return;
+    if (!confirmLegacy(`Reprendre la quantité du dernier inventaire pour ${restants.length} produit${restants.length > 1 ? 's' : ''} pas encore compté${restants.length > 1 ? 's' : ''} ?`)) return;
+    await majLignes(lignes => lignes.map(l => (!estCompte(l) && l.precedent != null ? { ...l, stockReel: l.precedent } : l)));
+  };
+
+  // Depuis l'onglet Achats : prix du dernier document appliqué aux lignes.
+  // `maj` : [{ cle, prixUnit }]
+  const majPrixDepuisAchats = async (maj) => {
+    if (!canEditLignes || !maj.length) return 0;
+    const parCle = new Map(maj.map(m => [m.cle, m.prixUnit]));
+    let n = 0;
+    await majLignes(lignes => lignes.map(l => {
+      const prix = parCle.get(cleProduit(l.produit));
+      if (prix == null) return l;
+      n += 1;
+      return { ...l, prixUnit: +Number(prix).toFixed(4) };
+    }));
+    return n;
   };
 
   // ═══ Import / Template XLSX ═══
@@ -973,7 +1080,7 @@ const Inventaire = ({ user, etablissement }) => {
     e.target.value = '';
   };
 
-  const totEcart = (inv.lignes || []).reduce((s,l) => s + Math.abs(l.ecartValeur), 0);
+  const totEcart = (inv.lignes || []).reduce((s,l) => s + Math.abs(Number(l.ecartValeur) || 0), 0);
   const totPositif = (inv.lignes || []).filter(l => l.ecart > 0).length;
   const totNegatif = (inv.lignes || []).filter(l => l.ecart < 0).length;
   const totNul = (inv.lignes || []).filter(l => l.ecart === 0).length;
@@ -988,12 +1095,20 @@ const Inventaire = ({ user, etablissement }) => {
   const titreDocument = `Inventaire ${perimetreActif} - ${inv.date}`;
   const nomFichierPdf = `inventaire-${perimetreActif.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${inv.date}.pdf`;
 
+  // Le document imprimé est le tableau de la vue « Écarts » : on y bascule
+  // avant de capturer, sinon l'élément n'est pas dans le DOM.
+  const avecVueEcarts = (action) => {
+    if (vue === 'ecarts') { action(); return; }
+    setVue('ecarts');
+    setTimeout(action, 80);
+  };
+
   const printInventory = () => {
     if (!pdfUtils?.printElement) {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.printElement('inventaire-print', titreDocument, { etablissement, orientation: 'landscape' });
+    avecVueEcarts(() => pdfUtils.printElement('inventaire-print', titreDocument, { etablissement, orientation: 'landscape' }));
   };
 
   const exportInventoryPdf = () => {
@@ -1001,8 +1116,10 @@ const Inventaire = ({ user, etablissement }) => {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    pdfUtils.exportElementToPdf('inventaire-print', nomFichierPdf, { etablissement, title: titreDocument, orientation: 'landscape' });
+    avecVueEcarts(() => pdfUtils.exportElementToPdf('inventaire-print', nomFichierPdf, { etablissement, title: titreDocument, orientation: 'landscape' }));
   };
+
+  const nbComptes = (inv.lignes || []).filter(estCompte).length;
 
   const valeurTousPerimetres = valeurStockConsolidee(inventairesEtab);
 
@@ -1046,29 +1163,69 @@ const Inventaire = ({ user, etablissement }) => {
             {(inventaires || []).map(i => <option key={i.id} value={i.id}>{i.date} - {i.statut}</option>)}
           </select>
           <span style={{...invs.badge, background: estValide ? 'var(--success-bg)' : 'var(--warning-bg)', color: estValide ? 'var(--success-text)' : 'var(--warning-text)'}}>
-            {estValide ? (validateurNom ? `✓ Validé par ${validateurNom}` : '✓ Validé') : '⏳ En cours'}
+            {estValide ? (validateurNom ? `✓ Validé par ${validateurNom}` : '✓ Validé') : `⏳ ${nbComptes}/${(inv.lignes || []).length} comptés`}
           </span>
         </div>
         <div className="module-actions">
-          {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>✓ Valider l'inventaire</button>}
+          {canEditLignes && <button style={invs.addBtn} onClick={() => setShowAjout(true)}>+ Produits</button>}
+          {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>✓ Valider</button>}
           {canManage && estValide && <button style={invs.exportBtn} onClick={rouvrirInventaire}>↩ Rouvrir</button>}
-          {canManage && <button style={invs.addBtn} onClick={() => openNewInventory(perimetreActif)}>+ Nouvel inventaire</button>}
-          {canManage && <button style={invs.exportBtn} onClick={openRename}>✎ Renommer le périmètre</button>}
-          {canEditLignes && <button style={invs.exportBtn} onClick={openAddLine}>+ Ajouter produit</button>}
-          {canEditLignes && !sel.active && <button style={invs.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>}
-          {canExport && <button style={invs.exportBtn} onClick={downloadInventoryTemplate}>📄 Template XLSX</button>}
-          {canExport && (
-            <label style={{...invs.exportBtn, cursor:'pointer'}}>
-              📥 Importer XLSX
-              <input type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={handleImportInventoryXLSX}/>
-            </label>
-          )}
-          {canManage && inventairesEtab.length > 1 && <button style={invs.deleteBtn} onClick={deleteInventory}>Supprimer inventaire</button>}
-          {canExport && <button style={invs.exportBtn} onClick={printInventory}>🖨 Imprimer</button>}
-          {canExport && <button style={invs.exportBtn} onClick={exportInventoryPdf}>⬇ Export PDF</button>}
+          <MenuPlus items={[
+            canManage && { label: '+ Nouvel inventaire', onClick: () => openNewInventory(perimetreActif) },
+            canManage && { label: '✎ Renommer le périmètre', onClick: openRename },
+            canEditLignes && !sel.active && { label: '☑ Sélectionner des lignes', onClick: () => { setVue('ecarts'); sel.enter(); } },
+            canExport && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
+            canExport && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
+            canExport && { label: '🖨 Imprimer', onClick: printInventory },
+            canExport && { label: '⬇ Export PDF', onClick: exportInventoryPdf },
+            canManage && inventairesEtab.length > 1 && { label: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
+          ]} />
+          {canExport && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
         </div>
       </div>
 
+      <SegmentedTabs
+        active={vue}
+        onChange={setVue}
+        tabs={VUES.filter(v => v.id !== 'achats' || canExport).map(v => ({ id: v.id, label: v.label }))}
+      />
+
+      {vue === 'comptage' && (
+        <ComptageRapide
+          lignes={inv.lignes || []}
+          canEdit={canEditLignes}
+          stockDraft={stockDraft}
+          setStockDraft={setStockDraft}
+          stockRefs={stockRefs}
+          commitStockReel={commitStockReel}
+          onAjoutRapide={ajoutRapide}
+          onChangerUnite={changerUnite}
+          onReprendreRestants={reprendreRestants}
+          catalogue={catalogue}
+        />
+      )}
+
+      {canExport && achatsOuvert && (
+        <div style={{ display: vue === 'achats' ? 'block' : 'none' }}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+            <AchatsPanel
+              user={user}
+              etabId={etabId}
+              perimetreActif={perimetreActif}
+              perimetres={perimetres}
+              inv={inv}
+              previousInv={previousInv}
+              catalogue={catalogue}
+              canImport={user.role === 'consultant'}
+              canEditLignes={canEditLignes}
+              onAjouterLignes={ajouterLignes}
+              onMajPrix={majPrixDepuisAchats}
+            />
+          </React.Suspense>
+        </div>
+      )}
+
+      {vue === 'ecarts' && (
       <div id="inventaire-print">
         {/* Identité du document : reprise telle quelle dans l'impression et le PDF,
             où les onglets de périmètre (no-print) ont disparu. */}
@@ -1082,7 +1239,7 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
 
         <div style={invs.kpiBar}>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Valeur du stock ({perimetreActif})</div><div style={invs.kpiVal}>CHF {inv.valeurTotale.toLocaleString('fr-CH', {minimumFractionDigits:2})}</div></div>
+          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Valeur du stock ({perimetreActif})</div><div style={invs.kpiVal}>CHF {(Number(inv.valeurTotale) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</div></div>
           {/* Consolidé : dernier inventaire de CHAQUE périmètre. Additionner
               toute la liste compterait plusieurs fois le même stock. */}
           {perimetres.length > 1 && (
@@ -1222,186 +1379,33 @@ const Inventaire = ({ user, etablissement }) => {
                       <span style={invs.stockUnite}>{l.unite}</span>
                     </span>
                   ) : (
-                    <>{l.stockReel} {l.unite}</>
+                    <>{estCompte(l) ? `${l.stockReel} ${l.unite}` : '-'}</>
                   )}
                 </span>
-                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</span>
-                <span style={{...invs.cellBold, textAlign:'right'}}>{l.valeur.toLocaleString('fr-CH', {minimumFractionDigits:2})}</span>
-                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecartValeur > 0 ? '+' : ''}{l.ecartValeur.toFixed(2)}</span>
+                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecart == null ? '-' : <>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</>}</span>
+                {/* Number(...) || 0 : une ligne relue de la base n'est pas
+                    recalculée au chargement, un champ absent ne doit pas faire
+                    tomber tout le module. */}
+                <span style={{...invs.cellBold, textAlign:'right'}}>{(Number(l.valeur) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</span>
+                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecart == null ? '-' : <>{l.ecartValeur > 0 ? '+' : ''}{(Number(l.ecartValeur) || 0).toFixed(2)}</>}</span>
                 {canManage && <span className="no-print">{canEditLignes && <button style={invs.deleteBtn} onClick={() => deleteLine(l.id)}>Supprimer</button>}</span>}
               </div>
             );
           })}
         </div>
       </div>
+      )}
 
       {renderNewInventoryModal()}
       {renderRenameModal()}
 
-      {/* Modale ajout produit manuel */}
-      {showAddLine && (
-        <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => setShowAddLine(false)}>
-          <div className="modal-sheet" style={{...invs.modal, width: 500}} onClick={e=>e.stopPropagation()}>
-            <div style={invs.modalHeader}>
-              <div style={{fontWeight:700, fontSize:16, fontFamily:'var(--font-serif)'}}>Ajouter un produit à l'inventaire</div>
-              <button style={invs.closeBtn} onClick={() => setShowAddLine(false)}>✕</button>
-            </div>
-            <div style={{padding:'22px', display:'flex', flexDirection:'column', gap:14}}>
-              {/* Champ nom du produit avec autocomplétion catalogue */}
-              <div style={{ position: 'relative' }}>
-                <label style={invs.fieldLabel}>
-                  Nom du produit *
-                  {catalogue.length > 0 && (
-                    <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text2)', fontWeight: 400, fontStyle: 'italic' }}>
-                      ({catalogue.length} produits dans le catalogue - tapez pour rechercher)
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  style={invs.fieldInput}
-                  value={newLine.produit}
-                  placeholder={catalogue.length > 0 ? "Tapez pour piocher dans le catalogue ou saisir un nom libre" : "Ex : Filet de bœuf CH"}
-                  autoComplete="off"
-                  onChange={e => {
-                    setNewLine({...newLine, produit: e.target.value});
-                    setAutocompleteOpen(true);
-                    setAutocompleteFocus(-1);
-                  }}
-                  onFocus={() => setAutocompleteOpen(true)}
-                  onBlur={() => {
-                    // Délai pour laisser le clic sur une suggestion arriver
-                    setTimeout(() => setAutocompleteOpen(false), 150);
-                  }}
-                  onKeyDown={e => {
-                    const q = normalizeSearch(newLine.produit).trim();
-                    const matches = catalogue
-                      .filter(p => p.nom && normalizeSearch(p.nom).includes(q))
-                      .slice(0, 8);
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      setAutocompleteFocus(i => Math.min(i + 1, matches.length - 1));
-                      setAutocompleteOpen(true);
-                    } else if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      setAutocompleteFocus(i => Math.max(i - 1, -1));
-                    } else if (e.key === 'Enter' && autocompleteFocus >= 0 && matches[autocompleteFocus]) {
-                      e.preventDefault();
-                      const p = matches[autocompleteFocus];
-                      setNewLine({
-                        ...newLine,
-                        produit: p.nom,
-                        categorie: p.categorie || 'Autres',
-                        unite: p.uniteRef || 'pcs',
-                        prixUnit: p.prixUnitaire || 0,
-                      });
-                      setAutocompleteOpen(false);
-                      setAutocompleteFocus(-1);
-                    } else if (e.key === 'Escape') {
-                      setAutocompleteOpen(false);
-                    }
-                  }}
-                />
-                {/* Dropdown suggestions */}
-                {autocompleteOpen && newLine.produit.trim() && catalogue.length > 0 && (() => {
-                  const q = normalizeSearch(newLine.produit).trim();
-                  const matches = catalogue
-                    .filter(p => p.nom && normalizeSearch(p.nom).includes(q))
-                    .slice(0, 8);
-                  if (matches.length === 0) return null;
-                  return (
-                    <div style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0,
-                      background: 'var(--surface)', border: '1px solid var(--border)',
-                      borderRadius: 6, maxHeight: 280, overflowY: 'auto',
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 10,
-                      marginTop: 2,
-                    }}>
-                      {matches.map((p, i) => (
-                        <div
-                          key={p.id}
-                          onMouseDown={e => {
-                            // mouseDown plutôt que click pour battre le onBlur
-                            e.preventDefault();
-                            setNewLine({
-                              ...newLine,
-                              produit: p.nom,
-                              categorie: p.categorie || 'Autres',
-                              unite: p.uniteRef || 'pcs',
-                              prixUnit: p.prixUnitaire || 0,
-                            });
-                            setAutocompleteOpen(false);
-                            setAutocompleteFocus(-1);
-                          }}
-                          onMouseEnter={() => setAutocompleteFocus(i)}
-                          style={{
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            borderBottom: i < matches.length - 1 ? '1px solid var(--border)' : 'none',
-                            background: i === autocompleteFocus ? 'var(--bg)' : 'transparent',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.nom}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
-                              {p.categorie || 'Autres'}
-                              {p.uniteRef && ` · ${p.uniteRef}`}
-                              {p.fournisseurNom && ` · ${p.fournisseurNom}`}
-                            </div>
-                          </div>
-                          {p.prixUnitaire != null && p.prixUnitaire > 0 && (
-                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>
-                              {p.prixUnitaire.toFixed(p.prixUnitaire < 1 ? 4 : 2)} CHF/{p.uniteRef}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text2)', borderTop: '1px solid var(--border)', background: 'var(--bg)', fontStyle: 'italic' }}>
-                        ↑↓ pour naviguer · Entrée pour valider · Échap pour fermer
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
-                <div>
-                  <label style={invs.fieldLabel}>Catégorie</label>
-                  <select style={invs.fieldInput} value={newLine.categorie} onChange={e => setNewLine({...newLine, categorie: e.target.value})}>
-                    {['Viandes','Poissons','Légumes','Fruits','Produits laitiers','Féculents','Épicerie','Boissons','Autres'].map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={invs.fieldLabel}>Unité</label>
-                  <select style={invs.fieldInput} value={newLine.unite} onChange={e => setNewLine({...newLine, unite: e.target.value})}>
-                    {['pcs','kg','g','L','ml','btl','cs','cc'].map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10}}>
-                <div>
-                  <label style={invs.fieldLabel}>Stock théorique</label>
-                  <input type="number" step="0.01" style={invs.fieldInput} value={newLine.stockTheo}
-                    onChange={e => setNewLine({...newLine, stockTheo: e.target.value})}/>
-                </div>
-                <div>
-                  <label style={invs.fieldLabel}>Stock réel</label>
-                  <input type="number" step="0.01" style={invs.fieldInput} value={newLine.stockReel}
-                    onChange={e => setNewLine({...newLine, stockReel: e.target.value})}/>
-                </div>
-                <div>
-                  <label style={invs.fieldLabel}>Prix unit. (CHF)</label>
-                  <input type="number" step="0.01" style={invs.fieldInput} value={newLine.prixUnit}
-                    onChange={e => setNewLine({...newLine, prixUnit: e.target.value})}/>
-                </div>
-              </div>
-              <div style={{display:'flex', gap:10, justifyContent:'flex-end', marginTop:4}}>
-                <button style={invs.exportBtn} onClick={() => setShowAddLine(false)}>Annuler</button>
-                <button style={invs.addBtn} onClick={addLine}>Ajouter à l'inventaire</button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {showAjout && canEditLignes && (
+        <AjoutProduitsModal
+          catalogue={catalogue}
+          lignesExistantes={inv.lignes || []}
+          onAjouter={ajouterDepuisCatalogue}
+          onClose={() => setShowAjout(false)}
+        />
       )}
     </div>
   );
@@ -1424,6 +1428,8 @@ const invs = {
   stockSaisie: {display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,width:'100%',minWidth:0},
   stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:600,fontFamily:'var(--font)',boxSizing:'border-box'},
   stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
+  menu: {position:'absolute',right:0,top:'calc(100% + 6px)',zIndex:901,minWidth:240,maxWidth:'calc(100vw - 32px)',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,boxShadow:'0 12px 32px rgba(0,0,0,0.18)',padding:6,display:'flex',flexDirection:'column'},
+  menuItem: {textAlign:'left',padding:'10px 12px',minHeight:44,background:'none',border:'none',borderRadius:8,fontSize:13,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',padding:'5px 12px',borderRadius:12,fontSize:12,fontWeight:600},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   validateBtn: {padding:'8px 16px',background:'var(--success-bg)',border:'1px solid var(--success-bd)',color:'var(--success-text)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},

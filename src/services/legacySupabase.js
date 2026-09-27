@@ -2554,6 +2554,64 @@ export function installLegacySupabase() {
       };
     },
 
+    // ─── DOCUMENTS D'ACHAT DE L'INVENTAIRE (migration 20260928) ───
+    // Factures et bons lus par l'IA depuis l'onglet « Achats » de l'inventaire.
+    // Renvoie null quand la table n'existe pas encore (migration non appliquée) :
+    // l'écran l'annonce au lieu d'afficher « aucun document ». Toute autre erreur
+    // remonte, une lecture vide ne doit pas passer pour une période sans achat.
+    async listAchatsDocuments(etabId) {
+      const { data, error } = await client
+        .from('achats_documents')
+        .select('*')
+        .eq('etablissement_id', etabId)
+        .order('date_document', { ascending: false, nullsFirst: true });
+      if (error) {
+        if (_relationAbsente(error)) return null;
+        console.error('[listAchatsDocuments]', error);
+        throw error;
+      }
+      return (data || []).map(r => this.mapAchatsDocumentFromDB(r));
+    },
+    async upsertAchatsDocument(d) {
+      const payload = {
+        id: d.id || ('achat-' + Date.now() + Math.floor(Math.random() * 1000)),
+        etablissement_id: d.etablissementId,
+        perimetre: (d.perimetre || '').trim() || 'Général',
+        type_document: d.typeDocument || 'facture',
+        fournisseur_nom: d.fournisseurNom || null,
+        fournisseur_id: d.fournisseurId || null,
+        numero: d.numero || null,
+        date_document: d.dateDocument || null,
+        total_ht: d.totalHT != null && d.totalHT !== '' ? Number(d.totalHT) : null,
+        lignes: d.lignes || [],
+        exclu: !!d.exclu,
+        source: d.source || null,
+        nom_fichier: d.nomFichier || null,
+        created_by: d.createdBy || null,
+      };
+      const { data, error } = await client.from('achats_documents').upsert(payload).select().single();
+      if (error) throw error;
+      return this.mapAchatsDocumentFromDB(data);
+    },
+    async deleteAchatsDocument(id) {
+      const { error } = await client.from('achats_documents').delete().eq('id', id);
+      if (error) throw error;
+    },
+    mapAchatsDocumentFromDB(row) {
+      if (!row) return null;
+      return {
+        id: row.id, etablissementId: row.etablissement_id,
+        perimetre: row.perimetre || '',
+        typeDocument: row.type_document || 'facture',
+        fournisseurNom: row.fournisseur_nom || '', fournisseurId: row.fournisseur_id,
+        numero: row.numero || '', dateDocument: row.date_document,
+        totalHT: row.total_ht != null ? Number(row.total_ht) : null,
+        lignes: row.lignes || [], exclu: !!row.exclu,
+        source: row.source || '', nomFichier: row.nom_fichier || '',
+        createdAt: row.created_at, createdBy: row.created_by,
+      };
+    },
+
     // ─── HISTORIQUE DES PRIX (migration 20260811) ───
     // Chaque changement de prix laisse une trace datée de la facture, pas de l'import.
     async listPrixHistorique(produitId, limit = 50) {

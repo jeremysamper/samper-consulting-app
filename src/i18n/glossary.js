@@ -468,6 +468,30 @@ export const UI_GLOSSARY = {
   'Octobre': 'October',
   'Novembre': 'November',
   'Décembre': 'December',
+
+  // ── Inventaire : comptage, achats et consommation ──
+  'Comptage': 'Count',
+  'Écarts & valeur': 'Variances & value',
+  'Achats & consommation': 'Purchases & usage',
+  'À compter': 'To count',
+  'Comptés': 'Counted',
+  'compté': 'counted',
+  'à compter': 'to count',
+  'Chercher un produit': 'Search a product',
+  'Plus': 'More',
+  'Tout cocher': 'Select all',
+  'Tout décocher': 'Clear all',
+  'Stock de début': 'Opening stock',
+  'Stock de fin': 'Closing stock',
+  'Consommation': 'Usage',
+  'Consommé': 'Used',
+  'Prix facturé': 'Invoiced price',
+  'Bon de livraison': 'Delivery note',
+  'Bon de commande': 'Purchase order',
+  'hors période': 'outside period',
+  'date manquante': 'date missing',
+  'Nouveau produit': 'New product',
+  'Consommation par produit': 'Usage by product',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
