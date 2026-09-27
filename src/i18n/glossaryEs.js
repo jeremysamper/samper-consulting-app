@@ -477,4 +477,21 @@ export const UI_GLOSSARY_ES = {
   'date manquante': 'falta la fecha',
   'Nouveau produit': 'Nuevo producto',
   'Consommation par produit': 'Consumo por producto',
+
+  // ── Inventaire : zones de stockage et état d'inventaire ──
+  'Zone': 'Zona',
+  'Toutes les zones': 'Todas las zonas',
+  'Sans zone': 'Sin zona',
+  'Nouvelle zone': 'Nueva zona',
+  'Choisir une zone': 'Elegir una zona',
+  'Ranger par zone': 'Ordenar por zona',
+  'Rangement terminé': 'Orden terminado',
+  'Ranger dans': 'Guardar en',
+  'Chambre froide': 'Cámara frigorífica',
+  'Congélateur': 'Congelador',
+  'Économat': 'Almacén seco',
+  'Bar': 'Bar',
+  'Réserve': 'Reserva',
+  'État d\'inventaire (PDF)': 'Estado de inventario (PDF)',
+  'État d\'inventaire (Excel)': 'Estado de inventario (Excel)',
 };

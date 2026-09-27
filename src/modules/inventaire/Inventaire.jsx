@@ -24,6 +24,8 @@ import {
 } from './inventaireLignes.js';
 import ComptageRapide from './ComptageRapide.jsx';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
+import { zoneOf } from './zones.js';
+import ChoixZone from './ChoixZone.jsx';
 
 // L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
 // seulement quand on l'ouvre, le comptage reste léger sur la tablette.
@@ -160,6 +162,8 @@ const Inventaire = ({ user, etablissement }) => {
   // cours ne doit pas s'arrêter parce qu'on repasse au comptage.
   const [achatsOuvert, setAchatsOuvert] = React.useState(vue === 'achats');
   const importXlsxRef = React.useRef(null);
+  // Export de l'état d'inventaire en cours (Excel ou PDF).
+  const [exportEnCours, setExportEnCours] = React.useState(false);
   const perms = demoData.permissions[user.role] || {};
   const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
   // Actions d'import/export/impression réservées à consultant + patron
@@ -779,10 +783,13 @@ const Inventaire = ({ user, etablissement }) => {
     return aAjouter;
   };
 
-  const ajouterDepuisCatalogue = async (produits, nomsLibres = []) => {
+  // `zone` : zone de stockage choisie dans le sélecteur (vide = sans zone).
+  const avecZone = (ligne, zone) => (zone ? { ...ligne, zone } : ligne);
+
+  const ajouterDepuisCatalogue = async (produits, nomsLibres = [], zone = '') => {
     const ajoutees = await ajouterLignes([
-      ...produits.map(ligneDepuisProduit),
-      ...nomsLibres.map(nom => ligneLibre(nom)),
+      ...produits.map(p => avecZone(ligneDepuisProduit(p), zone)),
+      ...nomsLibres.map(nom => avecZone(ligneLibre(nom), zone)),
     ]);
     setShowAjout(false);
     const ignores = produits.length + nomsLibres.length - ajoutees.length;
@@ -795,7 +802,7 @@ const Inventaire = ({ user, etablissement }) => {
 
   // Ajout rapide depuis le comptage. Renvoie l'id de la ligne à compter,
   // nouvelle ou déjà présente, pour y poser le curseur.
-  const ajoutRapide = async (nom) => {
+  const ajoutRapide = async (nom, zone = '') => {
     const cle = cleProduit(nom);
     const existante = (invCourant()?.lignes || []).find(l => cleProduit(l.produit) === cle);
     if (existante) {
@@ -803,13 +810,24 @@ const Inventaire = ({ user, etablissement }) => {
       return existante.id;
     }
     const produit = catalogue.find(p => p?.nom && cleProduit(p.nom) === cle);
-    const [ligne] = await ajouterLignes([produit ? ligneDepuisProduit(produit) : ligneLibre(nom)]);
+    const [ligne] = await ajouterLignes([avecZone(produit ? ligneDepuisProduit(produit) : ligneLibre(nom), zone)]);
     return ligne?.id || null;
   };
 
   const changerUnite = async (ligneId, unite) => {
     if (!canEditLignes) return;
     await majLignes(lignes => lignes.map(l => (l.id === ligneId ? { ...l, unite } : l)));
+  };
+
+  // Range une ou plusieurs lignes dans une zone (vide = retirer la zone).
+  const changerZone = async (ligneIds, zone) => {
+    if (!canEditLignes || !ligneIds.length) return;
+    const ids = new Set(ligneIds);
+    await majLignes(lignes => lignes.map(l => {
+      if (!ids.has(l.id)) return l;
+      const { zone: _ancienne, ...reste } = l;
+      return zone ? { ...reste, zone } : reste;
+    }));
   };
 
   // Matériel, consommables : ce qui n'a pas bougé se reprend d'un geste.
@@ -1093,7 +1111,6 @@ const Inventaire = ({ user, etablissement }) => {
   // Le périmètre fait partie de l'identité du document : un PDF « Inventaire »
   // sans mention Cuisine / Boissons / Matériel n'est pas exploitable en archive.
   const titreDocument = `Inventaire ${perimetreActif} - ${inv.date}`;
-  const nomFichierPdf = `inventaire-${perimetreActif.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${inv.date}.pdf`;
 
   // Le document imprimé est le tableau de la vue « Écarts » : on y bascule
   // avant de capturer, sinon l'élément n'est pas dans le DOM.
@@ -1111,15 +1128,47 @@ const Inventaire = ({ user, etablissement }) => {
     avecVueEcarts(() => pdfUtils.printElement('inventaire-print', titreDocument, { etablissement, orientation: 'landscape' }));
   };
 
-  const exportInventoryPdf = () => {
-    if (!pdfUtils?.exportElementToPdf) {
-      notifyLegacy('Export PDF indisponible pour le moment.', 'error');
-      return;
-    }
-    avecVueEcarts(() => pdfUtils.exportElementToPdf('inventaire-print', nomFichierPdf, { etablissement, title: titreDocument, orientation: 'landscape' }));
-  };
-
   const nbComptes = (inv.lignes || []).filter(estCompte).length;
+
+  // ─── État d'inventaire (Excel + PDF) au format du classeur établissement ───
+  // Reprend report, achats de la période et relevé : les documents lus dans
+  // l'onglet Achats sont relus ici, au moment de l'export, pour qu'un document
+  // ajouté sur une autre tablette soit pris en compte.
+  const exporterEtat = async (format) => {
+    if (exportEnCours) return;
+    setExportEnCours(true);
+    try {
+      const [{ construireEtatInventaire }, documents, aliasCatalogue] = await Promise.all([
+        import('./etatInventaire.js'),
+        legacySB ? legacySB.db.listAchatsDocuments(etabId).catch(() => []) : [],
+        legacySB ? legacySB.db.listProduitAliasEtab(etabId).catch(() => []) : [],
+      ]);
+      const etat = construireEtatInventaire({
+        inv: invCourant(),
+        previousInv,
+        documents: documents || [],
+        catalogue,
+        aliasCatalogue,
+        etablissementNom: etablissement?.nom || '',
+      });
+      const base = `inventaire-${perimetreActif.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${inv.date}`;
+      if (format === 'xlsx') {
+        const { construireXlsxInventaire, telechargerFichier } = await import('./exportXlsxInventaire.js');
+        telechargerFichier(construireXlsxInventaire(etat), `${base}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        const { construirePdfInventaire } = await import('./exportPdfInventaire.js');
+        const pdf = await construirePdfInventaire(etat);
+        pdf.save(`${base}.pdf`);
+      }
+      if (documents === null) {
+        notifyLegacy("Export sans les achats : la table des documents n'est pas disponible.", 'warning');
+      }
+    } catch (err) {
+      console.error('[exporterEtat]', err);
+      notifyLegacy('Export impossible : ' + (err.message || err), 'error');
+    }
+    setExportEnCours(false);
+  };
 
   const valeurTousPerimetres = valeurStockConsolidee(inventairesEtab);
 
@@ -1177,7 +1226,8 @@ const Inventaire = ({ user, etablissement }) => {
             canExport && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
             canExport && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
             canExport && { label: '🖨 Imprimer', onClick: printInventory },
-            canExport && { label: '⬇ Export PDF', onClick: exportInventoryPdf },
+            canExport && { label: "⬇ État d'inventaire (PDF)", onClick: () => exporterEtat('pdf') },
+            canExport && { label: "📊 État d'inventaire (Excel)", onClick: () => exporterEtat('xlsx') },
             canManage && inventairesEtab.length > 1 && { label: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
           ]} />
           {canExport && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
@@ -1200,6 +1250,7 @@ const Inventaire = ({ user, etablissement }) => {
           commitStockReel={commitStockReel}
           onAjoutRapide={ajoutRapide}
           onChangerUnite={changerUnite}
+          onChangerZone={(ligneId, zone) => changerZone([ligneId], zone)}
           onReprendreRestants={reprendreRestants}
           catalogue={catalogue}
         />
@@ -1310,6 +1361,24 @@ const Inventaire = ({ user, etablissement }) => {
             busy={bulkBusy}
           />
         )}
+        {sel.active && canEditLignes && sel.count > 0 && (
+          <div style={invs.rangement} className="no-print">
+            <span>Ranger {sel.count > 1 ? `les ${sel.count} lignes sélectionnées` : 'la ligne sélectionnée'} dans :</span>
+            <ChoixZone
+              value=""
+              lignes={inv.lignes || []}
+              videLabel="Choisir une zone…"
+              ariaLabel="Zone des lignes sélectionnées"
+              style={invs.invSelect}
+              onChange={async (zone) => {
+                if (!zone) return;
+                const n = sel.count;
+                await changerZone([...sel.ids], zone);
+                notifyLegacy(`${n} ligne${n > 1 ? 's' : ''} rangée${n > 1 ? 's' : ''} dans « ${zone} ».`, 'success');
+              }}
+            />
+          </div>
+        )}
 
         {canEditLignes && filtered.length > 0 && (
           <div style={invs.saisieHint} className="no-print">
@@ -1346,7 +1415,10 @@ const Inventaire = ({ user, etablissement }) => {
                   </span>
                 )}
                 <span style={invs.prodName}>{l.produit}{typeBadge}</span>
-                <span style={invs.cell}><span style={invs.catTag}>{l.categorie}</span></span>
+                <span style={invs.cell}>
+                  <span style={invs.catTag}>{l.categorie}</span>
+                  {zoneOf(l) && <span style={invs.zoneTag}>{zoneOf(l)}</span>}
+                </span>
                 <span style={{...invs.cell, textAlign:'right'}}>{l.stockTheo} {l.unite}</span>
                 <span style={{...invs.cellBold, textAlign:'right'}}>
                   {canEditLignes ? (
@@ -1428,6 +1500,8 @@ const invs = {
   stockSaisie: {display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,width:'100%',minWidth:0},
   stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:600,fontFamily:'var(--font)',boxSizing:'border-box'},
   stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
+  zoneTag: {display:'inline-block',marginLeft:4,fontSize:10,color:'var(--text2)'},
+  rangement: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize:13,color:'var(--text2)',padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
   menu: {position:'absolute',right:0,top:'calc(100% + 6px)',zIndex:901,minWidth:240,maxWidth:'calc(100vw - 32px)',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,boxShadow:'0 12px 32px rgba(0,0,0,0.18)',padding:6,display:'flex',flexDirection:'column'},
   menuItem: {textAlign:'left',padding:'10px 12px',minHeight:44,background:'none',border:'none',borderRadius:8,fontSize:13,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',padding:'5px 12px',borderRadius:12,fontSize:12,fontWeight:600},

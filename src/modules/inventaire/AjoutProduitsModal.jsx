@@ -1,6 +1,7 @@
 import React from 'react';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { cleProduit } from './inventaireLignes.js';
+import ChoixZone from './ChoixZone.jsx';
 
 // Ajout de produits à l'inventaire, en masse, depuis le catalogue.
 //
@@ -10,13 +11,17 @@ import { cleProduit } from './inventaireLignes.js';
 // catalogue. Les produits déjà présents restent visibles mais grisés : on voit
 // ce qui est déjà compté au lieu de se demander s'il manque.
 //
-// Props : catalogue, lignesExistantes, onAjouter(produits, nomsLibres), onClose
+// Les produits ajoutés d'un coup sont en général rangés au même endroit (on
+// coche la chambre froide, puis l'économat) : une zone commune est proposée.
+//
+// Props : catalogue, lignesExistantes, onAjouter(produits, nomsLibres, zone), onClose
 
 export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjouter, onClose }) {
   const [recherche, setRecherche] = React.useState('');
   const [coches, setCoches] = React.useState(() => new Set());
   const [ouvertes, setOuvertes] = React.useState(() => new Set());
   const [busy, setBusy] = React.useState(false);
+  const [zone, setZone] = React.useState('');
 
   const dejaPresents = React.useMemo(
     () => new Set((lignesExistantes || []).map(l => cleProduit(l.produit))),
@@ -75,7 +80,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
     const produits = actifs.filter(p => coches.has(p.id));
     if (!produits.length && !libres.length) return;
     setBusy(true);
-    try { await onAjouter(produits, libres); } finally { setBusy(false); }
+    try { await onAjouter(produits, libres, zone); } finally { setBusy(false); }
   };
 
   const nbCoches = coches.size;
@@ -172,6 +177,10 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
         </div>
 
         <div style={st.footer}>
+          <label style={st.zone}>
+            Ranger dans
+            <ChoixZone value={zone} onChange={setZone} lignes={lignesExistantes} style={st.zoneSelect} ariaLabel="Zone des produits ajoutés" />
+          </label>
           <span style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 160px', minWidth: 0 }}>
             {nbCoches === 0 ? 'Aucun produit coché.' : <><strong style={{ color: 'var(--text)' }}>{nbCoches}</strong> produit{nbCoches > 1 ? 's' : ''} à ajouter</>}
           </span>
@@ -204,6 +213,8 @@ const st = {
   produit: { display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', margin: '2px 0 2px 14px', borderRadius: 8, cursor: 'pointer', minHeight: 44 },
   produitPresent: { opacity: 0.5, cursor: 'default' },
   produitCoche: { background: 'var(--bg)' },
+  zone: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)', flexBasis: '100%' },
+  zoneSelect: { padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)' },
   footer: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 18px', borderTop: '1px solid var(--border)' },
   btnSecondaire: { padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   btnPrimaire: { padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },

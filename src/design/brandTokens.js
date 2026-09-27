@@ -74,6 +74,21 @@ export const PDF = {
   thermalInk: rgb(THERMAL.ink),
 };
 
+// ─── Inventory statement (Excel + PDF) ──────────────────────────────────────
+// The single deliberate exception to the "nothing warm" rule above. The
+// inventory statement reproduces, cell for cell, the workbook Jeremy hands to
+// the establishments (Le Rucher, August 2026): navy title band, gold header,
+// cream zebra, Arial. Asked for explicitly on 27.09.2026 ("exactement comme
+// ça"). To move it onto the brand palette, point these five at BRAND.color.
+export const INVENTAIRE_MODELE = {
+  titre:  '#1E3A5F', // title band and TOTAL row
+  entete: '#B8860B', // table header
+  zebra:  '#F5F0E6', // alternating rows (odd data rows)
+  filet:  '#BFBFBF', // cell borders
+  note:   '#595959', // packaging column
+  source: '#808080', // suppliers and documents column
+};
+
 // Rule weights, in millimetres of line width. Named rather than repeated so a
 // document never invents its own hierarchy of strokes.
 export const RULE = {

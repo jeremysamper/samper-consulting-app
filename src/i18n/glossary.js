@@ -492,6 +492,23 @@ export const UI_GLOSSARY = {
   'date manquante': 'date missing',
   'Nouveau produit': 'New product',
   'Consommation par produit': 'Usage by product',
+
+  // ── Inventaire : zones de stockage et état d'inventaire ──
+  'Zone': 'Zone',
+  'Toutes les zones': 'All zones',
+  'Sans zone': 'No zone',
+  'Nouvelle zone': 'New zone',
+  'Choisir une zone': 'Choose a zone',
+  'Ranger par zone': 'Sort by zone',
+  'Rangement terminé': 'Sorting done',
+  'Ranger dans': 'Store in',
+  'Chambre froide': 'Cold room',
+  'Congélateur': 'Freezer',
+  'Économat': 'Dry store',
+  'Bar': 'Bar',
+  'Réserve': 'Storeroom',
+  'État d\'inventaire (PDF)': 'Stock statement (PDF)',
+  'État d\'inventaire (Excel)': 'Stock statement (Excel)',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

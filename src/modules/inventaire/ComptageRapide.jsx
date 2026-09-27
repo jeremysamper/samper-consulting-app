@@ -2,6 +2,8 @@ import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { estCompte, UNITES_INVENTAIRE } from './inventaireLignes.js';
+import { zoneOf, zonesDesLignes, SANS_ZONE } from './zones.js';
+import ChoixZone from './ChoixZone.jsx';
 
 // Vue « Comptage » : ce qu'on fait vraiment en chambre froide, et rien d'autre.
 //
@@ -9,6 +11,10 @@ import { estCompte, UNITES_INVENTAIRE } from './inventaireLignes.js';
 // dernier inventaire est affichée en indication, un tap sur « = » la reprend.
 // Entrée passe au produit suivant : on compte une étagère de haut en bas sans
 // lâcher le clavier. Écarts, valeurs et KPI vivent dans la vue « Écarts ».
+//
+// Dès qu'un produit a une zone (Chambre froide, Congélateur...), les cartes se
+// rangent par zone puis par catégorie, et des onglets permettent de compter
+// une zone après l'autre, dans l'ordre du tour.
 //
 // La saisie elle-même (brouillon, blur, file hors-ligne) reste dans le parent :
 // ce composant ne fait qu'afficher et relayer.
@@ -21,9 +27,15 @@ const FILTRES = [
 
 export default function ComptageRapide({
   lignes, canEdit, stockDraft, setStockDraft, stockRefs, commitStockReel,
-  onAjoutRapide, onChangerUnite, onReprendreRestants, catalogue,
+  onAjoutRapide, onChangerUnite, onChangerZone, onReprendreRestants, catalogue,
 }) {
   const [filtre, setFiltre] = React.useState('tous');
+  // 'toutes', une zone, ou SANS_ZONE.
+  const [zoneActive, setZoneActive] = React.useState('toutes');
+  // Mode « ranger » : la zone de chaque produit devient modifiable sur sa
+  // carte. Hors de ce mode les cartes restent compactes : sur tablette une
+  // liste de choix fait 44 px de haut, une par carte doublerait la liste.
+  const [rangement, setRangement] = React.useState(false);
   const [recherche, setRecherche] = React.useState('');
   const [ajout, setAjout] = React.useState('');
   const [ajoutBusy, setAjoutBusy] = React.useState(false);
@@ -34,24 +46,41 @@ export default function ComptageRapide({
   const restants = total - nbComptes;
   const pct = total ? Math.round((nbComptes / total) * 100) : 0;
 
+  const zones = zonesDesLignes(lignes);
+  const avecZones = zones.length > 0;
+  const nbSansZone = lignes.filter(l => !zoneOf(l)).length;
+  // La zone mémorisée peut avoir disparu (dernier produit rangé ailleurs).
+  const zoneFiltre = zoneActive === 'toutes' || zoneActive === SANS_ZONE || zones.includes(zoneActive) ? zoneActive : 'toutes';
+  const dansZone = (l) => zoneFiltre === 'toutes'
+    || (zoneFiltre === SANS_ZONE ? !zoneOf(l) : zoneOf(l) === zoneFiltre);
+
   const match = makeSearchMatcher(recherche);
   const visibles = lignes.filter(l => (
     (filtre === 'tous' || (filtre === 'comptes' ? estCompte(l) : !estCompte(l)))
-    && match(l.produit, l.categorie)
+    && dansZone(l)
+    && match(l.produit, l.categorie, zoneOf(l))
   ));
 
-  // Regroupées par catégorie, dans l'ordre d'apparition (celui de l'étagère
-  // quand l'inventaire vient d'un classeur). La liste plate sert à Entrée.
+  // Regroupées par zone (dans l'ordre du tour) puis par catégorie, chaque
+  // catégorie dans l'ordre d'apparition (celui de l'étagère quand l'inventaire
+  // vient d'un classeur). Sans aucune zone, un seul niveau : la catégorie.
+  // La liste plate sert à Entrée.
+  const clesZones = zones.join('|');
   const groupes = React.useMemo(() => {
-    const m = new Map();
+    const parZone = new Map();
+    (avecZones ? [...zones, ''] : ['']).forEach(z => parZone.set(z, new Map()));
     visibles.forEach(l => {
+      const z = avecZones ? zoneOf(l) : '';
       const c = l.categorie || 'Autres';
-      if (!m.has(c)) m.set(c, []);
-      m.get(c).push(l);
+      const cats = parZone.get(z);
+      if (!cats.has(c)) cats.set(c, []);
+      cats.get(c).push(l);
     });
-    return Array.from(m.entries());
-  }, [visibles]);
-  const ordre = groupes.flatMap(([, ls]) => ls);
+    return Array.from(parZone.entries())
+      .filter(([, cats]) => cats.size > 0)
+      .map(([z, cats]) => ({ zone: z, categories: Array.from(cats.entries()) }));
+  }, [visibles, avecZones, clesZones]);
+  const ordre = groupes.flatMap(g => g.categories.flatMap(([, ls]) => ls));
 
   // Un produit ajouté à la volée prend le focus dès qu'il est à l'écran.
   React.useEffect(() => {
@@ -72,7 +101,9 @@ export default function ComptageRapide({
     if (!nom || ajoutBusy) return;
     setAjoutBusy(true);
     try {
-      const id = await onAjoutRapide(nom);
+      // Ajouté dans la zone qu'on est en train de compter.
+      const zone = zoneFiltre !== 'toutes' && zoneFiltre !== SANS_ZONE ? zoneFiltre : '';
+      const id = await onAjoutRapide(nom, zone);
       setAjout('');
       if (filtre === 'comptes') setFiltre('tous');
       if (id) setFocusApres(id);
@@ -90,12 +121,30 @@ export default function ComptageRapide({
           </span>
           {canEdit && restants > 0 && nbComptes > 0 && lignes.some(l => !estCompte(l) && l.precedent != null) && (
             <button type="button" style={st.lienBtn} onClick={onReprendreRestants}>
-              Reprendre la quantité précédente pour les {restants} restant{restants > 1 ? 's' : ''}
+              {restants > 1
+                ? `Reprendre la quantité précédente pour les ${restants} restants`
+                : 'Reprendre la quantité précédente pour le dernier produit'}
             </button>
           )}
         </div>
         <div style={st.barre}><div style={{ ...st.barreRemplie, width: `${pct}%` }} /></div>
       </div>
+
+      {avecZones && (
+        <SegmentedTabs
+          size="sm"
+          active={zoneFiltre}
+          onChange={setZoneActive}
+          tabs={[
+            { id: 'toutes', label: 'Toutes les zones' },
+            ...zones.map(z => {
+              const ls = lignes.filter(l => zoneOf(l) === z);
+              return { id: z, label: `${z} (${ls.filter(estCompte).length}/${ls.length})` };
+            }),
+            ...(nbSansZone ? [{ id: SANS_ZONE, label: `${SANS_ZONE} (${nbSansZone})` }] : []),
+          ]}
+        />
+      )}
 
       <div style={st.outils}>
         <SegmentedTabs
@@ -107,6 +156,16 @@ export default function ComptageRapide({
             label: f.id === 'a_compter' ? `${f.label} (${restants})` : f.id === 'comptes' ? `${f.label} (${nbComptes})` : f.label,
           }))}
         />
+        {canEdit && onChangerZone && total > 0 && (
+          <button
+            type="button"
+            style={{ ...st.rangerBtn, ...(rangement ? st.rangerBtnActif : {}) }}
+            aria-pressed={rangement}
+            onClick={() => setRangement(r => !r)}
+          >
+            {rangement ? '✓ Rangement terminé' : '📍 Ranger par zone'}
+          </button>
+        )}
         <input
           type="search"
           value={recherche}
@@ -124,7 +183,7 @@ export default function ComptageRapide({
             value={ajout}
             onChange={e => setAjout(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouter(); } }}
-            placeholder="+ Ajouter un produit (nom, puis Entrée)"
+            placeholder="+ Ajouter un produit"
             style={st.ajoutInput}
             autoComplete="off"
           />
@@ -137,6 +196,13 @@ export default function ComptageRapide({
         </div>
       )}
 
+      {canEdit && onChangerZone && !avecZones && total > 0 && !rangement && (
+        <div style={st.astuceZones}>
+          Rangez les produits par zone (chambre froide, congélateur, économat) pour compter une zone après l'autre.
+          <button type="button" style={st.lienBtn} onClick={() => setRangement(true)}>Ranger par zone</button>
+        </div>
+      )}
+
       {visibles.length === 0 && (
         <div style={st.vide}>
           {total === 0
@@ -145,7 +211,17 @@ export default function ComptageRapide({
         </div>
       )}
 
-      {groupes.map(([cat, ls]) => (
+      {groupes.map(({ zone, categories }) => (
+        <div key={zone || '__sans__'} style={st.groupeZone}>
+          {avecZones && (
+            <div style={st.zoneTitre}>
+              {zone || SANS_ZONE}
+              <span style={st.catCompte}>
+                {categories.reduce((n, [, ls]) => n + ls.filter(estCompte).length, 0)}/{categories.reduce((n, [, ls]) => n + ls.length, 0)}
+              </span>
+            </div>
+          )}
+          {categories.map(([cat, ls]) => (
         <div key={cat}>
           <div style={st.catTitre}>
             {cat}
@@ -160,9 +236,20 @@ export default function ComptageRapide({
                   <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                     <div data-no-translate style={st.nom}>{l.produit}</div>
                     <div style={st.indication}>
-                      {l.precedent != null
-                        ? <>préc. {l.precedent} {l.unite}</>
-                        : compte ? <>✓ compté</> : <>à compter</>}
+                      <span>
+                        {l.precedent != null
+                          ? <>préc. {l.precedent} {l.unite}</>
+                          : compte ? <>✓ compté</> : <>à compter</>}
+                      </span>
+                      {canEdit && onChangerZone && rangement && (
+                        <ChoixZone
+                          value={zoneOf(l)}
+                          lignes={lignes}
+                          ariaLabel={`Zone - ${l.produit}`}
+                          style={st.zoneSelect}
+                          onChange={(z) => onChangerZone(l.id, z)}
+                        />
+                      )}
                     </div>
                   </div>
                   {canEdit ? (
@@ -221,6 +308,8 @@ export default function ComptageRapide({
             })}
           </div>
         </div>
+          ))}
+        </div>
       ))}
     </div>
   );
@@ -238,13 +327,19 @@ const st = {
   ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   vide: { padding: '30px 16px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5, background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12 },
+  groupeZone: { display: 'flex', flexDirection: 'column', gap: 4 },
+  zoneTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: '10px 2px 0', paddingBottom: 4, borderBottom: '2px solid var(--border)' },
+  zoneSelect: { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)', padding: '4px 8px', cursor: 'pointer', maxWidth: 180 },
+  rangerBtn: { padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40, whiteSpace: 'nowrap' },
+  rangerBtnActif: { borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 },
+  astuceZones: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text2)', padding: '8px 12px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 8, lineHeight: 1.45 },
   catTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '6px 2px 6px' },
   catCompte: { fontWeight: 600, color: 'var(--text3, var(--text2))', letterSpacing: 0 },
   cartes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 8 },
   carte: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, minWidth: 0 },
   carteComptee: { borderColor: 'var(--success-bd)' },
   nom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
-  indication: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
+  indication: { fontSize: 11, color: 'var(--text2)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' },
   egal: { width: 40, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text2)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
   champ: { width: 92, height: 44, padding: '0 10px', textAlign: 'right', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: 17, fontWeight: 700, fontFamily: 'var(--font)', boxSizing: 'border-box' },
