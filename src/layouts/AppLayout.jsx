@@ -16,10 +16,12 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { ArrowUpDown, Bell, KeyRound, LogOut, Search } from 'lucide-react';
+import { Bell, LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
+import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
+import UserMenu from '../components/nav/UserMenu.jsx';
 import { applyNavOrder, useNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
@@ -115,8 +117,7 @@ export default function AppLayout({
   }, [etablissement?.id, etablissement?.logo_url]);
 
   // Permissions dynamiques (relues à chaque render depuis DEMO_DATA, hydraté depuis localStorage)
-  const perms = permissionsOverride || DEMO_DATA.permissions[user.role] || {}; 
-  const roleInfo = DEMO_DATA.roles[user.role] || { label: user?.role || 'Utilisateur', couleur: '#003042' };
+  const perms = permissionsOverride || DEMO_DATA.permissions[user.role] || {};
 
   // Établissements accessibles à l'utilisateur - en state live synchronisé avec Supabase
   const [etabsAll, setEtabsAll] = React.useState(() => etablissements.length ? etablissements : (DEMO_DATA.etablissements || []));
@@ -307,12 +308,42 @@ export default function AppLayout({
       variant={variant}
     />
   );
-  const organizeButton = isConsultant ? (
-    <button type="button" className="nav-organize-btn" onClick={() => setOrganizing(true)}>
-      <ArrowUpDown size={14} aria-hidden="true" />
-      Organiser le menu
-    </button>
-  ) : null;
+
+  // ── Liste des modules, seul contenu du milieu de la barre ────────
+  // Plus d'intitulé de rubrique à l'écran : un filet sépare les rubriques, et
+  // leur nom reste annoncé aux lecteurs d'écran (role group + aria-label).
+  const renderNavGroups = ({ itemStyle, activeStyle, dividerStyle, activeMarker }) => groupedNav.map((group, index) => (
+    <div key={group.label} role="group" aria-label={group.label}>
+      {index > 0 && <div style={dividerStyle} aria-hidden="true" />}
+      {group.items.map(item => {
+        const active = currentPage === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            className="sc-nav-item"
+            style={{ ...itemStyle, ...(active ? activeStyle : {}) }}
+            aria-current={active ? 'page' : undefined}
+            onClick={() => handleSetPage(item.id)}
+          >
+            <span style={ls.navLabel}>{getLabelForModule(item.id, item.label)}</span>
+            {renderNavBadge(item.id)}
+            {active && activeMarker}
+          </button>
+        );
+      })}
+    </div>
+  ));
+
+  const renderUserMenu = (variant) => (
+    <UserMenu
+      user={user}
+      variant={variant}
+      onChangePassword={() => { setDrawerOpen(false); setPasswordModalOpen(true); }}
+      onOrganize={isConsultant ? startOrganizing : null}
+      onLogout={onLogout}
+    />
+  );
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
   const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
@@ -467,40 +498,56 @@ export default function AppLayout({
   };
 
   // LogoMark et LogoMenu : fonctions de rendu (pas des composants React)
-  // afin d'éviter le problème des composants définis à l'intérieur d'autres composants
-  const renderLogoMark = (size = 34, fontSize = 12) => (
-    <div style={{
-      width: size, height: size, borderRadius: 8,
-      // Sans logo d'établissement, on affiche la marque Samper (fond pétrole
-      // intégré au SVG) : le conteneur reste transparent, sinon le --accent
-      // clair du mode sombre déborderait en liseré.
-      background: 'transparent',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 700, fontSize, color: '#fff',
-      fontFamily: 'var(--font-serif)', letterSpacing: 1, flexShrink: 0,
-      overflow: 'hidden', position: 'relative',
-      cursor: canEditLogo ? 'pointer' : 'default',
-      border: canEditLogo && logoHover ? '2px dashed var(--accent)' : '2px solid transparent',
-      transition: 'border 0.15s',
-    }}
-    onMouseEnter={() => canEditLogo && setLogoHover(true)}
-    onMouseLeave={() => setLogoHover(false)}
-    onClick={canEditLogo ? (e) => { e.stopPropagation(); setLogoMenuOpen(!logoMenuOpen); } : undefined}
-    title={canEditLogo ? 'Cliquer pour changer le logo' : ''}>
-      {appLogo
-        ? <img src={appLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <SamperMark size={size} radius={0} title={null} style={{ width: '100%', height: '100%', display: 'block' }} />}
-      {canEditLogo && logoHover && (
-        <div style={{
-          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+  // afin d'éviter le problème des composants définis à l'intérieur d'autres composants.
+  // Consultant : le logo est un vrai <button> (atteignable au clavier) ; .mini
+  // le soustrait à la règle tactile globale qui l'étirerait à 44 px de haut.
+  const renderLogoMark = (size = 34, fontSize = 12) => {
+    const LogoTag = canEditLogo ? 'button' : 'div';
+    return (
+      <LogoTag
+        {...(canEditLogo ? {
+          type: 'button',
+          className: 'mini',
+          'aria-haspopup': 'menu',
+          'aria-expanded': logoMenuOpen,
+          'aria-label': 'Changer le logo',
+        } : {})}
+        style={{
+          width: size, height: size, borderRadius: 8, padding: 0,
+          // Sans logo d'établissement, on affiche la marque Samper (fond pétrole
+          // intégré au SVG) : le conteneur reste transparent, sinon le --accent
+          // clair du mode sombre déborderait en liseré.
+          background: 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: size > 30 ? 14 : 10, color: '#fff',
-        }}>
-          ✎
-        </div>
-      )}
-    </div>
-  );
+          fontWeight: 700, fontSize, color: '#fff',
+          fontFamily: 'var(--font-serif)', letterSpacing: 1, flexShrink: 0,
+          overflow: 'hidden', position: 'relative',
+          cursor: canEditLogo ? 'pointer' : 'default',
+          // --nav-accent et non --accent : le pointillé pétrole disparaissait
+          // sur l'encre de la barre.
+          border: canEditLogo && logoHover ? '2px dashed var(--nav-accent)' : '2px solid transparent',
+          transition: 'border 0.15s',
+        }}
+        onMouseEnter={() => canEditLogo && setLogoHover(true)}
+        onMouseLeave={() => setLogoHover(false)}
+        onClick={canEditLogo ? (e) => { e.stopPropagation(); setLogoMenuOpen(!logoMenuOpen); } : undefined}
+        title={canEditLogo ? 'Cliquer pour changer le logo' : undefined}
+      >
+        {appLogo
+          ? <img src={appLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <SamperMark size={size} radius={0} title="Samper Consulting" style={{ width: '100%', height: '100%', display: 'block' }} />}
+        {canEditLogo && logoHover && (
+          <div style={{
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: size > 30 ? 14 : 10, color: '#fff',
+          }}>
+            ✎
+          </div>
+        )}
+      </LogoTag>
+    );
+  };
 
   const renderLogoMenu = () => (
     logoMenuOpen && canEditLogo && (
@@ -611,8 +658,15 @@ export default function AppLayout({
             <span style={mls.hamLine} />
           </button>
 
-          {/* Titre central */}
-          <div style={mls.title}>{getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}</div>
+          {/* Titre central + établissement courant (sélecteur s'il y en a
+              plusieurs) : l'établissement reste visible hors du tiroir. */}
+          <EtabSwitcher
+            variant="mobile"
+            title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
+            etabs={etabs}
+            current={etablissement}
+            onSelect={setEtablissement}
+          />
 
           {/* Cloche notifications à droite */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
@@ -667,95 +721,27 @@ export default function AppLayout({
             transition: drawerDrag !== null ? 'none' : mls.drawer.transition,
           }}
         >
-          {/* Header drawer : logo + nom consulting + fermeture */}
+          {/* Même contenu que la barre desktop : logo, modules, compte.
+              L'établissement est passé dans le header. */}
           <div style={mls.drawerHead}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ position: 'relative' }}>
-                {renderLogoMark(36, 13)}
-                {renderLogoMenu()}
-              </div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--nav-text-active)', fontFamily: 'var(--font-serif)' }}>Samper</div>
-                <div style={{ fontSize: 11, color: 'var(--nav-text)' }}>Consulting</div>
-              </div>
+            <div style={{ position: 'relative' }}>
+              {renderLogoMark(36, 13)}
+              {renderLogoMenu()}
             </div>
             <button style={mls.closeDrawer} onClick={() => setDrawerOpen(false)} aria-label="Fermer">✕</button>
           </div>
 
-          {/* Carte utilisateur */}
-          <div style={mls.userCard}>
-            <div style={{ ...mls.drawerAvatar, background: roleInfo.couleur }}>{user.avatar}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--nav-text-active)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.prenom} {user.nom}</div>
-              <div style={{ fontSize: 11, color: roleInfo.couleur, fontWeight: 600 }}>{roleInfo.label}</div>
-            </div>
-          </div>
-
-          {/* Switch établissement - visible si l'utilisateur a accès à 2+ établissements */}
-          {etabs.length > 1 && (
-            <div style={mls.etabSwitcher}>
-              <div style={mls.etabSwitcherLabel}>Établissement</div>
-              {etabs.map(et => {
-                const active = etablissement?.id === et.id;
-                return (
-                  <button
-                    key={et.id}
-                    style={{ ...mls.etabOption, ...(active ? mls.etabOptionActive : {}) }}
-                    onClick={() => { setEtablissement(et); setDrawerOpen(false); }}
-                  >
-                    <span style={{ ...mls.etabDot, background: et.couleur || 'var(--accent)' }} />
-                    <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{et.nom}</span>
-                    {active && <span style={{ color: 'var(--nav-accent)', fontSize: 14 }}>✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Si un seul établissement, juste afficher son nom */}
-          {etabs.length === 1 && etablissement && (
-            <div style={mls.etabSingle}>
-              <span style={{ ...mls.etabDot, background: etablissement.couleur || 'var(--accent)' }} />
-              <span>{etablissement.nom}</span>
-            </div>
-          )}
-
-          {/* Liste des modules */}
-          <nav style={mls.drawerNav} data-nav-scroll>
-            {organizing ? renderOrganizer('mobile') : groupedNav.map(group => (
-              <div key={group.label}>
-                <div style={mls.drawerGroupLabel}>{group.label}</div>
-                {group.items.map(item => {
-                  const active = currentPage === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      style={{ ...mls.drawerItem, ...(active ? mls.drawerItemActive : {}) }}
-                      onClick={() => handleSetPage(item.id)}
-                    >
-                      <span style={{ flex: 1, textAlign: 'left' }}>{getLabelForModule(item.id, item.label)}</span>
-                      {renderNavBadge(item.id)}
-                      {active && <span style={{ color: 'var(--nav-accent)', fontSize: 16 }}>●</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-            {!organizing && organizeButton}
+          <nav style={mls.drawerNav} aria-label="Modules" data-nav-scroll>
+            {organizing ? renderOrganizer('mobile') : renderNavGroups({
+              itemStyle: mls.drawerItem,
+              activeStyle: mls.drawerItemActive,
+              dividerStyle: mls.navDivider,
+              activeMarker: <span style={{ color: 'var(--nav-accent)', fontSize: 16 }} aria-hidden="true">●</span>,
+            })}
           </nav>
 
-          {/* Compte + déconnexion en bas */}
           <div style={mls.drawerFooter}>
-            <button
-              style={mls.accountBtn}
-              onClick={() => { setDrawerOpen(false); setPasswordModalOpen(true); }}
-            >
-              <KeyRound size={15} aria-hidden="true" style={{ marginRight: 8, flexShrink: 0 }} />
-              Changer mon mot de passe
-            </button>
-            <button style={mls.logoutBtn} onClick={onLogout}>
-              Se déconnecter
-            </button>
+            {renderUserMenu('mobile')}
           </div>
         </aside>
 
@@ -775,115 +761,44 @@ export default function AppLayout({
   // ════════════════════════════════
   return (
     <div style={ls.root} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
-      {/* Repliée = la barre disparaît complètement (width 0 + visibility hidden
-          après la transition) ; une languette fixée au bord gauche la rouvre. */}
-      <aside style={{
-        ...ls.sidebar,
-        width: sidebarOpen ? 234 : 0,
-        borderRight: sidebarOpen ? '1px solid var(--nav-border)' : 'none',
-        visibility: sidebarOpen ? 'visible' : 'hidden',
-        transition: sidebarOpen
-          ? 'width .2s cubic-bezier(.4,0,.2,1)'
-          : 'width .2s cubic-bezier(.4,0,.2,1), visibility 0s linear .2s',
-      }}>
+      {/* Barre au strict minimum : logo en haut, modules, nom de l'utilisateur
+          en bas. L'établissement est dans le header, les actions de compte
+          dans le menu du nom, le repli dans le bouton du header.
+          Repliée = la barre disparaît complètement (width 0 + visibility
+          hidden après la transition). */}
+      <aside
+        id="app-sidebar"
+        aria-label="Menu principal"
+        style={{
+          ...ls.sidebar,
+          width: sidebarOpen ? 234 : 0,
+          borderRight: sidebarOpen ? '1px solid var(--nav-border)' : 'none',
+          visibility: sidebarOpen ? 'visible' : 'hidden',
+          transition: sidebarOpen
+            ? 'width .2s cubic-bezier(.4,0,.2,1)'
+            : 'width .2s cubic-bezier(.4,0,.2,1), visibility 0s linear .2s',
+        }}
+      >
         <div style={ls.sidebarTop}>
-          <div style={ls.logoWrap}>
-            <div style={{ position: 'relative' }}>
-              {renderLogoMark(34, 12)}
-              {renderLogoMenu()}
-            </div>
-            <div style={ls.logoText}>
-              <div style={ls.logoName}>Samper Consulting</div>
-              <div style={ls.logoSub}>Gestion culinaire</div>
-            </div>
+          <div style={{ position: 'relative' }}>
+            {renderLogoMark(36, 13)}
+            {renderLogoMenu()}
           </div>
-          <button style={ls.toggleBtn} onClick={() => setSidebarOpen(false)} aria-label="Masquer le menu" title="Masquer le menu">
-            ❮
-          </button>
         </div>
 
-        {/* Sélecteur d'établissement : même UI que le drawer mobile (liste
-            d'options avec pastille couleur + ✓ actif) - feedback immédiat du
-            changement, contrairement à l'ancien <select> sombre. */}
-        {etabs.length > 1 && (
-          <div style={ls.etabWrap}>
-            <div style={ls.etabLabel}>Établissement</div>
-            <div style={ls.etabList}>
-              {etabs.map(et => {
-                const active = etablissement?.id === et.id;
-                return (
-                  <button
-                    key={et.id}
-                    style={{ ...ls.etabOption, ...(active ? ls.etabOptionActive : {}) }}
-                    onClick={() => setEtablissement(et)}
-                  >
-                    <span style={{ ...ls.etabDot, background: et.couleur || 'var(--accent)' }} />
-                    <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{et.nom}</span>
-                    {active && <span style={{ color: 'var(--nav-accent)', fontSize: 13, flexShrink: 0 }}>✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {etabs.length === 1 && etablissement && (
-          <div style={ls.etabWrap}>
-            <div style={ls.etabLabel}>Établissement</div>
-            <div style={ls.etabSingle}>
-              <span style={{ ...ls.etabDot, background: etablissement.couleur || 'var(--accent)' }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{etablissement.nom}</span>
-            </div>
-          </div>
-        )}
-
-        <nav style={ls.nav} data-nav-scroll>
-          {organizing ? renderOrganizer('desktop') : groupedNav.map(group => (
-            <div key={group.label} style={ls.navGroup}>
-              <div style={ls.navGroupLabel}>{group.label}</div>
-              {group.items.map(item => {
-                const active = currentPage === item.id;
-                return (
-                  <button key={item.id}
-                    style={{ ...ls.navItem, ...(active ? ls.navActive : {}) }}
-                    onClick={() => handleSetPage(item.id)}>
-                    <span style={{ ...ls.navLabel, flex: 1 }}>{getLabelForModule(item.id, item.label)}</span>
-                    {renderNavBadge(item.id)}
-                    {active && <div style={ls.navActiveLine} />}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-          {!organizing && organizeButton}
+        <nav style={ls.nav} aria-label="Modules" data-nav-scroll>
+          {organizing ? renderOrganizer('desktop') : renderNavGroups({
+            itemStyle: ls.navItem,
+            activeStyle: ls.navActive,
+            dividerStyle: ls.navDivider,
+            activeMarker: <span style={ls.navActiveLine} aria-hidden="true" />,
+          })}
         </nav>
 
         <div style={ls.userArea}>
-          <div style={ls.userIdentity}>
-            <div style={{ ...ls.avatar, background: roleInfo.couleur }}>{user.avatar}</div>
-            <div style={ls.userInfo}>
-              <div style={ls.userName}>{user.prenom} {user.nom}</div>
-              <div style={{ ...ls.userRole, color: roleInfo.couleur }}>{roleInfo.label}</div>
-            </div>
-          </div>
-          <button style={ls.accountBtn} onClick={() => setPasswordModalOpen(true)}>
-            <KeyRound size={13} aria-hidden="true" style={{ marginRight: 6, verticalAlign: '-2px' }} />
-            Changer mon mot de passe
-          </button>
+          {renderUserMenu('desktop')}
         </div>
       </aside>
-
-      {/* Languette de réouverture - visible uniquement quand la barre est repliée.
-          Onglet collé au bord gauche, à mi-hauteur, façon flèche PiP iPhone. */}
-      {!sidebarOpen && (
-        <button
-          style={ls.sidebarPeek}
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Afficher le menu"
-          title="Afficher le menu"
-        >
-          ❯
-        </button>
-      )}
 
       <div style={ls.main}>
         {showPosBanner && (
@@ -896,21 +811,33 @@ export default function AppLayout({
         <OfflineBanner />
         <HomeScreenIconBanner />
         {/* Entre 768 et 1023 px, le header se compacte (app.css, .topbar-*) :
-            sinon il débordait et le titre s'écrasait sur plusieurs lignes.
-            data-sidebar : le badge d'établissement n'est masqué que si la
-            barre latérale, qui l'affiche déjà, est ouverte. */}
-        <header style={ls.topbar} className="topbar-desktop" data-sidebar={sidebarOpen ? 'open' : 'closed'}>
+            sinon il débordait et le titre s'écrasait sur plusieurs lignes. */}
+        <header style={ls.topbar} className="topbar-desktop">
           <div style={ls.topbarLeft}>
-            <div style={ls.titleBlock}>
-              <div style={ls.pageTitle}>{getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}</div>
-              <div style={ls.topbarSub}>{todayLabel}</div>
-            </div>
-            {etablissement && (
-              <div style={ls.etabBadge} className="topbar-etab-badge">
-                <span style={ls.etabBadgeDot} />
-                {etablissement.nom}
-              </div>
-            )}
+            {/* Un seul bouton, toujours au même endroit, pour replier et
+                rouvrir la barre (remplace ❮ dans la barre et la languette). */}
+            <button
+              type="button"
+              style={ls.sidebarToggle}
+              onClick={(e) => { e.stopPropagation(); toggleSidebar(); }}
+              aria-controls="app-sidebar"
+              aria-expanded={sidebarOpen}
+              aria-label={sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'}
+              aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+B' : 'Control+B'}
+              title={`${sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'} (${MOD_LABEL} B)`}
+            >
+              {sidebarOpen
+                ? <PanelLeftClose size={18} strokeWidth={2} aria-hidden="true" />
+                : <PanelLeftOpen size={18} strokeWidth={2} aria-hidden="true" />}
+            </button>
+            {/* Titre + établissement (sélecteur s'il y en a plusieurs) + date. */}
+            <EtabSwitcher
+              title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
+              meta={todayLabel}
+              etabs={etabs}
+              current={etablissement}
+              onSelect={setEtablissement}
+            />
           </div>
           <div style={ls.topbarRight} className="topbar-right">
             {/* Porte d'entrée visible de la palette : le raccourci s'apprend en
@@ -981,52 +908,27 @@ const ls = {
   // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
   // être bloquée par la taille min-content de ses enfants flex.
   sidebar: { background: 'var(--nav-grad)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
-  sidebarPeek: { position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 10px 18px 7px', background: 'var(--nav)', border: '1px solid var(--nav-border)', borderLeft: 'none', borderRadius: '0 12px 12px 0', boxShadow: 'var(--sh)', color: 'var(--nav-text)', fontSize: 14, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', animation: 'sidebarPeekIn .25s ease .12s both' },
-  sidebarTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 14px 12px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 },
-  logoWrap: { display: 'flex', alignItems: 'center', gap: 10, overflow: 'visible' },
-  logoText: { overflow: 'hidden' },
-  logoName: { color: 'var(--nav-text-active)', fontWeight: 700, fontSize: 14, lineHeight: 1.2, whiteSpace: 'nowrap', fontFamily: 'var(--font-serif)' },
-  logoSub: { color: 'var(--nav-text)', fontSize: 10, whiteSpace: 'nowrap' },
+  // Haut de barre : le logo seul, aligné sur le texte des modules.
+  sidebarTop: { display: 'flex', alignItems: 'center', padding: '18px 16px 12px', flexShrink: 0 },
   logoMenu: { position: 'absolute', top: '100%', left: 0, marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', width: 200, zIndex: 300, overflow: 'hidden' },
   logoMenuBtn: { width: '100%', display: 'block', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  toggleBtn: { background: 'none', border: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 14, padding: 4, flexShrink: 0 },
-  etabWrap: { padding: '12px 14px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 },
-  etabLabel: { color: 'var(--nav-text)', fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 },
-  etabList: { display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 180, overflowY: 'auto' },
-  // flexShrink:0 : dans une colonne flex scrollable, les <button> se font
-  // comprimer par le min-height global mobile → lignes superposées.
-  etabOption: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--nav-border)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600, color: 'var(--nav-text-active)', minHeight: 36, flexShrink: 0 },
-  etabOptionActive: { border: '1px solid var(--nav-accent)', background: 'var(--nav-active)', color: 'var(--nav-accent)', boxShadow: 'var(--nav-glow)' },
-  etabDot: { width: 9, height: 9, borderRadius: '50%', flexShrink: 0 },
-  etabSingle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--nav-text)', padding: '2px 0' },
   nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
-  navGroup: { marginBottom: 2 },
-  navGroupLabel: { fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--nav-text)', opacity: 0.72, padding: '10px 8px 4px' },
+  // Filet entre deux rubriques, à la place de leur intitulé.
+  navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
   navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
   navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 700, boxShadow: 'var(--nav-glow)' },
   navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--nav-accent)', borderRadius: 2, boxShadow: '0 0 8px rgba(116, 174, 195, 0.8)' },
-  navLabel: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  userArea: { display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderTop: '1px solid var(--nav-border)', flexShrink: 0, boxSizing: 'border-box' },
-  userIdentity: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
-  // flexShrink: 0 - la règle tactile globale (min-height 44px en pointer: coarse)
-  // écrase sinon la hauteur des boutons empilés en colonne sur iPad.
-  accountBtn: { flexShrink: 0, width: '100%', padding: '8px 10px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--nav-border)', borderRadius: 8, color: 'var(--nav-text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textAlign: 'center', boxSizing: 'border-box' },
-  avatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
-  userInfo: { overflow: 'hidden' },
-  userName: { color: 'var(--nav-text-active)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  userRole: { fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' },
+  navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
+  userArea: { padding: '8px 6px 10px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 18px', flexShrink: 0, position: 'relative', zIndex: 5, boxShadow: 'var(--sh-xs)' },
   // Le côté gauche cède la place (titre en points de suspension), le côté
   // droit jamais : ses boutons écrasés devenaient intouchables.
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto', marginRight: 12 },
-  titleBlock: { minWidth: 0, overflow: 'hidden' },
-  pageTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  topbarSub: { fontSize: 11, color: 'var(--text3)', textTransform: 'capitalize', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  etabBadge: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
-  etabBadgeDot: { width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 },
   topbarRight: { display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 },
   themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', padding: 0, borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', padding: 0 },
   iconBtn: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 0, right: 0, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
@@ -1079,7 +981,6 @@ const mls = {
     background: 'none', border: 'none', cursor: 'pointer', padding: 10,
   },
   hamLine: { width: 22, height: 2, background: 'var(--text)', borderRadius: 2, transition: 'all 0.15s' },
-  title: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', textAlign: 'center', flex: 1, paddingLeft: 8, paddingRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, flexShrink: 0 },
   bellBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
@@ -1101,66 +1002,21 @@ const mls = {
     transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
     boxShadow: 'var(--sh-lg)',
   },
+  // Haut du tiroir : le logo seul, et la fermeture.
   drawerHead: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '16px 18px',
-    borderBottom: '1px solid var(--nav-border)',
+    padding: '14px 14px 8px 18px', flexShrink: 0,
   },
   closeDrawer: {
     width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(255,255,255,0.06)', border: '1px solid var(--nav-border)', borderRadius: 8,
     cursor: 'pointer', fontSize: 16, color: 'var(--nav-text)',
   },
-  userCard: {
-    display: 'flex', alignItems: 'center', gap: 12,
-    padding: '14px 18px', borderBottom: '1px solid var(--nav-border)',
-    background: 'rgba(255,255,255,0.04)',
-  },
-  drawerAvatar: {
-    width: 42, height: 42, borderRadius: 10,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0,
-  },
   drawerNav: {
-    flex: 1, overflowY: 'auto', padding: '12px 10px',
+    flex: 1, overflowY: 'auto', padding: '4px 10px 12px',
     display: 'flex', flexDirection: 'column', gap: 2,
   },
-  drawerGroupLabel: {
-    fontSize: 10, fontWeight: 800, color: 'var(--nav-text)', opacity: 0.72,
-    textTransform: 'uppercase', letterSpacing: 0.6,
-    padding: '10px 6px 5px',
-  },
-  etabSwitcher: {
-    padding: '12px 14px',
-    borderBottom: '1px solid var(--nav-border)',
-    background: 'transparent',
-  },
-  etabSwitcherLabel: {
-    fontSize: 10, fontWeight: 700, color: 'var(--nav-text)',
-    textTransform: 'uppercase', letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  etabOption: {
-    display: 'flex', alignItems: 'center', gap: 10,
-    width: '100%', padding: '10px 12px',
-    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--nav-border)',
-    borderRadius: 8, marginBottom: 6,
-    cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 13, fontWeight: 600, color: 'var(--nav-text-active)',
-    minHeight: 40,
-  },
-  etabOptionActive: {
-    border: '1px solid var(--nav-accent)', background: 'var(--nav-active)',
-    color: 'var(--nav-accent)', boxShadow: 'var(--nav-glow)',
-  },
-  etabDot: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },
-  etabSingle: {
-    display: 'flex', alignItems: 'center', gap: 8,
-    padding: '10px 14px',
-    borderBottom: '1px solid var(--nav-border)',
-    background: 'transparent',
-    fontSize: 12, fontWeight: 600, color: 'var(--nav-text)',
-  },
+  navDivider: { height: 1, background: 'var(--nav-border)', margin: '8px 12px' },
   drawerItem: {
     display: 'flex', alignItems: 'center', gap: 12,
     padding: '13px 14px', borderRadius: 8,
@@ -1175,25 +1031,8 @@ const mls = {
   },
   drawerIcon: { fontSize: 17, width: 24, textAlign: 'center', flexShrink: 0 },
   drawerFooter: {
-    padding: '12px 14px',
+    padding: '8px 8px 10px', flexShrink: 0,
     borderTop: '1px solid var(--nav-border)',
-    display: 'flex', flexDirection: 'column', gap: 8,
-  },
-  // flexShrink: 0 sur les deux : empilés en colonne, ils se superposeraient
-  // sinon sous la règle tactile globale (min-height 44px en pointer: coarse).
-  accountBtn: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
-    flexShrink: 0, padding: '11px 14px', background: 'rgba(255,255,255,0.06)',
-    border: '1px solid var(--nav-border)', borderRadius: 8, color: 'var(--nav-text)',
-    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
-    boxSizing: 'border-box',
-  },
-  logoutBtn: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
-    flexShrink: 0, padding: '11px 14px', background: 'rgba(255,255,255,0.06)',
-    border: '1px solid var(--nav-border)', borderRadius: 8, color: 'var(--nav-text)',
-    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
-    boxSizing: 'border-box',
   },
 
   // minHeight 0 : sans lui, la taille minimale automatique d'un élément flex

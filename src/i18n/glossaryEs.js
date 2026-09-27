@@ -54,6 +54,19 @@ export const UI_GLOSSARY_ES = {
   'Menu': 'Menú',
   'Retour': 'Volver',
   'Accueil': 'Inicio',
+  // Barre latérale et header (menu du compte, établissement, repli)
+  'Se déconnecter': 'Cerrar sesión',
+  'Changer mon mot de passe': 'Cambiar mi contraseña',
+  'Organiser le menu': 'Ordenar el menú',
+  'Mon compte': 'Mi cuenta',
+  "Changer d'établissement": 'Cambiar de establecimiento',
+  'Masquer le menu': 'Ocultar el menú',
+  'Afficher le menu': 'Mostrar el menú',
+  'Menu principal': 'Menú principal',
+  'Modules': 'Módulos',
+  'Changer le logo': 'Cambiar el logo',
+  'Consultant': 'Consultor',
+  'Aide': 'Ayuda',
 
   // ── Rôles ──
   'Consultant culinaire': 'Consultor culinario',

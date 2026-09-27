@@ -55,6 +55,19 @@ export const UI_GLOSSARY = {
   'Menu': 'Menu',
   'Retour': 'Back',
   'Accueil': 'Home',
+  // Barre latérale et header (menu du compte, établissement, repli)
+  'Se déconnecter': 'Sign out',
+  'Changer mon mot de passe': 'Change my password',
+  'Organiser le menu': 'Arrange the menu',
+  'Mon compte': 'My account',
+  "Changer d'établissement": 'Switch site',
+  'Masquer le menu': 'Hide menu',
+  'Afficher le menu': 'Show menu',
+  'Menu principal': 'Main menu',
+  'Modules': 'Modules',
+  'Changer le logo': 'Change logo',
+  'Consultant': 'Consultant',
+  'Aide': 'Help',
 
   // ── Rôles ──
   'Consultant culinaire': 'Culinary consultant',
