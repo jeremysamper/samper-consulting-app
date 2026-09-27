@@ -4,7 +4,7 @@
   "cleanUrls": true,
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/((?!reserver/).*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
@@ -12,6 +12,23 @@
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         { "key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https://ppmtoiqgajwcdkbnrcll.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self' https://ppmtoiqgajwcdkbnrcll.supabase.co wss://ppmtoiqgajwcdkbnrcll.supabase.co; worker-src 'self' blob:; manifest-src 'self'" }
+      ]
+    },
+    {
+      "source": "/reserver/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+        { "key": "Content-Security-Policy", "value": "frame-ancestors https: http://localhost:* http://127.0.0.1:*" }
+      ]
+    },
+    {
+      "source": "/widget-spa.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     },
     {
@@ -30,6 +47,7 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/reserver/:adresse", "destination": "/reserver.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [

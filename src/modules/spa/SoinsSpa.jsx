@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, Leaf, Pencil, Plus } from 'lucide-react';
+import { Clock, Globe, Leaf, Pencil, Plus } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { soinVersDB } from './spaData.js';
 import { Champ, EtatVide, Modale, dureeLisible, formatPrix, st } from './spaUi.jsx';
@@ -100,8 +100,15 @@ function CarteSoin({ soin, peutGerer, onModifier, onBasculer }) {
       </div>
       {soin.description && <p style={s.description} data-no-translate>{soin.description}</p>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
-        <span style={{ ...st.puce, background: 'var(--spa-mizu-soft)', color: 'var(--spa-mizu)' }}>
-          <Clock size={13} strokeWidth={2} aria-hidden="true" /> {dureeLisible(soin.dureeMin)}
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span style={{ ...st.puce, background: 'var(--spa-mizu-soft)', color: 'var(--spa-mizu)' }}>
+            <Clock size={13} strokeWidth={2} aria-hidden="true" /> {dureeLisible(soin.dureeMin)}
+          </span>
+          {soin.actif && soin.enLigne && (
+            <span style={{ ...st.puce, background: 'var(--spa-kin-soft)', color: 'var(--spa-kin)' }}>
+              <Globe size={13} strokeWidth={2} aria-hidden="true" /> En ligne
+            </span>
+          )}
         </span>
         {peutGerer && (
           <span style={{ display: 'flex', gap: 2 }}>
@@ -122,6 +129,7 @@ function SoinForm({ soin, categories, onSave, onSupprimer, onClose }) {
   const [form, setForm] = useState(() => ({
     nom: soin?.nom || '', categorie: soin?.categorie || '', dureeMin: soin?.dureeMin || 60,
     prix: soin?.prix ?? '', description: soin?.description || '', actif: soin?.actif !== false,
+    enLigne: soin?.enLigne !== false,
   }));
   const [enCours, setEnCours] = useState(false);
   const set = (cle, valeur) => setForm((p) => ({ ...p, [cle]: valeur }));
@@ -186,9 +194,16 @@ function SoinForm({ soin, categories, onSave, onSupprimer, onClose }) {
           <input id="soin-prix" type="number" min={0} step="0.5" inputMode="decimal" style={st.champ} value={form.prix} onChange={(e) => set('prix', e.target.value)} />
         </Champ>
       </div>
-      <Champ label="Description" htmlFor="soin-desc" aide="Quelques mots, comme sur la carte remise au client.">
+      <Champ label="Description" htmlFor="soin-desc" aide="Quelques mots, comme sur la carte remise au client (affichés aussi en ligne).">
         <textarea id="soin-desc" style={st.zone} value={form.description} onChange={(e) => set('description', e.target.value)} />
       </Champ>
+      <label style={st.caseLabel}>
+        <input type="checkbox" checked={form.enLigne} onChange={(e) => set('enLigne', e.target.checked)} style={st.case} />
+        <span>
+          <strong>Réservable en ligne</strong>
+          <span style={{ display: 'block', fontSize: 13, color: 'var(--spa-ink2)' }}>Proposé sur le site du spa, si la réservation en ligne est ouverte.</span>
+        </span>
+      </label>
     </Modale>
   );
 }

@@ -85,6 +85,8 @@ export function mapSoin(r) {
     prix: r.prix === null || r.prix === undefined ? null : Number(r.prix),
     description: r.description || '',
     actif: r.actif !== false,
+    // Proposé à la réservation en ligne (migration 20260928, vrai par défaut).
+    enLigne: r.en_ligne !== false,
   };
 }
 
@@ -97,6 +99,7 @@ export function soinVersDB(s) {
     prix: Number.isFinite(prix) ? prix : null,
     description: texte(s.description),
     actif: s.actif !== false,
+    en_ligne: s.enLigne !== false,
   };
 }
 
@@ -113,6 +116,8 @@ export function mapReservation(r) {
     cabine: r.cabine || '',
     statut: r.statut || 'prevue',
     notes: r.notes || '',
+    // 'en_ligne' : demande venue du site du client (statut initial 'demande').
+    origine: r.origine || 'equipe',
   };
 }
 
@@ -190,6 +195,35 @@ export function mapParametres(r, etabId) {
     nomExpediteur: r?.nom_expediteur || '',
     emailReponse: r?.email_reponse || '',
     signature: r?.signature || '',
+    // Réservation en ligne (migration 20260928).
+    enLigneActif: r?.en_ligne_actif === true,
+    slug: r?.slug || '',
+    horaires: r?.horaires && typeof r.horaires === 'object' ? r.horaires : {},
+    praticiensEnLigne: Array.isArray(r?.praticiens_en_ligne) ? r.praticiens_en_ligne : [],
+    delaiMinHeures: Number.isFinite(Number(r?.delai_min_heures)) ? Number(r.delai_min_heures) : 2,
+    horizonJours: Number(r?.horizon_jours) || 60,
+    pasMinutes: Number(r?.pas_minutes) || 30,
+    messageEnLigne: r?.message_en_ligne || '',
+  };
+}
+
+// Deux blocs de réglages indépendants : l'onglet E-mails et l'onglet En ligne
+// n'envoient chacun que leurs colonnes, pour ne jamais s'écraser l'un l'autre.
+export function parametresEnLigneVersDB(p) {
+  const horaires = {};
+  for (const [jour, plages] of Object.entries(p.horaires || {})) {
+    const propres = (plages || []).filter((x) => x?.de && x?.a && x.de < x.a).map((x) => ({ de: x.de, a: x.a }));
+    if (propres.length) horaires[jour] = propres;
+  }
+  return {
+    en_ligne_actif: p.enLigneActif === true,
+    slug: texte(p.slug)?.toLowerCase() || null,
+    horaires,
+    praticiens_en_ligne: [...new Set((p.praticiensEnLigne || []).map((x) => String(x).trim()).filter(Boolean))],
+    delai_min_heures: Math.max(0, Math.min(168, Math.round(Number(p.delaiMinHeures) || 0))),
+    horizon_jours: Math.max(1, Math.min(365, Math.round(Number(p.horizonJours) || 60))),
+    pas_minutes: [10, 15, 20, 30, 45, 60].includes(Number(p.pasMinutes)) ? Number(p.pasMinutes) : 30,
+    message_en_ligne: texte(p.messageEnLigne),
   };
 }
 
@@ -317,11 +351,17 @@ export function useSpaParametres(etabId) {
 
   useEffect(() => { setStatus('loading'); charger(); }, [charger]);
 
-  const enregistrer = useCallback(async (p) => {
+  // partie : 'emails' (onglet E-mails) ou 'en_ligne' (onglet En ligne).
+  const enregistrer = useCallback(async (p, partie = 'emails') => {
+    const valeurs = partie === 'en_ligne' ? parametresEnLigneVersDB(p) : parametresVersDB(p);
     const { data, error } = await supabase.from('spa_parametres')
-      .upsert({ ...parametresVersDB(p), etablissement_id: etabId }, { onConflict: 'etablissement_id' })
+      .upsert({ ...valeurs, etablissement_id: etabId }, { onConflict: 'etablissement_id' })
       .select().single();
-    if (error) return { error: messageErreur(error) };
+    if (error) {
+      if (error.code === '23505') return { error: 'Cette adresse de réservation est déjà prise par un autre spa.' };
+      if (error.code === '23514') return { error: 'Adresse de réservation invalide : lettres minuscules, chiffres et tirets (3 à 40 caractères).' };
+      return { error: messageErreur(error) };
+    }
     setParametres(mapParametres(data, etabId));
     return { error: null };
   }, [etabId]);

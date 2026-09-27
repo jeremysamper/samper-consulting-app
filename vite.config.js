@@ -48,6 +48,23 @@ function legacyRawComponentsPlugin() {
   };
 }
 
+// Dev : /reserver/<adresse> sert la page publique de réservation, comme la
+// réécriture vercel.json le fait en production.
+function reservationPubliqueDevPlugin() {
+  return {
+    name: 'samper-reservation-publique-dev',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const [chemin, requete] = (req.url || '').split('?');
+        if (/^\/reserver\/[a-z0-9-]+\/?$/i.test(chemin)) {
+          req.url = `/reserver.html${requete ? `?${requete}` : ''}`;
+        }
+        next();
+      });
+    }
+  };
+}
+
 function productionIndexPlugin() {
   return {
     name: 'samper-production-index',
@@ -67,6 +84,7 @@ function productionIndexPlugin() {
 export default defineConfig({
   plugins: [
     legacyRawComponentsPlugin(),
+    reservationPubliqueDevPlugin(),
     react(),
     VitePWA({
       // 'prompt' : le nouveau SW reste en attente, l'UI (bandeau) propose
@@ -89,7 +107,9 @@ export default defineConfig({
         // Pas '/index.html' : la copie dist est faite par productionIndexPlugin
         // APRÈS la génération du SW, elle n'est donc pas dans le précache.
         navigateFallback: '/vite-index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // /reserver/ : page publique de réservation des spas (entrée à part),
+        // jamais remplacée par l'app shell.
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre
@@ -196,7 +216,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 650,
     rollupOptions: {
       input: {
-        app: 'vite-index.html'
+        app: 'vite-index.html',
+        // Page publique de réservation des spas (/reserver/<adresse>), sans
+        // le bundle de l'app : servie seule ou dans le site du client.
+        reserver: 'reserver.html'
       },
       output: {
         manualChunks: {

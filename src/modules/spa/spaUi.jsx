@@ -11,6 +11,8 @@ import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const STATUTS_RDV = {
+  // Demande venue du site du client, en attente de la réception.
+  demande:   { label: 'À confirmer', fond: 'var(--spa-kin-soft)',   texte: 'var(--spa-kin)',     barre: 'var(--spa-kin)' },
   prevue:    { label: 'Prévu',    fond: 'var(--spa-mizu-soft)',    texte: 'var(--spa-mizu)',    barre: 'var(--spa-mizu)' },
   confirmee: { label: 'Confirmé', fond: 'var(--spa-matcha-soft)',  texte: 'var(--spa-matcha)',  barre: 'var(--spa-matcha)' },
   terminee:  { label: 'Terminé',  fond: 'var(--spa-sunken)',       texte: 'var(--spa-ink2)',    barre: 'var(--spa-line2)' },

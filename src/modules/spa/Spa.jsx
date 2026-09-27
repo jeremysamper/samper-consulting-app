@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays, Cake, Clock, Gift, Leaf, Mail, Plus, UserRound, Users,
+  CalendarDays, Cake, Clock, Gift, Globe, Leaf, Mail, Plus, UserRound, Users,
 } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
@@ -16,9 +16,10 @@ import MailingSpa from './MailingSpa.jsx';
 import RendezVousDetail from './RendezVousDetail.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import SeanceForm from './SeanceForm.jsx';
+import ReglagesEnLigne from './ReglagesEnLigne.jsx';
 import SoinsSpa from './SoinsSpa.jsx';
 import {
-  clientVersDB, mapBon, mapClient, mapReservation, mapSeance, mapSoin,
+  appelerMailer, clientVersDB, mapBon, mapClient, mapReservation, mapSeance, mapSoin,
   plancherReservations, reservationVersDB, seanceVersDB, useSpaParametres, useSpaTable,
 } from './spaData.js';
 import {
@@ -144,6 +145,14 @@ export default function Spa({ user, etablissement }) {
     };
   }, [reservations.rows, clients.rows, bons.rows, aujourdhui, maintenant]);
 
+  // Demandes venues du site, à confirmer (aujourd'hui et après).
+  const demandes = useMemo(
+    () => reservations.rows
+      .filter((r) => r.statut === 'demande' && r.dateRdv >= aujourdhui)
+      .sort((a, b) => (a.dateRdv + a.heureDebut).localeCompare(b.dateRdv + b.heureDebut)),
+    [reservations.rows, aujourdhui]
+  );
+
   const fiche = ficheId ? clientsParId.get(ficheId) || null : null;
   const rdvOuvert = rdvOuvertId ? reservations.rows.find((r) => r.id === rdvOuvertId) || null : null;
   const absent = [clients, soins, reservations].some((t) => t.status === 'absent');
@@ -185,6 +194,24 @@ export default function Spa({ user, etablissement }) {
     const res = await reservations.inserer({ ...reservationVersDB(form), statut: 'prevue' });
     if (!res.error && form.dateRdv) setDate(form.dateRdv);
     return res;
+  }
+
+  // Demande venue du site : on la confirme ou on la refuse, puis le client en
+  // est prévenu par e-mail (si l'envoi est branché).
+  async function traiterDemande(r, evenement) {
+    const client = clientsParId.get(r.clientId);
+    if (evenement === 'refus' && !window.confirm(`Refuser la demande de ${nomClient(client)} pour le ${dateLongue(r.dateRdv)} à ${r.heureDebut} ?
+
+Le client sera prévenu par e-mail.`)) return;
+    const statut = evenement === 'confirmation' ? 'confirmee' : 'annulee';
+    const { error } = await reservations.modifier(r.id, { statut });
+    if (error) { notify(error, 'error'); return; }
+    const { data } = await appelerMailer('rdv_statut', { etablissementId: etabId, reservationId: r.id, evenement });
+    const base = evenement === 'confirmation' ? 'Rendez-vous confirmé.' : 'Demande refusée.';
+    if (data?.envoye) notify(`${base} Le client a reçu un e-mail.`, 'success');
+    else if (data?.raison === 'non_configure') notify(`${base} Pas d'e-mail envoyé : l'envoi n'est pas encore branché, pensez à prévenir le client.`, 'warning');
+    else notify(`${base} L'e-mail au client n'a pas pu partir : pensez à le prévenir.`, 'warning');
+    setRdvOuvertId(null);
   }
 
   async function changerStatut(r, statut) {
@@ -229,7 +256,7 @@ export default function Spa({ user, etablissement }) {
     { id: 'clients', label: 'Clients', icone: Users },
     { id: 'bons', label: 'Bons cadeaux', icone: Gift },
     { id: 'soins', label: 'Carte des soins', icone: Leaf },
-    ...(direction ? [{ id: 'emails', label: 'E-mails', icone: Mail }] : []),
+    ...(direction ? [{ id: 'emails', label: 'E-mails', icone: Mail }, { id: 'en_ligne', label: 'En ligne', icone: Globe }] : []),
   ];
 
   const prochain = journee.prochain;
@@ -312,6 +339,9 @@ export default function Spa({ user, etablissement }) {
         </div>
       )}
 
+      {!absent && onglet === 'agenda' && demandes.length > 0 && (
+        <DemandesEnLigne demandes={demandes} clientsParId={clientsParId} onOuvrir={(r) => setRdvOuvertId(r.id)} />
+      )}
       {!absent && onglet === 'agenda' && (
         <AgendaSpa
           date={date}
@@ -359,6 +389,14 @@ export default function Spa({ user, etablissement }) {
           onSupprimer={soins.supprimer}
         />
       )}
+      {!absent && onglet === 'en_ligne' && direction && (
+        <ReglagesEnLigne
+          etablissement={etablissement}
+          soins={soins.rows}
+          praticiens={praticiens}
+          onModifierSoin={soins.modifier}
+        />
+      )}
       {!absent && onglet === 'emails' && direction && (
         <MailingSpa etablissement={etablissement} clients={clients.rows} aujourdhui={aujourdhui} />
       )}
@@ -372,6 +410,7 @@ export default function Spa({ user, etablissement }) {
           peutModifier={peutGerer}
           aujourdhui={aujourdhui}
           onStatut={changerStatut}
+          onDemande={traiterDemande}
           onTerminer={(r) => setFinSeance(r)}
           onModifier={(r) => setRdvForm({ reservation: r })}
           onFicheClient={(c) => { setRdvOuvertId(null); setFicheId(c.id); }}
@@ -451,6 +490,37 @@ export default function Spa({ user, etablissement }) {
   );
 }
 
+// Demandes venues du site : posées en tête de l'agenda, jusqu'à ce que la
+// réception les traite (un tap ouvre la fiche du rendez-vous).
+function DemandesEnLigne({ demandes, clientsParId, onOuvrir }) {
+  return (
+    <section style={s.demandes} aria-label="Demandes en ligne à confirmer">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <span aria-hidden="true" style={{ ...s.statIcone, width: 34, height: 34, background: 'var(--spa-surface)', color: 'var(--spa-kin)' }}>
+          <Globe size={17} strokeWidth={1.8} />
+        </span>
+        <strong style={{ fontSize: 15 }}>
+          {demandes.length} demande{demandes.length > 1 ? 's' : ''} en ligne à confirmer
+        </strong>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {demandes.map((r) => {
+          const c = clientsParId.get(r.clientId);
+          return (
+            <button key={r.id} type="button" onClick={() => onOuvrir(r)} className="spa-carte-action" style={s.demande}>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{capitaliser(jourComplet(r.dateRdv))}, {r.heureDebut}</span>
+              <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--spa-ink2)' }}>
+                <span data-no-translate>{nomClient(c)}</span>, {r.soinLibelle || 'soin'}
+              </span>
+              <span style={{ color: 'var(--spa-kin)', fontWeight: 600, flexShrink: 0 }}>Répondre</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 const capitaliser = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 
 // compact (téléphone) : icône plus petite, valeur au-dessus du libellé, sans
@@ -522,6 +592,16 @@ const s = {
     display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, minHeight: 64,
     padding: '12px 14px', borderRadius: 'var(--spa-r)', fontFamily: 'var(--font)', color: 'var(--spa-ink)',
     background: 'var(--spa-surface)', border: '1px solid var(--spa-line)',
+  },
+  demandes: {
+    marginBottom: 18, padding: 16, borderRadius: 'var(--spa-r)',
+    background: 'var(--spa-kin-soft)', border: '1px solid var(--spa-kin-line)',
+  },
+  demande: {
+    display: 'flex', alignItems: 'center', gap: 12, width: '100%', minWidth: 0, minHeight: 48, flexWrap: 'wrap',
+    padding: '8px 14px', borderRadius: 'var(--spa-r-sm)', cursor: 'pointer', textAlign: 'left',
+    background: 'var(--spa-surface)', border: '1px solid var(--spa-line)', color: 'var(--spa-ink)',
+    fontFamily: 'var(--font)', fontSize: 14,
   },
   statsMobile: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 16 },
   statCompacte: { minHeight: 0, padding: '10px 10px', gap: 10, alignItems: 'flex-start' },

@@ -14,6 +14,17 @@
 //   anniversaires cron        → tous les établissements dont l'envoi est actif
 //                 direction   → le seul établissement demandé (rattrapage)
 //   desinscription public     → { token } : retire le consentement
+//   rdv_statut    équipe      → e-mail « confirmé » ou « refusé » après
+//                               traitement d'une demande venue du site
+//
+// Réservation en ligne (widget sur le site du client, migration 20260928) :
+//   public_infos     public   → { slug } : carte des soins en ligne, horaires
+//   public_creneaux  public   → { slug, soinId, date } : heures libres
+//   public_reserver  public   → pose une DEMANDE (statut 'demande') via
+//                               spa_reserver_en_ligne (verrou, pas de doublon)
+// Ces actions ne renvoient jamais le nom d'un autre client. Anti-abus : champ
+// piège, délai minimal de saisie, 5 demandes par heure et par adresse IP
+// (hachée), 3 par jour et par e-mail.
 //
 // Sécurité : verify_jwt=false (le lien de désinscription et le cron n'ont pas
 // de session). Chaque action authentifie elle-même : CRON_SECRET pour le cron,
@@ -378,6 +389,240 @@ async function anniversairesEtab(sb: Admin, cfg: ReturnType<typeof config>, etab
   return { etabId, fetes: fetes.length, envoyes, echecs, dejaFaits };
 }
 
+// ── Réservation en ligne ──────────────────────────────────────────
+const SLUG_OK = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+const DATE_OK = /^\d{4}-\d{2}-\d{2}$/;
+const HEURE_OK = /^([01]\d|2[0-3]):[0-5]\d$/;
+const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+type ParamsEnLigne = {
+  etablissement_id: string; slug: string; horaires: Record<string, { de: string; a: string }[]>;
+  praticiens_en_ligne: string[]; delai_min_heures: number; horizon_jours: number; pas_minutes: number;
+  message_en_ligne: string | null;
+};
+
+const enMinutes = (hhmm: string) => {
+  const [h, m] = String(hhmm || '0:0').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+const enHeure = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+const normaliser = (t: unknown) => String(t ?? '').trim().toLowerCase();
+
+function isoJour(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() || 7; // 1 = lundi … 7 = dimanche
+}
+function ecartJours(de: string, a: string) {
+  const [y1, m1, d1] = de.split('-').map(Number);
+  const [y2, m2, d2] = a.split('-').map(Number);
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
+}
+function zurichMinutes() {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+  return Number(p.find((x) => x.type === 'hour')?.value || 0) * 60 + Number(p.find((x) => x.type === 'minute')?.value || 0);
+}
+function jourLong(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const j = JOURS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${j} ${d === 1 ? '1er' : d} ${MOIS[m - 1]}`;
+}
+
+async function lireEnLigne(sb: Admin, slug: string) {
+  if (!SLUG_OK.test(slug)) return null;
+  const { data: p } = await sb.from('spa_parametres')
+    .select('etablissement_id, slug, horaires, praticiens_en_ligne, delai_min_heures, horizon_jours, pas_minutes, message_en_ligne, en_ligne_actif, email_reponse, nom_expediteur, signature')
+    .eq('slug', slug).eq('en_ligne_actif', true).maybeSingle();
+  if (!p || !(p.praticiens_en_ligne || []).length) return null;
+  const lu = await lireEtab(sb, p.etablissement_id);
+  if (!lu) return null;
+  return { enLigne: p as unknown as ParamsEnLigne, etab: lu.etab, params: lu.params };
+}
+
+// Heures de début libres pour un soin un jour donné : dans une plage
+// d'ouverture, au-delà du délai minimal, avec au moins un praticien en ligne
+// libre sur toute la durée. Une réservation sans praticien occupe une place.
+async function creneauxLibres(sb: Admin, p: ParamsEnLigne, dureeMin: number, date: string): Promise<string[]> {
+  const aujourdhui = zurichToday();
+  const ecart = ecartJours(aujourdhui, date);
+  if (ecart < 0 || ecart > p.horizon_jours) return [];
+  const plages = (p.horaires || {})[String(isoJour(date))] || [];
+  if (!plages.length) return [];
+
+  const { data: rdv } = await sb.from('spa_reservations')
+    .select('heure_debut, duree_min, praticien, statut')
+    .eq('etablissement_id', p.etablissement_id)
+    .eq('date_rdv', date)
+    .not('statut', 'in', '("annulee","absent")');
+  const occupes = (rdv || []).map((r) => ({
+    debut: enMinutes(String(r.heure_debut).slice(0, 5)), fin: enMinutes(String(r.heure_debut).slice(0, 5)) + Number(r.duree_min || 0),
+    praticien: normaliser(r.praticien),
+  }));
+  const equipe = (p.praticiens_en_ligne || []).map(normaliser).filter(Boolean);
+  const plancher = zurichMinutes() + (p.delai_min_heures || 0) * 60 - ecart * 1440;
+  const pas = p.pas_minutes || 30;
+  const libres: string[] = [];
+
+  for (const plage of plages) {
+    const de = enMinutes(plage.de);
+    const a = enMinutes(plage.a);
+    for (let t = de; t + dureeMin <= a; t += pas) {
+      if (t < plancher) continue;
+      const chevauche = occupes.filter((o) => o.debut < t + dureeMin && o.fin > t);
+      const pris = equipe.filter((x) => chevauche.some((o) => o.praticien === x)).length;
+      const sansPraticien = chevauche.filter((o) => !o.praticien).length;
+      if (equipe.length - pris - sansPraticien > 0) libres.push(enHeure(t));
+    }
+  }
+  return [...new Set(libres)].sort();
+}
+
+async function hacher(texte: string) {
+  const octets = new TextEncoder().encode(texte);
+  const empreinte = await crypto.subtle.digest('SHA-256', octets);
+  return Array.from(new Uint8Array(empreinte), (o) => o.toString(16).padStart(2, '0')).join('');
+}
+
+async function journaliserEnvoi(sb: Admin, ligne: Record<string, unknown>) {
+  await sb.from('spa_envois').insert(ligne);
+}
+
+// E-mail transactionnel (pas de lien de désinscription : ce n'est pas de la
+// publicité, c'est la réponse à sa demande).
+async function mailRdv(sb: Admin, cfg: ReturnType<typeof config>, etab: Etab, params: Params, dest: {
+  email: string; clientId?: string | null; sujet: string; corps: string;
+}) {
+  if (!cfg.configure || !dest.email) return { envoye: false };
+  const res = await envoyerUn(cfg.cle, {
+    from: expediteur(etab, params, cfg.from),
+    to: dest.email,
+    reply_to: params.email_reponse || etab.email || undefined,
+    subject: dest.sujet,
+    html: gabarit({ etab, params, titre: dest.sujet, corps: dest.corps }),
+    text: texteBrut(dest.corps),
+  });
+  await journaliserEnvoi(sb, {
+    etablissement_id: etab.id, client_id: dest.clientId || null, type: 'rdv', email: dest.email,
+    statut: res.erreur ? 'echec' : 'envoye', erreur: res.erreur || null, provider_id: res.id || null,
+  });
+  return { envoye: !res.erreur };
+}
+
+async function actionPublique(req: Request, sb: Admin, cfg: ReturnType<typeof config>, action: string, body: Record<string, unknown>) {
+  const lu = await lireEnLigne(sb, String(body.slug || ''));
+  if (!lu) return json({ error: 'La réservation en ligne n\'est pas ouverte pour ce spa.' }, 404);
+  const { enLigne, etab, params } = lu;
+
+  if (action === 'public_infos') {
+    const { data: soins } = await sb.from('spa_soins')
+      .select('id, nom, categorie, duree_min, prix, description')
+      .eq('etablissement_id', etab.id).eq('actif', true).eq('en_ligne', true)
+      .order('categorie', { ascending: true, nullsFirst: false }).order('nom', { ascending: true });
+    const jours = Object.entries(enLigne.horaires || {}).filter(([, v]) => Array.isArray(v) && v.length).map(([k]) => Number(k));
+    return json({
+      etablissement: { nom: etab.nom, adresse: etab.adresse || null, tel: etab.tel || null },
+      message: enLigne.message_en_ligne || null,
+      horizonJours: enLigne.horizon_jours,
+      joursOuverts: jours,
+      aujourdhui: zurichToday(),
+      soins: (soins || []).map((s) => ({
+        id: s.id, nom: s.nom, categorie: s.categorie || null, dureeMin: s.duree_min,
+        prix: s.prix === null ? null : Number(s.prix), description: s.description || null,
+      })),
+    });
+  }
+
+  if (action === 'public_creneaux') {
+    const date = String(body.date || '');
+    if (!DATE_OK.test(date)) return json({ error: 'Date invalide.' }, 400);
+    const { data: soin } = await sb.from('spa_soins').select('duree_min')
+      .eq('id', String(body.soinId || '')).eq('etablissement_id', etab.id).eq('actif', true).eq('en_ligne', true).maybeSingle();
+    if (!soin) return json({ error: 'Soin introuvable.' }, 404);
+    return json({ date, creneaux: await creneauxLibres(sb, enLigne, Number(soin.duree_min), date) });
+  }
+
+  // ── public_reserver ──
+  const prenom = String(body.prenom || '').trim().slice(0, 80);
+  const nom = String(body.nom || '').trim().slice(0, 80);
+  const email = String(body.email || '').trim().toLowerCase().slice(0, 160);
+  const telephone = String(body.telephone || '').trim().slice(0, 40);
+  const message = String(body.message || '').trim().slice(0, 1000);
+  const date = String(body.date || '');
+  const heure = String(body.heure || '');
+  const naissance = String(body.dateNaissance || '');
+  const consentement = body.consentement === true;
+
+  // Robots : champ piège rempli ou formulaire envoyé en moins de 3 secondes.
+  // La durée est mesurée par la page elle-même (performance.now), pas par
+  // comparaison d'horloges : un téléphone mal réglé ne perd pas sa demande.
+  // On répond « reçu » sans rien enregistrer, pour ne pas renseigner le robot.
+  const dureeSaisie = Number(body.dureeSaisie || 0);
+  if (String(body.siteWeb || '') || !(dureeSaisie >= 3000)) {
+    return json({ ok: true });
+  }
+  if (!prenom || !nom) return json({ error: 'Indiquez votre prénom et votre nom.' }, 400);
+  if (!EMAIL_OK.test(email)) return json({ error: 'Votre adresse e-mail semble incorrecte.' }, 400);
+  if (telephone.replace(/\D/g, '').length < 6) return json({ error: 'Indiquez un numéro de téléphone.' }, 400);
+  if (!DATE_OK.test(date) || !HEURE_OK.test(heure)) return json({ error: 'Choisissez un jour et une heure.' }, 400);
+  if (naissance && !DATE_OK.test(naissance)) return json({ error: 'Date de naissance invalide.' }, 400);
+
+  // Le créneau doit encore être proposé (délai minimal, horaires, horizon).
+  const { data: soin } = await sb.from('spa_soins').select('id, nom, duree_min')
+    .eq('id', String(body.soinId || '')).eq('etablissement_id', etab.id).eq('actif', true).eq('en_ligne', true).maybeSingle();
+  if (!soin) return json({ error: 'Ce soin n\'est plus proposé en ligne.' }, 404);
+  const libres = await creneauxLibres(sb, enLigne, Number(soin.duree_min), date);
+  if (!libres.includes(heure)) return json({ error: 'Ce créneau vient d\'être pris. Choisissez-en un autre.', code: 'creneau_pris' }, 409);
+
+  // Limites par adresse IP (hachée) et par e-mail.
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'inconnue';
+  const ipHash = await hacher(`${ip}:${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(-16) || 'spa'}`);
+  const uneHeure = new Date(Date.now() - 3600 * 1000).toISOString();
+  const unJour = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const [{ count: parIp }, { count: parEmail }] = await Promise.all([
+    sb.from('spa_demandes_en_ligne').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', uneHeure),
+    sb.from('spa_demandes_en_ligne').select('id', { count: 'exact', head: true }).eq('email', email).gte('created_at', unJour),
+  ]);
+  if ((parIp || 0) >= 5 || (parEmail || 0) >= 3) {
+    return json({ error: 'Trop de demandes en peu de temps. Merci d\'appeler directement le spa.' }, 429);
+  }
+  await sb.from('spa_demandes_en_ligne').insert({ etablissement_id: etab.id, ip_hash: ipHash, email });
+
+  const { data: r, error } = await sb.rpc('spa_reserver_en_ligne', {
+    p_etab: etab.id, p_soin: soin.id, p_date: date, p_heure: heure,
+    p_prenom: prenom, p_nom: nom, p_email: email, p_telephone: telephone,
+    p_date_naissance: naissance || null, p_consentement: consentement, p_message: message || null,
+  });
+  if (error) {
+    console.error('[spa-mailer] spa_reserver_en_ligne', error);
+    return json({ error: 'La demande n\'a pas pu être enregistrée. Réessayez ou appelez le spa.' }, 500);
+  }
+  if (r?.erreur) {
+    const messages: Record<string, string> = {
+      creneau_pris: 'Ce créneau vient d\'être pris. Choisissez-en un autre.',
+      horaire: 'Ce créneau est en dehors des heures d\'ouverture.',
+      soin: 'Ce soin n\'est plus proposé en ligne.',
+      ferme: 'La réservation en ligne n\'est pas ouverte pour ce spa.',
+    };
+    return json({ error: messages[r.erreur] || 'Créneau indisponible.', code: r.erreur }, 409);
+  }
+
+  const quand = `${jourLong(date)} à ${heure}`;
+  await mailRdv(sb, cfg, etab, params, {
+    email, clientId: r.client_id,
+    sujet: `Votre demande de rendez-vous du ${jourLong(date)}`,
+    corps: `Bonjour ${prenom},\n\nNous avons bien reçu votre demande pour « ${soin.nom} » le ${quand}.\n\nNous vous confirmons le rendez-vous très vite par e-mail. Pour toute question, répondez simplement à ce message.\n\nÀ bientôt.`,
+  });
+  const alerte = params.email_reponse || etab.email;
+  if (alerte) {
+    await mailRdv(sb, cfg, etab, { ...params, signature: 'Réservation en ligne' }, {
+      email: alerte,
+      sujet: `Nouvelle demande en ligne : ${soin.nom}, ${jourLong(date)} à ${heure}`,
+      corps: `${prenom} ${nom} demande « ${soin.nom} » le ${quand}.\n\nTéléphone : ${telephone}\nE-mail : ${email}${message ? `\n\nMessage : ${message}` : ''}\n\nLa demande attend votre confirmation dans l'agenda du spa.`,
+    });
+  }
+  return json({ ok: true, soin: soin.nom, date, heure });
+}
+
 // ── Handler ───────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -404,6 +649,12 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, etablissement: etab?.nom || null });
   }
 
+  // ── Réservation en ligne : publique, par adresse de réservation (slug) ──
+  if (action.startsWith('public_')) {
+    if (!['public_infos', 'public_creneaux', 'public_reserver'].includes(action)) return json({ error: 'Action inconnue.' }, 400);
+    return actionPublique(req, sb, cfg, action, body);
+  }
+
   // ── Cron : tous les établissements dont l'envoi est actif ──
   if (action === 'anniversaires' && !etabId) {
     const secret = Deno.env.get('CRON_SECRET');
@@ -425,6 +676,41 @@ Deno.serve(async (req: Request) => {
   if (action === 'etat') {
     if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
     return json({ configure: cfg.configure });
+  }
+
+  // Demande venue du site, confirmée ou refusée dans l'agenda : on prévient le
+  // client. Le changement de statut est déjà fait par le front ; si l'envoi
+  // n'est pas branché, on le dit sans échouer.
+  if (action === 'rdv_statut') {
+    if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
+    const evenement = String(body.evenement || '');
+    const { data: r } = await sb.from('spa_reservations')
+      .select('id, client_id, soin_libelle, date_rdv, heure_debut, statut, origine')
+      .eq('id', String(body.reservationId || '')).eq('etablissement_id', etabId).maybeSingle();
+    if (!r) return json({ error: 'Rendez-vous introuvable.' }, 404);
+    if (r.origine !== 'en_ligne') return json({ envoye: false, raison: 'hors_ligne' });
+    const attendu = evenement === 'confirmation' ? 'confirmee' : evenement === 'refus' ? 'annulee' : null;
+    if (!attendu || r.statut !== attendu) return json({ envoye: false, raison: 'statut' });
+    if (!cfg.configure) return json({ envoye: false, raison: 'non_configure' });
+    const { data: c } = await sb.from('spa_clients').select('id, prenom, nom, email').eq('id', r.client_id).maybeSingle();
+    if (!c?.email) return json({ envoye: false, raison: 'sans_email' });
+    const lu = await lireEtab(sb, etabId);
+    if (!lu) return json({ error: 'Établissement introuvable.' }, 404);
+    const heure = String(r.heure_debut).slice(0, 5);
+    const soin = r.soin_libelle || 'votre soin';
+    const prenom = (c.prenom || c.nom || '').trim();
+    const res = evenement === 'confirmation'
+      ? await mailRdv(sb, cfg, lu.etab, lu.params, {
+        email: c.email, clientId: c.id,
+        sujet: `Votre rendez-vous du ${jourLong(r.date_rdv)} est confirmé`,
+        corps: `Bonjour ${prenom},\n\nC'est confirmé : nous vous attendons le ${jourLong(r.date_rdv)} à ${heure} pour « ${soin} ».\n\nMerci d'arriver quelques minutes en avance. En cas d'empêchement, prévenez-nous en répondant à ce message.\n\nÀ très bientôt.`,
+      })
+      : await mailRdv(sb, cfg, lu.etab, lu.params, {
+        email: c.email, clientId: c.id,
+        sujet: `Votre demande du ${jourLong(r.date_rdv)}`,
+        corps: `Bonjour ${prenom},\n\nNous sommes désolés : nous ne pouvons pas vous recevoir le ${jourLong(r.date_rdv)} à ${heure} pour « ${soin} ».\n\nRépondez à ce message ou appelez-nous pour convenir d'un autre moment.\n\nÀ bientôt.`,
+      });
+    return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
   }
 
   if (!cfg.configure) {

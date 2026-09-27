@@ -1,5 +1,5 @@
 import {
-  Check, DoorOpen, HeartPulse, Leaf, NotebookPen, Pencil, UserRound,
+  Check, DoorOpen, Globe, HeartPulse, Leaf, NotebookPen, Pencil, UserRound, X,
 } from 'lucide-react';
 import {
   Avatar, BoutonFermer, Modale, Puce, dureeLisible, heureFin, jourComplet, metaStatutRdv, nomClient, st,
@@ -11,6 +11,9 @@ import {
 // « Confirmer » avant le jour J, « Terminer la séance » (compte rendu) ensuite.
 // Annuler et absent ne suppriment rien : le rendez-vous reste visible, barré,
 // et se rétablit d'un tap.
+//
+// Une DEMANDE venue du site du client se confirme ou se refuse ici ; le client
+// en est prévenu par e-mail (onDemande).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ETAPES = [
@@ -21,8 +24,9 @@ const ETAPES = [
 
 export default function RendezVousDetail({
   reservation: r, client, seanceExiste, peutModifier, aujourdhui,
-  onStatut, onTerminer, onModifier, onFicheClient, onClose,
+  onStatut, onDemande, onTerminer, onModifier, onFicheClient, onClose,
 }) {
+  const demande = r.statut === 'demande';
   const m = metaStatutRdv(r.statut);
   const clos = ['annulee', 'absent'].includes(r.statut);
   const passeOuJour = r.dateRdv <= aujourdhui;
@@ -42,7 +46,8 @@ export default function RendezVousDetail({
         <Puce>{dureeLisible(r.dureeMin)}</Puce>
         {r.praticien && <Puce icone={UserRound} ton="mizu"><span data-no-translate>{r.praticien}</span></Puce>}
         {r.cabine && <Puce icone={DoorOpen}><span data-no-translate>{r.cabine}</span></Puce>}
-        {clos && <span style={{ ...st.puce, background: m.fond, color: m.texte }}>{m.label}</span>}
+        {r.origine === 'en_ligne' && <Puce icone={Globe} ton="kin">Réservé en ligne</Puce>}
+        {(clos || demande) && <span style={{ ...st.puce, background: m.fond, color: m.texte }}>{m.label}</span>}
       </div>
     </div>
   );
@@ -57,6 +62,18 @@ export default function RendezVousDetail({
       pied={peutModifier ? (
         clos ? (
           <button type="button" onClick={() => onStatut(r, 'prevue')} style={st.principal}>Rétablir le rendez-vous</button>
+        ) : demande ? (
+          <>
+            <button type="button" onClick={() => onDemande(r, 'refus')} style={st.discret}>
+              <X size={16} strokeWidth={1.8} aria-hidden="true" /> Refuser
+            </button>
+            <button type="button" onClick={() => onModifier(r)} style={st.secondaire}>
+              <Pencil size={16} strokeWidth={1.8} aria-hidden="true" /> Modifier
+            </button>
+            <button type="button" onClick={() => onDemande(r, 'confirmation')} style={st.principal}>
+              <Check size={18} strokeWidth={2} aria-hidden="true" /> Confirmer la demande
+            </button>
+          </>
         ) : (
           <>
             <button type="button" onClick={() => onStatut(r, 'annulee')} style={st.discret}>Annuler</button>
@@ -81,7 +98,17 @@ export default function RendezVousDetail({
       ) : null}
     >
       {/* ── Parcours du soin ── */}
-      {!clos && (
+      {demande && (
+        <div style={st.encartAttention}>
+          <Globe size={18} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2, color: 'var(--spa-kin)' }} />
+          <span>
+            <strong>Demande reçue depuis le site.</strong> Le client attend votre réponse : en confirmant ou en refusant,
+            il reçoit un e-mail. Le praticien a été attribué automatiquement, vous pouvez le changer avec « Modifier ».
+          </span>
+        </div>
+      )}
+
+      {!clos && !demande && (
         <ol style={s.parcours} aria-label={`État : ${m.label}`}>
           {ETAPES.map((e, i) => {
             const fait = i <= rang;
