@@ -137,7 +137,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
         <div style={st.footer}>
           <span style={{ fontSize: 11, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0, lineHeight: 1.45 }}>
             « Estimé » : un ingrédient de la fiche n'est pas lié au catalogue, son prix vient du produit de même nom
-            dans l'inventaire (prix des factures) ou au catalogue.
+            dans l'inventaire (prix des factures) ou au catalogue de l'établissement, à défaut du prix figé sur la fiche.
           </span>
           <button type="button" onClick={onClose} style={st.btnPrimaire} disabled={busy}>Fermer</button>
         </div>

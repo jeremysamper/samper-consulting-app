@@ -709,8 +709,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // même nom existe à SON catalogue, on relie dessus et on aligne unité + prix :
   // les tarifs fournisseurs ne se suivent pas d'un site à l'autre, garder ceux
   // du départ donnerait un food cost faux là-bas. Sans correspondance, la ligne
-  // part telle quelle, sans lien produit ni drapeau de correspondance - ceux-ci
-  // désignent le catalogue de départ.
+  // part sans lien produit, sans drapeau de correspondance et sans prix : les
+  // trois désignent le catalogue de départ. Le prix figé est remis à zéro pour
+  // la même raison que le lien : un tarif d'un site ne chiffre pas un autre
+  // site (l'ingrédient apparaît « à lier » à l'arrivée).
   const recopierIngredients = (ings, catalogueCible) => {
     const parNom = new Map();
     (catalogueCible || []).forEach(p => {
@@ -720,7 +722,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     return (ings || []).map(ing => {
       const match = parNom.get(normalizeSearch(ing.nom || ''));
       if (match) return applyProductToIngredient(ing, match);
-      const copie = { ...ing };
+      const copie = { ...ing, prixUnit: 0 };
       delete copie.produitId;
       delete copie.needsReview;
       delete copie.matchSuggestions;

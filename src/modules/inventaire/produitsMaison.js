@@ -6,13 +6,17 @@
 // n'est écrit dans le module recettes (pas de CHF dans les fiches) : le
 // chiffrage est calculé ici, à la lecture.
 //
+// Chaque établissement est chiffré avec SES prix, jamais ceux d'un autre :
+// catalogue, inventaire et fiches sont tous lus pour l'établissement affiché.
+//
 // Prix d'un ingrédient, du plus sûr au plus approché :
-//   1. produit du catalogue lié à l'ingrédient (prix vivant, prixResolution)
-//   2. prix saisi sur l'ingrédient
-//   3. produit de même nom dans l'inventaire (prix des factures de la maison)
-//   4. produit de même nom au catalogue
-// Les deux derniers sont signalés « estimés » : la plupart des fiches ne sont
-// pas encore liées au catalogue, et certains établissements n'en ont pas.
+//   1. produit du catalogue de l'établissement lié à l'ingrédient (prix vivant)
+//   2. produit de même nom dans l'inventaire (prix des factures de la maison)
+//   3. produit de même nom au catalogue de l'établissement
+//   4. prix figé sur l'ingrédient, en dernier recours : il a pu être recopié
+//      d'un autre établissement avec la fiche (outil de transfert), il ne
+//      passe donc qu'après tous les prix propres à l'établissement.
+// 2 et 3 sont signalés « estimés », 4 « figé ».
 //
 // Unité de comptage :
 //   kg, g, L, ml   coût matière / poids total des ingrédients (une préparation
@@ -120,23 +124,24 @@ export function construireReferencesPrix({ catalogue, lignesInventaire }) {
 // Prix d'un ingrédient en CHF par son unité, avec sa provenance.
 export function prixIngredient(ing, refs) {
   const d = describePrixIngredient(ing, refs.index);
-  if (d.source === 'catalogue' || (d.source === 'fige' && d.prix > 0)) {
-    return { prix: d.prix, source: d.source };
-  }
+  if (d.source === 'catalogue') return { prix: d.prix, source: 'catalogue' };
+  // Prix figé de la fiche (ou ingrédient lié mais d'unité inconvertible) :
+  // gardé en réserve, utilisé seulement si l'établissement n'a rien de mieux.
+  const fige = d.prix > 0 ? { prix: d.prix, source: 'fige' } : { prix: 0, source: 'aucun' };
   // Rapprochement par le nom, seulement quand il est sûr : un « poulet » ne
   // doit pas prendre le prix d'un « bouillon de poulet ».
   const uniteIng = UNITE_PRIX[String(ing?.unite || '').toLowerCase()];
-  if (!ing?.nom || !uniteIng) return { prix: 0, source: 'aucun' };
-  const cle = `${ing.nom}|${uniteIng}`;
+  if (!ing?.nom || !uniteIng) return fige;
+  const cle = `${ing.nom}|${uniteIng}|${d.prix}`;
   if (refs.cache.has(cle)) return refs.cache.get(cle);
-  let res = { prix: 0, source: 'aucun' };
+  let res = fige;
   for (const liste of [refs.inventaire, refs.catalogue]) {
     if (!liste.length) continue;
     const m = matchIngredient(ing.nom, liste);
     // Eau, sel, glace seuls : exclus du rapprochement par construction, et
     // de coût négligeable. Ils ne doivent pas faire passer la fiche pour
     // incomplète.
-    if (m.status === 'excluded') { res = { prix: 0, source: 'negligeable' }; break; }
+    if (m.status === 'excluded') { res = fige.source === 'fige' ? fige : { prix: 0, source: 'negligeable' }; break; }
     const ref = m.status === 'matched' && m.product ? m.product : rapprocherParMots(ing.nom, liste);
     if (!ref) continue;
     let prix = convertPrix(ref.prix, ref.unite, uniteIng);
@@ -154,6 +159,7 @@ export function prixIngredient(ing, refs) {
 export function coutRecette(recette, refs) {
   let cout = 0;
   let estimes = 0;
+  let figes = 0;
   let sansPrix = 0;
   (recette?.ingredients || []).forEach(i => {
     const q = Number(i.quantite) || 0;
@@ -162,18 +168,20 @@ export function coutRecette(recette, refs) {
     if (p.source === 'negligeable') return;
     if (p.source === 'aucun') { sansPrix += 1; return; }
     if (p.source === 'estime') estimes += 1;
+    if (p.source === 'fige') figes += 1;
     cout += q * p.prix;
   });
-  return { cout, estimes, sansPrix };
+  return { cout, estimes, figes, sansPrix };
 }
 
 // Coût matière d'une fiche ramené à l'unité de comptage de la ligne.
 // Renvoie { prix, detail, estime } ; prix null si rien de chiffrable.
 export function coutUnitaireRecette(recette, unite, refs) {
   if (!recette) return { prix: null, detail: 'fiche introuvable', estime: false };
-  const { cout, estimes, sansPrix } = coutRecette(recette, refs);
+  const { cout, estimes, figes, sansPrix } = coutRecette(recette, refs);
   const precisions = [];
   if (estimes) precisions.push(`${estimes} prix estimé${estimes > 1 ? 's' : ''} par le nom`);
+  if (figes) precisions.push(`${figes} prix figé${figes > 1 ? 's' : ''} de la fiche`);
   if (sansPrix) precisions.push(`${sansPrix} ingrédient${sansPrix > 1 ? 's' : ''} sans prix`);
   const u = String(unite || '').toLowerCase();
 
@@ -182,11 +190,11 @@ export function coutUnitaireRecette(recette, unite, refs) {
     if (grammes <= 0) return { prix: null, detail: 'poids des ingrédients inconnu', estime: false };
     if (horsPoids) precisions.push(`${horsPoids} ingrédient${horsPoids > 1 ? 's' : ''} à la pièce hors poids`);
     const parGramme = cout / grammes;
-    return { prix: u === 'kg' || u === 'l' ? parGramme * 1000 : parGramme, detail: precisions.join(', '), estime: estimes > 0 };
+    return { prix: u === 'kg' || u === 'l' ? parGramme * 1000 : parGramme, detail: precisions.join(', '), estime: estimes > 0 || figes > 0 };
   }
   const portions = Number(recette.portions) || 0;
   if (portions <= 0) return { prix: null, detail: 'nombre de portions inconnu', estime: false };
-  return { prix: cout / portions, detail: precisions.join(', '), estime: estimes > 0 };
+  return { prix: cout / portions, detail: precisions.join(', '), estime: estimes > 0 || figes > 0 };
 }
 
 // Nom d'inventaire d'une fiche : « Prune lacto aromatisée (maison) ».
