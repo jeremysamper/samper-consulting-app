@@ -132,7 +132,8 @@ export default function AchatsPanel({
     const m = new Map();
     [...(inv?.lignes || []), ...(previousInv?.lignes || [])].forEach(l => {
       const cle = cleProduit(l.produit);
-      if (cle && !m.has(cle)) m.set(cle, { cle, nom: l.produit, unite: l.unite, prixUnit: Number(l.prixUnit) || 0 });
+      // Produits maison exclus : aucune facture ne peut les concerner.
+      if (cle && !l.recetteId && !m.has(cle)) m.set(cle, { cle, nom: l.produit, unite: l.unite, prixUnit: Number(l.prixUnit) || 0 });
     });
     return Array.from(m.values());
   }, [inv, previousInv]);

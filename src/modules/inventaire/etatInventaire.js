@@ -24,6 +24,7 @@ import {
   construireContexteRapprochement, rapprocherLigneDoc, quantiteEnUniteInventaire,
 } from './achatsLogic.js';
 import { zoneOf, ordreZones, SANS_ZONE } from './zones.js';
+import { estMaison, sourceMaison } from './produitsMaison.js';
 
 const jjmm = (iso) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}` : '');
 export const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
@@ -44,7 +45,7 @@ export function construireEtatInventaire({
   const produits = new Map();
   [...(inv?.lignes || []), ...(previousInv?.lignes || [])].forEach(l => {
     const cle = cleProduit(l.produit);
-    if (cle && !produits.has(cle)) produits.set(cle, { cle, nom: l.produit, unite: l.unite, prixUnit: Number(l.prixUnit) || 0 });
+    if (cle && !estMaison(l) && !produits.has(cle)) produits.set(cle, { cle, nom: l.produit, unite: l.unite, prixUnit: Number(l.prixUnit) || 0 });
   });
   const ctx = construireContexteRapprochement({
     produits: Array.from(produits.values()), documents, aliasCatalogue, catalogue,
@@ -103,7 +104,18 @@ export function construireEtatInventaire({
     if (releves.length) sources.push(releves.map(r => `Relevé « ${r} »`).join(' · '));
 
     let sansPiece = false;
-    if (qteRecue <= 0 && stockActuel > 0) {
+    const maison = estMaison(l);
+    if (maison) {
+      // Produit maison : pas de facture d'entrée, la production de la période
+      // n'est tracée nulle part. Comme dans le classeur, ce qui dépasse le
+      // report est tenu pour produit et valorisé au coût matière de la fiche.
+      const produit = Math.max(0, stockActuel - qteRecue);
+      if (produit > 0) qteRecue += produit;
+      // Toute la quantité au coût matière actuel de la fiche : le report a pu
+      // être compté avant la liaison, à un prix nul ou périmé.
+      valeurAchat = qteRecue * (Number(l.prixUnit) || 0);
+      sources.push(sourceMaison(l));
+    } else if (qteRecue <= 0 && stockActuel > 0) {
       // Ni report ni facture : valorisé au prix de l'inventaire, à justifier.
       sansPiece = true;
       qteRecue = stockActuel;
@@ -112,9 +124,9 @@ export function construireEtatInventaire({
     }
     if (nonConverties) sources.push(`${nonConverties} ligne${nonConverties > 1 ? 's' : ''} d'achat en unité non convertible, hors calcul`);
     if (!compte) sources.push(`Non compté au ${dateFin} : stock compté à 0`);
-    else if (qteRecue - stockActuel < -0.0005) sources.push('Stock supérieur aux entrées : pièce manquante ou comptage à revoir');
+    else if (!maison && qteRecue - stockActuel < -0.0005) sources.push('Stock supérieur aux entrées : pièce manquante ou comptage à revoir');
 
-    if (!conditionnement) conditionnement = sansPiece ? 'Sans pièce' : (catalogueParCle.get(cle)?.conditionnement || '');
+    if (!conditionnement && !maison) conditionnement = sansPiece ? 'Sans pièce' : (catalogueParCle.get(cle)?.conditionnement || '');
 
     const sortie = arrondi(qteRecue - stockActuel);
     qteRecue = arrondi(qteRecue);

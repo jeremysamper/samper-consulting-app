@@ -2,6 +2,8 @@ import React from 'react';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { cleProduit } from './inventaireLignes.js';
 import ChoixZone from './ChoixZone.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { nomMaison } from './produitsMaison.js';
 
 // Ajout de produits à l'inventaire, en masse, depuis le catalogue.
 //
@@ -14,9 +16,14 @@ import ChoixZone from './ChoixZone.jsx';
 // Les produits ajoutés d'un coup sont en général rangés au même endroit (on
 // coche la chambre froide, puis l'économat) : une zone commune est proposée.
 //
-// Props : catalogue, lignesExistantes, onAjouter(produits, nomsLibres, zone), onClose
+// Second onglet : les fiches du module Cartes & Recettes, ajoutées comme
+// produits maison (prix = coût matière de la fiche, affiché avant l'ajout).
+//
+// Props : catalogue, lignesExistantes, onAjouter(produits, nomsLibres, zone),
+//         recettes, infoFiche(recette) → texte, onAjouterFiches(recettes, zone), onClose
 
-export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjouter, onClose }) {
+export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjouter, recettes, infoFiche, onAjouterFiches, onClose }) {
+  const [source, setSource] = React.useState('catalogue');
   const [recherche, setRecherche] = React.useState('');
   const [coches, setCoches] = React.useState(() => new Set());
   const [ouvertes, setOuvertes] = React.useState(() => new Set());
@@ -27,11 +34,32 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
     () => new Set((lignesExistantes || []).map(l => cleProduit(l.produit))),
     [lignesExistantes],
   );
+  const fichesPresentes = React.useMemo(
+    () => new Set((lignesExistantes || []).map(l => l.recetteId).filter(Boolean)),
+    [lignesExistantes],
+  );
 
-  const actifs = React.useMemo(
+  const avecFiches = (recettes || []).length > 0 && typeof onAjouterFiches === 'function';
+  const produitsCatalogue = React.useMemo(
     () => (catalogue || []).filter(p => p && p.nom && p.actif !== false),
     [catalogue],
   );
+  // Les fiches passent par la même liste que le catalogue : nom d'inventaire,
+  // catégorie de la fiche, coût matière en information.
+  const elementsFiches = React.useMemo(() => (source === 'fiches' ? (recettes || []).map(r => ({
+    id: 'fiche:' + r.id,
+    nom: nomMaison(r),
+    categorie: r.categorie || 'Fiches',
+    info: infoFiche ? infoFiche(r) : '',
+    recette: r,
+  })) : []), [source, recettes, infoFiche]);
+  const actifs = source === 'fiches' ? elementsFiches : produitsCatalogue;
+
+  const changerSource = (id) => {
+    setSource(id);
+    setCoches(new Set());
+    setOuvertes(new Set());
+  };
 
   const match = makeSearchMatcher(recherche);
   const visibles = actifs.filter(p => match(p.nom, p.categorie, p.fournisseurNom));
@@ -46,7 +74,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
     return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
   }, [visibles]);
 
-  const selectionnable = (p) => !dejaPresents.has(cleProduit(p.nom));
+  const selectionnable = (p) => !dejaPresents.has(cleProduit(p.nom)) && !(p.recette && fichesPresentes.has(p.recette.id));
 
   const basculer = (id) => setCoches(prev => {
     const suite = new Set(prev);
@@ -71,16 +99,19 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
   });
 
   // Nom tapé qui n'existe nulle part : on propose de l'ajouter hors catalogue.
-  const nomLibre = recherche.trim();
+  const nomLibre = source === 'catalogue' ? recherche.trim() : '';
   const nomLibreConnu = !nomLibre
     || dejaPresents.has(cleProduit(nomLibre))
     || actifs.some(p => cleProduit(p.nom) === cleProduit(nomLibre));
 
   const valider = async (libres = []) => {
-    const produits = actifs.filter(p => coches.has(p.id));
-    if (!produits.length && !libres.length) return;
+    const choisis = actifs.filter(p => coches.has(p.id));
+    if (!choisis.length && !libres.length) return;
     setBusy(true);
-    try { await onAjouter(produits, libres, zone); } finally { setBusy(false); }
+    try {
+      if (source === 'fiches') await onAjouterFiches(choisis.map(x => x.recette), zone);
+      else await onAjouter(choisis, libres, zone);
+    } finally { setBusy(false); }
   };
 
   const nbCoches = coches.size;
@@ -94,12 +125,27 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
           <div style={{ minWidth: 0 }}>
             <div style={st.titre}>Ajouter des produits</div>
             <div style={st.sousTitre}>
-              Cochez une catégorie entière ou quelques produits : unité et prix viennent du catalogue.
+              {source === 'fiches'
+                ? 'Cochez les préparations maison à compter : leur prix est le coût matière de la fiche.'
+                : 'Cochez une catégorie entière ou quelques produits : unité et prix viennent du catalogue.'}
             </div>
           </div>
           <button type="button" onClick={onClose} style={st.fermer} title="Fermer">✕</button>
         </div>
 
+        {avecFiches && (
+          <div style={{ padding: '10px 18px 0' }}>
+            <SegmentedTabs
+              size="sm"
+              active={source}
+              onChange={changerSource}
+              tabs={[
+                { id: 'catalogue', label: 'Catalogue' },
+                { id: 'fiches', label: `Fiches recettes (${recettes.length})` },
+              ]}
+            />
+          </div>
+        )}
         <div style={{ padding: '12px 18px 8px' }}>
           <input
             type="search"
@@ -109,7 +155,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
             onKeyDown={e => {
               if (e.key === 'Enter' && !nomLibreConnu && nbCoches === 0) { e.preventDefault(); valider([nomLibre]); }
             }}
-            placeholder={`Rechercher parmi ${actifs.length} produits du catalogue…`}
+            placeholder={source === 'fiches' ? `Rechercher parmi ${actifs.length} fiches recettes…` : `Rechercher parmi ${actifs.length} produits du catalogue…`}
             style={st.recherche}
           />
           {!nomLibreConnu && (
@@ -120,10 +166,15 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
         </div>
 
         <div style={st.liste}>
-          {actifs.length === 0 && (
+          {actifs.length === 0 && source === 'catalogue' && (
             <div style={st.vide}>
               Le catalogue de cet établissement est vide. Tapez un nom ci-dessus pour ajouter un produit hors catalogue,
               ou importez vos factures dans l'onglet Achats.
+            </div>
+          )}
+          {source === 'fiches' && (
+            <div style={st.noteFiches}>
+              Chaque fiche devient un produit maison compté au kilo (ou à la portion), valorisé au coût matière de la fiche.
             </div>
           )}
           {actifs.length > 0 && parCategorie.length === 0 && (
@@ -165,7 +216,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span data-no-translate style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>{p.nom}</span>
                         <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
-                          {present ? 'déjà dans l\'inventaire' : [p.uniteRef, p.fournisseurNom].filter(Boolean).join(' · ')}
+                          {present ? 'déjà dans l\'inventaire' : (p.info || [p.uniteRef, p.fournisseurNom].filter(Boolean).join(' · '))}
                         </span>
                       </span>
                     </label>
@@ -204,6 +255,7 @@ const st = {
   recherche: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   libre: { marginTop: 8, padding: '9px 14px', borderRadius: 8, border: '1px dashed var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44, width: '100%', textAlign: 'left' },
   liste: { overflowY: 'auto', flex: 1, padding: '4px 18px 12px', minHeight: 120 },
+  noteFiches: { fontSize: 12, color: 'var(--text2)', padding: '8px 10px', margin: '6px 0', background: 'var(--bg)', borderRadius: 8, lineHeight: 1.45 },
   vide: { padding: '30px 10px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5 },
   categorie: { borderBottom: '1px solid var(--border)', padding: '4px 0' },
   catHeader: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },

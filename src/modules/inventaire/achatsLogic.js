@@ -276,6 +276,7 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
     r.finVal = Number(l.valeur) || 0;
     r.finCompte = estCompte(l);
     r.prixInventaire = Number(l.prixUnit) || 0;
+    r.maison = !!l.recetteId;
   });
 
   let achatsTotal = 0;
@@ -329,7 +330,9 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
       consoQte: consoQte == null ? null : +consoQte.toFixed(3),
       ecartPrixPct,
       // Consommer plus qu'on n'avait, c'est un achat manquant ou un comptage faux.
-      incoherent: consoQte != null && consoQte < -0.001,
+      // Un produit maison fabriqué pendant la période dépasse normalement son
+      // report : ce n'est pas une incohérence.
+      incoherent: !r.maison && consoQte != null && consoQte < -0.001,
     };
   });
 

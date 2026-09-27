@@ -24,6 +24,10 @@ import {
 } from './inventaireLignes.js';
 import ComptageRapide from './ComptageRapide.jsx';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
+import ProduitsMaisonModal from './ProduitsMaisonModal.jsx';
+import {
+  construireReferencesPrix, coutUnitaireRecette, masseRecette, ligneDepuisRecette, lierLigne, fichesActives,
+} from './produitsMaison.js';
 import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
 
@@ -154,6 +158,8 @@ const Inventaire = ({ user, etablissement }) => {
   const stockRefs = React.useRef({});
   // Sélecteur d'ajout en masse depuis le catalogue.
   const [showAjout, setShowAjout] = React.useState(false);
+  // Liaison aux fiches recettes (produits maison).
+  const [showMaison, setShowMaison] = React.useState(false);
   const [vue, setVue] = React.useState(() => {
     const memo = readLegacyStorage('sc_inventaire_vue', 'comptage');
     return VUES.some(v => v.id === memo) ? memo : 'comptage';
@@ -203,6 +209,18 @@ const Inventaire = ({ user, etablissement }) => {
     reload();
     unsub = legacySB.realtime.subscribeReload('inventaires', reload);
     return () => { mounted = false; reloadRef.current = null; unsub && unsub(); };
+  }, [etabId]);
+
+  // ─── Fiches recettes (produits maison) ───
+  // Lues depuis le module Cartes & Recettes, jamais modifiées d'ici.
+  const [recettes, setRecettes] = React.useState([]);
+  React.useEffect(() => {
+    if (!legacySB) return undefined;
+    let vivant = true;
+    legacySB.db.listRecettes(etabId)
+      .then(rs => { if (vivant) setRecettes(fichesActives(rs)); })
+      .catch(err => console.warn('[Inventaire] fiches recettes indisponibles', err));
+    return () => { vivant = false; };
   }, [etabId]);
 
   // ─── Catalogue produits (pour autocomplétion à l'ajout de ligne) ───
@@ -568,6 +586,19 @@ const Inventaire = ({ user, etablissement }) => {
     return candidates[0] || null;
   }, [inv?.id, inv?.date, perimetreActif, inventaires.length]);
 
+  // Prix de référence pour chiffrer les fiches : catalogue, puis produits de
+  // l'inventaire affiché et du précédent (prix des factures de la maison).
+  const refsPrix = React.useMemo(
+    () => construireReferencesPrix({ catalogue, lignesInventaire: [...(inv?.lignes || []), ...(previousInv?.lignes || [])] }),
+    [catalogue, inv, previousInv],
+  );
+  const infoFiche = React.useCallback((recette) => {
+    const unite = masseRecette(recette).grammes > 0 ? 'kg' : 'pcs';
+    const c = coutUnitaireRecette(recette, unite, refsPrix);
+    if (!c.prix) return `coût matière non chiffrable${c.detail ? ' (' + c.detail + ')' : ''}`;
+    return `${c.prix.toFixed(2)} CHF/${unite === 'kg' ? 'kg' : 'portion'}${c.estime ? ' (estimé)' : ''}`;
+  }, [refsPrix]);
+
   if (!inv) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
@@ -785,6 +816,29 @@ const Inventaire = ({ user, etablissement }) => {
 
   // `zone` : zone de stockage choisie dans le sélecteur (vide = sans zone).
   const avecZone = (ligne, zone) => (zone ? { ...ligne, zone } : ligne);
+
+  // ─── Produits maison ───
+  const ajouterDepuisFiches = async (fiches, zone = '') => {
+    const ajoutees = await ajouterLignes(fiches.map(r => ligneDepuisRecette(r, refsPrix, { zone })));
+    setShowAjout(false);
+    notifyLegacy(`${ajoutees.length} produit${ajoutees.length > 1 ? 's' : ''} maison ajouté${ajoutees.length > 1 ? 's' : ''}.`, 'success');
+  };
+
+  // liens : [{ ligneId, recette }] ; recette null = délier.
+  const lierFiches = async (liens) => {
+    if (!canEditLignes || !liens.length) return;
+    const parLigne = new Map(liens.map(x => [x.ligneId, x.recette]));
+    await majLignes(lignes => lignes.map(l => (parLigne.has(l.id) ? lierLigne(l, parLigne.get(l.id), refsPrix) : l)));
+    const lies = liens.filter(x => x.recette).length;
+    notifyLegacy(lies ? `${lies} ligne${lies > 1 ? 's' : ''} liée${lies > 1 ? 's' : ''} à ${lies > 1 ? 'leur' : 'sa'} fiche.` : 'Ligne déliée de sa fiche.', 'success');
+  };
+
+  const majPrixMaison = async (maj) => {
+    if (!canEditLignes || !maj.length) return;
+    const parLigne = new Map(maj.map(x => [x.ligneId, x.prixUnit]));
+    await majLignes(lignes => lignes.map(l => (parLigne.has(l.id) ? { ...l, prixUnit: parLigne.get(l.id) } : l)));
+    notifyLegacy(`${maj.length} prix mis à jour au coût matière des fiches.`, 'success');
+  };
 
   const ajouterDepuisCatalogue = async (produits, nomsLibres = [], zone = '') => {
     const ajoutees = await ajouterLignes([
@@ -1226,6 +1280,7 @@ const Inventaire = ({ user, etablissement }) => {
             canExport && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
             canExport && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
             canExport && { label: '🖨 Imprimer', onClick: printInventory },
+            canManage && recettes.length > 0 && { label: '🍲 Produits maison (fiches recettes)', onClick: () => setShowMaison(true) },
             canExport && { label: "⬇ État d'inventaire (PDF)", onClick: () => exporterEtat('pdf') },
             canExport && { label: "📊 État d'inventaire (Excel)", onClick: () => exporterEtat('xlsx') },
             canManage && inventairesEtab.length > 1 && { label: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
@@ -1471,11 +1526,26 @@ const Inventaire = ({ user, etablissement }) => {
       {renderNewInventoryModal()}
       {renderRenameModal()}
 
+      {showMaison && (
+        <ProduitsMaisonModal
+          lignes={inv.lignes || []}
+          recettes={recettes}
+          refs={refsPrix}
+          canEdit={canEditLignes}
+          onLier={lierFiches}
+          onMajPrix={majPrixMaison}
+          onClose={() => setShowMaison(false)}
+        />
+      )}
+
       {showAjout && canEditLignes && (
         <AjoutProduitsModal
           catalogue={catalogue}
           lignesExistantes={inv.lignes || []}
           onAjouter={ajouterDepuisCatalogue}
+          recettes={recettes}
+          infoFiche={infoFiche}
+          onAjouterFiches={ajouterDepuisFiches}
           onClose={() => setShowAjout(false)}
         />
       )}
