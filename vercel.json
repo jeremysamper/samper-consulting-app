@@ -40,6 +40,10 @@
     {
       "path":     "/api/cron/alerts-evaluator",
       "schedule": "0 * * * *"
+    },
+    {
+      "path":     "/api/cron/spa-anniversaires",
+      "schedule": "0 7,11 * * *"
     }
   ]
 }

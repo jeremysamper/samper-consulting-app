@@ -1,0 +1,217 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Module Spa - ambiance « onsen contemporain » (Mizukii : mizu = l'eau)
+   ────────────────────────────────────────────────────────────────────────────
+   Feuille propre au module, chargée avec son chunk et limitée à .spa : elle
+   ne porte que ce que les styles inline ne savent pas faire (jetons clair /
+   sombre, survol, focus clavier, animations, mouvement réduit). Tout le reste
+   reste en objets de style dans les composants.
+
+   Palette : papier washi, eau (primaire), matcha, sakura pour ce qui demande
+   de l'attention (santé, absence), laiton pour les bons cadeaux. Contrastes
+   texte ≥ 4.5:1 sur --spa-surface dans les deux thèmes (ink3 réservé aux
+   méta-informations secondaires).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.spa {
+  --spa-bg: #f4f1eb;
+  --spa-surface: #fffdf9;
+  --spa-surface2: #f8f5ef;
+  --spa-sunken: #efeae1;
+  --spa-line: #e3dcd0;
+  --spa-line2: #d5ccbd;
+  --spa-ink: #25302c;
+  --spa-ink2: #535f5a;
+  --spa-ink3: #6b7671;
+
+  --spa-mizu: #2f6f77;
+  --spa-mizu-strong: #245a61;
+  --spa-mizu-soft: #e2eded;
+  --spa-on-mizu: #ffffff;
+  --spa-matcha: #58784f;
+  --spa-matcha-soft: #e7eee1;
+  --spa-sakura: #a9545b;
+  --spa-sakura-soft: #f7e6e5;
+  --spa-kin: #8f6f38;
+  --spa-kin-soft: #f3ebdc;
+  --spa-kin-line: #dcc9a6;
+
+  --spa-hero: radial-gradient(120% 140% at 100% 0%, #dcebea 0%, rgba(220, 235, 234, 0) 55%),
+              linear-gradient(135deg, #f7f4ee 0%, #efe8dc 100%);
+  --spa-gift: linear-gradient(135deg, #fbf6ec 0%, #f1e6d2 100%);
+  --spa-shadow: 0 1px 2px rgba(37, 48, 44, 0.04), 0 6px 20px rgba(37, 48, 44, 0.06);
+  --spa-shadow-lift: 0 2px 6px rgba(37, 48, 44, 0.06), 0 16px 40px rgba(37, 48, 44, 0.12);
+  --spa-focus: 0 0 0 3px rgba(47, 111, 119, 0.35);
+  --spa-scrim: rgba(28, 36, 34, 0.42);
+
+  --spa-r-lg: 22px;
+  --spa-r: 16px;
+  --spa-r-sm: 12px;
+
+  background: var(--spa-bg);
+  color: var(--spa-ink);
+  font-family: var(--font);
+}
+
+html[data-theme="dark"] .spa {
+  --spa-bg: #111615;
+  --spa-surface: #182020;
+  --spa-surface2: #1c2524;
+  --spa-sunken: #141b1a;
+  --spa-line: #2a3533;
+  --spa-line2: #35423f;
+  --spa-ink: #e6ece9;
+  --spa-ink2: #adbab5;
+  --spa-ink3: #8d9a95;
+
+  --spa-mizu: #7cbcc2;
+  --spa-mizu-strong: #9ad0d5;
+  --spa-mizu-soft: #1b3235;
+  --spa-on-mizu: #0d1716;
+  --spa-matcha: #9dc093;
+  --spa-matcha-soft: #1f2d1d;
+  --spa-sakura: #e39aa0;
+  --spa-sakura-soft: #3a2326;
+  --spa-kin: #d7b577;
+  --spa-kin-soft: #30281a;
+  --spa-kin-line: #5c4a2a;
+
+  --spa-hero: radial-gradient(120% 140% at 100% 0%, rgba(124, 188, 194, 0.18) 0%, rgba(124, 188, 194, 0) 55%),
+              linear-gradient(135deg, #182221 0%, #151b1a 60%, #1f1c16 100%);
+  --spa-gift: linear-gradient(135deg, #2a2418 0%, #1e1b14 100%);
+  --spa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --spa-shadow-lift: 0 2px 8px rgba(0, 0, 0, 0.35), 0 18px 44px rgba(0, 0, 0, 0.45);
+  --spa-focus: 0 0 0 3px rgba(124, 188, 194, 0.45);
+  --spa-scrim: rgba(4, 8, 8, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .spa {
+    --spa-bg: #111615;
+    --spa-surface: #182020;
+    --spa-surface2: #1c2524;
+    --spa-sunken: #141b1a;
+    --spa-line: #2a3533;
+    --spa-line2: #35423f;
+    --spa-ink: #e6ece9;
+    --spa-ink2: #adbab5;
+    --spa-ink3: #8d9a95;
+    --spa-mizu: #7cbcc2;
+    --spa-mizu-strong: #9ad0d5;
+    --spa-mizu-soft: #1b3235;
+    --spa-on-mizu: #0d1716;
+    --spa-matcha: #9dc093;
+    --spa-matcha-soft: #1f2d1d;
+    --spa-sakura: #e39aa0;
+    --spa-sakura-soft: #3a2326;
+    --spa-kin: #d7b577;
+    --spa-kin-soft: #30281a;
+    --spa-kin-line: #5c4a2a;
+    --spa-hero: radial-gradient(120% 140% at 100% 0%, rgba(124, 188, 194, 0.18) 0%, rgba(124, 188, 194, 0) 55%),
+                linear-gradient(135deg, #182221 0%, #151b1a 60%, #1f1c16 100%);
+    --spa-gift: linear-gradient(135deg, #2a2418 0%, #1e1b14 100%);
+    --spa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --spa-shadow-lift: 0 2px 8px rgba(0, 0, 0, 0.35), 0 18px 44px rgba(0, 0, 0, 0.45);
+    --spa-focus: 0 0 0 3px rgba(124, 188, 194, 0.45);
+    --spa-scrim: rgba(4, 8, 8, 0.6);
+  }
+}
+
+/* ── Champs ─────────────────────────────────────────────────────────────── */
+.spa input::placeholder,
+.spa textarea::placeholder {
+  color: var(--spa-ink3);
+  opacity: 1;
+}
+
+.spa input:focus,
+.spa textarea:focus,
+.spa select:focus {
+  outline: none;
+  border-color: var(--spa-mizu) !important;
+  box-shadow: var(--spa-focus);
+}
+
+/* ── Focus clavier : jamais d'élément interactif sans anneau visible ────── */
+.spa button:focus-visible,
+.spa a:focus-visible,
+.spa [role="tab"]:focus-visible,
+.spa label:focus-within {
+  outline: none;
+  box-shadow: var(--spa-focus);
+}
+
+/* ── Cartes cliquables : l'ombre se lève au survol, sans décaler la mise en
+      page (pas de transform sur les boutons : réservé à la feuille globale) ── */
+.spa .spa-carte-action {
+  transition: box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .spa .spa-carte-action:hover {
+    box-shadow: var(--spa-shadow-lift);
+    border-color: var(--spa-line2) !important;
+  }
+  .spa .spa-creneau-libre:hover {
+    background: var(--spa-mizu-soft) !important;
+  }
+  .spa .spa-creneau-libre:hover .spa-creneau-plus {
+    opacity: 1;
+  }
+}
+
+.spa .spa-creneau-plus {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+/* ── Défilement horizontal discret (onglets, planning, filtres) ─────────── */
+.spa .spa-defile {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.spa .spa-defile::-webkit-scrollbar { display: none; }
+
+/* ── Entrées douces ─────────────────────────────────────────────────────── */
+@keyframes spa-apparition {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spa-voile {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes spa-tiroir {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes spa-onde {
+  0%   { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+.spa .spa-apparition { animation: spa-apparition 260ms ease both; }
+.spa .spa-voile { animation: spa-voile 200ms ease both; }
+.spa .spa-tiroir { animation: spa-tiroir 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.spa .spa-onde { animation: spa-onde 2.6s ease-out infinite; transform-origin: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spa .spa-apparition,
+  .spa .spa-voile,
+  .spa .spa-tiroir,
+  .spa .spa-onde {
+    animation: none;
+  }
+  .spa .spa-carte-action { transition: none; }
+}
+
+/* ── Planning : lignes d'heures ─────────────────────────────────────────── */
+.spa .spa-grille-heures {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--spa-line) 0,
+    var(--spa-line) 1px,
+    transparent 1px,
+    transparent var(--spa-pas-heure, 66px)
+  );
+}

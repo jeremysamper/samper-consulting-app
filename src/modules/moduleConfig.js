@@ -8,12 +8,12 @@ export const roles = {
 };
 
 export const defaultPermissions = {
-  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true },
-  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true },
-  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true },
-  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true },
-  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true },
-  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true },
+  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true },
+  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true },
+  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true },
+  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true },
+  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true },
+  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -42,6 +42,9 @@ export const manageableModules = [
   { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote'] },
   { id: 'mep', label: 'Mise en place', defaultRoles: ['resp_cuisine', 'cuisinier'] },
   { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
+  // spa : prendre les rendez-vous, tenir les fiches clients, rédiger les
+  // comptes rendus de séance. Ouvert à toute l'équipe du spa par défaut.
+  { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote'] },
 ];
 
 // Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.
@@ -73,6 +76,7 @@ export const navItems = [
   { id: 'mep', label: 'Mise en place', mobileLabel: 'Mise en place', icon: '◲', group: 'Cuisine', permKey: 'mep' },
   { id: 'pos', label: 'Ventes POS', icon: '◑', group: 'Cuisine', permKey: 'pos' },
   { id: 'kds', label: 'KDS Cuisine', mobileLabel: 'KDS', icon: '▣', group: 'Cuisine', permKey: 'kds' },
+  { id: 'spa', label: 'Spa & clients', mobileLabel: 'Spa', icon: '❀', group: 'Spa', permKey: 'spa' },
   { id: 'faq', label: 'FAQ & Assistant IA', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' }
 ];
 
@@ -91,11 +95,22 @@ export const alwaysOnModuleKeys = ['dashboard', 'consultant_tools', 'faq'];
 // Modules que le consultant peut activer ou non, dans l'ordre du menu par défaut.
 export const etabToggleableModules = navItems.filter((item) => !alwaysOnModuleKeys.includes(item.permKey));
 
-// modulesActifs null / absent = tous les modules (établissement jamais réglé).
+// Modules « à activer » : hors du périmètre restaurant, ils ne s'affichent que
+// dans un établissement qui les a explicitement cochés. Un établissement jamais
+// réglé (modules_actifs NULL) ne les voit donc pas : le spa n'apparaît pas au
+// Rucher le jour de sa mise en ligne.
+export const optInModuleKeys = ['spa'];
+
+// Modules d'un établissement jamais réglé (modules_actifs NULL).
+export const defaultEtabModuleKeys = etabToggleableModules
+  .map((item) => item.permKey)
+  .filter((key) => !optInModuleKeys.includes(key));
+
+// modulesActifs null / absent = tous les modules sauf ceux « à activer ».
 export function isModuleActiveForEtab(etablissement, permKey) {
   if (!permKey || alwaysOnModuleKeys.includes(permKey)) return true;
   const actifs = etablissement?.modulesActifs;
-  if (!Array.isArray(actifs)) return true;
+  if (!Array.isArray(actifs)) return !optInModuleKeys.includes(permKey);
   return actifs.includes(permKey);
 }
 

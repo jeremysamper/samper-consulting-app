@@ -28,6 +28,7 @@ const loadRoles = () => import('./roles/Roles.jsx');
 const loadPrevisions = () => import('./previsions/Previsions.jsx');
 const loadVentesPos = () => import('./pos/VentesPos.jsx');
 const loadSOP = () => import('./sop/SOP.jsx');
+const loadSpa = () => import('./spa/Spa.jsx');
 
 const Catalogue = lazy(loadCatalogue);
 const Commande = lazy(loadCommande);
@@ -52,6 +53,7 @@ const Roles = lazy(loadRoles);
 const Previsions = lazy(loadPrevisions);
 const VentesPos = lazy(loadVentesPos);
 const SOP = lazy(loadSOP);
+const Spa = lazy(loadSpa);
 
 // Modules du quotidien, préchargés en idle après le login pour que la première
 // navigation soit instantanée (le chunk est déjà en cache navigateur).
@@ -192,6 +194,11 @@ export default function LegacyModuleHost({
     case 'previsions': {
       return permissions.previsions === true
         ? wrap('Prévisions', <Previsions user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'spa': {
+      return permissions.spa !== false
+        ? wrap('Spa', <Spa user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'groupes': {

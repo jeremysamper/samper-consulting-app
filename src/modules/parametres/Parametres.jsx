@@ -2,7 +2,9 @@ import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
 import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
-import { navItems as NAV_ITEMS, etabToggleableModules } from '../../modules/moduleConfig.js';
+import {
+  navItems as NAV_ITEMS, defaultEtabModuleKeys, etabToggleableModules, optInModuleKeys,
+} from '../../modules/moduleConfig.js';
 import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 
@@ -33,20 +35,26 @@ const mapEtabFromRow = (r) => ({
 });
 
 const moduleCountLabel = (modulesActifs) => {
-  if (!Array.isArray(modulesActifs)) return 'Tous les modules';
+  if (!Array.isArray(modulesActifs)) return 'Tous les modules standard';
   const n = ALL_MODULE_KEYS.filter((key) => modulesActifs.includes(key)).length;
   return n === 1 ? '1 module activé' : `${n} modules activés`;
 };
 
 const EtabModulesPicker = ({ value, onChange, getLabel }) => {
-  // null = tous les modules : on affiche tout coché.
-  const selected = Array.isArray(value) ? value : ALL_MODULE_KEYS;
+  // null = tous les modules standard : tout coché sauf les modules « à
+  // activer » (spa), qui ne s'affichent que cochés explicitement.
+  const selected = Array.isArray(value) ? value : defaultEtabModuleKeys;
   const set = (keys) => {
     const next = ALL_MODULE_KEYS.filter((key) => keys.includes(key));
-    // Tout coché = null : les modules ajoutés plus tard à l'app apparaîtront
-    // d'office pour cet établissement, comme avant le réglage.
-    onChange(next.length === ALL_MODULE_KEYS.length ? null : next);
+    // Exactement les modules standard = null : les modules ajoutés plus tard à
+    // l'app apparaîtront d'office pour cet établissement, comme avant le réglage.
+    const standard = next.length === defaultEtabModuleKeys.length
+      && defaultEtabModuleKeys.every((key) => next.includes(key));
+    onChange(standard ? null : next);
   };
+  // « Tout cocher » = tous les modules standard ; un module à activer déjà
+  // coché le reste, mais n'est jamais coché en masse.
+  const toutCocher = () => set([...defaultEtabModuleKeys, ...selected.filter((key) => optInModuleKeys.includes(key))]);
   const toggle = (key) => set(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
 
   return (
@@ -54,7 +62,7 @@ const EtabModulesPicker = ({ value, onChange, getLabel }) => {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
         <label style={ps.fLabel}>Modules affichés dans le menu</label>
         <div style={{ display:'flex', gap:6 }}>
-          <button type="button" style={ps.linkBtn} onClick={() => set(ALL_MODULE_KEYS)}>Tout cocher</button>
+          <button type="button" style={ps.linkBtn} onClick={toutCocher}>Tout cocher</button>
           <button type="button" style={ps.linkBtn} onClick={() => set([])}>Tout décocher</button>
         </div>
       </div>
@@ -76,7 +84,10 @@ const EtabModulesPicker = ({ value, onChange, getLabel }) => {
                     style={{ width:18, height:18, margin:0, flexShrink:0, accentColor:'var(--accent)' }}
                   />
                   <span style={{ width:18, textAlign:'center', flexShrink:0 }} aria-hidden="true">{item.icon}</span>
-                  <span style={{ minWidth:0 }}>{getLabel ? getLabel(item.id, item.label) : item.label}</span>
+                  <span style={{ minWidth:0 }}>
+                    {getLabel ? getLabel(item.id, item.label) : item.label}
+                    {optInModuleKeys.includes(item.permKey) && <span style={{ color:'var(--text3)' }}> (à activer)</span>}
+                  </span>
                 </label>
               );
             })}
