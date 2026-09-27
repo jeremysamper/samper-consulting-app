@@ -47,7 +47,7 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/reserver/:adresse", "destination": "/reserver.html" },
+    { "source": "/reserver/:adresse", "destination": "/reserver" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
