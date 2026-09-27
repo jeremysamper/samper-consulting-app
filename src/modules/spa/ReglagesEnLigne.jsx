@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Check, CircleCheck, Code2, Copy, ExternalLink, Globe, Plus, Trash2, UserRound,
+  BookOpen, Check, CircleCheck, Code2, Copy, Download, ExternalLink, Globe, Link2, Mail, Plus, QrCode, Send,
+  Trash2, UserRound,
 } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { useSpaParametres } from './spaData.js';
 import { Champ, EtatVide, Puce, TitreSection, st } from './spaUi.jsx';
+import {
+  COULEUR_DEFAUT, codeBouton, codeIntegre, lienGmail, lienGuide, lienMailto, lienReservation, messageWebmaster,
+} from './integration.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réservation en ligne (direction : consultant et patron).
@@ -19,14 +23,10 @@ import { Champ, EtatVide, Puce, TitreSection, st } from './spaUi.jsx';
 // durée du soin (calcul et réservation côté serveur, spa-mailer).
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Adresse publique des codes d'intégration (le site du client doit toujours
-// pointer vers la production, même si l'on règle depuis une préversion).
-const ORIGINE_PUBLIQUE = 'https://samperconsulting-app.com';
 const JOURS = [
   [1, 'Lundi'], [2, 'Mardi'], [3, 'Mercredi'], [4, 'Jeudi'], [5, 'Vendredi'], [6, 'Samedi'], [7, 'Dimanche'],
 ];
 const HORAIRES_DEFAUT = Object.fromEntries([1, 2, 3, 4, 5, 6].map((j) => [String(j), [{ de: '09:00', a: '19:00' }]]));
-const COULEUR_DEFAUT = '#2f6f77';
 
 function versSlug(nom) {
   return String(nom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -41,6 +41,8 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
   const [enCours, setEnCours] = useState(false);
   const [nouveauPraticien, setNouveauPraticien] = useState('');
   const [couleur, setCouleur] = useState(COULEUR_DEFAUT);
+  const [qr, setQr] = useState(null);
+  const slugForm = form?.slug || '';
 
   // Premier réglage : adresse tirée du nom, semaine type lundi-samedi 9 h-19 h.
   useEffect(() => {
@@ -51,6 +53,25 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
       horaires: Object.keys(parametres.horaires || {}).length ? parametres.horaires : HORAIRES_DEFAUT,
     });
   }, [parametres, status, etablissement?.nom]);
+
+  // QR code du lien de réservation (carte en cabine, flyer, vitrine). La
+  // bibliothèque n'est chargée qu'ici.
+  useEffect(() => {
+    if (!SLUG_OK.test(slugForm)) { setQr(null); return undefined; }
+    let vivant = true;
+    const minuterie = setTimeout(async () => {
+      try {
+        const lib = await import('qrcode');
+        const versDataUrl = lib.toDataURL || lib.default?.toDataURL;
+        const url = await versDataUrl(lienReservation(slugForm), { margin: 2, width: 1024, color: { dark: '#25302c', light: '#ffffff' } });
+        if (vivant) setQr(url);
+      } catch (e) {
+        console.error('[spa] QR code', e);
+        if (vivant) setQr(null);
+      }
+    }, 300);
+    return () => { vivant = false; clearTimeout(minuterie); };
+  }, [slugForm]);
 
   const soinsActifs = useMemo(() => soins.filter((x) => x.actif), [soins]);
   const praticiensConnus = useMemo(
@@ -78,11 +99,21 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
     horaires: Object.keys(parametres.horaires || {}).length ? parametres.horaires : HORAIRES_DEFAUT,
   });
   const publie = parametres.enLigneActif && parametres.slug;
-  const lienPage = `${ORIGINE_PUBLIQUE}/reserver/${form.slug}`;
+  const lienPage = lienReservation(form.slug);
   const apercu = `${window.location.origin}/reserver/${form.slug}`;
-  const attrCouleur = couleur && couleur.toLowerCase() !== COULEUR_DEFAUT ? ` data-couleur="${couleur}"` : '';
-  const codeBouton = `<script src="${ORIGINE_PUBLIQUE}/widget-spa.js" data-spa="${form.slug}"${attrCouleur} async></script>`;
-  const codeIntegre = `<div id="reservation-spa"></div>\n<script src="${ORIGINE_PUBLIQUE}/widget-spa.js" data-spa="${form.slug}" data-mode="integre" data-cible="#reservation-spa"${attrCouleur} async></script>`;
+  const guide = lienGuide(form.slug, couleur);
+  const slugModifie = Boolean(parametres.slug) && form.slug !== parametres.slug;
+  const mailWebmaster = messageWebmaster({ nomSpa: etablissement?.nom, slug: form.slug, couleur });
+
+  function telechargerQr() {
+    if (!qr) return;
+    const a = document.createElement('a');
+    a.href = qr;
+    a.download = `reservation-${form.slug}-qr.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 
   function majJour(jour, plages) {
     setForm((p) => ({ ...p, horaires: { ...p.horaires, [String(jour)]: plages } }));
@@ -110,10 +141,10 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
     }
   }
 
-  async function copier(texte) {
+  async function copier(texte, message = 'Copié. Collez-le sur le site du spa.') {
     try {
       await navigator.clipboard.writeText(texte);
-      notify('Copié. Collez-le sur le site du spa.', 'success');
+      notify(message, 'success');
     } catch {
       notify('Copie impossible : sélectionnez le texte et copiez-le à la main.', 'warning');
     }
@@ -303,52 +334,90 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
           </div>
 
           <div style={st.carte}>
-            <TitreSection>Sur le site du spa</TitreSection>
+            <TitreSection>Brancher sur le site du spa</TitreSection>
             {!publie && (
               <div style={{ ...st.encartInfo, marginBottom: 12, fontSize: 13 }}>
-                Le code est prêt, mais la page affichera « réservation fermée » tant que vous ne l'avez pas ouverte.
+                Tout est prêt à partager, mais la page affichera « réservation fermée » tant que vous ne l'avez pas ouverte.
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-              <label htmlFor="en-ligne-couleur" style={{ fontSize: 13, color: 'var(--spa-ink2)' }}>Couleur du bouton</label>
-              <input id="en-ligne-couleur" type="color" value={couleur} onChange={(e) => setCouleur(e.target.value)} style={s.couleur} />
-              {couleur !== COULEUR_DEFAUT && (
-                <button type="button" onClick={() => setCouleur(COULEUR_DEFAUT)} style={{ ...st.lien, minHeight: 32 }}>Couleur par défaut</button>
-              )}
+            {slugModifie && (
+              <div style={{ ...st.encartAttention, marginBottom: 12, fontSize: 13 }}>
+                Adresse modifiée : enregistrez les réglages avant de partager le lien.
+              </div>
+            )}
+
+            {/* ── Le lien : rien à installer ── */}
+            <div style={s.bloc}>
+              <div style={s.blocTitre}><Link2 size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Le lien de réservation</div>
+              <div style={s.blocTexte}>
+                Rien à installer : il suffit de le mettre sur le bouton « Réserver » du site, sur Instagram ou sur la fiche Google du spa.
+              </div>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 220px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={s.lienDirect} data-no-translate>{lienPage.replace('https://', '')}</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => copier(lienPage, 'Lien copié.')} style={{ ...st.principal, minHeight: 40 }}>
+                      <Copy size={15} strokeWidth={1.8} aria-hidden="true" /> Copier le lien
+                    </button>
+                    <a href={apercu} target="_blank" rel="noreferrer" style={{ ...st.secondaire, minHeight: 40, textDecoration: 'none', boxSizing: 'border-box' }}>
+                      <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" /> Voir
+                    </a>
+                  </div>
+                </div>
+                <button type="button" onClick={telechargerQr} disabled={!qr} style={s.qr} aria-label="Télécharger le QR code de réservation">
+                  {qr ? <img src={qr} alt="" width={84} height={84} style={{ display: 'block', borderRadius: 6 }} /> : <QrCode size={32} strokeWidth={1.5} aria-hidden="true" />}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600 }}>
+                    <Download size={13} strokeWidth={1.8} aria-hidden="true" /> QR code
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <BlocCode
-              titre="Bouton « Réserver un soin »"
-              texte="La réservation s'ouvre par-dessus le site, sans le quitter. Le plus simple."
-              code={codeBouton}
-              onCopier={copier}
-            />
-            <BlocCode
-              titre="Réservation intégrée dans une page"
-              texte="Pour une page « Réserver » dédiée : la réservation s'affiche directement dans la page."
-              code={codeIntegre}
-              onCopier={copier}
-            />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-              <button type="button" onClick={() => copier(lienPage)} style={{ ...st.secondaire, minHeight: 40 }}>
-                <Copy size={15} strokeWidth={1.8} aria-hidden="true" /> Copier le lien direct
-              </button>
-              <a href={apercu} target="_blank" rel="noreferrer" style={{ ...st.secondaire, minHeight: 40, textDecoration: 'none', boxSizing: 'border-box' }}>
-                <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" /> Voir la page
-              </a>
+            {/* ── Envoi à la personne qui gère le site ── */}
+            <div style={s.bloc}>
+              <div style={s.blocTitre}><Send size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Envoyer à la personne qui gère le site</div>
+              <div style={s.blocTexte}>
+                Un e-mail tout prêt avec le lien et un guide pas à pas (WordPress, Wix, Squarespace, Webflow…). Elle n'a plus qu'à suivre.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <a href={lienGmail(mailWebmaster)} target="_blank" rel="noreferrer" style={{ ...st.secondaire, minHeight: 40, textDecoration: 'none', boxSizing: 'border-box' }}>
+                  <Mail size={15} strokeWidth={1.8} aria-hidden="true" /> Préparer l'e-mail dans Gmail
+                </a>
+                <a href={lienMailto(mailWebmaster)} style={{ ...st.lien, minHeight: 40 }}>Autre messagerie</a>
+                <button type="button" onClick={() => copier(guide, 'Lien du guide copié.')} style={{ ...st.lien, minHeight: 40 }}>
+                  <BookOpen size={14} strokeWidth={1.8} aria-hidden="true" /> Copier le lien du guide
+                </button>
+              </div>
             </div>
 
-            <details style={{ marginTop: 16 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, minHeight: 32 }}>Où coller le code ?</summary>
-              <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13, lineHeight: 1.7, color: 'var(--spa-ink2)' }}>
-                <li><strong>WordPress</strong> : bloc « HTML personnalisé ».</li>
-                <li><strong>Wix</strong> : Ajouter, puis Intégrer, puis « Code personnalisé » ou « HTML iframe ».</li>
-                <li><strong>Squarespace</strong> : bloc « Code ».</li>
-                <li><strong>Webflow</strong> : élément « Embed ».</li>
-                <li><strong>Site sur mesure</strong> : à l'endroit du bouton, dans le code HTML.</li>
-              </ul>
-              <div style={{ ...st.aide, marginTop: 8 }}>
-                Le lien direct peut aussi servir sur Instagram, Google Maps ou dans une signature d'e-mail.
+            {/* ── Le code, pour installer soi-même ── */}
+            <details style={{ marginTop: 4 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, minHeight: 40, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Code2 size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Installer soi-même avec le code
+              </summary>
+              <div style={{ paddingTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                  <label htmlFor="en-ligne-couleur" style={{ fontSize: 13, color: 'var(--spa-ink2)' }}>Couleur du bouton</label>
+                  <input id="en-ligne-couleur" type="color" value={couleur} onChange={(e) => setCouleur(e.target.value)} style={s.couleur} />
+                  {couleur !== COULEUR_DEFAUT && (
+                    <button type="button" onClick={() => setCouleur(COULEUR_DEFAUT)} style={{ ...st.lien, minHeight: 32 }}>Couleur par défaut</button>
+                  )}
+                </div>
+                <BlocCode
+                  titre="Bouton « Réserver un soin »"
+                  texte="La réservation s'ouvre par-dessus le site, sans le quitter."
+                  code={codeBouton(form.slug, couleur)}
+                  onCopier={copier}
+                />
+                <BlocCode
+                  titre="Réservation intégrée dans une page"
+                  texte="Pour une page « Réserver » dédiée : la réservation s'affiche directement dans la page."
+                  code={codeIntegre(form.slug, couleur)}
+                  onCopier={copier}
+                />
+                <a href={guide} target="_blank" rel="noreferrer" style={{ ...st.lien, minHeight: 36 }}>
+                  <BookOpen size={14} strokeWidth={1.8} aria-hidden="true" /> Où coller le code : le guide complet
+                </a>
               </div>
             </details>
           </div>
@@ -414,4 +483,17 @@ const s = {
     fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)',
   },
   couleur: { width: 44, height: 32, padding: 0, border: '1px solid var(--spa-line)', borderRadius: 8, background: 'none', cursor: 'pointer' },
+  bloc: { paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid var(--spa-line)' },
+  blocTitre: { display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 14 },
+  blocTexte: { fontSize: 13, color: 'var(--spa-ink2)', margin: '2px 0 10px', lineHeight: 1.5 },
+  lienDirect: {
+    padding: '10px 14px', borderRadius: 'var(--spa-r-sm)', background: 'var(--spa-sunken)', border: '1px solid var(--spa-line)',
+    fontSize: 14, fontWeight: 600, color: 'var(--spa-ink)', overflowWrap: 'anywhere',
+  },
+  // Fond blanc dans les deux thèmes : un QR code se lit sur fond clair.
+  qr: {
+    display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0,
+    width: 112, minHeight: 124, padding: 10, borderRadius: 'var(--spa-r-sm)', cursor: 'pointer',
+    background: '#ffffff', color: '#25302c', border: '1px solid var(--spa-line)', fontFamily: 'var(--font)',
+  },
 };

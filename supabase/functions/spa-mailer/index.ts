@@ -1,21 +1,33 @@
 // ================================================================
 // Edge Function « spa-mailer »
 //
-// Tous les e-mails du module Spa partent d'ici : la clé du fournisseur
-// (Resend) reste côté serveur, et c'est ici seulement que naissent les bons
-// cadeaux (spa_bons n'a aucune politique INSERT pour le front).
+// Tous les e-mails du module Spa partent d'ici, et c'est ici seulement que
+// naissent les bons cadeaux (spa_bons n'a aucune politique INSERT pour le
+// front).
+//
+// D'OÙ PARTENT LES E-MAILS (fonction expedier) :
+//   1. de la boîte mail du spa quand il l'a connectée (Gmail ou Outlook,
+//      connexion OAuth, jetons chiffrés dans spa_boites_mail) : l'e-mail
+//      part de son adresse et les réponses y arrivent ;
+//   2. sinon par Resend (adresse d'envoi Samper Consulting), s'il est
+//      configuré ; aussi en repli quand la boîte connectée échoue ;
+//   3. sinon rien ne part, et l'app le dit.
 //
 // Actions (POST JSON { action, ... }) :
-//   etat          membre      → { configure } : le fournisseur est-il branché ?
-//   test          direction   → e-mail d'essai (actualité ou anniversaire) à
-//                               l'adresse du compte connecté
-//   campagne      direction   → actualité à tous les clients consentants
-//   bon           équipe      → bon cadeau à un client, tout de suite
-//   anniversaires cron        → tous les établissements dont l'envoi est actif
-//                 direction   → le seul établissement demandé (rattrapage)
-//   desinscription public     → { token } : retire le consentement
-//   rdv_statut    équipe      → e-mail « confirmé » ou « refusé » après
-//                               traitement d'une demande venue du site
+//   etat              membre      → canaux d'envoi disponibles, boîte connectée
+//   boite_debut       direction   → { fournisseur } : adresse de connexion Google
+//                                   ou Microsoft (state + PKCE)
+//   boite_fin         public      → { etat, code } : fin de connexion (appelée par
+//                                   la route Vercel /api/spa-oauth)
+//   boite_deconnexion direction   → retire la boîte (révocation Google)
+//   test              direction   → e-mail d'essai à l'adresse du compte connecté
+//   campagne          direction   → actualité à tous les clients consentants
+//   bon               équipe      → bon cadeau à un client, tout de suite
+//   anniversaires     cron        → tous les établissements dont l'envoi est actif
+//                     direction   → le seul établissement demandé (rattrapage)
+//   desinscription    public      → { token } : retire le consentement
+//   rdv_statut        équipe      → e-mail « confirmé » ou « refusé » après
+//                                   traitement d'une demande venue du site
 //
 // Réservation en ligne (widget sur le site du client, migration 20260928) :
 //   public_infos     public   → { slug } : carte des soins en ligne, horaires
@@ -23,17 +35,23 @@
 //   public_reserver  public   → pose une DEMANDE (statut 'demande') via
 //                               spa_reserver_en_ligne (verrou, pas de doublon)
 // Ces actions ne renvoient jamais le nom d'un autre client. Anti-abus : champ
-// piège, délai minimal de saisie, 5 demandes par heure et par adresse IP
+// piège, durée de saisie minimale, 5 demandes par heure et par adresse IP
 // (hachée), 3 par jour et par e-mail.
 //
-// Sécurité : verify_jwt=false (le lien de désinscription et le cron n'ont pas
-// de session). Chaque action authentifie elle-même : CRON_SECRET pour le cron,
-// JWT + profil (rôle, établissements) pour l'équipe, jeton uuid non devinable
-// pour la désinscription.
+// Sécurité : verify_jwt=false (lien de désinscription, cron, retour OAuth et
+// réservation publique n'ont pas de session). Chaque action authentifie
+// elle-même : CRON_SECRET pour le cron, JWT + profil (rôle, établissements)
+// pour l'équipe, jeton uuid pour la désinscription, state à usage unique pour
+// le retour OAuth.
 //
-// Secrets : RESEND_API_KEY, SPA_MAIL_FROM (adresse d'un domaine vérifié chez
-// Resend, ex. spa@samperconsulting-app.com), CRON_SECRET, APP_PUBLIC_URL
-// (facultatif, défaut https://samperconsulting-app.com).
+// Secrets : RESEND_API_KEY + SPA_MAIL_FROM (repli Resend), CRON_SECRET,
+// GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (connexion Gmail),
+// MS_CLIENT_ID + MS_CLIENT_SECRET (connexion Outlook / Microsoft 365),
+// APP_PUBLIC_URL (facultatif, défaut https://samperconsulting-app.com ; l'adresse
+// de retour OAuth est <APP_PUBLIC_URL>/api/spa-oauth).
+// Les jetons des boîtes sont chiffrés (AES-GCM) avec une clé dérivée de
+// SUPABASE_SERVICE_ROLE_KEY : si cette clé change, les spas reconnectent leur
+// boîte.
 // ================================================================
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -54,6 +72,9 @@ const ROLES_EQUIPE = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serv
 const ROLES_DIRECTION = ['consultant', 'patron'];
 const RESEND_URL = 'https://api.resend.com';
 const LOT_MAX = 100; // limite de l'API batch de Resend
+// Une boîte Gmail ou Outlook limite les envois (quelques centaines par jour) :
+// au-delà, une actualité doit passer par Resend.
+const PLAFOND_BOITE = 400;
 
 type Admin = SupabaseClient;
 
@@ -69,8 +90,19 @@ function config() {
   const cle = Deno.env.get('RESEND_API_KEY') || '';
   const from = Deno.env.get('SPA_MAIL_FROM') || '';
   const appUrl = (Deno.env.get('APP_PUBLIC_URL') || 'https://samperconsulting-app.com').replace(/\/+$/, '');
-  return { cle, from, appUrl, configure: Boolean(cle && from) };
+  return {
+    cle,
+    from,
+    appUrl,
+    resend: Boolean(cle && from),
+    google: { id: Deno.env.get('GOOGLE_CLIENT_ID') || '', secret: Deno.env.get('GOOGLE_CLIENT_SECRET') || '' },
+    microsoft: { id: Deno.env.get('MS_CLIENT_ID') || '', secret: Deno.env.get('MS_CLIENT_SECRET') || '' },
+    redirection: `${appUrl}/api/spa-oauth`,
+  };
 }
+type Cfg = ReturnType<typeof config>;
+type Fournisseur = 'google' | 'microsoft';
+const connexionDispo = (cfg: Cfg, f: Fournisseur) => Boolean(cfg[f].id && cfg[f].secret);
 
 // ── Dates à Zurich ────────────────────────────────────────────────
 function zurichToday(): string {
@@ -102,6 +134,44 @@ const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 
 function dateLongue(iso: string) {
   const [y, m, d] = iso.split('-').map(Number);
   return `${d} ${MOIS[m - 1]} ${y}`;
+}
+
+// ── Base64 et chiffrement ─────────────────────────────────────────
+const utf8 = (t: string) => new TextEncoder().encode(t);
+
+function versB64(octets: Uint8Array) {
+  let s = '';
+  for (let i = 0; i < octets.length; i += 0x8000) s += String.fromCharCode(...octets.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function depuisB64(b: string) {
+  const s = atob(b);
+  const o = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) o[i] = s.charCodeAt(i);
+  return o;
+}
+const versB64Url = (o: Uint8Array) => versB64(o).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const aleatoire = (n: number) => versB64Url(crypto.getRandomValues(new Uint8Array(n)));
+
+let cleChiffrement: CryptoKey | null = null;
+async function cle() {
+  if (cleChiffrement) return cleChiffrement;
+  const base = await crypto.subtle.importKey('raw', utf8(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''), 'HKDF', false, ['deriveKey']);
+  cleChiffrement = await crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: utf8('spa-boites-mail'), info: utf8('v1') },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'],
+  );
+  return cleChiffrement;
+}
+async function chiffrer(texte: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const code = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await cle(), utf8(texte)));
+  return `${versB64(iv)}.${versB64(code)}`;
+}
+async function dechiffrer(valeur: string) {
+  const [iv, code] = valeur.split('.');
+  const clair = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: depuisB64(iv) }, await cle(), depuisB64(code));
+  return new TextDecoder().decode(clair);
 }
 
 // ── Codes de bon : sans caractères ambigus (0/O, 1/I/L) ───────────
@@ -217,7 +287,12 @@ function texteBrut(corps: string, bon?: Bon | null, lien?: string | null) {
   return lignes.join('\n');
 }
 
-// ── Envoi (Resend) ────────────────────────────────────────────────
+function enTetesDesinscription(lien: string | null) {
+  if (!lien) return undefined;
+  return { 'List-Unsubscribe': `<${lien}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' };
+}
+
+// ── Canal 2 : Resend ──────────────────────────────────────────────
 type Mail = {
   to: string; subject: string; html: string; text: string;
   from: string; reply_to?: string; headers?: Record<string, string>;
@@ -226,11 +301,6 @@ type Mail = {
 function expediteur(etab: Etab, params: Params, from: string) {
   const nom = ((params.nom_expediteur || '').trim() || etab.nom).replace(/["<>]/g, '');
   return `${nom} <${from}>`;
-}
-
-function enTetesDesinscription(lien: string | null) {
-  if (!lien) return undefined;
-  return { 'List-Unsubscribe': `<${lien}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' };
 }
 
 async function envoyerUn(cle: string, mail: Mail): Promise<{ id?: string; erreur?: string }> {
@@ -270,6 +340,176 @@ async function envoyerLot(cle: string, mails: Mail[]): Promise<{ id?: string; er
   }
 }
 
+// ── Canal 1 : la boîte mail du spa (Gmail ou Outlook) ─────────────
+type Boite = {
+  etablissement_id: string; fournisseur: Fournisseur; adresse: string; nom: string | null;
+  jeton_chiffre: string; acces_chiffre: string | null; acces_expire_at: string | null;
+  statut: 'actif' | 'erreur'; derniere_erreur: string | null; connecte_at: string;
+};
+
+const SCOPES_GOOGLE = 'openid email https://www.googleapis.com/auth/gmail.send';
+const SCOPES_MICROSOFT = 'offline_access openid email User.Read Mail.Send';
+const JETON_URL: Record<Fournisseur, string> = {
+  google: 'https://oauth2.googleapis.com/token',
+  microsoft: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+};
+
+async function lireBoite(sb: Admin, etabId: string): Promise<Boite | null> {
+  const { data } = await sb.from('spa_boites_mail').select('*').eq('etablissement_id', etabId).maybeSingle();
+  return (data as Boite) || null;
+}
+
+async function peutEnvoyer(sb: Admin, cfg: Cfg, etabId: string) {
+  if (cfg.resend) return true;
+  const b = await lireBoite(sb, etabId);
+  return Boolean(b && b.statut === 'actif');
+}
+
+async function marquerBoite(sb: Admin, etabId: string, maj: Record<string, unknown>) {
+  await sb.from('spa_boites_mail').update({ ...maj, updated_at: new Date().toISOString() }).eq('etablissement_id', etabId);
+}
+
+// Jeton d'accès valable (renouvelé si besoin). Le jeton d'accès est gardé
+// chiffré avec son heure d'expiration : une actualité envoyée à 300 clients
+// ne renouvelle qu'une fois. Microsoft renvoie un nouveau jeton de
+// renouvellement à chaque fois : il remplace l'ancien.
+async function jetonAcces(sb: Admin, cfg: Cfg, boite: Boite, forcer = false): Promise<string> {
+  if (!forcer && boite.acces_chiffre && boite.acces_expire_at
+    && new Date(boite.acces_expire_at).getTime() - 120000 > Date.now()) {
+    return dechiffrer(boite.acces_chiffre);
+  }
+  const f = boite.fournisseur;
+  const form = new URLSearchParams({
+    client_id: cfg[f].id, client_secret: cfg[f].secret,
+    grant_type: 'refresh_token', refresh_token: await dechiffrer(boite.jeton_chiffre),
+  });
+  if (f === 'microsoft') form.set('scope', SCOPES_MICROSOFT);
+  const r = await fetch(JETON_URL[f], { method: 'POST', body: form });
+  const c = await r.json().catch(() => ({}));
+  if (!r.ok || !c.access_token) {
+    const message = c.error === 'invalid_grant'
+      ? 'La connexion à la boîte mail a expiré ou a été retirée : reconnectez-la.'
+      : `La boîte mail a refusé le renouvellement de la connexion (${c.error || r.status}).`;
+    await marquerBoite(sb, boite.etablissement_id, { statut: 'erreur', derniere_erreur: message });
+    boite.statut = 'erreur';
+    throw new Error(message);
+  }
+  const maj: Record<string, unknown> = {
+    acces_chiffre: await chiffrer(c.access_token),
+    acces_expire_at: new Date(Date.now() + Number(c.expires_in || 3600) * 1000).toISOString(),
+    statut: 'actif', derniere_erreur: null,
+  };
+  if (c.refresh_token) maj.jeton_chiffre = await chiffrer(c.refresh_token);
+  await marquerBoite(sb, boite.etablissement_id, maj);
+  Object.assign(boite, maj);
+  return c.access_token;
+}
+
+// En-tête MIME (RFC 2047) : nom d'expéditeur et objet accentués.
+const motEncode = (t: string) => `=?UTF-8?B?${versB64(utf8(t))}?=`;
+const b64Lignes = (t: string) => versB64(utf8(t)).replace(/.{76}/g, '$&\r\n');
+
+function messageMime(m: { de: string; a: string; repondreA?: string; objet: string; html: string; texte: string; entetes?: Record<string, string> }) {
+  const frontiere = `spa-${crypto.randomUUID()}`;
+  const lignes = [
+    `From: ${m.de}`,
+    `To: ${m.a}`,
+    ...(m.repondreA ? [`Reply-To: ${m.repondreA}`] : []),
+    `Subject: ${motEncode(m.objet)}`,
+    'MIME-Version: 1.0',
+    ...Object.entries(m.entetes || {}).map(([k, v]) => `${k}: ${v}`),
+    `Content-Type: multipart/alternative; boundary="${frontiere}"`,
+    '',
+    `--${frontiere}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    b64Lignes(m.texte),
+    `--${frontiere}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    b64Lignes(m.html),
+    `--${frontiere}--`,
+    '',
+  ];
+  return versB64Url(utf8(lignes.join('\r\n')));
+}
+
+type Envoi = { to: string; subject: string; html: string; text: string; headers?: Record<string, string> };
+
+async function envoyerViaBoite(sb: Admin, cfg: Cfg, boite: Boite, e: Envoi, nomExpediteur: string, repondreA?: string) {
+  const tenter = async (jeton: string) => {
+    if (boite.fournisseur === 'google') {
+      const raw = messageMime({
+        de: `${motEncode(nomExpediteur)} <${boite.adresse}>`, a: e.to, repondreA,
+        objet: e.subject, html: e.html, texte: e.text, entetes: e.headers,
+      });
+      const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw }),
+      });
+      const c = await r.json().catch(() => ({}));
+      return { statut: r.status, id: c?.id as string | undefined, erreur: r.ok ? undefined : `Gmail : ${c?.error?.message || r.status}` };
+    }
+    // Microsoft Graph n'accepte que des en-têtes personnalisés « X- » : le lien
+    // de désinscription reste dans le pied de l'e-mail.
+    const r = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: {
+          subject: e.subject,
+          body: { contentType: 'HTML', content: e.html },
+          toRecipients: [{ emailAddress: { address: e.to } }],
+          replyTo: repondreA ? [{ emailAddress: { address: repondreA } }] : [],
+        },
+        saveToSentItems: true,
+      }),
+    });
+    if (r.status === 202 || r.ok) return { statut: r.status, id: undefined, erreur: undefined };
+    const c = await r.json().catch(() => ({}));
+    return { statut: r.status, id: undefined, erreur: `Outlook : ${c?.error?.message || r.status}` };
+  };
+  try {
+    let res = await tenter(await jetonAcces(sb, cfg, boite));
+    // Jeton d'accès retiré entre-temps : on renouvelle une fois et on réessaie.
+    if (res.statut === 401) res = await tenter(await jetonAcces(sb, cfg, boite, true));
+    return { id: res.id, erreur: res.erreur ? res.erreur.slice(0, 300) : undefined };
+  } catch (err) {
+    return { erreur: (err instanceof Error ? err.message : String(err)).slice(0, 300) };
+  }
+}
+
+// ── Point d'envoi unique ──────────────────────────────────────────
+// boiteConnue : évite de relire la boîte pour chaque e-mail d'une actualité
+// (undefined = à lire, null = aucune).
+async function expedier(
+  sb: Admin, cfg: Cfg, etab: Etab, params: Params, e: Envoi, boiteConnue?: Boite | null,
+): Promise<{ id?: string; erreur?: string; canal: 'google' | 'microsoft' | 'resend' | null }> {
+  const boite = boiteConnue === undefined ? await lireBoite(sb, etab.id) : boiteConnue;
+  const nomExpediteur = ((params.nom_expediteur || '').trim() || etab.nom).replace(/["<>]/g, '');
+  if (boite && boite.statut === 'actif') {
+    const r = await envoyerViaBoite(sb, cfg, boite, e, nomExpediteur, params.email_reponse || undefined);
+    if (!r.erreur || !cfg.resend) return { ...r, canal: boite.fournisseur };
+    console.warn('[spa-mailer] boîte en échec, repli Resend :', r.erreur);
+  }
+  if (cfg.resend) {
+    const r = await envoyerUn(cfg.cle, {
+      from: expediteur(etab, params, cfg.from),
+      to: e.to,
+      reply_to: params.email_reponse || etab.email || undefined,
+      subject: e.subject,
+      html: e.html,
+      text: e.text,
+      headers: e.headers,
+    });
+    return { ...r, canal: 'resend' };
+  }
+  return { erreur: 'Aucune boîte mail connectée et aucun service d\'envoi configuré.', canal: null };
+}
+
 // ── Lecture établissement + paramètres ────────────────────────────
 async function lireEtab(sb: Admin, etabId: string): Promise<{ etab: Etab; params: Params } | null> {
   const [{ data: etab }, { data: params }] = await Promise.all([
@@ -304,6 +544,102 @@ function autorise(a: Appelant | null, etabId: string, roles: string[]) {
   return Boolean(a && etabId && a.etabIds.includes(etabId) && roles.includes(a.role));
 }
 
+// ── Connexion de la boîte (OAuth, code + PKCE) ────────────────────
+async function debutConnexion(sb: Admin, cfg: Cfg, etabId: string, f: Fournisseur, userId: string) {
+  const etat = aleatoire(32);
+  const verificateur = aleatoire(48);
+  const defi = versB64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(verificateur))));
+  await sb.from('spa_oauth_etats').delete().lt('expire_at', new Date().toISOString());
+  const { error } = await sb.from('spa_oauth_etats').insert({
+    etat, etablissement_id: etabId, fournisseur: f, verificateur, user_id: userId,
+  });
+  if (error) throw error;
+  const commun = {
+    client_id: cfg[f].id, redirect_uri: cfg.redirection, response_type: 'code',
+    state: etat, code_challenge: defi, code_challenge_method: 'S256',
+  };
+  if (f === 'google') {
+    return `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
+      ...commun, scope: SCOPES_GOOGLE, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true',
+    })}`;
+  }
+  return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${new URLSearchParams({
+    ...commun, scope: SCOPES_MICROSOFT, response_mode: 'query', prompt: 'select_account',
+  })}`;
+}
+
+async function finConnexion(sb: Admin, cfg: Cfg, etat: string, code: string, erreurFournisseur: string) {
+  if (!/^[A-Za-z0-9_-]{30,80}$/.test(etat)) return { erreur: 'Lien de connexion invalide. Recommencez depuis l\'app.' };
+  // Usage unique : la ligne est supprimée en même temps qu'elle est lue.
+  const { data: e } = await sb.from('spa_oauth_etats').delete().eq('etat', etat).select().maybeSingle();
+  if (!e || new Date(e.expire_at).getTime() < Date.now()) return { erreur: 'Le lien de connexion a expiré. Recommencez depuis l\'app.' };
+  if (erreurFournisseur || !code) return { erreur: 'Connexion annulée : aucune boîte n\'a été connectée.' };
+  const f = e.fournisseur as Fournisseur;
+  if (!connexionDispo(cfg, f)) return { erreur: 'Connexion non activée.' };
+
+  const form = new URLSearchParams({
+    code, client_id: cfg[f].id, client_secret: cfg[f].secret, redirect_uri: cfg.redirection,
+    grant_type: 'authorization_code', code_verifier: e.verificateur,
+  });
+  if (f === 'microsoft') form.set('scope', SCOPES_MICROSOFT);
+  const r = await fetch(JETON_URL[f], { method: 'POST', body: form });
+  const t = await r.json().catch(() => ({}));
+  if (!r.ok || !t.access_token) {
+    console.error('[spa-mailer] échange du code', f, t?.error, t?.error_description);
+    return { erreur: 'La connexion a été refusée. Réessayez, ou vérifiez que vous avez accepté les autorisations.' };
+  }
+  if (!t.refresh_token) return { erreur: 'La boîte n\'a pas accordé d\'accès durable. Recommencez la connexion.' };
+  if (f === 'google' && !String(t.scope || '').includes('gmail.send')) {
+    return { erreur: 'Il faut cocher l\'autorisation « Envoyer des e-mails en votre nom ». Recommencez la connexion.' };
+  }
+
+  let adresse = '';
+  let nom: string | null = null;
+  if (f === 'google') {
+    const u = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${t.access_token}` } });
+    const c = await u.json().catch(() => ({}));
+    adresse = c.email || '';
+    nom = c.name || null;
+  } else {
+    const u = await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName,displayName', { headers: { Authorization: `Bearer ${t.access_token}` } });
+    const c = await u.json().catch(() => ({}));
+    adresse = c.mail || c.userPrincipalName || '';
+    nom = c.displayName || null;
+  }
+  if (!adresse) return { erreur: 'Impossible de lire l\'adresse de la boîte. Réessayez.' };
+
+  // Une boîte Google remplacée par une AUTRE adresse : on révoque l'ancien
+  // accès. Pas pour la même adresse : chez Google, révoquer l'ancien jeton
+  // retirerait aussi celui qu'on vient d'obtenir (même autorisation).
+  const ancienne = await lireBoite(sb, e.etablissement_id);
+  if (ancienne && ancienne.fournisseur === 'google' && ancienne.adresse !== adresse.toLowerCase()) {
+    try {
+      await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', body: new URLSearchParams({ token: await dechiffrer(ancienne.jeton_chiffre) }) });
+    } catch { /* révocation au mieux */ }
+  }
+
+  const maintenant = new Date().toISOString();
+  const { error } = await sb.from('spa_boites_mail').upsert({
+    etablissement_id: e.etablissement_id,
+    fournisseur: f,
+    adresse: adresse.toLowerCase(),
+    nom,
+    jeton_chiffre: await chiffrer(t.refresh_token),
+    acces_chiffre: await chiffrer(t.access_token),
+    acces_expire_at: new Date(Date.now() + Number(t.expires_in || 3600) * 1000).toISOString(),
+    statut: 'actif',
+    derniere_erreur: null,
+    connecte_par: e.user_id,
+    connecte_at: maintenant,
+    updated_at: maintenant,
+  }, { onConflict: 'etablissement_id' });
+  if (error) {
+    console.error('[spa-mailer] enregistrement de la boîte', error);
+    return { erreur: 'La connexion n\'a pas pu être enregistrée. Réessayez.' };
+  }
+  return { ok: true, adresse: adresse.toLowerCase(), fournisseur: f };
+}
+
 // ── Émission d'un bon ─────────────────────────────────────────────
 async function creerBon(sb: Admin, etab: Etab, clientId: string, champs: {
   motif: 'anniversaire' | 'cadeau'; valeur: string; message?: string | null; validiteJours: number; createdBy?: string | null;
@@ -326,11 +662,12 @@ async function creerBon(sb: Admin, etab: Etab, clientId: string, champs: {
 }
 
 // ── Anniversaires d'un établissement ──────────────────────────────
-async function anniversairesEtab(sb: Admin, cfg: ReturnType<typeof config>, etabId: string, forcer = false) {
+async function anniversairesEtab(sb: Admin, cfg: Cfg, etabId: string, forcer = false) {
   const lu = await lireEtab(sb, etabId);
   if (!lu) return { etabId, erreur: 'établissement introuvable' };
   const { etab, params } = lu;
   if (!params.anniversaire_actif && !forcer) return { etabId, ignore: 'envoi désactivé' };
+  if (!(await peutEnvoyer(sb, cfg, etabId))) return { etabId, ignore: 'aucun canal d\'envoi' };
 
   const aujourdhui = zurichToday();
   const annee = Number(aujourdhui.slice(0, 4));
@@ -361,10 +698,8 @@ async function anniversairesEtab(sb: Admin, cfg: ReturnType<typeof config>, etab
       const lien = lienDesinscription(cfg.appUrl, c.desinscription_token);
       const sujet = personnaliser(params.anniversaire_sujet || SUJET_ANNIV, c);
       const corps = personnaliser(params.anniversaire_message || MESSAGE_ANNIV, c);
-      const res = await envoyerUn(cfg.cle, {
-        from: expediteur(etab, params, cfg.from),
+      const res = await expedier(sb, cfg, etab, params, {
         to: c.email!,
-        reply_to: params.email_reponse || etab.email || undefined,
         subject: sujet,
         html: gabarit({ etab, params, titre: sujet, corps, bon, lienDesinscr: lien }),
         text: texteBrut(corps, bon, lien),
@@ -478,37 +813,31 @@ async function creneauxLibres(sb: Admin, p: ParamsEnLigne, dureeMin: number, dat
 }
 
 async function hacher(texte: string) {
-  const octets = new TextEncoder().encode(texte);
-  const empreinte = await crypto.subtle.digest('SHA-256', octets);
+  const empreinte = await crypto.subtle.digest('SHA-256', utf8(texte));
   return Array.from(new Uint8Array(empreinte), (o) => o.toString(16).padStart(2, '0')).join('');
-}
-
-async function journaliserEnvoi(sb: Admin, ligne: Record<string, unknown>) {
-  await sb.from('spa_envois').insert(ligne);
 }
 
 // E-mail transactionnel (pas de lien de désinscription : ce n'est pas de la
 // publicité, c'est la réponse à sa demande).
-async function mailRdv(sb: Admin, cfg: ReturnType<typeof config>, etab: Etab, params: Params, dest: {
+async function mailRdv(sb: Admin, cfg: Cfg, etab: Etab, params: Params, dest: {
   email: string; clientId?: string | null; sujet: string; corps: string;
 }) {
-  if (!cfg.configure || !dest.email) return { envoye: false };
-  const res = await envoyerUn(cfg.cle, {
-    from: expediteur(etab, params, cfg.from),
+  if (!dest.email) return { envoye: false };
+  const res = await expedier(sb, cfg, etab, params, {
     to: dest.email,
-    reply_to: params.email_reponse || etab.email || undefined,
     subject: dest.sujet,
     html: gabarit({ etab, params, titre: dest.sujet, corps: dest.corps }),
     text: texteBrut(dest.corps),
   });
-  await journaliserEnvoi(sb, {
+  if (!res.canal) return { envoye: false, nonConfigure: true };
+  await sb.from('spa_envois').insert({
     etablissement_id: etab.id, client_id: dest.clientId || null, type: 'rdv', email: dest.email,
     statut: res.erreur ? 'echec' : 'envoye', erreur: res.erreur || null, provider_id: res.id || null,
   });
   return { envoye: !res.erreur };
 }
 
-async function actionPublique(req: Request, sb: Admin, cfg: ReturnType<typeof config>, action: string, body: Record<string, unknown>) {
+async function actionPublique(req: Request, sb: Admin, cfg: Cfg, action: string, body: Record<string, unknown>) {
   const lu = await lireEnLigne(sb, String(body.slug || ''));
   if (!lu) return json({ error: 'La réservation en ligne n\'est pas ouverte pour ce spa.' }, 404);
   const { enLigne, etab, params } = lu;
@@ -612,7 +941,10 @@ async function actionPublique(req: Request, sb: Admin, cfg: ReturnType<typeof co
     sujet: `Votre demande de rendez-vous du ${jourLong(date)}`,
     corps: `Bonjour ${prenom},\n\nNous avons bien reçu votre demande pour « ${soin.nom} » le ${quand}.\n\nNous vous confirmons le rendez-vous très vite par e-mail. Pour toute question, répondez simplement à ce message.\n\nÀ bientôt.`,
   });
-  const alerte = params.email_reponse || etab.email;
+  // L'alerte au spa part de sa propre boîte vers sa propre adresse (ou de
+  // Resend vers l'adresse de réponse) : elle arrive dans la boîte de réception.
+  const boite = await lireBoite(sb, etab.id);
+  const alerte = params.email_reponse || etab.email || boite?.adresse;
   if (alerte) {
     await mailRdv(sb, cfg, etab, { ...params, signature: 'Réservation en ligne' }, {
       email: alerte,
@@ -649,6 +981,12 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, etablissement: etab?.nom || null });
   }
 
+  // ── Retour de connexion OAuth : public, par state à usage unique ──
+  if (action === 'boite_fin') {
+    const r = await finConnexion(sb, cfg, String(body.etat || ''), String(body.code || ''), String(body.erreur || ''));
+    return json(r, r.erreur ? 400 : 200);
+  }
+
   // ── Réservation en ligne : publique, par adresse de réservation (slug) ──
   if (action.startsWith('public_')) {
     if (!['public_infos', 'public_creneaux', 'public_reserver'].includes(action)) return json({ error: 'Action inconnue.' }, 400);
@@ -661,7 +999,6 @@ Deno.serve(async (req: Request) => {
     if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
       return json({ error: 'Unauthorized' }, 401);
     }
-    if (!cfg.configure) return json({ ok: false, error: 'Envoi non configuré (RESEND_API_KEY / SPA_MAIL_FROM).' });
     const { data: actifs } = await sb.from('spa_parametres').select('etablissement_id').eq('anniversaire_actif', true);
     const resultats = [];
     for (const p of actifs || []) resultats.push(await anniversairesEtab(sb, cfg, p.etablissement_id));
@@ -675,12 +1012,48 @@ Deno.serve(async (req: Request) => {
 
   if (action === 'etat') {
     if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
-    return json({ configure: cfg.configure });
+    const boite = await lireBoite(sb, etabId);
+    return json({
+      configure: cfg.resend || Boolean(boite && boite.statut === 'actif'),
+      resend: cfg.resend,
+      boite: boite ? {
+        fournisseur: boite.fournisseur, adresse: boite.adresse, statut: boite.statut,
+        derniereErreur: boite.derniere_erreur, connecteAt: boite.connecte_at,
+      } : null,
+      connexions: { google: connexionDispo(cfg, 'google'), microsoft: connexionDispo(cfg, 'microsoft') },
+    });
+  }
+
+  if (action === 'boite_debut') {
+    if (!autorise(qui, etabId, ROLES_DIRECTION)) return json({ error: 'Accès refusé.' }, 403);
+    const f = String(body.fournisseur || '') as Fournisseur;
+    if (f !== 'google' && f !== 'microsoft') return json({ error: 'Fournisseur inconnu.' }, 400);
+    if (!connexionDispo(cfg, f)) {
+      return json({ error: `La connexion ${f === 'google' ? 'Gmail' : 'Outlook'} n'est pas encore activée par Samper Consulting.` }, 503);
+    }
+    try {
+      return json({ url: await debutConnexion(sb, cfg, etabId, f, qui.uid) });
+    } catch (e) {
+      console.error('[spa-mailer] début de connexion', e);
+      return json({ error: 'La connexion n\'a pas pu démarrer. Réessayez.' }, 500);
+    }
+  }
+
+  if (action === 'boite_deconnexion') {
+    if (!autorise(qui, etabId, ROLES_DIRECTION)) return json({ error: 'Accès refusé.' }, 403);
+    const boite = await lireBoite(sb, etabId);
+    if (boite?.fournisseur === 'google') {
+      try {
+        await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', body: new URLSearchParams({ token: await dechiffrer(boite.jeton_chiffre) }) });
+      } catch { /* révocation au mieux */ }
+    }
+    await sb.from('spa_boites_mail').delete().eq('etablissement_id', etabId);
+    return json({ ok: true });
   }
 
   // Demande venue du site, confirmée ou refusée dans l'agenda : on prévient le
-  // client. Le changement de statut est déjà fait par le front ; si l'envoi
-  // n'est pas branché, on le dit sans échouer.
+  // client. Le changement de statut est déjà fait par le front ; si aucun canal
+  // d'envoi n'est branché, on le dit sans échouer.
   if (action === 'rdv_statut') {
     if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
     const evenement = String(body.evenement || '');
@@ -691,7 +1064,7 @@ Deno.serve(async (req: Request) => {
     if (r.origine !== 'en_ligne') return json({ envoye: false, raison: 'hors_ligne' });
     const attendu = evenement === 'confirmation' ? 'confirmee' : evenement === 'refus' ? 'annulee' : null;
     if (!attendu || r.statut !== attendu) return json({ envoye: false, raison: 'statut' });
-    if (!cfg.configure) return json({ envoye: false, raison: 'non_configure' });
+    if (!(await peutEnvoyer(sb, cfg, etabId))) return json({ envoye: false, raison: 'non_configure' });
     const { data: c } = await sb.from('spa_clients').select('id, prenom, nom, email').eq('id', r.client_id).maybeSingle();
     if (!c?.email) return json({ envoye: false, raison: 'sans_email' });
     const lu = await lireEtab(sb, etabId);
@@ -713,8 +1086,8 @@ Deno.serve(async (req: Request) => {
     return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
   }
 
-  if (!cfg.configure) {
-    return json({ error: "L'envoi d'e-mails n'est pas encore branché (fournisseur à configurer)." }, 503);
+  if (['anniversaires', 'test', 'campagne', 'bon'].includes(action) && !(await peutEnvoyer(sb, cfg, etabId))) {
+    return json({ error: 'Aucune boîte mail n\'est connectée : connectez celle du spa dans l\'onglet E-mails.' }, 503);
   }
 
   if (action === 'anniversaires') {
@@ -739,10 +1112,8 @@ Deno.serve(async (req: Request) => {
       ? { code: codeBon(etab.nom).replace(/-\w+$/, '-ESSAI'), valeur: params.bon_valeur, valable_jusqu: addDaysIso(zurichToday(), params.bon_validite_jours) }
       : null;
     const lienFactice = `${cfg.appUrl}/api/spa-desinscription`;
-    const res = await envoyerUn(cfg.cle, {
-      from: expediteur(etab, params, cfg.from),
+    const res = await expedier(sb, cfg, etab, params, {
       to: qui.email,
-      reply_to: params.email_reponse || etab.email || undefined,
       subject: sujet,
       html: gabarit({ etab, params, titre: sujet, corps, bon, lienDesinscr: lienFactice }),
       text: texteBrut(corps, bon, lienFactice),
@@ -751,8 +1122,8 @@ Deno.serve(async (req: Request) => {
       etablissement_id: etabId, type: 'test', email: qui.email,
       statut: res.erreur ? 'echec' : 'envoye', erreur: res.erreur || null, provider_id: res.id || null,
     });
-    if (res.erreur) return json({ error: `Envoi refusé par le fournisseur : ${res.erreur}` }, 502);
-    return json({ ok: true, email: qui.email });
+    if (res.erreur) return json({ error: `Envoi refusé : ${res.erreur}` }, 502);
+    return json({ ok: true, email: qui.email, canal: res.canal });
   }
 
   if (action === 'campagne') {
@@ -774,37 +1145,66 @@ Deno.serve(async (req: Request) => {
     const dest = (clients || []) as Client[];
     if (!dest.length) return json({ error: "Aucun client n'a accepté de recevoir les nouvelles." }, 400);
 
+    const boite = await lireBoite(sb, etabId);
+    const parBoite = Boolean(boite && boite.statut === 'actif');
+    if (parBoite && dest.length > PLAFOND_BOITE && !cfg.resend) {
+      return json({ error: `Une boîte Gmail ou Outlook limite les envois : ${PLAFOND_BOITE} destinataires au plus par actualité.` }, 400);
+    }
+
     const { data: campagne, error: errC } = await sb.from('spa_campagnes').insert({
       etablissement_id: etabId, sujet: sujetBrut, message: messageBrut,
       nb_destinataires: dest.length, envoye_par: qui.uid,
     }).select('id').single();
     if (errC) return json({ error: 'Enregistrement de la campagne impossible.' }, 500);
 
+    const preparer = (c: Client) => {
+      const lien = lienDesinscription(cfg.appUrl, c.desinscription_token);
+      const sujet = personnaliser(sujetBrut, c);
+      const corps = personnaliser(messageBrut, c);
+      return {
+        to: c.email!,
+        subject: sujet,
+        html: gabarit({ etab, params, titre: sujet, corps, lienDesinscr: lien }),
+        text: texteBrut(corps, null, lien),
+        headers: enTetesDesinscription(lien),
+      };
+    };
+
     let envoyes = 0; let echecs = 0;
-    for (let i = 0; i < dest.length; i += LOT_MAX) {
-      const lot = dest.slice(i, i + LOT_MAX);
-      const mails = lot.map((c) => {
-        const lien = lienDesinscription(cfg.appUrl, c.desinscription_token);
-        const sujet = personnaliser(sujetBrut, c);
-        const corps = personnaliser(messageBrut, c);
-        return {
-          from: expediteur(etab, params, cfg.from),
-          to: c.email!,
-          reply_to: params.email_reponse || etab.email || undefined,
-          subject: sujet,
-          html: gabarit({ etab, params, titre: sujet, corps, lienDesinscr: lien }),
-          text: texteBrut(corps, null, lien),
-          headers: enTetesDesinscription(lien),
-        } as Mail;
-      });
-      const res = await envoyerLot(cfg.cle, mails);
-      const lignes = lot.map((c, k) => ({
-        etablissement_id: etabId, client_id: c.id, type: 'news', campagne_id: campagne.id, email: c.email,
-        statut: res[k].erreur ? 'echec' : 'envoye', erreur: res[k].erreur || null, provider_id: res[k].id || null,
-      }));
-      await sb.from('spa_envois').insert(lignes);
+    const journaliser = async (lignes: Record<string, unknown>[]) => {
+      if (lignes.length) await sb.from('spa_envois').insert(lignes);
       envoyes += lignes.filter((l) => l.statut === 'envoye').length;
       echecs += lignes.filter((l) => l.statut === 'echec').length;
+    };
+
+    if (parBoite && dest.length <= PLAFOND_BOITE) {
+      // Depuis la boîte du spa : un e-mail à la fois, trois en parallèle.
+      for (let i = 0; i < dest.length; i += 3) {
+        const lot = dest.slice(i, i + 3);
+        const res = await Promise.all(lot.map((c) => expedier(sb, cfg, etab, params, preparer(c), boite)));
+        await journaliser(lot.map((c, k) => ({
+          etablissement_id: etabId, client_id: c.id, type: 'news', campagne_id: campagne.id, email: c.email,
+          statut: res[k].erreur ? 'echec' : 'envoye', erreur: res[k].erreur || null, provider_id: res[k].id || null,
+        })));
+      }
+    } else {
+      // Par Resend, en lots de 100.
+      for (let i = 0; i < dest.length; i += LOT_MAX) {
+        const lot = dest.slice(i, i + LOT_MAX);
+        const mails = lot.map((c) => {
+          const p = preparer(c);
+          return {
+            from: expediteur(etab, params, cfg.from), to: p.to,
+            reply_to: params.email_reponse || etab.email || undefined,
+            subject: p.subject, html: p.html, text: p.text, headers: p.headers,
+          } as Mail;
+        });
+        const res = await envoyerLot(cfg.cle, mails);
+        await journaliser(lot.map((c, k) => ({
+          etablissement_id: etabId, client_id: c.id, type: 'news', campagne_id: campagne.id, email: c.email,
+          statut: res[k].erreur ? 'echec' : 'envoye', erreur: res[k].erreur || null, provider_id: res[k].id || null,
+        })));
+      }
     }
     await sb.from('spa_campagnes').update({ nb_envoyes: envoyes, nb_echecs: echecs }).eq('id', campagne.id);
     return json({ ok: true, destinataires: dest.length, envoyes, echecs });
@@ -832,10 +1232,8 @@ Deno.serve(async (req: Request) => {
     const corps = personnaliser(String(body.corps || '').trim()
       || 'Bonjour {prenom},\n\nNous avons le plaisir de vous offrir le bon ci-dessous. Présentez-le, ou donnez-nous son code, lors de votre prochaine réservation.\n\nÀ très bientôt.', c);
     const lien = c.consentement_marketing ? lienDesinscription(cfg.appUrl, c.desinscription_token) : null;
-    const res = await envoyerUn(cfg.cle, {
-      from: expediteur(etab, params, cfg.from),
+    const res = await expedier(sb, cfg, etab, params, {
       to: c.email,
-      reply_to: params.email_reponse || etab.email || undefined,
       subject: sujet,
       html: gabarit({ etab, params, titre: sujet, corps, bon, lienDesinscr: lien }),
       text: texteBrut(corps, bon, lien),
@@ -846,7 +1244,7 @@ Deno.serve(async (req: Request) => {
     });
     if (res.erreur) {
       await sb.from('spa_bons').delete().eq('id', bon.id);
-      return json({ error: `Envoi refusé par le fournisseur : ${res.erreur}` }, 502);
+      return json({ error: `Envoi refusé : ${res.erreur}` }, 502);
     }
     await sb.from('spa_bons').update({ envoye_at: new Date().toISOString() }).eq('id', bon.id);
     return json({ ok: true, code: bon.code });

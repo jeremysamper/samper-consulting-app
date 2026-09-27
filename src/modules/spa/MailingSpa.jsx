@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cake, History, Mail, MailCheck, Send, Users } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { appelerMailer, useSpaParametres, useSpaTable } from './spaData.js';
+import BoiteEnvoi from './BoiteEnvoi.jsx';
 import {
   Avatar, Champ, EtatVide, Puce, TitreSection, dateLongue, decalerJour, jourMois, nomClient,
   prochainAnniversaire, st,
@@ -10,6 +11,9 @@ import {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // E-mails du spa (direction : consultant et patron).
+//
+//   Boîte d'envoi : le spa connecte sa boîte Gmail ou Outlook (BoiteEnvoi) ;
+//                   tous ses e-mails partent alors de sa propre adresse.
 //
 //   Anniversaires : un bon cadeau part tout seul le jour de l'anniversaire de
 //                   chaque client qui a accepté les e-mails (cron quotidien,
@@ -55,39 +59,45 @@ const prefixeCode = (nom) => (nom || 'SPA').normalize('NFD').replace(/[^A-Za-z]/
 
 const personnaliser = (t) => String(t || '').replace(/\{prenom\}/gi, 'Camille').replace(/\{nom\}/gi, 'Exemple');
 
-export default function MailingSpa({ etablissement, clients, aujourdhui }) {
+export default function MailingSpa({ etablissement, clients, aujourdhui, consultant = false }) {
   const etablissementId = etablissement?.id;
   const [onglet, setOnglet] = useState('anniversaires');
-  const [configure, setConfigure] = useState(null); // null = inconnu
+  const [etat, setEtat] = useState(null); // réponse de spa-mailer « etat », null = inconnu
   const [erreurService, setErreurService] = useState(null);
   const { parametres, status, enregistrer } = useSpaParametres(etablissementId);
+  const demande = useRef(0);
 
-  useEffect(() => {
-    let vivant = true;
+  // Relue aussi après une connexion ou une déconnexion de la boîte d'envoi.
+  const chargerEtat = useCallback(() => {
+    const n = ++demande.current;
     appelerMailer('etat', { etablissementId }).then(({ data, error }) => {
-      if (!vivant) return;
-      if (error) { setErreurService(error); setConfigure(false); return; }
-      setConfigure(Boolean(data?.configure));
+      if (n !== demande.current) return;
+      setErreurService(error || null);
+      if (!error) setEtat(data);
     });
-    return () => { vivant = false; };
   }, [etablissementId]);
 
+  useEffect(() => {
+    setEtat(null);
+    chargerEtat();
+    return () => { demande.current += 1; };
+  }, [chargerEtat]);
+
+  const configure = etat ? Boolean(etat.configure) : (erreurService ? false : null);
+  const adresseEnvoi = etat?.boite?.statut === 'actif' ? etat.boite.adresse : null;
   const actifs = clients.filter((c) => !c.archive);
   const destinataires = actifs.filter((c) => c.consentementMarketing && c.email);
   const part = actifs.length ? Math.round((destinataires.length / actifs.length) * 100) : 0;
 
   return (
     <div>
-      {configure === false && (
-        <div style={{ ...st.encartAttention, marginBottom: 14 }}>
-          <Mail size={18} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2, color: 'var(--spa-kin)' }} />
-          <span>
-            <strong>L'envoi d'e-mails n'est pas encore branché.</strong>{' '}
-            {erreurService || 'Le fournisseur d\'e-mails reste à configurer côté serveur.'}{' '}
-            Tout peut déjà être préparé : réglages, messages et accords des clients sont enregistrés.
-          </span>
-        </div>
-      )}
+      <BoiteEnvoi
+        etablissementId={etablissementId}
+        etat={etat}
+        erreurService={erreurService}
+        onRecharger={chargerEtat}
+        consultant={consultant}
+      />
 
       {/* ── Audience ── */}
       <div style={s.audience}>
@@ -119,6 +129,7 @@ export default function MailingSpa({ etablissement, clients, aujourdhui }) {
           clients={actifs}
           aujourdhui={aujourdhui}
           envoiPossible={configure === true}
+          adresseEnvoi={adresseEnvoi}
         />
       )}
       {status !== 'absent' && onglet === 'actualites' && (
@@ -127,6 +138,7 @@ export default function MailingSpa({ etablissement, clients, aujourdhui }) {
           parametres={parametres}
           nbDestinataires={destinataires.length}
           envoiPossible={configure === true}
+          adresseEnvoi={adresseEnvoi}
         />
       )}
       {onglet === 'historique' && <Historique etablissementId={etablissementId} clients={clients} />}
@@ -135,7 +147,7 @@ export default function MailingSpa({ etablissement, clients, aujourdhui }) {
 }
 
 // ── Anniversaires ─────────────────────────────────────────────────────────
-function Anniversaires({ etablissement, parametres, enregistrer, clients, aujourdhui, envoiPossible }) {
+function Anniversaires({ etablissement, parametres, enregistrer, clients, aujourdhui, envoiPossible, adresseEnvoi }) {
   const [form, setForm] = useState(parametres);
   const [enCours, setEnCours] = useState(false);
   const [essai, setEssai] = useState(false);
@@ -275,13 +287,14 @@ function Anniversaires({ etablissement, parametres, enregistrer, clients, aujour
         sujet={form.anniversaireSujet || SUJET_DEFAUT}
         message={form.anniversaireMessage || MESSAGE_DEFAUT}
         bon={{ valeur: form.bonValeur, validite: Number(form.bonValiditeJours) || 60 }}
+        adresseEnvoi={adresseEnvoi}
       />
     </div>
   );
 }
 
 // ── Actualités ────────────────────────────────────────────────────────────
-function Actualites({ etablissement, parametres, nbDestinataires, envoiPossible }) {
+function Actualites({ etablissement, parametres, nbDestinataires, envoiPossible, adresseEnvoi }) {
   const [sujet, setSujet] = useState('');
   const [message, setMessage] = useState('');
   const [enCours, setEnCours] = useState(null); // 'essai' | 'envoi'
@@ -342,6 +355,7 @@ function Actualites({ etablissement, parametres, nbDestinataires, envoiPossible 
         parametres={parametres}
         sujet={sujet || 'Objet de votre message'}
         message={message || 'Bonjour {prenom},\n\nVotre message apparaît ici, paragraphe par paragraphe.'}
+        adresseEnvoi={adresseEnvoi}
       />
     </div>
   );
@@ -351,7 +365,7 @@ function Actualites({ etablissement, parametres, nbDestinataires, envoiPossible 
 // Reproduit le gabarit du serveur (spa-mailer) : ses couleurs sont celles de
 // l'e-mail reçu, pas celles du thème de l'app, et restent donc fixes (comme un
 // document imprimé).
-function ApercuEmail({ etablissement, parametres, sujet, message, bon = null }) {
+function ApercuEmail({ etablissement, parametres, sujet, message, bon = null, adresseEnvoi = null }) {
   const nom = etablissement?.nom || 'Spa';
   const expediteur = (parametres?.nomExpediteur || '').trim() || nom;
   const signature = (parametres?.signature || '').trim() || `L'équipe ${nom}`;
@@ -363,7 +377,10 @@ function ApercuEmail({ etablissement, parametres, sujet, message, bon = null }) 
       <TitreSection>Aperçu</TitreSection>
       <div style={e.cadre}>
         <div style={e.enveloppe}>
-          <div style={{ fontSize: 12, color: '#6f6a62' }}>De <strong style={{ color: '#2b2b2b' }} data-no-translate>{expediteur}</strong></div>
+          <div style={{ fontSize: 12, color: '#6f6a62', overflowWrap: 'anywhere' }}>
+            De <strong style={{ color: '#2b2b2b' }} data-no-translate>{expediteur}</strong>
+            {adresseEnvoi && <span data-no-translate>{` <${adresseEnvoi}>`}</span>}
+          </div>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#2b2b2b', marginTop: 2 }} data-no-translate>{personnaliser(sujet)}</div>
         </div>
         <div style={e.fond}>

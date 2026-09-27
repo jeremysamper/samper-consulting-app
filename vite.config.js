@@ -48,7 +48,7 @@ function legacyRawComponentsPlugin() {
   };
 }
 
-// Dev : /reserver/<adresse> sert la page publique de réservation, comme la
+// Dev : /reserver/<adresse> (et son guide /integrer) sert la page publique de réservation, comme la
 // réécriture vercel.json le fait en production.
 function reservationPubliqueDevPlugin() {
   return {
@@ -56,7 +56,7 @@ function reservationPubliqueDevPlugin() {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const [chemin, requete] = (req.url || '').split('?');
-        if (/^\/reserver\/[a-z0-9-]+\/?$/i.test(chemin)) {
+        if (/^\/reserver\/[a-z0-9-]+(\/integrer)?\/?$/i.test(chemin)) {
           req.url = `/reserver.html${requete ? `?${requete}` : ''}`;
         }
         next();

@@ -398,7 +398,7 @@ Le client sera prévenu par e-mail.`)) return;
         />
       )}
       {!absent && onglet === 'emails' && direction && (
-        <MailingSpa etablissement={etablissement} clients={clients.rows} aujourdhui={aujourdhui} />
+        <MailingSpa etablissement={etablissement} clients={clients.rows} aujourdhui={aujourdhui} consultant={role === 'consultant'} />
       )}
 
       {/* ── Fenêtres ── */}

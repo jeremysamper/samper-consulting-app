@@ -12,8 +12,12 @@
  *                  (défaut : juste après ce script)
  *   data-texte     texte du bouton (défaut : « Réserver un soin »)
  *   data-couleur   couleur du bouton et de la réservation, ex. #8a6d3b
- *   data-bouton    "non" : pas de bouton, seulement les éléments du site portant
- *                  l'attribut data-spa-reserver (un lien de menu, par exemple)
+ *   data-bouton    "non" : pas de bouton ajouté ; seuls les éléments du site
+ *                  ouvrent la réservation (voir plus bas)
+ *
+ * Dans tous les cas, ouvrent la réservation par-dessus le site : les liens du
+ * site vers https://samperconsulting-app.com/reserver/<adresse> et les
+ * éléments portant l'attribut data-spa-reserver.
  *
  * Aucune donnée n'est lue sur le site hôte. La réservation vit dans une iframe
  * servie par samperconsulting-app.com ; seuls sa hauteur et deux événements
@@ -117,9 +121,25 @@
     });
   }
 
-  // Éléments du site qui ouvrent la réservation (lien de menu, image…).
+  // Éléments du site qui ouvrent la réservation : ceux qui portent
+  // data-spa-reserver, et les liens vers la page de réservation de ce spa
+  // (le bouton « Réserver » du site n'a qu'à pointer vers le lien direct).
+  // Ctrl/Cmd + clic garde l'ouverture dans un nouvel onglet.
+  var cheminSpa = new RegExp('^/reserver/' + slug + '/?$');
+  function versCeSpa(lien) {
+    try {
+      var u = new URL(lien.href, window.location.href);
+      return u.origin === origine && cheminSpa.test(u.pathname);
+    } catch (err) { return false; }
+  }
   document.addEventListener('click', function (e) {
-    var el = e.target && e.target.closest ? e.target.closest('[data-spa-reserver]') : null;
+    if (!e.target || !e.target.closest) return;
+    if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var el = e.target.closest('[data-spa-reserver]');
+    if (!el) {
+      var lien = e.target.closest('a[href]');
+      if (lien && versCeSpa(lien)) el = lien;
+    }
     if (el) ouvrir(e);
   });
 
