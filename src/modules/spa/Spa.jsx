@@ -267,6 +267,7 @@ Le client sera prévenu par e-mail.`)) return;
     <section className="spa" style={{ ...st.page, ...(mobile ? { padding: '16px 16px 32px' } : null) }}>
       {/* ── Accueil : la journée d'un coup d'œil ── */}
       <header style={{ ...s.hero, ...(mobile ? { padding: '20px 18px 18px' } : null) }} className="spa-apparition">
+        <div className="spa-lumiere" aria-hidden="true" />
         <Onde />
         <div style={s.heroHaut}>
           <div style={{ minWidth: 0 }}>
@@ -552,21 +553,21 @@ function Stat({ icone: Icone, valeur, label, detail, detailBrut = false, ton = '
   );
 }
 
-// Ondes concentriques : l'eau de Mizukii, en filigrane du bandeau.
+// Ondes concentriques : l'eau de Mizukii, en filigrane immobile du bandeau.
+// Le mouvement vient de la lumière du dégradé (.spa-lumiere), pas des cercles.
 function Onde() {
   return (
     <svg aria-hidden="true" viewBox="0 0 240 240" style={s.onde}>
       {[36, 64, 92, 120].map((r) => (
         <circle key={r} cx="200" cy="40" r={r} fill="none" stroke="var(--spa-mizu)" strokeOpacity={0.14 - r / 2000} strokeWidth="1.2" />
       ))}
-      <circle className="spa-onde" cx="200" cy="40" r="40" fill="none" stroke="var(--spa-mizu)" strokeOpacity="0.25" strokeWidth="1" />
     </svg>
   );
 }
 
 const s = {
   hero: {
-    position: 'relative', overflow: 'hidden', borderRadius: 'var(--spa-r-lg)',
+    position: 'relative', overflow: 'hidden', isolation: 'isolate', borderRadius: 'var(--spa-r-lg)',
     background: 'var(--spa-hero)', border: '1px solid var(--spa-line)',
     padding: '26px 26px 22px', boxShadow: 'var(--spa-shadow)',
   },
