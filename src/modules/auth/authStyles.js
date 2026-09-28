@@ -22,7 +22,7 @@ export const authStyles = {
   rememberLabel: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)', cursor: 'pointer', userSelect: 'none', marginTop: 4, marginBottom: 14 },
   rememberCheckbox: { width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 },
   footer: { marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text2)', textAlign: 'center', lineHeight: 1.5 },
-  code: { background: 'var(--bg)', padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 11 },
+  code: { background: 'var(--bg)', padding: '1px 6px', borderRadius: 4, fontFamily: 'var(--font)', fontSize: 11 },
 
   // Spécifique à l'écran « nouveau mot de passe »
   hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 18 },

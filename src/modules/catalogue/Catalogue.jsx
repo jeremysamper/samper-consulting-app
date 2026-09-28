@@ -611,7 +611,7 @@ const Catalogue = ({ user, etablissement }) => {
                           </td>
                         )}
                         <td style={{ ...cat.td, fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
-                        <td style={{ ...cat.td, fontFamily: 'monospace', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
+                        <td style={{ ...cat.td, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
                         <td style={cat.td}><span style={cat.catBadge}>{p.categorie}</span></td>
                         {/* Sélecteur fournisseur inline */}
                         <td style={cat.td}>
