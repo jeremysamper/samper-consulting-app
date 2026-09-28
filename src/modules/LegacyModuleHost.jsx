@@ -10,6 +10,8 @@ const loadCommande = () => import('./commande/Commande.jsx');
 const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
 const loadDashboard = () => import('./dashboard/Dashboard.jsx');
 const loadDashboardMobile = () => import('./dashboard/DashboardMobile.jsx');
+// Tableau de bord des restaurants ; les spas gardent Dashboard / DashboardMobile.
+const loadTableauDeBord = () => import('./dashboard/TableauDeBord.jsx');
 const loadDocuments = () => import('./documents/Documents.jsx');
 const loadFactures = () => import('./factures/Factures.jsx');
 const loadFAQAssistant = () => import('./faq/FAQAssistant.jsx');
@@ -35,6 +37,7 @@ const Commande = lazy(loadCommande);
 const ConsultantTools = lazy(loadConsultantTools);
 const Dashboard = lazy(loadDashboard);
 const DashboardMobile = lazy(loadDashboardMobile);
+const TableauDeBord = lazy(loadTableauDeBord);
 const Documents = lazy(loadDocuments);
 const Factures = lazy(loadFactures);
 const FAQAssistant = lazy(loadFAQAssistant);
@@ -59,8 +62,7 @@ const Spa = lazy(loadSpa);
 // navigation soit instantanée (le chunk est déjà en cache navigateur).
 // Ordre = priorité métier : brigade d'abord, consultant ensuite.
 const PREFETCH_LOADERS = [
-  loadDashboardMobile,
-  loadDashboard,
+  loadTableauDeBord,
   loadPlanning,
   loadHACCP,
   loadRecettes,
@@ -138,7 +140,9 @@ export default function LegacyModuleHost({
       </Suspense>
     </SafeModule>
   );
-  const DashboardComponent = isMobile ? DashboardMobile : Dashboard;
+  // Spa : tableau de bord d'origine, pensé pour lui. Restaurants : le nouveau.
+  const estSpa = isPageActiveForEtab(etablissement, 'spa');
+  const DashboardComponent = estSpa ? (isMobile ? DashboardMobile : Dashboard) : TableauDeBord;
 
   // Module non activé pour cet établissement (Paramètres) : page mémorisée
   // d'une session précédente, lien d'un autre module ou changement

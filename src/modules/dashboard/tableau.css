@@ -1,0 +1,97 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Tableau de bord (restaurants)
+   ────────────────────────────────────────────────────────────────────────────
+   Feuille limitée à .tdb, chargée avec le chunk du module. Elle ne porte que ce
+   que les styles inline ne savent pas faire : couleurs d'action lisibles dans
+   les deux thèmes, mise en page par largeur d'écran, survol, focus clavier,
+   pastille « en direct » et mouvement réduit. Le reste est en objets de style
+   dans les composants, sur les jetons de app.css.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.tdb {
+  /* Boutons d'action du pointage : texte blanc sur teinte sombre en clair,
+     texte encre sur teinte claire en sombre (contraste AA dans les deux). */
+  --tdb-go: #15803d;
+  --tdb-on-go: #ffffff;
+  --tdb-stop: var(--accent);
+  --tdb-on-stop: #ffffff;
+  --tdb-live: #16a34a;
+}
+
+html[data-theme="dark"] .tdb {
+  --tdb-go: oklch(72% 0.14 152);
+  --tdb-on-go: oklch(18% 0.03 152);
+  --tdb-on-stop: #04222f;
+  --tdb-live: oklch(76% 0.15 152);
+}
+
+/* ── Mise en page ─────────────────────────────────────────────────────────── */
+.tdb-haut {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.tdb-jours {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.tdb-bas {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Par la largeur réellement disponible (barre latérale ouverte ou non), pas
+   par celle de l'écran : requêtes de conteneur. */
+.tdb { container-type: inline-size; container-name: tdb; }
+@container tdb (min-width: 760px) {
+  .tdb-haut { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tdb-bas--deux { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+}
+@container tdb (min-width: 1080px) {
+  .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ── Interactions ─────────────────────────────────────────────────────────── */
+.tdb-lien {
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.tdb-lien:hover {
+  background: var(--surface2);
+}
+.tdb-lien:focus-visible,
+.tdb button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Pastille « en poste » : un léger halo qui respire. */
+.tdb-live {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tdb-live);
+  flex-shrink: 0;
+}
+.tdb-live::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--tdb-live);
+  opacity: 0;
+  animation: tdb-pouls 2.4s ease-out infinite;
+}
+@keyframes tdb-pouls {
+  0% { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tdb-live::after { animation: none; }
+  .tdb-lien { transition: none; }
+}

@@ -11,6 +11,10 @@ import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
+import { useAbsences } from '../../hooks/useAbsences.js';
+import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
+import { zurichToday } from '../../utils/zurichTime.js';
+import AbsencesModal from './AbsencesModal.jsx';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -102,6 +106,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
     !['consultant', 'patron'].includes(u.role) &&
     u.actif !== false
   );
+
+  // Absences de l'équipe (congé, formation, absence), posées par la direction.
+  const absencesEtab = useAbsences(etabId);
+  const [showAbsences, setShowAbsences] = React.useState(false);
+  const { assurerDepuis: assurerAbsencesDepuis } = absencesEtab;
+  React.useEffect(() => { assurerAbsencesDepuis(selectedDate); }, [selectedDate, assurerAbsencesDepuis]);
+  React.useEffect(() => { assurerAbsencesDepuis(mobileDate); }, [mobileDate, assurerAbsencesDepuis]);
+  const absencesVisibles = absencesEtab.status === 'absent' ? [] : absencesEtab.absences;
 
   // Planning de cet établissement uniquement
   const planningEtab = planning.filter(s => (s.etablissementId || 'etab-1') === etabId);
@@ -1023,6 +1035,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
           )}
 
+          {/* Absents du jour (congé, formation, absence) */}
+          {absencesDuJour(absencesVisibles, mobileDate).map(a => {
+            const m = metaMotif(a.motif);
+            return (
+              <div key={a.id} style={{ ...pls.mobileCoverage, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 10, background: m.fond, color: m.texte }}>
+                <strong data-no-translate>{userDisplay(a.userId).name}</strong>
+                <span>{m.etat} {resteAbsence(a, mobileDate)}</span>
+              </div>
+            );
+          })}
+
           {dayShifts.length === 0 ? (
             <div style={pls.mobileEmptyDay}>
               <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos - aucun horaire planifié.</span>
@@ -1151,6 +1174,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
             onClick={toggleSelectionMode}
           >{selectionMode ? 'Quitter la sélection' : 'Sélectionner'}</button>
         )}
+        {activeTab === 'planning' && absencesEtab.status !== 'absent' && (
+          <button style={pls.exportBtn} onClick={() => setShowAbsences(true)}>Absences</button>
+        )}
         <div style={{ flex: 1 }} />
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>Dupliquer la semaine</button>}
         {canExport && <button style={pls.exportBtn} onClick={openCCNTModal}>Relevé CCNT</button>}
@@ -1205,7 +1231,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
                         </div>
                       </div>
-                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected}/></div>)}
+                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)}/></div>)}
                     </React.Fragment>
                   );
                 })}
@@ -1791,6 +1817,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
       )}
 
       {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
+      {showAbsences && (
+        <AbsencesModal
+          onClose={() => setShowAbsences(false)}
+          employees={employees}
+          absences={absencesVisibles}
+          status={absencesEtab.status}
+          canWrite={canWrite}
+          creer={absencesEtab.creer}
+          supprimer={absencesEtab.supprimer}
+          aujourdhui={zurichToday()}
+        />
+      )}
+
       {showBulkDeleteConfirm && (
         <div className="modal-full-overlay" style={pls.overlay} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>
           <div className="modal-full" style={{ ...pls.modal, width: 420 }} onClick={e => e.stopPropagation()}>

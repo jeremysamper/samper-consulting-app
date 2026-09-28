@@ -1,16 +1,29 @@
 import React from 'react';
 import { pls } from './Planning.styles.js';
+import { metaMotif } from '../../utils/absences.js';
 
-const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected }) => {
+// Pastille d'absence (congé, formation, absence) posée en tête de case.
+const PuceAbsence = ({ absence }) => {
+  const m = metaMotif(absence.motif);
+  return (
+    <div style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: m.fond, color: m.texte, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+      {m.label}
+    </div>
+  );
+};
+
+const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected, absence = null }) => {
   const shifts = getShiftsDay(userId, date);
   if (shifts.length === 0) return (
-    <div style={pls.emptyCell} onClick={() => !selectionMode && canWrite && openAddPrefill(userId, date)}>
-      {canWrite && !selectionMode && <span style={pls.addHint}>+</span>}
+    <div style={{ ...pls.emptyCell, ...(absence ? { flexDirection: 'column', gap: 2, justifyContent: 'center' } : null) }} onClick={() => !selectionMode && canWrite && openAddPrefill(userId, date)}>
+      {absence && <PuceAbsence absence={absence} />}
+      {canWrite && !selectionMode && !absence && <span style={pls.addHint}>+</span>}
     </div>
   );
   const ordered = [...shifts].sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
+      {absence && <PuceAbsence absence={absence} />}
       {(ordered || []).map(shift => {
         const heures = calcHeures(shift.debut, shift.fin, shift.pause);
         const enPoste = shift.pointageDebut && !shift.pointageFin;
