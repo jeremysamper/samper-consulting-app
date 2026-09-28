@@ -57,8 +57,14 @@ const files = readdirSync(srcDir).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).
 for (const file of files) {
   const slug = slugify(path.parse(file).name);
   const target = path.join(outDir, `bienvenue-${slug}.webp`);
-  const source = sharp(path.join(srcDir, file)).rotate();
-  const meta = await source.metadata();
+  // Étalonnage commun cuit dans le fichier (rien à calculer à l'affichage) :
+  // +7 % de contraste, +10 % de saturation, 4 % plus sombre. Unifie des
+  // photos d'origines différentes et adoucit la perte de détail.
+  const source = sharp(path.join(srcDir, file))
+    .rotate()
+    .modulate({ saturation: 1.1 })
+    .linear(1.07 * 0.96, -128 * 0.07 * 0.96);
+  const meta = await sharp(path.join(srcDir, file)).rotate().metadata();
   if (Math.max(meta.width, meta.height) < MIN_SOURCE_SIDE) {
     console.warn(`${file} : ${meta.width}×${meta.height}, trop petite pour le plein écran, ignorée`);
     continue;

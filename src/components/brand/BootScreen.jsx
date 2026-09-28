@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bootThemeFor } from './bootThemes.js';
+import grainUrl from './boot-photos/grain.png';
 
 /**
  * Écran de chargement « Bienvenue ».
@@ -202,6 +203,18 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
 
       {phase !== 'wait' && <Layer photo={theme.hero} at={heroAt} focus={theme.focus} />}
 
+      {/* Finition « pellicule » sur les photos, sous le texte : grain fin +
+          vignettage. Le mot et les mentions restent nets par-dessus.
+          Le grain redonne de la matière là où une photo manque de détail
+          (compression, photo de téléphone agrandie) ; il est fixe, peint une
+          seule fois, et ne coûte rien pendant l'animation. */}
+      {phase !== 'wait' && (
+        <>
+          <div style={s.vignette} aria-hidden="true" />
+          <div style={s.grain} aria-hidden="true" />
+        </>
+      )}
+
       {phase !== 'wait' && (
         <div className="bv-extras" style={{ ...s.layer, '--bv-at': `${heroAt}ms` }}>
           <div style={s.scrim(theme.dim)} aria-hidden="true" />
@@ -264,6 +277,25 @@ const s = {
     width: '100vw',
     objectFit: 'cover',
     display: 'block',
+    // Pas de filtre CSS ici : l'étalonnage est cuit dans les fichiers
+    // (scripts/gen-boot-photos.mjs). Un filtre en direct coûtait des images
+    // pendant les glissements.
+  },
+  vignette: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    background: 'radial-gradient(ellipse 120% 90% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.38) 100%)',
+  },
+  grain: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    backgroundImage: `url(${grainUrl})`,
+    // Tuile de 160 px affichée à 80 px : grain fin, net sur écran dense.
+    // Texture transparente ordinaire : pas de mode de fusion, qui obligeait
+    // à recomposer le grain avec les photos à chaque image.
+    backgroundSize: '80px 80px',
   },
   // La photo couvre l'écran entier, alignée sur lui quelle que soit la moitié.
   screenL: { left: 0 },
