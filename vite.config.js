@@ -120,6 +120,18 @@ export default defineConfig({
         // cache ne sert qu'en secours) ; /auth/ n'est volontairement JAMAIS caché.
         runtimeCaching: [
           {
+            // Police Satoshi (Fontshare) : feuille + fichiers woff2, externes
+            // donc hors précache. CacheFirst après le premier chargement pour
+            // que l'app garde sa typographie hors-ligne.
+            urlPattern: /^https:\/\/(api|cdn)\.fontshare\.com\//i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fontshare',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Bibliothèque recettes (fiches, plats, cartes et liaisons) :
             // lecture hors-ligne = besoin métier, secours 30 jours.
             urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/(recettes|plats|cartes|carte_plats|plat_recettes)\b/i,
