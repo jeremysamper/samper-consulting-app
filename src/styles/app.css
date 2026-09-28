@@ -1614,13 +1614,49 @@ html[data-theme="dark"] button:not(:disabled):active {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
   padding: 8px 4px 4px 8px;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--nav-text);
+  color: var(--nav-text-active);
 }
+.nav-organizer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Renommage d'une rubrique : champ posé sur l'encre de la barre. */
+.nav-organizer-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--nav-accent);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--nav-text-active);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  outline: none;
+}
+.nav-organizer-input[aria-invalid="true"] { border-color: #f59e0b; }
+.nav-organizer-error { font-size: 11.5px; color: #fcd34d; padding: 2px 8px 6px; }
+.nav-organizer-add {
+  margin: 6px 2px 2px;
+  padding: 9px 10px;
+  border: 1px dashed var(--nav-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nav-text-active);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nav-organizer-add:hover:not(:disabled) { border-style: solid; background: rgba(255, 255, 255, 0.05); }
+.nav-organizer-add:focus-visible,
+.nav-organizer-input:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
 .nav-organizer-row {
   display: flex;
   align-items: center;

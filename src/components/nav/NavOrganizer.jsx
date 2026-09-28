@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Pencil, X } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mode « Organiser le menu » (consultant) : remplace la liste de navigation de
@@ -10,18 +10,37 @@ import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 //   - ou les flèches ↑ ↓ (au clavier aussi : flèches haut/bas sur la poignée) ;
 //     en haut ou en bas d'une rubrique, la flèche fait passer le module dans
 //     la rubrique voisine ;
-//   - les flèches d'une rubrique la déplacent en bloc.
+//   - les flèches d'une rubrique la déplacent en bloc ;
+//   - les rubriques se renomment (crayon), s'ajoutent (« Ajouter une
+//     rubrique ») et se suppriment (×) : leurs modules passent alors dans la
+//     rubrique voisine. Rien n'est enregistré avant « Terminé ».
+//
+// Le nom d'une rubrique n'existe que dans l'ordre enregistré
+// (app_settings.nav_order : [{ id, group }]) : renommer ne touche pas la base
+// au-delà de cette valeur. Une rubrique restée vide n'est pas enregistrée.
 //
 // Glisser-déposer en Pointer Events (pas d'API HTML5, morte au doigt) : les
 // écouteurs sont posés dans le pointerdown, la position est portée par le
 // geste et non relue dans l'état React.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildGroups(items, defaultGroups) {
+const MAX_GROUP_NAME = 40;
+
+// key stable (le nom change) ; origName = nom à l'ouverture, pour transmettre
+// les renommages aux modules que le consultant ne voit pas ici.
+function buildGroups(items) {
   const names = [];
   items.forEach((item) => { if (!names.includes(item.group)) names.push(item.group); });
-  defaultGroups.forEach((g) => { if (!names.includes(g)) names.push(g); });
-  return names.map((name) => ({ name, ids: items.filter((i) => i.group === name).map((i) => i.id) }));
+  return names.map((name, index) => ({
+    key: `g${index}`,
+    name,
+    origName: name,
+    ids: items.filter((i) => i.group === name).map((i) => i.id),
+  }));
+}
+
+function cleanName(value) {
+  return value.trim().replace(/\s+/g, ' ').slice(0, MAX_GROUP_NAME);
 }
 
 function moveItem(groups, id, toGroupIndex, toIndex) {
@@ -32,8 +51,12 @@ function moveItem(groups, id, toGroupIndex, toIndex) {
   return next;
 }
 
-export default function NavOrganizer({ items, defaultGroups, getLabel, onSave, onCancel, onReset, variant = 'desktop' }) {
-  const [groups, setGroups] = React.useState(() => buildGroups(items, defaultGroups));
+export default function NavOrganizer({ items, getLabel, onSave, onCancel, onReset, variant = 'desktop' }) {
+  const [groups, setGroups] = React.useState(() => buildGroups(items));
+  const [editing, setEditing] = React.useState(null); // { key, draft, error }
+  const newKeyRef = React.useRef(0);
+  // Rubrique supprimée → rubrique qui a repris ses modules (clé → clé).
+  const mergedRef = React.useRef({});
   const [dragId, setDragId] = React.useState(null);
   const [slot, setSlot] = React.useState(null); // { g, i } emplacement de dépôt
   const [saving, setSaving] = React.useState(false);
@@ -73,6 +96,54 @@ export default function NavOrganizer({ items, defaultGroups, getLabel, onSave, o
       [next[g], next[to]] = [next[to], next[g]];
       return next;
     });
+  };
+
+  // ── Rubriques : renommer, ajouter, supprimer ───────────────────────
+  const nameTaken = (name, exceptKey) => groups.some(
+    (grp) => grp.key !== exceptKey && grp.name.toLocaleLowerCase('fr') === name.toLocaleLowerCase('fr'),
+  );
+
+  const startRename = (grp) => setEditing({ key: grp.key, draft: grp.name, error: '' });
+
+  // Entrée : un nom vide ou déjà pris affiche l'erreur et garde la saisie.
+  // Sortie du champ : un nom invalide est simplement abandonné.
+  const commitRename = ({ keepOnError }) => {
+    if (!editing) return;
+    const name = cleanName(editing.draft);
+    const error = !name ? 'Le nom ne peut pas être vide.'
+      : nameTaken(name, editing.key) ? 'Une rubrique porte déjà ce nom.' : '';
+    if (error) {
+      if (keepOnError) setEditing({ ...editing, error });
+      else setEditing(null);
+      return;
+    }
+    setGroups((prev) => prev.map((grp) => (grp.key === editing.key ? { ...grp, name } : grp)));
+    setEditing(null);
+  };
+
+  const addGroup = () => {
+    let name = 'Nouvelle rubrique';
+    for (let n = 2; nameTaken(name); n += 1) name = `Nouvelle rubrique ${n}`;
+    newKeyRef.current += 1;
+    const key = `n${newKeyRef.current}`;
+    setGroups((prev) => [...prev, { key, name, origName: null, ids: [] }]);
+    setEditing({ key, draft: name, error: '' });
+  };
+
+  // Les modules d'une rubrique supprimée rejoignent la rubrique du dessus (ou
+  // celle du dessous pour la première) : rien ne disparaît du menu.
+  const removeGroup = (g) => {
+    if (groups.length < 2) return;
+    const target = g > 0 ? g - 1 : 1;
+    const removed = groups[g];
+    mergedRef.current[removed.key] = groups[target].key;
+    setGroups((prev) => prev
+      .map((grp, index) => {
+        if (index !== target) return grp;
+        return { ...grp, ids: target < g ? [...grp.ids, ...removed.ids] : [...removed.ids, ...grp.ids] };
+      })
+      .filter((_, index) => index !== g));
+    if (editing?.key === removed.key) setEditing(null);
   };
 
   // Emplacements de dépôt : avant chaque module et en fin de rubrique.
@@ -137,10 +208,28 @@ export default function NavOrganizer({ items, defaultGroups, getLabel, onSave, o
     window.addEventListener('pointercancel', up);
   };
 
+  // Ancien nom → nouveau, pour chaque rubrique d'origine renommée ou fondue
+  // dans une autre : les modules masqués ici (inactifs dans cet établissement)
+  // suivent leur rubrique au lieu d'en recréer une sous l'ancien nom.
+  const collectRenames = () => {
+    const nameByKey = new Map(groups.map((grp) => [grp.key, grp.name]));
+    const resolve = (key) => {
+      let k = key;
+      for (let guard = 0; !nameByKey.has(k) && mergedRef.current[k] && guard < 50; guard += 1) k = mergedRef.current[k];
+      return nameByKey.get(k);
+    };
+    const renames = Object.create(null);
+    buildGroups(items).forEach((orig) => {
+      const now = resolve(orig.key);
+      if (now && now !== orig.origName) renames[orig.origName] = now;
+    });
+    return renames;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(groups.flatMap((g) => g.ids.map((id) => ({ id, group: g.name }))));
+      await onSave(groups.flatMap((g) => g.ids.map((id) => ({ id, group: g.name }))), collectRenames());
     } finally {
       setSaving(false);
     }
@@ -149,18 +238,45 @@ export default function NavOrganizer({ items, defaultGroups, getLabel, onSave, o
   return (
     <div className={`nav-organizer${mobile ? ' is-mobile' : ''}`} ref={listRef}>
       <div className="nav-organizer-intro">
-        Glissez les modules par la poignée, ou utilisez les flèches. Le nouvel ordre s'applique à tous les comptes.
+        Glissez les modules par la poignée, ou utilisez les flèches. Le crayon renomme une rubrique. Le nouvel ordre s'applique à tous les comptes.
       </div>
       {groups.map((group, g) => (
-        <div key={group.name} className="nav-organizer-group" data-group-index={g}>
+        <div key={group.key} className="nav-organizer-group" data-group-index={g}>
           <div className="nav-organizer-header" data-group-header>
-            <span>{group.name}</span>
+            {editing?.key === group.key ? (
+              <input
+                className="nav-organizer-input"
+                value={editing.draft}
+                maxLength={MAX_GROUP_NAME}
+                autoFocus
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setEditing({ ...editing, draft: e.target.value, error: '' })}
+                onKeyDown={(e) => {
+                  // preventDefault : l'Échap global de la coque refermerait
+                  // sinon le tiroir mobile en même temps que la saisie.
+                  if (e.key === 'Enter') { e.preventDefault(); commitRename({ keepOnError: true }); }
+                  if (e.key === 'Escape') { e.preventDefault(); setEditing(null); }
+                }}
+                onBlur={() => commitRename({ keepOnError: false })}
+                aria-label="Nom de la rubrique"
+                aria-invalid={editing.error ? 'true' : undefined}
+              />
+            ) : (
+              <span className="nav-organizer-name">{group.name}</span>
+            )}
             <span className="nav-organizer-arrows">
+              {editing?.key !== group.key && (
+                <button type="button" className="mini" onClick={() => startRename(group)} aria-label={`Renommer la rubrique ${group.name}`} title="Renommer"><Pencil size={13} /></button>
+              )}
               <button type="button" className="mini" onClick={() => stepGroup(g, -1)} disabled={g === 0} aria-label={`Monter la rubrique ${group.name}`}><ChevronUp size={14} /></button>
               <button type="button" className="mini" onClick={() => stepGroup(g, 1)} disabled={g === groups.length - 1} aria-label={`Descendre la rubrique ${group.name}`}><ChevronDown size={14} /></button>
+              <button type="button" className="mini" onClick={() => removeGroup(g)} disabled={groups.length < 2} aria-label={`Supprimer la rubrique ${group.name}`} title="Supprimer la rubrique (ses modules passent dans la voisine)"><X size={14} /></button>
             </span>
           </div>
-          {group.ids.length === 0 && <div className="nav-organizer-empty">Rubrique vide : déposez un module ici</div>}
+          {editing?.key === group.key && editing.error && (
+            <div className="nav-organizer-error" role="alert">{editing.error}</div>
+          )}
+          {group.ids.length === 0 && <div className="nav-organizer-empty">Rubrique vide : déposez-y un module, sinon elle ne sera pas gardée.</div>}
           {group.ids.map((id, i) => {
             const item = byId.get(id);
             if (!item) return null;
@@ -196,6 +312,9 @@ export default function NavOrganizer({ items, defaultGroups, getLabel, onSave, o
           {slot && slot.g === g && slot.i === group.ids.filter((x) => x !== dragId).length && <div className="nav-organizer-drop" aria-hidden="true" />}
         </div>
       ))}
+      <button type="button" className="nav-organizer-add" onClick={addGroup} disabled={saving}>
+        Ajouter une rubrique
+      </button>
       <div className="nav-organizer-actions">
         <button type="button" className="nav-organizer-save" onClick={handleSave} disabled={saving}>
           {saving ? 'Enregistrement…' : 'Terminé'}

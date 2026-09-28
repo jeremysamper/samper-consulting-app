@@ -75,6 +75,13 @@ export const UI_GLOSSARY_ES = {
   'Le prénom ne peut pas être vide': 'El nombre no puede estar vacío',
   'Numéro de téléphone invalide : chiffres, espaces et + uniquement': 'Número de teléfono no válido: solo dígitos, espacios y +',
   'Aller à un module': 'Ir a un módulo',
+  'Ajouter une rubrique': 'Añadir una sección',
+  'Nouvelle rubrique': 'Nueva sección',
+  'Nom de la rubrique': 'Nombre de la sección',
+  'Le nom ne peut pas être vide': 'El nombre no puede estar vacío',
+  'Une rubrique porte déjà ce nom': 'Ya hay una sección con este nombre',
+  'Rubrique vide : déposez-y un module, sinon elle ne sera pas gardée': 'Sección vacía: suelta aquí un módulo, si no, no se guardará',
+  'Supprimer la rubrique (ses modules passent dans la voisine)': 'Eliminar la sección (sus módulos pasan a la contigua)',
 
   // ── Rôles ──
   'Consultant culinaire': 'Consultor culinario',

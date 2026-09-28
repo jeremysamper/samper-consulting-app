@@ -268,7 +268,6 @@ export default function AppLayout({
   const { getLabelForModule } = useModuleLabels();
 
   // ── Organiser le menu (consultant) ───────────────────────────────
-  const defaultNavGroups = React.useMemo(() => [...new Set(NAV_ITEMS.map((item) => item.group))], []);
   const startOrganizing = React.useCallback(() => {
     if (isMobile) setDrawerOpen(true);
     else setSidebarOpen(true);
@@ -278,10 +277,16 @@ export default function AppLayout({
   React.useEffect(() => {
     if (isMobile && !drawerOpen) setOrganizing(false);
   }, [isMobile, drawerOpen]);
-  const handleSaveOrder = async (order) => {
+  const handleSaveOrder = async (order, renames = {}) => {
     try {
-      // Les modules que le consultant ne voit pas gardent leur place enregistrée.
-      const kept = (navOrder || []).filter((entry) => !order.some((o) => o.id === entry.id));
+      // Les modules que le consultant ne voit pas ici (inactifs dans cet
+      // établissement, réservés à un autre rôle) gardent leur place et suivent
+      // les rubriques renommées ou supprimées : sinon ils recréeraient, dans
+      // les autres établissements, une rubrique sous l'ancien nom.
+      const shown = new Set(order.map((o) => o.id));
+      const kept = applyNavOrder(NAV_ITEMS, navOrder)
+        .filter((item) => !shown.has(item.id))
+        .map((item) => ({ id: item.id, group: renames[item.group] || item.group }));
       await saveNavOrder([...order, ...kept]);
       setOrganizing(false);
       notifyLegacy('Ordre du menu enregistré pour tous les comptes', 'success');
@@ -302,7 +307,6 @@ export default function AppLayout({
   const renderOrganizer = (variant) => (
     <NavOrganizer
       items={visibleNav}
-      defaultGroups={defaultNavGroups}
       getLabel={getLabelForModule}
       onSave={handleSaveOrder}
       onCancel={() => setOrganizing(false)}

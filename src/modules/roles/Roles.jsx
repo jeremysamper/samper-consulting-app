@@ -3,6 +3,7 @@ import { getDemoData } from '../../data/demoData.js';
 import { manageableModules, getDefaultManageRoles, navItems, defaultPermissions } from '../moduleConfig.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { profileService } from '../../services/supabase.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ─────────────────────────────────────────────────────
@@ -51,6 +52,9 @@ const Roles = ({ user }) => {
   const [utilisateurs, setUtilisateurs] = React.useState(() => readLegacyStorage('sc_utilisateurs', demoData.utilisateurs));
   const [editingUser, setEditingUser] = React.useState(null);
   const [showUserForm, setShowUserForm] = React.useState(false);
+  // Téléphones saisis par chacun dans « Mon compte » (table profile_contacts) :
+  // lecture seule ici, seul le titulaire modifie son numéro.
+  const [phones, setPhones] = React.useState({});
   const canEdit = user.role === 'consultant';
 
   // ═══ Charger depuis Supabase + Realtime ═══
@@ -60,10 +64,13 @@ const Roles = ({ user }) => {
 
     const reload = async () => {
       try {
-        const [profiles, perms] = await Promise.all([
+        const [profiles, perms, contacts] = await Promise.all([
           legacySB.db.listProfiles(),
           legacySB.db.listPermissions(),
+          // Un échec de lecture des numéros ne doit pas vider la liste des comptes.
+          profileService.listContacts().catch((err) => { console.warn('[Roles] téléphones', err); return null; }),
         ]);
+        if (contacts) setPhones(contacts);
         const mapped = profiles.map(p => ({
           id: p.id, email: p.email, prenom: p.prenom, nom: p.nom,
           avatar: p.avatar || ((p.prenom?.[0] || '') + (p.nom?.[0] || '')).toUpperCase(),
@@ -388,7 +395,15 @@ const Roles = ({ user }) => {
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{u.prenom} {u.nom}
                     {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{u.email}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                    {u.email}
+                    {phones[u.id] && (
+                      <>
+                        {' · '}
+                        <a href={`tel:${phones[u.id].replace(/[^\d+]/g, '')}`} style={ros.phoneLink} data-no-translate="">{phones[u.id]}</a>
+                      </>
+                    )}
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
                     {role?.label} · {u.poste || '-'} · {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
                   </div>
@@ -509,6 +524,7 @@ const ros = {
   moduleRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--border)' },
   permBadge: { fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 10, whiteSpace: 'nowrap' },
   usersWrap: { display: 'flex', flexDirection: 'column', gap: 8 },
+  phoneLink: { color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' },
   userRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', flexWrap: 'wrap' },
   userAvatar: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },

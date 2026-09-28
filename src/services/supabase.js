@@ -313,6 +313,15 @@ export const profileService = {
     return { tel: data?.tel || '' };
   },
 
+  // Tous les numéros lisibles par l'appelant (RLS) : le consultant voit tout,
+  // un patron ceux de ses établissements, les autres seulement le leur.
+  // → { [userId]: tel }
+  async listContacts() {
+    const { data, error } = await supabase.from('profile_contacts').select('user_id, tel');
+    if (error) throw error;
+    return Object.fromEntries((data || []).filter((row) => row.tel).map((row) => [row.user_id, row.tel]));
+  },
+
   async saveOwnContact(userId, tel) {
     const { error } = await supabase
       .from('profile_contacts')

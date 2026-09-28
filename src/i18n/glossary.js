@@ -76,6 +76,13 @@ export const UI_GLOSSARY = {
   'Le prénom ne peut pas être vide': 'First name cannot be empty',
   'Numéro de téléphone invalide : chiffres, espaces et + uniquement': 'Invalid phone number: digits, spaces and + only',
   'Aller à un module': 'Go to a module',
+  'Ajouter une rubrique': 'Add a section',
+  'Nouvelle rubrique': 'New section',
+  'Nom de la rubrique': 'Section name',
+  'Le nom ne peut pas être vide': 'The name cannot be empty',
+  'Une rubrique porte déjà ce nom': 'A section already has this name',
+  'Rubrique vide : déposez-y un module, sinon elle ne sera pas gardée': 'Empty section: drop a module here, otherwise it will not be kept',
+  'Supprimer la rubrique (ses modules passent dans la voisine)': 'Delete the section (its modules move to the next one)',
 
   // ── Rôles ──
   'Consultant culinaire': 'Culinary consultant',
