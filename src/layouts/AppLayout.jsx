@@ -945,8 +945,8 @@ const ls = {
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
   navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
-  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 700, boxShadow: 'var(--nav-glow)' },
-  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: 'var(--nav-accent)', borderRadius: 2, boxShadow: '0 0 8px rgba(116, 174, 195, 0.8)' },
+  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 600, boxShadow: 'var(--nav-glow)' },
+  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 16, background: 'var(--nav-accent)', borderRadius: 2, opacity: 0.85 },
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
   userArea: { padding: '8px 6px 10px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },

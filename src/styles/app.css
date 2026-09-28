@@ -39,10 +39,11 @@
   --nav-grad: linear-gradient(178deg, #07394d 0%, #032d3f 44%, #021621 100%);
   --nav-text: rgba(214, 230, 236, 0.66);
   --nav-text-active: #eaf4f7;
-  --nav-active: rgba(116, 174, 195, 0.14);
+  --nav-active: rgba(116, 174, 195, 0.09);
   --nav-border: rgba(255, 255, 255, 0.07);
   --nav-accent: #74aec3;
-  --nav-glow: 0 0 16px rgba(116, 174, 195, 0.28);
+  /* Sélection posée, pas lumineuse : un filet intérieur plutôt qu'un halo. */
+  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.12);
   /* ─── Header « verre » (façon barres iOS récentes) ─────────────────────
      Surface translucide : le contenu défile dessous, flouté (.app-glass-bar). */
   --glass-bg: rgba(254, 252, 249, 0.72);
@@ -145,10 +146,10 @@
     --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
     --nav-text: rgba(200, 222, 230, 0.60);
     --nav-text-active: #e6f2f6;
-    --nav-active: rgba(116, 174, 195, 0.13);
+    --nav-active: rgba(116, 174, 195, 0.08);
     --nav-border: rgba(255, 255, 255, 0.06);
     --nav-accent: #74aec3;
-    --nav-glow: 0 0 18px rgba(116, 174, 195, 0.30);
+    --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
     --glass-bg: rgba(8, 18, 22, 0.72);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-hover: rgba(255, 255, 255, 0.08);
@@ -207,10 +208,10 @@ html[data-theme="dark"] {
   --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
   --nav-text: rgba(200, 222, 230, 0.60);
   --nav-text-active: #e6f2f6;
-  --nav-active: rgba(116, 174, 195, 0.13);
+  --nav-active: rgba(116, 174, 195, 0.08);
   --nav-border: rgba(255, 255, 255, 0.06);
   --nav-accent: #74aec3;
-  --nav-glow: 0 0 18px rgba(116, 174, 195, 0.30);
+  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
   --glass-bg: rgba(8, 18, 22, 0.72);
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-hover: rgba(255, 255, 255, 0.08);
