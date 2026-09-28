@@ -89,17 +89,66 @@ function decode(src) {
     .catch(() => {});
 }
 
+// Satoshi chargée avant le texte : sans ça, « Bienvenue » s'affiche d'abord
+// dans la police de secours puis saute à l'arrivée de Satoshi.
+function fontsReady() {
+  try {
+    return Promise.all([
+      document.fonts.load('700 56px Satoshi'),
+      document.fonts.load('500 12px Satoshi'),
+    ]).catch(() => {});
+  } catch {
+    return Promise.resolve();
+  }
+}
+
 // Téléchargement lancé dès l'import du module, avant le premier rendu React.
 // L'intro déjà vue dans cet onglet n'a besoin que de la dernière photo.
 const photosReady = typeof Image === 'undefined'
   ? Promise.resolve()
-  : Promise.all((initialPhase() === 'wait' ? theme.shots : [theme.shots[lastShot]]).map((p) => decode(p.src)));
+  : Promise.all([
+    ...(initialPhase() === 'wait' ? theme.shots : [theme.shots[lastShot]]).map((p) => decode(p.src)),
+    fontsReady(),
+  ]);
 
-/** La photo en plein écran, fond dans sa teinte tant qu'elle charge. */
-function Shot({ shot, focus }) {
+// Hauteur de la photo figée au montage, sur mobile, à la hauteur de l'écran.
+// Au lancement de l'app installée, la fenêtre se recale souvent d'une barre
+// (statut, navigation) juste après le premier affichage : une photo calée sur
+// la fenêtre se recentrait alors d'un coup. Calée en haut sur la hauteur de
+// l'écran, elle ne bouge plus ; le surplus éventuel est rogné en bas.
+function stablePhotoHeight() {
+  try {
+    if (!matchMedia('(pointer: coarse)').matches) return null;
+    const landscape = window.innerWidth > window.innerHeight;
+    const screenHeight = landscape
+      ? Math.min(window.screen.width, window.screen.height)
+      : Math.max(window.screen.width, window.screen.height);
+    return Math.max(window.innerHeight, screenHeight);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * La photo en plein écran, fond dans sa teinte tant qu'elle charge. Elle
+ * n'apparaît (fondu court) qu'une fois entièrement chargée : jamais d'image
+ * partielle ni de premier cadre mal cadré.
+ */
+function Shot({ shot, focus, height }) {
+  const [loaded, setLoaded] = useState(false);
   return (
     <div style={{ ...s.fill, background: shot.tone }} aria-hidden="true">
-      <img className="bv-drift" src={shot.src} alt="" draggable={false} style={{ ...s.photo, objectPosition: focus }} />
+      <div style={{ ...s.photoBox, height: height ?? '100%' }}>
+        <img
+          ref={(el) => { if (el?.complete && el.naturalWidth) setLoaded(true); }}
+          className={`bv-drift bv-photo${loaded ? ' bv-photo-in' : ''}`}
+          src={shot.src}
+          alt=""
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          style={{ ...s.photo, objectPosition: focus }}
+        />
+      </div>
     </div>
   );
 }
@@ -108,6 +157,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
   const [phase, setPhase] = useState(initialPhase);
   const [introDone, setIntroDone] = useState(() => phase === 'static');
   const [shotIndex, setShotIndex] = useState(() => (phase === 'static' ? lastShot : 0));
+  const [photoHeight] = useState(stablePhotoHeight);
   const leaving = introDone && !loading;
 
   // Photos décodées (ou délai écoulé) : l'intro démarre.
@@ -159,7 +209,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
     >
       {phase !== 'wait' && (
         <>
-          <Shot shot={theme.shots[shotIndex]} focus={theme.focus} />
+          <Shot shot={theme.shots[shotIndex]} focus={theme.focus} height={photoHeight} />
           <div style={s.scrim(theme.dim)} aria-hidden="true" />
           <div className="bv-text" style={s.textRow}>
             <p style={s.word}>Bienvenue</p>
@@ -199,6 +249,12 @@ const s = {
   fill: {
     position: 'absolute',
     inset: 0,
+  },
+  photoBox: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
   },
   photo: {
     position: 'absolute',

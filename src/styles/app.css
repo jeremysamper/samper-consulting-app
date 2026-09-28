@@ -299,6 +299,10 @@ html[data-theme="dark"] {
   animation: bvDrift 9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
+/* La photo n'apparaît qu'entièrement chargée, en fondu court. */
+.bv-photo    { opacity: 0; transition: opacity 350ms ease; }
+.bv-photo-in { opacity: 1; }
+
 @keyframes bvFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
