@@ -9,7 +9,10 @@
      vite-index.html). Le module Spa garde DM Sans / DM Serif Display : il
      redéfinit ces deux jetons sur .spa (src/modules/spa/spa.css). */
   --font: "Satoshi", system-ui, sans-serif;
-  --font-serif: "Zodiak", Georgia, serif;
+  /* "SC Chiffres" ne couvre que 0-9 (Satoshi, déclarée au boot par
+     src/design/installDigitFont.js) : chiffres des titres en Satoshi,
+     lettres en Zodiak. Tant qu'elle n'est pas déclarée, elle est ignorée. */
+  --font-serif: "SC Chiffres", "Zodiak", Georgia, serif;
   /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
      quantités) : Satoshi, les chiffres d'affichage de Zodiak détonnent. */
   --font-num: "Satoshi", system-ui, sans-serif;

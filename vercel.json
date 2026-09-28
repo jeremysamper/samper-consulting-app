@@ -11,7 +11,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https://ppmtoiqgajwcdkbnrcll.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com; script-src 'self'; connect-src 'self' https://ppmtoiqgajwcdkbnrcll.supabase.co wss://ppmtoiqgajwcdkbnrcll.supabase.co; worker-src 'self' blob:; manifest-src 'self'" }
+        { "key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https://ppmtoiqgajwcdkbnrcll.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com; script-src 'self'; connect-src 'self' https://api.fontshare.com https://ppmtoiqgajwcdkbnrcll.supabase.co wss://ppmtoiqgajwcdkbnrcll.supabase.co; worker-src 'self' blob:; manifest-src 'self'" }
       ]
     },
     {
