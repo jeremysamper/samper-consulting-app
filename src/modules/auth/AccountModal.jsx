@@ -201,12 +201,12 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
 
         <div style={s.divider} />
 
-        <button type="button" className="sc-menu-item" style={s.action} onClick={onChangePassword} disabled={saving}>
+        <button type="button" className="sc-pop-item" style={s.action} onClick={onChangePassword} disabled={saving}>
           <span style={{ flex: 1 }}>Changer mon mot de passe</span>
           <ChevronRight size={16} aria-hidden="true" style={s.chevron} />
         </button>
         {onOrganize && (
-          <button type="button" className="sc-menu-item" style={s.action} onClick={onOrganize} disabled={saving}>
+          <button type="button" className="sc-pop-item" style={s.action} onClick={onOrganize} disabled={saving}>
             <span style={{ flex: 1 }}>Organiser le menu</span>
             <ChevronRight size={16} aria-hidden="true" style={s.chevron} />
           </button>

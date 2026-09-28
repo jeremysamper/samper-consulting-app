@@ -1581,7 +1581,9 @@ html[data-theme="dark"] button:not(:disabled):active {
 /* ─── Barre latérale, tiroir et titre du header : survol et focus
    (AppLayout, UserMenu, EtabSwitcher) ───────────────────────────────────────
    La base est en style inline, que seule une règle !important peut dépasser :
-   la portée reste étroite (lignes non actives, quatre classes explicites).
+   la portée reste étroite (lignes non actives, quatre classes explicites ;
+   sc-pop-item et non sc-menu-item, déjà pris par le menu des Outils
+   consultant).
    (hover: hover) : pas d'état survolé qui reste collé après un tap sur iPad. */
 @media (hover: hover) {
   .sc-nav-item:not([aria-current="page"]):hover,
@@ -1589,12 +1591,12 @@ html[data-theme="dark"] button:not(:disabled):active {
     background: rgba(255, 255, 255, 0.06) !important;
     color: var(--nav-text-active) !important;
   }
-  .sc-menu-item:not([aria-checked="true"]):hover,
+  .sc-pop-item:not([aria-checked="true"]):hover,
   .sc-title-switch:hover { background: var(--surface2) !important; }
 }
 .sc-nav-item:focus-visible,
 .sc-nav-account:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
-.sc-menu-item:focus-visible,
+.sc-pop-item:focus-visible,
 .sc-title-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ─── Organiser le menu (NavOrganizer, consultant) ──────────────────────────

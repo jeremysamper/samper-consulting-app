@@ -104,7 +104,7 @@ export default function EtabSwitcher({ etabs = [], current, onSelect, title, var
                 type="button"
                 role="menuitemradio"
                 aria-checked={active}
-                className="sc-menu-item"
+                className="sc-pop-item"
                 style={{ ...s.item, ...(active ? s.itemActive : null) }}
                 onClick={(e) => {
                   e.stopPropagation();
