@@ -2,18 +2,12 @@ import { useEffect, useState } from 'react';
 import { bootThemeFor } from './bootThemes.js';
 
 /**
- * Écran de chargement « Bienvenue » — modèle « Ripple ».
+ * Écran de chargement « Bienvenue ».
  *
- * La photo est vue à travers des anneaux concentriques centrés sur l'écran :
- * chaque anneau est la même photo, très légèrement agrandie ou réduite, et
- * les anneaux « respirent » en décalé, ce qui fait courir une onde de verre
- * du centre vers les bords. Les photos s'enchaînent en coupe franche
- * (bootThemes.js), la dernière reste. Texte fixe à mi-hauteur : « Bienvenue »
- * à gauche, la signature à droite, comme dans le modèle vidéo.
- *
- * Fluidité : chaque anneau est un disque (border-radius + overflow hidden)
- * dont seule la photo intérieure est animée en transform, que le GPU anime
- * seul. Aucun repeint pendant l'onde ; un repeint des disques à chaque coupe.
+ * Les photos s'enchaînent en coupe franche (bootThemes.js), la dernière
+ * reste. Texte fixe à mi-hauteur : « Bienvenue » à gauche, la signature à
+ * droite. Pas d'effet sur les photos (l'onde « Ripple » a été retirée à la
+ * demande de Jérémy) : rien n'est animé en continu, rien à repeindre.
  *
  * Déroulé :
  *  - 'wait'   : noir le temps que les photos soient décodées (1,2 s au plus) ;
@@ -40,11 +34,6 @@ const INTRO_MS = 2400;
 const PHOTO_WAIT_MS = 1200;
 const EXIT_MS = 380;
 const SEEN_KEY = 'sc_bienvenue_vue';
-// Nombre d'anneaux de l'onde. Le modèle en montre une dizaine, mais chaque
-// anneau se redessine à chaque image : mesuré CPU ×4, 6 anneaux perdent
-// 7 images sur 2,2 s, 8 en perdent 35, 12 en perdent 70. Ne pas monter
-// sans remesurer.
-const RINGS = 6;
 
 function readPreviewIndex() {
   if (!import.meta.env.DEV) return null;
@@ -105,38 +94,11 @@ const photosReady = typeof Image === 'undefined'
   ? Promise.resolve()
   : Promise.all((initialPhase() === 'wait' ? theme.shots : [theme.shots[lastShot]]).map((p) => decode(p.src)));
 
-/**
- * L'onde : la photo en plein écran, puis des disques de plus en plus petits
- * posés dessus, chacun portant la même photo alignée sur l'écran. Chaque
- * disque ne laisse voir que son anneau (le disque suivant couvre le centre).
- */
-function Ripple({ shot, focus, animated }) {
+/** La photo en plein écran, fond dans sa teinte tant qu'elle charge. */
+function Shot({ shot, focus }) {
   return (
-    <div style={s.fill} aria-hidden="true">
-      <div style={{ ...s.fill, background: shot.tone }}>
-        <img src={shot.src} alt="" draggable={false} style={{ ...s.photo, objectPosition: focus }} />
-      </div>
-      {Array.from({ length: RINGS }, (_, i) => {
-        // Du plus grand (i = 0) au plus petit, en fraction de la diagonale.
-        const size = `calc(var(--bv-diag) * ${((RINGS - i) / RINGS).toFixed(4)})`;
-        return (
-          <div key={i} style={{ ...s.disc, width: size, height: size }}>
-            <img
-              className={animated ? 'bv-ring' : undefined}
-              src={shot.src}
-              alt=""
-              draggable={false}
-              style={{
-                ...s.photo,
-                ...s.ringPhoto,
-                objectPosition: focus,
-                // Onde qui part du centre : les petits anneaux d'abord.
-                animationDelay: `${-(RINGS - i) * 220}ms`,
-              }}
-            />
-          </div>
-        );
-      })}
+    <div style={{ ...s.fill, background: shot.tone }} aria-hidden="true">
+      <img src={shot.src} alt="" draggable={false} style={{ ...s.photo, objectPosition: focus }} />
     </div>
   );
 }
@@ -196,7 +158,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
     >
       {phase !== 'wait' && (
         <>
-          <Ripple shot={theme.shots[shotIndex]} focus={theme.focus} animated={phase === 'play'} />
+          <Shot shot={theme.shots[shotIndex]} focus={theme.focus} />
           <div style={s.scrim(theme.dim)} aria-hidden="true" />
           <div className="bv-text" style={s.textRow}>
             <p style={s.word}>Bienvenue</p>
@@ -232,8 +194,6 @@ const s = {
     userSelect: 'none',
     WebkitUserSelect: 'none',
     WebkitTapHighlightColor: 'transparent',
-    // Diagonale de l'écran : le plus grand anneau couvre les coins.
-    '--bv-diag': 'calc(max(100vw, 100vh) * 1.42)',
   },
   fill: {
     position: 'absolute',
@@ -243,28 +203,10 @@ const s = {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: '100vw',
-    height: '100vh',
+    width: '100%',
+    height: '100%',
     objectFit: 'cover',
     display: 'block',
-  },
-  disc: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    borderRadius: '50%',
-    overflow: 'hidden',
-    // Liseré clair au bord de chaque anneau : l'effet « verre » du modèle.
-    // Fixe, peint une seule fois.
-    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 0 18px rgba(255,255,255,0.06)',
-  },
-  // Dans un disque, la photo reste alignée sur l'écran : son coin haut-gauche
-  // est ramené au coin de l'écran, et elle grossit autour du centre de l'écran.
-  ringPhoto: {
-    top: 'calc(50% - 50vh)',
-    left: 'calc(50% - 50vw)',
-    transformOrigin: '50vw 50vh',
   },
   scrim: (dim) => ({
     position: 'absolute',

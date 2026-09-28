@@ -280,18 +280,8 @@ html[data-theme="dark"] {
 }
 
 /* ─── Écran de chargement « Bienvenue » (src/components/brand/BootScreen.jsx)
-   Modèle « Ripple » : chaque anneau (.bv-ring) grossit et rétrécit
-   (-5 % à +9 %) autour du centre de l'écran, en boucle. Les anneaux
-   sont décalés dans le temps (animation-delay posé en ligne) : l'onde court
-   du centre vers les bords. Que du transform, animé par le GPU seul ; ne pas
-   passer à clip-path ou filter, qui repeignent à chaque image. */
-
-@keyframes bvRipple {
-  0%   { transform: scale(1); }
-  30%  { transform: scale(1.09); }
-  65%  { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
+   Coupes franches entre les photos (gérées en JS), texte en fondu à
+   l'arrivée, fondu de sortie. */
 
 @keyframes bvFadeIn {
   from { opacity: 0; }
@@ -308,11 +298,6 @@ html[data-theme="dark"] {
   to   { transform: translateX(260%); }
 }
 
-.bv-ring {
-  will-change: transform;
-  animation: bvRipple 1600ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
 /* Le texte arrive en fondu avec la première photo, puis reste fixe. */
 .bv-play .bv-text { animation: bvFadeIn 500ms ease 150ms both; }
 
@@ -326,8 +311,7 @@ html[data-theme="dark"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bv-ring,
-  .bv-text { animation: none !important; transform: none; }
+  .bv-text { animation: none !important; }
   .bv-sweep { animation: scLangPulse 1.8s ease-in-out infinite; transform: none; width: 100% !important; }
 }
 
