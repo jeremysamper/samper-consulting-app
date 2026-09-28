@@ -102,8 +102,8 @@ export default function RendezVousDetail({
         <div style={st.encartAttention}>
           <Globe size={18} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2, color: 'var(--spa-kin)' }} />
           <span>
-            <strong>Demande reçue depuis le site.</strong> Le client attend votre réponse : en confirmant ou en refusant,
-            il reçoit un e-mail. Le praticien a été attribué automatiquement, vous pouvez le changer avec « Modifier ».
+            <strong>Demande reçue depuis votre site.</strong> Le client attend votre réponse : confirmez ou refusez, il
+            reçoit un e-mail dans les deux cas. Pour changer de praticien, cliquez sur « Modifier ».
           </span>
         </div>
       )}

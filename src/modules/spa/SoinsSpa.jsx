@@ -34,7 +34,7 @@ export default function SoinsSpa({ soins, status, peutGerer, onInserer, onModifi
           </button>
         </div>
       )}
-      {status === 'error' && <div style={{ ...st.encartDanger, marginBottom: 12 }}>Lecture des soins impossible (connexion ?).</div>}
+      {status === 'error' && <div style={{ ...st.encartDanger, marginBottom: 12 }}>Les soins ne se sont pas chargés. Vérifiez la connexion internet.</div>}
       {status === 'ready' && !soins.length && (
         <EtatVide
           icone={Leaf}
@@ -194,7 +194,7 @@ function SoinForm({ soin, categories, onSave, onSupprimer, onClose }) {
           <input id="soin-prix" type="number" min={0} step="0.5" inputMode="decimal" style={st.champ} value={form.prix} onChange={(e) => set('prix', e.target.value)} />
         </Champ>
       </div>
-      <Champ label="Description" htmlFor="soin-desc" aide="Quelques mots, comme sur la carte remise au client (affichés aussi en ligne).">
+      <Champ label="Description" htmlFor="soin-desc" aide="Quelques mots, comme sur votre carte des soins. Ils s'affichent aussi sur la réservation en ligne.">
         <textarea id="soin-desc" style={st.zone} value={form.description} onChange={(e) => set('description', e.target.value)} />
       </Champ>
       <label style={st.caseLabel}>

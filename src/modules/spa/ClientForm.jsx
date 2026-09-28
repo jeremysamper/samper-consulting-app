@@ -97,7 +97,7 @@ export default function ClientForm({ client = null, initial = null, onSave, onCl
       <Bloc titre="Bien-être">
         <div style={{ ...st.encartSante, marginBottom: 12, fontSize: 13 }}>
           <HeartPulse size={17} strokeWidth={1.8} color="var(--spa-sakura)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-          <span>Données de santé : à noter avec l'accord du client. Elles ne sont visibles que par l'équipe du spa.</span>
+          <span>Santé : notez ces informations seulement avec l'accord du client. Seule l'équipe du spa peut les voir.</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Champ label="Santé : contre-indications, allergies" htmlFor="spa-sante">
@@ -132,7 +132,7 @@ export default function ClientForm({ client = null, initial = null, onSave, onCl
             Le client accepte de recevoir nos e-mails
           </span>
           <span style={{ display: 'block', fontSize: 13, color: 'var(--spa-ink2)', marginTop: 4 }}>
-            Nouvelles du spa et bon cadeau d'anniversaire. À cocher uniquement avec son accord ; il peut se désinscrire depuis chaque e-mail.
+            Nouvelles du spa et bon cadeau d'anniversaire. Cochez seulement si le client est d'accord. Il pourra se désinscrire à tout moment, depuis chaque e-mail.
           </span>
         </span>
       </label>

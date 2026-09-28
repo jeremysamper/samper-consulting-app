@@ -78,7 +78,7 @@ export default function ClientsSpa({
         ))}
       </div>
 
-      {status === 'error' && <div style={{ ...st.encartDanger, marginBottom: 12 }}>Lecture des clients impossible (connexion ?). Nouvel essai automatique.</div>}
+      {status === 'error' && <div style={{ ...st.encartDanger, marginBottom: 12 }}>Les clients ne se sont pas chargés. Vérifiez la connexion internet : l'app réessaie toute seule.</div>}
 
       {status === 'ready' && !clients.length && (
         <EtatVide

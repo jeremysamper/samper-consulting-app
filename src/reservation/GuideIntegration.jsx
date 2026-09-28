@@ -133,11 +133,11 @@ export default function GuideIntegration() {
           </h1>
           <p style={{ ...s.texte, marginTop: 8 }}>
             Pour la personne qui gère le site internet du spa. Trois façons de faire, de la plus simple à la plus complète.
-            La première ne demande aucune compétence technique.
+            La première se fait en deux minutes, sans rien installer.
           </p>
           {ouverte === false && (
             <div style={{ ...st.encartInfo, marginTop: 14, fontSize: 14 }}>
-              La réservation n'est pas encore ouverte par le spa. Vous pouvez tout installer dès maintenant : elle affichera « fermée » jusqu'à son ouverture.
+              Le spa n'a pas encore ouvert sa réservation en ligne. Vous pouvez tout installer dès maintenant : la page indiquera « fermé » jusqu'à l'ouverture.
             </div>
           )}
         </header>
@@ -145,7 +145,7 @@ export default function GuideIntegration() {
         {/* ── 1. Le lien ── */}
         <Etape numero={1} icone={Link2} titre="Le lien, sur le bouton « Réserver » du site" badge="Le plus simple">
           <p style={s.texte}>
-            Mettez cette adresse sur le bouton « Réserver » du site, et dans le menu. La réservation s'ouvre dans un nouvel onglet.
+            Copiez ce lien et mettez-le sur le bouton « Réserver » du site, et dans le menu. La réservation s'ouvre dans un nouvel onglet.
           </p>
           <div style={s.lien}>
             <span style={s.lienTexte} data-no-translate>{lien}</span>
@@ -162,7 +162,7 @@ export default function GuideIntegration() {
         {/* ── 2. Le bouton prêt ── */}
         <Etape numero={2} icone={MousePointerClick} titre="Un bouton prêt à coller">
           <p style={s.texte}>
-            Ce code affiche un bouton « Réserver un soin ». La réservation s'ouvre par-dessus le site, sans le quitter.
+            Collez ce code là où le bouton doit apparaître. Il affiche « Réserver un soin » et ouvre la réservation par-dessus le site.
           </p>
           <div style={s.apercu}>
             <span style={{ fontSize: 12, color: 'var(--spa-ink2)' }}>Aperçu, cliquable :</span>
@@ -174,7 +174,7 @@ export default function GuideIntegration() {
         {/* ── 3. Dans une page ── */}
         <Etape numero={3} icone={PanelsTopLeft} titre="La réservation dans une page">
           <p style={s.texte}>
-            Pour une page « Réserver » dédiée : la réservation s'affiche directement dans la page et s'ajuste à sa hauteur.
+            Collez ce code dans une page « Réserver » : la réservation s'affiche directement dans la page.
           </p>
           <BlocCode code={codeIntegre(slug, couleur)} />
         </Etape>
@@ -182,8 +182,8 @@ export default function GuideIntegration() {
         {/* ── Garder ses boutons ── */}
         <Etape icone={Code2} titre="Garder les boutons du site, avec l'ouverture par-dessus">
           <p style={s.texte}>
-            Collez ce code une seule fois pour tout le site (zone « pied de page » ou « footer »). Il n'ajoute rien de visible :
-            les boutons et liens qui mènent au lien de réservation (étape 1) ouvriront alors la réservation par-dessus le site.
+            Vous avez déjà mis le lien sur vos boutons (étape 1) ? Collez aussi ce code une seule fois, en bas du site
+            (« pied de page » ou « footer »). Rien ne change à l'écran, mais vos boutons ouvriront la réservation par-dessus le site.
           </p>
           <BlocCode code={codeLiens(slug, couleur)} />
         </Etape>

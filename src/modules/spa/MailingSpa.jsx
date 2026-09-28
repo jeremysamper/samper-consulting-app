@@ -108,7 +108,7 @@ export default function MailingSpa({ etablissement, clients, aujourdhui, consult
             {' '}client{destinataires.length > 1 ? 's' : ''} sur {actifs.length} {destinataires.length > 1 ? 'acceptent' : 'accepte'} les e-mails
           </div>
           <div style={s.jauge} aria-hidden="true"><span style={{ ...s.jaugePlein, width: `${part}%` }} /></div>
-          <div style={{ fontSize: 12, color: 'var(--spa-ink2)', marginTop: 6 }}>L'accord se coche sur la fiche de chaque client, avec son accord.</div>
+          <div style={{ fontSize: 12, color: 'var(--spa-ink2)', marginTop: 6 }}>Pour ajouter un client : ouvrez sa fiche et cochez « Le client accepte de recevoir nos e-mails », seulement s'il est d'accord.</div>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export default function MailingSpa({ etablissement, clients, aujourdhui, consult
         ))}
       </div>
 
-      {status === 'absent' && <div style={st.encartAttention}>Base de données du module non installée.</div>}
+      {status === 'absent' && <div style={st.encartAttention}>Cette partie n'est pas encore activée.</div>}
       {status !== 'absent' && onglet === 'anniversaires' && (
         <Anniversaires
           etablissement={etablissement}
@@ -229,18 +229,18 @@ function Anniversaires({ etablissement, parametres, enregistrer, clients, aujour
           <Champ label="Objet" htmlFor="anniv-sujet">
             <input id="anniv-sujet" style={st.champ} value={form.anniversaireSujet} placeholder={SUJET_DEFAUT} onChange={(e) => set('anniversaireSujet', e.target.value)} />
           </Champ>
-          <Champ label="Message" htmlFor="anniv-message" aide="{prenom} devient le prénom du client. Vide : message par défaut.">
+          <Champ label="Message" htmlFor="anniv-message" aide="Écrivez {prenom} là où doit apparaître le prénom du client. Laissez vide pour garder le message proposé.">
             <textarea id="anniv-message" style={{ ...st.zone, minHeight: 150 }} value={form.anniversaireMessage} placeholder={MESSAGE_DEFAUT} onChange={(e) => set('anniversaireMessage', e.target.value)} />
           </Champ>
           <div style={st.grille2}>
             <Champ label="Nom de l'expéditeur" htmlFor="anniv-exp">
               <input id="anniv-exp" style={st.champ} value={form.nomExpediteur} placeholder={etablissement?.nom || ''} onChange={(e) => set('nomExpediteur', e.target.value)} />
             </Champ>
-            <Champ label="Adresse de réponse" htmlFor="anniv-reply">
+            <Champ label="Adresse de réponse" htmlFor="anniv-reply" aide="Facultatif : l'adresse où arrivent les réponses des clients.">
               <input id="anniv-reply" type="email" style={st.champ} value={form.emailReponse} onChange={(e) => set('emailReponse', e.target.value)} />
             </Champ>
           </div>
-          <Champ label="Signature" htmlFor="anniv-signature" aide="Commune à tous les e-mails du spa.">
+          <Champ label="Signature" htmlFor="anniv-signature" aide="Ajoutée à la fin de tous les e-mails du spa.">
             <textarea id="anniv-signature" style={{ ...st.zone, minHeight: 60 }} value={form.signature} placeholder={`L'équipe ${etablissement?.nom || ''}`} onChange={(e) => set('signature', e.target.value)} />
           </Champ>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -337,7 +337,7 @@ function Actualites({ etablissement, parametres, nbDestinataires, envoiPossible,
         <Champ label="Objet" htmlFor="news-sujet">
           <input id="news-sujet" style={st.champ} value={sujet} onChange={(e) => setSujet(e.target.value)} placeholder="Ex. Nouveau rituel d'automne, {prenom}" />
         </Champ>
-        <Champ label="Message" htmlFor="news-message" aide="Un paragraphe par ligne vide. {prenom} devient le prénom de chaque client. Le lien de désinscription est ajouté automatiquement.">
+        <Champ label="Message" htmlFor="news-message" aide="Sautez une ligne entre deux paragraphes. Écrivez {prenom} pour le prénom de chaque client. Le lien pour se désinscrire est ajouté tout seul.">
           <textarea id="news-message" style={{ ...st.zone, minHeight: 240 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={'Bonjour {prenom},\n\n…'} />
         </Champ>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

@@ -79,7 +79,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
     [praticiens, form?.praticiensEnLigne]
   );
 
-  if (status === 'absent') return <div style={st.encartAttention}>Base de données du module non installée.</div>;
+  if (status === 'absent') return <div style={st.encartAttention}>Cette partie n'est pas encore activée.</div>;
   if (!form) return <div style={{ color: 'var(--spa-ink2)', fontSize: 14 }}>Chargement…</div>;
 
   const set = (cle, valeur) => setForm((p) => ({ ...p, [cle]: valeur }));
@@ -168,8 +168,8 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
           </div>
           <div style={{ fontSize: 14, color: 'var(--spa-ink2)', marginTop: 2 }}>
             {publie
-              ? <>Les demandes arrivent dans l'agenda, « à confirmer ». Page : <a href={apercu} target="_blank" rel="noreferrer" style={{ color: 'var(--spa-mizu)' }} data-no-translate>{lienPage.replace('https://', '')}</a></>
-              : 'Réglez les horaires et les praticiens, puis ouvrez-la : un bouton « Réserver un soin » apparaîtra sur le site du spa.'}
+              ? <>Les demandes arrivent dans l'agenda, en « À confirmer ». Votre page : <a href={apercu} target="_blank" rel="noreferrer" style={{ color: 'var(--spa-mizu)' }} data-no-translate>{lienPage.replace('https://', '')}</a></>
+              : 'Choisissez vos horaires, vos praticiens et vos soins ci-dessous, puis cliquez sur « Ouvrir la réservation ».'}
           </div>
         </div>
         {publie ? (
@@ -204,7 +204,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
                 autoComplete="off"
               />
             </div>
-            <div style={st.aide}>{slugValide ? 'Lettres minuscules, chiffres et tirets.' : 'Entre 3 et 40 caractères : lettres minuscules, chiffres et tirets.'}</div>
+            <div style={st.aide}>{slugValide ? 'C\'est la fin de votre lien de réservation. Lettres minuscules, chiffres et tirets seulement.' : 'Entre 3 et 40 caractères : lettres minuscules, chiffres et tirets seulement.'}</div>
           </div>
 
           <div style={st.carte}>
@@ -256,7 +256,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
           <div style={st.carte}>
             <TitreSection>Praticiens ouverts en ligne</TitreSection>
             <div style={{ fontSize: 13, color: 'var(--spa-ink2)', marginBottom: 10, lineHeight: 1.5 }}>
-              Un créneau est proposé tant qu'au moins l'un d'eux est libre. Le premier libre est attribué à la demande ; vous pouvez le changer ensuite.
+              Les clients voient un horaire tant qu'un de ces praticiens est libre. L'app choisit le praticien ; vous pouvez le changer ensuite.
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {praticiensConnus.map((x) => {
@@ -304,7 +304,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
               </Champ>
             </div>
             <div style={{ marginTop: 14 }}>
-              <Champ label="Message d'accueil" htmlFor="en-ligne-message" aide="Affiché en haut de la page de réservation.">
+              <Champ label="Message d'accueil" htmlFor="en-ligne-message" aide="Il s'affiche en haut de votre page de réservation.">
                 <textarea id="en-ligne-message" style={{ ...st.zone, minHeight: 64 }} value={form.messageEnLigne} placeholder="Choisissez votre soin et votre moment, nous vous confirmons le rendez-vous par e-mail." onChange={(e) => set('messageEnLigne', e.target.value)} />
               </Champ>
             </div>
@@ -337,7 +337,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
             <TitreSection>Brancher sur le site du spa</TitreSection>
             {!publie && (
               <div style={{ ...st.encartInfo, marginBottom: 12, fontSize: 13 }}>
-                Tout est prêt à partager, mais la page affichera « réservation fermée » tant que vous ne l'avez pas ouverte.
+                Vous pouvez déjà partager le lien. Tant que la réservation n'est pas ouverte, la page indique qu'elle est fermée.
               </div>
             )}
             {slugModifie && (
@@ -350,7 +350,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
             <div style={s.bloc}>
               <div style={s.blocTitre}><Link2 size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Le lien de réservation</div>
               <div style={s.blocTexte}>
-                Rien à installer : il suffit de le mettre sur le bouton « Réserver » du site, sur Instagram ou sur la fiche Google du spa.
+                Copiez ce lien et collez-le sur le bouton « Réserver » de votre site, dans votre bio Instagram ou sur Google. Rien à installer.
               </div>
               <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 220px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -377,7 +377,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
             <div style={s.bloc}>
               <div style={s.blocTitre}><Send size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Envoyer à la personne qui gère le site</div>
               <div style={s.blocTexte}>
-                Un e-mail tout prêt avec le lien et un guide pas à pas (WordPress, Wix, Squarespace, Webflow…). Elle n'a plus qu'à suivre.
+                Quelqu'un s'occupe de votre site ? Envoyez-lui cet e-mail tout prêt : il contient le lien et toutes les explications.
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <a href={lienGmail(mailWebmaster)} target="_blank" rel="noreferrer" style={{ ...st.secondaire, minHeight: 40, textDecoration: 'none', boxSizing: 'border-box' }}>
@@ -393,7 +393,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
             {/* ── Le code, pour installer soi-même ── */}
             <details style={{ marginTop: 4 }}>
               <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, minHeight: 40, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Code2 size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Installer soi-même avec le code
+                <Code2 size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-mizu)' }} /> Pour la personne qui gère le site : le code
               </summary>
               <div style={{ paddingTop: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -405,18 +405,18 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
                 </div>
                 <BlocCode
                   titre="Bouton « Réserver un soin »"
-                  texte="La réservation s'ouvre par-dessus le site, sans le quitter."
+                  texte="Un bouton qui ouvre la réservation par-dessus le site, sans le quitter."
                   code={codeBouton(form.slug, couleur)}
                   onCopier={copier}
                 />
                 <BlocCode
                   titre="Réservation intégrée dans une page"
-                  texte="Pour une page « Réserver » dédiée : la réservation s'affiche directement dans la page."
+                  texte="La réservation affichée directement dans une page du site."
                   code={codeIntegre(form.slug, couleur)}
                   onCopier={copier}
                 />
                 <a href={guide} target="_blank" rel="noreferrer" style={{ ...st.lien, minHeight: 36 }}>
-                  <BookOpen size={14} strokeWidth={1.8} aria-hidden="true" /> Où coller le code : le guide complet
+                  <BookOpen size={14} strokeWidth={1.8} aria-hidden="true" /> Où coller le code : le guide pas à pas
                 </a>
               </div>
             </details>

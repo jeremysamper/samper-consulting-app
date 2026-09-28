@@ -88,7 +88,7 @@ export default async function handler(req: Req, res: Res) {
 
   if (!etat) {
     return res.status(400).send(page(false, 'Lien incomplet',
-      'Cette page s\'ouvre à la fin de la connexion d\'une boîte mail. Recommencez depuis l\'onglet E-mails du spa.'));
+      'Cette page s\'ouvre à la fin de la connexion d\'une adresse e-mail. Recommencez depuis l\'onglet E-mails du spa.'));
   }
 
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -105,12 +105,12 @@ export default async function handler(req: Req, res: Res) {
     });
     const corps = await r.json().catch(() => ({}));
     if (!r.ok || !corps?.ok) {
-      return res.status(400).send(page(false, 'Boîte non connectée',
+      return res.status(400).send(page(false, 'Adresse e-mail non connectée',
         String(corps?.erreur || 'La connexion n\'a pas abouti. Recommencez depuis l\'app.')));
     }
     const nom = corps.fournisseur === 'microsoft' ? 'Outlook' : 'Gmail';
-    return res.status(200).send(page(true, 'Boîte connectée',
-      `Les e-mails du spa partiront désormais de ${corps.adresse} (${nom}).`));
+    return res.status(200).send(page(true, 'Adresse e-mail connectée',
+      `C'est fait : les e-mails du spa partiront maintenant de ${corps.adresse} (${nom}).`));
   } catch (err) {
     console.error('[spa-oauth]', err);
     return res.status(502).send(page(false, 'Un souci est survenu',

@@ -17,8 +17,8 @@ import { st } from './spaUi.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FOURNISSEURS = {
-  google: { nom: 'Gmail', detail: 'Gmail et Google Workspace', secrets: 'GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET' },
-  microsoft: { nom: 'Outlook', detail: 'Outlook, Hotmail et Microsoft 365', secrets: 'MS_CLIENT_ID et MS_CLIENT_SECRET' },
+  google: { nom: 'Gmail', detail: 'Adresse Gmail ou Google', editeur: 'Google' },
+  microsoft: { nom: 'Outlook', detail: 'Adresse Outlook, Hotmail ou Microsoft', editeur: 'Microsoft' },
 };
 const DELAI_TENTATIVE = 15 * 60 * 1000; // durée de validité d'une connexion en cours (state côté serveur)
 
@@ -129,7 +129,7 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
     );
   }
   if (!etat) {
-    return <div style={{ ...s.carte, color: 'var(--spa-ink2)', fontSize: 14 }} aria-live="polite">Vérification de la boîte d'envoi…</div>;
+    return <div style={{ ...s.carte, color: 'var(--spa-ink2)', fontSize: 14 }} aria-live="polite">Vérification de votre adresse e-mail…</div>;
   }
 
   const b = etat.boite;
@@ -141,14 +141,14 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
       <div style={{ ...s.carte, background: 'var(--spa-matcha-soft)', borderColor: 'transparent' }}>
         <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-matcha)' }}><MailCheck size={20} strokeWidth={1.8} /></span>
         <div style={s.texte}>
-          <div style={s.titre}>Les e-mails partent de votre boîte</div>
+          <div style={s.titre}>Vos e-mails partent de cette adresse</div>
           <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }} data-no-translate>{b.adresse}</div>
           <div style={s.aide}>
-            {FOURNISSEURS[b.fournisseur]?.nom}, connectée le {dateCourte(b.connecteAt)}. Les réponses des clients arrivent dans cette boîte.
+            {FOURNISSEURS[b.fournisseur]?.nom}, connectée le {dateCourte(b.connecteAt)}. Quand un client répond, sa réponse arrive ici.
           </div>
         </div>
         <div style={s.actions}>
-          <button type="button" onClick={() => setChanger(true)} disabled={Boolean(enCours)} style={st.secondaire}>Changer de boîte</button>
+          <button type="button" onClick={() => setChanger(true)} disabled={Boolean(enCours)} style={st.secondaire}>Changer d'adresse</button>
           <button type="button" onClick={deconnecter} disabled={Boolean(enCours)} style={st.danger}>
             {enCours === 'deconnexion' ? 'Déconnexion…' : 'Déconnecter'}
           </button>
@@ -164,18 +164,19 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
       <div style={{ ...s.carte, background: 'var(--spa-sakura-soft)', borderColor: 'transparent' }}>
         <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-sakura)' }}><AlertCircle size={20} strokeWidth={1.8} /></span>
         <div style={s.texte}>
-          <div style={s.titre}>La boîte d'envoi ne répond plus</div>
+          <div style={s.titre}>Votre adresse e-mail n'est plus connectée</div>
           <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }} data-no-translate>{b.adresse}</div>
           <div style={s.aide}>
-            {b.derniereErreur || 'La connexion a expiré.'}{' '}
-            {etat.resend ? 'En attendant, les e-mails partent de l\'adresse de secours.' : 'Aucun e-mail ne part tant qu\'elle n\'est pas reconnectée.'}
+            Cliquez sur « Reconnecter », puis acceptez à nouveau.{' '}
+            {etat.resend ? 'En attendant, les e-mails partent d\'une adresse de secours, à votre nom.' : 'En attendant, aucun e-mail ne part.'}
+            {consultant && b.derniereErreur && <span style={{ display: 'block', marginTop: 4 }}>Détail : {b.derniereErreur}</span>}
           </div>
         </div>
         <div style={s.actions}>
           <button type="button" onClick={() => connecter(b.fournisseur)} disabled={Boolean(enCours) || !connexions[b.fournisseur]} style={st.principal}>
             <RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /> {enCours === b.fournisseur ? 'Connexion…' : `Reconnecter ${f?.nom || ''}`}
           </button>
-          <button type="button" onClick={deconnecter} disabled={Boolean(enCours)} style={st.discret}>Retirer</button>
+          <button type="button" onClick={deconnecter} disabled={Boolean(enCours)} style={st.discret}>Déconnecter</button>
         </div>
       </div>
     );
@@ -187,11 +188,16 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
     <div style={s.carte}>
       <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-mizu)' }}><Mail size={20} strokeWidth={1.8} /></span>
       <div style={s.texte}>
-        <div style={s.titre}>{changer ? 'Connecter une autre boîte' : 'Connectez la boîte mail du spa'}</div>
+        <div style={s.titre}>{changer ? 'Connecter une autre adresse' : 'Connectez l\'adresse e-mail du spa'}</div>
         <div style={{ ...s.aide, marginTop: 2 }}>
-          Confirmations de rendez-vous, bons d'anniversaire et actualités partiront de votre propre adresse, et les réponses des
-          clients arriveront chez vous. Il suffit de se connecter, une seule fois.
+          Les confirmations de rendez-vous, les bons cadeaux et les nouvelles partiront de votre adresse. Vos clients vous
+          répondront directement.
         </div>
+        <ol style={s.etapes}>
+          <li>Cliquez sur « Connecter Gmail » ou « Connecter Outlook ».</li>
+          <li>Connectez-vous avec l'adresse e-mail du spa.</li>
+          <li>Acceptez. C'est fait, une fois pour toutes.</li>
+        </ol>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           {Object.entries(FOURNISSEURS).map(([id, f]) => {
             const dispo = Boolean(connexions[id]);
@@ -211,23 +217,21 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
           {changer && <button type="button" onClick={() => setChanger(false)} style={st.discret}>Annuler</button>}
         </div>
         <div style={{ ...s.aide, marginTop: 10 }}>
-          Gmail : aussi les adresses Google Workspace. Outlook : aussi Hotmail et Microsoft 365.{' '}
+          Gmail pour une adresse Gmail ou Google, Outlook pour une adresse Outlook, Hotmail ou Microsoft.{' '}
           {!b && (etat.resend
-            ? 'En attendant, les e-mails partent d\'une adresse Samper Consulting, au nom du spa.'
-            : 'Tant qu\'aucune boîte n\'est connectée, aucun e-mail ne part.')}
+            ? 'En attendant, les e-mails partent d\'une adresse de secours, à votre nom.'
+            : 'Tant qu\'aucune adresse n\'est connectée, aucun e-mail ne part.')}
         </div>
         {(aucuneConnexion || !connexions.google || !connexions.microsoft) && (
           <div style={{ ...st.encartInfo, marginTop: 12, fontSize: 13 }}>
             {consultant ? (
               <span>
-                Connexion à activer côté serveur : secrets Supabase{' '}
-                {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([id, f], i, t) => (
-                  <span key={id}><span data-no-translate>{f.secrets}</span>{i < t.length - 1 ? ', puis ' : ''}</span>
-                ))}
-                {' '}(adresse de retour : <span data-no-translate>https://samperconsulting-app.com/api/spa-oauth</span>).
+                Pas encore activé : les accès{' '}
+                {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([id, f]) => f.editeur).join(' et ')}
+                {' '}sont à créer une seule fois, pour tous les spas.
               </span>
             ) : (
-              <span>{aucuneConnexion ? 'La connexion des boîtes mail arrive très bientôt.' : 'Cette connexion arrive très bientôt.'}</span>
+              <span>{aucuneConnexion ? 'Bientôt disponible.' : 'L\'autre bouton sera bientôt disponible.'}</span>
             )}
           </div>
         )}
@@ -249,5 +253,6 @@ const s = {
   texte: { flex: '1 1 260px', minWidth: 0 },
   titre: { fontFamily: 'var(--font-serif)', fontSize: 19, lineHeight: 1.25, marginBottom: 2 },
   aide: { fontSize: 13, color: 'var(--spa-ink2)', lineHeight: 1.5, marginTop: 4 },
+  etapes: { margin: '10px 0 0', paddingLeft: 20, fontSize: 13.5, lineHeight: 1.7, color: 'var(--spa-ink)' },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', alignSelf: 'center' },
 };

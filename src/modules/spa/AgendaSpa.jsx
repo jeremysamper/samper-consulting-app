@@ -129,7 +129,7 @@ export default function AgendaSpa({
       </div>
 
       {status === 'error' && (
-        <div style={{ ...st.encartDanger, marginBottom: 12 }}>Lecture de l'agenda impossible (connexion ?). Nouvel essai automatique.</div>
+        <div style={{ ...st.encartDanger, marginBottom: 12 }}>L'agenda ne s'est pas chargé. Vérifiez la connexion internet : l'app réessaie toute seule.</div>
       )}
 
       {planning ? (

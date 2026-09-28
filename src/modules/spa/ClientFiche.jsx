@@ -237,9 +237,9 @@ export default function ClientFiche({
           >
             Parcours des séances
           </TitreSection>
-          {seances.status === 'error' && <div style={st.encartDanger}>Lecture de l'historique impossible (connexion ?).</div>}
+          {seances.status === 'error' && <div style={st.encartDanger}>L'historique ne s'est pas chargé. Vérifiez la connexion internet.</div>}
           {seances.status === 'ready' && !historique.length && (
-            <EtatVide icone={Sprout} texte="Aucune séance pour l'instant. Le compte rendu se remplit à la fin de chaque soin." />
+            <EtatVide icone={Sprout} texte="Aucune séance pour l'instant. À la fin de chaque soin, remplissez le compte rendu : il s'affichera ici." />
           )}
           <ol style={s.parcours}>
             {historique.map((sc, i) => {

@@ -76,12 +76,12 @@ export default function BonsSpa({ bons, status, clientsParId, aujourdhui, onModi
         </div>
       )}
 
-      {status === 'error' && <div style={{ ...st.encartDanger, marginBottom: 12 }}>Lecture des bons impossible (connexion ?).</div>}
+      {status === 'error' && <div style={{ ...st.encartDanger, marginBottom: 12 }}>Les bons ne se sont pas chargés. Vérifiez la connexion internet.</div>}
       {status === 'ready' && !bons.length && (
         <EtatVide
           icone={Gift}
           titre="Aucun bon pour l'instant"
-          texte="Les bons d'anniversaire partent tout seuls une fois l'envoi activé (onglet E-mails). Un bon peut aussi s'offrir depuis la fiche d'un client."
+          texte="Les bons d'anniversaire partent tout seuls une fois activés dans l'onglet E-mails. Pour offrir un bon, ouvrez la fiche du client."
         />
       )}
       {status === 'ready' && bons.length > 0 && !visibles.length && (

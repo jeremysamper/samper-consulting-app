@@ -335,7 +335,7 @@ Le client sera prévenu par e-mail.`)) return;
 
       {absent && (
         <div style={{ ...st.encartAttention, marginBottom: 14 }}>
-          Le module Spa est en cours d'activation : sa base de données n'est pas encore en place.
+          Le module Spa n'est pas encore activé pour cet établissement.
         </div>
       )}
 
