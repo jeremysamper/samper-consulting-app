@@ -2,39 +2,29 @@ import { useEffect, useState } from 'react';
 import { bootThemeFor } from './bootThemes.js';
 
 /**
- * Écran de chargement « Bienvenue ».
+ * Écran de chargement « Bienvenue » — modèle « Ripple ».
  *
- * Reprend le modèle vidéo fourni : sur fond noir, six calques s'ouvrent
- * chacun depuis une fine bande verticale au centre, le suivant naissant dans
- * le précédent ; la photo zoome légèrement pendant qu'elle s'ouvre. Le
- * dernier calque, plein écran, porte « Bienvenue » qui monte depuis une ligne
- * de masque. Tout est posé à ~1,9 s, au tempo du modèle. Photos et ordre : bootThemes.js, un
- * thème par semaine.
+ * La photo est vue à travers des anneaux concentriques centrés sur l'écran :
+ * chaque anneau est la même photo, très légèrement agrandie ou réduite, et
+ * les anneaux « respirent » en décalé, ce qui fait courir une onde de verre
+ * du centre vers les bords. Les photos s'enchaînent en coupe franche
+ * (bootThemes.js), la dernière reste. Texte fixe à mi-hauteur : « Bienvenue »
+ * à gauche, la signature à droite, comme dans le modèle vidéo.
  *
- * Fluidité : l'ouverture d'un calque ne repeint rien. Chaque calque est coupé
- * en deux moitiés ; dans chacune, un volet glisse vers le centre pendant que
- * la photo glisse en sens inverse (même durée, même courbe : les deux
- * déplacements s'annulent, la photo reste immobile à l'écran). Que des
- * translations, que le GPU anime seul, même quand le processeur est pris par
- * le démarrage de l'app en dessous. Une version à clip-path repeignait
- * l'écran à chaque image (~350 repeints en 2,4 s) et saccadait sur téléphone.
- * Les deux moitiés se chevauchent d'1 px pour qu'aucun fil ne passe au
- * centre. Seul le voile et le mot du dernier calque (sans photo, légers à
- * peindre) s'ouvrent encore par clip-path.
+ * Fluidité : chaque anneau est un disque (border-radius + overflow hidden)
+ * dont seule la photo intérieure est animée en transform, que le GPU anime
+ * seul. Aucun repeint pendant l'onde ; un repeint des disques à chaque coupe.
  *
  * Déroulé :
- *  - 'wait'   : noir (la première image du modèle) le temps que les photos
- *               de la semaine soient décodées, 1,2 s au plus ;
- *  - 'play'   : l'animation, une fois par onglet (sessionStorage). Un
- *               rechargement dans la même session saute directement à
- *               'static' : la brigade ne revoit pas l'intro à chaque retour
- *               sur l'app ;
- *  - 'static' : l'image finale, mot en place (aussi en mouvement réduit).
+ *  - 'wait'   : noir le temps que les photos soient décodées (1,2 s au plus) ;
+ *  - 'play'   : l'enchaînement, une fois par onglet (sessionStorage). Un
+ *               rechargement dans la même session passe directement à
+ *               'static' ;
+ *  - 'static' : la dernière photo, fixe (aussi en mouvement réduit).
  *
- * L'écran reste au moins jusqu'à la fin de l'intro (le mot doit se lire),
- * puis s'efface en fondu dès que l'app est prête. Toucher l'écran passe
- * l'intro. L'app se monte dessous pendant ce temps : elle charge ses données
- * au lieu d'attendre.
+ * L'écran reste au moins jusqu'à la fin de l'enchaînement, puis s'efface en
+ * fondu dès que l'app est prête. Toucher l'écran passe l'intro. L'app se
+ * monte dessous pendant ce temps.
  *
  * @param {boolean}  loading    démarrage encore en cours (auth, modules)
  * @param {string}   title      étape en cours, annoncée aux lecteurs d'écran
@@ -42,19 +32,19 @@ import { bootThemeFor } from './bootThemes.js';
  * @param {Function} onFinished appelé à la fin du fondu de sortie (stable)
  */
 
-// Départ de chaque calque, en ms : le tempo du modèle vidéo, relevé image
-// par image (quatre bandes puis l'image de fin). La durée d'ouverture d'un
-// calque (780 ms) est aussi dans app.css.
-const LAYER_STARTS = [30, 330, 500, 670, 870];
-const OPEN_MS = 780;
-const heroAt = LAYER_STARTS[LAYER_STARTS.length - 1];
-// Fin de l'intro : le mot est posé (~1,9 s) et lisible.
-const INTRO_MS = 2150;
-// Attente maximale des photos avant de lancer l'intro quand même (les calques
-// sans photo s'ouvrent alors dans la teinte de leur photo).
+// Coupes franches : départ de chaque photo, en ms (rythme du modèle, ~0,8 s).
+const SHOT_STARTS = [0, 800, 1600];
+// Fin de l'intro : la dernière photo a eu le temps d'être vue.
+const INTRO_MS = 2400;
+// Attente maximale des photos avant de lancer l'intro quand même.
 const PHOTO_WAIT_MS = 1200;
 const EXIT_MS = 380;
 const SEEN_KEY = 'sc_bienvenue_vue';
+// Nombre d'anneaux de l'onde. Le modèle en montre une dizaine, mais chaque
+// anneau se redessine à chaque image : mesuré CPU ×4, 6 anneaux perdent
+// 7 images sur 2,2 s, 8 en perdent 35, 12 en perdent 70. Ne pas monter
+// sans remesurer.
+const RINGS = 6;
 
 function readPreviewIndex() {
   if (!import.meta.env.DEV) return null;
@@ -66,10 +56,11 @@ function readPreviewIndex() {
   }
 }
 
-// Aperçu en dev : /vite-index.html?bienvenue=3 force le thème 3 et rejoue
-// l'intro à chaque chargement.
+// Aperçu en dev : /vite-index.html?bienvenue=0 rejoue l'intro à chaque
+// chargement.
 const previewIndex = readPreviewIndex();
 const theme = bootThemeFor(new Date(), previewIndex);
+const lastShot = theme.shots.length - 1;
 
 function introSeen() {
   if (previewIndex !== null) return false;
@@ -109,34 +100,40 @@ function decode(src) {
 }
 
 // Téléchargement lancé dès l'import du module, avant le premier rendu React.
-// L'intro déjà vue dans cet onglet n'a besoin que de la photo finale.
+// L'intro déjà vue dans cet onglet n'a besoin que de la dernière photo.
 const photosReady = typeof Image === 'undefined'
   ? Promise.resolve()
-  : Promise.all((initialPhase() === 'wait' ? [...theme.layers, theme.hero] : [theme.hero]).map((p) => decode(p.src)));
+  : Promise.all((initialPhase() === 'wait' ? theme.shots : [theme.shots[lastShot]]).map((p) => decode(p.src)));
 
 /**
- * Un calque : deux moitiés (gauche, droite), chacune volet + cadre. Le cadre
- * porte la photo alignée sur l'écran entier ; seule la partie de sa moitié
- * est visible.
+ * L'onde : la photo en plein écran, puis des disques de plus en plus petits
+ * posés dessus, chacun portant la même photo alignée sur l'écran. Chaque
+ * disque ne laisse voir que son anneau (le disque suivant couvre le centre).
  */
-function Layer({ item, at, focus }) {
+function Ripple({ shot, focus, animated }) {
   return (
-    <div style={{ ...s.layer, '--bv-at': `${at}ms` }} aria-hidden="true">
-      {['l', 'r'].map((side) => {
-        const screen = side === 'l' ? s.screenL : s.screenR;
+    <div style={s.fill} aria-hidden="true">
+      <div style={{ ...s.fill, background: shot.tone }}>
+        <img src={shot.src} alt="" draggable={false} style={{ ...s.photo, objectPosition: focus }} />
+      </div>
+      {Array.from({ length: RINGS }, (_, i) => {
+        // Du plus grand (i = 0) au plus petit, en fraction de la diagonale.
+        const size = `calc(var(--bv-diag) * ${((RINGS - i) / RINGS).toFixed(4)})`;
         return (
-          <div key={side} className={`bv-half bv-half-${side}`} style={side === 'l' ? s.halfL : s.halfR}>
-            <div className="bv-slide" style={s.fill}>
-              <div className="bv-frame" style={{ ...s.fill, background: item.tone }}>
-                <img
-                  className="bv-photo"
-                  src={item.src}
-                  alt=""
-                  draggable={false}
-                  style={{ ...s.photo, ...screen, objectPosition: focus }}
-                />
-              </div>
-            </div>
+          <div key={i} style={{ ...s.disc, width: size, height: size }}>
+            <img
+              className={animated ? 'bv-ring' : undefined}
+              src={shot.src}
+              alt=""
+              draggable={false}
+              style={{
+                ...s.photo,
+                ...s.ringPhoto,
+                objectPosition: focus,
+                // Onde qui part du centre : les petits anneaux d'abord.
+                animationDelay: `${-(RINGS - i) * 220}ms`,
+              }}
+            />
           </div>
         );
       })}
@@ -147,9 +144,7 @@ function Layer({ item, at, focus }) {
 export default function BootScreen({ loading = true, title = 'Connexion à votre espace', onFinished }) {
   const [phase, setPhase] = useState(initialPhase);
   const [introDone, setIntroDone] = useState(() => phase === 'static');
-  // Les bandes, recouvertes une fois la photo finale ouverte, sont retirées :
-  // moins de calques à garder en mémoire graphique pendant la suite.
-  const [stripsGone, setStripsGone] = useState(false);
+  const [shotIndex, setShotIndex] = useState(() => (phase === 'static' ? lastShot : 0));
   const leaving = introDone && !loading;
 
   // Photos décodées (ou délai écoulé) : l'intro démarre.
@@ -170,12 +165,10 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
   useEffect(() => {
     if (phase !== 'play') return undefined;
     markIntroSeen();
-    const stripsTimer = setTimeout(() => setStripsGone(true), heroAt + OPEN_MS + 100);
-    const timer = setTimeout(() => setIntroDone(true), INTRO_MS);
-    return () => {
-      clearTimeout(stripsTimer);
-      clearTimeout(timer);
-    };
+    const timers = SHOT_STARTS.slice(1, theme.shots.length)
+      .map((at, i) => setTimeout(() => setShotIndex(i + 1), at));
+    timers.push(setTimeout(() => setIntroDone(true), INTRO_MS));
+    return () => timers.forEach(clearTimeout);
   }, [phase]);
 
   // Sortie : fondu, puis démontage. Un chargement qui repart pendant le fondu
@@ -190,6 +183,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
     if (phase === 'static') return;
     markIntroSeen();
     setPhase('static');
+    setShotIndex(lastShot);
     setIntroDone(true);
   }
 
@@ -200,29 +194,19 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
       onPointerDown={skip}
       data-no-translate=""
     >
-      {phase === 'play' && !stripsGone && theme.layers.map((item, i) => (
-        <Layer key={`${i}-${item.src}`} item={item} at={LAYER_STARTS[i]} />
-      ))}
-
-      {phase !== 'wait' && <Layer item={theme.hero} at={heroAt} focus={theme.focus} />}
-
-      {/* Léger vignettage sur les photos, sous le texte. */}
-      {phase !== 'wait' && <div style={s.vignette} aria-hidden="true" />}
-
       {phase !== 'wait' && (
-        <div className="bv-extras" style={{ ...s.layer, '--bv-at': `${heroAt}ms` }}>
+        <>
+          <Ripple shot={theme.shots[shotIndex]} focus={theme.focus} animated={phase === 'play'} />
           <div style={s.scrim(theme.dim)} aria-hidden="true" />
-
-          <div style={s.labels} aria-hidden="true">
-            <span>Samper Consulting</span>
+          <div className="bv-text" style={s.textRow}>
+            <p style={s.word}>Bienvenue</p>
+            <p style={s.sign} aria-hidden="true">
+              Samper Consulting
+              <br />
+              Gestion culinaire
+            </p>
           </div>
-
-          <div style={s.wordZone}>
-            <div style={s.wordMask}>
-              <p className="bv-word" style={s.word}>Bienvenue</p>
-            </div>
-          </div>
-        </div>
+        </>
       )}
 
       <div className="bv-status" style={s.status} role="status" aria-live="polite">
@@ -241,97 +225,87 @@ const FONT = 'var(--font)';
 const s = {
   root: {
     position: 'fixed',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    // En vw, comme les moitiés et leurs décalages : tout le calcul des volets
-    // part de la même largeur.
-    width: '100vw',
+    inset: 0,
     zIndex: 9999,
     overflow: 'hidden',
     background: '#000',
     userSelect: 'none',
     WebkitUserSelect: 'none',
     WebkitTapHighlightColor: 'transparent',
+    // Diagonale de l'écran : le plus grand anneau couvre les coins.
+    '--bv-diag': 'calc(max(100vw, 100vh) * 1.42)',
   },
-  layer: {
+  fill: {
     position: 'absolute',
     inset: 0,
   },
-  // Moitiés de 50vw + 1px : elles se chevauchent sur 2 px au centre (même
-  // photo, mêmes pixels), ce qui évite un fil entre les deux.
-  halfL: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 'calc(50vw + 1px)', overflow: 'hidden' },
-  halfR: { position: 'absolute', top: 0, bottom: 0, left: 'calc(50vw - 1px)', width: 'calc(50vw + 1px)', overflow: 'hidden' },
-  fill: { position: 'absolute', inset: 0, overflow: 'hidden' },
   photo: {
     position: 'absolute',
     top: 0,
-    height: '100%',
+    left: 0,
     width: '100vw',
+    height: '100vh',
     objectFit: 'cover',
     display: 'block',
-    // Pas de filtre CSS ici : l'étalonnage est cuit dans les fichiers
-    // (scripts/gen-boot-photos.mjs). Un filtre en direct coûtait des images
-    // pendant les glissements.
   },
-  vignette: {
+  disc: {
     position: 'absolute',
-    inset: 0,
-    pointerEvents: 'none',
-    background: 'radial-gradient(ellipse 120% 90% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.38) 100%)',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    borderRadius: '50%',
+    overflow: 'hidden',
+    // Liseré clair au bord de chaque anneau : l'effet « verre » du modèle.
+    // Fixe, peint une seule fois.
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 0 18px rgba(255,255,255,0.06)',
   },
-  // La photo couvre l'écran entier, alignée sur lui quelle que soit la moitié.
-  screenL: { left: 0 },
-  screenR: { left: 'calc(1px - 50vw)' },
+  // Dans un disque, la photo reste alignée sur l'écran : son coin haut-gauche
+  // est ramené au coin de l'écran, et elle grossit autour du centre de l'écran.
+  ringPhoto: {
+    top: 'calc(50% - 50vh)',
+    left: 'calc(50% - 50vw)',
+    transformOrigin: '50vw 50vh',
+  },
   scrim: (dim) => ({
     position: 'absolute',
     inset: 0,
-    // Voile centré sous le mot + haut assombri pour les deux mentions.
-    background: `linear-gradient(to bottom, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0) 16%), radial-gradient(ellipse 85% 55% at 50% 50%, rgba(0,0,0,${dim}) 0%, rgba(0,0,0,${dim * 0.4}) 100%)`,
+    pointerEvents: 'none',
+    // Bande sombre douce à mi-hauteur, sous le texte, et bords assombris.
+    background: `linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,${dim}) 50%, rgba(0,0,0,0) 70%), radial-gradient(ellipse 120% 90% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.3) 100%)`,
   }),
-  labels: {
+  textRow: {
     position: 'absolute',
-    top: 'max(18px, env(safe-area-inset-top))',
+    top: '50%',
     left: 'max(20px, env(safe-area-inset-left))',
     right: 'max(20px, env(safe-area-inset-right))',
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 16,
-    fontFamily: FONT,
-    fontSize: 10.5,
-    letterSpacing: '0.14em',
-    textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.86)',
-  },
-  wordZone: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: '50%',
     transform: 'translateY(-50%)',
     display: 'flex',
-    justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
     pointerEvents: 'none',
-  },
-  wordMask: {
-    // La ligne de masque : le bas de cette boîte. Le mot en sort par le bas ;
-    // seul ce bord coupe (les insets négatifs laissent passer haut et côtés).
-    fontSize: 'min(16vw, 26vh)',
-    paddingBottom: '0.28em',
-    clipPath: 'inset(-100vh -100vw 0 -100vw)',
+    color: '#fff',
+    textShadow: '0 1px 2px rgba(0,0,0,0.25), 0 4px 24px rgba(0,0,0,0.35)',
   },
   word: {
     margin: 0,
     fontFamily: FONT,
-    fontSize: '1em',
+    fontSize: 'clamp(26px, 7vw, 56px)',
     fontWeight: 700,
     lineHeight: 1,
-    letterSpacing: '-0.045em',
-    color: '#fff',
+    letterSpacing: '-0.035em',
     whiteSpace: 'nowrap',
-    // Ombre serrée + halo large : le mot reste lisible sur une purée ou une
-    // meringue blanche, là où le modèle posait sur un mur uni.
-    textShadow: '0 1px 3px rgba(0,0,0,0.25), 0 6px 44px rgba(0,0,0,0.42)',
+  },
+  sign: {
+    margin: 0,
+    fontFamily: FONT,
+    fontSize: 'clamp(9px, 1.6vw, 12px)',
+    fontWeight: 500,
+    lineHeight: 1.35,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
   },
   status: {
     position: 'absolute',

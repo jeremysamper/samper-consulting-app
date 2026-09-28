@@ -280,40 +280,17 @@ html[data-theme="dark"] {
 }
 
 /* ─── Écran de chargement « Bienvenue » (src/components/brand/BootScreen.jsx)
-   Tempo du modèle vidéo : chaque calque s'ouvre en 780 ms (ease-in-out
-   cubique) depuis une bande de 0 px au centre ; le départ de chaque calque
-   est posé en ligne (--bv-at). La photo zoome de 5 % pendant ce temps. Le mot
-   monte de sous sa ligne de masque à 1,09 s (ease-out expo) et se pose vers
-   1,9 s.
+   Modèle « Ripple » : chaque anneau (.bv-ring) grossit et rétrécit
+   (-5 % à +9 %) autour du centre de l'écran, en boucle. Les anneaux
+   sont décalés dans le temps (animation-delay posé en ligne) : l'onde court
+   du centre vers les bords. Que du transform, animé par le GPU seul ; ne pas
+   passer à clip-path ou filter, qui repeignent à chaque image. */
 
-   Ouverture sans repeint : dans chaque moitié, le volet (.bv-slide) glisse
-   vers le centre et le cadre (.bv-frame) glisse d'autant en sens inverse.
-   Mêmes durée, courbe et départ : les deux translations s'annulent, la photo
-   reste fixe à l'écran. Que du transform, animé par le GPU seul. Ne pas
-   remplacer par clip-path : il repeint à chaque image et saccade sur
-   téléphone pendant que l'app démarre dessous.
-
-   Phases = classes de la racine : rien n'est rendu en .bv-wait (photos pas
-   encore décodées), tout est en place sans animation en .bv-static. */
-
-@keyframes bvSlideL { from { transform: translateX(calc(50vw + 1px)); } to { transform: translateX(0); } }
-@keyframes bvFrameL { from { transform: translateX(calc(-50vw - 1px)); } to { transform: translateX(0); } }
-@keyframes bvSlideR { from { transform: translateX(calc(-50vw - 1px)); } to { transform: translateX(0); } }
-@keyframes bvFrameR { from { transform: translateX(calc(50vw + 1px)); } to { transform: translateX(0); } }
-
-@keyframes bvOpen {
-  from { clip-path: inset(0 50% 0 50%); }
-  to   { clip-path: inset(0 0 0 0); }
-}
-
-@keyframes bvZoom {
-  from { transform: scale(1); }
-  to   { transform: scale(1.05); }
-}
-
-@keyframes bvRise {
-  from { transform: translateY(140%); }
-  to   { transform: none; }
+@keyframes bvRipple {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.09); }
+  65%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
 }
 
 @keyframes bvFadeIn {
@@ -331,31 +308,16 @@ html[data-theme="dark"] {
   to   { transform: translateX(260%); }
 }
 
-.bv-play .bv-slide,
-.bv-play .bv-frame,
-.bv-play .bv-photo { will-change: transform; }
-
-.bv-play .bv-half-l .bv-slide { animation: bvSlideL 780ms cubic-bezier(0.65, 0, 0.35, 1) var(--bv-at, 0ms) both; }
-.bv-play .bv-half-l .bv-frame { animation: bvFrameL 780ms cubic-bezier(0.65, 0, 0.35, 1) var(--bv-at, 0ms) both; }
-.bv-play .bv-half-r .bv-slide { animation: bvSlideR 780ms cubic-bezier(0.65, 0, 0.35, 1) var(--bv-at, 0ms) both; }
-.bv-play .bv-half-r .bv-frame { animation: bvFrameR 780ms cubic-bezier(0.65, 0, 0.35, 1) var(--bv-at, 0ms) both; }
-.bv-play .bv-photo { animation: bvZoom 1100ms cubic-bezier(0.33, 1, 0.68, 1) var(--bv-at, 0ms) both; }
-
-/* Voile, mentions et mot de la photo finale : s'ouvrent avec elle. */
-.bv-play .bv-extras { animation: bvOpen 780ms cubic-bezier(0.65, 0, 0.35, 1) var(--bv-at, 0ms) both; }
-.bv-word  { transform: translateY(140%); }
-.bv-play .bv-word {
+.bv-ring {
   will-change: transform;
-  animation: bvRise 820ms cubic-bezier(0.16, 1, 0.3, 1) 1090ms forwards;
+  animation: bvRipple 1600ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
-/* Image finale, mot en place : intro déjà vue, passée d'un toucher, ou
-   mouvement réduit. */
-.bv-static .bv-photo { transform: scale(1.05); }
-.bv-static .bv-word  { transform: none; }
+/* Le texte arrive en fondu avec la première photo, puis reste fixe. */
+.bv-play .bv-text { animation: bvFadeIn 500ms ease 150ms both; }
 
 /* État du chargement : n'apparaît que s'il dure au-delà de l'intro. */
-.bv-status { opacity: 0; animation: bvFadeIn 400ms ease 2450ms forwards; }
+.bv-status { opacity: 0; animation: bvFadeIn 400ms ease 2700ms forwards; }
 .bv-sweep  { animation: bvSweep 1.35s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
 
 .bv-leaving {
@@ -364,11 +326,8 @@ html[data-theme="dark"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bv-slide,
-  .bv-frame,
-  .bv-extras { animation: none !important; clip-path: none; transform: none; }
-  .bv-photo,
-  .bv-word { transform: none; animation: none !important; }
+  .bv-ring,
+  .bv-text { animation: none !important; transform: none; }
   .bv-sweep { animation: scLangPulse 1.8s ease-in-out infinite; transform: none; width: 100% !important; }
 }
 
