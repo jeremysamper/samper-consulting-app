@@ -11,6 +11,12 @@
  * portrait n'en montre qu'une bande horizontale : le focus choisit laquelle.
  * `dim` : voile sombre sous le mot, plus fort sur les photos claires.
  *
+ * Photo finale = photo haute définition uniquement (2000 px et plus sur le
+ * grand côté, les photos d'appareil). Elle reste affichée : une photo de
+ * téléphone (1200-1600 px) y est agrandie ×2 sur un téléphone récent et
+ * paraît floue. Ces photos-là servent en transition, vues en mouvement, et
+ * jamais en première bande (la seule qui reste un moment seule à l'écran).
+ *
  * Pour ajouter des photos : node scripts/gen-boot-photos.mjs <dossier>, puis
  * les importer ici avec la teinte (`tone`) affichée par le script.
  */
@@ -32,7 +38,6 @@ import pavlova from './boot-photos/bienvenue-pavlova.webp';
 import poireauBrule from './boot-photos/bienvenue-poireau-brule.webp';
 import poisson from './boot-photos/bienvenue-poisson.webp';
 import saumonCru from './boot-photos/bienvenue-saumon-cru.webp';
-import saumonValence from './boot-photos/bienvenue-saumon-valence.webp';
 
 // `tone` : teinte moyenne de la photo, couleur du calque tant qu'elle charge.
 const P = {
@@ -54,60 +59,56 @@ const P = {
   poireauBrule: { src: poireauBrule, tone: '#5e4a2c' },
   poisson: { src: poisson, tone: '#a27d53' },
   saumonCru: { src: saumonCru, tone: '#9a8f77' },
-  // 498 px seulement : jamais en photo finale, jamais en première bande (la
-  // seule qui reste longtemps seule à l'écran). En milieu de séquence, son
-  // flou passe pour un effet, comme le portrait flou du modèle.
-  saumonValence: { src: saumonValence, tone: '#93856f' },
 };
 
 export const BOOT_THEMES = [
   {
-    layers: [P.saumonCru, P.canardJus, P.ardoiseSombre, P.poisson, P.chefMains],
+    layers: [P.poisson, P.canardJus, P.ardoiseSombre, P.saumonCru, P.chefMains],
     hero: P.brioche,
     focus: '50% 52%',
     dim: 0.34,
   },
   {
-    layers: [P.cailleRotie, P.bolSombre, P.dessertCacao, P.pavlova, P.burger],
-    hero: P.chefDressage,
-    focus: '50% 42%',
-    dim: 0.2,
-  },
-  {
-    layers: [P.granitBleu, P.chefMains, P.poisson, P.bolSombre, P.saumonCru],
-    hero: P.ardoiseSombre,
-    focus: '50% 36%',
-    dim: 0.3,
-  },
-  {
-    layers: [P.burger, P.mainBol, P.ardoiseProfil, P.saumonValence, P.granitVin],
-    hero: P.pavlova,
-    focus: '50% 12%',
-    dim: 0.4,
-  },
-  {
-    layers: [P.saumonCru, P.chefDressage, P.dessertCacao, P.ardoiseProfil, P.cailleRotie],
+    layers: [P.dessertCacao, P.chefDressage, P.cailleRotie, P.bolSombre, P.burger],
     hero: P.canardJus,
     focus: '50% 50%',
     dim: 0.26,
   },
   {
-    layers: [P.poisson, P.croquetteOrge, P.bolSombre, P.saumonValence, P.granitBleu],
-    hero: P.chefMains,
-    focus: '50% 50%',
-    dim: 0.18,
+    layers: [P.granitBleu, P.chefMains, P.poisson, P.pavlova, P.saumonCru],
+    hero: P.ardoiseSombre,
+    focus: '50% 36%',
+    dim: 0.3,
   },
   {
-    layers: [P.cailleRotie, P.pavlova, P.brioche, P.chefDressage, P.saumonCru],
+    layers: [P.burger, P.mainBol, P.ardoiseProfil, P.croquetteOrge, P.dessertCacao],
     hero: P.bolSombre,
     focus: '50% 45%',
     dim: 0.34,
   },
   {
-    layers: [P.granitVin, P.ardoiseSombre, P.dessertCacao, P.chefMains, P.burger],
+    layers: [P.granitVin, P.ardoiseSombre, P.cailleRotie, P.chefDressage, P.poisson],
     hero: P.poireauBrule,
     focus: '50% 45%',
     dim: 0.34,
+  },
+  {
+    layers: [P.poisson, P.pavlova, P.brioche, P.chefMains, P.saumonCru],
+    hero: P.mainBol,
+    focus: '50% 45%',
+    dim: 0.3,
+  },
+  {
+    layers: [P.dessertCacao, P.bolSombre, P.croquetteOrge, P.canardJus, P.cailleRotie],
+    hero: P.ardoiseProfil,
+    focus: '50% 36%',
+    dim: 0.3,
+  },
+  {
+    layers: [P.burger, P.poireauBrule, P.granitBleu, P.saumonCru, P.chefMains],
+    hero: P.dessertCacao,
+    focus: '50% 50%',
+    dim: 0.36,
   },
 ];
 

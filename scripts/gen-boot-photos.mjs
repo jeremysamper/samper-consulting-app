@@ -6,8 +6,13 @@
  *
  * Chaque .jpg / .jpeg / .png / .webp du dossier devient
  * src/components/brand/boot-photos/bienvenue-<nom-du-fichier>.webp :
- * 1600 px sur le grand côté (jamais agrandie), WebP qualité 70 (moins pour
- * les textures, plafond 150 Ko), orientation EXIF appliquée.
+ * 2400 px sur le grand côté (jamais agrandie), WebP qualité 80 (moins pour
+ * les textures, plafond 420 Ko), orientation EXIF appliquée. 2400 px parce
+ * qu'un téléphone récent affiche ~2500 pixels physiques en hauteur : à
+ * 1600 px la photo était agrandie ×1,6 et paraissait molle.
+ * Une photo source de moins de 1100 px sur son grand côté est refusée. Sous
+ * ~2000 px, elle reste utilisable en bande de transition (vue en mouvement),
+ * jamais en photo finale : voir bootThemes.js.
  * Nommer les fichiers source d'après le plat (canard-jus.jpg) : c'est ce nom
  * qu'on retrouve dans bootThemes.js.
  *
@@ -42,7 +47,8 @@ const slugify = (name) => name
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-|-$/g, '');
 
-const MAX_BYTES = 150 * 1024;
+const MAX_BYTES = 420 * 1024;
+const MIN_SOURCE_SIDE = 1100;
 
 const toHex = ({ r, g, b }) => `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
 
@@ -52,15 +58,20 @@ for (const file of files) {
   const slug = slugify(path.parse(file).name);
   const target = path.join(outDir, `bienvenue-${slug}.webp`);
   const source = sharp(path.join(srcDir, file)).rotate();
+  const meta = await source.metadata();
+  if (Math.max(meta.width, meta.height) < MIN_SOURCE_SIDE) {
+    console.warn(`${file} : ${meta.width}×${meta.height}, trop petite pour le plein écran, ignorée`);
+    continue;
+  }
   const { channels } = await source.clone().stats();
   // Les textures (granit, pierre) se compressent mal : on baisse la qualité,
-  // puis la taille, par paliers jusqu'à passer sous 150 Ko. Le grain masque
+  // puis la taille, par paliers jusqu'à passer sous 420 Ko. Le grain masque
   // la perte, et ces photos-là servent de transition, vues en mouvement.
   let buffer;
   let quality;
   search:
-  for (const side of [1600, 1400, 1200, 1000]) {
-    for (quality of [70, 60, 50, 40]) {
+  for (const side of [2400, 2000, 1800, 1600]) {
+    for (quality of [80, 74, 68, 62]) {
       buffer = await source.clone()
         .resize({ width: side, height: side, fit: 'inside', withoutEnlargement: true })
         .webp({ quality, effort: 6 })

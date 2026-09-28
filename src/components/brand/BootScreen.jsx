@@ -8,16 +8,27 @@ import { bootThemeFor } from './bootThemes.js';
  * chacun depuis une fine bande verticale au centre, le suivant naissant dans
  * le précédent ; la photo zoome légèrement pendant qu'elle s'ouvre. Le
  * dernier calque, plein écran, porte « Bienvenue » qui monte depuis une ligne
- * de masque. Tout est posé à ~2 s. Photos et ordre : bootThemes.js, un thème
- * par semaine.
+ * de masque. Tout est posé à ~2,8 s. Photos et ordre : bootThemes.js, un
+ * thème par semaine.
+ *
+ * Fluidité : l'ouverture d'un calque ne repeint rien. Chaque calque est coupé
+ * en deux moitiés ; dans chacune, un volet glisse vers le centre pendant que
+ * la photo glisse en sens inverse (même durée, même courbe : les deux
+ * déplacements s'annulent, la photo reste immobile à l'écran). Que des
+ * translations, que le GPU anime seul, même quand le processeur est pris par
+ * le démarrage de l'app en dessous. Une version à clip-path repeignait
+ * l'écran à chaque image (~350 repeints en 2,4 s) et saccadait sur téléphone.
+ * Les deux moitiés se chevauchent d'1 px pour qu'aucun fil ne passe au
+ * centre. Seul le voile et le mot du dernier calque (sans photo, légers à
+ * peindre) s'ouvrent encore par clip-path.
  *
  * Déroulé :
  *  - 'wait'   : noir (la première image du modèle) le temps que les photos
  *               de la semaine soient décodées, 1,2 s au plus ;
  *  - 'play'   : l'animation, une fois par onglet (sessionStorage). Un
  *               rechargement dans la même session saute directement à
- *               'static' : la brigade ne revoit pas 2 s d'intro à chaque
- *               retour sur l'app ;
+ *               'static' : la brigade ne revoit pas l'intro à chaque retour
+ *               sur l'app ;
  *  - 'static' : l'image finale, mot en place (aussi en mouvement réduit).
  *
  * L'écran reste au moins jusqu'à la fin de l'intro (le mot doit se lire),
@@ -31,10 +42,13 @@ import { bootThemeFor } from './bootThemes.js';
  * @param {Function} onFinished appelé à la fin du fondu de sortie (stable)
  */
 
-// Départ de chaque calque, en ms : relevé image par image sur le modèle.
-const LAYER_STARTS = [30, 330, 500, 670, 870, 1030];
-// Fin de l'intro : le mot est posé (~2,05 s) et lisible.
-const INTRO_MS = 2300;
+// Départ de chaque calque, en ms : le rythme du modèle, ralenti de 40 %.
+// La durée d'ouverture d'un calque (1100 ms) est dans app.css.
+const LAYER_STARTS = [40, 460, 700, 940, 1220, 1440];
+const OPEN_MS = 1100;
+const heroAt = LAYER_STARTS[LAYER_STARTS.length - 1];
+// Fin de l'intro : le mot est posé (~2,8 s) et lisible.
+const INTRO_MS = 3000;
 // Attente maximale des photos avant de lancer l'intro quand même (les calques
 // sans photo s'ouvrent alors dans la teinte de leur photo).
 const PHOTO_WAIT_MS = 1200;
@@ -99,9 +113,39 @@ const photosReady = typeof Image === 'undefined'
   ? Promise.resolve()
   : Promise.all((initialPhase() === 'wait' ? [...theme.layers, theme.hero] : [theme.hero]).map((p) => decode(p.src)));
 
+/**
+ * Un calque : deux moitiés (gauche, droite), chacune volet + cadre. Le cadre
+ * porte la photo alignée sur l'écran entier ; seule la partie de sa moitié
+ * est visible.
+ */
+function Layer({ photo, at, focus }) {
+  return (
+    <div style={{ ...s.layer, '--bv-at': `${at}ms` }} aria-hidden="true">
+      {['l', 'r'].map((side) => (
+        <div key={side} className={`bv-half bv-half-${side}`} style={side === 'l' ? s.halfL : s.halfR}>
+          <div className="bv-slide" style={s.fill}>
+            <div className="bv-frame" style={{ ...s.fill, background: photo.tone }}>
+              <img
+                className="bv-photo"
+                src={photo.src}
+                alt=""
+                draggable={false}
+                style={{ ...s.photo, ...(side === 'l' ? s.screenL : s.screenR), objectPosition: focus }}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function BootScreen({ loading = true, title = 'Connexion à votre espace', onFinished }) {
   const [phase, setPhase] = useState(initialPhase);
   const [introDone, setIntroDone] = useState(() => phase === 'static');
+  // Les bandes, recouvertes une fois la photo finale ouverte, sont retirées :
+  // moins de calques à garder en mémoire graphique pendant la suite.
+  const [stripsGone, setStripsGone] = useState(false);
   const leaving = introDone && !loading;
 
   // Photos décodées (ou délai écoulé) : l'intro démarre.
@@ -122,8 +166,12 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
   useEffect(() => {
     if (phase !== 'play') return undefined;
     markIntroSeen();
+    const stripsTimer = setTimeout(() => setStripsGone(true), heroAt + OPEN_MS + 100);
     const timer = setTimeout(() => setIntroDone(true), INTRO_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(stripsTimer);
+      clearTimeout(timer);
+    };
   }, [phase]);
 
   // Sortie : fondu, puis démontage. Un chargement qui repart pendant le fondu
@@ -141,8 +189,6 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
     setIntroDone(true);
   }
 
-  const heroAt = LAYER_STARTS[LAYER_STARTS.length - 1];
-
   return (
     <div
       className={`bv-root bv-${phase}${leaving ? ' bv-leaving' : ''}`}
@@ -150,38 +196,28 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
       onPointerDown={skip}
       data-no-translate=""
     >
-      {phase !== 'static' && theme.layers.map((photo, i) => (
-        <div
-          key={`${i}-${photo.src}`}
-          className="bv-layer"
-          style={{ ...s.layer, background: photo.tone, '--bv-at': `${LAYER_STARTS[i]}ms` }}
-          aria-hidden="true"
-        >
-          <img className="bv-photo" src={photo.src} alt="" style={s.photo} draggable={false} />
-        </div>
+      {phase === 'play' && !stripsGone && theme.layers.map((photo, i) => (
+        <Layer key={`${i}-${photo.src}`} photo={photo} at={LAYER_STARTS[i]} />
       ))}
 
-      <div className="bv-layer" style={{ ...s.layer, background: theme.hero.tone, '--bv-at': `${heroAt}ms` }}>
-        <img
-          className="bv-photo"
-          src={theme.hero.src}
-          alt=""
-          style={{ ...s.photo, objectPosition: theme.focus }}
-          draggable={false}
-        />
-        <div style={s.scrim(theme.dim)} aria-hidden="true" />
+      {phase !== 'wait' && <Layer photo={theme.hero} at={heroAt} focus={theme.focus} />}
 
-        <div style={s.labels} aria-hidden="true">
-          <span>Samper Consulting</span>
-          <span>Semaine {theme.week}</span>
-        </div>
+      {phase !== 'wait' && (
+        <div className="bv-extras" style={{ ...s.layer, '--bv-at': `${heroAt}ms` }}>
+          <div style={s.scrim(theme.dim)} aria-hidden="true" />
 
-        <div style={s.wordZone}>
-          <div style={s.wordMask}>
-            <p className="bv-word" style={s.word}>Bienvenue</p>
+          <div style={s.labels} aria-hidden="true">
+            <span>Samper Consulting</span>
+            <span>Semaine {theme.week}</span>
+          </div>
+
+          <div style={s.wordZone}>
+            <div style={s.wordMask}>
+              <p className="bv-word" style={s.word}>Bienvenue</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="bv-status" style={s.status} role="status" aria-live="polite">
         <span>{title}</span>
@@ -199,7 +235,12 @@ const FONT = 'var(--font)';
 const s = {
   root: {
     position: 'fixed',
-    inset: 0,
+    top: 0,
+    left: 0,
+    bottom: 0,
+    // En vw, comme les moitiés et leurs décalages : tout le calcul des volets
+    // part de la même largeur.
+    width: '100vw',
     zIndex: 9999,
     overflow: 'hidden',
     background: '#000',
@@ -210,16 +251,23 @@ const s = {
   layer: {
     position: 'absolute',
     inset: 0,
-    overflow: 'hidden',
   },
+  // Moitiés de 50vw + 1px : elles se chevauchent sur 2 px au centre (même
+  // photo, mêmes pixels), ce qui évite un fil entre les deux.
+  halfL: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 'calc(50vw + 1px)', overflow: 'hidden' },
+  halfR: { position: 'absolute', top: 0, bottom: 0, left: 'calc(50vw - 1px)', width: 'calc(50vw + 1px)', overflow: 'hidden' },
+  fill: { position: 'absolute', inset: 0, overflow: 'hidden' },
   photo: {
     position: 'absolute',
-    inset: 0,
-    width: '100%',
+    top: 0,
     height: '100%',
+    width: '100vw',
     objectFit: 'cover',
     display: 'block',
   },
+  // La photo couvre l'écran entier, alignée sur lui quelle que soit la moitié.
+  screenL: { left: 0 },
+  screenR: { left: 'calc(1px - 50vw)' },
   scrim: (dim) => ({
     position: 'absolute',
     inset: 0,
@@ -253,7 +301,7 @@ const s = {
   wordMask: {
     // La ligne de masque : le bas de cette boîte. Le mot en sort par le bas ;
     // seul ce bord coupe (les insets négatifs laissent passer haut et côtés).
-    fontSize: 'min(17.5vw, 27vh)',
+    fontSize: 'min(16vw, 26vh)',
     paddingBottom: '0.28em',
     clipPath: 'inset(-100vh -100vw 0 -100vw)',
   },
