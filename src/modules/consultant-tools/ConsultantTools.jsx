@@ -27,7 +27,7 @@ import PlatPicker from './components/PlatPicker.jsx';
 import EtablissementTransferModal from './components/EtablissementTransferModal.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
-import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore } from 'lucide-react';
+import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore, Eye, EyeOff } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import {
@@ -494,7 +494,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (!pendingDrafts.length) return;
     setRecettes(prev => prev.map(r => {
       const d = pendingDrafts.find(x => x.id === r.id);
-      return d ? { ...r, ...d.recipe, id: r.id } : r;
+      // `masquee` vient de la base, jamais du brouillon : il n'est pas sauvegardé
+      // par l'éditeur et une valeur de brouillon serait périmée.
+      return d ? { ...r, ...d.recipe, id: r.id, masquee: r.masquee } : r;
     }));
     if (legacySB) {
       pendingDrafts.forEach(d => {
@@ -548,6 +550,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     copy.nom = selected.nom + ' (copie)';
     copy.version = 1;
     copy.statut = 'brouillon';
+    // upsertRecette n'écrit pas `masquee` : la copie naît visible en base, l'état
+    // local doit le dire aussi.
+    copy.masquee = false;
     copy.modifie = new Date().toISOString().slice(0, 10);
     copy.modifiePar = user.id;
     copy.ingredients = (copy.ingredients || []).map((i, idx) => ({ ...i, id: 'i' + Date.now() + '_' + idx }));
@@ -582,6 +587,70 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       archived
         ? `« ${selected.nom} » archivée. Retrouvez-la dans la section Archivées de la liste.`
         : `« ${selected.nom} » restaurée en brouillon.`,
+      'success',
+    );
+  };
+
+  // Cache (flag=true) ou réaffiche des recettes dans Cartes & Recettes, pour
+  // tous les rôles. Elles restent ici, entières, et continuent de servir la
+  // production (MEP, commande, étiquettes). Update ciblé hors sauvegarde
+  // automatique : cf. setRecettesMasquees. Renvoie le nombre de recettes
+  // basculées, ou null si l'écriture a échoué (l'état local ne bouge pas).
+  const masquerRecettes = async (ids, flag) => {
+    const aBasculer = ids.filter(id => {
+      const r = recettesRef.current.find(x => x.id === id);
+      return r && (r.masquee === true) !== flag;
+    });
+    if (!aBasculer.length) return 0;
+    if (legacySB) {
+      try { await legacySB.db.setRecettesMasquees(aBasculer, flag); }
+      catch (err) {
+        // 42703 / PGRST204 = colonne `masquee` absente : migration 20260928 pas
+        // encore appliquée. Message lisible plutôt qu'un code SQL brut.
+        const colonneAbsente = err?.code === '42703' || err?.code === 'PGRST204';
+        notifyLegacy(
+          colonneAbsente
+            ? 'Masquage de recette indisponible : la mise à jour de la base n\'a pas encore été appliquée.'
+            : 'Erreur masquage de recette : ' + (err.message || err),
+          'error',
+        );
+        return null;
+      }
+    }
+    const touchees = new Set(aBasculer);
+    setRecettes(prev => prev.map(r => (touchees.has(r.id) ? { ...r, masquee: flag } : r)));
+    return aBasculer.length;
+  };
+
+  const cacherSelected = async (flag) => {
+    if (!selected) return;
+    const nom = selected.nom;
+    const n = await masquerRecettes([selected.id], flag);
+    if (!n) return;
+    notifyLegacy(
+      flag
+        ? `« ${nom} » cachée : plus visible dans Cartes & Recettes, pour aucun rôle.`
+        : `« ${nom} » de nouveau visible dans Cartes & Recettes.`,
+      'success',
+    );
+  };
+
+  // Mode sélection : si toutes les recettes cochées sont déjà cachées, le
+  // bouton les rend visibles ; sinon il cache celles qui ne le sont pas.
+  const selectionToutesCachees = recSel.count > 0
+    && recettesEtab.filter(r => recSel.isSelected(r.id)).every(r => r.masquee === true);
+  const cacherRecettesSelection = async () => {
+    if (recSel.count === 0) return;
+    const flag = !selectionToutesCachees;
+    setRecBulkBusy(true);
+    const n = await masquerRecettes(Array.from(recSel.ids), flag);
+    setRecBulkBusy(false);
+    if (n === null) return;
+    recSel.exit();
+    notifyLegacy(
+      flag
+        ? `${n} recette(s) cachée(s) dans Cartes & Recettes.`
+        : `${n} recette(s) de nouveau visible(s) dans Cartes & Recettes.`,
       'success',
     );
   };
@@ -1359,6 +1428,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <Btn small variant="ghost" onClick={archiverRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
                 🗄 Archiver
               </Btn>
+              <Btn small variant="ghost" onClick={cacherRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
+                {selectionToutesCachees ? '👁 Rendre visible' : '🙈 Cacher'}
+              </Btn>
               {/* legacySB : le transfert écrit en base, il n'a pas de sens en
                   mode démo (bridge absent) où il ne ferait rien. */}
               {legacySB && etablissementsCibles.length > 0 && (
@@ -1479,6 +1551,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   {r.nom}
                 </div>
                 <div style={cts.recItemMeta}>
+                  {r.masquee === true && (
+                    <span style={cts.tagCachee} title="Invisible dans Cartes & Recettes">Cachée</span>
+                  )}
                   {r.categorie} · {r.portions || '?'} p. · v{r.version || 1}
                   {r.foodCost && (
                     <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 600 }}>
@@ -1702,6 +1777,21 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   title="Sortir la recette de la bibliothèque et des plats, sans la supprimer"
                 ><Archive size={14} /> Archiver</button>
               )}
+              {/* Même contrat de bordure que le bouton Archiver : borderColor
+                  posé dans les deux branches. */}
+              {selected.masquee === true ? (
+                <button
+                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' }}
+                  onClick={() => cacherSelected(false)}
+                  title="Réafficher la recette dans Cartes & Recettes"
+                ><Eye size={14} /> Rendre visible</button>
+              ) : (
+                <button
+                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: 'var(--border)' }}
+                  onClick={() => cacherSelected(true)}
+                  title="Cacher la recette dans Cartes & Recettes (tous les rôles). Elle reste ici et en production."
+                ><EyeOff size={14} /> Cacher</button>
+              )}
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
               <button
                 style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
@@ -1723,6 +1813,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, filename: `Fiche_${slug(selected.nom)}.pdf` })}><FileDown size={14} /> Export PDF</button>
             </div>
           </div>
+
+          {/* Une recette cachée ne se distingue pas à l'édition : le bandeau dit
+              où elle n'apparaît plus, et ce qui continue de l'utiliser. */}
+          {selected.masquee === true && (
+            <div className="no-print" style={cts.bandeauCachee}>
+              Recette cachée : invisible dans Cartes & Recettes, pour tous les rôles. Elle reste utilisée par la mise en place, la commande et les étiquettes, et ses allergènes comptent toujours dans les plats qui la contiennent.
+            </div>
+          )}
 
           {/* Modale d'analyse HACCP générée par IA */}
           {haccpResult && (

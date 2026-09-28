@@ -645,6 +645,22 @@ export function installLegacySupabase() {
       return this.mapRecetteFromDB(data);
     },
 
+    // Cache / rend visible des recettes dans Cartes & Recettes. Update cible et
+    // jamais via upsertRecette : la sauvegarde automatique de l'editeur renvoie
+    // l'objet recette entier et ecraserait une bascule faite entre-temps.
+    async setRecettesMasquees(ids, masquee) {
+      const list = (ids || []).filter(Boolean);
+      if (!list.length) return;
+      const { data, error } = await client.from('recettes')
+        .update({ masquee: masquee === true })
+        .in('id', list)
+        .select('id');
+      if (error) throw error;
+      // Un refus RLS ne leve pas d'erreur : il met a jour zero ligne.
+      if (!data || data.length === 0) throw new Error('Aucune recette modifiée (droits insuffisants ?)');
+      return data.length;
+    },
+
     async deleteRecette(id) {
       const { error } = await client.from('recettes').delete().eq('id', id);
       if (error) throw error;
@@ -1065,6 +1081,9 @@ export function installLegacySupabase() {
         photoUrl: row.photo_url || null,
         // null volontairement preserve (= « a qualifier », traite comme non congelable).
         congelable: row.congelable ?? null,
+        // Recette cachee du module Cartes & Recettes (migration 20260928).
+        // Colonne absente = false : tout reste visible avant la migration.
+        masquee: row.masquee === true,
         // Durees de vie (DLC) : cles exposees UNIQUEMENT si la colonne existe,
         // pour qu'un upsert issu d'un objet recette ne tente pas de les ecrire
         // tant que la migration n'est pas appliquee. Cote congele, null est une

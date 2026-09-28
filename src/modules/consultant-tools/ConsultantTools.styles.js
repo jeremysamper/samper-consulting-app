@@ -26,6 +26,9 @@ export const cts = {
   orphelinHeader: { padding: '8px 14px', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   recItemName: { fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 3 },
   recItemMeta: { fontSize: 11, color: 'var(--text2)' },
+  // Recette cachée dans Cartes & Recettes (colonne recettes.masquee).
+  tagCachee: { display: 'inline-block', marginRight: 6, padding: '0 6px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: 'var(--warning-bg)', color: 'var(--warning-text)' },
+  bandeauCachee: { margin: '0 0 10px', padding: '8px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.4, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)' },
   rightCol: { display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', paddingRight: 4 },
   emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   actionBar: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },

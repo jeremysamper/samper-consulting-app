@@ -1202,7 +1202,7 @@ const ms = {
 // matché + allergènes déclarés + plat(s) de rattachement).
 const QUICK_ALLERGENES = ['Gluten', 'Lactose', 'Œufs', 'Fruits à coque', 'Arachides', 'Soja', 'Sésame', 'Moutarde'];
 
-const IngredientSearchModal = ({ recettes, plats, onPick, onClose }) => {
+const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, onClose }) => {
   const [query, setQuery] = React.useState('');
 
   // plat(s) contenant chaque recette → contexte d'affichage
@@ -1220,13 +1220,20 @@ const IngredientSearchModal = ({ recettes, plats, onPick, onClose }) => {
     if (q.length < 2) return [];
     // Par mots : « beurre doux » trouve « Doux beurre » et « Beurre demi-sel doux ».
     const match = makeSearchMatcher(q);
-    return (recettes || []).map(r => {
+    const chercher = (r, cachee) => {
       const matchedIngs = (r.ingredients || []).filter(i => match(i.nom));
       const matchedAllerg = (r.allergenesIds || []).filter(a => match(ALLERGENES_MAP[a] || a));
       if (!matchedIngs.length && !matchedAllerg.length) return null;
-      return { recette: r, matchedIngs, matchedAllerg };
-    }).filter(Boolean);
-  }, [q, recettes]);
+      return { recette: r, matchedIngs, matchedAllerg, cachee };
+    };
+    // Une recette cachée n'est ni listée ni ouvrable, mais si elle entre dans
+    // un plat, ce plat doit ressortir : c'est la question posée en salle
+    // (« y a-t-il du gluten dans ce plat ? »).
+    return [
+      ...(recettes || []).map(r => chercher(r, false)),
+      ...(recettesCachees || []).filter(r => platsByRecette.has(r.id)).map(r => chercher(r, true)),
+    ].filter(Boolean);
+  }, [q, recettes, recettesCachees, platsByRecette]);
 
   return (
     <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
@@ -1264,8 +1271,26 @@ const IngredientSearchModal = ({ recettes, plats, onPick, onClose }) => {
               <div style={is.countLine}>
                 {results.length} recette{results.length > 1 ? 's' : ''} contien{results.length > 1 ? 'nent' : 't'} « {query.trim()} »
               </div>
-              {results.map(({ recette, matchedIngs, matchedAllerg }) => {
+              {results.map(({ recette, matchedIngs, matchedAllerg, cachee }) => {
                 const inPlats = platsByRecette.get(recette.id) || [];
+                // Recette cachée : on nomme le plat, pas la préparation, et la
+                // ligne n'ouvre rien (ni fiche, ni quantités).
+                if (cachee) return (
+                  <div key={recette.id} style={{ ...is.row, cursor: 'default' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={is.rowName}>{inPlats.join(', ')}</div>
+                      <div style={is.rowMeta}>Préparation non affichée dans la bibliothèque</div>
+                      <div style={is.matchRow}>
+                        {matchedIngs.map(i => (
+                          <span key={i.id} style={is.matchIng}>{i.nom}</span>
+                        ))}
+                        {matchedAllerg.map(a => (
+                          <span key={a} style={is.matchAllerg}>⚠ {ALLERGENES_MAP[a] || a}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
                 return (
                   <button key={recette.id} style={is.row} onClick={() => { onPick(recette); onClose(); }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -1448,9 +1473,15 @@ const Recettes = ({ user, etablissement }) => {
   // filtre côté client pour le fallback). Les recettes archivées (statut géré
   // dans Outils consultant) sortent de la bibliothèque, des plats, des exports
   // et de la recherche allergènes.
-  const recettesEtab = recettes.filter(r =>
+  const recettesActives = recettes.filter(r =>
     (r.etablissementId || 'etab-1') === etabId && r.statut !== 'archivée'
   );
+  // Recettes cachées (colonne `masquee`, bascule dans Outils consultant) : elles
+  // ne s'affichent nulle part ici, pour aucun rôle. Elles comptent pourtant
+  // toujours dans les allergènes et le temps des plats qui les contiennent :
+  // cacher une préparation ne doit jamais retirer un allergène d'un plat servi.
+  const recettesEtab = recettesActives.filter(r => r.masquee !== true);
+  const recettesCachees = recettesActives.filter(r => r.masquee === true);
 
   // Onglet carte actif (ou bibliothèque). On garde toujours un onglet valide.
   const isLibrary = activeTab === LIBRARY_TAB;
@@ -1531,6 +1562,7 @@ const Recettes = ({ user, etablissement }) => {
       {showIngredientSearch && (
         <IngredientSearchModal
           recettes={recettesEtab}
+          recettesCachees={recettesCachees}
           plats={plats}
           onPick={(r) => setSelectedRecette(r)}
           onClose={() => setShowIngredientSearch(false)}
@@ -1673,14 +1705,18 @@ const Recettes = ({ user, etablissement }) => {
                   {platsCat.map(plat => {
                     // Recettes rattachées au plat
                     const recettesIds = (plat.recettes || []).map(pr => pr.recetteId);
-                    const recettesPlat = recettesEtab.filter(r => recettesIds.includes(r.id));
+                    // Toutes les recettes du plat, cachées comprises : elles
+                    // nourrissent les allergènes et le temps. Seules les
+                    // visibles sont listées et ouvrables.
+                    const recettesDuPlat = recettesActives.filter(r => recettesIds.includes(r.id));
+                    const recettesPlat = recettesDuPlat.filter(r => r.masquee !== true);
                     // Allergènes consolidés depuis toutes les recettes liées
                     const allergsSet = new Set();
-                    recettesPlat.forEach(r => (r.allergenesIds || []).forEach(a => allergsSet.add(a)));
+                    recettesDuPlat.forEach(r => (r.allergenesIds || []).forEach(a => allergsSet.add(a)));
                     const allergsList = [...allergsSet];
                     // Temps le plus long des recettes liées : la donnée existe
                     // depuis toujours mais n'était affichée nulle part en carte.
-                    const tempsMax = Math.max(0, ...recettesPlat.map(r => r.tempsTotal || 0));
+                    const tempsMax = Math.max(0, ...recettesDuPlat.map(r => r.tempsTotal || 0));
 
                     return (
                       <div key={plat.id} style={rs.platCard}>
