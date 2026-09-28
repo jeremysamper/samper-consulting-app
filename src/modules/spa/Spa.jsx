@@ -530,17 +530,31 @@ function Stat({ icone: Icone, valeur, label, detail, detailBrut = false, ton = '
   const couleurs = ton === 'kin'
     ? ['var(--spa-kin-soft)', 'var(--spa-kin)']
     : ['var(--spa-mizu-soft)', 'var(--spa-mizu)'];
-  const contenu = (
+  const icone = (
+    <span aria-hidden="true" style={{ ...s.statIcone, ...(compact ? s.statIconeCompacte : null), background: couleurs[0], color: couleurs[1] }}>
+      <Icone size={compact ? 16 : 18} strokeWidth={1.8} />
+    </span>
+  );
+  // Téléphone : icône et valeur sur la première ligne, libellé dessous sur
+  // toute la largeur de la tuile (à côté de l'icône, « aujourd'hui » ne
+  // tenait pas et le libellé sortait du cadre).
+  const contenu = compact ? (
     <>
-      <span aria-hidden="true" style={{ ...s.statIcone, ...(compact ? s.statIconeCompacte : null), background: couleurs[0], color: couleurs[1] }}>
-        <Icone size={compact ? 16 : 18} strokeWidth={1.8} />
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        {icone}
+        {valeur !== null && <span style={{ ...s.statValeur, fontSize: 20 }} data-no-translate>{valeur}</span>}
       </span>
+      <span style={{ ...s.statLabel, fontSize: 12, ...s.statLabelCompact }}>{label}</span>
+    </>
+  ) : (
+    <>
+      {icone}
       <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'baseline', gap: compact ? 0 : 8, minWidth: 0 }}>
-          {valeur !== null && <span style={{ ...s.statValeur, fontSize: compact ? 20 : 24 }} data-no-translate>{valeur}</span>}
-          <span style={{ ...s.statLabel, fontSize: compact ? 12 : 13 }}>{label}</span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          {valeur !== null && <span style={s.statValeur} data-no-translate>{valeur}</span>}
+          <span style={s.statLabel}>{label}</span>
         </span>
-        {!compact && <span style={s.statDetail} data-no-translate={detailBrut ? '' : undefined}>{detail}</span>}
+        <span style={s.statDetail} data-no-translate={detailBrut ? '' : undefined}>{detail}</span>
       </span>
     </>
   );
@@ -605,14 +619,18 @@ const s = {
     fontFamily: 'var(--font)', fontSize: 14,
   },
   statsMobile: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 16 },
-  statCompacte: { minHeight: 0, padding: '10px 10px', gap: 10, alignItems: 'flex-start' },
+  statCompacte: { minHeight: 0, padding: '10px 10px', gap: 6, flexDirection: 'column', alignItems: 'stretch' },
   statIconeCompacte: { width: 32, height: 32, borderRadius: 16 },
-  boutonMobile: { flex: '1 1 0', minWidth: 0, padding: '10px 12px' },
+  // Deux boutons côte à côte : sur un petit écran, le libellé passe à la ligne
+  // dans le bouton plutôt que d'en toucher les bords.
+  boutonMobile: { flex: '1 1 0', minWidth: 0, padding: '10px 12px', whiteSpace: 'normal', lineHeight: 1.2, textAlign: 'center' },
   statIcone: {
     width: 40, height: 40, borderRadius: 20, flexShrink: 0,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   statValeur: { fontFamily: 'var(--font-serif)', fontSize: 24, lineHeight: 1, color: 'var(--spa-ink)' },
   statLabel: { fontSize: 13, fontWeight: 600, color: 'var(--spa-ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  // Téléphone : le libellé passe à la ligne dans la tuile au lieu d'en sortir.
+  statLabelCompact: { whiteSpace: 'normal', overflowWrap: 'break-word', maxWidth: '100%', lineHeight: 1.25 },
   statDetail: { fontSize: 12, color: 'var(--spa-ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
 };

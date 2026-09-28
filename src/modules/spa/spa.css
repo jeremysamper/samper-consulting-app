@@ -257,3 +257,8 @@ html[data-theme="dark"] .spa {
   .spa-chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .spa-chiffres > :last-child { grid-column: 1 / -1; }
 }
+
+/* Icône d'un bouton ou d'un lien : jamais écrasée quand la place manque
+   (elle se réduisait à un point à côté de « Nouveau client » sur téléphone). */
+.spa button > svg,
+.spa a > svg { flex-shrink: 0; }
