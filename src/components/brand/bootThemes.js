@@ -123,13 +123,6 @@ function mondayOf(date) {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate() - daysSinceMonday);
 }
 
-/** Numéro de semaine ISO 8601 (celle du calendrier suisse). */
-function isoWeek(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  return Math.ceil(((d - Date.UTC(d.getUTCFullYear(), 0, 1)) / DAY_MS + 1) / 7);
-}
-
 /**
  * Thème de la semaine de `date`. Tout le monde voit le même la même semaine,
  * il change le lundi. `index` force un thème (aperçu en dev).
@@ -138,5 +131,5 @@ export function bootThemeFor(date = new Date(), index = null) {
   const count = BOOT_THEMES.length;
   const weeks = Math.round((mondayOf(date) - ROTATION_START) / (7 * DAY_MS));
   const i = index ?? weeks;
-  return { ...BOOT_THEMES[((i % count) + count) % count], week: isoWeek(date) };
+  return BOOT_THEMES[((i % count) + count) % count];
 }

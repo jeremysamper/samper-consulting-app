@@ -221,7 +221,6 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
 
           <div style={s.labels} aria-hidden="true">
             <span>Samper Consulting</span>
-            <span>Semaine {theme.week}</span>
           </div>
 
           <div style={s.wordZone}>
