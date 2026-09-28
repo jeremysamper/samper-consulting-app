@@ -2,9 +2,12 @@
  * Photo de l'écran de chargement « Bienvenue » (BootScreen.jsx).
  *
  * `shots` : les photos, dans l'ordre des coupes ; la dernière reste affichée.
- * Choix de Jérémy : une seule photo, le dressage au gant, agrandie en 4K
- * (node scripts/gen-boot-photos.mjs <dossier> --4k ; l'original ne fait que
- * 1179×1468). Remplacer par le fichier d'appareil si on le retrouve.
+ * Choix de Jérémy : une seule photo, le dressage au gant. L'original ne fait
+ * que 1179×1468 : il a été agrandi ×4 par IA (Real-ESRGAN x4plus, modèle
+ * realesrgan-ncnn-vulkan), puis ramené à 3840 px de haut, saturation ×1,03,
+ * WebP qualité 86. Nettement plus net que l'agrandissement classique de
+ * scripts/gen-boot-photos.mjs --4k. Remplacer par le fichier d'appareil si
+ * on le retrouve.
  *
  * BOOT_THEMES reste une liste pour pouvoir remettre une rotation
  * hebdomadaire plus tard, en ajoutant des entrées.
