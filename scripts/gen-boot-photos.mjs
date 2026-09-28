@@ -7,7 +7,8 @@
  * --4k : agrandit chaque photo à 3840 px sur le grand côté (Lanczos +
  * accentuation douce, qualité 82) et ajoute « -4k » au nom. Un agrandissement
  * ne recrée pas le détail absent de l'original : c'est un pis-aller quand
- * seule une photo de téléphone existe.
+ * seule une photo de téléphone existe. Mieux encore : un agrandissement ×4
+ * par IA (Real-ESRGAN, voir bootThemes.js), ramené ensuite à 3840 px.
  *
  * Chaque .jpg / .jpeg / .png / .webp du dossier devient
  * src/components/brand/boot-photos/bienvenue-<nom-du-fichier>.webp :
