@@ -77,7 +77,7 @@ The `legacyVersion` prop passed to every module increments once after post-login
 
 ### Permissions
 
-Roles: `consultant`, `patron`, `resp_cuisine`, `cuisinier`, `serveur`. Per-role permissions (which nav items/modules are visible) are stored in the `permissions` Supabase table and cached in `DEMO_DATA.permissions` after login. `getPermissionsForRole` from `src/data/demoData.js` is the runtime accessor. `consultant` is the only role with access to `factures`, `parametres`, and `roles` pages.
+Roles (as defined in `src/modules/moduleConfig.js`): `consultant`, `patron`, `resp_cuisine`, `cuisinier`, `hote` (host / reception; by default: `previsions`, `commande`, `messages`, `groupes`, `spa`), `serveur`. Per-role permissions (which nav items/modules are visible) are stored in the `permissions` Supabase table and cached in `DEMO_DATA.permissions` after login. `getPermissionsForRole` from `src/data/demoData.js` is the runtime accessor. `consultant` is the only role with access to `factures`, `parametres`, and `roles` pages.
 
 ### Realtime
 
@@ -137,6 +137,10 @@ Invariants to preserve when touching UI code:
 3. Do not remove `localStorage` fallbacks until DB migration is confirmed in production.
 4. Do not touch `components/` files — the legacy app must stay unmodified.
 5. After any change, verify both `/index.html` and `/vite-index.html` still load.
+
+## Commit messages
+
+Conventional prefix in English, description in French: `fix(nav): sélection de la sidebar plus sobre`. A migration and the front that reads it may share a commit: what protects production is the order in Deployment safety rule 2 (migration applied before the front ships), not the commit split.
 
 ## Deployment safety (never break live users)
 
