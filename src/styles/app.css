@@ -5,11 +5,11 @@
 }
 
 :root {
-  /* Satoshi (Fontshare, chargée dans vite-index.html) pour tout le texte, titres
-     compris. Le module Spa garde DM Sans / DM Serif Display : il redéfinit ces
-     deux jetons sur .spa (src/modules/spa/spa.css). */
+  /* Satoshi pour le texte, Zodiak pour les titres (Fontshare, chargées dans
+     vite-index.html). Le module Spa garde DM Sans / DM Serif Display : il
+     redéfinit ces deux jetons sur .spa (src/modules/spa/spa.css). */
   --font: "Satoshi", system-ui, sans-serif;
-  --font-serif: "Satoshi", system-ui, sans-serif;
+  --font-serif: "Zodiak", Georgia, serif;
   /* Fond légèrement creusé (95.8 vs surface 99.2) : c'est cet écart, plus
      que les ombres, qui fait flotter les cartes blanches en mode clair. */
   --bg: oklch(95.8% 0.009 75);
