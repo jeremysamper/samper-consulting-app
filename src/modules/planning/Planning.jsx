@@ -6,7 +6,8 @@ import ShiftCell from './ShiftCell.jsx';
 import { ccnt, ccntCell, pls } from './Planning.styles.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { dbService } from '../../services/dbService.js';
-import { profileService } from '../../services/supabase.js';
+import { useTeamPhones } from '../../hooks/useTeamPhones.js';
+import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
@@ -105,31 +106,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Planning de cet établissement uniquement
   const planningEtab = planning.filter(s => (s.etablissementId || 'etab-1') === etabId);
 
-  // Téléphones saisis par chacun dans « Mon compte » (profile_contacts). La RLS
-  // n'en montre qu'au consultant et au patron (établissements communs) : pour
-  // les autres rôles on ne les demande même pas, ils ne liraient que le leur.
-  const canSeePhones = ['consultant', 'patron'].includes(user.role);
-  const [phones, setPhones] = React.useState({});
-  React.useEffect(() => {
-    if (!canSeePhones) return undefined;
-    let alive = true;
-    profileService.listContacts()
-      .then((map) => { if (alive) setPhones(map); })
-      .catch((err) => console.warn('[Planning] téléphones', err));
-    return () => { alive = false; };
-  }, [canSeePhones]);
-  // Lien d'appel ; stopPropagation : sur une carte de shift, le tap ouvrirait
-  // l'édition au lieu d'appeler.
-  const renderPhone = (userId, style = pls.phoneLink) => (phones[userId] ? (
-    <a
-      href={`tel:${phones[userId].replace(/[^\d+]/g, '')}`}
-      style={style}
-      onClick={(e) => e.stopPropagation()}
-      data-no-translate=""
-    >
-      {phones[userId]}
-    </a>
-  ) : null);
+  // Téléphones saisis par chacun dans « Mon compte » (consultant et patron).
+  const phones = useTeamPhones(user.role);
 
   // ═══ Chargement depuis Supabase + Realtime ═══
   React.useEffect(() => {
@@ -1076,7 +1054,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
                       <div style={pls.mobileName}>{emp.name}</div>
-                      {renderPhone(shift.userId, pls.mobilePhone)}
+                      <PhoneLink tel={phones[shift.userId]} style={pls.mobilePhone} />
                       <div style={pls.mobileMeta}>
                         <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{shift.poste || role?.label || 'Poste'}{typeLabel ? ` · ${typeLabel}` : ''}</span>
                         {shift.pause > 0 && <span style={pls.mobilePause}>Pause {shift.pause} min</span>}
@@ -1224,7 +1202,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                               · {monthHours.toFixed(0)}h <span style={{ fontSize: 9 }}>mois</span>
                             </span>
                           </div>
-                          {renderPhone(emp.id)}
+                          <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
                         </div>
                       </div>
                       {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected}/></div>)}
@@ -1277,7 +1255,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <>
                     <div><strong>Employé :</strong> {emp.name}</div>
                     {phones[selectedShift.userId] && (
-                      <div><strong>Téléphone :</strong> {renderPhone(selectedShift.userId, pls.phoneLinkLarge)}</div>
+                      <div><strong>Téléphone :</strong> <PhoneLink tel={phones[selectedShift.userId]} /></div>
                     )}
                   </>
                 );

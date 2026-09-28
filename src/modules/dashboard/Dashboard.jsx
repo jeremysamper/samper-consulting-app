@@ -12,6 +12,8 @@ import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { zurichToday, zurichClock, punctualityVsStart } from '../../utils/zurichTime.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
+import { useTeamPhones } from '../../hooks/useTeamPhones.js';
+import PhoneLink from '../../components/PhoneLink.jsx';
 
 const Dashboard = ({ user, etablissement, setPage }) => {
   // Jour courant à Zurich (et non la date UTC du device) → frontière de minuit correcte.
@@ -36,6 +38,8 @@ const Dashboard = ({ user, etablissement, setPage }) => {
   const [loading, setLoading] = React.useState(true);
   const [pointageError, setPointageError] = React.useState('');
   const reloadAllRef = React.useRef(null);
+  // Téléphones de l'équipe (consultant et patron), sous les noms du planning du jour.
+  const phones = useTeamPhones(user.role);
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -495,6 +499,7 @@ const Dashboard = ({ user, etablissement, setPage }) => {
                     <div style={ds.shiftName}>{getUserName(shift.userId)}</div>
                     <div style={{ ...ds.shiftBadge, background: statut.bg, color: statut.color }}>{statut.label}</div>
                   </div>
+                  <PhoneLink tel={phones[shift.userId]} style={ds.shiftPhone} />
                   <div style={ds.shiftTime}>
                     {typeLabel && <span style={{ marginRight: 4 }}>{typeLabel}</span>}
                     {shift.debut}–{shift.fin}
@@ -748,6 +753,7 @@ const ds = {
   shiftCard: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 },
   shiftHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8 },
   shiftName: { fontSize: 13, fontWeight: 700, color: 'var(--text)' },
+  shiftPhone: { display: 'inline-block', fontSize: 12, marginBottom: 4 },
   shiftBadge: { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10, textTransform: 'uppercase', letterSpacing: 0.3 },
   shiftTime: { fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
   shiftPoste: { color: 'var(--text2)', fontWeight: 400 },

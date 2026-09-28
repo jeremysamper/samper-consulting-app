@@ -54,11 +54,10 @@ const pls = {
   empCol: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', left: 0, zIndex: 1 },
   empAvatar: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 },
   empName: { fontSize: 12, fontWeight: 600 },
-  // Téléphone (consultant / patron) : lien d'appel sous le nom.
-  phoneLink: { display: 'inline-block', marginTop: 2, fontSize: 11, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' },
-  phoneLinkLarge: { fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' },
+  // Téléphone (consultant / patron), sous le nom (PhoneLink).
+  phoneLink: { display: 'inline-block', marginTop: 2, fontSize: 11 },
   // Mobile : cible de tap confortable sans agrandir la carte.
-  mobilePhone: { alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' },
+  mobilePhone: { alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 13 },
   dayCell: { minHeight: 72, padding: 6, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   shiftCell: { borderRadius: 8, padding: '8px 6px', position: 'relative', border: '1px solid var(--border)' },
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },

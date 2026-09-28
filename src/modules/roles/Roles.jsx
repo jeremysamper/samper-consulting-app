@@ -4,6 +4,7 @@ import { manageableModules, getDefaultManageRoles, navItems, defaultPermissions 
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { profileService } from '../../services/supabase.js';
+import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
 // ─────────────────────────────────────────────────────
@@ -400,7 +401,7 @@ const Roles = ({ user }) => {
                     {phones[u.id] && (
                       <>
                         {' · '}
-                        <a href={`tel:${phones[u.id].replace(/[^\d+]/g, '')}`} style={ros.phoneLink} data-no-translate="">{phones[u.id]}</a>
+                        <PhoneLink tel={phones[u.id]} />
                       </>
                     )}
                   </div>
@@ -524,7 +525,6 @@ const ros = {
   moduleRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--border)' },
   permBadge: { fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 10, whiteSpace: 'nowrap' },
   usersWrap: { display: 'flex', flexDirection: 'column', gap: 8 },
-  phoneLink: { color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' },
   userRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', flexWrap: 'wrap' },
   userAvatar: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
