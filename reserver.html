@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <title>Réserver un soin</title>
-    <!-- Satoshi (texte) + Zodiak (titres) : le même lien que vite-index.html. -->
+    <!-- Satoshi (texte) + Zodiak (titres) : les mêmes liens que vite-index.html. -->
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
-    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&f[]=zodiak@400,500,700,800&display=swap" rel="stylesheet" />
+    <!-- Une feuille par famille : l'API Fontshare ne renvoie que la première
+         famille d'une requête qui en demande plusieurs (Zodiak manquait). -->
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap" rel="stylesheet" />
+    <link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700,800&display=swap" rel="stylesheet" />
     <style>
       /* Page publique autonome : n'embarque ni app.css ni le bundle de l'app.
          Mêmes jetons de police que app.css (chiffres des titres en Satoshi). */

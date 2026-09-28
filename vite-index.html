@@ -31,7 +31,10 @@
     <!-- Satoshi (texte) + Zodiak (titres) : polices de toute l'app. -->
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
-    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&f[]=zodiak@400,500,700,800&display=swap" rel="stylesheet" />
+    <!-- Une feuille par famille : l'API Fontshare ne renvoie que la première
+         famille d'une requête qui en demande plusieurs (Zodiak manquait). -->
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap" rel="stylesheet" />
+    <link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700,800&display=swap" rel="stylesheet" />
 
     <!-- Pré-splash : comble le trou blanc entre l'écran natif (manifest,
          fond #003042) et le premier rendu React (BootScreen, même fond).
