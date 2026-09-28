@@ -5,6 +5,7 @@ export const roles = {
   cuisinier:    { label: 'Cuisinier',             color: '#6c3483' },
   serveur:      { label: 'Serveur / Serveuse',    color: '#2e7ab8' },
   hote:         { label: 'Hôte / Réception',      color: '#0e7490' },
+  praticien_spa: { label: 'Praticien(ne) spa',    color: '#2f6f77' },
 };
 
 export const defaultPermissions = {
@@ -14,6 +15,9 @@ export const defaultPermissions = {
   cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true },
   serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true },
   hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true },
+  // Praticien(ne) spa : les soins en cabine. Spa & clients, son planning et la
+  // messagerie ; rien de la cuisine ni de la salle.
+  praticien_spa: { dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -44,7 +48,7 @@ export const manageableModules = [
   { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
   // spa : prendre les rendez-vous, tenir les fiches clients, rédiger les
   // comptes rendus de séance. Ouvert à toute l'équipe du spa par défaut.
-  { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote'] },
+  { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'] },
 ];
 
 // Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.

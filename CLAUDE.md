@@ -77,7 +77,7 @@ The `legacyVersion` prop passed to every module increments once after post-login
 
 ### Permissions
 
-Roles (as defined in `src/modules/moduleConfig.js`): `consultant`, `patron`, `resp_cuisine`, `cuisinier`, `hote` (host / reception; by default: `previsions`, `commande`, `messages`, `groupes`, `spa`), `serveur`. Per-role permissions (which nav items/modules are visible) are stored in the `permissions` Supabase table and cached in `DEMO_DATA.permissions` after login. `getPermissionsForRole` from `src/data/demoData.js` is the runtime accessor. `consultant` is the only role with access to `factures`, `parametres`, and `roles` pages.
+Roles (as defined in `src/modules/moduleConfig.js`): `consultant`, `patron`, `resp_cuisine`, `cuisinier`, `hote` (host / reception; by default: `previsions`, `commande`, `messages`, `groupes`, `spa`), `serveur`, `praticien_spa` (spa practitioner; by default: `spa`, `planning`, `messages`; manages Spa clients, appointments and session reports, but not the treatment catalogue nor deletions). Roles missing from the legacy `DEMO_DATA` are filled in from `moduleConfig` at boot. A new role must also be added to the role lists of the `ai-proxy` (`ALL_ROLES`) and `spa-mailer` (`ROLES_EQUIPE`) Edge Functions, then both redeployed. Per-role permissions (which nav items/modules are visible) are stored in the `permissions` Supabase table and cached in `DEMO_DATA.permissions` after login. `getPermissionsForRole` from `src/data/demoData.js` is the runtime accessor. `consultant` is the only role with access to `factures`, `parametres`, and `roles` pages.
 
 ### Realtime
 

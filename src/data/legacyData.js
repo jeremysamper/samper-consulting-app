@@ -2,6 +2,7 @@ import React from 'react';
 import { confirmLegacy, getBrowserWindow } from '../legacy/legacyApi.js';
 import { readJson, readText, removeStorageKeys, writeJson, writeText } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
+import { roles as ROLES_CONFIG, defaultPermissions } from '../modules/moduleConfig.js';
 
 
 // ============================================================
@@ -322,6 +323,17 @@ DEMO_DATA.inventaires   = scRead('sc_inventaires',   DEMO_DATA.inventaires);
 DEMO_DATA.pertes        = scRead('sc_pertes',        DEMO_DATA.pertes);
 DEMO_DATA.utilisateurs  = scRead('sc_utilisateurs',  DEMO_DATA.utilisateurs);
 DEMO_DATA.etablissements= scRead('sc_etablissements',DEMO_DATA.etablissements);
+
+// Rôles ajoutés après ces données de démonstration (hote, praticien_spa) :
+// repris de moduleConfig, source de vérité des rôles. Sans cela, ils
+// n'apparaissaient pas dans le choix du rôle d'un compte (Rôles & Accès), et
+// un compte sans permissions voyait tout le menu (AppLayout ne masque que ce
+// qui vaut false). Les rôles déjà présents ne changent pas. Placé après la
+// relecture de sc_permissions, qui remplace l'objet entier.
+Object.entries(ROLES_CONFIG).forEach(([key, info]) => {
+  if (!DEMO_DATA.roles[key]) DEMO_DATA.roles[key] = { label: info.label, couleur: info.color };
+  if (!DEMO_DATA.permissions[key] && defaultPermissions[key]) DEMO_DATA.permissions[key] = { ...defaultPermissions[key] };
+});
 
 // Recalculate derived recipe fields
 DEMO_DATA.recettes.forEach(r => {
