@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarDays, Moon, Sun, Sunrise } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import PhoneLink from '../../components/PhoneLink.jsx';
 import { Avatar, Carte, Ligne, Puce, SousTitre, t } from './tableauUi.jsx';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { metaMotif, periodeAbsence, resteAbsence } from '../../utils/absences.js';
@@ -50,7 +51,7 @@ export default function ASavoir(props) {
 
 // ── Un jour ───────────────────────────────────────────────────────────────
 function CarteJour({
-  titre, date, estAujourdhui, maintenant, shifts, couverts, groupes, absences, equipeDe,
+  titre, date, estAujourdhui, maintenant, shifts, couverts, groupes, absences, equipeDe, telephones = {},
   avecCouverts, avecGroupes, avecPlanning, avecAbsences, peutOuvrir, ouvrir,
 }) {
   const [toute, setToute] = React.useState(false);
@@ -82,7 +83,7 @@ function CarteJour({
           {!equipe.length && <div style={t.vide}>Personne au planning.</div>}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {equipeVisible.map(({ userId, shifts: liste }) => (
-              <LigneEquipier key={userId} userId={userId} shifts={liste} estAujourdhui={estAujourdhui} maintenant={maintenant} absence={absents.find((a) => a.userId === userId)} />
+              <LigneEquipier key={userId} userId={userId} shifts={liste} estAujourdhui={estAujourdhui} maintenant={maintenant} absence={absents.find((a) => a.userId === userId)} tel={telephones[userId]} />
             ))}
           </div>
           {equipe.length > EQUIPE_MAX && (
@@ -165,7 +166,7 @@ function LigneGroupe({ g, onClick, quand }) {
   );
 }
 
-function LigneEquipier({ userId, shifts, estAujourdhui, maintenant, absence }) {
+function LigneEquipier({ userId, shifts, estAujourdhui, maintenant, absence, tel }) {
   const u = userDisplay(userId);
   const heures = shifts.map((sh) => `${sh.debut} à ${sh.fin}`).join(', ');
   let etat = null;
@@ -184,6 +185,7 @@ function LigneEquipier({ userId, shifts, estAujourdhui, maintenant, absence }) {
       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
         <span style={t.nom} data-no-translate>{u.name}</span>
         <span style={{ ...t.texte2, display: 'block', fontVariantNumeric: 'tabular-nums' }}>{heures}</span>
+        <PhoneLink tel={tel} style={s.tel} />
       </span>
       {motif && <span style={{ ...s.motif, background: motif.fond, color: motif.texte }}>{motif.label}</span>}
       {etat === 'en_poste' && (
@@ -291,6 +293,8 @@ const s = {
   couvertLabel: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
   couvertValeur: { fontFamily: 'var(--font-serif)', fontSize: 28, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
   equipier: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', minHeight: 44, minWidth: 0 },
+  // Cible de tap confortable sans alourdir la ligne.
+  tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 12.5 },
   etatEnPoste: {
     display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap',
     fontSize: 11.5, fontWeight: 700, color: 'var(--success-text)', padding: '3px 9px', borderRadius: 999, background: 'var(--success-bg-soft)',

@@ -25,6 +25,7 @@ import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
 import { useUnreadPrivateMessages } from '../../hooks/useUnreadPrivateMessages.js';
+import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { userDisplay } from '../../utils/userDisplay.js';
@@ -84,6 +85,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const avecAbsences = avecPlanning && abs.status !== 'absent';
   const absences = avecAbsences ? abs.absences : [];
   const nbMessages = useUnreadPrivateMessages(actif('messages') ? user?.id : null);
+  // Téléphones de l'équipe sous les noms (consultant et patron, même règle que le planning).
+  const telephones = useTeamPhones(role);
 
   // ── Pointage ──
   const [enCours, setEnCours] = React.useState(null);
@@ -215,6 +218,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
             groupes={avecGroupes ? d.groupes : []}
             absences={absences}
             equipeDe={equipeDe}
+            telephones={telephones}
             avecCouverts={avecCouverts && d.statuts.couverts !== 'absent'}
             avecGroupes={avecGroupes && d.statuts.groupes !== 'absent'}
             avecPlanning={avecPlanning}
