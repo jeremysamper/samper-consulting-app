@@ -4,10 +4,11 @@ import { bootThemeFor } from './bootThemes.js';
 /**
  * Écran de chargement « Bienvenue ».
  *
- * Les photos s'enchaînent en coupe franche (bootThemes.js), la dernière
- * reste. Texte fixe à mi-hauteur : « Bienvenue » à gauche, la signature à
- * droite. Pas d'effet sur les photos (l'onde « Ripple » a été retirée à la
- * demande de Jérémy) : rien n'est animé en continu, rien à repeindre.
+ * Une photo plein écran (bootThemes.js ; s'il y en a plusieurs, elles
+ * s'enchaînent en coupe franche). Elle bouge à peine, comme filmée caméra à
+ * la main : dérive lente, micro-zoom et infime rotation (.bv-drift dans
+ * app.css, transform seul, animé par le GPU). Texte fixe à mi-hauteur :
+ * « Bienvenue » à gauche, la signature à droite.
  *
  * Déroulé :
  *  - 'wait'   : noir le temps que les photos soient décodées (1,2 s au plus) ;
@@ -26,10 +27,10 @@ import { bootThemeFor } from './bootThemes.js';
  * @param {Function} onFinished appelé à la fin du fondu de sortie (stable)
  */
 
-// Coupes franches : départ de chaque photo, en ms (rythme du modèle, ~0,8 s).
+// Coupes franches : départ de chaque photo, en ms (s'il y en a plusieurs).
 const SHOT_STARTS = [0, 800, 1600];
-// Fin de l'intro : la dernière photo a eu le temps d'être vue.
-const INTRO_MS = 2400;
+// Fin de l'intro : le mot et la photo ont eu le temps d'être vus.
+const INTRO_MS = 1800;
 // Attente maximale des photos avant de lancer l'intro quand même.
 const PHOTO_WAIT_MS = 1200;
 const EXIT_MS = 380;
@@ -98,7 +99,7 @@ const photosReady = typeof Image === 'undefined'
 function Shot({ shot, focus }) {
   return (
     <div style={{ ...s.fill, background: shot.tone }} aria-hidden="true">
-      <img src={shot.src} alt="" draggable={false} style={{ ...s.photo, objectPosition: focus }} />
+      <img className="bv-drift" src={shot.src} alt="" draggable={false} style={{ ...s.photo, objectPosition: focus }} />
     </div>
   );
 }

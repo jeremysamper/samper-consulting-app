@@ -2,7 +2,12 @@
  * Prépare les photos de l'écran de chargement « Bienvenue »
  * (src/components/brand/BootScreen.jsx, thèmes dans bootThemes.js).
  *
- * Usage : node scripts/gen-boot-photos.mjs <dossier-des-photos>
+ * Usage : node scripts/gen-boot-photos.mjs <dossier-des-photos> [--4k]
+ *
+ * --4k : agrandit chaque photo à 3840 px sur le grand côté (Lanczos +
+ * accentuation douce, qualité 82) et ajoute « -4k » au nom. Un agrandissement
+ * ne recrée pas le détail absent de l'original : c'est un pis-aller quand
+ * seule une photo de téléphone existe.
  *
  * Chaque .jpg / .jpeg / .png / .webp du dossier devient
  * src/components/brand/boot-photos/bienvenue-<nom-du-fichier>.webp :
@@ -33,6 +38,7 @@ import path from 'node:path';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, '..', 'src', 'components', 'brand', 'boot-photos');
 const srcDir = process.argv[2];
+const upscale4k = process.argv.includes('--4k');
 
 if (!srcDir) {
   console.error('Usage : node scripts/gen-boot-photos.mjs <dossier-des-photos>');
@@ -56,7 +62,18 @@ const files = readdirSync(srcDir).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).
 
 for (const file of files) {
   const slug = slugify(path.parse(file).name);
-  const target = path.join(outDir, `bienvenue-${slug}.webp`);
+  const target = path.join(outDir, `bienvenue-${slug}${upscale4k ? '-4k' : ''}.webp`);
+  if (upscale4k) {
+    const info = await sharp(path.join(srcDir, file))
+      .rotate()
+      .resize({ width: 3840, height: 3840, fit: 'inside', kernel: 'lanczos3' })
+      .sharpen({ sigma: 0.8, m1: 0.6, m2: 1.2 })
+      .modulate({ saturation: 1.03 })
+      .webp({ quality: 82, effort: 6 })
+      .toFile(target);
+    console.log(`${slug.padEnd(18)} ${info.width}×${info.height} 4k ${Math.round(info.size / 1024)} Ko`);
+    continue;
+  }
   // Étalonnage commun cuit dans le fichier (rien à calculer à l'affichage) :
   // +7 % de contraste, +10 % de saturation, 4 % plus sombre. Unifie des
   // photos d'origines différentes et adoucit la perte de détail.

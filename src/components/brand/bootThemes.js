@@ -1,32 +1,26 @@
 /**
- * Séquence de l'écran de chargement « Bienvenue » (BootScreen.jsx).
+ * Photo de l'écran de chargement « Bienvenue » (BootScreen.jsx).
  *
  * `shots` : les photos, dans l'ordre des coupes ; la dernière reste affichée.
- * Choix et ordre de Jérémy : dressage aux gants verts, dressage au gant,
- * puis le canard en image de fin (photo d'appareil, 2400 px).
+ * Choix de Jérémy : une seule photo, le dressage au gant, agrandie en 4K
+ * (node scripts/gen-boot-photos.mjs <dossier> --4k ; l'original ne fait que
+ * 1179×1468). Remplacer par le fichier d'appareil si on le retrouve.
  *
  * BOOT_THEMES reste une liste pour pouvoir remettre une rotation
  * hebdomadaire plus tard, en ajoutant des entrées.
  *
- * `focus` : object-position des photos. `dim` : bande sombre sous le texte.
- *
- * Pour changer les photos : node scripts/gen-boot-photos.mjs <dossier>, puis
- * les importer ici avec la teinte (`tone`) affichée par le script.
+ * `focus` : object-position de la photo. `dim` : bande sombre sous le texte.
  */
-import canardJus from './boot-photos/bienvenue-canard-jus.webp';
-import chefDressage from './boot-photos/bienvenue-chef-dressage.webp';
-import chefMains from './boot-photos/bienvenue-chef-mains.webp';
+import chefDressage from './boot-photos/bienvenue-chef-dressage-4k.webp';
 
 // `tone` : teinte moyenne de la photo, fond tant qu'elle charge.
 const P = {
-  canardJus: { src: canardJus, tone: '#694c30' },
   chefDressage: { src: chefDressage, tone: '#64574a' },
-  chefMains: { src: chefMains, tone: '#314f3c' },
 };
 
 export const BOOT_THEMES = [
   {
-    shots: [P.chefMains, P.chefDressage, P.canardJus],
+    shots: [P.chefDressage],
     focus: '50% 50%',
     dim: 0.28,
   },
