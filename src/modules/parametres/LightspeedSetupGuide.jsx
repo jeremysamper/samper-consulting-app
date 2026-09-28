@@ -45,7 +45,7 @@ function CopyBtn({ value }) {
   );
 }
 
-// ── Bloc valeur technique (code monospace + bouton copier) ─────────
+// ── Bloc valeur technique (code + bouton copier) ─────────────────────
 
 function CodeLine({ value }) {
   return (
@@ -53,7 +53,7 @@ function CodeLine({ value }) {
       <code style={{
         flex: 1, padding: '5px 10px', borderRadius: 6,
         background: '#f1f5f9', border: '1px solid #e2e8f0',
-        fontSize: 12, color: '#0f172a', fontFamily: 'monospace',
+        fontSize: 12, color: '#0f172a', fontFamily: 'var(--font)',
         wordBreak: 'break-all',
       }}>
         {value}
@@ -189,7 +189,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                     <code style={{
                       padding: '3px 9px', borderRadius: 5,
                       background: '#f1f5f9', border: '1px solid #e2e8f0',
-                      fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: '#0f172a',
+                      fontSize: 12, fontFamily: 'var(--font)', fontWeight: 700, color: '#0f172a',
                       flexShrink: 0, minWidth: 148,
                     }}>
                       {key}

@@ -1718,7 +1718,7 @@ const fac = {
   varChip: {
     padding: '5px 9px', borderRadius: 14, background: 'var(--bg)',
     border: '1px solid var(--border)', color: 'var(--text2)',
-    fontFamily: 'monospace', fontSize: 11, cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 11, cursor: 'pointer',
   },
 };
 

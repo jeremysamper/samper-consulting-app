@@ -584,7 +584,7 @@ const FichesSalle = ({ user, etablissement }) => {
             <div style={fss.cardImg}>
               <div style={fss.cardImgPlaceholder}>
                 <span style={{fontSize:28}}>{f.categorie==='Entrées'?'🥗':f.categorie==='Plats'?'🍽':f.categorie==='Desserts'?'🍰':'🧀'}</span>
-                <span style={{fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'monospace',marginTop:4}}>photo {f.categorie.toLowerCase()}</span>
+                <span style={{fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'var(--font)',marginTop:4}}>photo {f.categorie.toLowerCase()}</span>
               </div>
             </div>
             <div style={fss.cardBody}>

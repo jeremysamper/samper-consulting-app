@@ -444,7 +444,7 @@ const Roles = ({ user }) => {
               <div>
                 <label style={ros.fieldLabel}>{editingUser.id ? 'Nouveau mot de passe' : 'Mot de passe temporaire *'}</label>
                 <div style={{display:'flex', gap:8}}>
-                  <input type="text" style={{...ros.fieldInput, flex:1, fontFamily:'monospace'}} value={editingUser.password || ''} placeholder={editingUser.id ? 'Laisser vide pour ne pas changer' : 'Min. 6 caractères'}
+                  <input type="text" style={{...ros.fieldInput, flex:1, fontFamily:'var(--font)'}} value={editingUser.password || ''} placeholder={editingUser.id ? 'Laisser vide pour ne pas changer' : 'Min. 6 caractères'}
                     onChange={e => setEditingUser({ ...editingUser, password: e.target.value })}/>
                   <button type="button" style={{...ros.smallGhost, whiteSpace:'nowrap'}} onClick={() => {
                     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
