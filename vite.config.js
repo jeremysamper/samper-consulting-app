@@ -120,6 +120,19 @@ export default defineConfig({
         // cache ne sert qu'en secours) ; /auth/ n'est volontairement JAMAIS caché.
         runtimeCaching: [
           {
+            // Photos de l'écran « Bienvenue » (src/components/brand/boot-photos).
+            // Hors précache exprès : seules les six photos de la semaine sont
+            // téléchargées, puis gardées ici pour que l'écran s'affiche aussi
+            // hors-ligne. Noms hachés par Vite, donc immuables : cache-first.
+            urlPattern: /\/assets\/bienvenue-[^/]+\.webp$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bienvenue-photos',
+              cacheableResponse: { statuses: [200] },
+              expiration: { maxEntries: 40, maxAgeSeconds: 90 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Bibliothèque recettes (fiches, plats, cartes et liaisons) :
             // lecture hors-ligne = besoin métier, secours 30 jours.
             urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/(recettes|plats|cartes|carte_plats|plat_recettes)\b/i,

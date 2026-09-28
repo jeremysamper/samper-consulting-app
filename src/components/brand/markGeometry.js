@@ -49,8 +49,8 @@ const P = {
 };
 
 // Secteurs pleins, dans le sens horaire en partant du nord.
-// L'ordre est signifiant : l'animation du splash les révèle dans cet ordre,
-// ce qui dessine un balayage horaire.
+// L'ordre est signifiant : révélées dans cet ordre, les pales dessinent un
+// balayage horaire.
 // (les secteurs n -> ne et sw -> w sont volontairement laissés vides)
 export const MARK_SECTORS = [
   { from: 'ne', to: 'e', color: BRAND_COLORS.blade },
