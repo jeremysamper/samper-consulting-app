@@ -351,7 +351,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                       {choisi && (
                         <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
                           → <strong style={{ color: 'var(--text)' }}>{choisi.nom}</strong>
-                          <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-serif)', marginLeft: 6 }}>
+                          <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-num)', marginLeft: 6 }}>
                             {resolvePrixProduit(choisi).toFixed(3)}/{choisi.uniteRef}
                           </span>
                         </div>

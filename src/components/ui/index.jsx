@@ -137,7 +137,7 @@ export function KpiCard({ label, value, sub, delta, color, chart, glow = false, 
         {label}
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-        <div style={{ fontSize: 28, fontWeight: 800, color: color || 'var(--text)', fontFamily: 'var(--font-serif)', lineHeight: 1 }}>
+        <div style={{ fontSize: 28, fontWeight: 800, color: color || 'var(--text)', fontFamily: 'var(--font-num)', lineHeight: 1 }}>
           {value}
         </div>
         {delta !== undefined ? (

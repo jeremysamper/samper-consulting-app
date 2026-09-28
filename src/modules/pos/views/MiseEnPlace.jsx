@@ -84,7 +84,7 @@ function ItemRow({ item }) {
       <div style={{
         fontSize:   22,
         fontWeight: 700,
-        fontFamily: 'var(--font-serif)',
+        fontFamily: 'var(--font-num)',
         color:      item.qty === 0 ? 'var(--text3)' : 'var(--text)',
         flexShrink: 0,
         minWidth:   48,

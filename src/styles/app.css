@@ -10,6 +10,9 @@
      redéfinit ces deux jetons sur .spa (src/modules/spa/spa.css). */
   --font: "Satoshi", system-ui, sans-serif;
   --font-serif: "Zodiak", Georgia, serif;
+  /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
+     quantités) : Satoshi, les chiffres d'affichage de Zodiak détonnent. */
+  --font-num: "Satoshi", system-ui, sans-serif;
   /* Fond légèrement creusé (95.8 vs surface 99.2) : c'est cet écart, plus
      que les ombres, qui fait flotter les cartes blanches en mode clair. */
   --bg: oklch(95.8% 0.009 75);

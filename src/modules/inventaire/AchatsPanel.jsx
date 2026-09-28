@@ -704,7 +704,7 @@ const st = {
   kpi: { background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '10px 12px', minWidth: 0 },
   kpiFort: { borderColor: 'var(--accent)' },
   kpiLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  kpiVal: { fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginTop: 4 },
+  kpiVal: { fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 4 },
   kpiNote: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   avertissements: { margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.55 },
   importLigne: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },

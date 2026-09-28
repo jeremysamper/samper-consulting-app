@@ -408,7 +408,7 @@ const st = {
     padding: '9px 12px', fontSize: 14, color: 'var(--text)', background: 'var(--surface)',
   },
   ligneCourseAlt: { background: 'var(--bg)' },
-  quantite: { flexShrink: 0, fontFamily: 'var(--font-serif)', fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' },
+  quantite: { flexShrink: 0, fontFamily: 'var(--font-num)', fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' },
   bouton: {
     flex: '1 1 auto', minHeight: 44, padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
     fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',

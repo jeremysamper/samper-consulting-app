@@ -364,7 +364,7 @@ const st = {
   },
   carteTitre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   carteNom: { fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' },
-  prix: { flexShrink: 0, fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--accent)', whiteSpace: 'nowrap' },
+  prix: { flexShrink: 0, fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--accent)', whiteSpace: 'nowrap' },
   prixUnite: { fontSize: 11, fontWeight: 500, fontFamily: 'var(--font)', color: 'var(--text2)' },
   carteCorps: { flex: '1 1 auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 },
   carteActions: { display: 'flex', gap: 8, padding: '0 14px 14px' },

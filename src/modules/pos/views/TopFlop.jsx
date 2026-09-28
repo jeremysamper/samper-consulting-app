@@ -216,7 +216,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
               {/* Rang */}
               <div style={{
                 fontSize: 13, fontWeight: 700, color: 'var(--text3)',
-                fontFamily: 'var(--font-serif)',
+                fontFamily: 'var(--font-num)',
               }}>
                 {globalRank}
               </div>
@@ -230,7 +230,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
               </div>
 
               {/* Qty A */}
-              <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+              <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
                 {item.qty_A}
               </div>
 

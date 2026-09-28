@@ -192,7 +192,7 @@ export default function GroupeForm({
                     onClick={() => set('menuNumero', actif ? null : n)}
                     style={{ ...st.choix, ...st.choixMenu, ...(actif ? st.choixActif : null) }}
                   >
-                    <span style={{ fontSize: 15, fontFamily: 'var(--font-serif)' }}>n°{n}</span>
+                    <span style={{ fontSize: 15, fontFamily: 'var(--font-num)' }}>n°{n}</span>
                     {menu?.nom ? <span style={st.choixSousTitre}>{menu.nom}</span> : null}
                     {voirPrix && menu?.prixPax != null
                       ? <span style={st.choixSousTitre}>{menu.prixPax} CHF / pers.</span>

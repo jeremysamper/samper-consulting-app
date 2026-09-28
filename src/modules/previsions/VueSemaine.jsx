@@ -69,7 +69,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
           <span style={{
             fontSize: 15, fontWeight: 800,
             color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
-            fontFamily: 'var(--font-serif)',
+            fontFamily: 'var(--font-num)',
           }}>
             {total > 0 ? `${total} pax` : '-'}
           </span>
@@ -170,7 +170,7 @@ function DayRow({ jour, auj, tags, isMobile, onClick }) {
       {/* Colonne 3 : Total */}
       <div style={{
         textAlign: 'right', fontSize: 16, fontWeight: 800,
-        fontFamily: 'var(--font-serif)',
+        fontFamily: 'var(--font-num)',
         color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
       }}>
         {total > 0 ? total : '-'}
@@ -206,7 +206,7 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
           <Btn small onClick={() => setDateDebut((d) => addDays(d, -7))}>←</Btn>
           <span style={{
             fontSize: 13, fontWeight: 700, color: 'var(--text)',
-            fontFamily: 'var(--font-serif)', minWidth: 110, textAlign: 'center',
+            fontFamily: 'var(--font-num)', minWidth: 110, textAlign: 'center',
           }}>
             {formatDateCourte(dateDebut)} – {formatDateCourte(addDays(dateDebut, 6))}
           </span>

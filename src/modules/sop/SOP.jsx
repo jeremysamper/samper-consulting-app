@@ -540,7 +540,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: progress === 100 ? '#16a34a' : 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: progress === 100 ? '#16a34a' : 'var(--accent)', fontFamily: 'var(--font-num)' }}>
             {checkedSteps}/{totalSteps}
           </div>
           <div style={{ fontSize: 10, color: 'var(--text2)' }}>{progress}%</div>

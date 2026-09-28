@@ -2191,7 +2191,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                                 onMouseDown={() => linkProductToIngredient(idx, p)}
                               >
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
-                                {p.prixUnitaire > 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--font-serif)', whiteSpace: 'nowrap', marginLeft: 6 }}>{p.prixUnitaire.toFixed(3)}/{p.uniteRef}</span>}
+                                {p.prixUnitaire > 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', marginLeft: 6 }}>{p.prixUnitaire.toFixed(3)}/{p.uniteRef}</span>}
                               </div>
                             ))}
                           </div>
@@ -2726,7 +2726,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         </div>
                         <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {p.prixUnitaire > 0 ? (
-                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)' }}>
                               CHF {p.prixUnitaire.toFixed(4)}
                             </div>
                           ) : <span style={{ color: 'var(--text2)', fontSize: 12 }}>-</span>}

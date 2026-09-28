@@ -633,7 +633,7 @@ const Catalogue = ({ user, etablissement }) => {
                             p.fournisseurNom || <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>-</span>
                           )}
                         </td>
-                        <td style={{ ...cat.td, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
+                        <td style={{ ...cat.td, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)' }}>
                           {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>-</span>}
                         </td>
                         <td style={{ ...cat.td, color: 'var(--text2)' }}>/{p.uniteRef}</td>
@@ -931,7 +931,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginTop: 4 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <label style={{ ...cat.lbl, margin: 0 }}>Prix retenu pour le chiffrage</label>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-serif)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)' }}>
                 CHF {prixRetenu.toFixed(4)} <span style={{ color: 'var(--text2)', fontWeight: 400 }}>/{form.uniteRef}</span>
               </div>
             </div>
@@ -1405,7 +1405,7 @@ const ipm = {
   kpisRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '14px 20px' },
   kpiBox: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', textAlign: 'center' },
   kpiLabel: { fontSize: 10, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 4 },
+  kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-num)', marginTop: 4 },
   tabsBar: { display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid var(--border)' },
   tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent' },
   tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },

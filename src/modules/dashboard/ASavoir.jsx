@@ -291,7 +291,7 @@ const s = {
     padding: '10px 12px', borderRadius: 12, background: 'var(--surface2)',
   },
   couvertLabel: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
-  couvertValeur: { fontFamily: 'var(--font-serif)', fontSize: 28, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
+  couvertValeur: { fontFamily: 'var(--font-num)', fontSize: 28, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
   equipier: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', minHeight: 44, minWidth: 0 },
   // Cible de tap confortable sans alourdir la ligne.
   tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 12.5 },

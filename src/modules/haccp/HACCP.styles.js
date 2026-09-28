@@ -9,7 +9,7 @@ export const hs = {
   kpiRow:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
   kpiLbl:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
-  kpiVal:{fontSize:26,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
+  kpiVal:{fontSize:26,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
   sectionTitle:{fontSize:12,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.5},
   zoneGrid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10},
   zoneTile:{borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',gap:12},
@@ -69,7 +69,7 @@ export const hs = {
   // Bandeau des tournées du jour + sélecteur de tournée dans les saisies.
   creneauStrip: { display:'flex', gap:8, flexWrap:'wrap', padding:'12px 16px' },
   creneauCard: { display:'flex', flexDirection:'column', gap:2, alignItems:'flex-start', minWidth:132, padding:'10px 14px', border:'1px solid var(--border)', borderRadius:10, background:'var(--bg)', fontFamily:'var(--font)', textAlign:'left' },
-  creneauHeure: { fontSize:17, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)', lineHeight:1.1 },
+  creneauHeure: { fontSize:17, fontWeight:700, fontFamily:'var(--font-num)', color:'var(--text)', lineHeight:1.1 },
   creneauLabel: { fontSize:11, color:'var(--text2)', fontWeight:600 },
   creneauEtat: { fontSize:10, fontWeight:700, marginTop:2 },
   // Puce de sélection de tournée (modales de saisie).

@@ -14,7 +14,7 @@ const S = {
   kpiRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 },
   kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   kpiLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  kpiValue: { fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.1 },
+  kpiValue: { fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-num)', color: 'var(--text)', lineHeight: 1.1 },
   kpiSub: { fontSize: 11, color: 'var(--text3)' },
   actionsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },

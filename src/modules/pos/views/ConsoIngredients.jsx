@@ -273,7 +273,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
                   <div style={{
                     textAlign: 'right',
                     fontSize: 14, fontWeight: 700,
-                    color: 'var(--text)', fontFamily: 'var(--font-serif)',
+                    color: 'var(--text)', fontFamily: 'var(--font-num)',
                   }}>
                     {ing.quantite}
                   </div>

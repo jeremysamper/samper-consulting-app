@@ -57,7 +57,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
         </div>
         {last ? (
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', color: vc, display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-num)', color: vc, display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' }}>
               {last.valeur}{zone.unite}
               {trendIcon && (
                 <span

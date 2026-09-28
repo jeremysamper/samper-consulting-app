@@ -199,7 +199,7 @@ const cs = {
     fontSize: 11, fontWeight: 700, color: 'var(--text2)',
     textTransform: 'uppercase', letterSpacing: 0.4,
   },
-  foodCostValue: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)' },
+  foodCostValue: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-num)' },
   foodCostHint: { fontSize: 10, color: 'var(--text3)', fontStyle: 'italic' },
 
   simGrid: {

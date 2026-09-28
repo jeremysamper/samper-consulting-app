@@ -361,7 +361,7 @@ export default function ReservationForm({
                 style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 −
               </button>
-              <div style={{ width: 52, textAlign: 'center', fontWeight: 800, fontSize: 17, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+              <div style={{ width: 52, textAlign: 'center', fontWeight: 800, fontSize: 17, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
                 {form.couverts}
               </div>
               <button type="button" aria-label="Augmenter"

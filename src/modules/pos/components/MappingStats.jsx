@@ -27,7 +27,7 @@ export function MappingStats({ total, mapped, auto: autoCount, suggested, manual
     }}>
       {/* Compteur principal */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+        <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-num)', color: 'var(--text)' }}>
           {mapped}
         </span>
         <span style={{ fontSize: 13, color: 'var(--text2)' }}>/ {total} plats mappés</span>
