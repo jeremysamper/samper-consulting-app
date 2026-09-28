@@ -4,8 +4,9 @@
  *
  * Un thème = cinq calques de transition (`layers`, dans l'ordre d'apparition)
  * puis la photo finale (`hero`) qui porte le mot. Sélection de Jérémy : cinq
- * photos seulement, intercalées avec des panneaux de direction artistique
- * (aplat de marque + monogramme) : photo, DA, photo, DA, photo, photo finale.
+ * photos seulement, sans logo ni aplat. Quatre défilent avant la photo
+ * finale ; l'une repasse une fois (jamais deux fois de suite) pour garder le
+ * rythme régulier des cinq bandes.
  *
  * Photo finale = photo haute définition uniquement (canard, dessert cacao :
  * photos d'appareil, 2400 px). Elle reste affichée : les trois photos de
@@ -19,7 +20,6 @@
  * Pour ajouter des photos : node scripts/gen-boot-photos.mjs <dossier>, puis
  * les importer ici avec la teinte (`tone`) affichée par le script.
  */
-import { BRAND_COLORS } from './markGeometry.js';
 import canardJus from './boot-photos/bienvenue-canard-jus.webp';
 import chefDressage from './boot-photos/bienvenue-chef-dressage.webp';
 import chefMains from './boot-photos/bienvenue-chef-mains.webp';
@@ -35,27 +35,15 @@ const P = {
   pavlova: { src: pavlova, tone: '#312e3a' },
 };
 
-// Panneaux de direction artistique : les deux fonds de la marque.
-const DA = {
-  petrol: {
-    tone: BRAND_COLORS.petrol,
-    background: 'radial-gradient(120% 95% at 50% 45%, #00394c 0%, #003042 38%, #001620 100%)',
-  },
-  cream: {
-    tone: BRAND_COLORS.cream,
-    background: 'radial-gradient(120% 95% at 50% 45%, #f6f1e9 0%, #efe8dd 45%, #ddd2c1 100%)',
-  },
-};
-
 export const BOOT_THEMES = [
   {
-    layers: [P.chefMains, DA.petrol, P.pavlova, DA.cream, P.chefDressage],
+    layers: [P.chefMains, P.dessertCacao, P.pavlova, P.chefDressage, P.dessertCacao],
     hero: P.canardJus,
     focus: '50% 50%',
     dim: 0.26,
   },
   {
-    layers: [P.chefDressage, DA.cream, P.chefMains, DA.petrol, P.pavlova],
+    layers: [P.chefDressage, P.canardJus, P.chefMains, P.pavlova, P.canardJus],
     hero: P.dessertCacao,
     focus: '50% 50%',
     dim: 0.36,

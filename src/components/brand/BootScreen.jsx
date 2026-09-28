@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { bootThemeFor } from './bootThemes.js';
-import SamperMark from './SamperMark.jsx';
 
 /**
  * Écran de chargement « Bienvenue ».
@@ -112,12 +111,12 @@ function decode(src) {
 // L'intro déjà vue dans cet onglet n'a besoin que de la photo finale.
 const photosReady = typeof Image === 'undefined'
   ? Promise.resolve()
-  : Promise.all((initialPhase() === 'wait' ? [...theme.layers, theme.hero] : [theme.hero]).filter((p) => p.src).map((p) => decode(p.src)));
+  : Promise.all((initialPhase() === 'wait' ? [...theme.layers, theme.hero] : [theme.hero]).map((p) => decode(p.src)));
 
 /**
  * Un calque : deux moitiés (gauche, droite), chacune volet + cadre. Le cadre
- * porte le contenu aligné sur l'écran entier (photo ou panneau de DA) ; seule
- * la partie de sa moitié est visible.
+ * porte la photo alignée sur l'écran entier ; seule la partie de sa moitié
+ * est visible.
  */
 function Layer({ item, at, focus }) {
   return (
@@ -128,35 +127,18 @@ function Layer({ item, at, focus }) {
           <div key={side} className={`bv-half bv-half-${side}`} style={side === 'l' ? s.halfL : s.halfR}>
             <div className="bv-slide" style={s.fill}>
               <div className="bv-frame" style={{ ...s.fill, background: item.tone }}>
-                {item.src ? (
-                  <img
-                    className="bv-photo"
-                    src={item.src}
-                    alt=""
-                    draggable={false}
-                    style={{ ...s.photo, ...screen, objectPosition: focus }}
-                  />
-                ) : (
-                  <DaPanel item={item} style={screen} />
-                )}
+                <img
+                  className="bv-photo"
+                  src={item.src}
+                  alt=""
+                  draggable={false}
+                  style={{ ...s.photo, ...screen, objectPosition: focus }}
+                />
               </div>
             </div>
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * Panneau de direction artistique intercalé entre les photos : un aplat de
- * marque et le monogramme au centre de l'écran. Vectoriel, donc net sur
- * n'importe quel écran.
- */
-function DaPanel({ item, style }) {
-  return (
-    <div style={{ ...s.da, ...style, background: item.background }}>
-      <SamperMark size={144} background="none" scale={1.08} title={null} style={s.daMark} />
     </div>
   );
 }
@@ -218,7 +200,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
       data-no-translate=""
     >
       {phase === 'play' && !stripsGone && theme.layers.map((item, i) => (
-        <Layer key={`${i}-${item.src || item.background}`} item={item} at={LAYER_STARTS[i]} />
+        <Layer key={`${i}-${item.src}`} item={item} at={LAYER_STARTS[i]} />
       ))}
 
       {phase !== 'wait' && <Layer item={theme.hero} at={heroAt} focus={theme.focus} />}
@@ -297,16 +279,6 @@ const s = {
     pointerEvents: 'none',
     background: 'radial-gradient(ellipse 120% 90% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.38) 100%)',
   },
-  da: {
-    position: 'absolute',
-    top: 0,
-    height: '100%',
-    width: '100vw',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  daMark: { width: 'min(34vw, 22vh)', height: 'auto' },
   // La photo couvre l'écran entier, alignée sur lui quelle que soit la moitié.
   screenL: { left: 0 },
   screenR: { left: 'calc(1px - 50vw)' },
