@@ -120,6 +120,18 @@ export default defineConfig({
         // cache ne sert qu'en secours) ; /auth/ n'est volontairement JAMAIS caché.
         runtimeCaching: [
           {
+            // Police Satoshi (Fontshare) : feuille + fichiers woff2, externes
+            // donc hors précache. CacheFirst après le premier chargement pour
+            // que l'app garde sa typographie hors-ligne.
+            urlPattern: /^https:\/\/(api|cdn)\.fontshare\.com\//i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fontshare',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Photos de l'écran « Bienvenue » (src/components/brand/boot-photos).
             // Hors précache exprès : seules les six photos de la semaine sont
             // téléchargées, puis gardées ici pour que l'écran s'affiche aussi

@@ -13,6 +13,12 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 .spa {
+  /* Le reste de l'app est en Satoshi : le spa garde sa typographie propre.
+     Redéfinis ici, les jetons s'héritent à tout ce qui est rendu dans .spa
+     (modales comprises, elles ne passent pas par un portail). */
+  --font: "DM Sans", system-ui, sans-serif;
+  --font-serif: "DM Serif Display", Georgia, serif;
+
   --spa-bg: #f4f1eb;
   --spa-surface: #fffdf9;
   --spa-surface2: #f8f5ef;
