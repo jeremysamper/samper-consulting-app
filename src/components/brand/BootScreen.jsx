@@ -1,161 +1,300 @@
-import SamperMark from './SamperMark.jsx';
+import { useEffect, useState } from 'react';
+import { bootThemeFor } from './bootThemes.js';
 
 /**
- * Écran de démarrage de l'application.
+ * Écran de chargement « Bienvenue ».
  *
- * Fond bleu pétrole #003042 : c'est exactement le `background_color` du
- * manifest, donc sur Android le passage de l'écran natif d'ouverture à cet
- * écran-ci ne se voit pas, c'est le même fond et le même logo qui reste en
- * place. Ensuite, halo respirant, logo qui se pose et se révèle pale par pale
- * dans le sens horaire, nom qui monte, puis la ligne de balayage.
+ * Reprend le modèle vidéo fourni : sur fond noir, six calques s'ouvrent
+ * chacun depuis une fine bande verticale au centre, le suivant naissant dans
+ * le précédent ; la photo zoome légèrement pendant qu'elle s'ouvre. Le
+ * dernier calque, plein écran, porte « Bienvenue » qui monte depuis une ligne
+ * de masque. Tout est posé à ~2 s. Photos et ordre : bootThemes.js, un thème
+ * par semaine.
  *
- * La chorégraphie vit dans app.css (@keyframes splash*) : elle dure ~700 ms au
- * total pour qu'un démarrage rapide ne laisse pas voir un logo à moitié
- * dessiné, et elle se désactive sous prefers-reduced-motion.
+ * Déroulé :
+ *  - 'wait'   : noir (la première image du modèle) le temps que les photos
+ *               de la semaine soient décodées, 1,2 s au plus ;
+ *  - 'play'   : l'animation, une fois par onglet (sessionStorage). Un
+ *               rechargement dans la même session saute directement à
+ *               'static' : la brigade ne revoit pas 2 s d'intro à chaque
+ *               retour sur l'app ;
+ *  - 'static' : l'image finale, mot en place (aussi en mouvement réduit).
  *
- * @param {string} title ligne d'état sous le nom (étape de démarrage en cours)
+ * L'écran reste au moins jusqu'à la fin de l'intro (le mot doit se lire),
+ * puis s'efface en fondu dès que l'app est prête. Toucher l'écran passe
+ * l'intro. L'app se monte dessous pendant ce temps : elle charge ses données
+ * au lieu d'attendre.
+ *
+ * @param {boolean}  loading    démarrage encore en cours (auth, modules)
+ * @param {string}   title      étape en cours, annoncée aux lecteurs d'écran
+ *                              et affichée si le chargement s'éternise
+ * @param {Function} onFinished appelé à la fin du fondu de sortie (stable)
  */
-export default function BootScreen({ title = 'Connexion à votre espace' }) {
+
+// Départ de chaque calque, en ms : relevé image par image sur le modèle.
+const LAYER_STARTS = [30, 330, 500, 670, 870, 1030];
+// Fin de l'intro : le mot est posé (~2,05 s) et lisible.
+const INTRO_MS = 2300;
+// Attente maximale des photos avant de lancer l'intro quand même (les calques
+// sans photo s'ouvrent alors dans la teinte de leur photo).
+const PHOTO_WAIT_MS = 1200;
+const EXIT_MS = 380;
+const SEEN_KEY = 'sc_bienvenue_vue';
+
+function readPreviewIndex() {
+  if (!import.meta.env.DEV) return null;
+  try {
+    const value = new URLSearchParams(location.search).get('bienvenue');
+    return value === null ? null : Number(value) || 0;
+  } catch {
+    return null;
+  }
+}
+
+// Aperçu en dev : /vite-index.html?bienvenue=3 force le thème 3 et rejoue
+// l'intro à chaque chargement.
+const previewIndex = readPreviewIndex();
+const theme = bootThemeFor(new Date(), previewIndex);
+
+function introSeen() {
+  if (previewIndex !== null) return false;
+  try {
+    return sessionStorage.getItem(SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markIntroSeen() {
+  try {
+    sessionStorage.setItem(SEEN_KEY, '1');
+  } catch {
+    // Stockage indisponible (navigation privée) : l'intro rejouera, sans gravité.
+  }
+}
+
+function prefersReducedMotion() {
+  try {
+    return matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+function initialPhase() {
+  return introSeen() || prefersReducedMotion() ? 'static' : 'wait';
+}
+
+function decode(src) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = src;
+  return (img.decode ? img.decode() : new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; }))
+    .catch(() => {});
+}
+
+// Téléchargement lancé dès l'import du module, avant le premier rendu React.
+// L'intro déjà vue dans cet onglet n'a besoin que de la photo finale.
+const photosReady = typeof Image === 'undefined'
+  ? Promise.resolve()
+  : Promise.all((initialPhase() === 'wait' ? [...theme.layers, theme.hero] : [theme.hero]).map((p) => decode(p.src)));
+
+export default function BootScreen({ loading = true, title = 'Connexion à votre espace', onFinished }) {
+  const [phase, setPhase] = useState(initialPhase);
+  const [introDone, setIntroDone] = useState(() => phase === 'static');
+  const leaving = introDone && !loading;
+
+  // Photos décodées (ou délai écoulé) : l'intro démarre.
+  useEffect(() => {
+    if (phase !== 'wait') return undefined;
+    let alive = true;
+    const start = () => {
+      if (alive) setPhase((current) => (current === 'wait' ? 'play' : current));
+    };
+    photosReady.then(start);
+    const timer = setTimeout(start, PHOTO_WAIT_MS);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== 'play') return undefined;
+    markIntroSeen();
+    const timer = setTimeout(() => setIntroDone(true), INTRO_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  // Sortie : fondu, puis démontage. Un chargement qui repart pendant le fondu
+  // l'annule (leaving repasse à false, la minuterie est effacée).
+  useEffect(() => {
+    if (!leaving) return undefined;
+    const timer = setTimeout(() => onFinished?.(), EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [leaving, onFinished]);
+
+  function skip() {
+    if (phase === 'static') return;
+    markIntroSeen();
+    setPhase('static');
+    setIntroDone(true);
+  }
+
+  const heroAt = LAYER_STARTS[LAYER_STARTS.length - 1];
+
   return (
-    <main style={s.root}>
-      {/* Double halo : un large et diffus (atmosphère), un serré et plus vif
-          (la « gemme » qui éclaire le monogramme). Même classe : les deux
-          respirent ensemble et s'éteignent ensemble en mouvement réduit. */}
-      <div className="splash-aura" style={s.auraWide} aria-hidden="true" />
-      <div className="splash-aura" style={s.aura} aria-hidden="true" />
+    <div
+      className={`bv-root bv-${phase}${leaving ? ' bv-leaving' : ''}`}
+      style={s.root}
+      onPointerDown={skip}
+      data-no-translate=""
+    >
+      {phase !== 'static' && theme.layers.map((photo, i) => (
+        <div
+          key={`${i}-${photo.src}`}
+          className="bv-layer"
+          style={{ ...s.layer, background: photo.tone, '--bv-at': `${LAYER_STARTS[i]}ms` }}
+          aria-hidden="true"
+        >
+          <img className="bv-photo" src={photo.src} alt="" style={s.photo} draggable={false} />
+        </div>
+      ))}
 
-      <div style={s.core}>
-        <SamperMark className="splash-mark" size={118} background="none" scale={1.08} title={null} />
+      <div className="bv-layer" style={{ ...s.layer, background: theme.hero.tone, '--bv-at': `${heroAt}ms` }}>
+        <img
+          className="bv-photo"
+          src={theme.hero.src}
+          alt=""
+          style={{ ...s.photo, objectPosition: theme.focus }}
+          draggable={false}
+        />
+        <div style={s.scrim(theme.dim)} aria-hidden="true" />
 
-        <div className="splash-word" style={s.word}>
-          <div style={s.name} data-no-translate="">Samper Consulting</div>
-          <div style={s.rule} aria-hidden="true" />
-          <div style={s.tagline}>Gestion culinaire</div>
+        <div style={s.labels} aria-hidden="true">
+          <span>Samper Consulting</span>
+          <span>Semaine {theme.week}</span>
+        </div>
+
+        <div style={s.wordZone}>
+          <div style={s.wordMask}>
+            <p className="bv-word" style={s.word}>Bienvenue</p>
+          </div>
         </div>
       </div>
 
-      {/* Pied éditorial : l'état de chargement à gauche, la piste à droite —
-          la tension gauche/droite ancre la composition dans les bords. */}
-      <div style={s.foot}>
-        <div className="splash-status" style={s.status} role="status" aria-live="polite">
-          {title}
-        </div>
-
-        <div className="splash-track" style={s.track} aria-hidden="true">
-          <div className="splash-sweep" style={s.sweep} />
-        </div>
+      <div className="bv-status" style={s.status} role="status" aria-live="polite">
+        <span>{title}</span>
+        <span style={s.track} aria-hidden="true">
+          <span className="bv-sweep" style={s.sweep} />
+        </span>
       </div>
-    </main>
+    </div>
   );
 }
 
-const AURA_SIZE = 460;
-const AURA_WIDE_SIZE = 780;
+const MONO = "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace";
 
 const s = {
   root: {
     position: 'fixed',
     inset: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Le coeur du dégradé est le pétrole de marque exact : le logo, rendu sans
-    // fond, repose donc sur le champ pour lequel il a été dessiné (sa pale
-    // d'ombre garde sa lecture). L'écran s'assombrit vers les bords.
-    background: 'radial-gradient(120% 95% at 50% 36%, #00394c 0%, #003042 38%, #001620 100%)',
-    fontFamily: 'var(--font)',
     zIndex: 9999,
     overflow: 'hidden',
+    background: '#000',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTapHighlightColor: 'transparent',
   },
-  aura: {
+  layer: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: AURA_SIZE,
-    height: AURA_SIZE,
-    // Centrage aux marges (pas au transform) : le transform reste libre pour
-    // l'animation de respiration, et le mode « mouvement réduit » peut le
-    // neutraliser sans décaler le halo.
-    marginTop: -(AURA_SIZE / 2) - 70,
-    marginLeft: -(AURA_SIZE / 2),
-    background: 'radial-gradient(circle, rgba(155,199,219,0.15) 0%, rgba(155,199,219,0) 66%)',
-    pointerEvents: 'none',
+    inset: 0,
+    overflow: 'hidden',
   },
-  auraWide: {
+  photo: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: AURA_WIDE_SIZE,
-    height: AURA_WIDE_SIZE,
-    marginTop: -(AURA_WIDE_SIZE / 2) - 40,
-    marginLeft: -(AURA_WIDE_SIZE / 2),
-    background: 'radial-gradient(circle, rgba(23,92,130,0.22) 0%, rgba(23,92,130,0) 62%)',
-    pointerEvents: 'none',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
   },
-  core: {
-    position: 'relative',
+  scrim: (dim) => ({
+    position: 'absolute',
+    inset: 0,
+    // Voile centré sous le mot + haut assombri pour les deux mentions.
+    background: `linear-gradient(to bottom, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0) 16%), radial-gradient(ellipse 85% 55% at 50% 50%, rgba(0,0,0,${dim}) 0%, rgba(0,0,0,${dim * 0.4}) 100%)`,
+  }),
+  labels: {
+    position: 'absolute',
+    top: 'max(18px, env(safe-area-inset-top))',
+    left: 'max(20px, env(safe-area-inset-left))',
+    right: 'max(20px, env(safe-area-inset-right))',
     display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '0 24px',
-    textAlign: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    fontFamily: MONO,
+    fontSize: 10.5,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.86)',
+  },
+  wordZone: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  wordMask: {
+    // La ligne de masque : le bas de cette boîte. Le mot en sort par le bas ;
+    // seul ce bord coupe (les insets négatifs laissent passer haut et côtés).
+    fontSize: 'min(17.5vw, 27vh)',
+    paddingBottom: '0.28em',
+    clipPath: 'inset(-100vh -100vw 0 -100vw)',
   },
   word: {
-    marginTop: 30,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+    margin: 0,
+    fontFamily: "'Helvetica Neue', Helvetica, Arial, 'DM Sans', sans-serif",
+    fontSize: '1em',
+    fontWeight: 700,
+    lineHeight: 1,
+    letterSpacing: '-0.045em',
+    color: '#fff',
+    whiteSpace: 'nowrap',
+    // Ombre serrée + halo large : le mot reste lisible sur une purée ou une
+    // meringue blanche, là où le modèle posait sur un mur uni.
+    textShadow: '0 1px 3px rgba(0,0,0,0.25), 0 6px 44px rgba(0,0,0,0.42)',
   },
-  name: {
-    // Voix éditoriale : serif d'affichage, grand corps, tracking resserré.
-    fontSize: 'clamp(27px, 6vw, 38px)',
-    fontWeight: 400,
-    color: '#f1ebe1',
-    fontFamily: 'var(--font-serif)',
-    letterSpacing: '-0.02em',
-    lineHeight: 1.05,
-  },
-  rule: {
-    width: 46,
-    height: 1,
-    margin: '15px 0 12px',
-    background: 'linear-gradient(90deg, rgba(201,188,163,0) 0%, rgba(201,188,163,0.85) 50%, rgba(201,188,163,0) 100%)',
-  },
-  tagline: {
-    fontSize: 10.5,
-    fontWeight: 600,
-    color: 'rgba(241,235,225,0.55)',
-    textTransform: 'uppercase',
-    letterSpacing: 3.2,
-  },
-  foot: {
+  status: {
     position: 'absolute',
-    left: 'max(26px, env(safe-area-inset-left))',
-    right: 'max(26px, env(safe-area-inset-right))',
-    bottom: 'calc(26px + env(safe-area-inset-bottom))',
+    left: 'max(20px, env(safe-area-inset-left))',
+    right: 'max(20px, env(safe-area-inset-right))',
+    bottom: 'calc(20px + env(safe-area-inset-bottom))',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 18,
-  },
-  status: {
-    fontSize: 12,
-    color: 'rgba(241,235,225,0.62)',
-    minHeight: 16,
-    textAlign: 'left',
+    gap: 16,
+    fontFamily: MONO,
+    fontSize: 10.5,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.8)',
   },
   track: {
-    width: 132,
+    width: 96,
     flexShrink: 0,
-    height: 2,
-    background: 'rgba(241,235,225,0.12)',
-    borderRadius: 2,
+    height: 1,
+    background: 'rgba(255,255,255,0.22)',
     overflow: 'hidden',
   },
   sweep: {
+    display: 'block',
     height: '100%',
     width: '40%',
-    background: 'linear-gradient(90deg, rgba(201,188,163,0) 0%, #c9bca3 50%, rgba(201,188,163,0) 100%)',
-    borderRadius: 2,
+    background: '#fff',
   },
 };

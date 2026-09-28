@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import BootScreen from './components/brand/BootScreen.jsx';
 import { ToastContainer, installToastGlobals, notify } from './components/toast/index.js';
 import AppLayout from './layouts/AppLayout.jsx';
@@ -86,6 +86,13 @@ export default function App() {
   // valide, sans quoi l'utilisateur atterrissait sur le tableau de bord sans
   // jamais pouvoir choisir son nouveau mot de passe.
   const recovery = usePasswordRecovery();
+  // Écran « Bienvenue » : posé PAR-DESSUS le contenu, pas à sa place. L'app
+  // (connexion ou tableau de bord) se monte dessous pendant l'intro et charge
+  // ses données ; l'écran s'efface quand l'intro est finie ET le démarrage
+  // terminé. S'il faut à nouveau attendre plus tard (préparation de l'espace
+  // juste après la connexion), il revient le temps du chargement.
+  const [bootSplashDone, setBootSplashDone] = useState(false);
+  const finishBootSplash = useCallback(() => setBootSplashDone(true), []);
   // bridgeReady : l'abonnement temps réel aux établissements passe par le
   // bridge SB, installé par loadLegacyModules souvent APRÈS le profil.
   const currentEtablissement = useCurrentEtablissement(auth.profile, {
@@ -229,13 +236,13 @@ export default function App() {
       />
     );
   } else if (auth.loading) {
-    content = <BootScreen />;
+    content = null;
   } else if (!auth.profile) {
     content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} onNavigateToDashboard={() => setPage('dashboard')} />;
   } else if (auth.profile.actif === false) {
     content = <DisabledAccount onLogout={handleLogout} />;
   } else if (legacyState.loading) {
-    content = <BootScreen title="Préparation de votre espace" />;
+    content = null;
   } else if (legacyState.error) {
     content = <LegacyLoadError error={legacyState.error} />;
   } else {
@@ -278,10 +285,21 @@ export default function App() {
     );
   }
 
+  // Démarrage en cours = les deux branches ci-dessus qui n'ont rien à afficher.
+  const booting = !recovery.active && content === null;
+  const showBootSplash = !recovery.active && (booting || !bootSplashDone);
+
   return (
     <>
       {isModuleSwitching && <div className="route-progress" aria-hidden="true" />}
       {content}
+      {showBootSplash && (
+        <BootScreen
+          loading={booting}
+          title={auth.loading ? 'Connexion à votre espace' : 'Préparation de votre espace'}
+          onFinished={finishBootSplash}
+        />
+      )}
       <ToastContainer />
     </>
   );
