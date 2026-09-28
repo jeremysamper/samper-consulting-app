@@ -4,6 +4,7 @@ import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import {
   navItems as NAV_ITEMS, defaultEtabModuleKeys, etabToggleableModules, optInModuleKeys,
+  TYPES_ETABLISSEMENT, estTypeSpa, modulesParDefautDuType,
 } from '../../modules/moduleConfig.js';
 import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
@@ -40,7 +41,7 @@ const moduleCountLabel = (modulesActifs) => {
   return n === 1 ? '1 module activé' : `${n} modules activés`;
 };
 
-const EtabModulesPicker = ({ value, onChange, getLabel }) => {
+const EtabModulesPicker = ({ value, onChange, getLabel, sansTableauDeBord = false }) => {
   // null = tous les modules standard : tout coché sauf les modules « à
   // activer » (spa), qui ne s'affichent que cochés explicitement.
   const selected = Array.isArray(value) ? value : defaultEtabModuleKeys;
@@ -67,7 +68,8 @@ const EtabModulesPicker = ({ value, onChange, getLabel }) => {
         </div>
       </div>
       <div style={{ fontSize:12, color:'var(--text2)', lineHeight:1.5 }}>
-        L'équipe ne voit que les modules cochés, en plus des droits de son rôle. Le tableau de bord et vos outils consultant restent toujours affichés.
+        L'équipe ne voit que les modules cochés, en plus des droits de son rôle.
+        {sansTableauDeBord ? ' Vos outils consultant restent toujours affichés.' : ' Le tableau de bord et vos outils consultant restent toujours affichés.'}
       </div>
       {MODULE_GROUPS.map((group) => (
         <div key={group} style={{ marginTop:6 }}>
@@ -105,7 +107,15 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
     couleur:'#003042', actif:true, notes:'', modulesActifs:null
   });
 
-  const TYPES = ['Restaurant gastronomique','Brasserie','Bistrot','Hôtel-Restaurant','Hôtel','Café-Restaurant','Traiteur','Collectivité','Autre'];
+  // Un type ancien ou saisi ailleurs reste proposé tel quel.
+  const TYPES = TYPES_ETABLISSEMENT.includes(f.type) || !f.type ? TYPES_ETABLISSEMENT : [f.type, ...TYPES_ETABLISSEMENT];
+  // Choisir « Spa » coche d'office Spa & clients + Planning & Pointage ;
+  // quitter « Spa » rend les modules standard.
+  const changerType = (type) => setF((prec) => {
+    if (estTypeSpa(type)) return { ...prec, type, modulesActifs: modulesParDefautDuType(type) };
+    if (estTypeSpa(prec.type)) return { ...prec, type, modulesActifs: null };
+    return { ...prec, type };
+  });
   const COULEURS = ['#003042','#1a5276','#1e6b40','#6c3483','#2e7ab8','#c0392b','#16a085','#7f8c8d'];
 
   const handleSave = () => {
@@ -129,7 +139,7 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               <div style={ps.field}>
                 <label style={ps.fLabel}>Type</label>
-                <select style={ps.fInput} value={f.type} onChange={e=>setF({...f,type:e.target.value})}>
+                <select style={ps.fInput} value={f.type} onChange={e=>changerType(e.target.value)}>
                   {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -170,11 +180,17 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
               </div>
               <span style={{ fontSize:13, color:'var(--text)', fontWeight:500 }}>Établissement actif (visible dans l'application)</span>
             </div>
+            {estTypeSpa(f.type) && (
+              <div style={{ fontSize:12.5, lineHeight:1.5, padding:'10px 12px', borderRadius:8, background:'var(--info-bg-soft)', color:'var(--info-text)', border:'1px solid var(--info-bd)' }}>
+                Spa : seuls « Spa & clients » et « Planning & Pointage » sont activés, et il n'y a pas de tableau de bord. L'équipe arrive directement sur le spa.
+              </div>
+            )}
             {modulesReady ? (
               <EtabModulesPicker
                 value={f.modulesActifs ?? null}
                 onChange={(modulesActifs) => setF({ ...f, modulesActifs })}
                 getLabel={getLabel}
+                sansTableauDeBord={estTypeSpa(f.type)}
               />
             ) : (
               <div style={{ fontSize:12, color:'var(--text2)', lineHeight:1.5 }}>

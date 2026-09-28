@@ -118,6 +118,21 @@ export function pushPage(page) {
   emit();
 }
 
+// Remplace la page de l'entrée courante, sans en poser une nouvelle : pour une
+// redirection (page d'accueil d'un établissement sans tableau de bord), que
+// « retour » ne doit pas faire rejouer.
+export function replacePage(page) {
+  const win = getBrowserWindow();
+  currentPage = page;
+  if (!win?.history || !page) return;
+  const top = win.history.state;
+  if (isOurState(top) && top.layer) return;
+  try {
+    win.history.replaceState({ sc: 1, idx: currentIdx, page }, '');
+  } catch { /* historique indisponible : on navigue quand même */ }
+  emit();
+}
+
 // Ouvre un calque « refermable par retour ». Renvoie la fonction à appeler
 // quand l'UI se referme d'elle-même (✕, voile, Échap) : elle consomme l'entrée.
 export function pushLayer(id, close) {

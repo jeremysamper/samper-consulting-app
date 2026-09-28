@@ -13,13 +13,8 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 .spa {
-  /* Le reste de l'app est en Satoshi : le spa garde sa typographie propre.
-     Redéfinis ici, les jetons s'héritent à tout ce qui est rendu dans .spa
-     (modales comprises, elles ne passent pas par un portail). */
-  --font: "DM Sans", system-ui, sans-serif;
-  --font-serif: "DM Serif Display", Georgia, serif;
-  --font-num: "DM Serif Display", Georgia, serif;
-
+  /* Polices : celles de toute l'app (--font, --font-serif, --font-num de
+     app.css), sans redéfinition ici. */
   --spa-bg: #f4f1eb;
   --spa-surface: #fffdf9;
   --spa-surface2: #f8f5ef;
@@ -44,6 +39,12 @@
 
   --spa-hero: radial-gradient(120% 140% at 100% 0%, #dcebea 0%, rgba(220, 235, 234, 0) 55%),
               linear-gradient(135deg, #f7f4ee 0%, #efe8dc 100%);
+  /* Lumière du bandeau d'accueil (voir .spa-lumiere) : couleur pleine et
+     sa version transparente, pour que Safari ne grise pas le fondu. */
+  --spa-lumiere-1: rgba(47, 111, 119, 0.24);
+  --spa-lumiere-1-fin: rgba(47, 111, 119, 0);
+  --spa-lumiere-2: rgba(88, 120, 79, 0.16);
+  --spa-lumiere-2-fin: rgba(88, 120, 79, 0);
   --spa-gift: linear-gradient(135deg, #fbf6ec 0%, #f1e6d2 100%);
   --spa-shadow: 0 1px 2px rgba(37, 48, 44, 0.04), 0 6px 20px rgba(37, 48, 44, 0.06);
   --spa-shadow-lift: 0 2px 6px rgba(37, 48, 44, 0.06), 0 16px 40px rgba(37, 48, 44, 0.12);
@@ -84,6 +85,10 @@ html[data-theme="dark"] .spa {
 
   --spa-hero: radial-gradient(120% 140% at 100% 0%, rgba(124, 188, 194, 0.18) 0%, rgba(124, 188, 194, 0) 55%),
               linear-gradient(135deg, #182221 0%, #151b1a 60%, #1f1c16 100%);
+  --spa-lumiere-1: rgba(124, 188, 194, 0.22);
+  --spa-lumiere-1-fin: rgba(124, 188, 194, 0);
+  --spa-lumiere-2: rgba(157, 192, 147, 0.13);
+  --spa-lumiere-2-fin: rgba(157, 192, 147, 0);
   --spa-gift: linear-gradient(135deg, #2a2418 0%, #1e1b14 100%);
   --spa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
   --spa-shadow-lift: 0 2px 8px rgba(0, 0, 0, 0.35), 0 18px 44px rgba(0, 0, 0, 0.45);
@@ -115,6 +120,10 @@ html[data-theme="dark"] .spa {
     --spa-kin-line: #5c4a2a;
     --spa-hero: radial-gradient(120% 140% at 100% 0%, rgba(124, 188, 194, 0.18) 0%, rgba(124, 188, 194, 0) 55%),
                 linear-gradient(135deg, #182221 0%, #151b1a 60%, #1f1c16 100%);
+    --spa-lumiere-1: rgba(124, 188, 194, 0.22);
+    --spa-lumiere-1-fin: rgba(124, 188, 194, 0);
+    --spa-lumiere-2: rgba(157, 192, 147, 0.13);
+    --spa-lumiere-2-fin: rgba(157, 192, 147, 0);
     --spa-gift: linear-gradient(135deg, #2a2418 0%, #1e1b14 100%);
     --spa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
     --spa-shadow-lift: 0 2px 8px rgba(0, 0, 0, 0.35), 0 18px 44px rgba(0, 0, 0, 0.45);
@@ -192,21 +201,37 @@ html[data-theme="dark"] .spa {
   from { opacity: 0; transform: translateX(24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes spa-onde {
-  0%   { transform: scale(0.6); opacity: 0.55; }
-  100% { transform: scale(1.9); opacity: 0; }
+/* Bandeau d'accueil : deux lueurs douces (eau, matcha) qui dérivent
+   lentement sous le texte. Seul transform est animé : calculé par la carte
+   graphique, fluide sur iPhone, iPad, Android et ordinateur, sans repeindre
+   la page. La couche déborde largement du bandeau (inset négatif) pour que
+   son bord ne soit jamais visible pendant le déplacement. */
+@keyframes spa-lumiere {
+  0%   { transform: translate3d(-5%, -3%, 0) rotate(0deg) scale(1); }
+  50%  { transform: translate3d(3%, 4%, 0) rotate(6deg) scale(1.06); }
+  100% { transform: translate3d(6%, -2%, 0) rotate(-4deg) scale(1); }
 }
 
 .spa .spa-apparition { animation: spa-apparition 260ms ease both; }
 .spa .spa-voile { animation: spa-voile 200ms ease both; }
 .spa .spa-tiroir { animation: spa-tiroir 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.spa .spa-onde { animation: spa-onde 2.6s ease-out infinite; transform-origin: center; }
+.spa .spa-lumiere {
+  position: absolute;
+  inset: -45%;
+  pointer-events: none;
+  background:
+    radial-gradient(28% 34% at 34% 42%, var(--spa-lumiere-1) 0%, var(--spa-lumiere-1-fin) 100%),
+    radial-gradient(24% 30% at 64% 58%, var(--spa-lumiere-2) 0%, var(--spa-lumiere-2-fin) 100%);
+  transform-origin: 50% 50%;
+  animation: spa-lumiere 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .spa .spa-apparition,
   .spa .spa-voile,
   .spa .spa-tiroir,
-  .spa .spa-onde {
+  .spa .spa-lumiere {
     animation: none;
   }
   .spa .spa-carte-action { transition: none; }

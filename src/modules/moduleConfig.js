@@ -87,8 +87,8 @@ export const navItems = [
 // activé pour l'établissement ET permis au rôle pour apparaître.
 //
 // Toujours présents, jamais désactivables : le tableau de bord (page d'accueil,
-// point de chute de toute navigation) et les outils du consultant, qui
-// travaillent sur tous ses établissements.
+// point de chute de toute navigation ; sauf dans un spa, voir TYPE_SPA) et les
+// outils du consultant, qui travaillent sur tous ses établissements.
 // ─────────────────────────────────────────────────────────────────────────────
 export const alwaysOnModuleKeys = ['dashboard', 'consultant_tools', 'faq'];
 
@@ -106,12 +106,45 @@ export const defaultEtabModuleKeys = etabToggleableModules
   .map((item) => item.permKey)
   .filter((key) => !optInModuleKeys.includes(key));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Types d'établissement (colonne etablissements.type, texte libre en base).
+//
+// Un spa n'a pas l'outillage d'un restaurant : à sa création, seuls « Spa &
+// clients » et « Planning & Pointage » sont cochés, et il n'a PAS de tableau de
+// bord (sa page d'accueil est le module Spa). Le consultant garde ses outils.
+// ─────────────────────────────────────────────────────────────────────────────
+export const TYPE_SPA = 'Spa';
+export const TYPES_ETABLISSEMENT = [
+  'Restaurant', 'Restaurant gastronomique', 'Brasserie', 'Bistrot', 'Hôtel-Restaurant', 'Hôtel', 'Café-Restaurant',
+  'Traiteur', 'Collectivité', TYPE_SPA, 'Autre',
+];
+export const MODULES_SPA = ['spa', 'planning'];
+
+export const estTypeSpa = (type) => String(type || '').trim().toLowerCase() === TYPE_SPA.toLowerCase();
+export const estEtablissementSpa = (etablissement) => estTypeSpa(etablissement?.type);
+
+// Modules cochés d'office quand on choisit un type (null = modules standard).
+export const modulesParDefautDuType = (type) => (estTypeSpa(type) ? [...MODULES_SPA] : null);
+
 // modulesActifs null / absent = tous les modules sauf ceux « à activer ».
 export function isModuleActiveForEtab(etablissement, permKey) {
+  if (permKey === 'dashboard' && estEtablissementSpa(etablissement)) return false;
   if (!permKey || alwaysOnModuleKeys.includes(permKey)) return true;
   const actifs = etablissement?.modulesActifs;
   if (!Array.isArray(actifs)) return !optInModuleKeys.includes(permKey);
   return actifs.includes(permKey);
+}
+
+// Page d'accueil d'un établissement : le tableau de bord quand il en a un ;
+// sinon le module Spa pour un spa, à défaut le premier module du menu
+// activé et permis au rôle.
+export function pageAccueil(etablissement, permissions = {}) {
+  if (isModuleActiveForEtab(etablissement, 'dashboard')) return 'dashboard';
+  const permis = (item) => isModuleActiveForEtab(etablissement, item.permKey) && permissions[item.permKey] !== false;
+  const spa = navItems.find((item) => item.id === 'spa');
+  if (estEtablissementSpa(etablissement) && spa && permis(spa)) return 'spa';
+  const premier = navItems.find((item) => !alwaysOnModuleKeys.includes(item.permKey) && permis(item));
+  return premier?.id || 'dashboard';
 }
 
 // Même règle à partir d'un identifiant de page (raccourcis, liens internes).

@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <title>Réserver un soin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+    <!-- Satoshi (texte) + Zodiak (titres) : les mêmes liens que vite-index.html. -->
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
+    <!-- Une feuille par famille : l'API Fontshare ne renvoie que la première
+         famille d'une requête qui en demande plusieurs (Zodiak manquait). -->
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap" rel="stylesheet" />
+    <link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700,800&display=swap" rel="stylesheet" />
     <style>
-      /* Page publique autonome : n'embarque ni app.css ni le bundle de l'app. */
-      :root { --font: "DM Sans", system-ui, sans-serif; --font-serif: "DM Serif Display", Georgia, serif; }
+      /* Page publique autonome : n'embarque ni app.css ni le bundle de l'app.
+         Mêmes jetons de police que app.css (chiffres des titres en Satoshi). */
+      :root {
+        --font: "Satoshi", system-ui, sans-serif;
+        --font-serif: "SC Chiffres", "Zodiak", Georgia, serif;
+        --font-num: "Satoshi", system-ui, sans-serif;
+      }
       html, body { margin: 0; padding: 0; overflow-x: hidden; }
       *, *::before, *::after { box-sizing: border-box; }
       button { font: inherit; }
