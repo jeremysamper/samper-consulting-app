@@ -18,10 +18,9 @@ const MODES = [
 // data-no-translate : ses propres libellés ne doivent jamais être traduits,
 // sinon on ne sait plus dans quel mode on est.
 //
-// Desktop : segments explicites, en codes FR / EN / ES sous 1280 px (app.css).
-// Mobile : bouton 44×44 comme le thème et la cloche, qui ouvre la liste des
-// trois modes. Le header n'a pas la place d'un segment complet (et la page ne
-// doit jamais pouvoir défiler horizontalement).
+// Header (desktop et mobile) : variante compacte, un bouton 44×44 comme le
+// thème et la cloche, qui déroule la liste des trois modes. Les segments
+// explicites (non compacts) restent disponibles pour d'autres écrans.
 export default function LanguageToggle({ compact = false, etablissementId = null }) {
   const { lang, translating, degraded, setLang } = useLanguage(etablissementId);
   const current = MODES.find((m) => m.id === lang) || MODES[0];
@@ -98,6 +97,9 @@ function CompactPicker({ current, translating, degraded, onPick, titleFor }) {
     <div ref={rootRef} style={s.compactWrap} data-no-translate="">
       <button
         type="button"
+        // app-bar-btn : même survol que les autres boutons du header ; is-active
+        // (mode traduit) garde son fond accent au survol.
+        className={`app-bar-btn${translated ? ' is-active' : ''}`}
         style={{
           ...s.compact,
           ...(translated ? s.compactActive : null),
@@ -181,10 +183,12 @@ const s = {
     padding: 0,
     flexShrink: 0,
     background: 'transparent',
+    // Sans cadre, comme les autres boutons du header « verre » ; la bordure
+    // reste posée (transparente) pour les états traduit / dégradé.
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: 'var(--border)',
-    borderRadius: 8,
+    borderColor: 'transparent',
+    borderRadius: 12,
     color: 'var(--text2)',
     fontFamily: 'var(--font)',
     fontSize: 13,

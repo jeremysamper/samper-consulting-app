@@ -16,12 +16,13 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { Bell, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from 'lucide-react';
 import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
 import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
-import UserMenu from '../components/nav/UserMenu.jsx';
+import AccountButton from '../components/nav/AccountButton.jsx';
+import AccountModal from '../modules/auth/AccountModal.jsx';
 import { applyNavOrder, useNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
@@ -74,6 +75,8 @@ export default function AppLayout({
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
+  const [accountOpen, setAccountOpen] = React.useState(false);
+  const [identityOverride, setIdentityOverride] = React.useState(null);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
   // Décalage du tiroir pendant un glissé vers la gauche (null = au repos).
@@ -259,7 +262,6 @@ export default function AppLayout({
   const handleSetPage = (p) => { setPage(p); setDrawerOpen(false); };
 
   const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
-  const todayLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
 
   // Labels personnalisés globaux (module_labels table - portée tous établissements)
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
@@ -335,15 +337,31 @@ export default function AppLayout({
     </div>
   ));
 
-  const renderUserMenu = (variant) => (
-    <UserMenu
-      user={user}
+  // ── Mon compte (clic sur son nom) ───────────────────────────────
+  // Nom enregistré depuis le panneau : affiché tout de suite par surcharge
+  // locale, sans recréer auth.profile. Un nouvel objet profil relancerait toute
+  // la synchro post-login (App.jsx) ; le profil réel suit au prochain
+  // rechargement naturel (retour au premier plan, connexion suivante).
+  const accountUser = identityOverride?.id === user.id ? { ...user, ...identityOverride } : user;
+  const renderAccountButton = (variant) => (
+    <AccountButton
+      user={accountUser}
       variant={variant}
-      onChangePassword={() => { setDrawerOpen(false); setPasswordModalOpen(true); }}
-      onOrganize={isConsultant ? startOrganizing : null}
-      onLogout={onLogout}
+      onOpen={() => { setDrawerOpen(false); setAccountOpen(true); }}
     />
   );
+  const accountModal = accountOpen ? (
+    <AccountModal
+      user={accountUser}
+      onClose={() => setAccountOpen(false)}
+      onSaved={(updated) => setIdentityOverride({
+        id: updated.id, prenom: updated.prenom, nom: updated.nom, avatar: updated.avatar,
+      })}
+      onChangePassword={() => { setAccountOpen(false); setPasswordModalOpen(true); }}
+      onOrganize={isConsultant ? () => { setAccountOpen(false); startOrganizing(); } : null}
+      onLogout={onLogout}
+    />
+  ) : null;
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
   const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
@@ -649,60 +667,70 @@ export default function AppLayout({
     // ═══════════════════════════════════════════════════════════════
     return (
       <div style={mls.root}>
-        {/* ─── Header fixe en haut ─── */}
-        <header style={mls.topbar}>
-          {/* Bouton hamburger */}
-          <button style={mls.hamburger} onClick={() => setDrawerOpen(true)} aria-label="Menu">
-            <span style={mls.hamLine} />
-            <span style={mls.hamLine} />
-            <span style={mls.hamLine} />
-          </button>
-
-          {/* Titre central + établissement courant (sélecteur s'il y en a
-              plusieurs) : l'établissement reste visible hors du tiroir. */}
-          <EtabSwitcher
-            variant="mobile"
-            title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
-            etabs={etabs}
-            current={etablissement}
-            onSelect={setEtablissement}
-          />
-
-          {/* Cloche notifications à droite */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
-            {showPosBanner && (
-              <PosTokenAlertBanner
-                unhealthy={posUnhealthy}
-                onReconnect={handleReconnect}
-                variant="pill"
-              />
-            )}
-            <LanguageToggle compact etablissementId={etablissement?.id || null} />
-            <button
-              type="button"
-              style={mls.themeBtn}
-              onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
-              aria-label={isDark ? 'Mode clair' : 'Mode sombre'}
-              title={isDark ? 'Mode clair' : 'Mode sombre'}
-            >
-              {isDark ? '☀' : '◑'}
-            </button>
-            <button
-              style={mls.bellBtn}
-              onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
-              aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
-              aria-expanded={notifOpen}
-            >
-              <Bell size={20} strokeWidth={2} aria-hidden="true" />
-              {unreadCount > 0 && <div style={mls.notifDot}>{unreadCount}</div>}
-            </button>
-            {notifOpen && renderAlertPanel(mls.notifPanel, mls.notifHeader, mls.notifItem)}
-          </div>
-        </header>
-
-        {/* ─── Bandeau d'état hors-ligne / sync pointages / mise à jour ─── */}
+        {/* Bandeaux d'état (hors-ligne, sync des pointages, icône d'accueil)
+            AU-DESSUS du header, comme en desktop : le header translucide flotte
+            sur le contenu, un bandeau posé dessous passerait sous lui. */}
         <OfflineBanner />
         <HomeScreenIconBanner />
+
+        {/* Scène : le header « verre » est posé en absolu sur la zone qui
+            défile, le contenu passe dessous (--app-header-h, app.css). */}
+        <div style={mls.stage}>
+          <header style={mls.topbar} className="app-glass-bar">
+            <button className="app-bar-btn" style={mls.hamburger} onClick={() => setDrawerOpen(true)} aria-label="Menu">
+              <span style={mls.hamLine} />
+              <span style={mls.hamLine} />
+              <span style={mls.hamLine} />
+            </button>
+
+            {/* Titre central + établissement courant (sélecteur s'il y en a
+                plusieurs) : l'établissement reste visible hors du tiroir. */}
+            <EtabSwitcher
+              variant="mobile"
+              title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
+              etabs={etabs}
+              current={etablissement}
+              onSelect={setEtablissement}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+              {showPosBanner && (
+                <PosTokenAlertBanner
+                  unhealthy={posUnhealthy}
+                  onReconnect={handleReconnect}
+                  variant="pill"
+                />
+              )}
+              <LanguageToggle compact etablissementId={etablissement?.id || null} />
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={mls.iconBtn}
+                onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+                aria-label={isDark ? 'Mode clair' : 'Mode sombre'}
+                title={isDark ? 'Mode clair' : 'Mode sombre'}
+              >
+                {isDark ? <Sun size={20} strokeWidth={2} aria-hidden="true" /> : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
+              </button>
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={mls.iconBtn}
+                onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+                aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
+                aria-expanded={notifOpen}
+              >
+                <Bell size={20} strokeWidth={2} aria-hidden="true" />
+                {unreadCount > 0 && <div style={mls.notifDot}>{unreadCount}</div>}
+              </button>
+              {notifOpen && renderAlertPanel(mls.notifPanel, mls.notifHeader, mls.notifItem)}
+            </div>
+          </header>
+
+          <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+            {children}
+          </main>
+        </div>
 
         {/* ─── Overlay sombre (visible seulement quand le drawer est ouvert) ─── */}
         {drawerOpen && <div style={mls.overlay} onClick={() => setDrawerOpen(false)} />}
@@ -741,15 +769,11 @@ export default function AppLayout({
           </nav>
 
           <div style={mls.drawerFooter}>
-            {renderUserMenu('mobile')}
+            {renderAccountButton('mobile')}
           </div>
         </aside>
 
-        {/* ─── Contenu principal ─── */}
-        <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
-          {children}
-        </main>
-
+        {accountModal}
         {passwordModal}
         {shortcutsLayer}
       </div>
@@ -796,7 +820,7 @@ export default function AppLayout({
         </nav>
 
         <div style={ls.userArea}>
-          {renderUserMenu('desktop')}
+          {renderAccountButton('desktop')}
         </div>
       </aside>
 
@@ -810,84 +834,85 @@ export default function AppLayout({
         {/* Bandeau d'état hors-ligne / sync pointages / mise à jour */}
         <OfflineBanner />
         <HomeScreenIconBanner />
-        {/* Entre 768 et 1023 px, le header se compacte (app.css, .topbar-*) :
-            sinon il débordait et le titre s'écrasait sur plusieurs lignes. */}
-        <header style={ls.topbar} className="topbar-desktop">
-          <div style={ls.topbarLeft}>
-            {/* Un seul bouton, toujours au même endroit, pour replier et
-                rouvrir la barre (remplace ❮ dans la barre et la languette). */}
-            <button
-              type="button"
-              style={ls.sidebarToggle}
-              onClick={(e) => { e.stopPropagation(); toggleSidebar(); }}
-              aria-controls="app-sidebar"
-              aria-expanded={sidebarOpen}
-              aria-label={sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'}
-              aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+B' : 'Control+B'}
-              title={`${sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'} (${MOD_LABEL} B)`}
-            >
-              {sidebarOpen
-                ? <PanelLeftClose size={18} strokeWidth={2} aria-hidden="true" />
-                : <PanelLeftOpen size={18} strokeWidth={2} aria-hidden="true" />}
-            </button>
-            {/* Titre + établissement (sélecteur s'il y en a plusieurs) + date. */}
-            <EtabSwitcher
-              title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
-              meta={todayLabel}
-              etabs={etabs}
-              current={etablissement}
-              onSelect={setEtablissement}
-            />
-          </div>
-          <div style={ls.topbarRight} className="topbar-right">
-            {/* Porte d'entrée visible de la palette : le raccourci s'apprend en
-                le voyant écrit à côté. */}
-            <button
-              type="button"
-              className="cmdk-trigger"
-              onClick={(e) => { e.stopPropagation(); togglePalette(true); }}
-              aria-label="Aller à un module"
-              aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+K' : 'Control+K'}
-            >
-              <Search size={15} aria-hidden="true" />
-              <span>Aller à…</span>
-              <kbd className="sc-kbd" data-no-translate>{MOD_LABEL} K</kbd>
-            </button>
-            <LanguageToggle etablissementId={etablissement?.id || null} />
-            <button
-              type="button"
-              style={ls.themeBtn}
-              onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
-              aria-label={isDark ? 'Mode clair' : 'Mode sombre'}
-              title={isDark ? 'Mode clair' : 'Mode sombre'}
-            >
-              {isDark ? '☀' : '◑'}
-            </button>
-            <div style={{ position: 'relative' }}>
+        {/* Scène : le header « verre » est posé en absolu sur la zone qui
+            défile, le contenu passe dessous (--app-header-h, app.css). */}
+        <div style={ls.stage}>
+          <header style={ls.topbar} className="topbar-desktop app-glass-bar">
+            <div style={ls.topbarLeft}>
+              {/* Un seul bouton, toujours au même endroit, pour replier et
+                  rouvrir la barre (remplace ❮ dans la barre et la languette). */}
               <button
-                style={ls.iconBtn}
-                onClick={(e) => { e.stopPropagation(); const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
-                aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
-                aria-expanded={notifOpen}
-                title="Alertes"
+                type="button"
+                className="app-bar-btn"
+                style={ls.sidebarToggle}
+                onClick={(e) => { e.stopPropagation(); toggleSidebar(); }}
+                aria-controls="app-sidebar"
+                aria-expanded={sidebarOpen}
+                aria-label={sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'}
+                aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+B' : 'Control+B'}
+                title={`${sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'} (${MOD_LABEL} B)`}
               >
-                <Bell size={18} strokeWidth={2} aria-hidden="true" />
-                {unreadCount > 0 && <div style={ls.notifDot}>{unreadCount}</div>}
+                {sidebarOpen
+                  ? <PanelLeftClose size={18} strokeWidth={2} aria-hidden="true" />
+                  : <PanelLeftOpen size={18} strokeWidth={2} aria-hidden="true" />}
               </button>
-              {notifOpen && renderAlertPanel(ls.notifPanel, ls.notifHeader, ls.notifItem)}
+              {/* Titre + établissement (sélecteur s'il y en a plusieurs). */}
+              <EtabSwitcher
+                title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
+                etabs={etabs}
+                current={etablissement}
+                onSelect={setEtablissement}
+              />
             </div>
-            <div style={ls.topbarDivider} />
-            {/* Libellé en grand écran, icône seule sous 1024 px (app.css). */}
-            <button style={ls.logoutBtn} className="topbar-logout" onClick={onLogout} aria-label="Déconnexion" title="Déconnexion">
-              <LogOut size={16} strokeWidth={2} className="topbar-logout-icon" aria-hidden="true" />
-              <span className="topbar-logout-label">Déconnexion</span>
-            </button>
-          </div>
-        </header>
+            {/* Quatre boutons, rien d'autre : langue, recherche, thème,
+                alertes. La déconnexion est dans « Mon compte » (clic sur le
+                nom, en bas de la barre latérale). */}
+            <div style={ls.topbarRight} className="topbar-right">
+              <LanguageToggle compact etablissementId={etablissement?.id || null} />
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={ls.iconBtn}
+                onClick={(e) => { e.stopPropagation(); togglePalette(true); }}
+                aria-label="Aller à un module"
+                aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+K' : 'Control+K'}
+                title={`Aller à… (${MOD_LABEL} K)`}
+              >
+                <Search size={18} strokeWidth={2} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={ls.iconBtn}
+                onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+                aria-label={isDark ? 'Mode clair' : 'Mode sombre'}
+                title={isDark ? 'Mode clair' : 'Mode sombre'}
+              >
+                {isDark ? <Sun size={18} strokeWidth={2} aria-hidden="true" /> : <Moon size={18} strokeWidth={2} aria-hidden="true" />}
+              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className="app-bar-btn"
+                  style={ls.iconBtn}
+                  onClick={(e) => { e.stopPropagation(); const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+                  aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
+                  aria-expanded={notifOpen}
+                  title="Alertes"
+                >
+                  <Bell size={18} strokeWidth={2} aria-hidden="true" />
+                  {unreadCount > 0 && <div style={ls.notifDot}>{unreadCount}</div>}
+                </button>
+                {notifOpen && renderAlertPanel(ls.notifPanel, ls.notifHeader, ls.notifItem)}
+              </div>
+            </div>
+          </header>
 
-        <main style={ls.content}>{children}</main>
+          <main style={ls.content}>{children}</main>
+        </div>
       </div>
 
+      {accountModal}
       {passwordModal}
       {shortcutsLayer}
     </div>
@@ -922,21 +947,34 @@ const ls = {
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
   userArea: { padding: '8px 6px 10px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  topbar: { height: 56, background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 18px', flexShrink: 0, position: 'relative', zIndex: 5, boxShadow: 'var(--sh-xs)' },
+  // Scène du header « verre » : il est posé en absolu, <main> défile dessous.
+  // --app-header-h = hauteur du header, reprise par le padding haut de <main>.
+  stage: { position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', '--app-header-h': '56px' },
+  // Fond, flou et filet : classe .app-glass-bar (app.css). zIndex 20 : au-dessus
+  // des en-têtes collants des modules (≤ 10), sous leurs modales (≥ 1000).
+  topbar: { position: 'absolute', top: 0, left: 0, right: 0, height: 56, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 0 18px' },
   // Le côté gauche cède la place (titre en points de suspension), le côté
   // droit jamais : ses boutons écrasés devenaient intouchables.
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto', marginRight: 12 },
-  topbarRight: { display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 },
-  themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', padding: 0, borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
-  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', padding: 0 },
-  iconBtn: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
-  notifDot: { position: 'absolute', top: 0, right: 0, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  topbarRight: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
+  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text2)', cursor: 'pointer', padding: 0 },
+  // Les quatre boutons du header : même carré de 44 px, sans bordure (survol :
+  // .app-bar-btn dans app.css), comme le sélecteur de langue compact.
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
+  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
-  topbarDivider: { width: 1, height: 20, background: 'var(--border)' },
-  logoutBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0, background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
-  content: { flex: 1, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%', padding: '24px' },
+  // minHeight 0 : sans lui <main> prend la hauteur de son contenu et ne défile pas.
+  // Le haut démarre sous le header (padding = header + 24 px). Un élément
+  // position: sticky des modules s'arrête sous le padding de son conteneur de
+  // défilement : leurs top: 0 retombent donc 24 px sous le header, comme avant.
+  // scroll-padding : « faire défiler jusqu'à » ne cache pas la cible sous lui.
+  content: {
+    flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%',
+    padding: '24px', paddingTop: 'calc(var(--app-header-h) + 24px)',
+    scrollPaddingTop: 'var(--app-header-h)',
+  },
 
   // Mobile
   mobileRoot: { display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)' },
@@ -966,23 +1004,22 @@ const mls = {
   // 100vh déborderait par le bas de la hauteur de l'indicateur d'accueil.
   root: { height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'transparent', fontFamily: 'var(--font)' },
 
-  // Header fixe haut
+  // Scène du header « verre » (voir ls.stage).
+  stage: { position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', '--app-header-h': '60px' },
+
+  // Header « verre » posé en absolu sur la zone qui défile. Fond, flou et
+  // filet : classe .app-glass-bar (app.css).
   topbar: {
-    position: 'sticky', top: 0, zIndex: 50, flexShrink: 0,
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '10px 14px',
-    background: 'var(--surface)',
-    borderBottom: '1px solid var(--border)',
-    minHeight: 56,
-    boxShadow: 'var(--sh-xs)',
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50, height: 60,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+    padding: '0 8px',
   },
   hamburger: {
     width: 44, height: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-    background: 'none', border: 'none', cursor: 'pointer', padding: 10,
+    background: 'none', border: 'none', borderRadius: 12, cursor: 'pointer', padding: 10, flexShrink: 0,
   },
   hamLine: { width: 22, height: 2, background: 'var(--text)', borderRadius: 2, transition: 'all 0.15s' },
-  themeBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, flexShrink: 0 },
-  bellBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 },
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
@@ -1037,5 +1074,10 @@ const mls = {
 
   // minHeight 0 : sans lui, la taille minimale automatique d'un élément flex
   // vaut la hauteur de son contenu, <main> déborde la coque et ne défile pas.
-  content: { flex: 1, minHeight: 0, padding: '16px 14px 24px', overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%' },
+  // Le haut démarre sous le header « verre » (voir ls.content).
+  content: {
+    flex: 1, minHeight: 0, padding: '16px 14px 24px', paddingTop: 'calc(var(--app-header-h) + 16px)',
+    overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%',
+    scrollPaddingTop: 'var(--app-header-h)',
+  },
 };

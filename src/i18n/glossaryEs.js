@@ -54,7 +54,7 @@ export const UI_GLOSSARY_ES = {
   'Menu': 'Menú',
   'Retour': 'Volver',
   'Accueil': 'Inicio',
-  // Barre latérale et header (menu du compte, établissement, repli)
+  // Barre latérale, header et « Mon compte »
   'Se déconnecter': 'Cerrar sesión',
   'Changer mon mot de passe': 'Cambiar mi contraseña',
   'Organiser le menu': 'Ordenar el menú',
@@ -67,6 +67,14 @@ export const UI_GLOSSARY_ES = {
   'Changer le logo': 'Cambiar el logo',
   'Consultant': 'Consultor',
   'Aide': 'Ayuda',
+  'E-mail': 'Correo electrónico',
+  'Compte mis à jour': 'Cuenta actualizada',
+  'Modifiable par le consultant': 'Solo el consultor puede cambiarlo',
+  'Visible par toi, ton patron et le consultant': 'Visible para ti, tu jefe y el consultor',
+  'Téléphone indisponible pour le moment': 'Teléfono no disponible por ahora',
+  'Le prénom ne peut pas être vide': 'El nombre no puede estar vacío',
+  'Numéro de téléphone invalide : chiffres, espaces et + uniquement': 'Número de teléfono no válido: solo dígitos, espacios y +',
+  'Aller à un module': 'Ir a un módulo',
 
   // ── Rôles ──
   'Consultant culinaire': 'Consultor culinario',

@@ -282,6 +282,42 @@ export const profileService = {
       return data || [];
     });
     return data.map(mapProfileFromDB);
+  },
+
+  // « Mon compte » : prénom, nom et initiales de SON propre profil. Le trigger
+  // profiles_verrou_champs_sensibles refuse côté base tout le reste (rôle,
+  // établissements, statut, e-mail) hors consultant.
+  async updateOwnIdentity(userId, { prenom, nom, avatar }) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ prenom, nom, avatar })
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw error;
+    invalidateBootRead('profile:');
+    invalidateBootRead('profiles:all');
+    return mapProfileFromDB(data);
+  },
+
+  // Téléphone : table profile_contacts, lisible par soi, le consultant et le
+  // patron d'un établissement commun, pas par les collègues (migration
+  // 20260928_profile_contacts).
+  async getOwnContact(userId) {
+    const { data, error } = await supabase
+      .from('profile_contacts')
+      .select('tel')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    return { tel: data?.tel || '' };
+  },
+
+  async saveOwnContact(userId, tel) {
+    const { error } = await supabase
+      .from('profile_contacts')
+      .upsert({ user_id: userId, tel: tel || null, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) throw error;
   }
 };
 

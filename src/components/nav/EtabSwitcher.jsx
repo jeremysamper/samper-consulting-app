@@ -9,7 +9,7 @@ import { Check, ChevronDown } from 'lucide-react';
 // Sur téléphone, il n'apparaissait qu'en ouvrant le tiroir.
 //
 //   ligne 1 : titre du module
-//   ligne 2 : ● établissement ⌄  (· date en desktop)
+//   ligne 2 : ● établissement ⌄
 //
 //   - un seul établissement : simple repère, rien à choisir ;
 //   - plusieurs : le bloc entier est un bouton qui ouvre la liste (même modèle
@@ -27,7 +27,7 @@ import { Check, ChevronDown } from 'lucide-react';
 // le nom accessible du bouton est son texte, l'action est dans title.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function EtabSwitcher({ etabs = [], current, onSelect, title, meta = null, variant = 'desktop' }) {
+export default function EtabSwitcher({ etabs = [], current, onSelect, title, variant = 'desktop' }) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef(null);
   const triggerRef = React.useRef(null);
@@ -65,17 +65,11 @@ export default function EtabSwitcher({ etabs = [], current, onSelect, title, met
   const body = (
     <>
       <span style={{ ...s.title, ...(mobile ? s.titleMobile : null) }}>{title}</span>
-      {(current || meta) && (
+      {current && (
         <span style={{ ...s.line, ...(mobile ? s.lineMobile : null) }}>
-          {current && (
-            <span style={s.etab}>
-              {dot(current)}
-              <span style={s.etabName} data-no-translate="">{current.nom}</span>
-              {multiple && <ChevronDown size={13} aria-hidden="true" style={s.chevron} />}
-            </span>
-          )}
-          {current && meta && <span style={s.sep} aria-hidden="true">·</span>}
-          {meta && <span style={s.meta}>{meta}</span>}
+          {dot(current)}
+          <span style={s.etabName} data-no-translate="">{current.nom}</span>
+          {multiple && <ChevronDown size={13} aria-hidden="true" style={s.chevron} />}
         </span>
       )}
     </>
@@ -154,17 +148,13 @@ const s = {
   },
   titleMobile: { textAlign: 'center' },
   line: {
-    display: 'flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0,
-    fontSize: 11.5, color: 'var(--text3)', lineHeight: 1.35, whiteSpace: 'nowrap',
+    display: 'flex', alignItems: 'center', gap: 5, maxWidth: '100%', minWidth: 0,
+    fontSize: 11.5, fontWeight: 600, color: 'var(--text2)', lineHeight: 1.35, whiteSpace: 'nowrap',
   },
   lineMobile: { fontSize: 12, justifyContent: 'center' },
-  // L'établissement garde sa place, la date cède la première.
-  etab: { display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flexShrink: 0, maxWidth: '100%', fontWeight: 600, color: 'var(--text2)' },
   etabName: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   dot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   chevron: { flexShrink: 0, opacity: 0.8 },
-  sep: { flexShrink: 0 },
-  meta: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'capitalize' },
 
   menu: {
     position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 220, maxWidth: 320,
