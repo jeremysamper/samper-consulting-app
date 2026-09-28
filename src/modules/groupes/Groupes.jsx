@@ -455,7 +455,7 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
       <span aria-hidden="true" style={{ ...st.ligneBarre, background: groupe.annule ? 'var(--border)' : m.barre }} />
       <span style={st.ligneDate}>
         <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>{formatJourSemaine(groupe.dateEvenement)}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)' }} data-no-translate>
+        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-num)' }} data-no-translate>
           {formatDateCourte(groupe.dateEvenement)}
         </span>
       </span>

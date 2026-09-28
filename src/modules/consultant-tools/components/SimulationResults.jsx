@@ -105,7 +105,7 @@ const cs = {
   },
   kpiValue: {
     fontSize: 22, fontWeight: 700,
-    fontFamily: 'var(--font-serif)', color: 'var(--text)',
+    fontFamily: 'var(--font-num)', color: 'var(--text)',
   },
   kpiSub: { fontSize: 13, fontWeight: 400, color: 'var(--text2)' },
   jaugeBlock: {
@@ -116,7 +116,7 @@ const cs = {
     display: 'flex', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 8,
   },
-  jaugePct: { fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-serif)' },
+  jaugePct: { fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-num)' },
   jaugeTrack: {
     height: 10, background: 'var(--border)',
     borderRadius: 5, overflow: 'hidden',

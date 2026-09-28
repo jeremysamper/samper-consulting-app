@@ -147,7 +147,7 @@ const s = {
   serviceHeures: { fontSize: 15, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   direct: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   compteur: {
-    marginLeft: 'auto', fontFamily: 'var(--font-serif)', fontSize: 26, lineHeight: 1, color: 'var(--text)',
+    marginLeft: 'auto', fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1, color: 'var(--text)',
     fontVariantNumeric: 'tabular-nums',
   },
   action: {

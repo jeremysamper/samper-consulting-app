@@ -741,7 +741,7 @@ const ds = {
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 },
   kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '16px 18px', boxShadow: 'var(--sh-xs)' },
   kpiLabel: { fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 },
-  kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 4, color: 'var(--text)' },
+  kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-num)', marginTop: 4, color: 'var(--text)' },
   kpiSub: { fontSize: 11, color: 'var(--text2)', marginTop: 4 },
 
   section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 18, boxShadow: 'var(--sh-xs)' },

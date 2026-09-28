@@ -103,7 +103,7 @@ const cs = {
   sliderRow: { display: 'flex', alignItems: 'center', gap: 12 },
   slider: { flex: 1, accentColor: 'var(--accent)', cursor: 'pointer' },
   sliderValue: {
-    fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-serif)',
+    fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-num)',
     color: 'var(--text)', minWidth: 32, textAlign: 'center',
   },
   sliderHint: { fontSize: 10, color: 'var(--text3)', fontStyle: 'italic' },

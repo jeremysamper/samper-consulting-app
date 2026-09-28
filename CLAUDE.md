@@ -93,7 +93,7 @@ Modules subscribe to Postgres changes via `SB.realtime.subscribe(tableName, call
 
 ### Styling
 
-All styles are plain JS objects (inline `style={...}` props) — no CSS modules, no Tailwind. Theming is driven by CSS variables set on `<html data-theme="light|dark">` via `useTheme` (`src/hooks/useTheme.js`). Key tokens used throughout: `var(--accent)`, `var(--surface)`, `var(--bg)`, `var(--text)`, `var(--text2)`, `var(--text3)`, `var(--border)`, `var(--nav)`, `var(--nav-text)`, `var(--nav-active)`, `var(--font)`, `var(--font-serif)`.
+All styles are plain JS objects (inline `style={...}` props) — no CSS modules, no Tailwind. Theming is driven by CSS variables set on `<html data-theme="light|dark">` via `useTheme` (`src/hooks/useTheme.js`). Key tokens used throughout: `var(--accent)`, `var(--surface)`, `var(--bg)`, `var(--text)`, `var(--text2)`, `var(--text3)`, `var(--border)`, `var(--nav)`, `var(--nav-text)`, `var(--nav-active)`, `var(--font)`, `var(--font-serif)`, `var(--font-num)` (highlighted figures: KPIs, amounts, temperatures).
 
 ### UI primitives
 

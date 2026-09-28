@@ -117,7 +117,7 @@ export default function ComptageRapide({
       <div style={st.progression}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, color: 'var(--text)' }}>
-            <strong style={{ fontSize: 18, fontFamily: 'var(--font-serif)' }}>{nbComptes}</strong> / {total} produit{total > 1 ? 's' : ''} compté{total > 1 ? 's' : ''}
+            <strong style={{ fontSize: 18, fontFamily: 'var(--font-num)' }}>{nbComptes}</strong> / {total} produit{total > 1 ? 's' : ''} compté{total > 1 ? 's' : ''}
           </span>
           {canEdit && restants > 0 && nbComptes > 0 && lignes.some(l => !estCompte(l) && l.precedent != null) && (
             <button type="button" style={st.lienBtn} onClick={onReprendreRestants}>

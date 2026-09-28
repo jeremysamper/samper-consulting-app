@@ -64,5 +64,5 @@ const s = {
   },
   tuileBouton: { border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)' },
   label: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  valeur: { fontFamily: 'var(--font-serif)', fontSize: 26, lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  valeur: { fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
 };

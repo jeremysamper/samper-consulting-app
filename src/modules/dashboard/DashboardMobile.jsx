@@ -419,7 +419,7 @@ const dm = {
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 },
   kpi: { background: 'var(--surface)', border: '1px solid var(--accent-bd)', borderRadius: 'var(--r)', padding: '12px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 76, boxSizing: 'border-box', boxShadow: 'var(--glow-accent)' },
   kpiLbl: { fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600, lineHeight: 1.3 },
-  kpiVal: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', marginTop: 6, color: 'var(--text)', lineHeight: 1 },
+  kpiVal: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-num)', marginTop: 6, color: 'var(--text)', lineHeight: 1 },
 
   quickCard: { padding: 12, borderRadius: 10 },
   quickGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },

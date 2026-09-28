@@ -57,7 +57,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, canEdit }) {
       {/* Heure */}
       <div style={{
         fontSize: isMobile ? 12 : 15, fontWeight: 800,
-        color: 'var(--accent)', fontFamily: 'var(--font-serif)',
+        color: 'var(--accent)', fontFamily: 'var(--font-num)',
       }}>
         {(resa.heure_arrivee || '').slice(0, 5)}
       </div>

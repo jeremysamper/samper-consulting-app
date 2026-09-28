@@ -542,7 +542,7 @@ const ps = {
   statsRow: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 },
   statCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', padding:'14px 18px' },
   statLabel: { fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4, marginBottom:6 },
-  statVal: { fontSize:22, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)' },
+  statVal: { fontSize:22, fontWeight:700, fontFamily:'var(--font-num)', color:'var(--text)' },
   listCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', overflow:'hidden' },
   listHeader: { padding:'14px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg)' },
   listTitle: { fontSize:13, fontWeight:700, color:'var(--text)', textTransform:'uppercase', letterSpacing:0.4 },

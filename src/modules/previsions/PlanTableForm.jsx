@@ -191,7 +191,7 @@ export default function PlanTableForm({
               </button>
               <div style={{
                 width: 52, textAlign: 'center', fontWeight: 800, fontSize: 17,
-                color: 'var(--text)', fontFamily: 'var(--font-serif)',
+                color: 'var(--text)', fontFamily: 'var(--font-num)',
               }}>
                 {places}
               </div>

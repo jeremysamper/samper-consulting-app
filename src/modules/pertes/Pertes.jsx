@@ -531,7 +531,7 @@ const pts = {
   kpiBar:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
   kpiLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
-  kpiVal:{fontSize:22,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
+  kpiVal:{fontSize:22,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
   tableWrap:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden'},
   tableHead:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'9px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
   tableRow:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'12px 18px',borderBottom:'1px solid var(--border)',gap:10,alignItems:'center'},

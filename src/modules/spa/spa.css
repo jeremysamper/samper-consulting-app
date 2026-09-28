@@ -18,6 +18,7 @@
      (modales comprises, elles ne passent pas par un portail). */
   --font: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", Georgia, serif;
+  --font-num: "DM Serif Display", Georgia, serif;
 
   --spa-bg: #f4f1eb;
   --spa-surface: #fffdf9;

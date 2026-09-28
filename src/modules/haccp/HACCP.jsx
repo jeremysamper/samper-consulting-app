@@ -676,7 +676,7 @@ const HACCP = ({ user, etablissement }) => {
                       <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure} · {op.name}</div>
                       {a.commentaire&&<div style={{fontSize:12,color:'var(--danger-strong)',marginTop:2}}>{a.commentaire}</div>}
                     </div>
-                    <div style={{fontSize:20,fontWeight:700,color:'var(--danger-strong)',fontFamily:'var(--font-serif)'}}>{a.valeur}{zone?.unite}</div>
+                    <div style={{fontSize:20,fontWeight:700,color:'var(--danger-strong)',fontFamily:'var(--font-num)'}}>{a.valeur}{zone?.unite}</div>
                   </div>
                 );
               })}
@@ -735,7 +735,7 @@ const HACCP = ({ user, etablissement }) => {
                   )}
                   <span style={{fontSize:13,fontWeight:600}}>{zone?.icone} {zone?.nom}</span>
                   <span style={hs.cell}>{r.heure}</span>
-                  <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-serif)'}}>{r.valeur}{zone?.unite}</span>
+                  <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-num)'}}>{r.valeur}{zone?.unite}</span>
                   <span style={hs.cell}>{op.name}</span>
                   <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
                   <span style={{...hs.cell,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'-'}</span>
@@ -869,7 +869,7 @@ const HACCP = ({ user, etablissement }) => {
               <div style={{display:'flex',flexDirection:'column',gap:0}}>
                 {trierCreneaux(creneaux).map(c=>(
                   <div key={c.id} style={{...hcfg.row, opacity:c.actif?1:0.5}}>
-                    <div style={{...hcfg.rowIcon,width:58,fontSize:14,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--accent)'}}>{c.heure}</div>
+                    <div style={{...hcfg.rowIcon,width:58,fontSize:14,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--accent)'}}>{c.heure}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                         {c.label}
