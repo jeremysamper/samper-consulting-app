@@ -8,7 +8,7 @@ import { bootThemeFor } from './bootThemes.js';
  * chacun depuis une fine bande verticale au centre, le suivant naissant dans
  * le précédent ; la photo zoome légèrement pendant qu'elle s'ouvre. Le
  * dernier calque, plein écran, porte « Bienvenue » qui monte depuis une ligne
- * de masque. Tout est posé à ~2,8 s. Photos et ordre : bootThemes.js, un
+ * de masque. Tout est posé à ~1,9 s, au tempo du modèle. Photos et ordre : bootThemes.js, un
  * thème par semaine.
  *
  * Fluidité : l'ouverture d'un calque ne repeint rien. Chaque calque est coupé
@@ -42,13 +42,14 @@ import { bootThemeFor } from './bootThemes.js';
  * @param {Function} onFinished appelé à la fin du fondu de sortie (stable)
  */
 
-// Départ de chaque calque, en ms : le rythme du modèle, ralenti de 40 %.
-// La durée d'ouverture d'un calque (1100 ms) est dans app.css.
-const LAYER_STARTS = [40, 460, 700, 940, 1220, 1440];
-const OPEN_MS = 1100;
+// Départ de chaque calque, en ms : le tempo du modèle vidéo, relevé image
+// par image (quatre bandes puis l'image de fin). La durée d'ouverture d'un
+// calque (780 ms) est aussi dans app.css.
+const LAYER_STARTS = [30, 330, 500, 670, 870];
+const OPEN_MS = 780;
 const heroAt = LAYER_STARTS[LAYER_STARTS.length - 1];
-// Fin de l'intro : le mot est posé (~2,8 s) et lisible.
-const INTRO_MS = 3000;
+// Fin de l'intro : le mot est posé (~1,9 s) et lisible.
+const INTRO_MS = 2150;
 // Attente maximale des photos avant de lancer l'intro quand même (les calques
 // sans photo s'ouvrent alors dans la teinte de leur photo).
 const PHOTO_WAIT_MS = 1200;

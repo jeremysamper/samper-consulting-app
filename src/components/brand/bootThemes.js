@@ -1,52 +1,42 @@
 /**
- * Thèmes de l'écran de chargement « Bienvenue » (BootScreen.jsx), en rotation
- * hebdomadaire.
+ * Séquence de l'écran de chargement « Bienvenue » (BootScreen.jsx).
  *
- * Un thème = cinq calques de transition (`layers`, dans l'ordre d'apparition)
- * puis la photo finale (`hero`) qui porte le mot. Sélection de Jérémy : cinq
- * photos seulement, sans logo ni aplat. Quatre défilent avant la photo
- * finale ; l'une repasse une fois (jamais deux fois de suite) pour garder le
- * rythme régulier des cinq bandes.
+ * Choix et ordre de Jérémy : quatre photos défilent (`layers`, dans l'ordre
+ * d'apparition), la cinquième est l'image de fin (`hero`) qui porte le mot.
+ * Une seule séquence : BOOT_THEMES reste une liste pour pouvoir remettre une
+ * rotation hebdomadaire plus tard, en ajoutant des entrées.
  *
- * Photo finale = photo haute définition uniquement (canard, dessert cacao :
- * photos d'appareil, 2400 px). Elle reste affichée : les trois photos de
- * téléphone (1170-1600 px) y seraient agrandies ×2 et paraîtraient floues ;
- * elles servent en transition, vues en mouvement.
+ * Image de fin = photo haute définition (le canard, fichier d'appareil,
+ * 2400 px) : elle reste affichée, une photo de téléphone y paraîtrait floue.
  *
- * `focus` : object-position de la photo finale. Sur ordinateur, une photo en
+ * `focus` : object-position de l'image de fin. Sur ordinateur, une photo en
  * portrait n'en montre qu'une bande horizontale : le focus choisit laquelle.
  * `dim` : voile sombre sous le mot, plus fort sur les photos claires.
  *
- * Pour ajouter des photos : node scripts/gen-boot-photos.mjs <dossier>, puis
+ * Pour changer les photos : node scripts/gen-boot-photos.mjs <dossier>, puis
  * les importer ici avec la teinte (`tone`) affichée par le script.
  */
+import assietteBleue from './boot-photos/bienvenue-assiette-bleue.webp';
 import canardJus from './boot-photos/bienvenue-canard-jus.webp';
 import chefDressage from './boot-photos/bienvenue-chef-dressage.webp';
 import chefMains from './boot-photos/bienvenue-chef-mains.webp';
-import dessertCacao from './boot-photos/bienvenue-dessert-cacao.webp';
 import pavlova from './boot-photos/bienvenue-pavlova.webp';
 
 // `tone` : teinte moyenne de la photo, couleur du calque tant qu'elle charge.
 const P = {
+  assietteBleue: { src: assietteBleue, tone: '#5d656c' },
   canardJus: { src: canardJus, tone: '#694c30' },
   chefDressage: { src: chefDressage, tone: '#64574a' },
   chefMains: { src: chefMains, tone: '#314f3c' },
-  dessertCacao: { src: dessertCacao, tone: '#8f7454' },
   pavlova: { src: pavlova, tone: '#312e3a' },
 };
 
 export const BOOT_THEMES = [
   {
-    layers: [P.chefMains, P.dessertCacao, P.pavlova, P.chefDressage, P.dessertCacao],
+    layers: [P.chefDressage, P.pavlova, P.chefMains, P.assietteBleue],
     hero: P.canardJus,
     focus: '50% 50%',
     dim: 0.26,
-  },
-  {
-    layers: [P.chefDressage, P.canardJus, P.chefMains, P.pavlova, P.canardJus],
-    hero: P.dessertCacao,
-    focus: '50% 50%',
-    dim: 0.36,
   },
 ];
 
