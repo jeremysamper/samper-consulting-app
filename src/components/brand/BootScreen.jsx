@@ -193,7 +193,8 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
   );
 }
 
-const MONO = "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace";
+// Satoshi, la police de l'app (jeton --font de app.css), pour tout l'écran.
+const FONT = 'var(--font)';
 
 const s = {
   root: {
@@ -233,7 +234,7 @@ const s = {
     display: 'flex',
     justifyContent: 'space-between',
     gap: 16,
-    fontFamily: MONO,
+    fontFamily: FONT,
     fontSize: 10.5,
     letterSpacing: '0.14em',
     textTransform: 'uppercase',
@@ -258,7 +259,7 @@ const s = {
   },
   word: {
     margin: 0,
-    fontFamily: "'Helvetica Neue', Helvetica, Arial, 'DM Sans', sans-serif",
+    fontFamily: FONT,
     fontSize: '1em',
     fontWeight: 700,
     lineHeight: 1,
@@ -278,7 +279,7 @@ const s = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
-    fontFamily: MONO,
+    fontFamily: FONT,
     fontSize: 10.5,
     letterSpacing: '0.14em',
     textTransform: 'uppercase',
