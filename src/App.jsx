@@ -13,11 +13,11 @@ import SafeModule from './legacy/SafeModule.jsx';
 import { loadLegacyModules } from './legacy/loadLegacyModules.js';
 import { getHydrateFromSupabase, removeLegacyGlobal, writeLegacyGlobal } from './legacy/legacyApi.js';
 import { getPermissionsForRole } from './data/demoData.js';
-import { getConsultantToolsTabForPage, normalizePage } from './modules/moduleConfig.js';
+import { getConsultantToolsTabForPage, isModuleActiveForEtab, normalizePage, pageAccueil } from './modules/moduleConfig.js';
 import { readText, UI_STORAGE_KEYS, writeText } from './utils/storage.js';
 import { dbService } from './services/dbService.js';
 import { setNavigationHandler } from './services/navigationService.js';
-import { pushPage, startHistory } from './services/historyNav.js';
+import { pushPage, replacePage, startHistory } from './services/historyNav.js';
 import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
 import { startInventaireSync } from './services/offline/inventaireSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
@@ -180,6 +180,21 @@ export default function App() {
     setPageState(normalized);
     writeText(UI_STORAGE_KEYS.page, normalized);
   }), []);
+
+  // Établissement sans tableau de bord (spa) : l'accueil mène à sa propre page
+  // d'accueil. Remplacement de l'entrée, pas empilement : « retour » ne
+  // rejoue pas la redirection.
+  const etabCourant = currentEtablissement.current;
+  const roleCourant = auth.profile?.role;
+  useEffect(() => {
+    if (!etabCourant || !roleCourant || page !== 'dashboard') return;
+    if (isModuleActiveForEtab(etabCourant, 'dashboard')) return;
+    const accueil = pageAccueil(etabCourant, getPermissionsForRole(roleCourant));
+    if (accueil === 'dashboard') return;
+    setPageState(accueil);
+    writeText(UI_STORAGE_KEYS.page, accueil);
+    replacePage(accueil);
+  }, [page, etabCourant, roleCourant]);
 
   useEffect(() => {
     setNavigationHandler(setPage);

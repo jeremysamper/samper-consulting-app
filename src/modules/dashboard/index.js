@@ -1,2 +1,1 @@
-export { default as Dashboard } from './Dashboard.jsx';
-export { default as DashboardMobile } from './DashboardMobile.jsx';
+export { default as TableauDeBord } from './TableauDeBord.jsx';

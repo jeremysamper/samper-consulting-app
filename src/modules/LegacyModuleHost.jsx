@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { isPageActiveForEtab, navItems } from './moduleConfig.js';
+import { isPageActiveForEtab, navItems, normalizePage, pageAccueil } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 
@@ -8,9 +8,7 @@ import { getPermissionsForRole } from '../data/demoData.js';
 const loadCatalogue = () => import('./catalogue/Catalogue.jsx');
 const loadCommande = () => import('./commande/Commande.jsx');
 const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
-const loadDashboard = () => import('./dashboard/Dashboard.jsx');
-const loadDashboardMobile = () => import('./dashboard/DashboardMobile.jsx');
-// Tableau de bord des restaurants ; les spas gardent Dashboard / DashboardMobile.
+// Tableau de bord (les établissements de type Spa n'en ont pas, cf. moduleConfig).
 const loadTableauDeBord = () => import('./dashboard/TableauDeBord.jsx');
 const loadDocuments = () => import('./documents/Documents.jsx');
 const loadFactures = () => import('./factures/Factures.jsx');
@@ -35,8 +33,6 @@ const loadSpa = () => import('./spa/Spa.jsx');
 const Catalogue = lazy(loadCatalogue);
 const Commande = lazy(loadCommande);
 const ConsultantTools = lazy(loadConsultantTools);
-const Dashboard = lazy(loadDashboard);
-const DashboardMobile = lazy(loadDashboardMobile);
 const TableauDeBord = lazy(loadTableauDeBord);
 const Documents = lazy(loadDocuments);
 const Factures = lazy(loadFactures);
@@ -96,7 +92,6 @@ export default function LegacyModuleHost({
   page,
   user,
   etablissement,
-  isMobile,
   loadingEtablissement,
   error,
   onRetryEtablissement,
@@ -140,20 +135,19 @@ export default function LegacyModuleHost({
       </Suspense>
     </SafeModule>
   );
-  // Spa : tableau de bord d'origine, pensé pour lui. Restaurants : le nouveau.
-  const estSpa = isPageActiveForEtab(etablissement, 'spa');
-  const DashboardComponent = estSpa ? (isMobile ? DashboardMobile : Dashboard) : TableauDeBord;
-
   // Module non activé pour cet établissement (Paramètres) : page mémorisée
   // d'une session précédente, lien d'un autre module ou changement
   // d'établissement. On le dit plutôt que d'ouvrir un module caché du menu.
   if (!isPageActiveForEtab(etablissement, page)) {
+    // Accueil d'un établissement sans tableau de bord (spa) : App redirige
+    // aussitôt vers sa page d'accueil, rien à afficher d'ici là.
+    if (normalizePage(page) === 'dashboard') return null;
     return <ModuleInactif page={page} etablissement={etablissement} user={user} setPage={setPage} />;
   }
 
   switch (page) {
     case 'dashboard':
-      return wrap('Tableau de bord', <DashboardComponent user={user} etablissement={etablissement} setPage={setPage} />);
+      return wrap('Tableau de bord', <TableauDeBord user={user} etablissement={etablissement} setPage={setPage} />);
     case 'planning': {
       const PlanningComponent = Planning;
       return permissions.planning !== false
@@ -294,7 +288,7 @@ export default function LegacyModuleHost({
         : accessDenied;
     }
     default:
-      return wrap('Tableau de bord', <DashboardComponent user={user} etablissement={etablissement} />);
+      return wrap('Tableau de bord', <TableauDeBord user={user} etablissement={etablissement} setPage={setPage} />);
   }
 }
 
@@ -321,7 +315,7 @@ function ModuleInactif({ page, etablissement, user, setPage }) {
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
           {canGoHome && (
-            <button type="button" className="primary-action inline" onClick={() => setPage('dashboard')}>
+            <button type="button" className="primary-action inline" onClick={() => setPage(pageAccueil(etablissement, getPermissionsForRole(user.role)))}>
               Retour à l'accueil
             </button>
           )}

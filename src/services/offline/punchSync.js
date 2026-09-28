@@ -134,7 +134,7 @@ export async function syncPendingPunches() {
   }
 }
 
-// Flux de pointage partagé (Planning, Dashboard, DashboardMobile) : tente le
+// Flux de pointage partagé (Planning, tableau de bord) : tente le
 // pointage online (RPC inchangée, `call` est une fabrique de promesse) sous
 // timeout ; en cas de défaillance RÉSEAU uniquement, bascule en file hors-ligne.
 // Retourne { mode: 'online', row } ou { mode: 'queued', queued } ; relance
