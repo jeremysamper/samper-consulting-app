@@ -286,7 +286,11 @@ const bouton = {
 export const st = {
   page: {
     padding: '20px 24px 40px', position: 'relative', minHeight: '100%', minWidth: 0,
-    background: 'var(--spa-bg)', color: 'var(--spa-ink)',
+    // Pas de fond propre : le fond de l'app (bleu pétrole en sombre) passe
+    // derrière le bandeau et les cartes, sans rectangle gris-noir autour.
+    // L'inline l'emporte sur le fond de .spa (spa.css), que garde la page
+    // publique de réservation.
+    background: 'transparent', color: 'var(--spa-ink)',
   },
   voile: {
     position: 'fixed', inset: 0, background: 'var(--spa-scrim)', zIndex: 1000,
