@@ -340,7 +340,7 @@ export const st = {
     background: 'var(--spa-surface2)', color: 'var(--spa-ink)', fontFamily: 'var(--font)', fontSize: 15,
     transition: 'border-color 200ms ease, box-shadow 200ms ease',
   },
-  grille2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 },
+  grille2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 },
   principal: { ...bouton, background: 'var(--spa-mizu)', color: 'var(--spa-on-mizu)', borderColor: 'var(--spa-mizu)' },
   secondaire: { ...bouton, background: 'var(--spa-surface)', color: 'var(--spa-ink)', borderColor: 'var(--spa-line2)' },
   discret: { ...bouton, background: 'transparent', color: 'var(--spa-ink2)', padding: '10px 12px' },
@@ -351,27 +351,27 @@ export const st = {
     color: 'var(--spa-mizu)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
   },
   encartAttention: {
-    display: 'flex', gap: 10, alignItems: 'flex-start',
+    display: 'flex', gap: 10, alignItems: 'flex-start', overflowWrap: 'anywhere',
     padding: '12px 14px', borderRadius: 'var(--spa-r-sm)', fontSize: 14, lineHeight: 1.5,
     background: 'var(--spa-kin-soft)', color: 'var(--spa-ink)', border: '1px solid var(--spa-kin-line)',
   },
   encartSante: {
-    display: 'flex', gap: 10, alignItems: 'flex-start',
+    display: 'flex', gap: 10, alignItems: 'flex-start', overflowWrap: 'anywhere',
     padding: '12px 14px', borderRadius: 'var(--spa-r-sm)', fontSize: 14, lineHeight: 1.5,
     background: 'var(--spa-sakura-soft)', color: 'var(--spa-ink)',
   },
   encartDanger: {
-    padding: '12px 14px', borderRadius: 'var(--spa-r-sm)', fontSize: 14, lineHeight: 1.5,
+    overflowWrap: 'anywhere', padding: '12px 14px', borderRadius: 'var(--spa-r-sm)', fontSize: 14, lineHeight: 1.5,
     background: 'var(--spa-sakura-soft)', color: 'var(--spa-sakura)',
   },
   encartInfo: {
-    display: 'flex', gap: 10, alignItems: 'flex-start',
+    display: 'flex', gap: 10, alignItems: 'flex-start', overflowWrap: 'anywhere',
     padding: '12px 14px', borderRadius: 'var(--spa-r-sm)', fontSize: 14, lineHeight: 1.5,
     background: 'var(--spa-mizu-soft)', color: 'var(--spa-ink)',
   },
   carte: {
     background: 'var(--spa-surface)', border: '1px solid var(--spa-line)', borderRadius: 'var(--spa-r)',
-    padding: 18, minWidth: 0, boxShadow: 'var(--spa-shadow)',
+    padding: 18, minWidth: 0, boxShadow: 'var(--spa-shadow)', overflowWrap: 'break-word',
   },
   titreSection: {
     margin: 0, fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase',
@@ -385,9 +385,12 @@ export const st = {
     background: 'var(--spa-surface)', border: '1px solid var(--spa-line)', overflow: 'hidden',
     fontFamily: 'var(--font)', color: 'var(--spa-ink)', boxShadow: 'var(--spa-shadow)',
   },
+  // Puce : sur une ligne tant qu'il y a la place ; sur téléphone, un libellé
+  // long (« Anniversaire le 10 octobre, dans 12 jours ») passe à la ligne
+  // dans la puce au lieu de sortir de la carte.
   puce: {
-    display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
-    padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1.3,
+    display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, maxWidth: '100%', minWidth: 0,
+    padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere',
   },
   vide: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center',

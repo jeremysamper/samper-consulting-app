@@ -247,3 +247,13 @@ html[data-theme="dark"] .spa {
     transparent var(--spa-pas-heure, 66px)
   );
 }
+
+/* Fiche client : les trois chiffres (séances, dernière visite, soin favori).
+   Sur téléphone, trois colonnes laissent ~80 px par case : « 19 septembre »
+   ou un nom de soin ne tiennent pas. Deux colonnes, le soin favori en
+   pleine largeur dessous. */
+.spa-chiffres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .spa-chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spa-chiffres > :last-child { grid-column: 1 / -1; }
+}

@@ -163,7 +163,7 @@ export default function ClientFiche({
         )}
       >
         {/* ── Chiffres ── */}
-        <div style={s.chiffres}>
+        <div className="spa-chiffres" style={s.chiffres}>
           <Chiffre valeur={stats?.nb || historique.length || 0} label={(stats?.nb || historique.length) > 1 ? 'séances' : 'séance'} />
           <Chiffre valeur={derniere ? jourMois(derniere.dateSeance) : 'Aucune'} label="dernière visite" />
           <Chiffre valeur={stats?.soinPrefere || 'Aucun'} label="soin favori" brut petit />
@@ -195,7 +195,7 @@ export default function ClientFiche({
                   </span>
                 </div>
               )}
-              {client.notes && <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--spa-ink2)' }}>{client.notes}</div>}
+              {client.notes && <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--spa-ink2)', overflowWrap: 'anywhere' }}>{client.notes}</div>}
             </div>
           </section>
         )}
@@ -330,7 +330,7 @@ function Chiffre({ valeur, label, brut = false, petit = false }) {
   return (
     <div style={s.chiffre}>
       <span
-        style={{ fontFamily: 'var(--font-serif)', fontSize: petit ? 16 : 24, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+        style={{ fontFamily: 'var(--font-serif)', fontSize: petit ? 16 : 'clamp(19px, 5.6vw, 24px)', lineHeight: 1.2, maxWidth: '100%', overflowWrap: 'break-word' }}
         data-no-translate={brut ? '' : undefined}
       >
         {valeur}
@@ -342,9 +342,13 @@ function Chiffre({ valeur, label, brut = false, petit = false }) {
 
 const s = {
   entete: { padding: '22px 22px 18px', background: 'var(--spa-hero)', borderBottom: '1px solid var(--spa-line)', flexShrink: 0 },
-  nom: { fontFamily: 'var(--font-serif)', fontSize: 28, lineHeight: 1.15, color: 'var(--spa-ink)', margin: '2px 0' },
+  // Nom : 28 px sur grand écran, un peu moins sur téléphone où l'avatar et le
+  // bouton fermer ne laissent que ~180 px ; un mot trop long se coupe en
+  // dernier recours plutôt que de sortir de l'en-tête.
+  nom: { fontFamily: 'var(--font-serif)', fontSize: 'clamp(22px, 6.4vw, 28px)', lineHeight: 1.15, color: 'var(--spa-ink)', margin: '2px 0', overflowWrap: 'break-word' },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 },
-  chiffres: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 },
+  // Colonnes dans spa.css (.spa-chiffres) : trois, deux sur téléphone.
+  chiffres: { display: 'grid', gap: 10 },
   chiffre: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0, textAlign: 'center',
     padding: '14px 10px', borderRadius: 'var(--spa-r)', background: 'var(--spa-surface2)', border: '1px solid var(--spa-line)',
@@ -365,7 +369,7 @@ const s = {
     background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
     fontFamily: 'var(--font)', color: 'var(--spa-ink)',
   },
-  details: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 },
+  details: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 },
   detailLabel: {
     fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--spa-ink2)', marginBottom: 4,
   },
