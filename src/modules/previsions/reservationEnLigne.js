@@ -39,6 +39,8 @@ export const PARAMETRES_DEFAUT = {
   horaires: HORAIRES_DEFAUT,
   capaciteService: 40,
   capaciteCreneau: null,
+  capaciteDemiHeure: null,
+  rythme: {},
   maxCouverts: 8,
   delaiMinHeures: 2,
   horizonJours: 60,
@@ -56,6 +58,8 @@ function depuisBase(r) {
     horaires: r.horaires && Object.keys(r.horaires).length ? r.horaires : HORAIRES_DEFAUT,
     capaciteService: r.capacite_service,
     capaciteCreneau: r.capacite_creneau,
+    capaciteDemiHeure: r.capacite_demi_heure ?? null,
+    rythme: r.rythme || {},
     maxCouverts: r.max_couverts,
     delaiMinHeures: r.delai_min_heures,
     horizonJours: r.horizon_jours,
@@ -63,6 +67,20 @@ function depuisBase(r) {
     joursFermes: r.jours_fermes || [],
     messageEnLigne: r.message_en_ligne || '',
   };
+}
+
+// Rythme : { service: { "HH:MM": plafond } }. On ne garde que les nombres
+// saisis (0 compris : demi-heure fermée en ligne) ; une case vidée reprend le
+// plafond par défaut.
+function nettoyerRythme(rythme) {
+  const sortie = {};
+  Object.entries(rythme || {}).forEach(([service, cases]) => {
+    const gardees = Object.entries(cases || {})
+      .filter(([, v]) => v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v)) && Number(v) >= 0)
+      .map(([h, v]) => [h, Math.round(Number(v))]);
+    if (gardees.length) sortie[service] = Object.fromEntries(gardees);
+  });
+  return sortie;
 }
 
 function versBase(p) {
@@ -73,6 +91,8 @@ function versBase(p) {
     horaires: p.horaires,
     capacite_service: Number(p.capaciteService) || 1,
     capacite_creneau: p.capaciteCreneau ? Number(p.capaciteCreneau) : null,
+    capacite_demi_heure: p.capaciteDemiHeure ? Number(p.capaciteDemiHeure) : null,
+    rythme: nettoyerRythme(p.rythme),
     max_couverts: Number(p.maxCouverts) || 1,
     delai_min_heures: Number(p.delaiMinHeures) || 0,
     horizon_jours: Number(p.horizonJours) || 60,

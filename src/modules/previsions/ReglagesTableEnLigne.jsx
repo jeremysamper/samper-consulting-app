@@ -26,8 +26,27 @@ const JOURS = [
 const SERVICES = [
   ['midi', 'Midi', { de: '12:00', a: '13:30' }],
   ['soir', 'Soir', { de: '19:00', a: '21:00' }],
-  ['brunch', 'Brunch', { de: '10:30', a: '12:30' }],
+  ['brunch', 'Brunch', { de: '10:00', a: '12:00' }],
 ];
+
+const enMin = (hhmm) => { const [h, m] = String(hhmm || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+const enH = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+const finDemiHeure = (h) => enH(enMin(h) + 29);
+
+// Demi-heures couvertes par un service, tous jours confondus : de la
+// demi-heure de la première arrivée à celle de la dernière.
+function demiHeuresDuService(horaires, service) {
+  let min = Infinity;
+  let max = -Infinity;
+  Object.values(horaires || {}).forEach((jour) => {
+    const p = jour?.[service];
+    if (p?.de && p?.a && p.de <= p.a) { min = Math.min(min, enMin(p.de)); max = Math.max(max, enMin(p.a)); }
+  });
+  if (!Number.isFinite(min)) return [];
+  const liste = [];
+  for (let t = Math.floor(min / 30) * 30; t <= max; t += 30) liste.push(enH(t));
+  return liste;
+}
 
 export default function ReglagesTableEnLigne({ etablissement, onClose }) {
   const etabId = etablissement?.id;
@@ -65,6 +84,14 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
   }, [slugForm]);
 
   const set = (cle, valeur) => setForm((p) => ({ ...p, [cle]: valeur }));
+
+  function majRythme(service, h, valeur) {
+    setForm((p) => {
+      const cases = { ...((p.rythme || {})[service] || {}) };
+      if (valeur === '') delete cases[h]; else cases[h] = valeur;
+      return { ...p, rythme: { ...(p.rythme || {}), [service]: cases } };
+    });
+  }
 
   function majService(jour, service, valeur) {
     setForm((p) => {
@@ -217,10 +244,10 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
                               </label>
                               {plage && (
                                 <>
-                                  <input type="time" step="900" aria-label={`${nom}, ${libelle}, première arrivée`} value={plage.de} style={s.heure}
+                                  <input type="time" step="60" aria-label={`${nom}, ${libelle}, première arrivée`} value={plage.de} style={s.heure}
                                     onChange={(e) => majService(jour, sid, { ...plage, de: e.target.value })} />
                                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>à</span>
-                                  <input type="time" step="900" aria-label={`${nom}, ${libelle}, dernière arrivée`} value={plage.a} style={s.heure}
+                                  <input type="time" step="60" aria-label={`${nom}, ${libelle}, dernière arrivée`} value={plage.a} style={s.heure}
                                     onChange={(e) => majService(jour, sid, { ...plage, a: e.target.value })} />
                                 </>
                               )}
@@ -244,9 +271,9 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
                   <input type="number" min="1" max="2000" inputMode="numeric" style={s.champ} value={form.capaciteService}
                     onChange={(e) => set('capaciteService', e.target.value)} />
                 </Champ>
-                <Champ label="Au plus à la même heure" aide="Vide = pas de limite.">
-                  <input type="number" min="1" max="2000" inputMode="numeric" style={s.champ} value={form.capaciteCreneau ?? ''}
-                    onChange={(e) => set('capaciteCreneau', e.target.value === '' ? null : e.target.value)} />
+                <Champ label="Au plus par demi-heure" aide="Arrivées entre hh:00 et hh:29, puis hh:30 et hh:59. Vide = pas de limite.">
+                  <input type="number" min="1" max="2000" inputMode="numeric" style={s.champ} value={form.capaciteDemiHeure ?? ''}
+                    onChange={(e) => set('capaciteDemiHeure', e.target.value === '' ? null : e.target.value)} />
                 </Champ>
                 <Champ label="Table la plus grande en ligne" aide="Au-delà, le client est invité à appeler.">
                   <input type="number" min="1" max="50" inputMode="numeric" style={s.champ} value={form.maxCouverts}
@@ -254,6 +281,44 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
                 </Champ>
               </div>
             </div>
+
+            {/* ── Rythme du service ── */}
+            {SERVICES.some(([sid]) => demiHeuresDuService(form.horaires, sid).length > 0) && (
+              <div style={s.carte}>
+                <div style={s.titre}>Rythme par demi-heure</div>
+                <div style={{ ...s.aide, marginTop: 0, marginBottom: 10 }}>
+                  Couverts qui peuvent arriver dans chaque demi-heure, réservations au téléphone comprises.
+                  Case vide = {form.capaciteDemiHeure ? `${form.capaciteDemiHeure} (valeur par défaut)` : 'pas de limite'} ; 0 = pas de réservation en ligne sur cette demi-heure.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {SERVICES.map(([sid, libelle]) => {
+                    const demiHeures = demiHeuresDuService(form.horaires, sid);
+                    if (!demiHeures.length) return null;
+                    const valeurs = (form.rythme || {})[sid] || {};
+                    return (
+                      <div key={sid}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{libelle}</div>
+                        <div style={s.grilleRythme}>
+                          {demiHeures.map((h) => (
+                            <label key={h} style={s.caseRythme}>
+                              <span style={{ fontSize: 12, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' }}>{h}</span>
+                              <input
+                                type="number" min="0" max="2000" inputMode="numeric"
+                                aria-label={`${libelle}, couverts entre ${h} et ${finDemiHeure(h)}`}
+                                placeholder={form.capaciteDemiHeure ? String(form.capaciteDemiHeure) : '-'}
+                                value={valeurs[h] ?? ''}
+                                onChange={(e) => majRythme(sid, h, e.target.value)}
+                                style={{ ...s.champ, minHeight: 38, padding: '6px 8px', textAlign: 'center' }}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ── Règles ── */}
             <div style={s.carte}>
@@ -441,6 +506,8 @@ const s = {
     fontSize: 12, color: 'var(--text2)', background: 'var(--surface)',
     border: '1px solid var(--border)', borderRight: 'none', borderRadius: '8px 0 0 8px',
   },
+  grilleRythme: { display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' },
+  caseRythme: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0 },
   option: { display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', cursor: 'pointer' },
   principal: {
     padding: '9px 16px', minHeight: 42, borderRadius: 8, border: 'none', cursor: 'pointer',
