@@ -978,7 +978,17 @@ type ParamsTable = {
   capacite_service: number; capacite_creneau: number | null; max_couverts: number;
   delai_min_heures: number; horizon_jours: number; pas_minutes: number;
   jours_fermes: string[] | null; message_en_ligne: string | null;
+  capacite_demi_heure: number | null; rythme: Record<string, Record<string, number>> | null;
 };
+
+// Plafond de la demi-heure d'arrivée : réglage propre au service, sinon défaut
+// (null = pas de plafond). Même règle que resa_reserver_en_ligne.
+const debutDemiHeure = (min: number) => Math.floor(min / 30) * 30;
+function plafondDemiHeure(p: ParamsTable, service: string, min: number): number | null {
+  const propre = (p.rythme || {})[service]?.[enHeure(debutDemiHeure(min))];
+  if (typeof propre === 'number') return propre;
+  return p.capacite_demi_heure ?? null;
+}
 
 // Les e-mails du restaurant ne reprennent pas les réglages du spa (signature,
 // adresse de réponse) : un hôtel peut avoir les deux modules.
@@ -1034,6 +1044,13 @@ async function creneauxTable(sb: Admin, p: ParamsTable, date: string, couverts: 
           const deja = du.filter((r) => String(r.heure_arrivee).slice(0, 5) === h)
             .reduce((n, r) => n + Number(r.nb_couverts || 0), 0);
           if (deja + couverts > p.capacite_creneau) continue;
+        }
+        const plafond = plafondDemiHeure(p, service, t);
+        if (plafond !== null) {
+          const bloc = debutDemiHeure(t);
+          const dansLaDemiHeure = du.filter((r) => debutDemiHeure(enMinutes(String(r.heure_arrivee).slice(0, 5))) === bloc)
+            .reduce((n, r) => n + Number(r.nb_couverts || 0), 0);
+          if (dansLaDemiHeure + couverts > plafond) continue;
         }
         creneaux.push(h);
       }
@@ -1146,6 +1163,7 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
     const messages: Record<string, string> = {
       creneau_pris: 'Cette heure vient d\'être prise. Choisissez-en une autre.',
       complet: 'Ce service est complet. Choisissez un autre moment.',
+      demi_heure: 'Cette heure vient d\'être prise. Choisissez-en une autre.',
       horaire: 'Cette heure est en dehors des heures de réservation.',
       jour_ferme: 'Le restaurant est fermé ce jour-là.',
       couverts: `En ligne, jusqu'à ${personnes(p.max_couverts)}. Pour un groupe, appelez-nous.`,
