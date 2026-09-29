@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { isPageActiveForEtab, navItems, normalizePage, pageAccueil } from './moduleConfig.js';
+import { estEnPause, isPageActiveForEtab, navItems, normalizePage, pageAccueil, tousLesNavItems } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 
@@ -303,6 +303,27 @@ function AccessDenied() {
 function ModuleInactif({ page, etablissement, user, setPage }) {
   const current = navItems.find((item) => item.id === page) || (page === 'pointage' ? navItems.find((item) => item.id === 'planning') : null);
   const canGoHome = typeof setPage === 'function';
+  const retourAccueil = () => setPage(pageAccueil(etablissement, getPermissionsForRole(user.role)));
+  // Module mis de côté (moduleConfig.modulesEnPause) : pas d'invitation à
+  // l'activer, il n'est proposé nulle part pour l'instant.
+  if (estEnPause(page)) {
+    const module = tousLesNavItems.find((item) => item.id === normalizePage(page));
+    return (
+      <section className="module-placeholder">
+        <div>
+          <h2>{module?.label || page}</h2>
+          <p>Ce module est mis de côté pour l'instant.</p>
+          {canGoHome && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+              <button type="button" className="primary-action inline" onClick={retourAccueil}>
+                Retour à l'accueil
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="module-placeholder">
       <div>
@@ -315,7 +336,7 @@ function ModuleInactif({ page, etablissement, user, setPage }) {
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
           {canGoHome && (
-            <button type="button" className="primary-action inline" onClick={() => setPage(pageAccueil(etablissement, getPermissionsForRole(user.role)))}>
+            <button type="button" className="primary-action inline" onClick={retourAccueil}>
               Retour à l'accueil
             </button>
           )}

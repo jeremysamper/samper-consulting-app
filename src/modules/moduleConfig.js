@@ -61,7 +61,19 @@ export function getDefaultManageRoles(moduleId) {
   return entry?.defaultRoles || defaultManageRoles;
 }
 
-export const navItems = [
+// ─────────────────────────────────────────────────────────────────────────────
+// Modules mis de côté : leur code reste dans src/modules/<dossier>/, mais ils
+// sortent du menu, de la palette de commandes, des liens des autres modules et
+// des routes (une page mémorisée ou un lien tombe sur un écran « mis de côté »).
+// Pour ressortir un module : retirer son id de cette liste, rien d'autre.
+//   • faq  → FAQ & Assistant IA (src/modules/faq/), mis de côté le 29.09.2026.
+//     La traduction de l'app passe aussi par ai-proxy mais pas par ce module :
+//     elle n'est pas concernée.
+// ─────────────────────────────────────────────────────────────────────────────
+export const modulesEnPause = ['faq'];
+
+// Tous les modules, mis de côté compris (libellés des écrans « mis de côté »).
+export const tousLesNavItems = [
   { id: 'dashboard', label: 'Tableau de bord', mobileLabel: 'Accueil', icon: '◉', group: 'Général', permKey: 'dashboard' },
   { id: 'planning', label: 'Planning & Pointage', mobileLabel: 'Planning', icon: '◷', group: 'Général', permKey: 'planning' },
   { id: 'messages', label: 'Messages privés', mobileLabel: 'Messages', icon: '✉', group: 'Général', permKey: 'messages' },
@@ -83,6 +95,8 @@ export const navItems = [
   { id: 'spa', label: 'Spa & clients', mobileLabel: 'Spa', icon: '❀', group: 'Spa', permKey: 'spa' },
   { id: 'faq', label: 'FAQ & Assistant IA', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' }
 ];
+
+export const navItems = tousLesNavItems.filter((item) => !modulesEnPause.includes(item.id));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Modules activés par établissement (colonne etablissements.modules_actifs).
@@ -154,8 +168,13 @@ export function pageAccueil(etablissement, permissions = {}) {
 // Même règle à partir d'un identifiant de page (raccourcis, liens internes).
 // Les pages hors menu (paramètres, rôles, factures) ne sont jamais filtrées.
 const pagePermKeys = { pointage: 'planning' };
+export function estEnPause(page) {
+  return modulesEnPause.includes(normalizePage(page));
+}
+
 export function isPageActiveForEtab(etablissement, page) {
   const id = normalizePage(page);
+  if (modulesEnPause.includes(id)) return false;
   const permKey = pagePermKeys[id] || navItems.find((item) => item.id === id)?.permKey;
   return isModuleActiveForEtab(etablissement, permKey);
 }
