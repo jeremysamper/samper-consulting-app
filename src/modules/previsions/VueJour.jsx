@@ -8,6 +8,7 @@ import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { metaStatut, estPresent } from './statutsReservation.js';
+import { traiterDemande } from './reservationEnLigne.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
@@ -27,7 +28,7 @@ const TAG_COLORS = {
 };
 
 // ── Carte réservation ──────────────────────────────────────
-function ResaCard({ resa, isMobile, onClick, onStatut, canEdit }) {
+function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
   const [hovered, setHovered] = useState(false);
   const tags = Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [];
   const statut = resa.statut || 'confirme';
@@ -118,6 +119,22 @@ function ResaCard({ resa, isMobile, onClick, onStatut, canEdit }) {
         justifySelf: isMobile ? 'start' : 'end',
         marginTop: isMobile ? 4 : 0,
       }}>
+        {/* Demande venue du site : on la confirme d'ici (le client est
+            prévenu par e-mail) ; le refus passe par la fiche. */}
+        {canEdit && statut === 'demande' && onTraiter && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onTraiter(resa, 'confirmation'); }}
+            style={{
+              padding: '6px 12px', borderRadius: 20, minHeight: 32,
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
+              background: 'var(--success-bg-soft)', color: 'var(--success-text)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+              whiteSpace: 'nowrap',
+            }}>
+            Confirmer
+          </button>
+        )}
         {canEdit && statut === 'confirme' && (
           <button
             type="button"
@@ -236,6 +253,18 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
     // Un no-show sort des couverts prévus (trigger côté base) : la vue
     // semaine doit s'en apercevoir.
     if (statut === 'no_show' || avant === 'no_show') onResaUpdated?.();
+  }
+
+  // Demande en ligne confirmée ou refusée : le client est prévenu par e-mail,
+  // le bandeau des demandes et la semaine se relisent.
+  async function traiter(resa, evenement) {
+    if (evenement === 'refus' && !window.confirm(`Refuser la demande de ${resa.nom} ?`)) return;
+    const res = await traiterDemande(resa, evenement);
+    if (res.error) { notify(res.error, 'error'); return; }
+    notify(res.message, res.ton);
+    if (evenement === 'refus') setSelectedResa((cur) => (cur?.id === resa.id ? null : cur));
+    load();
+    onResaUpdated?.();
   }
 
   const actives       = resas || [];
@@ -398,6 +427,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
                   isMobile={isMobile}
                   canEdit={canEdit}
                   onStatut={changerStatut}
+                  onTraiter={traiter}
                   onClick={() => setSelectedResa(resa)}
                 />
               ))}
@@ -418,6 +448,7 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
           onClose={() => setSelectedResa(null)}
           onEdit={canEdit ? (resa) => { setSelectedResa(null); setEditingResa(resa); } : undefined}
           onStatut={canEdit ? changerStatut : undefined}
+          onTraiter={canEdit ? traiter : undefined}
           onResaUpdated={(annuleeId) => {
             if (annuleeId) {
               setSelectedResa((cur) => (cur?.id === annuleeId ? null : cur));

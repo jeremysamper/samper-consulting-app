@@ -5,8 +5,9 @@ import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { STATUTS, metaStatut } from './statutsReservation.js';
 
 export default function ReservationDetailModal({
-  resa, onClose, onResaUpdated, onEdit, onStatut, canEdit = true,
+  resa, onClose, onResaUpdated, onEdit, onStatut, onTraiter, canEdit = true,
 }) {
+  const demande = resa.statut === 'demande';
   const reservations  = useReservations(resa.etablissement_id);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
@@ -108,7 +109,43 @@ export default function ReservationDetailModal({
           {/* Suivi du service. Ces états existaient en base depuis l'origine
               sans qu'aucun écran ne les expose : on ne pouvait pas savoir qui
               était déjà à table. */}
-          {canEdit && onStatut && (
+          {/* Demande venue du site : on y répond avant tout suivi de service. */}
+          {demande && (
+            <div style={{
+              padding: '10px 12px', marginBottom: 10, borderRadius: 10,
+              background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: canEdit && onTraiter ? 8 : 0 }}>
+                Demande en ligne à confirmer
+              </div>
+              {canEdit && onTraiter && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button" onClick={() => onTraiter(resa, 'confirmation')}
+                    style={{
+                      padding: '8px 14px', borderRadius: 20, minHeight: 40, cursor: 'pointer',
+                      borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
+                      background: 'var(--success-bg-soft)', color: 'var(--success-text)',
+                      fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+                    }}>
+                    Confirmer
+                  </button>
+                  <button
+                    type="button" onClick={() => onTraiter(resa, 'refus')}
+                    style={{
+                      padding: '8px 14px', borderRadius: 20, minHeight: 40, cursor: 'pointer',
+                      borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                      background: 'var(--surface)', color: 'var(--text2)',
+                      fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+                    }}>
+                    Refuser
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {canEdit && onStatut && !demande && (
             <div style={{ paddingBottom: 12, marginBottom: 4 }}>
               <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginBottom: 6 }}>
                 Statut
@@ -153,6 +190,15 @@ export default function ReservationDetailModal({
               </a>
             )}
           />
+          <LigneDetail
+            label="E-mail"
+            valeur={resa.email && (
+              <a href={`mailto:${resa.email}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', overflowWrap: 'anywhere' }}>
+                {resa.email}
+              </a>
+            )}
+          />
+          {resa.origine === 'en_ligne' && <LigneDetail label="Origine" valeur="Réservée en ligne" />}
           {resa.est_groupe && <LigneDetail label="Type" valeur="Groupe" />}
           <LigneDetail label="Notes"     valeur={resa.notes_libres} />
           {tags.length > 0 && (

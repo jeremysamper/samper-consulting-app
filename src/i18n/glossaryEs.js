@@ -558,4 +558,18 @@ export const UI_GLOSSARY_ES = {
   'Motif': 'Motivo',
   'En cours et à venir': 'En curso y próximas',
   'Retirer le message': 'Retirar el mensaje',
+
+  // ── Réservation d'une table en ligne ──
+  'À confirmer': 'Por confirmar',
+  'Refuser': 'Rechazar',
+  'Réservation en ligne': 'Reserva en línea',
+  'Réservée en ligne': 'Reservada en línea',
+  'Demande en ligne à confirmer': 'Solicitud en línea por confirmar',
+  'Ouvrir la réservation': 'Abrir las reservas',
+  'Fermer la réservation': 'Cerrar las reservas',
+  'Copier le lien': 'Copiar el enlace',
+  'Voir la page': 'Ver la página',
+  'Jours de fermeture': 'Días de cierre',
+  'Heures d\'arrivée proposées': 'Horas de llegada propuestas',
+  'Enregistrer les réglages': 'Guardar los ajustes',
 };

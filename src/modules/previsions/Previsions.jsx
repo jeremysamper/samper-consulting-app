@@ -7,6 +7,12 @@ import ReservationDetailModal from './ReservationDetailModal.jsx';
 import RechercheResas from './RechercheResas.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
+import DemandesEnLigne from './DemandesEnLigne.jsx';
+import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
+
+// Réglages de la réservation en ligne : la direction, comme pour le Spa (et la
+// RLS de reservation_en_ligne_parametres).
+const ROLES_EN_LIGNE = ['consultant', 'patron'];
 
 // Tous les rôles ayant accès au module (réservations en lecture au minimum)
 const ROLES_AUTORISES = ['consultant', 'patron', 'resp_cuisine', 'hote', 'serveur'];
@@ -22,6 +28,7 @@ export default function Previsions({ user, etablissement }) {
   const [recherche,     setRecherche]     = useState('');
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
+  const [reglagesEnLigne, setReglagesEnLigne] = useState(false);
   // Relance la recherche après une modification : sans ça, la liste continue
   // d'afficher la version d'avant la modification qu'on vient de faire.
   const [rechercheKey,  setRechercheKey]  = useState(0);
@@ -73,6 +80,19 @@ export default function Previsions({ user, etablissement }) {
               placeholder="Nom ou téléphone…"
             />
           )}
+          {etabId && ROLES_EN_LIGNE.includes(user?.role) && (
+            <button
+              type="button"
+              onClick={() => setReglagesEnLigne(true)}
+              style={{
+                padding: '9px 16px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                color: 'var(--text)', fontSize: 13, fontWeight: 600,
+                fontFamily: 'var(--font)', cursor: 'pointer',
+              }}>
+              Réservation en ligne
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -120,6 +140,16 @@ export default function Previsions({ user, etablissement }) {
       {/* ── Routeur local : vue semaine ↔ vue jour ── */}
       {etabId && recherche.trim() === '' && (
         <>
+          {/* Demandes venues du site, à confirmer : en tête, quel que soit le
+              jour affiché. */}
+          {canEdit && (
+            <DemandesEnLigne
+              etablissementId={etabId}
+              refreshKey={refreshKey}
+              onTraitee={() => setRefreshKey((k) => k + 1)}
+              onAllerAuJour={setSelectedDate}
+            />
+          )}
           {!selectedDate && (
             <VueSemaine
               etablissementId={etabId}
@@ -178,6 +208,10 @@ export default function Previsions({ user, etablissement }) {
           onClose={() => setResaTrouvee(null)}
           onResaUpdated={() => { setResaTrouvee(null); bumpRecherche(); }}
         />
+      )}
+
+      {reglagesEnLigne && etabId && (
+        <ReglagesTableEnLigne etablissement={etablissement} onClose={() => setReglagesEnLigne(false)} />
       )}
 
       {canEdit && resaEnEdition && etabId && (

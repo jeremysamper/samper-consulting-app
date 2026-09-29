@@ -573,6 +573,20 @@ export const UI_GLOSSARY = {
   'Motif': 'Reason',
   'En cours et à venir': 'Current and upcoming',
   'Retirer le message': 'Remove message',
+
+  // ── Réservation d'une table en ligne ──
+  'À confirmer': 'To confirm',
+  'Refuser': 'Decline',
+  'Réservation en ligne': 'Online booking',
+  'Réservée en ligne': 'Booked online',
+  'Demande en ligne à confirmer': 'Online request to confirm',
+  'Ouvrir la réservation': 'Open booking',
+  'Fermer la réservation': 'Close booking',
+  'Copier le lien': 'Copy link',
+  'Voir la page': 'View page',
+  'Jours de fermeture': 'Closing days',
+  'Heures d\'arrivée proposées': 'Arrival times offered',
+  'Enregistrer les réglages': 'Save settings',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
