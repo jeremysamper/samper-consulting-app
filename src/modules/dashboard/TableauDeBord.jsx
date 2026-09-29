@@ -171,19 +171,13 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
 
   return (
     <div className="tdb" style={t.page}>
-      {/* ── En tête ── */}
-      <header style={s.entete}>
-        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-          <div style={s.date}>{dateLongue(aujourdhui)}</div>
-          <h1 style={s.bonjour}>{salutation}{user?.prenom ? `, ${user.prenom}` : ''}</h1>
-          {resume && <p style={s.resume}>{resume}</p>}
-        </div>
-        {consultant && peutOuvrir('faq') && (
-          <button type="button" onClick={() => ouvrir('faq')} style={s.assistant}>
-            <Sparkles size={16} strokeWidth={1.9} aria-hidden="true" /> Assistant
-          </button>
-        )}
-      </header>
+      <EnTete
+        date={dateLongue(aujourdhui)}
+        salutation={salutation}
+        prenom={user?.prenom}
+        resume={resume}
+        onAssistant={consultant && peutOuvrir('faq') ? () => ouvrir('faq') : null}
+      />
 
       {enEchec && <BandeauNonActualise onRetry={d.recharger} />}
 
@@ -242,6 +236,24 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         </>
       )}
     </div>
+  );
+}
+
+// En tête : la date, le bonjour et la journée en une phrase.
+export function EnTete({ date, salutation, prenom, resume, onAssistant }) {
+  return (
+    <header style={s.entete}>
+      <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+        <div style={s.date}>{date}</div>
+        <h1 style={s.bonjour}>{salutation}{prenom ? `, ${prenom}` : ''}</h1>
+        {resume && <p style={s.resume}>{resume}</p>}
+      </div>
+      {onAssistant && (
+        <button type="button" onClick={onAssistant} style={s.assistant}>
+          <Sparkles size={16} strokeWidth={1.9} aria-hidden="true" /> Assistant
+        </button>
+      )}
+    </header>
   );
 }
 
