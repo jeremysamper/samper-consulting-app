@@ -16,19 +16,18 @@ export const TONS = {
   neutre:  { fond: 'var(--surface2)',        texte: 'var(--text2)',        barre: 'var(--border2)',        bord: 'var(--border)' },
 };
 
-export function Carte({ icone: Icone, titre, sousTitre, action, children, style, corpsStyle, ton }) {
+// Carte de section : titre et sous-titre, sans pastille d'icône (la pastille
+// colorée en tête de chaque carte fait gabarit). `ton` colore le sous-titre
+// quand il porte une alerte (danger, warning).
+export function Carte({ titre, sousTitre, action, children, style, corpsStyle, ton }) {
+  const alerte = ton === 'danger' || ton === 'warning';
   return (
     <section style={{ ...t.carte, ...style }}>
       {(titre || action) && (
         <header style={t.carteTete}>
-          {Icone && (
-            <span aria-hidden="true" style={{ ...t.carteIcone, ...(ton ? { background: TONS[ton].fond, color: TONS[ton].texte } : null) }}>
-              <Icone size={17} strokeWidth={1.9} />
-            </span>
-          )}
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             {titre && <h2 style={t.carteTitre}>{titre}</h2>}
-            {sousTitre && <div style={t.carteSousTitre}>{sousTitre}</div>}
+            {sousTitre && <div style={{ ...t.carteSousTitre, ...(alerte ? { color: TONS[ton].texte, fontWeight: 600 } : null) }}>{sousTitre}</div>}
           </div>
           {action}
         </header>
@@ -77,7 +76,7 @@ export function SousTitre({ children, droite }) {
   return (
     <div style={t.sousTitre}>
       <span>{children}</span>
-      {droite && <span style={{ fontWeight: 600, letterSpacing: 0, textTransform: 'none' }}>{droite}</span>}
+      {droite && <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{droite}</span>}
     </div>
   );
 }
@@ -85,30 +84,26 @@ export function SousTitre({ children, droite }) {
 export const t = {
   page: { display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1400, margin: '0 auto', width: '100%', minWidth: 0 },
   carte: {
-    background: 'var(--surface)', borderRadius: 'var(--r-lg)', padding: 18, minWidth: 0,
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', boxShadow: 'var(--sh-xs)',
+    background: 'var(--surface)', borderRadius: 'var(--r)', padding: 20, minWidth: 0,
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
-  carteTete: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 },
-  carteIcone: {
-    width: 36, height: 36, borderRadius: 11, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: 'var(--accent-light)', color: 'var(--accent)',
-  },
+  carteTete: { display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
   carteTitre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.2, color: 'var(--text)' },
   carteSousTitre: { fontSize: 12.5, color: 'var(--text2)', marginTop: 2 },
   puce: {
     display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',
-    fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+    fontSize: 11.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
   },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minWidth: 0, boxSizing: 'border-box',
-    padding: '8px 10px', minHeight: 48, borderRadius: 12, textAlign: 'left',
+    padding: '8px 10px', minHeight: 48, borderRadius: 'var(--r-sm)', textAlign: 'left',
     background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14,
   },
   ligneBouton: { cursor: 'pointer', border: 'none' },
   sousTitre: {
     display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline',
-    fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5,
-    margin: '14px 0 6px',
+    fontSize: 13, fontWeight: 600, color: 'var(--text2)',
+    margin: '16px 0 6px',
   },
   texte2: { fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 },
   nom: { display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },

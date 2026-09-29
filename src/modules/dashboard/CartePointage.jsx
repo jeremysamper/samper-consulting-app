@@ -34,11 +34,10 @@ export default function CartePointage({ shifts, prochain, aujourdhui, maintenant
 
   return (
     <Carte
-      icone={Clock}
       titre="Mon service"
       sousTitre={shifts.length ? `${shifts.length > 1 ? 'Deux services' : 'Un service'} aujourd'hui` : "Pas d'horaire aujourd'hui"}
       ton={actif ? 'success' : undefined}
-      style={actif ? { background: 'var(--success-bg-soft)', borderColor: 'var(--success-bd)' } : undefined}
+      style={actif ? { borderColor: 'var(--success-bd)' } : undefined}
     >
       {erreur && <div role="alert" style={s.erreur}>{erreur}</div>}
 
@@ -133,12 +132,12 @@ export default function CartePointage({ shifts, prochain, aujourdhui, maintenant
 
 const s = {
   erreur: {
-    fontSize: 13, padding: '8px 12px', marginBottom: 12, borderRadius: 10,
+    fontSize: 13, padding: '8px 12px', marginBottom: 12, borderRadius: 'var(--r-sm)',
     background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
   },
   repos: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '4px 2px' },
   service: {
-    padding: 14, borderRadius: 14, background: 'var(--surface)',
+    padding: 14, borderRadius: 'var(--r)', background: 'var(--surface)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   serviceTermine: { background: 'var(--surface2)' },
@@ -152,7 +151,7 @@ const s = {
   },
   action: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', marginTop: 12,
-    minHeight: 54, padding: '12px 18px', borderRadius: 14, border: 'none', cursor: 'pointer',
+    minHeight: 54, padding: '12px 18px', borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
     fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, letterSpacing: 0.1,
   },
 };

@@ -67,7 +67,7 @@ html[data-theme="dark"] .tdb {
   outline-offset: 2px;
 }
 
-/* Pastille « en poste » : un léger halo qui respire. */
+/* Pastille « en poste » : un point fixe, sans halo animé. */
 .tdb-live {
   position: relative;
   display: inline-block;
@@ -77,21 +77,6 @@ html[data-theme="dark"] .tdb {
   background: var(--tdb-live);
   flex-shrink: 0;
 }
-.tdb-live::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid var(--tdb-live);
-  opacity: 0;
-  animation: tdb-pouls 2.4s ease-out infinite;
-}
-@keyframes tdb-pouls {
-  0% { transform: scale(0.6); opacity: 0.55; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .tdb-live::after { animation: none; }
   .tdb-lien { transition: none; }
 }

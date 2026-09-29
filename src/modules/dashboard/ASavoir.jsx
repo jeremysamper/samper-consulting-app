@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, Moon, Sun, Sunrise } from 'lucide-react';
+import { Moon, Sun, Sunrise } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import { Avatar, Carte, Ligne, Puce, SousTitre, t } from './tableauUi.jsx';
@@ -71,8 +71,8 @@ function CarteJour({
       {avecGroupes && gJour.length > 0 && (
         <>
           <SousTitre droite={`${gJour.reduce((n, g) => n + g.nbPax, 0)} pers.`}>{gJour.length > 1 ? `${gJour.length} groupes` : 'Groupe'}</SousTitre>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {gJour.map((g) => <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} />)}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {gJour.map((g, i) => <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} premier={!i} />)}
           </div>
         </>
       )}
@@ -125,9 +125,9 @@ function BlocCouverts({ c, onClick }) {
     { id: 'soir', label: 'Soir', valeur: c.soir, icone: Moon },
   ];
   const contenu = (
-    <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-      {cases.map(({ id, label, valeur, icone: Icone }) => (
-        <div key={id} style={s.couvert}>
+    <div style={{ display: 'flex', width: '100%' }}>
+      {cases.map(({ id, label, valeur, icone: Icone }, i) => (
+        <div key={id} style={{ ...s.couvert, ...(i ? s.couvertSuivant : null) }}>
           <span style={s.couvertLabel}><Icone size={13} strokeWidth={2} aria-hidden="true" /> {label}</span>
           <span style={{ ...s.couvertValeur, color: valeur ? 'var(--text)' : 'var(--text3)' }}>{valeur}</span>
         </div>
@@ -147,11 +147,11 @@ function BlocCouverts({ c, onClick }) {
   );
 }
 
-function LigneGroupe({ g, onClick, quand }) {
+function LigneGroupe({ g, onClick, quand, premier }) {
   const statut = metaStatut(g.statut);
   const allergies = nbAllergies(g);
   return (
-    <Ligne onClick={onClick} label={`${g.nom}, ${phraseGroupe(g)}. ${statut.label}`} style={{ background: 'var(--surface2)', boxShadow: `inset 3px 0 0 ${statut.barre}`, alignItems: 'flex-start' }}>
+    <Ligne onClick={onClick} label={`${g.nom}, ${phraseGroupe(g)}. ${statut.label}`} style={{ alignItems: 'flex-start', borderRadius: 0, paddingInline: 2, ...(premier ? null : { borderTop: '1px solid var(--border)' }) }}>
       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
         <span style={{ ...t.nom, whiteSpace: 'normal' }}>
           {quand ? <span style={{ color: 'var(--text2)', fontWeight: 600 }}>{quand.charAt(0).toUpperCase() + quand.slice(1)} : </span> : null}
@@ -229,7 +229,7 @@ function CarteSemaine({
   );
 
   return (
-    <Carte titre="Cette semaine" sousTitre="Les sept prochains jours" icone={CalendarDays}>
+    <Carte titre="Cette semaine" sousTitre="Les sept prochains jours">
       {avecCouverts && (
         <>
           <SousTitre droite={`${totaux.reduce((a, b) => a + b, 0)} au total`}>Couverts réservés</SousTitre>
@@ -244,9 +244,9 @@ function CarteSemaine({
       {avecGroupes && groupesAVenir.length > 0 && (
         <>
           <SousTitre>Groupes à venir</SousTitre>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {groupesAVenir.slice(0, 5).map((g) => (
-              <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} quand={jourRelatif(g.dateEvenement, aujourdhui)} />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {groupesAVenir.slice(0, 5).map((g, i) => (
+              <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} quand={jourRelatif(g.dateEvenement, aujourdhui)} premier={!i} />
             ))}
           </div>
           {groupesAVenir.length > 5 && <div style={{ ...t.texte2, marginTop: 6 }}>et {groupesAVenir.length - 5} autres dans les deux semaines.</div>}
@@ -283,13 +283,14 @@ const s = {
   entete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12, minWidth: 0 },
   titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 22, color: 'var(--text)' },
   couvertsBouton: {
-    display: 'block', width: '100%', padding: 0, background: 'transparent', border: 'none', borderRadius: 12,
+    display: 'block', width: '100%', padding: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)',
   },
   couvert: {
     flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4,
-    padding: '10px 12px', borderRadius: 12, background: 'var(--surface2)',
+    padding: '4px 12px 4px 0',
   },
+  couvertSuivant: { paddingLeft: 12, borderLeft: '1px solid var(--border)' },
   couvertLabel: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
   couvertValeur: { fontFamily: 'var(--font-num)', fontSize: 28, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
   equipier: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', minHeight: 44, minWidth: 0 },
@@ -297,15 +298,16 @@ const s = {
   tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 12.5 },
   etatEnPoste: {
     display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap',
-    fontSize: 11.5, fontWeight: 700, color: 'var(--success-text)', padding: '3px 9px', borderRadius: 999, background: 'var(--success-bg-soft)',
+    fontSize: 11.5, fontWeight: 700, color: 'var(--success-text)', padding: '2px 7px', borderRadius: 4, background: 'var(--success-bg-soft)',
   },
   absent: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', minHeight: 44, minWidth: 0 },
-  motif: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 999 },
+  motif: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   plus: {
-    alignSelf: 'flex-start', marginTop: 2, minHeight: 36, padding: '6px 10px', borderRadius: 999, cursor: 'pointer',
+    alignSelf: 'flex-start', marginTop: 2, minHeight: 36, padding: '6px 10px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
     background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
   },
   barres: { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, alignItems: 'end', padding: '6px 4px 2px' },
   barreCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 },
-  barre: { width: '100%', maxWidth: 34, borderRadius: 8 },
+  // Bout arrondi côté valeur, pied carré posé sur la ligne de base.
+  barre: { width: '100%', maxWidth: 28, borderRadius: '4px 4px 0 0' },
 };

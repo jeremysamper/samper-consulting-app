@@ -16,7 +16,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 import './tableau.css';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
@@ -244,14 +243,14 @@ export function EnTete({ date, salutation, prenom, resume, onAssistant }) {
   return (
     <header style={s.entete}>
       <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-        <div style={s.date}>{date}</div>
-        <h1 style={s.bonjour}>{salutation}{prenom ? `, ${prenom}` : ''}</h1>
-        {resume && <p style={s.resume}>{resume}</p>}
+        <h1 style={s.titre}>{date}</h1>
+        <p style={s.resume}>
+          <span style={{ color: 'var(--text)' }}>{salutation}{prenom ? ` ${prenom}` : ''}.</span>
+          {resume ? ` ${resume}` : ''}
+        </p>
       </div>
       {onAssistant && (
-        <button type="button" onClick={onAssistant} style={s.assistant}>
-          <Sparkles size={16} strokeWidth={1.9} aria-hidden="true" /> Assistant
-        </button>
+        <button type="button" onClick={onAssistant} style={s.assistant}>Assistant</button>
       )}
     </header>
   );
@@ -259,12 +258,11 @@ export function EnTete({ date, salutation, prenom, resume, onAssistant }) {
 
 const s = {
   entete: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: '4px 2px 2px' },
-  date: { fontSize: 12.5, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.8 },
-  bonjour: { margin: '4px 0 0', fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 32, lineHeight: 1.15, color: 'var(--text)', letterSpacing: '-0.01em' },
-  resume: { margin: '8px 0 0', fontSize: 15.5, lineHeight: 1.55, color: 'var(--text2)', maxWidth: 760 },
+  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 30, lineHeight: 1.15, color: 'var(--text)' },
+  resume: { margin: '6px 0 0', fontSize: 15.5, lineHeight: 1.55, color: 'var(--text2)', maxWidth: 760 },
   assistant: {
-    display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '10px 18px', borderRadius: 999, cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, background: 'var(--surface)', color: 'var(--accent)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent-bd)', boxShadow: 'var(--sh-xs)',
+    display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '10px 16px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, background: 'var(--surface)', color: 'var(--text)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
 };

@@ -1,6 +1,6 @@
 import React from 'react';
-import { CircleCheck, ClipboardList, MessageSquareText, Thermometer, TriangleAlert, Users, UsersRound } from 'lucide-react';
-import { Carte, Ligne, TONS, t } from './tableauUi.jsx';
+import { ClipboardList, MessageSquareText, Thermometer, TriangleAlert, Users, UsersRound } from 'lucide-react';
+import { Carte, Ligne, Puce, TONS, t } from './tableauUi.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // À faire : ce qui attend quelqu'un maintenant, du plus urgent au moins
@@ -26,7 +26,6 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
 
   return (
     <Carte
-      icone={items.length ? TriangleAlert : CircleCheck}
       ton={urgents ? 'danger' : items.length ? 'warning' : 'success'}
       titre="À faire"
       sousTitre={items.length
@@ -34,8 +33,8 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
         : "Rien d'urgent pour l'instant"}
     >
       {!items.length && <div style={t.vide}>Tout est à jour. Bon service !</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {visibles.map((item) => {
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {visibles.map((item, i) => {
           const Icone = ICONES[item.icone] || TriangleAlert;
           const c = TONS[item.ton] || TONS.info;
           const cliquable = peutOuvrir(item.page);
@@ -44,13 +43,14 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
               key={item.id}
               onClick={cliquable ? () => ouvrir(item.page) : null}
               label={`${item.titre}. ${item.detail}`}
-              style={{ background: c.fond, boxShadow: `inset 3px 0 0 ${c.barre}`, borderRadius: 12 }}
+              style={{ borderRadius: 0, paddingInline: 2, ...(i ? { borderTop: '1px solid var(--border)' } : null) }}
             >
               <Icone size={18} strokeWidth={1.9} aria-hidden="true" style={{ color: c.texte, flexShrink: 0 }} />
               <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <span style={{ ...t.nom, color: c.texte, whiteSpace: 'normal' }}>{item.titre}</span>
+                <span style={{ ...t.nom, whiteSpace: 'normal' }}>{item.titre}</span>
                 <span style={{ ...t.texte2, display: 'block' }}>{item.detail}</span>
               </span>
+              {item.ton === 'danger' && <Puce ton="danger">Urgent</Puce>}
             </Ligne>
           );
         })}
@@ -66,7 +66,7 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
 
 const s = {
   plus: {
-    marginTop: 8, minHeight: 40, padding: '8px 12px', borderRadius: 999, cursor: 'pointer',
+    marginTop: 8, minHeight: 40, padding: '8px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
     background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
   },
 };

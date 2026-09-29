@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquareText, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { Carte, t } from './tableauUi.jsx';
 import { userDisplayName } from '../../utils/userDisplay.js';
 
@@ -38,15 +38,13 @@ export default function MotConsultant({ message, consultant, onPublier }) {
 
   return (
     <Carte
-      icone={MessageSquareText}
       titre="Le mot du consultant"
-      sousTitre={texte && !edition ? `${auteur}${message?.updatedAt ? `, le ${dateCourte(message.updatedAt)}` : ''}` : "Visible par toute l'équipe de l'établissement"}
+      sousTitre={texte && !edition ? null : "Visible par toute l'équipe de l'établissement"}
       action={consultant && !edition ? (
         <button type="button" onClick={ouvrir} style={s.modifier}>
           <Pencil size={15} strokeWidth={1.9} aria-hidden="true" /> {texte ? 'Modifier' : 'Écrire'}
         </button>
       ) : null}
-      style={{ background: 'var(--grad-accent-wash)', borderColor: 'var(--accent-bd)' }}
     >
       {edition ? (
         <div>
@@ -72,7 +70,10 @@ export default function MotConsultant({ message, consultant, onPublier }) {
           </div>
         </div>
       ) : texte ? (
-        <p style={s.corps}>{texte}</p>
+        <>
+          <p style={s.corps}>{texte}</p>
+          <p style={s.signature}>{auteur}{message?.updatedAt ? `, le ${dateCourte(message.updatedAt)}` : ''}</p>
+        </>
       ) : (
         <div style={t.vide}>Aucun message pour l'instant. Écris un mot : il s'affichera ici pour toute l'équipe.</div>
       )}
@@ -81,19 +82,20 @@ export default function MotConsultant({ message, consultant, onPublier }) {
 }
 
 const s = {
-  corps: { margin: 0, fontSize: 15.5, lineHeight: 1.65, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
+  corps: { margin: 0, fontFamily: 'var(--font-serif)', fontSize: 18, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '68ch' },
+  signature: { margin: '10px 0 0', fontSize: 13, color: 'var(--text2)' },
   zone: {
-    width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, resize: 'vertical',
+    width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-sm)', resize: 'vertical',
     fontFamily: 'var(--font)', fontSize: 15, lineHeight: 1.55, color: 'var(--text)', background: 'var(--surface)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   modifier: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, background: 'var(--surface)', color: 'var(--accent)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent-bd)', flexShrink: 0,
+    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, background: 'var(--surface)', color: 'var(--text)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', flexShrink: 0,
   },
   bouton: {
-    minHeight: 44, padding: '10px 18px', borderRadius: 999, cursor: 'pointer',
+    minHeight: 44, padding: '10px 18px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
     fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, borderWidth: 1, borderStyle: 'solid',
   },
   principal: { background: 'var(--accent)', color: 'var(--tdb-on-stop)', borderColor: 'var(--accent)' },

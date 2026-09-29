@@ -1,5 +1,4 @@
 import React from 'react';
-import { ChartNoAxesColumn } from 'lucide-react';
 import { Carte, t } from './tableauUi.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,8 +32,8 @@ export default function ChiffresGestion({ chiffres, stock, avecPertes, avecStock
   if (!tuiles.length) return null;
 
   return (
-    <Carte icone={ChartNoAxesColumn} titre="Chiffres de gestion" sousTitre="Visible par la direction seulement">
-      <div style={s.grille}>
+    <Carte titre="Chiffres de gestion" sousTitre="Visible par la direction seulement">
+      <div style={{ overflow: 'hidden' }}><div style={s.grille}>
         {tuiles.map((tu) => {
           const contenu = (
             <>
@@ -51,18 +50,21 @@ export default function ChiffresGestion({ chiffres, stock, avecPertes, avecStock
             <div key={tu.id} style={s.tuile}>{contenu}</div>
           );
         })}
-      </div>
+      </div></div>
     </Carte>
   );
 }
 
 const s = {
-  grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: 10 },
+  // Filet à gauche de chaque chiffre ; la marge négative (filet + retrait)
+  // masque celui du premier de chaque rangée et l'aligne sur le titre, quel
+  // que soit le nombre de colonnes.
+  grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', rowGap: 14, marginLeft: -17 },
   tuile: {
     display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, textAlign: 'left',
-    padding: '12px 14px', borderRadius: 14, background: 'var(--surface2)',
+    padding: '4px 16px', background: 'transparent', borderLeft: '1px solid var(--border)',
   },
-  tuileBouton: { border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)' },
-  label: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tuileBouton: { borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)' },
+  label: { fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
   valeur: { fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
 };
