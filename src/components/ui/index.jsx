@@ -38,7 +38,7 @@ export function Btn({
 }) {
   const variants = {
     /* Aplat accent (pétrole en light, aqua en dark), sans dégradé ni ombre. */
-    primary: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
+    primary: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
     ghost: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
     danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
     success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' },

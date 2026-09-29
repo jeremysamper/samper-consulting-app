@@ -118,6 +118,7 @@ export const THEME_VAR_OVERRIDES = `
     --accent2: ${BRAND.color.accent};
     --accent-light: ${BRAND.color.tint};
     --accent-bd: ${BRAND.color.rule};
+    --on-accent: ${BRAND.color.white};
     --nav: ${BRAND.color.primary};
     --nav-text: ${BRAND.color.white};
     --nav-active: ${BRAND.color.tint};

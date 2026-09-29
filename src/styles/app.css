@@ -32,14 +32,18 @@
   --accent2: #2e6d84;
   --accent-light: #e4eef3;
   --accent-bd: #9fc0cd;
+  /* Texte posé sur un aplat accent (bouton principal) : blanc sur le pétrole
+     du clair, encre foncée sur l'aqua du sombre (le blanc y manque de
+     contraste). */
+  --on-accent: #ffffff;
   /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
      La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
-     thèmes : c'est le geste signature. En aplat, sans dégradé : la couleur
-     porte l'identité. --nav-grad garde son nom pour ne pas toucher ses
-     lecteurs. L'aqua (--nav-accent) est la seule lumière posée sur cette
-     encre. */
+     thèmes : c'est le geste signature de la refonte profondeur. L'aqua
+     (--nav-accent) est la seule lumière posée sur cette encre. La sidebar
+     garde son dégradé et ses rayons : elle est hors du chantier « moins
+     d'effets » (décision du 29.09.2026). */
   --nav: #032a3a;
-  --nav-grad: #032a3a;
+  --nav-grad: linear-gradient(178deg, #07394d 0%, #032d3f 44%, #021621 100%);
   --nav-text: rgba(214, 230, 236, 0.66);
   --nav-text-active: #eaf4f7;
   --nav-active: rgba(116, 174, 195, 0.09);
@@ -152,8 +156,9 @@
     --accent2: #90bfd0;
     --accent-light: #192b34;
     --accent-bd: #335c6b;
+    --on-accent: #06202b;
     --nav: #04222f;
-    --nav-grad: #04222f;
+    --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
     --nav-text: rgba(200, 222, 230, 0.60);
     --nav-text-active: #e6f2f6;
     --nav-active: rgba(116, 174, 195, 0.08);
@@ -214,8 +219,9 @@ html[data-theme="dark"] {
   --accent2: #90bfd0;
   --accent-light: #192b34;
   --accent-bd: #335c6b;
+  --on-accent: #06202b;
   --nav: #04222f;
-  --nav-grad: #04222f;
+  --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
   --nav-text: rgba(200, 222, 230, 0.60);
   --nav-text-active: #e6f2f6;
   --nav-active: rgba(116, 174, 195, 0.08);

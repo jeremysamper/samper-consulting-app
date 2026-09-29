@@ -32,7 +32,7 @@ export default function AccountButton({ user, onOpen, variant = 'desktop' }) {
 const s = {
   trigger: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-    padding: '6px 10px', background: 'none', border: 'none', borderRadius: 'var(--r-sm)',
+    padding: '6px 10px', background: 'none', border: 'none', borderRadius: 8,
     color: 'var(--nav-text-active)', fontFamily: 'var(--font)', cursor: 'pointer', textAlign: 'left',
   },
   triggerMobile: { minHeight: 52, padding: '6px 12px' },
