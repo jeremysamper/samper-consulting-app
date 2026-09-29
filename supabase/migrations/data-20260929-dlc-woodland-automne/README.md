@@ -91,3 +91,10 @@ et remplacée par une nouvelle fiche « Vinaigrette balsamique miel »
 
 Retour à la première passe : rejouer `01-apply-dlc.sql`. Retour à l'origine :
 `99-rollback-dlc.sql`.
+
+## Troisième passe, 29.09.2026 : décongélation au maximum (`03-apply-decongele-max.sql`)
+
+41 fiches congelables, toutes à 2 j avant. Décongelée, une fiche garde sa
+durée au frais, plafonnée à 7 j : 32 fiches à 7 j, namelaka et orge perlé à
+5 j. Crus ou fragiles au dégel à 3 j : entrecôte, cerf, chevreuil tataki,
+pigeon, carpaccio de poulpe pressé, pâte à tagliolini, cromesquis.
