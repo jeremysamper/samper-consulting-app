@@ -15,27 +15,31 @@
   /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
      quantités) : Satoshi, les chiffres d'affichage de Zodiak détonnent. */
   --font-num: "Satoshi", system-ui, sans-serif;
-  /* Fond légèrement creusé (95.8 vs surface 99.2) : c'est cet écart, plus
-     que les ombres, qui fait flotter les cartes blanches en mode clair. */
-  --bg: oklch(95.8% 0.009 75);
-  --bg2: oklch(93.2% 0.010 60);
-  --surface: oklch(99.2% 0.004 75);
-  --surface2: oklch(97.5% 0.005 60);
-  --border: oklch(86.5% 0.012 75);
-  --border2: oklch(82.5% 0.012 60);
-  --text: oklch(18% 0.012 55);
-  --text2: oklch(48% 0.010 55);
-  --text3: oklch(60% 0.008 50);
+  /* Fond légèrement creusé (96 vs surface 99.4) : c'est cet écart, et non une
+     ombre, qui détache les cartes en mode clair. Neutres froids, teintés vers
+     le pétrole de la marque : jamais de crème (le fond crème est la signature
+     la plus reconnaissable des interfaces générées), jamais de blanc pur. */
+  --bg: oklch(96% 0.005 230);
+  --bg2: oklch(93.5% 0.006 230);
+  --surface: oklch(99.4% 0.002 230);
+  --surface2: oklch(97.6% 0.004 230);
+  --border: oklch(87% 0.008 230);
+  --border2: oklch(83% 0.009 230);
+  --text: oklch(19% 0.012 235);
+  --text2: oklch(47% 0.012 235);
+  --text3: oklch(59% 0.010 235);
   --accent: #003042;
   --accent2: #2e6d84;
   --accent-light: #e4eef3;
   --accent-bd: #9fc0cd;
   /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
      La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
-     thèmes : c'est le geste signature de la refonte profondeur. L'aqua
-     (--nav-accent) est la seule lumière posée sur cette encre. */
+     thèmes : c'est le geste signature. En aplat, sans dégradé : la couleur
+     porte l'identité. --nav-grad garde son nom pour ne pas toucher ses
+     lecteurs. L'aqua (--nav-accent) est la seule lumière posée sur cette
+     encre. */
   --nav: #032a3a;
-  --nav-grad: linear-gradient(178deg, #07394d 0%, #032d3f 44%, #021621 100%);
+  --nav-grad: #032a3a;
   --nav-text: rgba(214, 230, 236, 0.66);
   --nav-text-active: #eaf4f7;
   --nav-active: rgba(116, 174, 195, 0.09);
@@ -45,40 +49,47 @@
   --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.12);
   /* ─── Header « verre » (façon barres iOS récentes) ─────────────────────
      Surface translucide : le contenu défile dessous, flouté (.app-glass-bar). */
-  --glass-bg: rgba(254, 252, 249, 0.72);
-  --glass-border: rgba(22, 16, 13, 0.08);
-  --glass-hover: rgba(22, 16, 13, 0.06);
-  --r: 12px;
-  --r-sm: 8px;
-  --r-lg: 16px;
-  --r-xl: 24px;
+  --glass-bg: rgba(248, 250, 251, 0.72);
+  --glass-border: rgba(10, 30, 40, 0.08);
+  --glass-hover: rgba(10, 30, 40, 0.06);
+  /* Rayons resserrés : des coins très arrondis sur chaque bloc font gabarit.
+     Les pilules (999px) restent réservées aux étiquettes. */
+  --r: 8px;
+  --r-sm: 6px;
+  --r-lg: 10px;
+  --r-xl: 12px;
   --r-full: 999px;
 
-  /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ── */
-  --sh-xs: 0 1px 2px rgba(9, 30, 40, 0.06), 0 2px 10px rgba(9, 30, 40, 0.05);
-  --sh-sm: 0 1px 3px rgba(9, 30, 40, 0.09), 0 4px 16px rgba(9, 30, 40, 0.07);
+  /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
+     Une ombre dit « cet objet flotte » : seuls les menus, fenêtres et
+     tiroirs flottent (--sh, --sh-lg). Les cartes posées sur la page n'ont
+     pas d'ombre (--sh-xs vide) : leur filet et l'écart de fond suffisent. */
+  --sh-xs: none;
+  --sh-sm: 0 1px 2px rgba(9, 30, 40, 0.08);
   --sh: 0 2px 6px rgba(9, 30, 40, 0.09), 0 12px 32px rgba(9, 30, 40, 0.11);
   --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.14), 0 24px 64px rgba(9, 30, 40, 0.18);
 
-  /* ─── Halos et lumière ────────────────────────────────────────────────
-     glow-accent = liseré + halo pour les surfaces mises en avant (chips
-     KPI, cartes actives). En light : anneau accent discret. En dark :
-     halo aqua façon Opal. */
-  --glow-accent: 0 0 0 1px var(--accent-bd), 0 6px 24px rgba(0, 48, 66, 0.14);
-  --glow-soft: 0 2px 16px rgba(0, 48, 66, 0.10);
+  /* ─── Mise en avant ───────────────────────────────────────────────────
+     glow-accent = liseré accent des surfaces mises en avant (chips KPI,
+     cartes actives). Un filet, pas de halo lumineux : le halo coloré est
+     l'effet qui trahit le plus vite une interface générée. glow-soft reste
+     déclaré, vide, pour ses lecteurs. */
+  --glow-accent: 0 0 0 1px var(--accent-bd);
+  --glow-soft: none;
   --focus-ring: rgba(0, 48, 66, 0.14);
 
-  /* ─── Dégradés de marque ──────────────────────────────────────────────
-     grad-brand   : encre pétrole abyssale (splash, login, navigation)
-     grad-scrim   : voile posé sur une photo pour y écrire (tuiles plats)
-     grad-accent-wash : lavis accent → surface (blocs mis en avant) */
-  --grad-brand: radial-gradient(120% 95% at 50% 30%, #00394c 0%, #003042 42%, #001620 100%);
+  /* ─── Aplats de marque (noms historiques « grad- » conservés) ─────────
+     grad-brand   : encre pétrole (splash, login, vignettes sans photo)
+     grad-scrim   : voile posé sur une photo pour y écrire (tuiles plats) ;
+                    seul dégradé gardé, il sert la lisibilité, pas le décor
+     grad-accent-wash : fond accent pâle (blocs mis en avant) */
+  --grad-brand: #003042;
   --grad-scrim: linear-gradient(180deg, rgba(0, 22, 32, 0) 30%, rgba(0, 22, 32, 0.42) 60%, rgba(0, 22, 32, 0.85) 100%);
-  --grad-accent-wash: linear-gradient(135deg, var(--accent-light), var(--surface));
+  --grad-accent-wash: var(--accent-light);
 
-  /* Ambiance de page : lueur pétrole en haut du contenu. En dark elle
-     devient la respiration abyssale de l'app. */
-  --ambient: radial-gradient(95% 60% at 50% 0%, rgba(0, 48, 66, 0.07) 0%, rgba(0, 48, 66, 0) 62%);
+  /* Ambiance de page : plus de lueur décorative en haut du contenu, le fond
+     reste un aplat. Token conservé (lu par body). */
+  --ambient: none;
 
   /* ─── Tokens sémantiques de statut (light mode) ─────────────────────────
      bg = fond pâle pour badges/cards d'alerte
@@ -142,7 +153,7 @@
     --accent-light: #192b34;
     --accent-bd: #335c6b;
     --nav: #04222f;
-    --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
+    --nav-grad: #04222f;
     --nav-text: rgba(200, 222, 230, 0.60);
     --nav-text-active: #e6f2f6;
     --nav-active: rgba(116, 174, 195, 0.08);
@@ -152,14 +163,14 @@
     --glass-bg: rgba(8, 18, 22, 0.72);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-hover: rgba(255, 255, 255, 0.08);
-    --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.40), 0 4px 14px rgba(0, 0, 0, 0.30);
+    --sh-xs: none;
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
     --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
-    --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30), 0 0 24px rgba(116, 174, 195, 0.13);
-    --glow-soft: 0 0 18px rgba(116, 174, 195, 0.10);
+    --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
+    --glow-soft: none;
     --focus-ring: rgba(116, 174, 195, 0.30);
-    --ambient: radial-gradient(90% 60% at 50% 0%, rgba(23, 92, 130, 0.18) 0%, rgba(23, 92, 130, 0) 62%);
+    --ambient: none;
     --success-bg: oklch(28% 0.06 150);
     --success-bg-soft: oklch(22% 0.04 150);
     --success-text: oklch(80% 0.115 152);
@@ -204,7 +215,7 @@ html[data-theme="dark"] {
   --accent-light: #192b34;
   --accent-bd: #335c6b;
   --nav: #04222f;
-  --nav-grad: linear-gradient(178deg, #06293a 0%, #03222f 44%, #010e15 100%);
+  --nav-grad: #04222f;
   --nav-text: rgba(200, 222, 230, 0.60);
   --nav-text-active: #e6f2f6;
   --nav-active: rgba(116, 174, 195, 0.08);
@@ -214,14 +225,14 @@ html[data-theme="dark"] {
   --glass-bg: rgba(8, 18, 22, 0.72);
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-hover: rgba(255, 255, 255, 0.08);
-  --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.40), 0 4px 14px rgba(0, 0, 0, 0.30);
+  --sh-xs: none;
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
   --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
-  --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30), 0 0 24px rgba(116, 174, 195, 0.13);
-  --glow-soft: 0 0 18px rgba(116, 174, 195, 0.10);
+  --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
+  --glow-soft: none;
   --focus-ring: rgba(116, 174, 195, 0.30);
-  --ambient: radial-gradient(90% 60% at 50% 0%, rgba(23, 92, 130, 0.18) 0%, rgba(23, 92, 130, 0) 62%);
+  --ambient: none;
 
   /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
      Fonds nettement plus sombres (saturation faible, luminosité ~22-26%)
@@ -1283,8 +1294,7 @@ html[data-theme="dark"] button:not(:disabled):active {
 
 @media (hover: hover) and (pointer: fine) {
   .ui-btn--primary:hover:not(:disabled) {
-    box-shadow: var(--sh-sm), var(--glow-soft);
-    transform: translateY(-1px);
+    filter: brightness(1.08);
   }
 
   .ui-btn--ghost:hover:not(:disabled) {
@@ -1292,15 +1302,13 @@ html[data-theme="dark"] button:not(:disabled):active {
     border-color: var(--border2);
   }
 
+  /* Survol : le filet passe à l'accent, la carte ne décolle pas. */
   .ui-card--clickable:hover {
-    box-shadow: var(--sh);
-    transform: translateY(-1px);
-    border-color: var(--border2);
+    border-color: var(--accent-bd);
   }
 
   .ui-card--clickable:active {
-    transform: translateY(0);
-    box-shadow: var(--sh-xs);
+    background: var(--surface2);
   }
 }
 

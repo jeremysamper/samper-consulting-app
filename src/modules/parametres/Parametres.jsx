@@ -551,7 +551,7 @@ const Parametres = ({ user, etablissement }) => {
 
 const ps = {
   root: { display:'flex', flexDirection:'column', gap:16 },
-  banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, background:'linear-gradient(135deg, var(--nav) 0%, #333 100%)', color:'#fff', padding:'22px 26px', borderRadius:12, flexWrap:'wrap' },
+  banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, background:'var(--nav)', color:'#fff', padding:'22px 26px', borderRadius:12, flexWrap:'wrap' },
   bannerTitle: { fontSize:18, fontWeight:700, fontFamily:'var(--font-serif)', color:'#fff' },
   bannerSub: { fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:4 },
   addBtn: { padding:'10px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },

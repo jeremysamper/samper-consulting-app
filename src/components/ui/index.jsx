@@ -37,9 +37,8 @@ export function Btn({
   ariaLabel
 }) {
   const variants = {
-    /* Dégradé accent2 → accent : donne au bouton principal un léger volume
-       (pétrole en light, aqua en dark) sans changer sa couleur perçue. */
-    primary: { background: 'linear-gradient(160deg, var(--accent2), var(--accent) 62%)', color: '#fff', border: '1px solid var(--accent)', boxShadow: 'var(--sh-xs)' },
+    /* Aplat accent (pétrole en light, aqua en dark), sans dégradé ni ombre. */
+    primary: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
     ghost: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
     danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
     success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' },
@@ -125,7 +124,7 @@ export function SectionHeader({ title, sub, action, style = {} }) {
 }
 
 export function KpiCard({ label, value, sub, delta, color, chart, glow = false, style = {} }) {
-  /* glow : liseré accent + halo (aqua en dark) façon chip lumineuse.
+  /* glow : liseré accent qui met la carte en avant, sans halo.
      Surcharge du raccourci border COMPLET, jamais borderColor seul
      (voir lint:borders). */
   const glowStyle = glow

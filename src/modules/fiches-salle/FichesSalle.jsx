@@ -1098,7 +1098,7 @@ const fss = {
   grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14},
   card:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden',cursor:'pointer',transition:'box-shadow .15s, transform .15s'},
   cardImg:{height:120,overflow:'hidden'},
-  cardImgPlaceholder:{height:'100%',background:'linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'},
+  cardImgPlaceholder:{height:'100%',background:'#222',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'},
   cardBody:{padding:'12px 14px',display:'flex',flexDirection:'column',gap:6},
   cardCat:{fontSize:10,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
   cardNom:{fontSize:14,fontWeight:700,color:'var(--text)',lineHeight:1.3},

@@ -821,7 +821,7 @@ const HACCP = ({ user, etablissement }) => {
       {activeTab==='config' && isConsultant && (
         <div style={{display:'flex',flexDirection:'column',gap:20}}>
           {/* Banner */}
-          <div style={{background:'linear-gradient(135deg,var(--nav) 0%,#1a0f00 100%)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+          <div style={{background:'var(--nav)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <span style={{fontSize:28}}>⚙</span>
             <div style={{flex:1,minWidth:220}}>
               <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP - Réservé au consultant</div>
