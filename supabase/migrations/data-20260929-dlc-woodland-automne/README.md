@@ -59,3 +59,35 @@ agar, émulsions, chou rouge mariné, poires au vin, viandes à fondue...).
 `99-rollback-dlc.sql` remet les 78 fiches dans leur état d'avant. Même état
 exporté hors dépôt dans
 `App-Web/_sauvegardes-supabase/dlc-carte-automnale-woodland-avant-20260929.json`.
+
+## Seconde passe, 29.09.2026 : au maximum (`02-apply-dlc-max.sql`)
+
+Demande de Jérémy après la première passe : lever le plafond de 7 j. Il fixe
+lui-même la mayonnaise industrielle à 21 j et le poulpe cuit sous vide à 21 j,
+et demande le plus de produits possible à 7 j au frais, surgélation au maximum.
+
+- **21 j** : poulpe cuit sous vide, mayonnaises à base industrielle (ail noir,
+  chili crisp, paprika fumé), émulsion d'échalote.
+- **Durée de la fiche au-delà de 7 j** : pickles 60 j, condiments et
+  vinaigrette 15 à 30 j, betteraves 10 j, caramel et poires au vin 30 j.
+- **7 j** : tout ce qui est cuit et conditionné sous vide (fonds, jus,
+  braisés, légumes rôtis, purées, volaille SV), pièces de viande crue sous
+  vide (entrecôte, cerf), crémeux myrtille.
+- **Secs** : 14 j (sablé, croustillant, croûtons), 30 j (fruits secs
+  torréfiés, poudre de sapin), 90 j (assaisonnement), poudre de caramel 7 j.
+- **Surgélation** : 180 j pour fonds, jus, braisés, viandes, légumes rôtis ;
+  120 j volaille cuite ; 90 j pour crème, pâtes, crémeux, purées.
+
+Laissés sous 7 j, volontairement : viandes à fondue 3 j (tranches fines),
+chevreuil tataki 5 j (cœur cru), pigeon 4 j (filets crus), sauce au vieux
+fromage 5 j, crème de raifort 4 j, chou kale 4 j, orge perlé et riz au lait
+5 j (céréale cuite), tagliolini 5 j et cromesquis 3 j (œuf cru), namelaka 5 j
+(crème crue), œufs parfaits 3 j (fiche), mayonnaise aux herbes fraîches 7 j,
+huile de sapin 7 j (végétal frais dans l'huile), espuma et assiettes 24 h 1 j.
+
+Pendant l'opération, la « Vinaigrette au miel de montagne » a été supprimée
+et remplacée par une nouvelle fiche « Vinaigrette balsamique miel »
+(`rec-1790685028251`, brouillon, émulsion sans œuf) : passée de 7 à 15 j.
+
+Retour à la première passe : rejouer `01-apply-dlc.sql`. Retour à l'origine :
+`99-rollback-dlc.sql`.

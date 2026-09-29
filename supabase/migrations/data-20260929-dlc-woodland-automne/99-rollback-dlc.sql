@@ -93,3 +93,10 @@ update recettes set duree_vie_jours = 3, duree_vie_congele_jours = 90
 where etablissement_id = 'etab-2' and id = 'rec-1787607253690-36781';  -- Crème légère de panais
 
 commit;
+
+-- Ajout après la seconde passe : la « Vinaigrette au miel de montagne »
+-- (rec-1787607253749-75889) a été supprimée le 29.09.2026 vers 14 h 30 et
+-- remplacée par « Vinaigrette balsamique miel » (rec-1790685028251), créée
+-- à 7 j. Son état d'avant :
+-- update recettes set duree_vie_jours = 7, duree_vie_congele_jours = NULL
+-- where etablissement_id = 'etab-2' and id = 'rec-1790685028251';
