@@ -38,6 +38,20 @@
 // piège, durée de saisie minimale, 5 demandes par heure et par adresse IP
 // (hachée), 3 par jour et par e-mail.
 //
+// Réservation d'une table en ligne (module Prévisions, migration 20260929),
+// même principe, page /table/<adresse> :
+//   public_table_infos     public  → { slug } : jours ouverts, taille max
+//   public_table_creneaux  public  → { slug, date, couverts } : heures d'arrivée
+//                                    encore ouvertes, par service
+//   public_table_reserver  public  → pose la réservation ('demande' ou
+//                                    'confirme' selon le mode du restaurant) via
+//                                    resa_reserver_en_ligne (verrou, capacité)
+//   resa_statut            équipe  → e-mail « confirmée » ou « refusée » après
+//                                    traitement d'une demande venue du site
+// Mêmes protections anti-abus (journal spa_demandes_en_ligne partagé). Les
+// e-mails partent par le même canal que ceux du spa (boîte connectée de
+// l'établissement, sinon Resend), signés du nom de l'établissement.
+//
 // Sécurité : verify_jwt=false (lien de désinscription, cron, retour OAuth et
 // réservation publique n'ont pas de session). Chaque action authentifie
 // elle-même : CRON_SECRET pour le cron, JWT + profil (rôle, établissements)
@@ -955,6 +969,215 @@ async function actionPublique(req: Request, sb: Admin, cfg: Cfg, action: string,
   return json({ ok: true, soin: soin.nom, date, heure });
 }
 
+// ── Réservation d'une table en ligne ──────────────────────────────
+const SERVICES_TABLE = ['midi', 'soir', 'brunch'];
+
+type ParamsTable = {
+  etablissement_id: string; slug: string; mode: 'demande' | 'auto';
+  horaires: Record<string, Record<string, { de?: string; a?: string }>>;
+  capacite_service: number; capacite_creneau: number | null; max_couverts: number;
+  delai_min_heures: number; horizon_jours: number; pas_minutes: number;
+  jours_fermes: string[] | null; message_en_ligne: string | null;
+};
+
+// Les e-mails du restaurant ne reprennent pas les réglages du spa (signature,
+// adresse de réponse) : un hôtel peut avoir les deux modules.
+const PARAMS_TABLE: Params = { ...PARAMS_DEFAUT };
+
+async function lireTableEnLigne(sb: Admin, slug: string) {
+  if (!SLUG_OK.test(slug)) return null;
+  const { data: p } = await sb.from('reservation_en_ligne_parametres')
+    .select('*').eq('slug', slug).eq('en_ligne_actif', true).maybeSingle();
+  if (!p) return null;
+  const { data: etab } = await sb.from('etablissements')
+    .select('id, nom, adresse, tel, email').eq('id', p.etablissement_id).maybeSingle();
+  if (!etab) return null;
+  return { p: p as ParamsTable, etab: etab as Etab };
+}
+
+function servicesDuJour(p: ParamsTable, date: string) {
+  const jour = (p.horaires || {})[String(isoJour(date))] || {};
+  return SERVICES_TABLE.filter((s) => HEURE_OK.test(jour[s]?.de || '') && HEURE_OK.test(jour[s]?.a || ''))
+    .map((s) => ({ service: s, de: enMinutes(jour[s].de!), a: enMinutes(jour[s].a!) }))
+    .filter((x) => x.de <= x.a);
+}
+
+// Heures d'arrivée encore ouvertes pour `couverts` personnes, par service :
+// fenêtre d'arrivée du jour, au-delà du délai minimal, sous la capacité du
+// service (réservations de l'équipe comprises) et, si elle est réglée, sous
+// celle de l'heure d'arrivée.
+async function creneauxTable(sb: Admin, p: ParamsTable, date: string, couverts: number) {
+  const ecart = ecartJours(zurichToday(), date);
+  if (ecart < 0 || ecart > p.horizon_jours) return [];
+  if ((p.jours_fermes || []).includes(date)) return [];
+  const services = servicesDuJour(p, date);
+  if (!services.length) return [];
+
+  const { data: resas } = await sb.from('reservations')
+    .select('service, heure_arrivee, nb_couverts')
+    .eq('etablissement_id', p.etablissement_id)
+    .eq('date_service', date)
+    .not('statut', 'in', '("annule","no_show")');
+  const plancher = zurichMinutes() + (p.delai_min_heures || 0) * 60 - ecart * 1440;
+  const pas = p.pas_minutes || 15;
+
+  return services.map(({ service, de, a }) => {
+    const du = (resas || []).filter((r) => r.service === service);
+    const pris = du.reduce((n, r) => n + Number(r.nb_couverts || 0), 0);
+    const complet = pris + couverts > p.capacite_service;
+    const creneaux: string[] = [];
+    if (!complet) {
+      for (let t = de; t <= a; t += pas) {
+        if (t < plancher) continue;
+        const h = enHeure(t);
+        if (p.capacite_creneau) {
+          const deja = du.filter((r) => String(r.heure_arrivee).slice(0, 5) === h)
+            .reduce((n, r) => n + Number(r.nb_couverts || 0), 0);
+          if (deja + couverts > p.capacite_creneau) continue;
+        }
+        creneaux.push(h);
+      }
+    }
+    return { service, creneaux, complet };
+  });
+}
+
+// E-mail transactionnel du restaurant (réponse à une réservation, pas de
+// publicité : pas de lien de désinscription). Pas de journal spa_envois : il
+// appartient au module Spa.
+async function mailTable(sb: Admin, cfg: Cfg, etab: Etab, dest: { email: string; sujet: string; corps: string; signature?: string }) {
+  if (!dest.email) return { envoye: false };
+  const params = dest.signature ? { ...PARAMS_TABLE, signature: dest.signature } : PARAMS_TABLE;
+  const res = await expedier(sb, cfg, etab, params, {
+    to: dest.email,
+    subject: dest.sujet,
+    html: gabarit({ etab, params, titre: dest.sujet, corps: dest.corps }),
+    text: texteBrut(dest.corps),
+  });
+  if (!res.canal) return { envoye: false, nonConfigure: true };
+  if (res.erreur) console.warn('[spa-mailer] e-mail table', res.erreur);
+  return { envoye: !res.erreur };
+}
+
+const personnes = (n: number) => `${n} personne${n > 1 ? 's' : ''}`;
+
+async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: string, body: Record<string, unknown>) {
+  const lu = await lireTableEnLigne(sb, String(body.slug || ''));
+  if (!lu) return json({ error: 'La réservation en ligne n\'est pas ouverte pour ce restaurant.' }, 404);
+  const { p, etab } = lu;
+  const aujourdhui = zurichToday();
+
+  if (action === 'public_table_infos') {
+    const jours = Object.keys(p.horaires || {}).map(Number).filter((j) => {
+      const services = (p.horaires || {})[String(j)] || {};
+      return SERVICES_TABLE.some((s) => HEURE_OK.test(services[s]?.de || '') && HEURE_OK.test(services[s]?.a || ''));
+    });
+    return json({
+      etablissement: { nom: etab.nom, adresse: etab.adresse || null, tel: etab.tel || null },
+      message: p.message_en_ligne || null,
+      mode: p.mode,
+      maxCouverts: p.max_couverts,
+      horizonJours: p.horizon_jours,
+      joursOuverts: jours,
+      joursFermes: (p.jours_fermes || []).filter((d) => d >= aujourdhui),
+      aujourdhui,
+    });
+  }
+
+  const couverts = Math.round(Number(body.couverts) || 0);
+  if (couverts < 1 || couverts > p.max_couverts) {
+    return json({ error: `En ligne, jusqu'à ${personnes(p.max_couverts)}. Pour un groupe, appelez-nous.`, code: 'couverts' }, 400);
+  }
+
+  if (action === 'public_table_creneaux') {
+    const date = String(body.date || '');
+    if (!DATE_OK.test(date)) return json({ error: 'Date invalide.' }, 400);
+    return json({ date, services: await creneauxTable(sb, p, date, couverts) });
+  }
+
+  // ── public_table_reserver ──
+  const prenom = String(body.prenom || '').trim().slice(0, 80);
+  const nom = String(body.nom || '').trim().slice(0, 80);
+  const email = String(body.email || '').trim().toLowerCase().slice(0, 160);
+  const telephone = String(body.telephone || '').trim().slice(0, 40);
+  const message = String(body.message || '').trim().slice(0, 1000);
+  const date = String(body.date || '');
+  const heure = String(body.heure || '');
+  const service = String(body.service || '');
+
+  // Robots : même règle que pour le spa (champ piège, moins de 3 secondes).
+  const dureeSaisie = Number(body.dureeSaisie || 0);
+  if (String(body.siteWeb || '') || !(dureeSaisie >= 3000)) return json({ ok: true });
+  if (!prenom || !nom) return json({ error: 'Indiquez votre prénom et votre nom.' }, 400);
+  if (!EMAIL_OK.test(email)) return json({ error: 'Votre adresse e-mail semble incorrecte.' }, 400);
+  if (telephone.replace(/\D/g, '').length < 6) return json({ error: 'Indiquez un numéro de téléphone.' }, 400);
+  if (!DATE_OK.test(date) || !HEURE_OK.test(heure) || !SERVICES_TABLE.includes(service)) {
+    return json({ error: 'Choisissez un jour et une heure.' }, 400);
+  }
+
+  // L'heure doit encore être proposée (délai minimal, horizon, capacité).
+  const ouverts = await creneauxTable(sb, p, date, couverts);
+  if (!ouverts.find((x) => x.service === service)?.creneaux.includes(heure)) {
+    return json({ error: 'Cette heure vient d\'être prise. Choisissez-en une autre.', code: 'creneau_pris' }, 409);
+  }
+
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'inconnue';
+  const ipHash = await hacher(`${ip}:${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(-16) || 'spa'}`);
+  const uneHeure = new Date(Date.now() - 3600 * 1000).toISOString();
+  const unJour = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const [{ count: parIp }, { count: parEmail }] = await Promise.all([
+    sb.from('spa_demandes_en_ligne').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', uneHeure),
+    sb.from('spa_demandes_en_ligne').select('id', { count: 'exact', head: true }).eq('email', email).gte('created_at', unJour),
+  ]);
+  if ((parIp || 0) >= 5 || (parEmail || 0) >= 3) {
+    return json({ error: 'Trop de demandes en peu de temps. Merci d\'appeler directement le restaurant.' }, 429);
+  }
+  await sb.from('spa_demandes_en_ligne').insert({ etablissement_id: etab.id, ip_hash: ipHash, email });
+
+  const { data: r, error } = await sb.rpc('resa_reserver_en_ligne', {
+    p_etab: etab.id, p_date: date, p_service: service, p_heure: heure, p_couverts: couverts,
+    p_nom: `${prenom} ${nom}`, p_telephone: telephone, p_email: email, p_message: message || null,
+  });
+  if (error) {
+    console.error('[spa-mailer] resa_reserver_en_ligne', error);
+    return json({ error: 'La réservation n\'a pas pu être enregistrée. Réessayez ou appelez le restaurant.' }, 500);
+  }
+  if (r?.erreur) {
+    const messages: Record<string, string> = {
+      creneau_pris: 'Cette heure vient d\'être prise. Choisissez-en une autre.',
+      complet: 'Ce service est complet. Choisissez un autre moment.',
+      horaire: 'Cette heure est en dehors des heures de réservation.',
+      jour_ferme: 'Le restaurant est fermé ce jour-là.',
+      couverts: `En ligne, jusqu'à ${personnes(p.max_couverts)}. Pour un groupe, appelez-nous.`,
+      ferme: 'La réservation en ligne n\'est pas ouverte pour ce restaurant.',
+    };
+    return json({ error: messages[r.erreur] || 'Heure indisponible.', code: r.erreur }, 409);
+  }
+
+  const confirmee = r.statut === 'confirme';
+  const quand = `${jourLong(date)} à ${heure}`;
+  await mailTable(sb, cfg, etab, confirmee
+    ? {
+      email,
+      sujet: `Votre table du ${jourLong(date)} est réservée`,
+      corps: `Bonjour ${prenom},\n\nC'est noté : une table pour ${personnes(couverts)} le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en répondant à ce message${etab.tel ? ` ou au ${etab.tel}` : ''}.\n\nÀ très bientôt.`,
+    }
+    : {
+      email,
+      sujet: `Votre demande de réservation du ${jourLong(date)}`,
+      corps: `Bonjour ${prenom},\n\nNous avons bien reçu votre demande : une table pour ${personnes(couverts)} le ${quand}.\n\nNous vous confirmons la réservation très vite. Pour toute question, répondez simplement à ce message.\n\nÀ bientôt.`,
+    });
+  if (etab.email) {
+    await mailTable(sb, cfg, etab, {
+      email: etab.email,
+      signature: 'Réservation en ligne',
+      sujet: `${confirmee ? 'Nouvelle réservation' : 'Nouvelle demande'} en ligne : ${personnes(couverts)}, ${quand}`,
+      corps: `${prenom} ${nom} ${confirmee ? 'a réservé' : 'demande'} une table pour ${personnes(couverts)} le ${quand}.\n\nTéléphone : ${telephone}\nE-mail : ${email}${message ? `\n\nMessage : ${message}` : ''}\n\n${confirmee ? 'La réservation est déjà confirmée dans le module Prévisions.' : 'La demande attend votre confirmation dans le module Prévisions.'}`,
+    });
+  }
+  return json({ ok: true, statut: r.statut, date, heure, couverts });
+}
+
 // ── Handler ───────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -985,6 +1208,12 @@ Deno.serve(async (req: Request) => {
   if (action === 'boite_fin') {
     const r = await finConnexion(sb, cfg, String(body.etat || ''), String(body.code || ''), String(body.erreur || ''));
     return json(r, r.erreur ? 400 : 200);
+  }
+
+  // ── Réservation d'une table en ligne : publique, par adresse (slug) ──
+  if (action.startsWith('public_table_')) {
+    if (!['public_table_infos', 'public_table_creneaux', 'public_table_reserver'].includes(action)) return json({ error: 'Action inconnue.' }, 400);
+    return actionTablePublique(req, sb, cfg, action, body);
   }
 
   // ── Réservation en ligne : publique, par adresse de réservation (slug) ──
@@ -1082,6 +1311,39 @@ Deno.serve(async (req: Request) => {
         email: c.email, clientId: c.id,
         sujet: `Votre demande du ${jourLong(r.date_rdv)}`,
         corps: `Bonjour ${prenom},\n\nNous sommes désolés : nous ne pouvons pas vous recevoir le ${jourLong(r.date_rdv)} à ${heure} pour « ${soin} ».\n\nRépondez à ce message ou appelez-nous pour convenir d'un autre moment.\n\nÀ bientôt.`,
+      });
+    return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
+  }
+
+  // Réservation de table venue du site, confirmée ou refusée dans le module
+  // Prévisions : même principe que rdv_statut.
+  if (action === 'resa_statut') {
+    if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
+    const evenement = String(body.evenement || '');
+    const { data: r } = await sb.from('reservations')
+      .select('id, nom, email, date_service, heure_arrivee, nb_couverts, statut, origine')
+      .eq('id', String(body.reservationId || '')).eq('etablissement_id', etabId).maybeSingle();
+    if (!r) return json({ error: 'Réservation introuvable.' }, 404);
+    if (r.origine !== 'en_ligne') return json({ envoye: false, raison: 'hors_ligne' });
+    const attendu = evenement === 'confirmation' ? 'confirme' : evenement === 'refus' ? 'annule' : null;
+    if (!attendu || r.statut !== attendu) return json({ envoye: false, raison: 'statut' });
+    if (!r.email) return json({ envoye: false, raison: 'sans_email' });
+    if (!(await peutEnvoyer(sb, cfg, etabId))) return json({ envoye: false, raison: 'non_configure' });
+    const { data: etab } = await sb.from('etablissements').select('id, nom, adresse, tel, email').eq('id', etabId).maybeSingle();
+    if (!etab) return json({ error: 'Établissement introuvable.' }, 404);
+    const heure = String(r.heure_arrivee).slice(0, 5);
+    const quand = `${jourLong(r.date_service)} à ${heure}`;
+    const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
+    const res = evenement === 'confirmation'
+      ? await mailTable(sb, cfg, etab as Etab, {
+        email: r.email,
+        sujet: `Votre table du ${jourLong(r.date_service)} est confirmée`,
+        corps: `Bonjour ${r.nom},\n\nC'est confirmé : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en répondant à ce message.\n\nÀ très bientôt.`,
+      })
+      : await mailTable(sb, cfg, etab as Etab, {
+        email: r.email,
+        sujet: `Votre demande de réservation du ${jourLong(r.date_service)}`,
+        corps: `Bonjour ${r.nom},\n\nNous sommes désolés : nous ne pouvons pas vous recevoir le ${quand} (${table}).\n\nRépondez à ce message ou appelez-nous pour convenir d'un autre moment.\n\nÀ bientôt.`,
       });
     return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
   }
