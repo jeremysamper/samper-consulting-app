@@ -508,6 +508,19 @@ export function installLegacySupabase() {
       return data;
     },
 
+    // Arrivée sans horaire prévu : crée l'horaire du jour, déjà pointé
+    // (migration 20260930_pointage_hors_planning). shiftId généré sur
+    // l'appareil : un rejeu renvoie le même horaire.
+    async pointerHorsPlanning(shiftId, etablissementId, eventAt = null) {
+      const { data, error } = await client.rpc('pointer_hors_planning', {
+        p_shift_id: shiftId,
+        p_etablissement_id: etablissementId,
+        ...(eventAt ? { p_event_at: eventAt } : {}),
+      });
+      if (error) throw error;
+      return data;
+    },
+
     // Mapper row DB → objet JS camelCase
     mapShiftFromDB(row) {
       if (!row) return null;

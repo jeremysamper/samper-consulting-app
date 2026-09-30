@@ -65,11 +65,14 @@ function scheduleRetry() {
 // Met un punch en file, horodaté MAINTENANT (heure du geste, jamais regénérée
 // à la synchronisation). Retourne l'élément stocké + l'heure optimiste Zurich
 // à afficher immédiatement (feedback identique au pointage online).
-export async function queuePunch({ shiftId, type, userId, etablissementId }) {
+// horsPlanning : arrivée sans horaire prévu, rejouée par pointer_hors_planning
+// (qui crée l'horaire du jour) au lieu de pointer_offline.
+export async function queuePunch({ shiftId, type, userId, etablissementId, horsPlanning = false }) {
   const item = {
     clientUuid: generateUuid(),
     shiftId,
     type,
+    horsPlanning: Boolean(horsPlanning),
     userId: userId || null,
     etablissementId: etablissementId || null,
     eventAt: new Date().toISOString(),
@@ -99,13 +102,21 @@ export async function syncPendingPunches() {
       .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
     for (const item of items) {
-      const { error } = await supabase.rpc('pointer_offline', {
-        p_shift_id: item.shiftId,
-        p_type: item.type,
-        p_event_at: item.eventAt,
-        p_client_uuid: item.clientUuid,
-        p_etablissement_id: item.etablissementId,
-      });
+      // Arrivée hors planning : crée l'horaire (idempotent par shiftId) avant
+      // le départ éventuel, rejoué ensuite dans l'ordre par pointer_offline.
+      const { error } = item.horsPlanning
+        ? await supabase.rpc('pointer_hors_planning', {
+          p_shift_id: item.shiftId,
+          p_etablissement_id: item.etablissementId,
+          p_event_at: item.eventAt,
+        })
+        : await supabase.rpc('pointer_offline', {
+          p_shift_id: item.shiftId,
+          p_type: item.type,
+          p_event_at: item.eventAt,
+          p_client_uuid: item.clientUuid,
+          p_etablissement_id: item.etablissementId,
+        });
 
       if (!error) {
         await punchQueue.remove(item.clientUuid);
@@ -140,7 +151,7 @@ export async function syncPendingPunches() {
 // Retourne { mode: 'online', row } ou { mode: 'queued', queued } ; relance
 // l'erreur telle quelle pour une erreur MÉTIER (déjà pointé, non autorisé...)
 // afin que l'appelant garde son affichage d'erreur habituel.
-export async function punchOnlineOrQueue({ call, shiftId, type, userId, etablissementId }) {
+export async function punchOnlineOrQueue({ call, shiftId, type, userId, etablissementId, horsPlanning = false }) {
   if (typeof navigator === 'undefined' || navigator.onLine !== false) {
     try {
       const row = await withTimeout(call());
@@ -150,7 +161,7 @@ export async function punchOnlineOrQueue({ call, shiftId, type, userId, etabliss
       if (!isNetworkError(err)) throw err;
     }
   }
-  const queued = await queuePunch({ shiftId, type, userId, etablissementId });
+  const queued = await queuePunch({ shiftId, type, userId, etablissementId, horsPlanning });
   return { mode: 'queued', queued };
 }
 

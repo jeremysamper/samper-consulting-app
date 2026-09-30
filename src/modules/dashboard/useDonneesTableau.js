@@ -135,13 +135,22 @@ export function useDonneesTableau({ etablissementId, aujourdhui, avecHaccp, avec
   }, [etablissementId, aujourdhui, avecHaccp, avecPertes, avecStock, avecCouverts, avecGroupes]);
 
   // Remplacement local d'un horaire (pointage optimiste puis confirmé).
+  // Remplace l'horaire, ou l'ajoute s'il est nouveau (pointage hors planning).
   const remplacerShift = useCallback((shift) => {
-    setDonnees((d) => ({ ...d, shifts: d.shifts.map((s) => (s.id === shift.id ? shift : s)) }));
+    setDonnees((d) => ({
+      ...d,
+      shifts: d.shifts.some((s) => s.id === shift.id)
+        ? d.shifts.map((s) => (s.id === shift.id ? shift : s))
+        : [...d.shifts, shift],
+    }));
+  }, []);
+  const retirerShift = useCallback((id) => {
+    setDonnees((d) => ({ ...d, shifts: d.shifts.filter((s) => s.id !== id) }));
   }, []);
   const remettreShifts = useCallback((shifts) => setDonnees((d) => ({ ...d, shifts })), []);
   const recharger = useCallback(() => rechargerRef.current?.(), []);
   // Mise à jour locale d'une source (message publié), sans attendre le realtime.
   const maj = useCallback((nom, valeur) => setDonnees((d) => ({ ...d, [nom]: valeur })), []);
 
-  return { ...donnees, statuts, pret, remplacerShift, remettreShifts, recharger, maj };
+  return { ...donnees, statuts, pret, remplacerShift, retirerShift, remettreShifts, recharger, maj };
 }
