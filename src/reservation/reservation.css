@@ -1,0 +1,41 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Réservation en ligne : réglages propres à la page publique
+   ────────────────────────────────────────────────────────────────────────────
+   Surcharge les jetons du module Spa (spa.css) pour cette page seulement :
+   le module Spa de l'app n'est pas touché. Même principe que l'app : pas de
+   fond crème, pas d'ombre sur ce qui est posé sur la page, coins resserrés.
+   Les couleurs claires ci-dessous perdent face aux blocs sombres de spa.css
+   (sélecteurs plus précis) : le thème sombre garde ses valeurs. La couleur
+   d'accent du site du client (paramètre accent) passe en style en ligne et
+   l'emporte toujours.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.spa.spa-resa {
+  --spa-bg: #f2f5f5;
+  --spa-surface: #fcfdfd;
+  --spa-surface2: #f5f7f7;
+  --spa-sunken: #e9eeee;
+  --spa-line: #dbe1e1;
+  --spa-line2: #c7d0d0;
+
+  --spa-shadow: none;
+  --spa-shadow-lift: none;
+  --spa-r-lg: 10px;
+  --spa-r: 8px;
+  --spa-r-sm: 6px;
+}
+
+/* Carte des soins : une ligne par soin, comme un menu imprimé. */
+.spa-resa .resa-soin {
+  transition: background-color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .spa-resa .resa-soin:hover { background: var(--spa-surface2); }
+}
+.spa-resa .resa-soin:focus-visible {
+  outline: 2px solid var(--spa-mizu);
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spa-resa .resa-soin { transition: none; }
+}
