@@ -15,7 +15,18 @@ import { zurichToday, zurichNowMinutes } from '../../utils/zurichTime.js';
 
 export const STATUTS = ['confirme', 'arrive', 'parti', 'no_show'];
 
+// 'demande' n'est pas dans STATUTS non plus : c'est une réservation venue du
+// site (réservation en ligne, mode « à confirmer »). Elle se confirme ou se
+// refuse (boutons dédiés, qui préviennent le client par e-mail), elle ne se
+// fait pas défiler avec les états du service.
 export const STATUT_META = {
+  demande: {
+    label: 'À confirmer',
+    court: 'À confirmer',
+    bg: 'var(--warning-bg-soft)',
+    texte: 'var(--warning-text)',
+    bordure: 'var(--warning-bd)',
+  },
   confirme: {
     label: 'Attendu',
     court: 'Attendu',
@@ -54,7 +65,7 @@ export function metaStatut(statut) {
 // 'no_show' sortent des compteurs de présence à l'écran. Les couverts
 // prévisionnels, eux, restent gérés par le trigger côté base.
 export function estPresent(statut) {
-  return statut === 'confirme' || statut === 'arrive';
+  return statut === 'demande' || statut === 'confirme' || statut === 'arrive';
 }
 
 // ── Service par défaut à la saisie ────────────────────────────────────────

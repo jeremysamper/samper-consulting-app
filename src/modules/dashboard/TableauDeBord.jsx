@@ -32,7 +32,7 @@ import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventa
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import { useDonneesTableau } from './useDonneesTableau.js';
 import {
-  aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, equipeDu, groupesDu, prochainShift, resumeDuJour, shiftsDu,
+  aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, equipeDu, etatShift, groupesDu, prochainShift, resumeDuJour, shiftsDu,
 } from './tableauLogique.js';
 import { t } from './tableauUi.jsx';
 import CartePointage from './CartePointage.jsx';
@@ -163,9 +163,21 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   };
   const enEchec = Object.values(d.statuts).includes('error');
 
-  // La carte « Mon service » ne sert qu'à qui est planifié : la direction, qui
-  // ne l'est pas d'habitude, ne la voit que si elle a un horaire.
-  const montrerPointage = avecPlanning && (!direction || mesShifts.length > 0 || monProchain);
+  // « Mon service » est toujours là quand le planning est activé : chacun y
+  // pointe, et le bouton du pointage ouvre le suivi de l'équipe (Planning,
+  // onglet Pointage). La direction sans horaire y lit l'état de l'équipe.
+  const montrerPointage = avecPlanning;
+  const etatsEquipe = equipeDu(d.shifts, aujourdhui).map(({ shifts: liste }) => {
+    const actif = liste.find((sh) => sh.pointageDebut && !sh.pointageFin)
+      || liste.find((sh) => !sh.pointageDebut)
+      || liste[liste.length - 1];
+    return etatShift(actif, maintenant);
+  });
+  const equipeDuJour = {
+    total: etatsEquipe.length,
+    enPoste: etatsEquipe.filter((e) => e === 'en_poste').length,
+    pasPointes: etatsEquipe.filter((e) => e === 'en_retard').length,
+  };
   const salutation = maintenant >= 18 * 60 ? 'Bonsoir' : 'Bonjour';
 
   return (
@@ -195,6 +207,9 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
                 enCours={enCours}
                 erreur={erreurPointage}
                 prenom={user?.prenom}
+                direction={direction}
+                equipe={equipeDuJour}
+                onOuvrirPointage={peutOuvrir('pointage') ? () => ouvrir('pointage') : null}
               />
             )}
             <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />

@@ -49,14 +49,14 @@ function legacyRawComponentsPlugin() {
 }
 
 // Dev : /reserver/<adresse> (et son guide /integrer) sert la page publique de réservation, comme la
-// réécriture vercel.json le fait en production.
+// réécriture vercel.json le fait en production. /table/<adresse> (réservation d'une table) aussi.
 function reservationPubliqueDevPlugin() {
   return {
     name: 'samper-reservation-publique-dev',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const [chemin, requete] = (req.url || '').split('?');
-        if (/^\/reserver\/[a-z0-9-]+(\/integrer)?\/?$/i.test(chemin)) {
+        if (/^\/reserver\/[a-z0-9-]+(\/integrer)?\/?$/i.test(chemin) || /^\/table\/[a-z0-9-]+\/?$/i.test(chemin)) {
           req.url = `/reserver.html${requete ? `?${requete}` : ''}`;
         }
         next();
@@ -107,9 +107,9 @@ export default defineConfig({
         // Pas '/index.html' : la copie dist est faite par productionIndexPlugin
         // APRÈS la génération du SW, elle n'est donc pas dans le précache.
         navigateFallback: '/vite-index.html',
-        // /reserver/ : page publique de réservation des spas (entrée à part),
-        // jamais remplacée par l'app shell.
-        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//],
+        // /reserver/ et /table/ : pages publiques de réservation (spas,
+        // restaurants ; entrée à part), jamais remplacées par l'app shell.
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre
@@ -242,8 +242,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         app: 'vite-index.html',
-        // Page publique de réservation des spas (/reserver/<adresse>), sans
-        // le bundle de l'app : servie seule ou dans le site du client.
+        // Pages publiques de réservation (/reserver/<adresse> pour un spa,
+        // /table/<adresse> pour un restaurant), sans le bundle de l'app :
+        // servies seules ou dans le site du client.
         reserver: 'reserver.html'
       },
       output: {

@@ -5,6 +5,8 @@ import { installDigitFont } from '../design/installDigitFont.js';
 
 // Guide d'installation, chargé seulement sur son adresse.
 const GuideIntegration = lazy(() => import('./GuideIntegration.jsx'));
+// Réservation d'une table de restaurant (/table/<adresse>), chargée seulement là.
+const ReservationTable = lazy(() => import('./ReservationTable.jsx'));
 
 // Page publique de réservation d'un spa (/reserver/<adresse>), affichée seule
 // ou dans le site du client via widget-spa.js. Aucune session, aucun accès
@@ -12,13 +14,18 @@ const GuideIntegration = lazy(() => import('./GuideIntegration.jsx'));
 // /reserver/<adresse>/integrer : guide d'installation pour la personne qui
 // gère le site du spa.
 const guide = /\/reserver\/[a-z0-9-]+\/integrer\/?$/i.test(window.location.pathname);
+const table = /^\/table\/[a-z0-9-]+\/?$/i.test(window.location.pathname);
 
 // Chiffres des titres (Zodiak) rendus en Satoshi, comme dans l'app.
 installDigitFont();
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {guide ? (
+    {table ? (
+      <Suspense fallback={null}>
+        <ReservationTable />
+      </Suspense>
+    ) : guide ? (
       <Suspense fallback={null}>
         <GuideIntegration />
       </Suspense>

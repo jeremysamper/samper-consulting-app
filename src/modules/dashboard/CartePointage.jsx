@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, CircleCheck, Clock, LogIn, LogOut, Moon, Sun } from 'lucide-react';
+import { CalendarClock, CircleCheck, Clock, LogIn, LogOut, Moon, Sun, Users } from 'lucide-react';
 import { Carte, Puce, t } from './tableauUi.jsx';
 import { duree, enMinutes, jourRelatif } from './tableauLogique.js';
 
@@ -29,7 +29,9 @@ function ponctualite(debut, maintenant) {
   return { texte: `Commencé depuis ${duree(-ecart)}`, ton: 'warning' };
 }
 
-export default function CartePointage({ shifts, prochain, aujourdhui, maintenant, onPointer, enCours, erreur, prenom }) {
+export default function CartePointage({
+  shifts, prochain, aujourdhui, maintenant, onPointer, enCours, erreur, prenom, direction = false, equipe = null, onOuvrirPointage = null,
+}) {
   const actif = shifts.find((s) => s.pointageDebut && !s.pointageFin);
 
   return (
@@ -38,10 +40,32 @@ export default function CartePointage({ shifts, prochain, aujourdhui, maintenant
       sousTitre={shifts.length ? `${shifts.length > 1 ? 'Deux services' : 'Un service'} aujourd'hui` : "Pas d'horaire aujourd'hui"}
       ton={actif ? 'success' : undefined}
       style={actif ? { borderColor: 'var(--success-bd)' } : undefined}
+      action={onOuvrirPointage ? (
+        <button type="button" onClick={onOuvrirPointage} style={s.ouvrir}>
+          <Users size={15} strokeWidth={1.9} aria-hidden="true" /> Système de pointage
+        </button>
+      ) : null}
     >
       {erreur && <div role="alert" style={s.erreur}>{erreur}</div>}
 
-      {!shifts.length && (
+      {!shifts.length && direction && equipe && (
+        <div style={s.repos}>
+          <Users size={22} strokeWidth={1.7} aria-hidden="true" style={{ color: 'var(--text3)', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+              {!equipe.total ? 'Personne au planning aujourd\'hui.'
+                : `${equipe.enPoste} en poste sur ${equipe.total} au planning.`}
+            </div>
+            <div style={t.texte2}>
+              {equipe.pasPointes
+                ? `${equipe.pasPointes} ${equipe.pasPointes > 1 ? 'n\'ont' : 'n\'a'} pas encore pointé.`
+                : 'Vous n\'avez pas d\'horaire aujourd\'hui.'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!shifts.length && !(direction && equipe) && (
         <div style={s.repos}>
           <CalendarClock size={22} strokeWidth={1.7} aria-hidden="true" style={{ color: 'var(--text3)', flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
@@ -136,6 +160,11 @@ const s = {
     background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
   },
   repos: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '4px 2px' },
+  ouvrir: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, minHeight: 40, padding: '8px 12px', cursor: 'pointer',
+    borderRadius: 'var(--r-sm)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    background: 'var(--surface)', color: 'var(--text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+  },
   service: {
     padding: 14, borderRadius: 'var(--r)', background: 'var(--surface)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
