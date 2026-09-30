@@ -27,13 +27,14 @@ import { useAbsences } from '../../hooks/useAbsences.js';
 import { useUnreadPrivateMessages } from '../../hooks/useUnreadPrivateMessages.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
+import { generateUuid } from '../../services/offline/offlineNet.js';
 import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import { useDonneesTableau } from './useDonneesTableau.js';
 import {
-  aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, equipeDu, etatShift, groupesDu, prochainShift, resumeDuJour, shiftsDu,
+  aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, equipeDu, groupesDu, prochainShift, resumeDuJour, shiftsDu,
 } from './tableauLogique.js';
 import { t } from './tableauUi.jsx';
 import CartePointage from './CartePointage.jsx';
@@ -128,6 +129,45 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     }
   }
 
+  // Arrivée sans horaire prévu : l'horaire du jour est créé au nom de
+  // l'équipier (RPC pointer_hors_planning), identifiant généré ici pour que la
+  // file hors-ligne et un double tap retombent sur le même horaire.
+  async function pointerHorsPlanning() {
+    setErreurPointage('');
+    const bridge = dbService.getBridge();
+    if (!bridge?.db) { setErreurPointage('Connexion à la base indisponible.'); return; }
+    const heure = zurichClock();
+    const provisoire = {
+      id: generateUuid(), etablissementId: etabId, userId: user?.id, date: aujourdhui,
+      debut: heure, fin: heure, pointageDebut: heure, pointageFin: null, typeShift: 'simple', note: 'Pointage hors planning',
+    };
+    d.remplacerShift(provisoire);
+    setEnCours(provisoire.id);
+    try {
+      const res = await punchOnlineOrQueue({
+        call: () => bridge.db.pointerHorsPlanning(provisoire.id, etabId),
+        shiftId: provisoire.id,
+        type: 'arrivee',
+        userId: user?.id || null,
+        etablissementId: etabId,
+        horsPlanning: true,
+      });
+      if (res.mode === 'online') {
+        const confirme = bridge.db.mapShiftFromDB(res.row);
+        d.remplacerShift(confirme);
+        notify(`Arrivée pointée à ${confirme.pointageDebut}. Elle est ajoutée au planning.`, 'success');
+      } else {
+        notify('Pointage enregistré : il sera envoyé au retour du réseau.', 'warning');
+      }
+    } catch (err) {
+      d.retirerShift(provisoire.id);
+      setErreurPointage(`Pointage refusé : ${err.message}`);
+      notify(`Pointage refusé : ${err.message}`, 'error');
+    } finally {
+      setEnCours(null);
+    }
+  }
+
   // ── Message du consultant ──
   async function publierMessage(texte) {
     const bridge = dbService.getBridge();
@@ -164,21 +204,10 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   };
   const enEchec = Object.values(d.statuts).includes('error');
 
-  // « Mon service » est toujours là quand le planning est activé : chacun y
-  // pointe, et le bouton du pointage ouvre le suivi de l'équipe (Planning,
-  // onglet Pointage). La direction sans horaire y lit l'état de l'équipe.
-  const montrerPointage = avecPlanning;
-  const etatsEquipe = equipeDu(d.shifts, aujourdhui).map(({ shifts: liste }) => {
-    const actif = liste.find((sh) => sh.pointageDebut && !sh.pointageFin)
-      || liste.find((sh) => !sh.pointageDebut)
-      || liste[liste.length - 1];
-    return etatShift(actif, maintenant);
-  });
-  const equipeDuJour = {
-    total: etatsEquipe.length,
-    enPoste: etatsEquipe.filter((e) => e === 'en_poste').length,
-    pasPointes: etatsEquipe.filter((e) => e === 'en_retard').length,
-  };
+  // « Mon service » : le pointage individuel de l'équipe, toujours là quand le
+  // planning est activé, horaire prévu ou non (arrivée hors planning). Pas
+  // pour la direction (consultant, patron), qui ne pointe pas.
+  const montrerPointage = avecPlanning && !direction;
   const salutation = maintenant >= 18 * 60 ? 'Bonsoir' : 'Bonjour';
 
   return (
@@ -214,9 +243,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
                 enCours={enCours}
                 erreur={erreurPointage}
                 prenom={user?.prenom}
-                direction={direction}
-                equipe={equipeDuJour}
-                onOuvrirPointage={peutOuvrir('pointage') ? () => ouvrir('pointage') : null}
+                onPointerHorsPlanning={pointerHorsPlanning}
               />
             )}
             <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />
