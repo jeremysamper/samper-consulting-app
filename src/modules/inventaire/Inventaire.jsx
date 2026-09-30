@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData, canManageModule } from '../../data/demoData.js';
+import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -170,7 +170,7 @@ const Inventaire = ({ user, etablissement }) => {
   const importXlsxRef = React.useRef(null);
   // Export de l'état d'inventaire en cours (Excel ou PDF).
   const [exportEnCours, setExportEnCours] = React.useState(false);
-  const perms = demoData.permissions[user.role] || {};
+  const perms = getPermissionsForRole(user.role);
   const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
   // Actions d'import/export/impression réservées à consultant + patron
   const canExport = ['consultant', 'patron'].includes(user.role);

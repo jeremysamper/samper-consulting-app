@@ -6,15 +6,19 @@ import {
   getLundiSemaine, addDays, formatJourSemaine,
   formatDateCourte, isAujourdhui,
 } from '../../utils/dateHelpers.js';
+import { SERVICE_META, SERVICES_AFFICHES } from './statutsReservation.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 
-const SEUIL_ALERTE = 40;
-
-const SERVICES = [
-  { key: 'couverts_midi',   label: 'Midi',   color: '#ea580c', bg: '#fff7ed' },
-  { key: 'couverts_soir',   label: 'Soir',   color: 'var(--info-text)', bg: 'var(--info-bg-soft)' },
-  { key: 'couverts_brunch', label: 'Brunch', color: '#059669', bg: 'var(--success-bg-soft)' },
-];
+// ═══════════════════════════════════════════════════════════════════════════
+// Planning de la semaine : les réservations par NOM, service par service.
+//
+// Il affichait « Midi 24 · Soir 40 » : juste pour la cuisine, muet pour la
+// salle qui veut savoir QUI vient. Chaque jour montre désormais ses
+// réservations dans la colonne de leur service, avec le code couleur des
+// services (midi orange, soir bleu). Le brunch est dans la colonne du midi :
+// c'est le midi du dimanche. Un nom ouvre sa fiche, le jour ouvre la vue
+// jour. Le total de couverts reste en petit, pour la cuisine.
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Injection de l'animation skeleton une seule fois dans le DOM
 let skeletonStyleInjected = false;
@@ -34,153 +38,216 @@ function SkeletonRow() {
     }}>
       <div style={{ width: 52, height: 32, borderRadius: 6, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite' }} />
       <div style={{ flex: 1, height: 13, borderRadius: 4, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.1s' }} />
-      <div style={{ width: 36, height: 20, borderRadius: 4, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.2s' }} />
+      <div style={{ flex: 1, height: 13, borderRadius: 4, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.2s' }} />
     </div>
   );
 }
 
-// ── Ligne desktop / carte mobile ──────────────────────────
-function DayRow({ jour, auj, tags, isMobile, onClick }) {
-  const [hovered, setHovered] = useState(false);
-  const total  = jour.total_couverts || 0;
-  const alerte = total >= SEUIL_ALERTE;
+const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
-  if (isMobile) {
-    return (
-      <div
-        role="button" tabIndex={0}
-        onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}
-        style={{
-          padding: '13px 16px', borderBottom: '1px solid var(--border)',
-          cursor: 'pointer',
-          borderLeft: auj ? '3px solid var(--accent)' : '3px solid transparent',
-          background: auj ? 'rgba(99,102,241,0.05)' : 'var(--surface)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-          <div>
-            <span style={{ fontWeight: 800, fontSize: 13, color: auj ? 'var(--accent)' : 'var(--text)' }}>
-              {formatJourSemaine(jour.date_service)}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 7 }}>
-              {formatDateCourte(jour.date_service)}
-            </span>
-          </div>
-          <span style={{
-            fontSize: 15, fontWeight: 800,
-            color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
-            fontFamily: 'var(--font-num)',
-          }}>
-            {total > 0 ? `${total} pax` : '-'}
-          </span>
-        </div>
-        {total > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-            {SERVICES.map(({ key, label, color, bg }) => {
-              const n = jour[key] || 0;
-              if (!n) return null;
-              return (
-                <span key={key} style={{
-                  padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                  background: bg, color, fontFamily: 'var(--font)',
-                }}>
-                  {label} {n}
-                </span>
-              );
-            })}
-            {tags.slice(0, 3).map((t) => (
-              <span key={t} style={{
-                padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-                background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
-                fontFamily: 'var(--font)',
-              }}>
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+// ── Une réservation dans le planning ─────────────────────────────────────
+function ResaPuce({ resa, svc, onOpen }) {
+  const meta      = SERVICE_META[svc];
+  const demande   = resa.statut === 'demande';
+  const noShow    = resa.statut === 'no_show';
+  const allergies = (Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [])
+    .filter((t) => t.type_tag === 'allergene' && t.valeur)
+    .map((t) => t.valeur);
+  const heure = (resa.heure_arrivee || '').slice(0, 5);
+  const titre = [
+    `${heure} ${resa.nom}, ${pluriel(resa.nb_couverts || 0, 'couvert')}`,
+    resa.service === 'brunch' ? 'brunch' : null,
+    demande ? 'demande en ligne à confirmer' : null,
+    noShow ? 'no-show' : null,
+    allergies.length ? `allergies : ${allergies.join(', ')}` : null,
+  ].filter(Boolean).join(' · ');
 
-  // ── Desktop ──
   return (
-    <div
-      role="button" tabIndex={0}
-      onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}
-      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+    <button
+      type="button"
+      title={titre}
+      aria-label={titre}
+      onClick={(e) => { e.stopPropagation(); onOpen?.(resa); }}
       style={{
-        display: 'grid', gridTemplateColumns: '88px 1fr 44px',
-        alignItems: 'center', gap: 12,
-        padding: '10px 16px', borderBottom: '1px solid var(--border)',
-        cursor: 'pointer', transition: 'background 0.1s',
-        borderLeft: auj ? '3px solid var(--accent)' : '3px solid transparent',
-        background: auj
-          ? 'rgba(99,102,241,0.06)'
-          : hovered ? 'var(--bg)' : 'var(--surface)',
+        display: 'inline-flex', alignItems: 'baseline', gap: 5,
+        maxWidth: '100%', minWidth: 0, minHeight: 30,
+        padding: '4px 8px', borderRadius: 6,
+        // Une demande venue du site n'est pas encore une réservation : trait
+        // pointillé ambre, le même « à confirmer » que dans la vue jour.
+        borderWidth: 1, borderStyle: demande ? 'dashed' : 'solid',
+        borderColor: demande ? 'var(--warning-bd)' : meta.bordure,
+        background: meta.fond, color: 'var(--text)',
+        fontFamily: 'var(--font)', fontSize: 12, lineHeight: 1.3,
+        cursor: 'pointer', textAlign: 'left',
+        opacity: noShow ? 0.55 : 1,
       }}
     >
-      {/* Colonne 1 : Jour + date */}
-      <div>
-        <div style={{ fontSize: 12, fontWeight: 800, color: auj ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)' }}>
-          {formatJourSemaine(jour.date_service)}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-          {formatDateCourte(jour.date_service)}
-        </div>
-      </div>
-
-      {/* Colonne 2 : Badges services + tags critiques */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
-        {SERVICES.map(({ key, label, color, bg }) => {
-          const n = jour[key] || 0;
-          if (!n) return null;
-          const enAlerte = n >= SEUIL_ALERTE;
-          return (
-            <span key={key} style={{
-              padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-              background: enAlerte ? 'var(--danger-bg)' : bg,
-              color:      enAlerte ? 'var(--danger-text)' : color,
-              border: `1px solid ${enAlerte ? 'var(--danger-bd)' : 'transparent'}`,
-              fontFamily: 'var(--font)',
-            }}>
-              {label} {n}
-            </span>
-          );
-        })}
-        {jour.nb_groupes > 0 && (
-          <span style={{ fontSize: 11, color: 'var(--text3)' }}>
-            👥 {jour.nb_groupes}
-          </span>
-        )}
-        {tags.slice(0, 4).map((t) => (
-          <span key={t} style={{
-            padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-            background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
-            fontFamily: 'var(--font)',
-          }}>
-            {t}
-          </span>
-        ))}
-        {tags.length > 4 && (
-          <span style={{ fontSize: 10, color: 'var(--text3)' }}>+{tags.length - 4}</span>
-        )}
-      </div>
-
-      {/* Colonne 3 : Total */}
-      <div style={{
-        textAlign: 'right', fontSize: 16, fontWeight: 800,
-        fontFamily: 'var(--font-num)',
-        color: alerte ? 'var(--danger-text)' : total > 0 ? 'var(--text)' : 'var(--text3)',
+      <span style={{ fontSize: 11, color: meta.couleur, fontFamily: 'var(--font-num)', flexShrink: 0 }}>
+        {heure}
+      </span>
+      {allergies.length > 0 && (
+        <span aria-hidden="true" style={{
+          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+          background: 'var(--danger-text)', alignSelf: 'center',
+        }} />
+      )}
+      <span style={{
+        fontWeight: resa.est_groupe ? 700 : 600,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+        textDecoration: noShow ? 'line-through' : 'none',
       }}>
-        {total > 0 ? total : '-'}
+        {resa.nom}
+      </span>
+      <span style={{ fontWeight: 700, color: meta.couleur, fontFamily: 'var(--font-num)', flexShrink: 0 }}>
+        {resa.nb_couverts}
+      </span>
+    </button>
+  );
+}
+
+// Les réservations d'un service pour un jour, à la suite, dans l'ordre des
+// heures. Elles passent à la ligne : un samedi à trente tables reste lisible
+// sans faire défiler la cellule.
+function ListeService({ resas, svc, onOpen, vide = true }) {
+  if (!resas.length) {
+    return vide
+      ? <span style={{ fontSize: 12, color: 'var(--text3)' }}>-</span>
+      : null;
+  }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, minWidth: 0 }}>
+      {resas.map((r) => <ResaPuce key={r.id} resa={r} svc={svc} onOpen={onOpen} />)}
+    </div>
+  );
+}
+
+// Couverts d'un service ce jour-là, en petit : la cuisine s'en sert encore.
+function couvertsService(jour, svc) {
+  return jour[`couverts_${svc}`] || 0;
+}
+
+function Allergenes({ tags, max = 3 }) {
+  if (!tags.length) return null;
+  return (
+    <div style={{ fontSize: 10, color: 'var(--danger-text)', marginTop: 4, lineHeight: 1.35, fontWeight: 600 }}>
+      {tags.slice(0, max).join(', ')}{tags.length > max ? ` +${tags.length - max}` : ''}
+    </div>
+  );
+}
+
+// ── Desktop / tablette : une ligne par jour, une colonne par service ─────
+function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
+  const [survol, setSurvol] = useState(false);
+  const total = jour.total_couverts || 0;
+  const tags  = Array.isArray(jour.tags_critiques) ? jour.tags_critiques : [];
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: colonnes,
+      borderBottom: '1px solid var(--border)',
+      background: auj ? 'var(--accent-light)' : 'var(--surface)',
+    }}>
+      <button
+        type="button"
+        onClick={() => onDayClick(jour.date_service)}
+        onMouseEnter={() => setSurvol(true)} onMouseLeave={() => setSurvol(false)}
+        title="Ouvrir la journée"
+        style={{
+          textAlign: 'left', padding: '10px 12px', border: 'none',
+          borderLeft: `3px solid ${auj ? 'var(--accent)' : 'transparent'}`,
+          background: survol ? 'var(--bg)' : 'transparent',
+          cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 0,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 800, color: auj ? 'var(--accent)' : 'var(--text)' }}>
+          {formatJourSemaine(jour.date_service)}
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', marginLeft: 6 }}>
+            {formatDateCourte(jour.date_service)}
+          </span>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+          {total > 0 ? pluriel(total, 'couvert') : 'Libre'}
+        </div>
+        <Allergenes tags={tags} />
+      </button>
+      {services.map((svc) => {
+        const resas = jour.resas[svc] || [];
+        const n = couvertsService(jour, svc);
+        return (
+          <div
+            key={svc}
+            onClick={() => onDayClick(jour.date_service)}
+            style={{
+              padding: '8px 10px', minWidth: 0, cursor: 'pointer',
+              borderLeft: `3px solid ${SERVICE_META[svc].bordure}`,
+              display: 'flex', flexDirection: 'column', gap: 5,
+            }}
+          >
+            <ListeService resas={resas} svc={svc} onOpen={onOpen} />
+            {n > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--text3)' }}>{pluriel(n, 'couvert')}</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Mobile : une carte par jour, les services l'un sous l'autre ──────────
+function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
+  const total = jour.total_couverts || 0;
+  const tags  = Array.isArray(jour.tags_critiques) ? jour.tags_critiques : [];
+  const avecResas = services.filter((svc) => (jour.resas[svc] || []).length > 0);
+  return (
+    <div style={{
+      borderBottom: '1px solid var(--border)',
+      borderLeft: `3px solid ${auj ? 'var(--accent)' : 'transparent'}`,
+      background: auj ? 'var(--accent-light)' : 'var(--surface)',
+    }}>
+      <button
+        type="button"
+        onClick={() => onDayClick(jour.date_service)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, padding: '12px 14px 6px', border: 'none', background: 'transparent',
+          cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
+        }}
+      >
+        <span>
+          <span style={{ fontWeight: 800, fontSize: 14, color: auj ? 'var(--accent)' : 'var(--text)' }}>
+            {formatJourSemaine(jour.date_service)}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 7 }}>
+            {formatDateCourte(jour.date_service)}
+          </span>
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+          {total > 0 ? pluriel(total, 'couvert') : 'Libre'} ›
+        </span>
+      </button>
+      <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {avecResas.length === 0 && (
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>Aucune réservation</div>
+        )}
+        {avecResas.map((svc) => (
+          <div key={svc}>
+            <div style={{
+              fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5,
+              color: SERVICE_META[svc].couleur, marginBottom: 4,
+            }}>
+              {SERVICE_META[svc].label} · {pluriel(couvertsService(jour, svc), 'couvert')}
+            </div>
+            <ListeService resas={jour.resas[svc]} svc={svc} onOpen={onOpen} vide={false} />
+          </div>
+        ))}
+        {tags.length > 0 && <Allergenes tags={tags} max={6} />}
       </div>
     </div>
   );
 }
 
 // ── Composant principal ────────────────────────────────────
-export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) {
+export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, refreshKey }) {
   const isMobile = useIsMobile();
   const [dateDebut, setDateDebut] = useState(() => getLundiSemaine(new Date()));
   const { semaine, loading, error, nonActualise, fetchSemaine } = usePrevisionsSemaine(etablissementId);
@@ -192,7 +259,9 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
   }, [dateDebut, refreshKey, fetchSemaine]);
 
   const totalSemaine = (semaine || []).reduce((s, j) => s + (j.total_couverts || 0), 0);
-  const semaineVide  = semaine !== null && semaine.every((j) => !j.total_couverts);
+  const semaineVide  = semaine !== null && semaine.every((j) => !Object.values(j.resas).some((l) => l.length));
+  const services   = SERVICES_AFFICHES;
+  const colonnes   = `104px repeat(${services.length}, minmax(0, 1fr))`;
 
   return (
     <div style={{ marginTop: 16 }}>
@@ -263,22 +332,65 @@ export default function VueSemaine({ etablissementId, onDayClick, refreshKey }) 
         </div>
       )}
 
-      {/* ── Tableau 7 jours ── */}
+      {/* ── Planning 7 jours ── */}
       {semaine !== null && !semaineVide && (
         <div style={{
           border: '1px solid var(--border)', borderRadius: 10,
           overflow: 'hidden', background: 'var(--surface)',
         }}>
-          {semaine.map((jour) => (
-            <DayRow
+          {!isMobile && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: colonnes,
+              borderBottom: '1px solid var(--border)', background: 'var(--bg)',
+            }}>
+              <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Jour
+              </div>
+              {services.map((svc) => (
+                <div key={svc} style={{
+                  padding: '8px 10px', fontSize: 11, fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: 0.5,
+                  color: SERVICE_META[svc].couleur,
+                  borderLeft: `3px solid ${SERVICE_META[svc].bordure}`,
+                  background: SERVICE_META[svc].fond,
+                }}>
+                  {SERVICE_META[svc].label}
+                </div>
+              ))}
+            </div>
+          )}
+          {semaine.map((jour) => (isMobile ? (
+            <CarteJour
               key={jour.date_service}
               jour={jour}
+              services={services}
               auj={isAujourdhui(jour.date_service)}
-              tags={Array.isArray(jour.tags_critiques) ? jour.tags_critiques : []}
-              isMobile={isMobile}
-              onClick={() => onDayClick(jour.date_service)}
+              onDayClick={onDayClick}
+              onOpen={onOpenResa}
             />
-          ))}
+          ) : (
+            <LigneJour
+              key={jour.date_service}
+              jour={jour}
+              services={services}
+              colonnes={colonnes}
+              auj={isAujourdhui(jour.date_service)}
+              onDayClick={onDayClick}
+              onOpen={onOpenResa}
+            />
+          )))}
+        </div>
+      )}
+
+      {/* ── Légende ── */}
+      {semaine !== null && !semaineVide && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 8, fontSize: 11, color: 'var(--text3)' }}>
+          <span>Touche un nom pour ouvrir la réservation, le jour pour la journée.</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger-text)' }} />
+            allergie signalée
+          </span>
+          <span>pointillés : demande à confirmer</span>
         </div>
       )}
     </div>

@@ -266,6 +266,52 @@ export function installLegacySupabase() {
       if (error) throw error;
     },
 
+    // ── Droits réglés personne par personne (table permissions_utilisateurs)
+    // Écarts d'une personne à son rôle, mêmes clés que `permissions`. Table
+    // absente (migration pas encore appliquée) = aucun écart, pas une erreur.
+
+    // Toutes les personnes (écran Rôles & accès, consultant) :
+    // { [userId]: perms }. Lève en cas d'échec : l'écran ne doit pas
+    // présenter « aucun écart » quand il n'a simplement pas pu lire.
+    async listPermissionsUtilisateurs() {
+      const { data, error } = await client.from('permissions_utilisateurs').select('user_id, perms');
+      if (error) {
+        if (_relationAbsente(error)) return {};
+        throw error;
+      }
+      const out = {};
+      (data || []).forEach((r) => { out[r.user_id] = r.perms || {}; });
+      return out;
+    },
+
+    // Les écarts de la personne connectée. undefined si la lecture échoue :
+    // l'appelant garde alors ce qu'il avait en cache.
+    async getPermissionsUtilisateur(userId) {
+      if (!userId) return {};
+      const { data, error } = await client
+        .from('permissions_utilisateurs')
+        .select('perms')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) {
+        if (_relationAbsente(error)) return {};
+        console.error('[getPermissionsUtilisateur]', error);
+        return undefined;
+      }
+      return data?.perms || {};
+    },
+
+    // Aucun écart = aucune ligne : revenir aux droits du rôle supprime la ligne.
+    async setPermissionsUtilisateur(userId, perms) {
+      const vide = !perms || Object.keys(perms).length === 0;
+      const { error } = vide
+        ? await client.from('permissions_utilisateurs').delete().eq('user_id', userId)
+        : await client.from('permissions_utilisateurs').upsert({
+          user_id: userId, perms, updated_at: new Date().toISOString(),
+        });
+      if (error) throw error;
+    },
+
     async getSetting(key) {
       const { data, error } = await client.from('app_settings').select('value').eq('key', key).maybeSingle();
       if (error) { console.error('[getSetting]', error); return null; }

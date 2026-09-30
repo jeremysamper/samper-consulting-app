@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData, canManageModule } from '../../data/demoData.js';
+import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -22,7 +22,7 @@ const Pertes = ({ user, etablissement }) => {
   const [search, setSearch] = React.useState('');
   const [motifFilter, setMotifFilter] = React.useState('Tous');
   const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
-  const perms = demoData.permissions[user.role] || {};
+  const perms = getPermissionsForRole(user.role);
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
 

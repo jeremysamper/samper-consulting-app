@@ -8,6 +8,8 @@ import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import PlanTableForm from './PlanTableForm.jsx';
 import PlanSallesManager from './PlanSallesManager.jsx';
+import ServicePanneau from './ServicePanneau.jsx';
+import { serviceAffiche } from './statutsReservation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Plan de salle - placement des réservations du service sélectionné
@@ -36,10 +38,11 @@ import PlanSallesManager from './PlanSallesManager.jsx';
 // doigt partout ailleurs.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Deux services : le brunch est placé avec le midi, c'est le midi du
+// dimanche (voir serviceAffiche).
 const SERVICES = [
   { id: 'midi',   label: 'Midi' },
   { id: 'soir',   label: 'Soir' },
-  { id: 'brunch', label: 'Brunch' },
 ];
 
 // Distance en pixels avant qu'un appui devienne un glisser. Sans ce seuil,
@@ -53,7 +56,7 @@ const snap  = (v) => Math.round(v / PLAN_GRID) * PLAN_GRID;
 // ── Une table sur le canevas ───────────────────────────────────────────────
 function TableShape({
   table, occupants, mode, estCible, canEdit,
-  onPointerDownTable, onPointerDownOccupant, onEditTable, dragLienId,
+  onPointerDownTable, onPointerDownOccupant, onEditTable, dragLienId, onOpenOccupant,
 }) {
   const places   = table.nb_places || 0;
   // `part` et non `nb_couverts` : une tablée étalée sur deux tables ne pèse
@@ -125,6 +128,9 @@ function TableShape({
           key={lien.id}
           data-plan-occupant={lien.id}
           onPointerDown={mode === 'service' && canEdit ? (e) => onPointerDownOccupant(e, lien, resa) : undefined}
+          // Toucher la pastille ouvre la réservation : en service, c'est depuis
+          // la table qu'on cherche qui est assis là.
+          onClick={mode === 'service' && onOpenOccupant ? () => onOpenOccupant(resa) : undefined}
           style={{
             maxWidth: '100%', padding: '1px 5px', borderRadius: 20,
             // Une table occupée par des clients déjà assis se distingue de
@@ -137,7 +143,7 @@ function TableShape({
             fontSize: 9, fontWeight: 700, lineHeight: 1.35,
             fontFamily: 'var(--font)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            cursor: mode === 'service' && canEdit ? 'grab' : 'default',
+            cursor: mode === 'service' && canEdit ? 'grab' : mode === 'service' && onOpenOccupant ? 'pointer' : 'default',
             touchAction: mode === 'service' && canEdit ? 'none' : 'auto',
             opacity: dragLienId === lien.id ? 0.35 : 1,
           }}
@@ -230,10 +236,15 @@ export default function PlanSalle({
   // Relecture des résas en échec côté VueJour : un seul bandeau en vue plan,
   // qui relit les deux (les résas placées viennent de VueJour).
   resasNonActualisees = false, onRelireResas,
+  // Mode service (écran scindé) : le service est choisi par l'écran parent,
+  // qui affiche ses onglets dans sa propre barre ; la colonne de droite
+  // devient celle du service (attendus, à table, partis) avec ses actions.
+  variante = 'jour', service: serviceControle = null, onStatut, onTraiter,
 }) {
   const isMobile = useIsMobile();
   const plan     = usePlanSalle(etablissementId);
   const canvasRef = useRef(null);
+  const enService = variante === 'service';
 
   const [mode,    setMode]    = useState('service');
   const [service, setService] = useState(null);   // null = pas encore résolu
@@ -255,6 +266,32 @@ export default function PlanSalle({
   const liensRef  = useRef(null);
   tablesRef.current = tables;
   liensRef.current  = liens;
+  // Heure du dernier glisser relâché : le clic que le navigateur émet parfois
+  // juste après ne doit pas ouvrir la réservation qu'on vient de déplacer.
+  const finGesteRef = useRef(0);
+
+  // ── Plan à la hauteur de l'écran (mode service, hors téléphone) ─────
+  // L'écran scindé ne défile pas : sur un grand écran, un plan calé sur la
+  // largeur dépasserait en bas. On mesure la zone disponible et le plan prend
+  // la plus grande taille qui y tient, proportions gardées.
+  const ajusteHauteur = enService && !isMobile;
+  const [zone, setZone] = useState(null);
+  const observateurRef = useRef(null);
+  const zoneRef = useCallback((el) => {
+    observateurRef.current?.disconnect();
+    observateurRef.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entree]) => {
+      const { width, height } = entree.contentRect;
+      setZone((z) => (z && z.w === width && z.h === height ? z : { w: width, h: height }));
+    });
+    ro.observe(el);
+    observateurRef.current = ro;
+  }, []);
+  useEffect(() => () => observateurRef.current?.disconnect(), []);
+  const largeurPlan = ajusteHauteur && zone && zone.h > 0
+    ? Math.max(240, Math.floor(Math.min(zone.w, zone.h * (PLAN_W / PLAN_H))))
+    : null;
 
   // ── Chargement ──────────────────────────────────────────────────────
   // La clé de rechargement est la LISTE DES IDS sérialisée, pas le tableau
@@ -348,18 +385,21 @@ export default function PlanSalle({
   // Par défaut celui qui a le plus de couverts ce jour-là : ouvrir sur
   // « Midi » un soir de 60 couverts ferait croire à un plan vide.
   const couvertsParService = useMemo(() => {
-    const m = { midi: 0, soir: 0, brunch: 0 };
-    for (const r of resas || []) m[r.service] = (m[r.service] || 0) + (r.nb_couverts || 0);
+    const m = { midi: 0, soir: 0 };
+    for (const r of resas || []) {
+      const s = serviceAffiche(r.service);
+      m[s] = (m[s] || 0) + (r.nb_couverts || 0);
+    }
     return m;
   }, [resas]);
 
   useEffect(() => {
-    if (service !== null) return;
+    if (service !== null || serviceControle) return;
     const meilleur = SERVICES
       .map((s) => s.id)
       .reduce((a, b) => (couvertsParService[b] > couvertsParService[a] ? b : a), 'soir');
     setService(meilleur);
-  }, [service, couvertsParService]);
+  }, [service, serviceControle, couvertsParService]);
 
   // ── Salle affichée ──────────────────────────────────────────────────
   // Une table sans salle (bundle antérieur, ou salle supprimée entre-temps)
@@ -406,10 +446,10 @@ export default function PlanSalle({
     return m;
   }, [tables]);
 
-  const serviceActif  = service || 'soir';
+  const serviceActif  = serviceControle || service || 'soir';
   const resasService  = useMemo(
     () => (resas || [])
-      .filter((r) => r.service === serviceActif)
+      .filter((r) => serviceAffiche(r.service) === serviceActif)
       .sort((a, b) => (a.heure_arrivee || '').localeCompare(b.heure_arrivee || '')),
     [resas, serviceActif],
   );
@@ -478,8 +518,11 @@ export default function PlanSalle({
     return [...resasService].sort((a, b) => rang(a) - rang(b));
   }, [resasService, tablesParResa]);
 
+  // Une tablée partie ou un no-show n'est plus « à placer » : les compter
+  // annonçait du travail qui n'existe pas.
   const nbAPlacer = useMemo(
-    () => resasService.filter((r) => !(tablesParResa.get(r.id) || []).length).length,
+    () => resasService.filter((r) => r.statut !== 'parti' && r.statut !== 'no_show'
+      && !(tablesParResa.get(r.id) || []).length).length,
     [resasService, tablesParResa],
   );
 
@@ -588,6 +631,7 @@ export default function PlanSalle({
       nettoyer();
       if (!d) return;
       if (!d.demarre) return;   // simple appui : géré par onClick
+      finGesteRef.current = Date.now();
       deposer(d);
     }
 
@@ -836,25 +880,69 @@ export default function PlanSalle({
   // rétrogradé en cours de session verrait sinon le bouton « Terminer »
   // disparaître et resterait coincé dans l'éditeur.
   const modePlan    = mode === 'plan' && canEdit;
-  const totalService = resasService.reduce((s, r) => s + (r.nb_couverts || 0), 0);
+  // Même règle que partout ailleurs : un no-show n'est pas un couvert.
+  const totalService = resasService.filter((r) => r.statut !== 'no_show')
+    .reduce((s, r) => s + (r.nb_couverts || 0), 0);
   // Places de TOUTES les salles : la question de l'hôte est « est-ce que le
   // service rentre dans la maison », pas « dans cet onglet ».
   const placesTotales = (tables || []).filter((t) => t.actif !== false)
     .reduce((s, t) => s + (t.nb_places || 0), 0);
 
+  // Plan pas encore dessiné (ou salle vide). En mode service, la colonne des
+  // réservations reste affichée à côté : on peut suivre le service sans plan.
+  const planVide = (
+      <div style={{
+        textAlign: 'center', padding: '44px 24px', borderRadius: 12,
+        borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)',
+        background: 'var(--surface)',
+      }}>
+        <div style={{ fontSize: 34, opacity: 0.18, marginBottom: 10 }}>▦</div>
+        <div style={{
+          fontSize: 14, fontWeight: 700, color: 'var(--text)',
+          fontFamily: 'var(--font-serif)', marginBottom: 6,
+        }}>
+          {autresSallesGarnies
+            ? 'Cette salle n’a pas encore de table'
+            : 'Le plan de salle n’est pas encore dessiné'}
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
+          {canEdit
+            ? 'Ajoute les tables une à une, place-les au doigt, puis glisse les réservations dessus.'
+            : 'Un responsable doit le dessiner depuis « Modifier le plan ».'}
+        </div>
+        {canEdit && (
+          <button type="button" onClick={() => { setMode('plan'); ajouterTable(); }} style={{
+            padding: '9px 18px', borderRadius: 8, border: 'none',
+            background: 'var(--accent)', color: '#fff',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+          }}>
+            + Ajouter une table
+          </button>
+        )}
+      </div>
+  );
+
+  // En mode service, les onglets de service sont dans la barre de l'écran
+  // parent : la barre d'ici ne sert plus qu'au bouton « Modifier le plan ».
+  const barre = !serviceControle || canEdit;
+
   return (
-    <div>
+    <div style={ajusteHauteur
+      ? { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
+      : undefined}>
       {/* ── Relecture en échec (plan ou résas) : l'affichage reste en place ── */}
       {(nonActualise || resasNonActualisees) && (
         <BandeauNonActualise onRetry={() => Promise.all([onRelireResas?.(), load()])} />
       )}
 
       {/* ── Barre : service + bascule mode plan ── */}
+      {barre && (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         flexWrap: 'wrap', marginBottom: 10,
       }}>
-        {!modePlan && (
+        {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
+        {!modePlan && !serviceControle && (
           <div style={{ flex: 1, minWidth: 0 }}>
             <SegmentedTabs
               tabs={SERVICES.map((s) => ({
@@ -909,6 +997,7 @@ export default function PlanSalle({
           </div>
         )}
       </div>
+      )}
 
       {/* ── Onglets de salle ── */}
       {(salles || []).length > 1 && (
@@ -927,59 +1016,38 @@ export default function PlanSalle({
       )}
 
       {/* ── Plan vide ── */}
-      {aucuneTable && (
-        <div style={{
-          textAlign: 'center', padding: '44px 24px', borderRadius: 12,
-          borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)',
-          background: 'var(--surface)',
-        }}>
-          <div style={{ fontSize: 34, opacity: 0.18, marginBottom: 10 }}>▦</div>
-          <div style={{
-            fontSize: 14, fontWeight: 700, color: 'var(--text)',
-            fontFamily: 'var(--font-serif)', marginBottom: 6,
-          }}>
-            {autresSallesGarnies
-              ? 'Cette salle n’a pas encore de table'
-              : 'Le plan de salle n’est pas encore dessiné'}
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
-            {canEdit
-              ? 'Ajoute les tables une à une, place-les au doigt, puis glisse les réservations dessus.'
-              : 'Un responsable doit le dessiner depuis « Modifier le plan ».'}
-          </div>
-          {canEdit && (
-            <button type="button" onClick={() => { setMode('plan'); ajouterTable(); }} style={{
-              padding: '9px 18px', borderRadius: 8, border: 'none',
-              background: 'var(--accent)', color: '#fff',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
-            }}>
-              + Ajouter une table
-            </button>
-          )}
-        </div>
-      )}
+      {aucuneTable && !enService && planVide}
 
       {/* ── Canevas + liste ── */}
-      {!aucuneTable && (
+      {(!aucuneTable || enService) && (
         <div style={{
           display: 'flex', gap: 12,
           flexDirection: isMobile ? 'column' : 'row',
-          alignItems: 'flex-start',
+          alignItems: ajusteHauteur ? 'stretch' : 'flex-start',
+          ...(ajusteHauteur ? { flex: 1, minHeight: 0 } : {}),
         }}>
           {/* Canevas. Sur téléphone il garde une largeur plancher et défile
               DANS son cadre : à 335 px de large, une table de deux couverts
               tomberait à 31 px, illisible et increvable au doigt. La page,
               elle, ne pane jamais — le débordement reste enfermé ici. */}
-          <div style={{
-            flex: 1, minWidth: 0, width: '100%',
-            overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-            borderRadius: 12,
-          }}>
+          {aucuneTable ? (
+            <div style={{ flex: 1, minWidth: 0, width: '100%' }}>{planVide}</div>
+          ) : (
+          <div
+            ref={ajusteHauteur ? zoneRef : undefined}
+            style={{
+              flex: 1, minWidth: 0, width: '100%',
+              overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+              borderRadius: 12,
+              ...(ajusteHauteur ? { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: 0 } : {}),
+            }}
+          >
           <div
             ref={canvasRef}
             style={{
               position: 'relative',
-              width: '100%',
+              width: largeurPlan ? largeurPlan : '100%',
+              flexShrink: 0,
               minWidth: isMobile ? 560 : 0,
               aspectRatio: `${PLAN_W} / ${PLAN_H}`,
               background: 'var(--bg)',
@@ -1003,25 +1071,49 @@ export default function PlanSalle({
                 onPointerDownTable={onPointerDownTable}
                 onPointerDownOccupant={onPointerDownOccupant}
                 onEditTable={setEditTable}
+                onOpenOccupant={onOpenResa ? (resa) => {
+                  if (Date.now() - finGesteRef.current < 400) return;
+                  onOpenResa(resa);
+                } : undefined}
               />
             ))}
           </div>
           </div>
+          )}
 
-          {/* Réservations à placer - aussi zone de dépôt pour retirer du plan */}
+          {/* Réservations du service - aussi zone de dépôt pour retirer du plan */}
           {!modePlan && (
             <div
               data-plan-liste="1"
               style={{
-                width: isMobile ? '100%' : 250, flexShrink: 0,
+                width: isMobile ? '100%' : enService ? 'clamp(300px, 36%, 440px)' : 250,
+                flexShrink: 0,
                 borderWidth: 1, borderStyle: 'solid',
                 borderColor: drag?.demarre && drag?.kind === 'lien' && drag?.over?.liste
                   ? 'var(--accent)' : 'var(--border)',
-                borderRadius: 12, background: 'var(--surface)',
+                borderRadius: 12, background: enService ? 'var(--bg)' : 'var(--surface)',
                 padding: 10, boxSizing: 'border-box',
-                maxHeight: isMobile ? 260 : 520, overflowY: 'auto',
+                overflowY: 'auto',
+                ...(ajusteHauteur
+                  ? { height: '100%', minHeight: 0 }
+                  : { maxHeight: enService ? 'none' : isMobile ? 260 : 520 }),
               }}
             >
+              {enService ? (
+                <ServicePanneau
+                  resas={resasService}
+                  date={date}
+                  tablesParResa={tablesParResa}
+                  canEdit={canEdit}
+                  dragResaId={drag?.demarre && drag?.kind === 'resa' ? drag.resaId : null}
+                  retraitPossible={!!(drag?.demarre && drag?.kind === 'lien')}
+                  onPointerDownResa={onPointerDownResa}
+                  onOpen={onOpenResa}
+                  onStatut={onStatut}
+                  onTraiter={onTraiter}
+                />
+              ) : (
+              <>
               <div style={{
                 fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
                 letterSpacing: 0.5, color: 'var(--text3)', marginBottom: 8,
@@ -1058,6 +1150,8 @@ export default function PlanSalle({
                   />
                 ))}
               </div>
+              </>
+              )}
 
               {/* Récap capacité */}
               <div style={{
@@ -1066,6 +1160,7 @@ export default function PlanSalle({
                 fontSize: 11, color: 'var(--text3)', lineHeight: 1.5,
               }}>
                 {totalService} couvert{totalService > 1 ? 's' : ''} · {placesTotales} place{placesTotales > 1 ? 's' : ''} en salle
+                {enService && nbAPlacer > 0 ? ` · ${nbAPlacer} à placer` : ''}
               </div>
             </div>
           )}

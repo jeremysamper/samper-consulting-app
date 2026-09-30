@@ -129,6 +129,16 @@
   --ai-text: #6d28d9;
   --ai-bd: #c4b5fd;
 
+  /* Services de réservation : midi orange, soir bleu (le brunch est le midi
+     du dimanche). Les mêmes partout (planning de la semaine, vue jour, mode
+     service). */
+  --svc-midi: #c2410c;
+  --svc-midi-bg: #fff7ed;
+  --svc-midi-bd: #fdba74;
+  --svc-soir: #1e40af;
+  --svc-soir-bg: #eff6ff;
+  --svc-soir-bd: #93c5fd;
+
   color-scheme: light;
 }
 
@@ -199,6 +209,12 @@
     --ai-bg-soft: oklch(26% 0.05 305);
   --ai-text: oklch(82% 0.10 305);
   --ai-bd: oklch(42% 0.10 305);
+    --svc-midi: oklch(80% 0.12 55);
+    --svc-midi-bg: oklch(23% 0.05 50);
+    --svc-midi-bd: oklch(45% 0.11 50);
+    --svc-soir: oklch(81% 0.085 250);
+    --svc-soir-bg: oklch(22% 0.04 250);
+    --svc-soir-bd: oklch(45% 0.10 250);
 
   color-scheme: dark;
   }
@@ -271,6 +287,12 @@ html[data-theme="dark"] {
   --ai-bg-soft: oklch(26% 0.05 305);
   --ai-text: oklch(82% 0.10 305);
   --ai-bd: oklch(42% 0.10 305);
+    --svc-midi: oklch(80% 0.12 55);
+    --svc-midi-bg: oklch(23% 0.05 50);
+    --svc-midi-bd: oklch(45% 0.11 50);
+    --svc-soir: oklch(81% 0.085 250);
+    --svc-soir-bg: oklch(22% 0.04 250);
+    --svc-soir-bd: oklch(45% 0.10 250);
 
   color-scheme: dark;
 }

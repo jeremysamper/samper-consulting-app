@@ -316,6 +316,10 @@ DEMO_DATA.recettes.forEach(r => { if (!r.etablissementId) r.etablissementId = 'e
 
 // Hydrate DEMO_DATA from persistent store at boot
 DEMO_DATA.permissions   = scRead('sc_permissions',   DEMO_DATA.permissions);
+// Écarts personnels de la dernière personne connectée sur cet appareil
+// ({ userId, role, perms }) : appliqués dès le démarrage, y compris hors ligne,
+// puis remplacés par la lecture de la connexion.
+DEMO_DATA.permissionsPerso = scRead('sc_permissions_perso', null);
 DEMO_DATA.recettes      = scRead('sc_recettes',      DEMO_DATA.recettes);
 DEMO_DATA.cartes        = scRead('sc_cartes',        DEMO_DATA.cartes);
 DEMO_DATA.planning      = scRead('sc_planning',      DEMO_DATA.planning);
@@ -349,7 +353,7 @@ DEMO_DATA.recettes.forEach(r => {
 // Reset complet (bouton dans Paramètres)
 export const scResetAllData = () => {
   if (!confirmLegacy('Réinitialiser TOUTES les données aux valeurs de démo ?\nCette action est irréversible.')) return;
-  removeStorageKeys(['sc_permissions','sc_recettes','sc_cartes','sc_planning','sc_inventaires',
+  removeStorageKeys(['sc_permissions','sc_permissions_perso','sc_recettes','sc_cartes','sc_planning','sc_inventaires',
    'sc_pertes','sc_utilisateurs','sc_etablissements','sc_inventaire_selected',
    'sc_haccp_zones','sc_haccp_tpls','sc_haccp_releves','sc_haccp_controls',
    'sc_fiches_salle','sc_current_etab','sc_app_logo','sc_data_version']);
@@ -360,14 +364,23 @@ export const scResetAllData = () => {
 // HYDRATATION DEPUIS SUPABASE (si configuré)
 // Remplace etablissements, utilisateurs, permissions par les données live
 // ═══════════════════════════════════════════════════════════════
-export async function hydrateFromSupabase() {
+// moi : { id, role } de la personne connectée, pour ses droits personnels.
+export async function hydrateFromSupabase(moi = null) {
   const legacySB = dbService.getBridge();
   if (!legacySB) return false;
+  // Cache d'un autre compte (appareil partagé) : ses écarts ne s'appliquent
+  // pas, même le temps de la lecture.
+  if (moi?.id && DEMO_DATA.permissionsPerso && DEMO_DATA.permissionsPerso.userId !== moi.id) {
+    DEMO_DATA.permissionsPerso = null;
+  }
   try {
-    const [etabs, profiles, perms] = await Promise.all([
+    const [etabs, profiles, perms, permsPerso] = await Promise.all([
       legacySB.db.listEtablissements(),
       legacySB.db.listProfiles(),
       legacySB.db.listPermissions(),
+      moi?.id && legacySB.db.getPermissionsUtilisateur
+        ? legacySB.db.getPermissionsUtilisateur(moi.id)
+        : undefined,
     ]);
     if (etabs && etabs.length) {
       DEMO_DATA.etablissements = etabs.map(e => ({
@@ -386,6 +399,16 @@ export async function hydrateFromSupabase() {
     }
     if (perms && Object.keys(perms).length) {
       DEMO_DATA.permissions = { ...DEMO_DATA.permissions, ...perms };
+    }
+    // undefined = lecture en échec : on garde les écarts connus (cache).
+    // Un autre compte que celui du cache repart des seuls droits de son rôle.
+    if (moi?.id) {
+      if (permsPerso !== undefined) {
+        DEMO_DATA.permissionsPerso = { userId: moi.id, role: moi.role, perms: permsPerso || {} };
+        scWrite('sc_permissions_perso', DEMO_DATA.permissionsPerso);
+      } else if (DEMO_DATA.permissionsPerso?.userId !== moi.id) {
+        DEMO_DATA.permissionsPerso = null;
+      }
     }
     return true;
   } catch (err) {

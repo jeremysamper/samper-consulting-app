@@ -123,7 +123,7 @@ export default function App() {
         // post-login. Optimisation sûre quelle que soit la cause de la lenteur.
         await Promise.all([
           legacyDb?.loadAllUserSettings ? legacyDb.loadAllUserSettings() : null,
-          hydrateFromSupabase ? hydrateFromSupabase() : null,
+          hydrateFromSupabase ? hydrateFromSupabase({ id: auth.profile.id, role: auth.profile.role }) : null,
         ]);
         if (mounted) setLegacyVersion((version) => version + 1);
         // La synchro critique est terminée : on précharge les chunks des

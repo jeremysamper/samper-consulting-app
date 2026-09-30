@@ -21,7 +21,8 @@ export const defaultPermissions = {
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
-// par rôle dans Rôles & accès → onglet « Droits d'action ».
+// dans Rôles & accès (case « Modifier », réglée personne par personne ;
+// le rôle donne la valeur de départ).
 // `defaultRoles` : rôles autorisés tant qu'aucun droit explicite n'est stocké
 // en base ; sans cette clé, defaultManageRoles s'applique. Les défauts
 // reproduisent les gardes historiques de chaque module.
@@ -42,7 +43,7 @@ export const manageableModules = [
   { id: 'fiches_salle', label: 'Fiches salle' },
   { id: 'documents', label: 'Documents' },
   { id: 'catalogue', label: 'Catalogue produits' },
-  { id: 'previsions', label: 'Prévisions', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
+  { id: 'previsions', label: 'Réservations', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
   { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote'] },
   { id: 'mep', label: 'Mise en place', defaultRoles: ['resp_cuisine', 'cuisinier'] },
   { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
@@ -50,6 +51,21 @@ export const manageableModules = [
   // comptes rendus de séance. Ouvert à toute l'équipe du spa par défaut.
   { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'] },
 ];
+
+// Rôles que la BASE laisse écrire dans un module (RLS fondée sur le rôle, relevée
+// en prod le 30.09.2026). Un droit « gérer » accordé hors de ces rôles serait
+// refusé par Supabase : canManageModule le refuse aussi, et Rôles & accès
+// verrouille la case. Module absent = la base ne filtre que par établissement.
+//   previsions : reservations, reservation_tables, salles, salle_tables
+//   groupes    : groupe_evenements (création)
+//   mep        : mep_listes, mep_items
+//   pos        : pos_item_recipe_mapping
+export const rolesEcritureBase = {
+  previsions: ['consultant', 'patron', 'resp_cuisine', 'hote'],
+  groupes:    ['consultant', 'patron', 'resp_cuisine', 'hote', 'cuisinier'],
+  mep:        ['consultant', 'resp_cuisine', 'cuisinier'],
+  pos:        ['consultant', 'patron', 'resp_cuisine'],
+};
 
 // Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.
 export const defaultManageRoles = ['consultant', 'patron'];
@@ -86,7 +102,7 @@ export const tousLesNavItems = [
   { id: 'documents', label: 'Documents', icon: '◱', group: 'Documents', permKey: 'documents' },
   { id: 'catalogue', label: 'Catalogue produits', icon: '◇', group: 'Consultant', permKey: 'catalogue' },
   { id: 'consultant_tools', label: 'Outils consultant', mobileLabel: 'Outils', icon: '◆', group: 'Consultant', permKey: 'consultant_tools' },
-  { id: 'previsions', label: 'Prévisions', icon: '◐', group: 'Cuisine', permKey: 'previsions' },
+  { id: 'previsions', label: 'Réservations', icon: '◐', group: 'Cuisine', permKey: 'previsions' },
   { id: 'groupes', label: 'Groupes', icon: '▤', group: 'Cuisine', permKey: 'groupes' },
   { id: 'commande', label: 'Commande', mobileLabel: 'Commande', icon: '◰', group: 'Cuisine', permKey: 'commande' },
   { id: 'mep', label: 'Mise en place', mobileLabel: 'Mise en place', icon: '◲', group: 'Cuisine', permKey: 'mep' },

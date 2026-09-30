@@ -10,8 +10,8 @@ import { s, formatDateService } from './MiseEnPlace.styles.js';
 // MISE EN PLACE
 // Listes de production separant la grosse production (congelable, batch en
 // avance) des preparations urgentes (non congelable, J-1/J-0).
-// Ecriture regie par le droit « gerer » du module mep (Roles & acces →
-// Droits d'action) ; defaut resp_cuisine / cuisinier, consultant / patron = lecture.
+// Ecriture regie par le droit « gerer » du module mep (Roles & acces,
+// case « Modifier ») ; defaut resp_cuisine / cuisinier, consultant / patron = lecture.
 const MiseEnPlace = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();

@@ -30,8 +30,8 @@ import {
 //
 // Droits : tout rôle ayant accès au module lit le calendrier et fait avancer
 // l'état (c'est la brigade qui passe la case au vert). Créer, modifier et
-// annuler un groupe relève du droit « gérer » du module (Rôles & accès →
-// Droits d'action ; défaut consultant / patron / resp. cuisine / cuisinier /
+// annuler un groupe relève du droit « gérer » du module (Rôles & accès,
+// case « Modifier » ; défaut consultant / patron / resp. cuisine / cuisinier /
 // hôte). Le prix des menus reste hors de vue du cuisinier.
 //
 // Annuler n'efface rien : le groupe reste visible, barré, dans « groupes

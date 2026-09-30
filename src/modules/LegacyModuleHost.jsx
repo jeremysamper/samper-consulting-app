@@ -191,7 +191,7 @@ export default function LegacyModuleHost({
     }
     case 'previsions': {
       return permissions.previsions === true
-        ? wrap('Prévisions', <Previsions user={user} etablissement={etablissement} />)
+        ? wrap('Réservations', <Previsions user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'spa': {

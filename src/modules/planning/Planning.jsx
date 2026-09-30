@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData, canManageModule } from '../../data/demoData.js';
+import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import ShiftCell from './ShiftCell.jsx';
@@ -87,7 +87,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     return () => browserWindow?.removeEventListener('resize', h);
   }, []);
 
-  const perms = demoData.permissions[user.role] || {};
+  const perms = getPermissionsForRole(user.role);
   const canWrite = !!perms.planning && canManageModule(user.role, 'planning');
   const canExport = ['consultant', 'patron'].includes(user.role);
 

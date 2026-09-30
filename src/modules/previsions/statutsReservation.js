@@ -68,6 +68,47 @@ export function estPresent(statut) {
   return statut === 'demande' || statut === 'confirme' || statut === 'arrive';
 }
 
+// ── Services et leur code couleur ─────────────────────────────────────────
+// Midi orange, soir bleu : le même repère sur le planning de la semaine, la
+// vue jour et le mode service. Couleurs en tokens (app.css), pour rester
+// lisibles en sombre.
+export const SERVICE_META = {
+  midi: { label: 'Midi', couleur: 'var(--svc-midi)', fond: 'var(--svc-midi-bg)', bordure: 'var(--svc-midi-bd)' },
+  soir: { label: 'Soir', couleur: 'var(--svc-soir)', fond: 'var(--svc-soir-bg)', bordure: 'var(--svc-soir-bd)' },
+};
+
+// Le planning de la semaine et le mode service ne connaissent que deux
+// services : le brunch EST le midi du dimanche (décision de Jérémy, 01.10.2026).
+// Une colonne ou un onglet « Brunch » à part gênerait tous les établissements
+// qui n'en font pas. La valeur 'brunch' reste en base et dans la saisie.
+export const SERVICES_AFFICHES = ['midi', 'soir'];
+export const serviceAffiche = (service) => (service === 'brunch' ? 'midi' : service);
+
+// Service ouvert d'office dans le mode service. Aujourd'hui : celui que dit
+// l'horloge, sauf s'il est vide et qu'un autre ne l'est pas (le Rucher tourne
+// à un seul service). Un autre jour : le plus chargé.
+export function serviceEnCours(dateISO, resas) {
+  const couverts = { midi: 0, soir: 0 };
+  for (const r of resas || []) {
+    if (r.statut === 'no_show') continue;
+    const s = serviceAffiche(r.service);
+    couverts[s] = (couverts[s] || 0) + (r.nb_couverts || 0);
+  }
+  const plusCharge = SERVICES_AFFICHES.reduce((a, b) => (couverts[b] > couverts[a] ? b : a), 'soir');
+  if (dateISO !== zurichToday()) return plusCharge;
+  const horloge = serviceParDefaut(dateISO);
+  return couverts[horloge] > 0 || couverts[plusCharge] === 0 ? horloge : plusCharge;
+}
+
+// Retard d'une réservation attendue, en minutes (0 si elle n'est pas en
+// retard). Seulement pour aujourd'hui, à l'heure de Zurich.
+export function minutesDeRetard(resa, dateISO, maintenant = zurichNowMinutes()) {
+  if (resa.statut !== 'confirme' || dateISO !== zurichToday()) return 0;
+  const [h, m] = String(resa.heure_arrivee || '').split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+  return Math.max(0, maintenant - (h * 60 + m));
+}
+
 // ── Service par défaut à la saisie ────────────────────────────────────────
 // Quand on saisit pour AUJOURD'HUI, l'heure qu'il est en dit plus long que
 // n'importe quelle valeur figée : à 16h on prend une résa pour le soir, pas

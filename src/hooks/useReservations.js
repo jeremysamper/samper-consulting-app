@@ -111,6 +111,23 @@ export function useReservations(etablissementId) {
       return { data, error: null };
     }
 
+    // Réservations d'une plage de jours (la semaine du planning), annulées
+    // exclues. Fiches complètes, tags compris : un nom tapé dans la semaine
+    // ouvre sa fiche sans relecture.
+    async function findByRange(dateDebut, dateFin) {
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select('*, reservation_tags(*)')
+        .eq('etablissement_id', etablissementId)
+        .gte('date_service', dateDebut)
+        .lte('date_service', dateFin)
+        .neq('statut', 'annule')
+        .order('date_service')
+        .order('heure_arrivee');
+      if (error) return { data: null, error: mapError(error) };
+      return { data, error: null };
+    }
+
     async function findById(id) {
       console.log('[useReservations] findById', { id });
       const { data, error } = await supabase
@@ -124,7 +141,7 @@ export function useReservations(etablissementId) {
 
     return {
       create, update, delete: deleteReservation, setStatut, search,
-      findByDate, findById,
+      findByDate, findByRange, findById,
     };
   }, [etablissementId]);
 }

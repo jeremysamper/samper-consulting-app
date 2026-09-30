@@ -30,7 +30,7 @@ export default function VentesPos({ user, etablissement }) {
   const [dataVersion, setDataVersion] = useState(0);
 
   // canEdit : accès à l'onglet Mapping + actions d'écriture (connexion, mapping).
-  // Droit « gérer » du module pos (Rôles & accès → Droits d'action).
+  // Droit « gérer » du module pos (Rôles & accès, case « Modifier »).
   const canEdit = canManageModule(user?.role, 'pos');
 
   // Onglets visibles selon le rôle - cuisinier ne voit pas Mapping

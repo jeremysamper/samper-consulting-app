@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDemoData, canManageModule } from '../../data/demoData.js';
+import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
@@ -1353,7 +1353,7 @@ const Recettes = ({ user, etablissement }) => {
   const [selectedRecette, setSelectedRecette] = React.useState(null);
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
-  const perms = demoData.permissions[user.role] || {};
+  const perms = getPermissionsForRole(user.role);
   const canManageCartes = canManageModule(user.role, 'recettes');
   // Cacher une carte est réservé au consultant : lui seul continue de la voir.
   const isConsultant = user.role === 'consultant';

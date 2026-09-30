@@ -1,56 +1,116 @@
 import React from 'react';
-import { getDemoData } from '../../data/demoData.js';
-import { manageableModules, getDefaultManageRoles, navItems, defaultPermissions } from '../moduleConfig.js';
-import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
+import { getDemoData, getRoleInfo } from '../../data/demoData.js';
+import {
+  manageableModules, getDefaultManageRoles, navItems, defaultPermissions, rolesEcritureBase,
+} from '../moduleConfig.js';
+import { alertLegacy, confirmLegacy, notifyLegacy, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { profileService } from '../../services/supabase.js';
+import { useModuleLabels } from '../../hooks/useModuleLabels.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { makeSearchMatcher } from '../../utils/searchText.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 
-// ─────────────────────────────────────────────────────
-// RÔLES & ACCÈS + GESTION DES UTILISATEURS (CRUD)
-// ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// RÔLES & ACCÈS : les comptes et leurs droits, personne par personne.
+//
+// Un seul écran (demande de Jérémy, 30.09.2026) : à gauche l'équipe, à droite
+// la personne choisie avec, pour chaque module, « Accès » (le voir dans le
+// menu) et « Modifier » (créer, modifier, supprimer). Il y avait trois onglets
+// (permissions par rôle, droits d'action, utilisateurs) et tout se réglait par
+// rôle.
+//
+// Le rôle reste le point de départ : ses droits (table `permissions`, complétés
+// par les défauts du code) s'appliquent tant qu'on n'a rien changé. Une case
+// changée n'enregistre que l'ÉCART de cette personne à son rôle (table
+// `permissions_utilisateurs`) ; « Revenir aux droits du rôle » efface ses
+// écarts. Le consultant voit et gère tout, il n'a rien à régler.
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Modules de l'onglet visibilité : tous ceux du nav (source unique :
-// moduleConfig.navItems, clé = permKey, ex. la page « cartes » est stockée
-// sous `recettes`) + les pages consultant-only hors nav.
-const MODULES = [
-  ...navItems.map((n) => ({ id: n.permKey, label: n.label })),
-  { id: 'factures',   label: 'Factures' },
-  { id: 'parametres', label: 'Établissements' },
-  { id: 'roles',      label: 'Rôles & Accès' },
-];
+// Modules réglables : ceux du menu. Les outils du consultant (et ses pages
+// Factures, Établissements, Rôles & accès) sont réservés à son rôle par
+// LegacyModuleHost : aucune case ne pourrait les ouvrir à quelqu'un d'autre.
+const MODULES = navItems.filter((n) => n.permKey !== 'consultant_tools');
+const GERABLES = new Set(manageableModules.map((m) => m.id));
 
-// Gardes dures par rôle dans LegacyModuleHost : la visibilité de ces modules
-// ne peut pas être accordée aux rôles exclus, la case est verrouillée.
-const HARD_GATES = {
-  consultant_tools: ['consultant'],
-  faq:              ['consultant'],
-  factures:         ['consultant'],
-  parametres:       ['consultant'],
-  roles:            ['consultant'],
-  kds:              ['consultant', 'resp_cuisine', 'cuisinier'],
+// Gardes dures par rôle dans LegacyModuleHost : ces modules ne s'ouvrent qu'à
+// ces rôles, quelle que soit la case.
+const ACCES_RESERVE = {
+  kds: ['consultant', 'resp_cuisine', 'cuisinier'],
 };
-const isLockedFor = (roleKey, moduleId) =>
-  (HARD_GATES[moduleId] ? !HARD_GATES[moduleId].includes(roleKey) : false);
 
-// Défauts de visibilité : ceux du runtime (moduleConfig.defaultPermissions),
-// complétés par les pages consultant-only.
-const DEFAULT_PERMS_BASE = Object.fromEntries(
-  Object.entries(defaultPermissions).map(([role, perms]) => [
-    role,
-    { ...perms, factures: role === 'consultant', parametres: role === 'consultant', roles: role === 'consultant' },
-  ])
-);
+const aCle = (obj, cle) => Object.prototype.hasOwnProperty.call(obj || {}, cle);
+const cleGerer = (moduleId) => 'manage:' + moduleId;
+
+const listeRoles = (liste) => liste.map((r) => getRoleInfo(r).label).join(', ');
+
+// Droits de départ d'un rôle (base + défauts du code), pour un module.
+function droitsDuRole(rolePerms, role, moduleId) {
+  const base = { ...(defaultPermissions[role] || {}), ...(rolePerms[role] || {}) };
+  const acces = base[moduleId] !== false;
+  const gerer = aCle(base, cleGerer(moduleId))
+    ? !!base[cleGerer(moduleId)]
+    : getDefaultManageRoles(moduleId).includes(role);
+  return { acces, gerer };
+}
+
+// État d'un module pour une personne : droits du rôle, écarts appliqués,
+// verrous (rôle hors de la garde du module, base qui refuse l'écriture).
+function etatModule(rolePerms, personne, ecarts, moduleId) {
+  const role = personne.role;
+  const duRole = droitsDuRole(rolePerms, role, moduleId);
+  const reserveA = ACCES_RESERVE[moduleId];
+  const accesVerrouille = !!reserveA && !reserveA.includes(role);
+  const ecriture = rolesEcritureBase[moduleId];
+  const gererVerrouille = !GERABLES.has(moduleId) || (!!ecriture && !ecriture.includes(role));
+  const acces = accesVerrouille ? false : (aCle(ecarts, moduleId) ? !!ecarts[moduleId] : duRole.acces);
+  const gererBrut = aCle(ecarts, cleGerer(moduleId)) ? !!ecarts[cleGerer(moduleId)] : duRole.gerer;
+  return {
+    duRole,
+    acces,
+    gerer: !gererVerrouille && acces && gererBrut,
+    accesVerrouille,
+    gererVerrouille,
+    reserveA,
+    ecriture,
+    ajuste: aCle(ecarts, moduleId) || aCle(ecarts, cleGerer(moduleId)),
+  };
+}
+
+// Case à cocher avec une cible de 44 px : une case nue de 16 px se rate au
+// doigt sur l'iPad, et le tap raté passe pour un bug.
+function Case({ checked, disabled, onChange, label }) {
+  return (
+    <label style={{
+      width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      cursor: disabled ? 'default' : 'pointer', flexShrink: 0,
+    }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        aria-label={label}
+        style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: disabled ? 'default' : 'pointer' }}
+      />
+    </label>
+  );
+}
 
 const Roles = ({ user }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
-  const [activeTab, setActiveTab] = React.useState('permissions');
-  const DEFAULT_PERMS = React.useMemo(() => JSON.parse(JSON.stringify(DEFAULT_PERMS_BASE)), []);
-  const [selected, setSelected] = React.useState('consultant');
-  const [permissions, setPermissions] = React.useState(() => mergePermissionDefaults(readLegacyStorage('sc_permissions', DEFAULT_PERMS), DEFAULT_PERMS));
-  const [utilisateurs, setUtilisateurs] = React.useState(() => readLegacyStorage('sc_utilisateurs', demoData.utilisateurs));
+  const isMobile = useIsMobile();
+  const { getLabelForModule } = useModuleLabels();
+  const [rolePerms, setRolePerms] = React.useState(() => demoData.permissions || {});
+  const [utilisateurs, setUtilisateurs] = React.useState(() => demoData.utilisateurs || []);
+  // Écarts de chaque personne. null tant qu'ils ne sont pas lus : sans eux,
+  // l'écran montrerait les droits du rôle et un clic écraserait des écarts
+  // existants.
+  const [ecartsParId, setEcartsParId] = React.useState(null);
+  const [erreurEcarts, setErreurEcarts] = React.useState(false);
+  const [selectedId, setSelectedId] = React.useState(null);
+  const [recherche, setRecherche] = React.useState('');
   const [editingUser, setEditingUser] = React.useState(null);
   const [showUserForm, setShowUserForm] = React.useState(false);
   // Téléphones saisis par chacun dans « Mon compte » (table profile_contacts) :
@@ -58,10 +118,19 @@ const Roles = ({ user }) => {
   const [phones, setPhones] = React.useState({});
   const canEdit = user.role === 'consultant';
 
+  // Les écritures d'une même personne partent l'une après l'autre, et chacune
+  // envoie l'état le plus récent : deux cases cochées vite ne peuvent pas
+  // arriver dans le désordre et laisser en base l'avant-dernier état.
+  const ecartsRef = React.useRef({});
+  ecartsRef.current = ecartsParId || {};
+  const fileRef = React.useRef({});
+  const ecritureEnCoursRef = React.useRef({});
+  const reloadRef = React.useRef(null);
+
   // ═══ Charger depuis Supabase + Realtime ═══
   React.useEffect(() => {
-    if (!legacySB) return;
-    let unsub1 = null;
+    if (!legacySB) return undefined;
+    let vivant = true;
 
     const reload = async () => {
       try {
@@ -71,6 +140,7 @@ const Roles = ({ user }) => {
           // Un échec de lecture des numéros ne doit pas vider la liste des comptes.
           profileService.listContacts().catch((err) => { console.warn('[Roles] téléphones', err); return null; }),
         ]);
+        if (!vivant) return;
         if (contacts) setPhones(contacts);
         const mapped = profiles.map(p => ({
           id: p.id, email: p.email, prenom: p.prenom, nom: p.nom,
@@ -82,80 +152,82 @@ const Roles = ({ user }) => {
         setUtilisateurs(mapped);
         demoData.utilisateurs = mapped;
         if (perms && Object.keys(perms).length) {
-          setPermissions(p => mergePermissionDefaults({ ...p, ...perms }, DEFAULT_PERMS));
+          setRolePerms((prev) => ({ ...prev, ...perms }));
           demoData.permissions = { ...demoData.permissions, ...perms };
         }
       } catch (err) { console.error('[Roles reload]', err); }
+
+      try {
+        const ecarts = await legacySB.db.listPermissionsUtilisateurs();
+        if (!vivant) return;
+        // Une écriture en cours garde la main : la relecture ne doit pas
+        // remettre à l'écran l'état d'avant le dernier clic.
+        setEcartsParId((prev) => {
+          if (!prev) return ecarts;
+          const suite = { ...ecarts };
+          for (const id of Object.keys(ecritureEnCoursRef.current)) {
+            if (prev[id]) suite[id] = prev[id]; else delete suite[id];
+          }
+          return suite;
+        });
+        setErreurEcarts(false);
+      } catch (err) {
+        console.error('[Roles] droits personnels', err);
+        if (vivant) setErreurEcarts(true);
+      }
     };
 
+    reloadRef.current = reload;
     reload();
-    unsub1 = legacySB.realtime.subscribeReload(['profiles', 'permissions'], reload);
-    return () => { unsub1 && unsub1(); };
+    const unsub = legacySB.realtime.subscribeReload(['profiles', 'permissions', 'permissions_utilisateurs'], reload);
+    return () => { vivant = false; unsub && unsub(); };
   }, []);
-
-  const roles = Object.entries(demoData.roles);
-
-  React.useEffect(() => {
-    demoData.permissions = permissions;
-    writeLegacyStorage('sc_permissions', permissions);
-  }, [permissions]);
 
   React.useEffect(() => {
     demoData.utilisateurs = utilisateurs;
     writeLegacyStorage('sc_utilisateurs', utilisateurs);
   }, [utilisateurs]);
 
-  const togglePerm = async (roleKey, moduleId) => {
-    if (!canEdit || isLockedFor(roleKey, moduleId)) return;
-    const newPerms = { ...permissions[roleKey], [moduleId]: !permissions[roleKey][moduleId] };
-    setPermissions(prev => ({ ...prev, [roleKey]: newPerms }));
-    if (legacySB) {
-      try { await legacySB.db.upsertPermissions(roleKey, newPerms); }
-      catch (err) { notifyLegacy('Erreur sauvegarde permissions : ' + err.message, 'error'); }
-    }
-  };
-
-  const resetDefaults = async () => {
-    if (!confirmLegacy('Réinitialiser toutes les permissions par défaut ?')) return;
-    const fresh = JSON.parse(JSON.stringify(DEFAULT_PERMS));
-    setPermissions(fresh);
-    if (legacySB) {
+  // ═══════════════ DROITS D'UNE PERSONNE ═══════════════
+  function enregistrerEcarts(personne, suivant) {
+    const id = personne.id;
+    const avant = ecartsRef.current[id];
+    const next = { ...ecartsRef.current };
+    if (Object.keys(suivant).length) next[id] = suivant; else delete next[id];
+    ecartsRef.current = next;
+    setEcartsParId(next);
+    ecritureEnCoursRef.current[id] = (ecritureEnCoursRef.current[id] || 0) + 1;
+    fileRef.current[id] = (fileRef.current[id] || Promise.resolve()).then(async () => {
       try {
-        for (const [roleKey, perms] of Object.entries(fresh)) {
-          await legacySB.db.upsertPermissions(roleKey, perms);
-        }
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
-    }
-  };
+        await legacySB.db.setPermissionsUtilisateur(id, ecartsRef.current[id] || {});
+      } catch (err) {
+        notifyLegacy(`Droits de ${personne.prenom} ${personne.nom} non enregistrés : ${err.message}`, 'error');
+        const retour = { ...ecartsRef.current };
+        if (avant && Object.keys(avant).length) retour[id] = avant; else delete retour[id];
+        ecartsRef.current = retour;
+        setEcartsParId(retour);
+      } finally {
+        ecritureEnCoursRef.current[id] -= 1;
+        if (!ecritureEnCoursRef.current[id]) delete ecritureEnCoursRef.current[id];
+      }
+    });
+  }
 
-  // Droit « gérer » (modifier + supprimer) d'un module pour un rôle.
-  // Stocké sous la clé `manage:<moduleId>` dans les permissions du rôle.
-  const manageKey = (moduleId) => 'manage:' + moduleId;
-  const canManageValue = (roleKey, moduleId) => {
-    const explicit = permissions[roleKey]?.[manageKey(moduleId)];
-    return explicit === undefined ? getDefaultManageRoles(moduleId).includes(roleKey) : !!explicit;
-  };
-  const toggleManagePerm = async (roleKey, moduleId) => {
-    if (!canEdit) return;
-    const next = !canManageValue(roleKey, moduleId);
-    const newPerms = { ...permissions[roleKey], [manageKey(moduleId)]: next };
-    setPermissions(prev => ({ ...prev, [roleKey]: newPerms }));
-    if (legacySB) {
-      try { await legacySB.db.upsertPermissions(roleKey, newPerms); }
-      catch (err) { notifyLegacy('Erreur sauvegarde permissions : ' + err.message, 'error'); }
-    }
-  };
+  // Une case qui revient à la valeur du rôle n'est plus un écart : la clé est
+  // retirée, et la personne retombe sur son rôle pour ce module.
+  function basculer(personne, cle, valeurDuRole, valeurActuelle) {
+    if (!canEdit || !legacySB || ecartsParId === null) return;
+    const suivant = { ...(ecartsRef.current[personne.id] || {}) };
+    const nouvelle = !valeurActuelle;
+    if (nouvelle === valeurDuRole) delete suivant[cle]; else suivant[cle] = nouvelle;
+    enregistrerEcarts(personne, suivant);
+  }
 
-  const allowAll = async (roleKey, value) => {
-    if (!canEdit) return;
-    const next = { ...permissions[roleKey] };
-    MODULES.forEach(m => { next[m.id] = isLockedFor(roleKey, m.id) ? false : value; });
-    setPermissions(prev => ({ ...prev, [roleKey]: next }));
-    if (legacySB) {
-      try { await legacySB.db.upsertPermissions(roleKey, next); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
-    }
-  };
+  function revenirAuRole(personne) {
+    if (!canEdit || ecartsParId === null) return;
+    if (!confirmLegacy(`Rendre à ${personne.prenom} ${personne.nom} les droits de son rôle (${getRoleInfo(personne.role).label}) ?`)) return;
+    enregistrerEcarts(personne, {});
+  }
 
   // ═══════════════ USER CRUD ═══════════════
   const openNewUser = () => {
@@ -289,136 +361,207 @@ const Roles = ({ user }) => {
     setEditingUser({ ...editingUser, etablissementIds: next });
   };
 
-  return (
-    <div style={ros.root}>
-      <div style={ros.tabs} className="no-print">
-        <SegmentedTabs
-          active={activeTab}
-          onChange={setActiveTab}
-          tabs={[
-            { id: 'permissions', label: 'Permissions par rôle' },
-            { id: 'actions', label: "Droits d'action" },
-            { id: 'users', label: `Utilisateurs (${utilisateurs.length})` },
-          ]}
+
+  // ═══════════════ RENDU ═══════════════
+  const correspond = makeSearchMatcher(recherche);
+  const personnes = [...(utilisateurs || [])]
+    .filter((u) => correspond(`${u.prenom || ''} ${u.nom || ''} ${u.email || ''} ${u.poste || ''} ${getRoleInfo(u.role).label}`))
+    .sort((a, b) => `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr'));
+  const choisie = (utilisateurs || []).find((u) => u.id === selectedId) || null;
+  // Sur grand écran, la première personne est ouverte d'office : un panneau
+  // vide à droite ne dit pas quoi faire.
+  const affichee = choisie || (!isMobile ? personnes[0] || null : null);
+
+  const listePersonnes = (
+    <div style={ros.peopleCol}>
+      <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
+        <input
+          type="search"
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Chercher une personne…"
+          aria-label="Chercher une personne"
+          style={ros.fieldInput}
         />
-        <div style={{ flex: 1 }} />
-        {canEdit && activeTab === 'permissions' && <button style={ros.ghostBtn} onClick={resetDefaults}>↻ Réinitialiser</button>}
-        {canEdit && activeTab === 'users' && <button style={ros.addBtn} onClick={openNewUser}>+ Nouvel utilisateur</button>}
       </div>
-
-      {(activeTab === 'permissions' || activeTab === 'actions') && (
-        <div style={ros.permLayout}>
-          <div style={ros.rolesCol}>
-            {roles.map(([key, info]) => (
-              <div key={key} style={{ ...ros.roleItem, ...(selected === key ? ros.roleActive : {}) }} onClick={() => setSelected(key)}>
-                <div style={{ width: 10, height: 10, borderRadius: 4, background: info.couleur, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{info.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)' }}>{utilisateurs.filter(u => u.role === key).length} utilisateur{utilisateurs.filter(u => u.role === key).length > 1 ? 's' : ''}</div>
-                </div>
+      {personnes.length === 0 && (
+        <div style={{ padding: 16, fontSize: 13, color: 'var(--text3)' }}>Aucune personne trouvée.</div>
+      )}
+      {personnes.map((u) => {
+        const role = getRoleInfo(u.role);
+        const ajustee = !!(ecartsParId && ecartsParId[u.id] && Object.keys(ecartsParId[u.id]).length);
+        const active = affichee?.id === u.id;
+        return (
+          <button
+            key={u.id}
+            type="button"
+            onClick={() => setSelectedId(u.id)}
+            style={{ ...ros.personRow, ...(active ? ros.personActive : {}) }}
+          >
+            <div style={{ ...ros.userAvatar, width: 34, height: 34, fontSize: 12, background: role.couleur || '#888' }}>{u.avatar}</div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {u.prenom} {u.nom}
               </div>
-            ))}
-          </div>
-
-          {activeTab === 'permissions' ? (
-            <div style={ros.modulesCol}>
-              <div style={ros.modulesHeader}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>{demoData.roles[selected]?.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>Modules accessibles</div>
-                </div>
-                {canEdit && (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button style={ros.smallGhost} onClick={() => allowAll(selected, true)}>Tout cocher</button>
-                    <button style={ros.smallGhost} onClick={() => allowAll(selected, false)}>Tout décocher</button>
-                  </div>
-                )}
-              </div>
-              <div style={ros.moduleList}>
-                {MODULES.map(m => {
-                  const locked = isLockedFor(selected, m.id);
-                  const val = !locked && !!permissions[selected]?.[m.id];
-                  return (
-                    <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit && !locked ? 'pointer' : 'default', opacity: canEdit && !locked ? 1 : 0.7 }}>
-                      <input type="checkbox" checked={val} onChange={() => togglePerm(selected, m.id)} disabled={!canEdit || locked} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
-                      <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
-                      {locked ? (
-                        <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>Verrouillé par rôle</span>
-                      ) : (
-                        <span style={{ ...ros.permBadge, background: val ? 'var(--success-bg)' : 'var(--danger-bg)', color: val ? 'var(--success-text)' : 'var(--danger-strong)' }}>
-                          {val ? '✓ Autorisé' : '✕ Interdit'}
-                        </span>
-                      )}
-                    </label>
-                  );
-                })}
+              <div style={{ fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {role.label}{u.poste ? ` · ${u.poste}` : ''}
               </div>
             </div>
-          ) : (
-            <div style={ros.modulesCol}>
-              <div style={ros.modulesHeader}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>{demoData.roles[selected]?.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>Modifier &amp; supprimer dans ces modules</div>
-                </div>
+            {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>Inactif</span>}
+            {ajustee && <span style={{ ...ros.permBadge, background: 'var(--accent-light)', color: 'var(--accent)' }}>Ajusté</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  let panneau = null;
+  if (affichee) {
+    const u = affichee;
+    const role = getRoleInfo(u.role);
+    const etabs = (demoData.etablissements || []).filter(e => u.etablissementIds?.includes(e.id));
+    const ecarts = (ecartsParId && ecartsParId[u.id]) || {};
+    const ajustee = Object.keys(ecarts).length > 0;
+    const estConsultant = u.role === 'consultant';
+    const casesActives = canEdit && ecartsParId !== null && !estConsultant;
+
+    panneau = (
+      <div style={ros.modulesCol}>
+        {/* ── La personne ── */}
+        <div style={{ ...ros.modulesHeader, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', gap: 12, minWidth: 0, flex: 1 }}>
+            <div style={{ ...ros.userAvatar, background: role.couleur || '#888' }}>{u.avatar}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
+                {u.prenom} {u.nom}
+                {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
               </div>
-              <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-                Autorise ce rôle à <strong>modifier et supprimer</strong> dans le module.
-                La consultation reste régie par l'onglet « Permissions par rôle ».
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
+                {u.email}
+                {phones[u.id] && (<>{' · '}<PhoneLink tel={phones[u.id]} /></>)}
               </div>
-              <div style={ros.moduleList}>
-                {manageableModules.map(m => {
-                  const val = canManageValue(selected, m.id);
-                  return (
-                    <label key={m.id} style={{ ...ros.moduleRow, cursor: canEdit ? 'pointer' : 'default', opacity: canEdit ? 1 : 0.7 }}>
-                      <input type="checkbox" checked={val} onChange={() => toggleManagePerm(selected, m.id)} disabled={!canEdit} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
-                      <span style={{ flex: 1, fontSize: 13 }}>{m.label}</span>
-                      <span style={{ ...ros.permBadge, background: val ? 'var(--success-bg)' : 'var(--danger-bg)', color: val ? 'var(--success-text)' : 'var(--danger-strong)' }}>
-                        {val ? '✓ Peut gérer' : '✕ Lecture seule'}
-                      </span>
-                    </label>
-                  );
-                })}
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                {role.label}{u.poste ? ` · ${u.poste}` : ''} · {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
               </div>
+            </div>
+          </div>
+          {canEdit && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button style={ros.smallGhost} onClick={() => openEditUser(u)}>Modifier le compte</button>
+              <button style={ros.smallGhost} onClick={() => toggleUserActif(u)}>{u.actif === false ? 'Activer' : 'Désactiver'}</button>
+              {u.id !== user.id && !estConsultant && (
+                <button style={{ ...ros.smallGhost, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => deleteUser(u)}>Supprimer</button>
+              )}
             </div>
           )}
         </div>
-      )}
-      {activeTab === 'users' && (
-        <div style={ros.usersWrap}>
-          {(utilisateurs || []).map(u => {
-            const role = demoData.roles[u.role];
-            const etabs = demoData.etablissements.filter(e => u.etablissementIds?.includes(e.id));
-            return (
-              <div key={u.id} style={ros.userRow}>
-                <div style={{ ...ros.userAvatar, background: role?.couleur || '#888' }}>{u.avatar}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{u.prenom} {u.nom}
-                    {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                    {u.email}
-                    {phones[u.id] && (
-                      <>
-                        {' · '}
-                        <PhoneLink tel={phones[u.id]} />
-                      </>
+
+        {/* ── Ses droits ── */}
+        {estConsultant ? (
+          <div style={{ padding: '16px 18px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+            Accès complet : le rôle Consultant voit et gère tous les modules, il n'y a rien à régler.
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ flex: 1, minWidth: 200, lineHeight: 1.5 }}>
+                Les cases partent des droits du rôle <strong>{role.label}</strong>. Ce que tu changes ne concerne que {u.prenom}.
+                {' '}« Accès » : le module apparaît dans son menu. « Modifier » : il peut y créer, modifier et supprimer.
+              </span>
+              {canEdit && ajustee && (
+                <button style={ros.smallGhost} onClick={() => revenirAuRole(u)} disabled={ecartsParId === null}>
+                  Revenir aux droits du rôle
+                </button>
+              )}
+            </div>
+            {erreurEcarts && (
+              <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--danger-text)', background: 'var(--danger-bg-soft)', borderBottom: '1px solid var(--danger-bd)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ flex: 1 }}>
+                  Les droits personnels n'ont pas pu être lus. Les cases sont bloquées pour ne pas écraser des réglages existants.
+                </span>
+                <button style={ros.smallGhost} onClick={() => reloadRef.current?.()}>Réessayer</button>
+              </div>
+            )}
+            <div style={{ ...ros.moduleRow, padding: '8px 18px', background: 'var(--bg)', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              <span style={{ flex: 1 }}>Module</span>
+              <span style={{ width: 44, textAlign: 'center' }}>Accès</span>
+              <span style={{ width: 44, textAlign: 'center' }}>Modifier</span>
+            </div>
+            <div style={ros.moduleList}>
+              {MODULES.map((m) => {
+                const e = etatModule(rolePerms, u, ecarts, m.permKey);
+                const label = getLabelForModule(m.id, m.label);
+                const notes = [];
+                if (e.accesVerrouille) notes.push(`Réservé aux rôles ${listeRoles(e.reserveA)}`);
+                else {
+                  if (e.ajuste) {
+                    const roleGere = GERABLES.has(m.permKey) && e.duRole.acces ? (e.duRole.gerer ? ', modifie' : ', consulte') : '';
+                    notes.push(`Ajusté pour ${u.prenom} (rôle : ${e.duRole.acces ? 'accès' : 'pas d’accès'}${roleGere})`);
+                  }
+                  // Case « Modifier » grisée : dire pourquoi, sinon elle passe
+                  // pour un bug.
+                  if (e.acces && GERABLES.has(m.permKey) && e.ecriture && !e.ecriture.includes(u.role)) {
+                    notes.push(`Consultation seule : la base réserve l’écriture aux rôles ${listeRoles(e.ecriture)}`);
+                  }
+                }
+                const note = notes.length ? notes.join('. ') : null;
+                return (
+                  <div key={m.permKey} style={{ ...ros.moduleRow, padding: '2px 18px', opacity: e.accesVerrouille ? 0.6 : 1 }}>
+                    <div style={{ flex: 1, minWidth: 0, padding: '8px 0' }}>
+                      <div style={{ fontSize: 13, color: 'var(--text)' }}>{label}</div>
+                      {note && (
+                        <div style={{ fontSize: 11, marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
+                      )}
+                    </div>
+                    <Case
+                      checked={e.acces}
+                      disabled={!casesActives || e.accesVerrouille}
+                      label={`Accès à ${label} pour ${u.prenom}`}
+                      onChange={() => basculer(u, m.permKey, e.duRole.acces, e.acces)}
+                    />
+                    {GERABLES.has(m.permKey) ? (
+                      <Case
+                        checked={e.gerer}
+                        disabled={!casesActives || e.gererVerrouille || !e.acces}
+                        label={`Modifier dans ${label} pour ${u.prenom}`}
+                        onChange={() => basculer(u, cleGerer(m.permKey), e.duRole.gerer, e.gerer)}
+                      />
+                    ) : (
+                      <span title="Rien à régler : ce module n'a pas d'actions réservées" style={{ width: 44, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>-</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                    {role?.label} · {u.poste || '-'} · {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
-                  </div>
-                </div>
-                {canEdit && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button style={ros.smallGhost} onClick={() => toggleUserActif(u)}>{u.actif === false ? 'Activer' : 'Désactiver'}</button>
-                    <button style={ros.smallGhost} onClick={() => openEditUser(u)}>Modifier</button>
-                    <button style={{ ...ros.smallGhost, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => deleteUser(u)}>Supprimer</button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={ros.root}>
+      <div style={ros.tabs} className="no-print">
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''} · les droits se règlent personne par personne
+        </div>
+        <div style={{ flex: 1 }} />
+        {canEdit && <button style={ros.addBtn} onClick={openNewUser}>+ Nouvel utilisateur</button>}
+      </div>
+
+      {isMobile ? (
+        affichee ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button style={{ ...ros.ghostBtn, alignSelf: 'flex-start', minHeight: 44 }} onClick={() => setSelectedId(null)}>← Toute l'équipe</button>
+            {panneau}
+          </div>
+        ) : listePersonnes
+      ) : (
+        <div style={ros.permLayout}>
+          {listePersonnes}
+          {panneau || (
+            <div style={{ ...ros.modulesCol, padding: 24, fontSize: 13, color: 'var(--text3)' }}>Choisis une personne.</div>
+          )}
         </div>
       )}
 
@@ -497,35 +640,21 @@ const Roles = ({ user }) => {
   );
 };
 
-function mergePermissionDefaults(value, defaults) {
-  const saved = value && typeof value === 'object' ? value : {};
-  return Object.fromEntries(
-    Object.entries(defaults).map(([role, roleDefaults]) => [
-      role,
-      { ...roleDefaults, ...(saved[role] || {}) },
-    ])
-  );
-}
-
 const ros = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
-  tabs: { display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' },
-  tab: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
-  addBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  tabs: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+  addBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
   ghostBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  smallGhost: { padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
-  permLayout: { display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14 },
-  rolesCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
-  roleItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .1s' },
-  roleActive: { background: 'var(--accent-light)', borderLeft: '3px solid var(--accent)' },
-  modulesCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
-  modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', flexWrap: 'wrap', gap: 10 },
+  smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
+  permLayout: { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 14, alignItems: 'start' },
+  peopleCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+  personRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', minHeight: 52, background: 'transparent', borderWidth: 0, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)' },
+  personActive: { background: 'var(--accent-light)', borderLeftColor: 'var(--accent)' },
+  modulesCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', minWidth: 0 },
+  modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap', gap: 10 },
   moduleList: { display: 'flex', flexDirection: 'column' },
-  moduleRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--border)' },
-  permBadge: { fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 10, whiteSpace: 'nowrap' },
-  usersWrap: { display: 'flex', flexDirection: 'column', gap: 8 },
-  userRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', flexWrap: 'wrap' },
+  moduleRow: { display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' },
+  permBadge: { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap', flexShrink: 0 },
   userAvatar: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
   modal: { background: 'var(--surface)', borderRadius: 14, width: 500, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
@@ -534,9 +663,5 @@ const ros = {
   fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   fieldInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
 };
-
-if (getBrowserWindow()?.innerWidth < 768) {
-  ros.permLayout = { ...ros.permLayout, gridTemplateColumns: '1fr' };
-}
 
 export default Roles;

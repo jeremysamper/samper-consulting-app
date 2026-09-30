@@ -9,6 +9,14 @@ import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
+import ModeService from './ModeService.jsx';
+import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
+import { zurichToday } from '../../utils/zurichTime.js';
+
+// Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
+// L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)
+// retombe dans le mode service du jour au lieu de la semaine.
+const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 
 // Réglages de la réservation en ligne : la direction, comme pour le Spa (et la
 // RLS de reservation_en_ligne_parametres).
@@ -29,6 +37,11 @@ export default function Previsions({ user, etablissement }) {
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
   const [reglagesEnLigne, setReglagesEnLigne] = useState(false);
+  // Date affichée en mode service (écran scindé plan + réservations), null
+  // quand il est fermé.
+  const [modeService, setModeService] = useState(() => (
+    etablissement?.id && readText(CLE_MODE_SERVICE) === etablissement.id ? zurichToday() : null
+  ));
   // Relance la recherche après une modification : sans ça, la liste continue
   // d'afficher la version d'avant la modification qu'on vient de faire.
   const [rechercheKey,  setRechercheKey]  = useState(0);
@@ -52,7 +65,7 @@ export default function Previsions({ user, etablissement }) {
 
   const etabId         = etablissement?.id;
   // Créer / modifier / annuler des réservations : droit « gérer » du module
-  // (Rôles & accès → Droits d'action ; défaut consultant/patron/resp_cuisine/hôte).
+  // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = canManageModule(user?.role, 'previsions');
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
@@ -65,14 +78,45 @@ export default function Previsions({ user, etablissement }) {
     setRefreshKey((k) => k + 1);
   }
 
+  // Seul le mode service du jour est retenu d'un chargement à l'autre : rouvrir
+  // demain sur la date d'hier tromperait l'hôte.
+  function ouvrirModeService(date) {
+    setModeService(date);
+    if (date === zurichToday()) writeText(CLE_MODE_SERVICE, etabId);
+    else removeStorageKeys([CLE_MODE_SERVICE]);
+  }
+
+  function fermerModeService() {
+    setModeService(null);
+    removeStorageKeys([CLE_MODE_SERVICE]);
+    setRefreshKey((k) => k + 1);
+  }
+
   return (
     <section style={{ padding: '20px 24px', position: 'relative', minHeight: '100%' }}>
       <div className="module-toolbar">
         <SectionHeader
-          title="Prévisions"
-          sub={selectedDate ? null : 'Vue semaine cuisine - couverts et particularités par jour'}
+          title="Réservations"
+          sub={selectedDate ? null : 'Planning de la semaine, service par service'}
         />
         <div className="module-actions">
+          {/* Le plan de salle en un tap : écran scindé plan + réservations du
+              service en cours. Il n'était accessible que par la vue d'un jour,
+              puis l'onglet « Plan de salle ». */}
+          {etabId && (
+            <button
+              type="button"
+              onClick={() => ouvrirModeService(zurichToday())}
+              title="Plan de salle et réservations attendues, côte à côte"
+              style={{
+                padding: '9px 16px', borderRadius: 8,
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
+                background: 'var(--surface)', color: 'var(--accent)',
+                fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer',
+              }}>
+              Mode service
+            </button>
+          )}
           {etabId && (
             <SearchToggle
               value={recherche}
@@ -154,6 +198,7 @@ export default function Previsions({ user, etablissement }) {
             <VueSemaine
               etablissementId={etabId}
               onDayClick={setSelectedDate}
+              onOpenResa={setResaTrouvee}
               refreshKey={refreshKey}
             />
           )}
@@ -165,6 +210,7 @@ export default function Previsions({ user, etablissement }) {
               onResaUpdated={() => setRefreshKey((k) => k + 1)}
               refreshKey={refreshKey}
               canEdit={canEdit}
+              onModeService={ouvrirModeService}
             />
           )}
         </>
@@ -207,6 +253,16 @@ export default function Previsions({ user, etablissement }) {
           onEdit={canEdit ? (r) => { setResaTrouvee(null); setResaEnEdition(r); } : undefined}
           onClose={() => setResaTrouvee(null)}
           onResaUpdated={() => { setResaTrouvee(null); bumpRecherche(); }}
+        />
+      )}
+
+      {modeService && etabId && (
+        <ModeService
+          etablissementId={etabId}
+          date={modeService}
+          canEdit={canEdit}
+          onClose={fermerModeService}
+          onChange={() => setRefreshKey((k) => k + 1)}
         />
       )}
 

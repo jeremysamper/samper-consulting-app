@@ -1,25 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Btn } from '../../components/ui/index.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import { notify } from '../../components/toast/index.js';
-import { useReservations } from '../../hooks/useReservations.js';
-import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
-import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
-import { metaStatut, estPresent } from './statutsReservation.js';
-import { traiterDemande } from './reservationEnLigne.js';
+import { metaStatut, estPresent, SERVICES_AFFICHES, SERVICE_META, serviceAffiche } from './statutsReservation.js';
+import { useReservationsJour } from './useReservationsJour.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import PlanSalle from './PlanSalle.jsx';
 
-const SERVICES_ORDER = ['midi', 'soir', 'brunch'];
-const SERVICE_META = {
-  midi:   { label: 'Midi',   color: '#ea580c' },
-  soir:   { label: 'Soir',   color: 'var(--info-text)' },
-  brunch: { label: 'Brunch', color: '#059669' },
-};
 const TAG_COLORS = {
   allergene: { bg: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: 'var(--danger-bd)' },
   regime:    { bg: 'var(--success-bg-soft)', color: 'var(--success-text)', border: 'var(--success-bd)' },
@@ -166,105 +156,23 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
 }
 
 // ── Composant principal ────────────────────────────────────
-export default function VueJour({ etablissementId, date, onBack, onResaUpdated, refreshKey, canEdit = true }) {
+export default function VueJour({
+  etablissementId, date, onBack, onResaUpdated, refreshKey, canEdit = true, onModeService,
+}) {
   const isMobile    = useIsMobile();
-  const reservations = useReservations(etablissementId);
-  const [resas,        setResas]        = useState(null);
-  // Vrai d'entrée : sans ça le premier rendu, avant la première lecture,
-  // annonçait « Aucune réservation ce jour ».
-  const [loading,      setLoading]      = useState(Boolean(etablissementId && date));
-  const [error,        setError]        = useState(null);
-  const [nonActualise, setNonActualise] = useState(false);
+  const {
+    resas, loading, error, nonActualise, load, changerStatut, traiter: traiterJour,
+  } = useReservationsJour(etablissementId, date, { refreshKey, onChange: onResaUpdated });
   const [selectedResa, setSelectedResa] = useState(null);
   const [editingResa,  setEditingResa]  = useState(null);
   const [vue,          setVue]          = useState('liste'); // 'liste' | 'plan'
   const [creating,     setCreating]     = useState(false);
 
-  // Reprise, retour d'une modification et bouton « Réessayer » peuvent lancer
-  // des lectures qui se croisent : voir useOrdreLectures.
-  const lectures   = useOrdreLectures();
-  // Jour (établissement + date) dont les réservations sont à l'écran.
-  const afficheRef = useRef(null);
-
-  async function load() {
-    if (!etablissementId || !date) return;
-    const cle     = `${etablissementId}|${date}`;
-    const lecture = lectures.lancer(cle);
-    // Ce jour est déjà affiché (reprise après veille, retour d'une
-    // modification) : relecture SILENCIEUSE. La liste et le plan de salle
-    // restent montés, sans « Chargement… », et sont remplacés à l'arrivée.
-    // Sinon on repart de zéro : les résas d'un autre jour sous ce titre
-    // mentiraient.
-    const silencieux = afficheRef.current === cle;
-    if (!silencieux) {
-      afficheRef.current = null;
-      setResas(null);
-      setLoading(true);
-      setError(null);
-      setNonActualise(false);
-    }
-
-    let res;
-    try {
-      res = await reservations.findByDate(date);
-    } catch (e) {
-      console.error('[VueJour] lecture des réservations', e);
-      res = { data: null, error: 'Erreur technique. Réessaie ou contacte le support.' };
-    }
-
-    if (res.error) {
-      if (!lecture.signalerEchec()) return;
-      setLoading(false);
-      // Une liste valide n'est jamais écrasée par un échec : elle reste
-      // affichée, avec un bandeau qui dit qu'elle n'a pas pu être actualisée.
-      if (silencieux) setNonActualise(true);
-      else setError(res.error);
-      return;
-    }
-    if (!lecture.appliquer()) return;
-    afficheRef.current = cle;
-    setResas((res.data || []).filter((r) => r.statut !== 'annule'));
-    setLoading(false);
-    setError(null);
-    setNonActualise(false);
-  }
-
-  // refreshKey : une résa créée depuis le bandeau du module (ou modifiée par
-  // une modale fermée avant la fin de son écriture) doit aussi apparaître ici.
-  useEffect(() => { load(); }, [date, etablissementId, refreshKey]); // load est défini dans le composant, stable par construction
-
-  // Réveil de la tablette, retour du réseau : resumeCoordinator décide du
-  // moment (session saine d'abord), la relecture est silencieuse.
-  useResumeRefresh(load);
-
-  // Mise à jour optimiste : pendant le service, cocher une arrivée doit
-  // répondre au doigt et non au réseau. En cas d'échec on remet l'état
-  // d'avant plutôt que de laisser l'écran mentir.
-  async function changerStatut(resa, statut) {
-    const avant = resa.statut;
-    setResas((prev) => (prev || []).map((r) => (r.id === resa.id ? { ...r, statut } : r)));
-    const { error: err } = await reservations.setStatut(resa.id, statut);
-    if (err) {
-      setResas((prev) => (prev || []).map((r) => (r.id === resa.id ? { ...r, statut: avant } : r)));
-      notify(err, 'error');
-      return;
-    }
-    notify(`${resa.nom} · ${metaStatut(statut).label.toLowerCase()}`, 'success');
-    // Un no-show sort des couverts prévus (trigger côté base) : la vue
-    // semaine doit s'en apercevoir.
-    if (statut === 'no_show' || avant === 'no_show') onResaUpdated?.();
-  }
-
-  // Demande en ligne confirmée ou refusée : le client est prévenu par e-mail,
-  // le bandeau des demandes et la semaine se relisent.
+  // Une demande refusée ferme la fiche qui la montrait, par identité : une
+  // autre fiche ouverte entre-temps reste ouverte.
   async function traiter(resa, evenement) {
-    if (evenement === 'refus' && !window.confirm(`Refuser la demande de ${resa.nom} ?`)) return;
-    const res = await traiterDemande(resa, evenement);
-    if (res.error) { notify(res.error, 'error'); return; }
-    notify(res.message, res.ton);
-    if (evenement === 'refus') setSelectedResa((cur) => (cur?.id === resa.id ? null : cur));
-    load();
-    onResaUpdated?.();
+    const ok = await traiterJour(resa, evenement);
+    if (ok && evenement === 'refus') setSelectedResa((cur) => (cur?.id === resa.id ? null : cur));
   }
 
   const actives       = resas || [];
@@ -309,6 +217,23 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
             </div>
           )}
         </div>
+        {/* Plan de salle et réservations côte à côte, en plein écran, pour
+            le jour affiché. */}
+        {onModeService && (
+          <button
+            type="button"
+            onClick={() => onModeService(date)}
+            title="Plan de salle et réservations attendues, côte à côte"
+            style={{
+              padding: '9px 16px', borderRadius: 8, minHeight: 44,
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
+              background: 'var(--surface)', color: 'var(--accent)',
+              fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+              cursor: 'pointer', flexShrink: 0,
+            }}>
+            Mode service
+          </button>
+        )}
         {/* Ajout depuis le jour affiché : le bouton du bandeau de module
             ouvrait toujours le formulaire sur aujourd'hui, obligeant à
             resaisir la date qu'on avait justement sous les yeux. */}
@@ -390,9 +315,10 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
       )}
 
       {/* ── Résas regroupées par service ── */}
-      {vue === 'liste' && !loading && actives.length > 0 && SERVICES_ORDER.map((svc) => {
+      {vue === 'liste' && !loading && actives.length > 0 && SERVICES_AFFICHES.map((svc) => {
         const groupe = actives
-          .filter((r) => r.service === svc)
+          // Le brunch est listé avec le midi : c'est le midi du dimanche.
+          .filter((r) => serviceAffiche(r.service) === svc)
           .sort((a, b) => (a.heure_arrivee || '').localeCompare(b.heure_arrivee || ''));
         if (!groupe.length) return null;
         // Même règle que le total du jour : le no-show ne compte pas.
@@ -406,11 +332,11 @@ export default function VueJour({ etablissementId, date, onBack, onResaUpdated, 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               marginBottom: 7, paddingBottom: 5,
-              borderBottom: `2px solid ${meta.color}22`,
+              borderBottom: `2px solid ${meta.bordure}`,
             }}>
               <span style={{
                 fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
-                letterSpacing: 0.5, color: meta.color,
+                letterSpacing: 0.5, color: meta.couleur,
               }}>
                 {meta.label}
               </span>
