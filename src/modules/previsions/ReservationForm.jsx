@@ -8,10 +8,22 @@ import { addDays, isoDate, formatDateLongue, parseLocalDate } from '../../utils/
 import { serviceParDefaut } from './statutsReservation.js';
 import ReservationTagSelector from './ReservationTagSelector.jsx';
 
+// Heures proposées au quart d'heure, comme la réservation en ligne (réglage
+// « Heures proposées toutes les » à 15 minutes). « Autre heure » reste libre
+// à la minute.
+function auQuartDHeure(de, a) {
+  const minutes = (h) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+  const heures = [];
+  for (let t = minutes(de); t <= minutes(a); t += 15) {
+    heures.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+  }
+  return heures;
+}
+
 const SUGGESTIONS = {
-  midi:   ['12:00', '12:30', '13:00', '13:30'],
-  soir:   ['19:00', '19:30', '20:00', '20:30', '21:00'],
-  brunch: ['10:30', '11:00', '11:30', '12:00'],
+  midi:   auQuartDHeure('12:00', '13:30'),
+  soir:   auQuartDHeure('19:00', '21:00'),
+  brunch: auQuartDHeure('10:30', '12:00'),
 };
 
 // Heure la plus demandée de chaque service, et non la première de la liste :
