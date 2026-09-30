@@ -221,7 +221,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
             {/* ── Horaires ── */}
             <div style={s.carte}>
               <div style={s.titre}>Heures d'arrivée proposées</div>
-              <div style={{ ...s.aide, marginTop: 0, marginBottom: 10 }}>Première et dernière heure à laquelle un client peut arriver, par service.</div>
+              <div style={{ ...s.aide, marginTop: 0, marginBottom: 10 }}>Première et dernière heure à laquelle un client peut arriver, par service. Les mêmes heures sont proposées à l'équipe quand elle saisit une réservation, même si la réservation en ligne est désactivée.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {JOURS.map(([jour, nom]) => {
                   const services = form.horaires[String(jour)] || {};
@@ -334,7 +334,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
                     {[14, 30, 60, 90, 180, 365].map((j) => <option key={j} value={j}>{j} jours à l'avance</option>)}
                   </select>
                 </Champ>
-                <Champ label="Heures proposées toutes les">
+                <Champ label="Heures proposées toutes les" aide="En ligne et dans la saisie d'une réservation.">
                   <select style={s.champ} value={form.pasMinutes} onChange={(e) => set('pasMinutes', Number(e.target.value))}>
                     {[15, 30, 60].map((m) => <option key={m} value={m}>{m === 60 ? '1 heure' : `${m} minutes`}</option>)}
                   </select>

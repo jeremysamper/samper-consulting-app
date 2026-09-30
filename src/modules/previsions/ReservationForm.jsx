@@ -6,25 +6,42 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { addDays, isoDate, formatDateLongue, parseLocalDate } from '../../utils/dateHelpers.js';
 import { serviceParDefaut } from './statutsReservation.js';
+import { useParametresEnLigne } from './reservationEnLigne.js';
 import ReservationTagSelector from './ReservationTagSelector.jsx';
 
-// Heures proposées au quart d'heure, comme la réservation en ligne (réglage
-// « Heures proposées toutes les » à 15 minutes). « Autre heure » reste libre
-// à la minute.
-function auQuartDHeure(de, a) {
-  const minutes = (h) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+// Heures proposées : celles de la réservation en ligne (Prévisions, réglages
+// de la réservation en ligne : « Heures d'arrivée proposées » par jour et
+// service, « Heures proposées toutes les »). Un seul réglage pour le site et
+// pour l'équipe. « Autre heure » reste libre à la minute.
+const HEURE_OK = /^\d{2}:\d{2}$/;
+const enMinutes = (h) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+function plageDHeures(de, a, pas = 15) {
   const heures = [];
-  for (let t = minutes(de); t <= minutes(a); t += 15) {
+  for (let t = enMinutes(de); t <= enMinutes(a); t += pas) {
     heures.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
   }
   return heures;
 }
 
+// Sans réglage lisible (chargement, table absente) : plages habituelles.
 const SUGGESTIONS = {
-  midi:   auQuartDHeure('12:00', '13:30'),
-  soir:   auQuartDHeure('19:00', '21:00'),
-  brunch: auQuartDHeure('10:30', '12:00'),
+  midi:   plageDHeures('12:00', '13:30'),
+  soir:   plageDHeures('19:00', '21:00'),
+  brunch: plageDHeures('10:30', '12:00'),
 };
+
+// Plage du service ce jour-là ; un service fermé ce jour (réservation
+// téléphonique exceptionnelle) reprend la plage d'un autre jour.
+function heuresProposees(parametres, date, service) {
+  const horaires = parametres?.horaires;
+  if (!horaires || !date) return SUGGESTIONS[service] || [];
+  const jourIso = parseLocalDate(date).getDay() || 7;
+  const valide = (pl) => pl && HEURE_OK.test(pl.de || '') && HEURE_OK.test(pl.a || '') && enMinutes(pl.de) <= enMinutes(pl.a);
+  const plage = [horaires[String(jourIso)]?.[service], ...Object.values(horaires).map((j) => j?.[service])].find(valide);
+  if (!plage) return SUGGESTIONS[service] || [];
+  const pas = [15, 30, 60].includes(Number(parametres.pasMinutes)) ? Number(parametres.pasMinutes) : 15;
+  return plageDHeures(plage.de, plage.a, pas);
+}
 
 // Heure la plus demandée de chaque service, et non la première de la liste :
 // personne ne réserve à 19:00 par défaut, on vise 20:00.
@@ -59,6 +76,9 @@ function formFromResa(resa) {
     service,
     heure,
     heureCustom: !(SUGGESTIONS[service] || []).includes(heure),
+    // Champ libre choisi d'office (et non par l'utilisateur) : repasse en
+    // bouton si l'heure figure dans les heures réglées une fois chargées.
+    heureCustomAuto: true,
     couverts:    resa.nb_couverts   || 2,
     nom:         resa.nom           || '',
     telephone:   resa.telephone     || '',
@@ -79,6 +99,28 @@ export default function ReservationForm({
   const [loading, setLoading] = useState(false);
   const reservations = useReservations(etablissementId);
   const tags = useReservationTags();
+  const { parametres, status: statutReglages } = useParametresEnLigne(etablissementId);
+  const suggestions = heuresProposees(statutReglages === 'ready' ? parametres : null, form.date, form.service);
+  const cleSuggestions = suggestions.join(',');
+  const heureInitiale = (initialResa?.heure_arrivee || '').slice(0, 5);
+
+  // Heures proposées changées (réglages chargés, autre jour, autre service) :
+  // l'heure retenue doit rester visible. Nouvelle résa : heure habituelle du
+  // service si elle est proposée, sinon celle du milieu. Résa existante :
+  // son heure est gardée, en champ libre si elle n'est plus proposée.
+  useEffect(() => {
+    const liste = cleSuggestions ? cleSuggestions.split(',') : [];
+    if (!liste.length) return;
+    setForm((p) => {
+      if (p.heureCustom) {
+        return p.heureCustomAuto && liste.includes(p.heure) ? { ...p, heureCustom: false, heureCustomAuto: false } : p;
+      }
+      if (liste.includes(p.heure)) return p;
+      if (initialResa && p.heure === heureInitiale) return { ...p, heureCustom: true, heureCustomAuto: true };
+      const habituelle = HEURE_DEFAUT[p.service];
+      return { ...p, heure: liste.includes(habituelle) ? habituelle : liste[Math.floor(liste.length / 2)] };
+    });
+  }, [cleSuggestions, initialResa, heureInitiale]);
 
   // Faux dès que le formulaire est fermé. Le bouton de pied (« Fermer » pendant
   // l'enregistrement) et × restent actifs : l'écriture lancée va à son terme et
@@ -228,8 +270,6 @@ export default function ReservationForm({
     }
   }
 
-  const suggestions = SUGGESTIONS[form.service];
-
   const inp = {
     width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8,
     background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13,
@@ -347,7 +387,7 @@ export default function ReservationForm({
                     {h}
                   </button>
                 ))}
-                <button type="button" onClick={() => set('heureCustom', true)}
+                <button type="button" onClick={() => setForm((p) => ({ ...p, heureCustom: true, heureCustomAuto: false }))}
                   style={{ padding: '8px 14px', borderRadius: 8, border: '1px dashed var(--border)', background: 'var(--bg)', color: 'var(--text2)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font)' }}>
                   Autre heure
                 </button>
