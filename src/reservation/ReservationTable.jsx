@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, CalendarCheck, Check, MapPin, Phone, Users, X } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, X } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réservation d'une table en ligne, vue par le visiteur (module Prévisions).
@@ -72,6 +72,7 @@ function prevenirParent(type, valeur) {
 
 // Jetons de la page : autonomes (la page n'embarque pas app.css), clair ou
 // sombre, accent repris du site du client avec un texte lisible dessus.
+// Neutres clairs froids, jamais crème (même principe que l'app).
 function jetons(theme, hex) {
   const accent = hex || ACCENT_DEFAUT;
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(accent.slice(i, i + 2), 16) / 255);
@@ -79,12 +80,12 @@ function jetons(theme, hex) {
   const clair = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) > 0.45;
   const sombre = theme === 'dark';
   return {
-    '--t-bg': sombre ? '#12161c' : '#f6f5f2',
-    '--t-surface': sombre ? '#1b2129' : '#ffffff',
-    '--t-sunken': sombre ? '#232a33' : '#efede8',
+    '--t-bg': sombre ? '#12161c' : '#f2f5f6',
+    '--t-surface': sombre ? '#1b2129' : '#fcfdfd',
+    '--t-sunken': sombre ? '#232a33' : '#e9eef0',
     '--t-ink': sombre ? '#eef1f4' : '#1d2327',
     '--t-ink2': sombre ? '#aab4bf' : '#5b6469',
-    '--t-line': sombre ? '#2d3540' : '#e3e0d9',
+    '--t-line': sombre ? '#2d3540' : '#dce2e5',
     '--t-accent': sombre && !hex ? '#7fb2c8' : accent,
     '--t-on-accent': sombre && !hex ? '#0d1a20' : (clair ? '#1d2327' : '#ffffff'),
     '--t-ok': sombre ? '#7ccf9f' : '#1f7a4d',
@@ -417,7 +418,6 @@ export default function ReservationTable() {
                   </p>
 
                   <button type="submit" disabled={envoi} style={{ ...s.principal, opacity: envoi ? 0.6 : 1 }}>
-                    <CalendarCheck size={19} strokeWidth={1.8} aria-hidden="true" />
                     {envoi ? 'Envoi…' : auto ? 'Réserver' : 'Envoyer ma demande'}
                   </button>
                 </div>
@@ -426,9 +426,8 @@ export default function ReservationTable() {
 
             {/* ── Envoyée ── */}
             {etape === 'envoye' && choix && (
-              <section style={{ ...s.carte, textAlign: 'center' }} aria-live="polite">
-                <span aria-hidden="true" style={s.succesIcone}><Check size={28} strokeWidth={2} /></span>
-                <h2 style={{ ...s.titre, fontSize: 26, paddingRight: 0 }}>
+              <section style={s.carte} aria-live="polite">
+                <h2 style={{ ...s.titre, fontSize: 26, paddingRight: 0, margin: '0 0 6px' }}>
                   {resultat === 'confirmee' ? 'Table réservée' : 'Demande envoyée'}
                 </h2>
                 <p style={s.texte}>
@@ -436,10 +435,20 @@ export default function ReservationTable() {
                     ? <>Merci {form.prenom.trim()}, c'est noté. Un récapitulatif part à <strong style={{ color: 'var(--t-ink)' }}>{form.email.trim()}</strong>.</>
                     : <>Merci {form.prenom.trim()}. Nous vous confirmons la réservation par e-mail à <strong style={{ color: 'var(--t-ink)' }}>{form.email.trim()}</strong>.</>}
                 </p>
-                <div style={{ ...s.recap, justifyContent: 'center', margin: '16px 0' }}>
-                  <Users size={18} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--t-accent)' }} />
-                  <span style={{ fontSize: 15 }}>{personnes(couverts)}, {jourLong(date).toLowerCase()} à {choix.heure}</span>
-                </div>
+                {/* Le bon de réservation, tel que le restaurant le notera. */}
+                <dl style={s.bon}>
+                  {[
+                    ['Table pour', personnes(couverts)],
+                    ['Le', jourLong(date)],
+                    ['À', choix.heure],
+                    ['Au nom de', `${form.prenom.trim()} ${form.nom.trim()}`],
+                  ].map(([label, valeur]) => (
+                    <div key={label} style={s.bonLigne}>
+                      <dt style={s.bonLabel}>{label}</dt>
+                      <dd style={s.bonValeur} data-no-translate={label === 'Au nom de' ? true : undefined}>{valeur}</dd>
+                    </div>
+                  ))}
+                </dl>
                 <button type="button" onClick={recommencer} style={s.secondaire}>Faire une autre réservation</button>
               </section>
             )}
@@ -476,7 +485,7 @@ function Recap({ date, choix, couverts, onModifier }) {
 
 const bouton = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-  fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, borderRadius: 999,
+  fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, borderRadius: 6,
 };
 
 const s = {
@@ -486,25 +495,25 @@ const s = {
   },
   colonne: { position: 'relative', maxWidth: 620, margin: '0 auto' },
   fermer: {
-    position: 'absolute', top: -8, right: 0, width: 44, height: 44, borderRadius: 22, cursor: 'pointer',
+    position: 'absolute', top: -8, right: 0, width: 44, height: 44, borderRadius: 6, cursor: 'pointer',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     background: 'var(--t-surface)', color: 'var(--t-ink2)', border: '1px solid var(--t-line)',
   },
   chargement: { padding: '60px 0', textAlign: 'center', color: 'var(--t-ink2)' },
-  carte: { padding: '28px 22px', borderRadius: 18, background: 'var(--t-surface)', border: '1px solid var(--t-line)' },
-  surTitre: { fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--t-ink2)' },
+  carte: { padding: '28px 22px', borderRadius: 10, background: 'var(--t-surface)', border: '1px solid var(--t-line)' },
+  surTitre: { fontSize: 14, color: 'var(--t-ink2)' },
   titre: { margin: '6px 0 0', fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 32, lineHeight: 1.15, paddingRight: 48 },
   texte: { margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--t-ink2)' },
   coordonnees: { display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 10 },
   coord: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--t-ink2)', textDecoration: 'none' },
   erreur: {
-    marginBottom: 14, padding: '12px 14px', borderRadius: 12, fontSize: 14, lineHeight: 1.5,
+    marginBottom: 14, padding: '12px 14px', borderRadius: 6, fontSize: 14, lineHeight: 1.5,
     background: 'var(--t-danger-soft)', color: 'var(--t-danger)', border: '1px solid var(--t-danger)',
   },
   sousTitre: { margin: '0 0 10px', fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 20 },
   puces: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   puce: {
-    minWidth: 46, height: 46, borderRadius: 23, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 16, fontWeight: 600,
+    minWidth: 46, height: 46, borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 16, fontWeight: 600,
     fontVariantNumeric: 'tabular-nums',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--t-line)',
     background: 'var(--t-surface)', color: 'var(--t-ink)',
@@ -513,7 +522,7 @@ const s = {
   jours: { display: 'flex', gap: 6, paddingBottom: 4, marginBottom: 10, overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   jour: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0,
-    minWidth: 52, minHeight: 56, padding: '6px 4px', borderRadius: 12, cursor: 'pointer', fontFamily: 'var(--font)',
+    minWidth: 52, minHeight: 56, padding: '6px 4px', borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--t-line)',
     background: 'var(--t-surface)', color: 'var(--t-ink)',
   },
@@ -521,13 +530,13 @@ const s = {
   jourFerme: { opacity: 0.4, cursor: 'not-allowed', background: 'transparent' },
   autreDate: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--t-ink2)', marginBottom: 20 },
   champDate: {
-    minHeight: 40, padding: '6px 12px', borderRadius: 999, border: '1px solid var(--t-line)',
+    minHeight: 40, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--t-line)',
     background: 'var(--t-surface)', color: 'var(--t-ink)', fontFamily: 'var(--font)', fontSize: 14,
   },
-  service: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--t-ink2)', marginBottom: 8 },
+  service: { fontSize: 14, fontWeight: 600, color: 'var(--t-ink)', marginBottom: 8 },
   creneaux: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 8 },
   creneau: {
-    minHeight: 46, borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600,
+    minHeight: 46, borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600,
     fontVariantNumeric: 'tabular-nums',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--t-line)',
     background: 'var(--t-surface)', color: 'var(--t-ink)',
@@ -535,15 +544,15 @@ const s = {
   creneauActif: { borderColor: 'var(--t-accent)', background: 'var(--t-accent)', color: 'var(--t-on-accent)' },
   aucun: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12,
-    padding: '12px 16px', borderRadius: 12, border: '1px dashed var(--t-line)', color: 'var(--t-ink2)', fontSize: 14,
+    padding: '12px 16px', borderRadius: 6, border: '1px dashed var(--t-line)', color: 'var(--t-ink2)', fontSize: 14,
   },
   recap: {
     display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18,
-    padding: '14px 16px', borderRadius: 14, background: 'var(--t-surface)', border: '1px solid var(--t-line)',
+    padding: '14px 16px', borderRadius: 8, background: 'var(--t-surface)', border: '1px solid var(--t-line)',
   },
   grille2: { display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' },
   champ: {
-    width: '100%', boxSizing: 'border-box', minHeight: 46, padding: '10px 14px', borderRadius: 12,
+    width: '100%', boxSizing: 'border-box', minHeight: 46, padding: '10px 14px', borderRadius: 6,
     border: '1px solid var(--t-line)', background: 'var(--t-surface)', color: 'var(--t-ink)',
     fontFamily: 'var(--font)', fontSize: 16,
   },
@@ -559,8 +568,11 @@ const s = {
   lien: {
     ...bouton, fontSize: 14, minHeight: 40, padding: '6px 4px', border: 'none', background: 'none', color: 'var(--t-accent)',
   },
-  succesIcone: {
-    width: 60, height: 60, borderRadius: 30, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: 'var(--t-ok-soft)', color: 'var(--t-ok)', marginBottom: 6,
+  bon: { margin: '18px 0', padding: 0, borderTop: '1px solid var(--t-line)' },
+  bonLigne: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
+    padding: '10px 0', borderBottom: '1px solid var(--t-line)',
   },
+  bonLabel: { margin: 0, fontSize: 14, color: 'var(--t-ink2)' },
+  bonValeur: { margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums', minWidth: 0, overflowWrap: 'anywhere' },
 };

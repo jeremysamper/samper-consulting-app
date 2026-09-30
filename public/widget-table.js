@@ -101,7 +101,7 @@
     var boite = document.createElement('div');
     var petit = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
     boite.style.cssText = 'position:relative;width:100%;max-width:640px;height:' + (petit ? '100%' : 'min(820px, calc(100vh - 32px))')
-      + ';border-radius:' + (petit ? '0' : '22px') + ';overflow:hidden;background:#f6f5f2;box-shadow:0 24px 70px rgba(0,0,0,0.35);';
+      + ';border-radius:' + (petit ? '0' : '10px') + ';overflow:hidden;background:#f2f5f6;box-shadow:0 24px 70px rgba(0,0,0,0.35);';
     if (petit) voile.style.padding = '0';
     var cadre = document.createElement('iframe');
     cadre.src = urlPage('modal');
@@ -150,8 +150,8 @@
   bouton.type = 'button';
   bouton.textContent = texte;
   bouton.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 26px;'
-    + 'border:0;border-radius:999px;cursor:pointer;font:600 16px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0.01em;'
-    + 'background:' + fond + ';color:' + texteClair(fond) + ';box-shadow:0 6px 18px rgba(0,0,0,0.15);transition:filter .2s ease;';
+    + 'border:0;border-radius:6px;cursor:pointer;font:600 16px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0.01em;'
+    + 'background:' + fond + ';color:' + texteClair(fond) + ';transition:filter .2s ease;';
   bouton.addEventListener('mouseenter', function () { bouton.style.filter = 'brightness(1.08)'; });
   bouton.addEventListener('mouseleave', function () { bouton.style.filter = ''; });
   bouton.addEventListener('click', ouvrir);
