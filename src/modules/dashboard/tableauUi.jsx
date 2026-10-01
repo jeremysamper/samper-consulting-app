@@ -88,7 +88,9 @@ export const t = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   carteTete: { display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  carteTitre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.2, color: 'var(--text)' },
+  // Titres de carte en Satoshi : le serif d'affichage en graisse fine faisait
+  // « page générée ». Le serif reste réservé au titre de la page (la date).
+  carteTitre: { margin: 0, fontFamily: 'var(--font)', fontWeight: 700, fontSize: 16, lineHeight: 1.3, letterSpacing: '-0.01em', color: 'var(--text)' },
   carteSousTitre: { fontSize: 12.5, color: 'var(--text2)', marginTop: 2 },
   puce: {
     display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',

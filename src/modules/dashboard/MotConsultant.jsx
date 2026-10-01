@@ -82,7 +82,7 @@ export default function MotConsultant({ message, consultant, onPublier }) {
 }
 
 const s = {
-  corps: { margin: 0, fontFamily: 'var(--font-serif)', fontSize: 18, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '68ch' },
+  corps: { margin: 0, fontFamily: 'var(--font)', fontSize: 15.5, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '68ch' },
   signature: { margin: '10px 0 0', fontSize: 13, color: 'var(--text2)' },
   zone: {
     width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-sm)', resize: 'vertical',

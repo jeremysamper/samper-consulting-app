@@ -281,7 +281,7 @@ function CarteSemaine({
 
 const s = {
   entete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12, minWidth: 0 },
-  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 22, color: 'var(--text)' },
+  titre: { margin: 0, fontFamily: 'var(--font)', fontWeight: 700, fontSize: 18, letterSpacing: '-0.01em', color: 'var(--text)' },
   couvertsBouton: {
     display: 'block', width: '100%', padding: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)',
