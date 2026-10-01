@@ -409,15 +409,35 @@ export default function ReservationForm({
             <label style={lbl}>Nombre de couverts</label>
             <div style={{ display: 'flex', alignItems: 'center', width: 'fit-content', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               <button type="button" aria-label="Diminuer"
-                onClick={() => set('couverts', Math.max(1, form.couverts - 1))}
+                onClick={() => set('couverts', Math.max(1, (Number(form.couverts) || 0) - 1))}
                 style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 −
               </button>
-              <div style={{ width: 52, textAlign: 'center', fontWeight: 800, fontSize: 17, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
-                {form.couverts}
-              </div>
+              {/* Saisie au clavier : une tablée de 18 se tape, elle ne se
+                  clique pas seize fois. Chiffres seulement ; le champ peut
+                  rester vide le temps de la frappe, la validation le refuse
+                  ensuite. Tout est sélectionné au toucher pour remplacer d'un
+                  coup. 17 px : en dessous, iOS zoome sur le champ. */}
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label="Nombre de couverts"
+                value={form.couverts}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const chiffres = e.target.value.replace(/\D/g, '').slice(0, 2);
+                  set('couverts', chiffres === '' ? '' : Number(chiffres));
+                }}
+                onBlur={() => { if (form.couverts === '' || form.couverts < 1) set('couverts', 1); }}
+                style={{
+                  width: 52, height: 44, textAlign: 'center', fontWeight: 800, fontSize: 17,
+                  color: 'var(--text)', fontFamily: 'var(--font-num)',
+                  background: 'transparent', border: 'none', padding: 0, minWidth: 0,
+                }}
+              />
               <button type="button" aria-label="Augmenter"
-                onClick={() => set('couverts', Math.min(50, form.couverts + 1))}
+                onClick={() => set('couverts', Math.min(50, (Number(form.couverts) || 0) + 1))}
                 style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 +
               </button>

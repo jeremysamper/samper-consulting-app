@@ -22,8 +22,6 @@ const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 // RLS de reservation_en_ligne_parametres).
 const ROLES_EN_LIGNE = ['consultant', 'patron'];
 
-// Tous les rôles ayant accès au module (réservations en lecture au minimum)
-const ROLES_AUTORISES = ['consultant', 'patron', 'resp_cuisine', 'hote', 'serveur'];
 
 // Rôles voyant les KPIs financiers (CA prévisionnel, etc.)
 // Réservé pour les futurs affichages de chiffre d'affaires estimé.
@@ -50,18 +48,9 @@ export default function Previsions({ user, etablissement }) {
     setRefreshKey((k) => k + 1);
   };
 
-  if (!ROLES_AUTORISES.includes(user?.role)) {
-    return (
-      <section style={{ padding: '40px 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 8 }}>
-          Accès non autorisé à ce module.
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-          Ce module est réservé aux rôles consultant, patron, responsable cuisine, hôte et serveur.
-        </div>
-      </section>
-    );
-  }
+  // Pas de liste de rôles ici : l'accès au module se règle personne par
+  // personne dans Rôles & accès, et LegacyModuleHost l'applique déjà. Une
+  // liste en dur refusait un cuisinier à qui l'on avait ouvert le module.
 
   const etabId         = etablissement?.id;
   // Créer / modifier / annuler des réservations : droit « gérer » du module

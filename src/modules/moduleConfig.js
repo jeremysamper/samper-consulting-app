@@ -55,13 +55,15 @@ export const manageableModules = [
 // Rôles que la BASE laisse écrire dans un module (RLS fondée sur le rôle, relevée
 // en prod le 30.09.2026). Un droit « gérer » accordé hors de ces rôles serait
 // refusé par Supabase : canManageModule le refuse aussi, et Rôles & accès
-// verrouille la case. Module absent = la base ne filtre que par établissement.
-//   previsions : reservations, reservation_tables, salles, salle_tables
+// verrouille la case. Module absent = la base ne filtre que par établissement,
+// ou suit elle-même la case « Modifier ».
 //   groupes    : groupe_evenements (création)
 //   mep        : mep_listes, mep_items
 //   pos        : pos_item_recipe_mapping
+// Réservations (previsions) : retiré le 01.10.2026. La RLS de ses cinq tables
+// appelle user_peut_gerer('previsions', …) (migration 20261001), qui lit la
+// même case « Modifier » que le front : cochable pour n'importe qui.
 export const rolesEcritureBase = {
-  previsions: ['consultant', 'patron', 'resp_cuisine', 'hote'],
   groupes:    ['consultant', 'patron', 'resp_cuisine', 'hote', 'cuisinier'],
   mep:        ['consultant', 'resp_cuisine', 'cuisinier'],
   pos:        ['consultant', 'patron', 'resp_cuisine'],
