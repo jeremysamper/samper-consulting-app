@@ -8,6 +8,13 @@ import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'luci
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { AUTRES, RAYONS, classerProduit, trierRayons } from './classerProduit.js';
+
+// Rayon affiché d'une ligne : sa catégorie enregistrée, ou, si elle vaut
+// « Autres » (listes générées avant le classement automatique, ajouts sans
+// catégorie), le rayon déduit de son nom. Les listes existantes se rangent
+// donc sans régénération.
+const rayonDe = (item) => classerProduit(item?.nom, null, item?.categorie);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMANDE - liste de produits a commander, partagee par etablissement.
@@ -220,10 +227,10 @@ const Commande = ({ user, etablissement }) => {
   // ── Derives ──
   const searchVal = normalizeSearch(search.trim());
   const filtered = items.filter(i =>
-    (catFilter === 'Tous' || i.categorie === catFilter) &&
+    (catFilter === 'Tous' || rayonDe(i) === catFilter) &&
     (searchVal === '' || normalizeSearch(i.nom).includes(searchVal))
   );
-  const categories = ['Tous', ...[...new Set(items.map(i => i.categorie || 'Autres'))].sort(catSort)];
+  const categories = ['Tous', ...[...new Set(items.map(rayonDe))].sort(trierRayons)];
   const groups = groupByCategorie(filtered);
   const totalCount = items.length;
   const cocheCount = items.filter(i => i.coche).length;
@@ -492,9 +499,14 @@ function formatCartePeriode(c) {
 // ── Modale d'ajout manuel ──
 const AddProductModal = ({ onClose, onAdd }) => {
   const [nom, setNom] = React.useState('');
-  const [categorie, setCategorie] = React.useState('Autres');
+  // null = catégorie automatique, déduite du nom pendant la frappe. Dès que
+  // l'opérateur choisit lui-même, son choix est gardé.
+  const [categorieChoisie, setCategorieChoisie] = React.useState(null);
+  const categorie = categorieChoisie || classerProduit(nom);
   const [unite, setUnite] = React.useState('');
-  const CATS = ['Viandes', 'Poissons', 'Légumes', 'Fruits', 'Crémerie', 'Épicerie', 'Boissons', 'Surgelés', 'Autres'];
+  // Mêmes rayons que la liste. « Hygiène / non alimentaire » est le libellé du
+  // catalogue ; à la main, on range sous « Hygiène & consommables ».
+  const CATS = RAYONS.filter(c => c !== 'Hygiène / non alimentaire');
   const UNITES = ['', 'g', 'kg', 'ml', 'L', 'pcs'];
   return (
     <div className="modal-full-overlay" style={s.overlay} onClick={onClose}>
@@ -512,9 +524,12 @@ const AddProductModal = ({ onClose, onAdd }) => {
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={s.label}>Catégorie</label>
-              <select style={s.input} value={categorie} onChange={e => setCategorie(e.target.value)}>
+              <select style={s.input} value={categorie} onChange={e => setCategorieChoisie(e.target.value)}>
                 {CATS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              {!categorieChoisie && nom.trim() && categorie !== AUTRES && (
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Déduite du nom, modifiable.</div>
+              )}
             </div>
             <div style={{ width: 110 }}>
               <label style={s.label}>Unité</label>
@@ -533,20 +548,16 @@ const AddProductModal = ({ onClose, onAdd }) => {
   );
 };
 
-// Ordre des catégories : alphabétique, « Autres » en dernier.
-function catSort(a, b) {
-  if (a === 'Autres') return 1;
-  if (b === 'Autres') return -1;
-  return a.localeCompare(b, 'fr');
-}
+// Groupes par rayon, dans l'ordre d'une tournée de réception (frais, puis
+// sec, puis non alimentaire), « Autres » en dernier : cf. RAYONS.
 function groupByCategorie(list) {
   const map = new Map();
   list.forEach(i => {
-    const c = i.categorie || 'Autres';
+    const c = rayonDe(i);
     if (!map.has(c)) map.set(c, []);
     map.get(c).push(i);
   });
-  return [...map.keys()].sort(catSort).map(categorie => ({
+  return [...map.keys()].sort(trierRayons).map(categorie => ({
     categorie,
     items: map.get(categorie).slice().sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr')),
   }));

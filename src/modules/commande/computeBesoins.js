@@ -1,4 +1,5 @@
 import { convertFactor } from '../consultant-tools/ConsultantTools.constants.js';
+import { HYGIENE, classerProduit, contexteClassement, estNonCommandable } from './classerProduit.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // computeBesoins - agrège les produits nécessaires à TOUTES les cartes d'un
@@ -32,6 +33,9 @@ export function toCanonical(unite) {
 export function computeBesoins({ cartes = [], plats = [], recettes = [], catalogue = [] }) {
   const produitById = new Map((catalogue || []).map(p => [p.id, p]));
   const recetteById = new Map((recettes || []).map(r => [r.id, r]));
+  // Rayon de chaque ligne : catalogue lié, sinon nom de recette (préparation
+  // maison), sinon catalogue par nom, sinon mots-clés (classerProduit.js).
+  const ctxRayon = contexteClassement({ catalogue, recettes });
 
   // Plats présents sur au moins une carte de l'établissement.
   const carteIdsSet = new Set((cartes || []).map(c => c.id));
@@ -53,6 +57,8 @@ export function computeBesoins({ cartes = [], plats = [], recettes = [], catalog
       const nomIng = String(ing.nom || '').trim();
       if (!nomIng && !ing.produitId) return;
       const produit = ing.produitId ? produitById.get(ing.produitId) : null;
+      // L'eau du robinet n'a rien à faire dans une commande.
+      if (!produit && estNonCommandable(nomIng)) return;
       const { canonical, factor } = toCanonical(ing.unite);
       const baseCle = produit ? ('prod:' + produit.id)
         : (ing.produitId ? ('prod:' + ing.produitId) : ('nom:' + slug(nomIng)));
@@ -67,7 +73,7 @@ export function computeBesoins({ cartes = [], plats = [], recettes = [], catalog
           cle: key,
           produitId: produit ? produit.id : (ing.produitId || null),
           nom: produit ? produit.nom : nomIng,
-          categorie: produit ? (produit.categorie || 'Autres') : (ing.categorie || 'Autres'),
+          categorie: classerProduit(produit ? produit.nom : nomIng, ctxRayon, produit ? produit.categorie : ing.categorie),
           unite: canonical,
           besoin: qty,
           ordre: ordre++,
@@ -148,7 +154,7 @@ export const STAPLES_HYGIENE = [
   'Dégraissant', 'Désinfectant surfaces', 'Nettoyant multi-usage', 'Détartrant',
   'Film alimentaire', 'Papier cuisson', 'Papier aluminium', 'Poches sous vide',
   'Gants jetables', 'Essuie-tout', 'Sacs poubelle',
-].map(nom => ({ nom, categorie: 'Hygiène & consommables', unite: '' }));
+].map(nom => ({ nom, categorie: HYGIENE, unite: '' }));
 
 // Ajoute les fonds de cuisine à une liste de besoins, en sautant ceux dont le
 // nom est déjà présent (issu des recettes ou ajouté à la main) pour ne jamais
