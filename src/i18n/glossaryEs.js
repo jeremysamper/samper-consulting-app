@@ -604,4 +604,23 @@ export const UI_GLOSSARY_ES = {
   'Chercher une personne': 'Buscar a una persona',
   'Toute l\x27équipe': 'Todo el equipo',
   'Choisis une personne': 'Elige a una persona',
+
+  // ── Réservations : fichier clients ──
+  'Clients': 'Clientes',
+  'Nouveau client': 'Nuevo cliente',
+  'Fiche client et historique': 'Ficha del cliente e historial',
+  'Historique': 'Historial',
+  'Habitués': 'Habituales',
+  'Acceptent les e-mails': 'Aceptan e-mails',
+  'Archivés': 'Archivados',
+  'Sortir des archives': 'Sacar del archivo',
+  'Préférences': 'Preferencias',
+  'Date de naissance': 'Fecha de nacimiento',
+  'Allergies, régime': 'Alergias, dieta',
+  'Aucun client trouvé': 'Ningún cliente encontrado',
+  'Chargement des clients': 'Cargando clientes',
+  'Le fichier clients est encore vide': 'El fichero de clientes aún está vacío',
+  'Accepte de recevoir les actualités et les bons cadeaux par e-mail': 'Acepta recibir noticias y vales regalo por e-mail',
+  'Le client accepte de recevoir les actualités et les bons cadeaux par e-mail': 'El cliente acepta recibir noticias y vales regalo por e-mail',
+  'Table non notée': 'Mesa no anotada',
 };

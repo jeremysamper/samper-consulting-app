@@ -619,6 +619,25 @@ export const UI_GLOSSARY = {
   'Chercher une personne': 'Search for a person',
   'Toute l\x27équipe': 'Whole team',
   'Choisis une personne': 'Pick a person',
+
+  // ── Réservations : fichier clients ──
+  'Clients': 'Customers',
+  'Nouveau client': 'New customer',
+  'Fiche client et historique': 'Customer file and history',
+  'Historique': 'History',
+  'Habitués': 'Regulars',
+  'Acceptent les e-mails': 'Accept e-mails',
+  'Archivés': 'Archived',
+  'Sortir des archives': 'Restore from archive',
+  'Préférences': 'Preferences',
+  'Date de naissance': 'Date of birth',
+  'Allergies, régime': 'Allergies, diet',
+  'Aucun client trouvé': 'No customer found',
+  'Chargement des clients': 'Loading customers',
+  'Le fichier clients est encore vide': 'The customer file is still empty',
+  'Accepte de recevoir les actualités et les bons cadeaux par e-mail': 'Agrees to receive news and gift vouchers by e-mail',
+  'Le client accepte de recevoir les actualités et les bons cadeaux par e-mail': 'The customer agrees to receive news and gift vouchers by e-mail',
+  'Table non notée': 'Table not recorded',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

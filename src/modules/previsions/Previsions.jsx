@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SectionHeader } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import ReservationForm from './ReservationForm.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
@@ -10,6 +11,7 @@ import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
 import ModeService from './ModeService.jsx';
+import ClientsResa from './ClientsResa.jsx';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
@@ -21,7 +23,6 @@ const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 // Réglages de la réservation en ligne : la direction, comme pour le Spa (et la
 // RLS de reservation_en_ligne_parametres).
 const ROLES_EN_LIGNE = ['consultant', 'patron'];
-
 
 // Rôles voyant les KPIs financiers (CA prévisionnel, etc.)
 // Réservé pour les futurs affichages de chiffre d'affaires estimé.
@@ -35,6 +36,8 @@ export default function Previsions({ user, etablissement }) {
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
   const [reglagesEnLigne, setReglagesEnLigne] = useState(false);
+  // Planning (semaine, jour) ou fichier clients.
+  const [onglet, setOnglet] = useState('planning');
   // Date affichée en mode service (écran scindé plan + réservations), null
   // quand il est fermé.
   const [modeService, setModeService] = useState(() => (
@@ -86,7 +89,7 @@ export default function Previsions({ user, etablissement }) {
       <div className="module-toolbar">
         <SectionHeader
           title="Réservations"
-          sub={selectedDate ? null : 'Planning de la semaine, service par service'}
+          sub={onglet === 'clients' ? 'Fichier clients, rempli par les réservations' : selectedDate ? null : 'Planning de la semaine, service par service'}
         />
         <div className="module-actions">
           {/* Le plan de salle en un tap : écran scindé plan + réservations du
@@ -106,7 +109,9 @@ export default function Previsions({ user, etablissement }) {
               Mode service
             </button>
           )}
-          {etabId && (
+          {/* La loupe cherche dans les réservations ; l'onglet Clients a sa
+              propre recherche. */}
+          {etabId && onglet === 'planning' && (
             <SearchToggle
               value={recherche}
               onChange={setRecherche}
@@ -157,10 +162,23 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
+      {etabId && (
+        <SegmentedTabs
+          tabs={[{ id: 'planning', label: 'Planning' }, { id: 'clients', label: 'Clients' }]}
+          active={onglet}
+          onChange={(id) => { setOnglet(id); setRecherche(''); }}
+          style={{ marginTop: 14 }}
+        />
+      )}
+
+      {etabId && onglet === 'clients' && (
+        <ClientsResa etablissementId={etabId} canEdit={canEdit} refreshKey={refreshKey} />
+      )}
+
       {/* ── Recherche : elle prend toute la place tant qu'elle est ouverte,
              plutôt que de s'ajouter sous la semaine où on la perdrait de vue.
              Fermer la loupe efface le filtre et rend la vue normale. ── */}
-      {etabId && recherche.trim() !== '' && (
+      {etabId && onglet === 'planning' && recherche.trim() !== '' && (
         <RechercheResas
           etablissementId={etabId}
           terme={recherche}
@@ -171,7 +189,7 @@ export default function Previsions({ user, etablissement }) {
       )}
 
       {/* ── Routeur local : vue semaine ↔ vue jour ── */}
-      {etabId && recherche.trim() === '' && (
+      {etabId && onglet === 'planning' && recherche.trim() === '' && (
         <>
           {/* Demandes venues du site, à confirmer : en tête, quel que soit le
               jour affiché. */}

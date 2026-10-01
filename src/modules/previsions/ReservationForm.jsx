@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 import { useReservationTags } from '../../hooks/useReservationTags.js';
+import { useResaClients } from '../../hooks/useResaClients.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { addDays, isoDate, formatDateLongue, parseLocalDate } from '../../utils/dateHelpers.js';
@@ -55,9 +56,12 @@ function defaultState(dateInitiale, serviceInitial) {
   const service = serviceInitial || serviceParDefaut(date);
   return {
     date, service, heure: HEURE_DEFAUT[service], heureCustom: false,
-    couverts: 2, nom: '', telephone: '', groupe: false, tags: [], notes: '',
+    couverts: 2, nom: '', telephone: '', email: '', accordActus: false,
+    groupe: false, tags: [], notes: '',
   };
 }
+
+const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function validateForm(form) {
   const errors = [];
@@ -65,6 +69,7 @@ function validateForm(form) {
   if (!form.date)                               errors.push('La date est obligatoire.');
   if (!form.heure)                              errors.push("L'heure d'arrivée est obligatoire.");
   if (form.couverts < 1 || form.couverts > 50) errors.push('Le nombre de couverts doit être entre 1 et 50.');
+  if (form.email.trim() && !EMAIL_OK.test(form.email.trim())) errors.push("L'e-mail semble incorrect.");
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
 
@@ -82,6 +87,8 @@ function formFromResa(resa) {
     couverts:    resa.nb_couverts   || 2,
     nom:         resa.nom           || '',
     telephone:   resa.telephone     || '',
+    email:       resa.email         || '',
+    accordActus: false,
     groupe:      resa.est_groupe    || false,
     tags:        Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [],
     notes:       resa.notes_libres  || '',
@@ -99,6 +106,7 @@ export default function ReservationForm({
   const [loading, setLoading] = useState(false);
   const reservations = useReservations(etablissementId);
   const tags = useReservationTags();
+  const fichesClients = useResaClients(etablissementId);
   const { parametres, status: statutReglages } = useParametresEnLigne(etablissementId);
   const suggestions = heuresProposees(statutReglages === 'ready' ? parametres : null, form.date, form.service);
   const cleSuggestions = suggestions.join(',');
@@ -187,6 +195,20 @@ export default function ReservationForm({
     { id: demain,     label: 'Demain' },
   ];
 
+  // Accord du client pour les actualités et bons cadeaux, recueilli par
+  // l'équipe (au téléphone, sur place). Il vit sur sa fiche client, que la
+  // base a rattachée à la réservation grâce à l'e-mail ou au téléphone. Un
+  // échec ici ne défait pas la réservation : on le dit, c'est tout.
+  async function enregistrerAccord(resa) {
+    if (!form.accordActus || !form.email.trim()) return;
+    if (!resa?.client_id) {
+      notify("Réservation enregistrée, mais la fiche client n'a pas été trouvée : note l'accord depuis l'onglet Clients.", 'warning');
+      return;
+    }
+    const { error } = await fichesClients.setConsentement(resa.client_id, true, 'equipe');
+    if (error) notify(`Accord pour les actualités non enregistré : ${error}`, 'warning');
+  }
+
   async function submit(keepOpen) {
     const { ok, errors } = validateForm(form);
     if (!ok) { errors.forEach((e) => notify(e, 'error')); return; }
@@ -201,14 +223,16 @@ export default function ReservationForm({
         nb_couverts:   form.couverts,
         nom:           form.nom.trim(),
         telephone:     form.telephone.trim() || null,
+        email:         form.email.trim().toLowerCase() || null,
         est_groupe:    form.groupe,
         notes_libres:  form.notes.trim() || null,
       };
 
       if (initialResa) {
         // ── MODE ÉDITION ──
-        const { error: eUpd } = await reservations.update(initialResa.id, payload);
+        const { data: maj, error: eUpd } = await reservations.update(initialResa.id, payload);
         if (eUpd) { echec(eUpd); return; }
+        await enregistrerAccord(maj);
         // Remplacement des tags : supprime tous → recrée
         const { error: eDel } = await tags.deleteByReservationId(initialResa.id);
         if (eDel) { echec(eDel, { partiel: true }); return; }
@@ -226,6 +250,7 @@ export default function ReservationForm({
           echec(eResa || 'Erreur lors de la création de la réservation.');
           return;
         }
+        await enregistrerAccord(resa);
         if (form.tags.length > 0) {
           const { error: eTags } = await tags.bulkCreate(resa.id, form.tags);
           if (eTags) {
@@ -466,6 +491,31 @@ export default function ReservationForm({
             <input type="tel" placeholder="+41 79 123 45 67" value={form.telephone}
               onChange={(e) => set('telephone', e.target.value)} style={inp} />
           </div>
+
+          {/* E-mail : complète la fiche client (rattachée par e-mail ou
+              téléphone) et permet de lui écrire. */}
+          <div>
+            <label style={lbl}>
+              E-mail{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optionnel)</span>
+            </label>
+            <input type="email" inputMode="email" placeholder="client@exemple.ch" value={form.email}
+              onChange={(e) => set('email', e.target.value)} style={inp} autoComplete="off" />
+          </div>
+
+          {form.email.trim() !== '' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.accordActus}
+                onChange={(e) => set('accordActus', e.target.checked)}
+                style={{ width: 20, height: 20, accentColor: 'var(--accent)', flexShrink: 0 }}
+              />
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>
+                Le client accepte de recevoir les actualités et les bons cadeaux par e-mail
+              </span>
+            </label>
+          )}
 
           {/* Groupe toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

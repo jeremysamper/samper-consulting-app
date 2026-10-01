@@ -3,6 +3,7 @@ import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { STATUTS, metaStatut } from './statutsReservation.js';
+import ClientFiche from './ClientFiche.jsx';
 
 export default function ReservationDetailModal({
   resa, onClose, onResaUpdated, onEdit, onStatut, onTraiter, canEdit = true,
@@ -11,6 +12,7 @@ export default function ReservationDetailModal({
   const reservations  = useReservations(resa.etablissement_id);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
+  const [ficheClient, setFicheClient] = useState(false);
   const tags = Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [];
 
   function LigneDetail({ label, valeur }) {
@@ -228,7 +230,35 @@ export default function ReservationDetailModal({
               </div>
             </div>
           )}
+          {/* Fiche du client : rattachée en base dès que la réservation porte
+              un e-mail ou un téléphone. Historique des tables, préférences,
+              accord pour les actualités. */}
+          {resa.client_id && (
+            <button
+              type="button"
+              onClick={() => setFicheClient(true)}
+              style={{
+                marginTop: 10, width: '100%', minHeight: 44, padding: '8px 12px', borderRadius: 8,
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
+                background: 'var(--surface)', color: 'var(--accent)',
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}
+            >
+              <span>Fiche client et historique</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
         </div>
+
+        {ficheClient && resa.client_id && (
+          <ClientFiche
+            etablissementId={resa.etablissement_id}
+            clientId={resa.client_id}
+            canEdit={canEdit}
+            onClose={() => setFicheClient(false)}
+          />
+        )}
 
         {/* Footer - état normal */}
         {!showConfirm && (

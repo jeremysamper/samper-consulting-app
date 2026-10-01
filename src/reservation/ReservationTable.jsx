@@ -104,7 +104,7 @@ export default function ReservationTable() {
   const [date, setDate] = useState(null);
   const [creneaux, setCreneaux] = useState({ cle: null, services: [], chargement: false });
   const [choix, setChoix] = useState(null); // { service, heure }
-  const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', message: '', siteWeb: '' });
+  const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', message: '', siteWeb: '', actus: false });
   const [envoi, setEnvoi] = useState(false);
   const [resultat, setResultat] = useState(null);
   const [erreur, setErreur] = useState(null);
@@ -198,6 +198,9 @@ export default function ReservationTable() {
       const { ok, statut, corps } = await appeler('public_table_reserver', {
         slug: parametres.slug, date, service: choix.service, heure: choix.heure, couverts,
         prenom: f.prenom, nom: f.nom, email: f.email, telephone: f.telephone, message: f.message,
+        // Accord pour les actualités et bons cadeaux : décoché par défaut,
+        // seul un geste du client le donne (nLPD / RGPD).
+        consentement: f.actus === true,
         siteWeb: f.siteWeb, dureeSaisie: Math.round(performance.now() - debutSaisie.current),
       });
       if (ok) {
@@ -407,6 +410,19 @@ export default function ReservationTable() {
                     <textarea id="t-message" style={{ ...s.champ, minHeight: 76, resize: 'vertical' }} value={form.message} placeholder="Allergie, anniversaire, chaise haute…" onChange={(e) => setForm({ ...form, message: e.target.value })} />
                   </Champ>
 
+                  <label htmlFor="t-actus" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minHeight: 44, cursor: 'pointer' }}>
+                    <input
+                      id="t-actus"
+                      type="checkbox"
+                      checked={form.actus}
+                      onChange={(e) => setForm({ ...form, actus: e.target.checked })}
+                      style={{ width: 20, height: 20, marginTop: 2, flexShrink: 0, accentColor: 'var(--t-accent)' }}
+                    />
+                    <span style={{ ...s.texte, fontSize: 14 }}>
+                      J'accepte de recevoir les actualités et les bons cadeaux de <span data-no-translate>{infos.etablissement?.nom}</span> par e-mail. Désinscription possible à tout moment.
+                    </span>
+                  </label>
+
                   {/* Champ piège : invisible pour un humain, rempli par les robots. */}
                   <div aria-hidden="true" style={s.piege}>
                     <label htmlFor="t-site">Site web</label>
@@ -414,7 +430,7 @@ export default function ReservationTable() {
                   </div>
 
                   <p style={{ ...s.texte, fontSize: 12 }}>
-                    Vos coordonnées servent uniquement à gérer votre réservation avec <span data-no-translate>{infos.etablissement?.nom}</span>. Elles ne sont transmises à personne.
+                    Vos coordonnées servent à gérer votre réservation avec <span data-no-translate>{infos.etablissement?.nom}</span>{form.actus ? ' et à vous envoyer ses actualités' : ''}. Elles ne sont transmises à personne.
                   </p>
 
                   <button type="submit" disabled={envoi} style={{ ...s.principal, opacity: envoi ? 0.6 : 1 }}>
