@@ -666,7 +666,9 @@ const Factures = ({ user, etablissement }) => {
     const monthNameCap = monthName.charAt(0).toUpperCase() + monthName.slice(1);
     const monthFolder = `${monthNum} - ${monthNameCap}`;
 
-    const allDocs = await legacySB.db.listDocuments(targetEtabId);
+    // Lecture stricte : une lecture ratée rendait [], et l'on recréait alors un
+    // second dossier « Factures » à la racine. Mieux vaut échouer et réessayer.
+    const allDocs = await legacySB.db.listDocuments(targetEtabId, { strict: true });
 
     // Cherche ou crée le dossier "Factures" à la racine
     let factureFolder = allDocs.find(d => d.type === 'folder' && d.nom === 'Factures' && !d.parentId);

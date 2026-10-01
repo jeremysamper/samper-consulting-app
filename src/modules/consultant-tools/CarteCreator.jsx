@@ -77,7 +77,8 @@ const makeMenuItem = (source, order) => ({
 });
 
 const ensureDraftFolder = async ({ legacySB, etabId, userId }) => {
-  const docs = await legacySB.db.listDocuments(etabId);
+  // Stricte : sur une lecture ratée, [] ferait créer un second dossier Draft.
+  const docs = await legacySB.db.listDocuments(etabId, { strict: true });
   const existing = docs.find((doc) =>
     doc.type === 'folder' &&
     (doc.parentId || null) === null &&

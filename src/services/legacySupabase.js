@@ -1714,11 +1714,13 @@ export function installLegacySupabase() {
     },
 
     // ─── DOCUMENTS (dossiers + fichiers) ───
-    async listDocuments(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [], pour
+    // que le module distingue « aucun document » d'une lecture ratée.
+    async listDocuments(etabId, { strict = false } = {}) {
       let q = client.from('documents').select('*').order('type', { ascending: true }).order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listDocuments]', error); return []; }
+      if (error) return _readFailed('[listDocuments]', error, strict);
       return (data || []).map(this.mapDocumentFromDB);
     },
 
@@ -1736,16 +1738,19 @@ export function installLegacySupabase() {
       return this.mapDocumentFromDB(data);
     },
 
-    // Upload d'un fichier PDF : upload dans storage puis insert dans la table
-    async uploadFile({ etablissementId, parentId, file, userId }) {
+    // Upload d'un fichier (PDF ou image) : upload dans storage puis insert dans
+    // la table. `contentType` explicite : Safari laisse parfois `file.type`
+    // vide (photos HEIC), et le bucket refuse un type absent de sa liste.
+    async uploadFile({ etablissementId, parentId, file, userId, contentType }) {
       // Chemin : <etablissement_id>/<timestamp>-<nom-fichier>
       const timestamp = Date.now();
       const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const storagePath = `${etablissementId}/${timestamp}-${cleanName}`;
+      const mime = contentType || file.type || 'application/pdf';
 
       // 1. Upload dans storage
       const { error: upErr } = await client.storage.from('documents').upload(storagePath, file, {
-        contentType: file.type || 'application/pdf',
+        contentType: mime,
         upsert: false,
       });
       if (upErr) throw upErr;
@@ -1758,7 +1763,7 @@ export function installLegacySupabase() {
         type: 'file',
         nom: file.name,
         storage_path: storagePath,
-        mime_type: file.type || 'application/pdf',
+        mime_type: mime,
         taille: file.size,
         uploaded_by: userId || null,
       };
@@ -1771,9 +1776,13 @@ export function installLegacySupabase() {
       return this.mapDocumentFromDB(data);
     },
 
-    // Générer URL signée (valide 1h) pour lire/télécharger un PDF
-    async getFileURL(storagePath) {
-      const { data, error } = await client.storage.from('documents').createSignedUrl(storagePath, 3600);
+    // Générer URL signée (valide 1h) pour lire/télécharger un document.
+    // `download` (nom de fichier) : le serveur répond en pièce jointe, seul
+    // moyen fiable d'enregistrer le fichier sur iPad (l'attribut download d'un
+    // lien est ignoré pour une URL d'un autre domaine).
+    async getFileURL(storagePath, { download = null } = {}) {
+      const opts = download ? { download } : undefined;
+      const { data, error } = await client.storage.from('documents').createSignedUrl(storagePath, 3600, opts);
       if (error) throw error;
       return data.signedUrl;
     },
