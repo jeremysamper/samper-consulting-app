@@ -22,12 +22,20 @@ export const AUTRES = 'Autres';
 export const PREPARATIONS_MAISON = 'Préparations maison';
 export const HYGIENE = 'Hygiène & consommables';
 
+// Herbes fraîches et fleurs d'un côté (rayon frais, se commandent avec les
+// légumes), épices de l'autre (rayon sec). Le catalogue les réunit encore sous
+// « Herbes / épices » : une ligne qui porte ce libellé est re-triée par son nom
+// (cf. classerProduit).
+export const HERBES_FLEURS = 'Herbes & fleurs';
+export const EPICES = 'Épices';
+const HERBES_EPICES_CATALOGUE = 'Herbes / épices';
+
 // Ordre d'affichage : celui d'une tournée de réception, du frais au sec, puis
 // le non alimentaire. Une catégorie inconnue se range avant « Autres », par
 // ordre alphabétique.
 export const RAYONS = [
   'Fruits & légumes',
-  'Herbes / épices',
+  HERBES_FLEURS,
   'Viandes',
   'Poissons & fruits de mer',
   'Produits laitiers',
@@ -35,6 +43,7 @@ export const RAYONS = [
   'Surgelés',
   'Boulangerie / pâtisserie',
   'Épicerie sèche',
+  EPICES,
   'Condiments / sauces',
   'Boissons',
   'Alcools',
@@ -46,7 +55,7 @@ export const RAYONS = [
 
 // Mots-clés par rayon, écrits sans accent ni majuscule (normalizeSearch).
 // Un mot-clé ne matche qu'en début de mot : « the » ne prend pas « thym ».
-// Le pluriel simple (s / x) est accepté en fin de mot-clé.
+// Le pluriel simple (s / x) est accepté à la fin de chaque mot.
 const MOTS_CLES = {
   'Fruits & légumes': [
     'pomme', 'poire', 'citron', 'orange', 'pamplemousse', 'mandarine', 'clementine', 'yuzu', 'bergamote',
@@ -61,20 +70,31 @@ const MOTS_CLES = {
     'butternut', 'potimarron', 'potiron', 'citrouille', 'patate douce', 'pomme de terre', 'grenaille',
     'topinambour', 'panais', 'rutabaga', 'salsifis', 'champignon', 'cepe', 'chanterelle', 'girolle',
     'morille', 'pleurote', 'shiitake', 'trompette', 'truffe', 'pied de mouton', 'gingembre', 'raifort',
-    'citronnelle', 'fleur comestible', 'capucine', 'airelle', 'baie', 'arbouse', 'sureau', 'argousier',
+    'airelle', 'baie', 'arbouse', 'sureau', 'argousier',
   ],
-  'Herbes / épices': [
+  [HERBES_FLEURS]: [
     'thym', 'romarin', 'laurier', 'persil', 'ciboulette', 'cerfeuil', 'estragon', 'basilic', 'menthe',
     'coriandre', 'aneth', 'sauge', 'origan', 'marjolaine', 'sarriette', 'livèche', 'livache', 'oseille',
-    'verveine', 'mélisse', 'melisse', 'shiso', 'herbes', 'fines herbes', 'bouquet garni',
-    'poivre', 'baie rose', 'cumin', 'curcuma', 'paprika', 'piment d espelette', 'espelette', 'cannelle',
-    'muscade', 'girofle', 'cardamome', 'badiane', 'anis', 'safran', 'vanille', 'tonka', 'feve de tonka',
-    'curry', 'garam masala', 'ras el hanout', 'za atar', 'sumac', 'fenugrec', 'graine de coriandre',
-    'graine de fenouil', 'sel', 'fleur de sel', 'gros sel', 'sel fin', 'epice', 'quatre epices', 'genievre',
-    'cacao amer', 'feve tonka',
+    'verveine', 'mélisse', 'melisse', 'shiso', 'herbe', 'herbes', 'fines herbes', 'herbes de provence',
+    'bouquet garni', 'citronnelle', 'mizuna', 'pimprenelle', 'hysope', 'agastache', 'tagete',
+    // Fleurs comestibles et décors.
+    'fleur', 'fleur comestible', 'fleurs comestibles', 'decor fleuri', 'capucine', 'pensee', 'bourrache',
+    'violette', 'souci', 'begonia', 'oeillet', 'calendula', 'rose', 'petale', 'lavande', 'camomille',
+    'fleur de sureau', 'fleur de courgette', 'sureau en fleur',
     // Cueillette et aromates de montagne.
-    'sapin', 'aiguille de sapin', 'pousse de sapin', 'poudre de sapin', 'epicea', 'fleur de foin', 'foin',
-    'reine des pres', 'serpolet', 'genepi',
+    'sapin', 'aiguille de sapin', 'pousse de sapin', 'epicea', 'fleur de foin', 'foin',
+    'reine des pres', 'serpolet', 'genepi', 'ail des ours', 'pissenlit', 'ortie',
+  ],
+  [EPICES]: [
+    'epice', 'epices', 'quatre epices', 'cinq epices', 'poivre', 'baie rose', 'poivre de sichuan',
+    'cumin', 'curcuma', 'paprika', 'piment d espelette', 'espelette', 'piment en poudre', 'cayenne',
+    'chili en poudre', 'cannelle', 'muscade', 'noix de muscade', 'macis', 'girofle', 'clou de girofle',
+    'cardamome', 'badiane', 'anis', 'anis etoile', 'safran', 'vanille', 'gousse de vanille', 'tonka',
+    'feve tonka', 'feve de tonka', 'curry', 'garam masala', 'ras el hanout', 'za atar', 'sumac',
+    'fenugrec', 'graine de coriandre', 'graine de fenouil', 'graine de moutarde', 'carvi', 'nigelle',
+    'genievre', 'baie de genievre', 'sel', 'fleur de sel', 'gros sel', 'sel fin', 'sel de l himalaya',
+    'sel de guerande', 'cacao amer', 'poudre de sapin', 'ail en poudre', 'oignon en poudre',
+    'herbes sechees', 'thym seche', 'laurier seche', 'origan seche',
   ],
   'Viandes': [
     'boeuf', 'veau', 'agneau', 'mouton', 'porc', 'cochon', 'poulet', 'volaille', 'pintade', 'canard',
@@ -194,12 +214,13 @@ const nomNu = (s) => norm(String(s || '').replace(/\([^)]*\)/g, ' '))
 const echapper = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Index précompilé : un mot-clé = une expression en début de mot, pluriel
-// simple toléré. Construit une fois au chargement du module.
+// simple toléré sur CHAQUE mot (« baie de genievre » prend « Baies de
+// genièvre »). Construit une fois au chargement du module.
 const REGLES = Object.entries(MOTS_CLES).flatMap(([rayon, mots]) =>
   [...new Set(mots.map(norm))].map(mot => ({
     rayon,
     longueur: mot.length,
-    re: new RegExp(`(?:^|\\s)${echapper(mot)}(?:s|x)?(?=\\s|$)`),
+    re: new RegExp(`(?:^|\\s)${mot.split(' ').map(echapper).join('(?:s|x)?\\s')}(?:s|x)?(?=\\s|$)`),
   })),
 );
 
@@ -242,15 +263,23 @@ export function contexteClassement({ catalogue = [], recettes = [] } = {}) {
 // Rayon d'un produit. `categorieConnue` = catégorie déjà portée par la ligne
 // (produit lié au catalogue) : elle prime, sauf si elle vaut « Autres ».
 export function classerProduit(nom, ctx = null, categorieConnue = null) {
-  if (categorieConnue && categorieConnue !== AUTRES) return categorieConnue;
+  if (categorieConnue && categorieConnue !== AUTRES) return scinderHerbesEpices(nom, categorieConnue);
   const n = norm(nom);
   if (!n) return AUTRES;
   if (ctx) {
     if (ctx.recettesNoms?.has(n)) return PREPARATIONS_MAISON;
     const cat = ctx.catalogueParNom?.get(n) || ctx.catalogueParNom?.get(nomNu(nom));
-    if (cat) return cat;
+    if (cat) return scinderHerbesEpices(nom, cat);
   }
   return rayonParMotsCles(nom);
+}
+
+// « Herbes / épices » (libellé du catalogue, et des lignes générées avant la
+// séparation) est re-trié par le nom : herbe fraîche ou fleur d'un côté, tout
+// le reste en épices — c'est le cas par défaut d'un produit sec du rayon.
+function scinderHerbesEpices(nom, categorie) {
+  if (categorie !== HERBES_EPICES_CATALOGUE) return categorie;
+  return rayonParMotsCles(nom) === HERBES_FLEURS ? HERBES_FLEURS : EPICES;
 }
 
 // Ordre des rayons : celui de RAYONS, une catégorie hors liste juste avant

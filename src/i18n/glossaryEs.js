@@ -380,6 +380,8 @@ export const UI_GLOSSARY_ES = {
   'Fruits': 'Frutas',
   'Épicerie sèche': 'Productos secos',
   'Préparations maison': 'Elaboraciones propias',
+  'Herbes & fleurs': 'Hierbas y flores',
+  'Épices': 'Especias',
   'Hygiène & consommables': 'Higiene y consumibles',
   'Déduite du nom, modifiable': 'Deducida del nombre, modificable',
   'Produits laitiers': 'Lácteos',

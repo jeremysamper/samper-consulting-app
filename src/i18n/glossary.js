@@ -391,6 +391,8 @@ export const UI_GLOSSARY = {
   'Fruits': 'Fruit',
   'Épicerie sèche': 'Dry goods',
   'Préparations maison': 'House preparations',
+  'Herbes & fleurs': 'Herbs & flowers',
+  'Épices': 'Spices',
   'Hygiène & consommables': 'Hygiene & supplies',
   'Déduite du nom, modifiable': 'Guessed from the name, can be changed',
   'Produits laitiers': 'Dairy',
