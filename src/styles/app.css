@@ -1796,3 +1796,12 @@ html[data-theme="dark"] button:not(:disabled):active {
 @media (prefers-reduced-motion: reduce) {
   .nav-organizer-row { transition: none; }
 }
+
+/* ─── Navigation HACCP en gros boutons (HaccpNav.jsx) ────────────────────────
+   Sous 480 px, trois tuiles tiennent côte à côte mais la ligne d'aide les
+   ferait monter à quatre lignes : on n'y garde que le titre, resserré. */
+@media (max-width: 479px) {
+  .haccp-nav .haccp-nav-aide { display: none; }
+  .haccp-nav .haccp-nav-principal { padding: 12px 10px !important; min-height: 72px !important; }
+  .haccp-nav .haccp-nav-titre { font-size: 14px !important; }
+}

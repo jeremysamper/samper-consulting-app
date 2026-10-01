@@ -14,7 +14,7 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import HaccpNav from './HaccpNav.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
 
@@ -590,14 +590,16 @@ const HACCP = ({ user, etablissement }) => {
     }
   };
 
+  // principal = gros bouton en tête : les trois gestes du service. Les autres
+  // sections (consultation, réglages) passent en boutons plus petits dessous.
   const tabs = [
-    {id:'tableau',     l:'Tableau de bord'},
-    {id:'releves',     l:'Relevés température'},
-    {id:'controles',   l:'Contrôles hygiène'},
-    {id:'tracabilite', l:'Traçabilité'},
+    {id:'releves',     l:'Relevés température', aide:'Frigos et chambres froides', principal:true},
     // Poste d'étiquetage : mêmes rôles que la saisie (consultant, patron,
     // resp_cuisine, cuisinier). Serveur et hôte n'accèdent déjà pas au module.
-    ...(canWrite ? [{id:'etiquettes', l:'Étiquettes DLC'}] : []),
+    ...(canWrite ? [{id:'etiquettes', l:'Étiquettes DLC', aide:'Imprimer un lot', principal:true}] : []),
+    {id:'tracabilite', l:'Traçabilité', aide:'Photos des étiquettes', principal:true},
+    {id:'tableau',     l:'Tableau de bord'},
+    {id:'controles',   l:'Contrôles hygiène'},
     ...(isConsultant ? [{id:'config', l:'✦ Paramètres'}] : []),
   ];
 
@@ -605,12 +607,18 @@ const HACCP = ({ user, etablissement }) => {
   // (galerie photo) et étiquettes (qui a ses propres dates de lot et son PDF).
   const showDateFilter  = !['config', 'tracabilite', 'etiquettes'].includes(activeTab);
   const showPrintExport = !['tracabilite', 'etiquettes'].includes(activeTab);
+  // Barre d'actions affichée seulement si elle porte quelque chose : sur
+  // l'onglet Étiquettes elle serait vide et ne ferait que pousser l'écran.
+  const hasActions = showDateFilter || showPrintExport
+    || (activeTab === 'tracabilite' && canWrite)
+    || (activeTab === 'config' && isConsultant);
 
   return (
     <div style={hs.root}>
-      {/* Toolbar : onglets compacts + actions posées (mobile = 1 ligne scrollable) */}
+      {/* Navigation en gros boutons, puis la barre d'actions de la section */}
+      <HaccpNav tabs={tabs} active={activeTab} onChange={setActiveTab} />
+      {hasActions && (
       <div className="module-toolbar">
-        <SegmentedTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
         <div className="module-actions">
           {showDateFilter && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
@@ -631,6 +639,7 @@ const HACCP = ({ user, etablissement }) => {
           {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
         </div>
       </div>
+      )}
 
       {/* ── TABLEAU DE BORD ── */}
       {activeTab==='tableau' && (

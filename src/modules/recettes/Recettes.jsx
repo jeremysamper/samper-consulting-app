@@ -14,6 +14,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { categorieDuPlat, categoriesPresentes, platCatRank } from '../../utils/categoriesPlat.js';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { dureesVie } from '../../utils/etiquettesDlc.js';
+import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 
 
@@ -23,6 +24,10 @@ import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalc
 
 // Réessai des lectures après un échec réseau (réveil de tablette, coupure) :
 // on double l'attente à chaque échec, plafonnée à 30 s.
+// Raccourci « Étiquette » sur chaque recette : mêmes rôles que le poste
+// d'étiquetage du module HACCP (canWrite), qui imprime par le même circuit.
+const ROLES_ETIQUETTE = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'];
+
 const RETRY_MIN_MS = 4000;
 const RETRY_MAX_MS = 30000;
 
@@ -361,8 +366,9 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 };
 
 // ─── RecetteDetail : composant global (extrait hors de Recettes) ───
-const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
+const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = false }) => {
   const [showDuplicate, setShowDuplicate] = React.useState(false);
+  const [showEtiquette, setShowEtiquette] = React.useState(false);
   const isMobile = useIsMobile();
 
   // ─── Recalcul des quantités, dans la fiche ────────────────────────────────
@@ -544,8 +550,26 @@ const RecetteDetail = ({ recette, user, etablissement, onBack }) => {
           onClose={() => setShowDuplicate(false)}
         />
       )}
+      {/* Durées relues depuis la référence enregistrée dans cette fiche : une
+          durée corrigée ici vaut tout de suite pour l'étiquette. */}
+      {showEtiquette && (
+        <EtiquetteRapideModal
+          recette={{
+            ...recette,
+            dureeVieJours: dureesRef.frais,
+            dureeVieCongeleJours: dureesRef.congele,
+            dureeVieDecongeleJours: dureesRef.decongele,
+          }}
+          etabId={etablissement?.id || 'etab-1'}
+          user={user}
+          onClose={() => setShowEtiquette(false)}
+        />
+      )}
       <div className="module-actions no-print" style={{ marginBottom: 16 }}>
         <button style={rs.backBtn} onClick={onBack}>← Retour</button>
+        {canEtiqueter && (
+          <button style={rs.etiquetteBtn} onClick={() => setShowEtiquette(true)}>Étiquette DLC</button>
+        )}
         <button style={rs.printBtn} onClick={printRecipe}>Imprimer</button>
         <button style={rs.printBtn} onClick={exportRecipePdf}>Export PDF</button>
         {canDuplicate && (
@@ -1357,6 +1381,11 @@ const Recettes = ({ user, etablissement }) => {
   const canManageCartes = canManageModule(user.role, 'recettes');
   // Cacher une carte est réservé au consultant : lui seul continue de la voir.
   const isConsultant = user.role === 'consultant';
+  // Le raccourci suit aussi l'accès au module HACCP : un rôle à qui on a retiré
+  // HACCP n'imprime pas d'étiquettes d'autocontrôle depuis les recettes.
+  const canEtiqueter = ROLES_ETIQUETTE.includes(user.role) && perms.haccp !== false;
+  // Recette dont la fenêtre d'étiquette est ouverte depuis la liste.
+  const [etiquetteRecette, setEtiquetteRecette] = React.useState(null);
 
   // Cartes (menus) de l'établissement - source unique partagée + realtime.
   // `cartesStatus` distingue « pas encore chargé / lecture en échec » de
@@ -1546,10 +1575,18 @@ const Recettes = ({ user, etablissement }) => {
     </button>
   ) : null;
 
-  if (selectedRecette) return <RecetteDetail recette={selectedRecette} user={user} etablissement={etablissement} onBack={() => setSelectedRecette(null)}/>;
+  if (selectedRecette) return <RecetteDetail recette={selectedRecette} user={user} etablissement={etablissement} canEtiqueter={canEtiqueter} onBack={() => setSelectedRecette(null)}/>;
 
   return (
     <div style={rs.root}>
+      {etiquetteRecette && (
+        <EtiquetteRapideModal
+          recette={etiquetteRecette}
+          etabId={etabId}
+          user={user}
+          onClose={() => setEtiquetteRecette(null)}
+        />
+      )}
       {showExportModal && (
         <ExportMultipleModal
           cartes={cartes}
@@ -1850,6 +1887,17 @@ const Recettes = ({ user, etablissement }) => {
                   )}
                 </div>
                 <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{r.statut}</span>
+                {/* Raccourci d'étiquette : le clic et le clavier s'arrêtent au
+                    bouton, sinon ils ouvriraient aussi la fiche. */}
+                {canEtiqueter && r.statut !== 'archivée' && (
+                  <button
+                    type="button"
+                    style={rs.etiquetteBtn}
+                    aria-label={`Imprimer l'étiquette DLC de ${r.nom}`}
+                    onClick={e => { e.stopPropagation(); setEtiquetteRecette(r); }}
+                    onKeyDown={e => e.stopPropagation()}
+                  >Étiquette</button>
+                )}
                 <span style={{color:'var(--text2)', fontSize:18}}>›</span>
               </div>
             );
@@ -1965,6 +2013,9 @@ const rs = {
   recetteLinkListe: {marginTop:8,paddingTop:8,borderTop:'1px dashed var(--border)',display:'flex',flexDirection:'column',gap:6},
   recetteLink: {display:'flex',alignItems:'center',gap:8,width:'100%',minHeight:44,padding:'8px 10px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,color:'var(--accent)',fontSize:12,fontWeight:600,textAlign:'left',cursor:'pointer',fontFamily:'var(--font)',transition:'background .12s'},
   recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
+  // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
+  // et fait se chevaucher les boutons d'une rangée sur mobile.
+  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'#fff',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
   congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},

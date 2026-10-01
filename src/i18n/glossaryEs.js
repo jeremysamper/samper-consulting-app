@@ -347,6 +347,17 @@ export const UI_GLOSSARY_ES = {
   // ── Étiquettes DLC (HACCP) ──
   'Étiquettes maison': 'Etiquetas propias',
   'Étiquette maison': 'Etiqueta propia',
+  'Étiquettes DLC': 'Etiquetas de caducidad',
+  'Étiquette DLC': 'Etiqueta de caducidad',
+  'Étiquette': 'Etiqueta',
+  'Imprimer un lot': 'Imprimir un lote',
+  'Rechercher une préparation': 'Buscar una elaboración',
+  "Nombre d'étiquettes": 'Número de etiquetas',
+  'Relevés température': 'Registros de temperatura',
+  'Frigos et chambres froides': 'Neveras y cámaras frías',
+  'Traçabilité': 'Trazabilidad',
+  'Photos des étiquettes': 'Fotos de las etiquetas',
+  'Contrôles hygiène': 'Controles de higiene',
   'Nom de la préparation': 'Nombre de la elaboración',
   'Préparation congelable': 'Se puede congelar',
 

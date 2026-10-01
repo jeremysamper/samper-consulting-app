@@ -1,9 +1,9 @@
 import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import { confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
+import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
-import { agentDisponible, attendreImpression, envoyerLot } from '../../services/printQueue.js';
+import { agentDisponible } from '../../services/printQueue.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
   ETIQUETTE_MEDIA, ETIQUETTE_MODES, ETIQUETTE_PERSO_CATEGORIE,
@@ -12,6 +12,7 @@ import {
   lignesEtiquette, motifNonEligible,
 } from '../../utils/etiquettesDlc.js';
 import EtiquettePersoForm from './EtiquettePersoForm.jsx';
+import { DernierLot, imprimerLot } from './impressionEtiquettes.jsx';
 import { hs } from './HACCP.styles.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,12 +140,12 @@ const es = {
   recapTitre: { padding: '10px 14px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   recapLigne: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
   recapInfo: { flex: 1, minWidth: 160, fontSize: 12.5, color: 'var(--text2)' },
-  dernierLot: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' },
-  rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
-  // Bloc épinglé des cases Divers : posé au-dessus de la recherche pour qu'il
-  // reste visible quel que soit le filtre saisi.
+  rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8 },
+  // Bloc épinglé des cases Divers : jamais filtré par la recherche, il reste
+  // visible quel que soit le filtre saisi.
   diversTitre: { padding: '10px 14px 5px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
-  rechercheInput: { flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
+  // 16 px : en dessous, Safari iOS zoome la page au focus du champ.
+  rechercheInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, boxShadow: 'var(--sh-xs)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
   // En-tête du bloc « Étiquettes maison » : titre + bouton d'ajout, toujours
   // présent même quand la liste est vide (c'est par là qu'on crée la première).
   blocTitre: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 5px', flexWrap: 'wrap' },
@@ -155,42 +156,6 @@ const es = {
   actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
   vide: { padding: '4px 14px 12px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
-};
-
-// Feuille de partage du système : le PDF y arrive directement, « Imprimer » est
-// sous le pouce, et l'écran d'aperçu disparaît du parcours. C'est le chemin le
-// plus court qu'une page web puisse offrir sur iPad — aucun navigateur n'expose
-// d'impression silencieuse, seul l'agent local sait faire mieux.
-//
-// Rien d'asynchrone ici : iOS n'autorise le partage que dans la tâche du geste
-// utilisateur. Le PDF est donc construit sur place, jsPDF ayant été préchargé
-// au montage de l'onglet.
-const partagerPdf = (blob, nomFichier) => {
-  const win = getBrowserWindow();
-  const nav = win?.navigator;
-  if (!nav?.share || typeof win.File !== 'function') return null;
-  try {
-    const fichier = new win.File([blob], nomFichier, { type: 'application/pdf' });
-    // canShare avec des fichiers : la seule façon de savoir AVANT d'appeler si
-    // le système acceptera un PDF. Un share() refusé consommerait le geste.
-    if (!nav.canShare?.({ files: [fichier] })) return null;
-    return nav.share({ files: [fichier], title: nomFichier });
-  } catch {
-    return null;
-  }
-};
-
-// Onglet vide ouvert dans la foulée du clic, garni du PDF une fois celui-ci
-// prêt. Sans ce pré-ouvrage, iOS bloque l'ouverture : la génération comporte
-// des await, et Safari n'autorise window.open que dans la tâche déclenchée par
-// le geste de l'utilisateur.
-const ouvrirOngletVide = () => {
-  const win = getBrowserWindow();
-  try { return win?.open('', '_blank') || null; } catch { return null; }
-};
-
-const fermerOnglet = (onglet) => {
-  try { onglet?.close(); } catch { /* déjà fermé */ }
 };
 
 // Traduction des seules erreurs Postgres qui veulent dire quelque chose au
@@ -505,117 +470,24 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     });
     if (!etiquettes.length) { notifyLegacy('Aucune étiquette à générer.', 'warning'); return; }
 
-    const nb = etiquettes.length;
-    const pluriel = nb > 1 ? 's' : '';
     const modesDuLot = compteurs.parMode.map(c => c.mode);
     const seulMode = modesDuLot.length === 1 ? modesDuLot[0] : null;
     const nomFichier = seulMode
       ? `etiquettes-dlc-${seulMode.id}-${datesParMode[seulMode.id][seulMode.dlcDepuis]}.pdf`
       : `etiquettes-dlc-lot-${today}.pdf`;
-    // Trace du lot côté file d'impression : les modes réellement présents.
-    const modeLot = modesDuLot.map(m => m.id).join('+');
 
-    // ─── Chemin le plus court : la feuille de partage, sans écran d'aperçu ───
-    // Tout est synchrone jusqu'à l'appel de partage, sans quoi iOS le refuse.
-    // On ne re-vérifie pas l'agent ici : ce chemin n'est pris que s'il était
-    // déjà absent, et une requête réseau ferait perdre le geste utilisateur.
-    if (!agent && pdfUtils.jsPdfDisponible?.()) {
-      const lot = pdfUtils.construireEtiquettesDlcSync(etiquettes, {});
-      const promesse = lot && partagerPdf(lot.blob, nomFichier);
-      if (promesse) {
-        const url = lot.doc.output('bloburl');
-        urlsRef.current.push(url);
-        setBusy(true);
-        promesse
-          .then(() => {
-            setDernierLot({ url, nb, ouvert: true, viaPartage: true });
-            notifyLegacy(`${nb} étiquette${pluriel} envoyée${pluriel} à l'impression.`, 'success');
-          })
-          .catch((err) => {
-            // AbortError = feuille refermée par l'opérateur : rien à signaler,
-            // mais on garde le PDF sous la main pour qu'il n'ait pas à relancer.
-            if (err?.name !== 'AbortError') console.warn('[EtiquettesDlc partage]', err);
-            setDernierLot({ url, nb, ouvert: false, viaPartage: true });
-          })
-          .finally(() => setBusy(false));
-        return;
-      }
-    }
-
-    // Onglet ouvert AVANT le moindre await, et rempli avec le PDF une fois
-    // celui-ci prêt : iOS refuse window.open dès qu'une promesse s'est
-    // intercalée depuis le geste de l'opérateur. Inutile si l'impression part
-    // par l'agent — on le referme alors, mais seulement une fois le lot déposé.
-    const fenetrePdf = agent ? null : ouvrirOngletVide();
-
-    setBusy(true);
-    // Indicateur de progression au-delà de 50 étiquettes seulement : en dessous,
-    // la génération est trop rapide pour qu'il serve à autre chose qu'à clignoter.
-    const suivi = nb > 50;
-    if (suivi) setProgress({ done: 0, total: nb });
-    const onProgress = suivi ? (done, total) => setProgress({ done, total }) : undefined;
-
-    try {
-      // ─── Impression directe, si l'agent du restaurant est joignable ───
-      // Vérification juste avant l'envoi et non seulement au montage : l'onglet
-      // peut rester ouvert des heures, l'agent peut être tombé entre-temps.
-      const agentActuel = await agentDisponible(etabId);
-      setAgent(agentActuel);
-
-      if (agentActuel) {
-        const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, { destination: 'agent', onProgress });
-        if (res?.url) urlsRef.current.push(res.url);
-        try {
-          const jobId = await envoyerLot({
-            etabId, pdfBase64: res.base64, nbEtiquettes: nb, mode: modeLot, userId: user?.id,
-          });
-          // Le lot est déposé : plus rien à afficher, l'onglet de secours part.
-          fermerOnglet(fenetrePdf);
-          setDernierLot({ url: res.url, nb, viaAgent: true, etat: 'envoye' });
-          notifyLegacy(`${nb} étiquette${pluriel} envoyée${pluriel} à l'imprimante.`, 'success');
-
-          const fin = await attendreImpression(jobId);
-          if (fin.statut === 'imprime') {
-            setDernierLot(l => (l ? { ...l, etat: 'imprime' } : l));
-          } else if (fin.statut === 'erreur') {
-            setDernierLot(l => (l ? { ...l, etat: 'erreur', erreur: fin.erreur } : l));
-            notifyLegacy('L\'imprimante a refusé le lot : ' + (fin.erreur || 'erreur inconnue'), 'error');
-          } else {
-            // L'agent n'a pas répondu à temps : le lot reste dans la file et
-            // partira à son retour. Rien n'est perdu, mais on le dit.
-            setDernierLot(l => (l ? { ...l, etat: 'attente' } : l));
-            notifyLegacy('Lot en attente : l\'imprimante n\'a pas encore répondu.', 'warning');
-          }
-          return;
-        } catch (err) {
-          // Dépôt impossible : on ne laisse pas la brigade sans étiquettes,
-          // on bascule sur l'ouverture du PDF.
-          console.error('[EtiquettesDlc envoyerLot]', err);
-          notifyLegacy('Envoi direct impossible, ouverture du PDF.', 'warning');
-          setAgent(null);
-        }
-      }
-
-      // ─── PDF ouvert dans le visualiseur (aucun agent, ou envoi échoué) ───
-      const res = await pdfUtils.exportEtiquettesDlcPdf(etiquettes, {
-        autoPrint: true,
-        filename: nomFichier,
-        onProgress,
-        fenetre: fenetrePdf,
-      });
-      if (res?.url) {
-        urlsRef.current.push(res.url);
-        setDernierLot({ url: res.url, nb, ouvert: !!res.ouvert });
-      }
-      notifyLegacy(`${nb} étiquette${pluriel} générée${pluriel}.`, 'success');
-    } catch (err) {
-      // Onglet vide laissé derrière soi = onglet à refermer à la main.
-      fermerOnglet(fenetrePdf);
-      /* notify déjà géré dans le service */
-    } finally {
-      setBusy(false);
-      setProgress(null);
-    }
+    // Pas d'await avant cet appel : le partage iOS exige la tâche du geste.
+    imprimerLot({
+      etiquettes,
+      nomFichier,
+      // Trace du lot côté file d'impression : les modes réellement présents.
+      modeLot: modesDuLot.map(m => m.id).join('+'),
+      agent,
+      etabId,
+      userId: user?.id,
+      urls: urlsRef.current,
+      setBusy, setProgress, setDernierLot, setAgent,
+    });
   };
 
   // ─── Étiquettes maison : création, modification, suppression ───
@@ -759,6 +631,26 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         onChange={setModeId}
       />
 
+      {/* ── Recherche ──
+          En tête de l'écran, juste sous les modes : elle vivait au milieu de
+          la liste, sous les cases Divers et les étiquettes maison, et il
+          fallait faire défiler pour l'atteindre. Elle filtre les étiquettes
+          maison et les recettes, jamais les cases Divers. */}
+      <div style={es.rechercheWrap}>
+        <input
+          type="search"
+          enterKeyHint="search"
+          style={es.rechercheInput}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Rechercher une préparation…"
+          aria-label="Rechercher une préparation"
+        />
+        {search !== '' && (
+          <button type="button" style={{ ...hs.exportBtn, flexShrink: 0 }} onClick={() => setSearch('')}>Effacer</button>
+        )}
+      </div>
+
       {/* ── Lecture en échec ──
           Ni la liste ni la sélection ne sont perdues : on l'annonce et un essai
           est déjà reprogrammé. Les cases Divers restent imprimables. */}
@@ -817,8 +709,8 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
 
       {/* ── Liste des préparations ── */}
       <div style={hs.tableCard}>
-        {/* Cases Divers : au-dessus de la recherche, donc toujours à l'écran,
-            filtre saisi ou non. Un bac sans fiche s'étiquette sans détour. */}
+        {/* Cases Divers : jamais filtrées, donc toujours à l'écran, recherche
+            saisie ou non. Un bac sans fiche s'étiquette sans détour. */}
         <div style={es.diversTitre}>Divers</div>
         {divers.map(d => renderLigne(d))}
 
@@ -847,20 +739,6 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
                 : 'Aucune étiquette maison ne correspond à la recherche.'}
           </div>
         )}
-
-        <div style={es.rechercheWrap}>
-          <input
-            type="text"
-            style={es.rechercheInput}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher une préparation…"
-            aria-label="Rechercher une préparation"
-          />
-          {search !== '' && (
-            <button type="button" style={{ ...hs.exportBtn, flexShrink: 0 }} onClick={() => setSearch('')}>Effacer</button>
-          )}
-        </div>
 
         {/* « Aucune recette » n'est affirmé que si la lecture a VRAIMENT abouti
             sur zéro fiche : une lecture en échec annoncerait sinon un
@@ -901,43 +779,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         </div>
       )}
 
-      {/* ── Dernier lot ──
-          Le lien vers le PDF ne s'affiche que si l'ouverture automatique n'a
-          pas eu lieu : filet de sécurité, pas étape de la marche normale. */}
-      {dernierLot && (
-        <div style={{
-          ...es.dernierLot,
-          ...(dernierLot.etat === 'erreur'
-            ? { background: 'var(--danger-bg-soft)', borderColor: 'var(--danger-bd)' }
-            : dernierLot.etat === 'attente'
-              ? { background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)' }
-              : null),
-        }}>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            {dernierLot.nb} étiquette{dernierLot.nb > 1 ? 's' : ''}
-            {!dernierLot.viaAgent && dernierLot.viaPartage && (dernierLot.ouvert
-              ? <> parti{dernierLot.nb > 1 ? 'es' : 'e'} à l'impression.</>
-              : <> prête{dernierLot.nb > 1 ? 's' : ''}, mais la feuille d'impression a été refermée :</>)}
-            {!dernierLot.viaAgent && !dernierLot.viaPartage && (dernierLot.ouvert
-              ? <> prête{dernierLot.nb > 1 ? 's' : ''} dans le PDF : Partager › Imprimer.</>
-              : <> prête{dernierLot.nb > 1 ? 's' : ''}, mais le PDF ne s'est pas ouvert tout seul :</>)}
-            {dernierLot.viaAgent && dernierLot.etat === 'envoye' && ' envoyée(s) à l\'imprimante, impression en cours…'}
-            {dernierLot.viaAgent && dernierLot.etat === 'imprime' && ' imprimée(s).'}
-            {dernierLot.viaAgent && dernierLot.etat === 'attente' && ' en attente : l\'imprimante n\'a pas encore répondu. Le lot partira dès son retour.'}
-            {dernierLot.viaAgent && dernierLot.etat === 'erreur' && ` refusée(s) par l'imprimante : ${dernierLot.erreur || 'erreur inconnue'}.`}
-          </span>
-          {/* Chemin de secours uniquement : ouverture bloquée par le navigateur,
-              ou lot refusé/en attente côté agent. Sinon, aucun lien affiché. */}
-          {((!dernierLot.viaAgent && !dernierLot.ouvert) || dernierLot.etat === 'erreur' || dernierLot.etat === 'attente') && (
-            <a
-              href={dernierLot.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{ ...hs.exportBtn, flexShrink: 0, textDecoration: 'none', display: 'inline-block' }}
-            >Ouvrir le PDF</a>
-          )}
-        </div>
-      )}
+      <DernierLot lot={dernierLot} />
 
       {/* ── Résumé du lot + génération ──
           Les totaux sont ceux du LOT ENTIER, tous modes confondus : c'est ce
