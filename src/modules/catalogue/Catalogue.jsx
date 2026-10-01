@@ -9,18 +9,11 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { ALLERGENES } from '../../utils/allergenes.js';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { resolvePrixProduit } from '../../services/prixResolution.js';
+import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './categoriesCatalogue.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
 // ═══════════════════════════════════════════════════════════════
-
-const CATEGORIES_PRODUITS = [
-  'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
-  'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
-  'Boulangerie / pâtisserie', 'Boissons', 'Alcools',
-  'Surgelés', 'Condiments / sauces', 'Herbes / épices',
-  'Hygiène / non alimentaire', 'Autres',
-];
 
 const UNITES_REF = [
   { val: 'g',   label: 'g (gramme)' },
@@ -108,7 +101,7 @@ const Catalogue = ({ user, etablissement }) => {
 
   const searchValue = normalizeSearch(search);
   const filtered = produits.filter(p =>
-    (catFilter === 'Tous' || p.categorie === catFilter) &&
+    (catFilter === 'Tous' || categorieAffichee(p) === catFilter) &&
     (searchValue === '' || normalizeSearch(p.nom).includes(searchValue) ||
      normalizeSearch(p.fournisseurNom).includes(searchValue))
   );
@@ -212,7 +205,8 @@ const Catalogue = ({ user, etablissement }) => {
     'metzgerei': 'Viandes', 'viande': 'Viandes', 'boucherie': 'Viandes', 'volaille': 'Viandes',
     'fischerei': 'Poissons & fruits de mer', 'poisson': 'Poissons & fruits de mer', 'maree': 'Poissons & fruits de mer',
     'surgele': 'Surgelés', 'congele': 'Surgelés', 'frozen': 'Surgelés',
-    'epice': 'Herbes / épices', 'herbe': 'Herbes / épices', 'gewurz': 'Herbes / épices',
+    // Herbes et épices départagées ensuite produit par produit (affinerCategorie).
+    'epice': 'Épices', 'herbe': 'Herbes & fleurs', 'gewurz': 'Épices', 'krauter': 'Herbes & fleurs',
     'condiment': 'Condiments / sauces', 'sauce': 'Condiments / sauces',
     'nonfood': 'Hygiène / non alimentaire', 'nearfood': 'Hygiène / non alimentaire', 'hygiene': 'Hygiène / non alimentaire',
   };
@@ -314,6 +308,10 @@ const Catalogue = ({ user, etablissement }) => {
           }
         }
       }
+
+      // Herbes fraîches et épices sont souvent sur une même feuille fournisseur :
+      // départagées ici par le nom de chaque produit.
+      imported.forEach((p) => { p.categorie = affinerCategorie(p.nom, p.categorie); });
 
       // ─── Analyse pré-import : doublons + prix aberrants ───
       // On ne sauvegarde pas tout de suite. On classe les produits scannés
@@ -612,7 +610,7 @@ const Catalogue = ({ user, etablissement }) => {
                         )}
                         <td style={{ ...cat.td, fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
                         <td style={{ ...cat.td, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
-                        <td style={cat.td}><span style={cat.catBadge}>{p.categorie}</span></td>
+                        <td style={cat.td}><span style={cat.catBadge}>{categorieAffichee(p)}</span></td>
                         {/* Sélecteur fournisseur inline */}
                         <td style={cat.td}>
                           {canWrite ? (
@@ -775,6 +773,9 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
   const legacySB = dbService.getBridge();
   const [form, setForm] = React.useState(() => (prod ? {
     ...prod,
+    // Ancien libellé « Herbes / épices » : la fiche s'ouvre sur sa nouvelle
+    // catégorie, que le sélecteur sait afficher.
+    categorie: categorieAffichee(prod),
     // mapProduitFromDB expose dans `prixUnitaire` un prix DÉJÀ résolu (celui du
     // fournisseur principal quand il existe). Le champ ci-dessous édite la colonne
     // produits.prix_unitaire, donc il doit partir de `prixUnitaireManuel`. Sans ça,

@@ -2,6 +2,7 @@ import React from 'react';
 import { notifyLegacy, confirmLegacy } from '../../../legacy/legacyApi.js';
 import { dbService } from '../../../services/dbService.js';
 import CatalogueImportPreview from './CatalogueImportPreview.jsx';
+import { CATEGORIES_PRODUITS, affinerCategorie } from '../categoriesCatalogue.js';
 
 // ═══════════════════════════════════════════════════════════════
 // CatalogueAiImporter - import de catalogue produits assisté par IA.
@@ -20,16 +21,12 @@ const CHUNK_ROWS = 40;
 // Appels IA menés en parallèle.
 const PARSE_CONCURRENCY = 4;
 
-// Les 14 catégories officielles du catalogue - doit être identique à CATEGORIES_PRODUITS (Catalogue.jsx).
-const CATALOGUE_CATS = [
-  'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
-  'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
-  'Boulangerie / pâtisserie', 'Boissons', 'Alcools',
-  'Surgelés', 'Condiments / sauces', 'Herbes / épices',
-  'Hygiène / non alimentaire', 'Autres',
-];
+// Catégories officielles du catalogue (source unique : categoriesCatalogue.js).
+const CATALOGUE_CATS = CATEGORIES_PRODUITS;
 
-// Normalise la catégorie renvoyée par l'IA vers une des 14 catégories officielles.
+// Normalise la catégorie renvoyée par l'IA vers une des catégories officielles.
+// Herbes et épices sortent sous l'ancien libellé commun : `affinerCategorie`
+// les départage ensuite d'après le nom du produit (cf. annotate).
 // L'IA peut répondre "Légumes", "Viandes", "Crémerie"… ce filtre corrige.
 function normalizeCategory(raw) {
   const n = (raw || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -58,8 +55,8 @@ function normalizeCategory(raw) {
   if (/surgele|congele|glace/.test(n)) return 'Surgelés';
   // Condiments / sauces
   if (/condiment|sauce|moutarde|ketchup|vinaigre|curry|paprika|cumin|poivre|piment/.test(n)) return 'Condiments / sauces';
-  // Herbes / épices
-  if (/epice|herbe|basilic|thym|romarin|persil|coriandre|laurier|menthe/.test(n)) return 'Herbes / épices';
+  // Herbes & fleurs / Épices : départagées par le nom du produit ensuite.
+  if (/epice|herbe|fleur|basilic|thym|romarin|persil|coriandre|laurier|menthe/.test(n)) return 'Herbes / épices';
   // Hygiène / non alimentaire
   if (/hygiene|nonfood|detergent|savon|desinfectant|emballage|materiel/.test(n)) return 'Hygiène / non alimentaire';
   // Épicerie sèche (fallback large)
@@ -229,7 +226,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
     const refKey = (p.referenceFourn || '').trim().toLowerCase();
     const nameKey = normalizeName(p.nom);
     // Normalise la catégorie IA vers les catégories officielles.
-    const categorie = normalizeCategory(p.categorie);
+    const categorie = affinerCategorie(p.nom, normalizeCategory(p.categorie));
     const existing = (refKey && existIndex.byRef.get(refKey))
       || (nameKey && existIndex.byName.get(nameKey))
       || null;

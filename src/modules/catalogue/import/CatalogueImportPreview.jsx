@@ -1,4 +1,5 @@
 import React from 'react';
+import { CATEGORIES_PRODUITS } from '../categoriesCatalogue.js';
 
 // ═══════════════════════════════════════════════════════════════
 // CatalogueImportPreview - tableau éditable des produits détectés
@@ -10,13 +11,7 @@ import React from 'react';
 // (mettre à jour / créer quand même / ignorer).
 // ═══════════════════════════════════════════════════════════════
 
-const CATS = [
-  'Viandes', 'Poissons & fruits de mer', 'Fruits & légumes',
-  'Épicerie sèche', 'Produits laitiers', 'Crèmerie / fromages',
-  'Boulangerie / pâtisserie', 'Boissons', 'Alcools',
-  'Surgelés', 'Condiments / sauces', 'Herbes / épices',
-  'Hygiène / non alimentaire', 'Autres',
-];
+const CATS = CATEGORIES_PRODUITS;
 const UNITES = ['g', 'ml', 'pcs'];
 
 const fmtPrix = (v, u) => (v == null || isNaN(Number(v))
