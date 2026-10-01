@@ -25,7 +25,8 @@
 //   bon               équipe      → bon cadeau à un client, tout de suite
 //   anniversaires     cron        → tous les établissements dont l'envoi est actif
 //                     direction   → le seul établissement demandé (rattrapage)
-//   desinscription    public      → { token } : retire le consentement
+//   desinscription    public      → { token } : retire le consentement (clients
+//                                   du spa ou du fichier clients des restaurants)
 //   rdv_statut        équipe      → e-mail « confirmé » ou « refusé » après
 //                                   traitement d'une demande venue du site
 //
@@ -38,14 +39,16 @@
 // piège, durée de saisie minimale, 5 demandes par heure et par adresse IP
 // (hachée), 3 par jour et par e-mail.
 //
-// Réservation d'une table en ligne (module Prévisions, migration 20260929),
+// Réservation d'une table en ligne (module Réservations, migration 20260929),
 // même principe, page /table/<adresse> :
 //   public_table_infos     public  → { slug } : jours ouverts, taille max
 //   public_table_creneaux  public  → { slug, date, couverts } : heures d'arrivée
 //                                    encore ouvertes, par service
 //   public_table_reserver  public  → pose la réservation ('demande' ou
 //                                    'confirme' selon le mode du restaurant) via
-//                                    resa_reserver_en_ligne (verrou, capacité)
+//                                    resa_reserver_en_ligne (verrou, capacité),
+//                                    puis complète la fiche client (resa_clients :
+//                                    prénom, nom, accord pour les actualités)
 //   resa_statut            équipe  → e-mail « confirmée » ou « refusée » après
 //                                    traitement d'une demande venue du site
 // Mêmes protections anti-abus (journal spa_demandes_en_ligne partagé). Les
@@ -1121,6 +1124,9 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
   const date = String(body.date || '');
   const heure = String(body.heure || '');
   const service = String(body.service || '');
+  // Case « actualités et bons cadeaux » : décochée par défaut côté page, seul
+  // un true explicite vaut accord.
+  const consentement = body.consentement === true;
 
   // Robots : même règle que pour le spa (champ piège, moins de 3 secondes).
   const dureeSaisie = Number(body.dureeSaisie || 0);
@@ -1172,6 +1178,8 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
     return json({ error: messages[r.erreur] || 'Heure indisponible.', code: r.erreur }, 409);
   }
 
+  await completerFicheClient(sb, String(r.reservation_id || ''), prenom, nom, consentement);
+
   const confirmee = r.statut === 'confirme';
   const quand = `${jourLong(date)} à ${heure}`;
   await mailTable(sb, cfg, etab, confirmee
@@ -1190,10 +1198,41 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       email: etab.email,
       signature: 'Réservation en ligne',
       sujet: `${confirmee ? 'Nouvelle réservation' : 'Nouvelle demande'} en ligne : ${personnes(couverts)}, ${quand}`,
-      corps: `${prenom} ${nom} ${confirmee ? 'a réservé' : 'demande'} une table pour ${personnes(couverts)} le ${quand}.\n\nTéléphone : ${telephone}\nE-mail : ${email}${message ? `\n\nMessage : ${message}` : ''}\n\n${confirmee ? 'La réservation est déjà confirmée dans le module Prévisions.' : 'La demande attend votre confirmation dans le module Prévisions.'}`,
+      corps: `${prenom} ${nom} ${confirmee ? 'a réservé' : 'demande'} une table pour ${personnes(couverts)} le ${quand}.\n\nTéléphone : ${telephone}\nE-mail : ${email}${message ? `\n\nMessage : ${message}` : ''}\n\n${confirmee ? 'La réservation est déjà confirmée dans le module Réservations.' : 'La demande attend votre confirmation dans le module Réservations.'}`,
     });
   }
   return json({ ok: true, statut: r.statut, date, heure, couverts });
+}
+
+// ── Fiche client d'une réservation en ligne ───────────────────────
+// La base a déjà rattaché la réservation à sa fiche (déclencheur
+// resa_rattacher_client, par e-mail puis téléphone). On y range le prénom et
+// le nom tels que saisis si la fiche vient d'être créée, et l'accord pour les
+// actualités s'il a été donné. Jamais de retrait ici : une case laissée vide
+// n'est pas une désinscription. Un échec ne coûte jamais la réservation.
+async function completerFicheClient(sb: Admin, reservationId: string, prenom: string, nom: string, consentement: boolean) {
+  if (!reservationId) return;
+  try {
+    const { data: resa } = await sb.from('reservations').select('client_id').eq('id', reservationId).maybeSingle();
+    if (!resa?.client_id) return;
+    const { data: fiche } = await sb.from('resa_clients')
+      .select('id, prenom, consentement_marketing').eq('id', resa.client_id).maybeSingle();
+    if (!fiche) return;
+    const maintenant = new Date().toISOString();
+    const patch: Record<string, unknown> = {};
+    if (!fiche.prenom) { patch.prenom = prenom; patch.nom = nom; }
+    if (consentement && !fiche.consentement_marketing) {
+      Object.assign(patch, {
+        consentement_marketing: true, consentement_at: maintenant,
+        consentement_source: 'en_ligne', desinscrit_at: null,
+      });
+    }
+    if (Object.keys(patch).length) {
+      await sb.from('resa_clients').update({ ...patch, updated_at: maintenant }).eq('id', fiche.id);
+    }
+  } catch (e) {
+    console.error('[spa-mailer] fiche client de la réservation', reservationId, e);
+  }
 }
 
 // ── Handler ───────────────────────────────────────────────────────
@@ -1212,11 +1251,19 @@ Deno.serve(async (req: Request) => {
   if (action === 'desinscription') {
     const token = String(body.token || '');
     if (!/^[0-9a-f-]{36}$/i.test(token)) return json({ error: 'Lien invalide.' }, 400);
-    const { data } = await sb.from('spa_clients')
+    let { data } = await sb.from('spa_clients')
       .update({ consentement_marketing: false })
       .eq('desinscription_token', token)
       .select('etablissement_id')
       .maybeSingle();
+    // Même lien pour les clients des restaurants (fichier resa_clients).
+    if (!data) {
+      ({ data } = await sb.from('resa_clients')
+        .update({ consentement_marketing: false, desinscrit_at: new Date().toISOString() })
+        .eq('desinscription_token', token)
+        .select('etablissement_id')
+        .maybeSingle());
+    }
     if (!data) return json({ error: 'Lien invalide ou déjà utilisé.' }, 404);
     const { data: etab } = await sb.from('etablissements').select('nom').eq('id', data.etablissement_id).maybeSingle();
     return json({ ok: true, etablissement: etab?.nom || null });
@@ -1334,7 +1381,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // Réservation de table venue du site, confirmée ou refusée dans le module
-  // Prévisions : même principe que rdv_statut.
+  // Réservations : même principe que rdv_statut.
   if (action === 'resa_statut') {
     if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
     const evenement = String(body.evenement || '');
