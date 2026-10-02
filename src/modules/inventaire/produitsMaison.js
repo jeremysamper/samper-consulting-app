@@ -291,3 +291,53 @@ export const cartesDesFiches = (cartes, plats) => {
   });
   return parFiche;
 };
+
+// ─── Recettes des cartes, ajoutées d'office aux inventaires en cours ───
+// Chaque périmètre compte les recettes des cartes qui le concernent :
+//   - Boissons / Bar / Beverage → cartes de boissons (Beverage, vins,
+//     spiritueux…) ;
+//   - Cuisine (et pâtisserie) → toutes les autres cartes, sauf les fiches
+//     aussi présentes sur une carte de boissons (les bases du Carnet sur
+//     Buffet PDJ et Beverage) : comptées une seule fois, côté Boissons ;
+//   - Général → toutes les cartes ;
+//   - tout autre périmètre (Matériel, Spa…) → aucune.
+// Les cartes archivées ou masquées sont ignorées.
+const RE_BOISSONS = /boisson|\bbar\b|beverage|drink|bebida|\bcave\b|cocktail|\bvins?\b|spiritueux/i;
+const RE_CUISINE = /cuisine|kitchen|cocina|p[âa]tisserie|garde-manger/i;
+const RE_GENERAL = /g[ée]n[ée]ral/i;
+
+export function cartesDuPerimetre(perimetre, cartes) {
+  const nom = String(perimetre || '');
+  const actives = (cartes || []).filter(c => c && !c.archive && !c.masquee);
+  if (RE_BOISSONS.test(nom)) return actives.filter(c => RE_BOISSONS.test(c.nom || ''));
+  if (RE_CUISINE.test(nom)) return actives.filter(c => !RE_BOISSONS.test(c.nom || ''));
+  if (RE_GENERAL.test(nom)) return actives;
+  return [];
+}
+
+// Fiches (parmi `recettes`, déjà filtrées par fichesActives) des cartes du
+// périmètre qui n'ont pas encore de ligne dans `lignes` (ni liée à la fiche,
+// ni du même nom).
+export function fichesManquantes(perimetre, { cartes, plats, recettes, lignes }) {
+  const ids = new Set(cartesDuPerimetre(perimetre, cartes).map(c => c.id));
+  if (!ids.size) return [];
+  const fichesDes = (idsCartes) => {
+    const set = new Set();
+    (plats || []).forEach(p => {
+      if (!(p?.carteIds || []).some(id => idsCartes.has(id))) return;
+      (p.recettes || []).forEach(({ recetteId }) => { if (recetteId) set.add(recetteId); });
+    });
+    return set;
+  };
+  const voulues = fichesDes(ids);
+  const nom = String(perimetre || '');
+  if (RE_CUISINE.test(nom) && !RE_BOISSONS.test(nom)) {
+    const coteBoissons = fichesDes(new Set(cartesDuPerimetre('Boissons', cartes).map(c => c.id)));
+    coteBoissons.forEach(id => voulues.delete(id));
+  }
+  const dejaLiees = new Set((lignes || []).map(l => l.recetteId).filter(Boolean));
+  const dejaNommees = new Set((lignes || []).map(l => nomCherche(l.produit)));
+  return (recettes || []).filter(r => voulues.has(r.id)
+    && !dejaLiees.has(r.id)
+    && !dejaNommees.has(nomCherche(nomMaison(r))));
+}

@@ -26,7 +26,7 @@ import ComptageRapide from './ComptageRapide.jsx';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
 import ProduitsMaisonModal from './ProduitsMaisonModal.jsx';
 import {
-  construireReferencesPrix, coutUnitaireRecette, masseRecette, ligneDepuisRecette, lierLigne, fichesActives, cartesDesFiches,
+  construireReferencesPrix, coutUnitaireRecette, masseRecette, ligneDepuisRecette, lierLigne, fichesActives, cartesDesFiches, fichesManquantes,
 } from './produitsMaison.js';
 import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
@@ -216,28 +216,35 @@ const Inventaire = ({ user, etablissement }) => {
   // ─── Fiches recettes (produits maison) ───
   // Lues depuis le module Cartes & Recettes, jamais modifiées d'ici.
   const [recettes, setRecettes] = React.useState([]);
-  const [cartesParFiche, setCartesParFiche] = React.useState(() => new Map());
+  const [recettesChargees, setRecettesChargees] = React.useState(false);
+  // { cartes, plats } du module Cartes & Recettes ; null tant que non chargé.
+  const [cartesPlats, setCartesPlats] = React.useState(null);
+  const cartesParFiche = React.useMemo(
+    () => (cartesPlats ? cartesDesFiches(cartesPlats.cartes, cartesPlats.plats) : new Map()),
+    [cartesPlats],
+  );
   React.useEffect(() => {
     if (!legacySB) return undefined;
     let vivant = true;
     legacySB.db.listRecettes(etabId)
-      .then(rs => { if (vivant) setRecettes(fichesActives(rs)); })
+      .then(rs => { if (vivant) { setRecettes(fichesActives(rs)); setRecettesChargees(true); } })
       .catch(err => console.warn('[Inventaire] fiches recettes indisponibles', err));
     // Cartes de chaque fiche (Buffet PDJ, Beverage…) : « + Produits » propose
     // les fiches carte par carte. Facultatif : sans elles, liste à plat.
     Promise.all([legacySB.db.listCartes(etabId), legacySB.db.listPlats(etabId)])
-      .then(([cartes, plats]) => { if (vivant) setCartesParFiche(cartesDesFiches(cartes, plats)); })
+      .then(([cartes, plats]) => { if (vivant) setCartesPlats({ cartes: cartes || [], plats: plats || [] }); })
       .catch(err => console.warn('[Inventaire] cartes indisponibles', err));
     return () => { vivant = false; };
   }, [etabId]);
 
   // ─── Catalogue produits (pour autocomplétion à l'ajout de ligne) ───
   const [catalogue, setCatalogue] = React.useState([]);
+  const [catalogueCharge, setCatalogueCharge] = React.useState(false);
   React.useEffect(() => {
     if (!legacySB) return;
     let mounted = true;
     legacySB.db.listProduits(etabId)
-      .then(ps => { if (mounted) setCatalogue(ps || []); })
+      .then(ps => { if (mounted) { setCatalogue(ps || []); setCatalogueCharge(true); } })
       .catch(err => console.warn('[Inventaire] catalogue load failed', err));
     const unsub = legacySB.realtime.subscribeReload('produits', async () => {
       try {
@@ -600,6 +607,20 @@ const Inventaire = ({ user, etablissement }) => {
     () => construireReferencesPrix({ catalogue, lignesInventaire: [...(inv?.lignes || []), ...(previousInv?.lignes || [])] }),
     [catalogue, inv, previousInv],
   );
+  // Recettes des cartes ajoutées d'office à l'inventaire en cours affiché
+  // (une fois par inventaire et par ouverture du module) : Buffet PDJ, Goûter…
+  // dans « Cuisine », Beverage dans « Boissons » (règles : cartesDuPerimetre).
+  // Attend fiches, cartes et catalogue (le prix d'une fiche = son coût matière).
+  // La fonction elle-même est posée plus bas, après ajouterLignes.
+  const synchroFichesRef = React.useRef(null);
+  const fichesSynchroDejaFaites = React.useRef(new Set());
+  React.useEffect(() => {
+    if (!inv || inv.statut === 'validé' || !recettesChargees || !cartesPlats || !catalogueCharge) return;
+    if (fichesSynchroDejaFaites.current.has(inv.id)) return;
+    fichesSynchroDejaFaites.current.add(inv.id);
+    synchroFichesRef.current?.();
+  }, [inv, recettesChargees, cartesPlats, catalogueCharge]);
+
   const infoFiche = React.useCallback((recette) => {
     const unite = masseRecette(recette).grammes > 0 ? 'kg' : 'pcs';
     const c = coutUnitaireRecette(recette, unite, refsPrix);
@@ -820,6 +841,20 @@ const Inventaire = ({ user, etablissement }) => {
     });
     if (aAjouter.length) await majLignes(lignes => [...lignes, ...aAjouter]);
     return aAjouter;
+  };
+
+  synchroFichesRef.current = async () => {
+    if (!canEditLignes) return;
+    const base = invCourant();
+    if (!base) return;
+    const manquantes = fichesManquantes(perimetreOf(base), {
+      cartes: cartesPlats?.cartes, plats: cartesPlats?.plats, recettes, lignes: base.lignes,
+    });
+    if (!manquantes.length) return;
+    const ajoutees = await ajouterLignes(manquantes.map(r => ligneDepuisRecette(r, refsPrix)));
+    if (ajoutees.length) {
+      notifyLegacy(`${ajoutees.length} recette${ajoutees.length > 1 ? 's' : ''} des cartes ajoutée${ajoutees.length > 1 ? 's' : ''} à l'inventaire.`, 'success');
+    }
   };
 
   // `zone` : zone de stockage choisie dans le sélecteur (vide = sans zone).
