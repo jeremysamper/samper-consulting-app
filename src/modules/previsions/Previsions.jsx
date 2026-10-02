@@ -10,6 +10,7 @@ import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
+import NotificationsAppareil from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
@@ -118,6 +119,8 @@ export default function Previsions({ user, etablissement }) {
               placeholder="Nom ou téléphone…"
             />
           )}
+          {/* Prévenir ce téléphone / cette tablette à chaque réservation en ligne. */}
+          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
           {etabId && ROLES_EN_LIGNE.includes(user?.role) && (
             <button
               type="button"
@@ -128,7 +131,7 @@ export default function Previsions({ user, etablissement }) {
                 color: 'var(--text)', fontSize: 13, fontWeight: 600,
                 fontFamily: 'var(--font)', cursor: 'pointer',
               }}>
-              Réservation en ligne
+              Réservation en ligne & e-mails
             </button>
           )}
           {canEdit && (
@@ -274,7 +277,7 @@ export default function Previsions({ user, etablissement }) {
       )}
 
       {reglagesEnLigne && etabId && (
-        <ReglagesTableEnLigne etablissement={etablissement} onClose={() => setReglagesEnLigne(false)} />
+        <ReglagesTableEnLigne etablissement={etablissement} consultant={user?.role === 'consultant'} onClose={() => setReglagesEnLigne(false)} />
       )}
 
       {canEdit && resaEnEdition && etabId && (

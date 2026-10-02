@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import BoiteEnvoiReservations from './BoiteEnvoiReservations.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
@@ -48,7 +49,7 @@ function demiHeuresDuService(horaires, service) {
   return liste;
 }
 
-export default function ReglagesTableEnLigne({ etablissement, onClose }) {
+export default function ReglagesTableEnLigne({ etablissement, onClose, consultant = false }) {
   const etabId = etablissement?.id;
   const { parametres, existe, status, enregistrer } = useParametresEnLigne(etabId);
   const [form, setForm] = useState(null);
@@ -162,6 +163,9 @@ export default function ReglagesTableEnLigne({ etablissement, onClose }) {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ── Boîte d'envoi : d'où partent les confirmations de réservation ── */}
+        <BoiteEnvoiReservations etablissementId={etablissement?.id} consultant={consultant} />
+
         {/* ── État ── */}
         <div style={{ ...s.carte, ...(publie ? { background: 'var(--success-bg-soft)', borderColor: 'var(--success-bd)' } : null), display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>

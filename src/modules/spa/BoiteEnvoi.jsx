@@ -20,6 +20,22 @@ const FOURNISSEURS = {
   google: { nom: 'Gmail', detail: 'Adresse Gmail ou Google', editeur: 'Google' },
   microsoft: { nom: 'Outlook', detail: 'Adresse Outlook, Hotmail ou Microsoft', editeur: 'Microsoft' },
 };
+// Textes selon l'endroit où la boîte est réglée. La boîte est celle de
+// l'établissement (une par établissement) : connectée depuis le Spa ou depuis
+// les Réservations, elle sert aux deux.
+const TEXTES = {
+  spa: {
+    lieu: 'du spa',
+    usages: 'Les confirmations de rendez-vous, les bons cadeaux et les nouvelles partiront de votre adresse.',
+    tous: 'tous les spas',
+  },
+  restaurant: {
+    lieu: 'du restaurant',
+    usages: 'Les confirmations de réservation et leur récapitulatif partiront de votre adresse (et celles du spa, si l\'établissement en a un).',
+    tous: 'tous les établissements',
+  },
+};
+
 const DELAI_TENTATIVE = 15 * 60 * 1000; // durée de validité d'une connexion en cours (state côté serveur)
 
 function dateCourte(ts) {
@@ -27,7 +43,8 @@ function dateCourte(ts) {
   return new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(ts));
 }
 
-export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRecharger, consultant }) {
+export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRecharger, consultant, contexte = 'spa' }) {
+  const txt = TEXTES[contexte] || TEXTES.spa;
   const [enCours, setEnCours] = useState(null); // 'google' | 'microsoft' | 'deconnexion'
   const [changer, setChanger] = useState(false);
   const tentative = useRef(null); // { debut, traitee }
@@ -107,7 +124,7 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
   async function deconnecter() {
     const b = etat?.boite;
     if (!b || enCours) return;
-    if (!window.confirm(`Déconnecter ${b.adresse} ?\n\nLes e-mails du spa ne partiront plus de cette adresse.`)) return;
+    if (!window.confirm(`Déconnecter ${b.adresse} ?\n\nLes e-mails ${txt.lieu} ne partiront plus de cette adresse.`)) return;
     setEnCours('deconnexion');
     try {
       const { error } = await appelerMailer('boite_deconnexion', { etablissementId });
@@ -188,14 +205,13 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
     <div style={s.carte}>
       <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-mizu)' }}><Mail size={20} strokeWidth={1.8} /></span>
       <div style={s.texte}>
-        <div style={s.titre}>{changer ? 'Connecter une autre adresse' : 'Connectez l\'adresse e-mail du spa'}</div>
+        <div style={s.titre}>{changer ? 'Connecter une autre adresse' : `Connectez l'adresse e-mail ${txt.lieu}`}</div>
         <div style={{ ...s.aide, marginTop: 2 }}>
-          Les confirmations de rendez-vous, les bons cadeaux et les nouvelles partiront de votre adresse. Vos clients vous
-          répondront directement.
+          {txt.usages} Vos clients vous répondront directement.
         </div>
         <ol style={s.etapes}>
           <li>Cliquez sur « Connecter Gmail » ou « Connecter Outlook ».</li>
-          <li>Connectez-vous avec l'adresse e-mail du spa.</li>
+          <li>Connectez-vous avec l'adresse e-mail {txt.lieu}.</li>
           <li>Acceptez. C'est fait, une fois pour toutes.</li>
         </ol>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
@@ -228,7 +244,7 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
               <span>
                 Pas encore activé : les accès{' '}
                 {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([id, f]) => f.editeur).join(' et ')}
-                {' '}sont à créer une seule fois, pour tous les spas.
+                {' '}sont à créer une seule fois, pour {txt.tous}.
               </span>
             ) : (
               <span>{aucuneConnexion ? 'Bientôt disponible.' : 'L\'autre bouton sera bientôt disponible.'}</span>

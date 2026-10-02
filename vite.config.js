@@ -97,6 +97,9 @@ export default defineConfig({
       manifest: false,
       includeAssets: ['favicon.ico', 'favicon.svg', 'icons/*.png'],
       workbox: {
+        // Notifications push (nouvelles réservations en ligne) : gestionnaires
+        // push / notificationclick, dans public/push-sw.js.
+        importScripts: ['/push-sw.js'],
         // Précache de tous les assets statiques compilés par Vite : app shell
         // servi cache-first, revalidé en arrière-plan à chaque release.
         // ttf : les polices de marque embarquées dans les PDF (public/fonts).

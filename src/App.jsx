@@ -23,7 +23,31 @@ import { startInventaireSync } from './services/offline/inventaireSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 import { clearTranslationCache } from './i18n/domTranslator.js';
 
+// Ouverture depuis une notification push (public/push-sw.js) :
+// /?page=previsions&etab=<id>. Lu une fois au chargement, puis retiré de l'URL
+// (le hash, lien de réinitialisation du mot de passe, est conservé).
+function lireLienNotification() {
+  try {
+    const u = new URL(window.location.href);
+    const page = u.searchParams.get('page');
+    const etab = u.searchParams.get('etab');
+    if (!page && !etab) return null;
+    u.searchParams.delete('page');
+    u.searchParams.delete('etab');
+    window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash);
+    return { page, etab };
+  } catch {
+    return null;
+  }
+}
+const LIEN_NOTIFICATION = typeof window !== 'undefined' ? lireLienNotification() : null;
+
 function readInitialPage() {
+  if (LIEN_NOTIFICATION?.page) {
+    const page = normalizePage(LIEN_NOTIFICATION.page);
+    writeText(UI_STORAGE_KEYS.page, page);
+    return page;
+  }
   return normalizePage(readText(UI_STORAGE_KEYS.page, 'dashboard'));
 }
 
@@ -161,6 +185,7 @@ export default function App() {
     };
   }, []);
 
+  const setPageRef = useRef(null);
   function setPage(nextPage) {
     const consultantToolsTab = getConsultantToolsTabForPage(nextPage);
     if (consultantToolsTab) {
@@ -171,6 +196,7 @@ export default function App() {
     writeText(UI_STORAGE_KEYS.page, normalized);
     pushPage(normalized);
   }
+  setPageRef.current = setPage;
 
   // Retour / avancer du navigateur (geste Android, glissé depuis le bord,
   // Alt+←, boutons de souris) : on affiche la page de l'entrée atteinte, sans
@@ -195,6 +221,32 @@ export default function App() {
     writeText(UI_STORAGE_KEYS.page, accueil);
     replacePage(accueil);
   }, [page, etabCourant, roleCourant]);
+
+  // Notification touchée : l'app bascule sur l'établissement de la réservation
+  // (s'il fait partie des siens), au démarrage ou si elle était déjà ouverte.
+  const [etabDemande, setEtabDemande] = useState(() => LIEN_NOTIFICATION?.etab || null);
+  const etabsDispo = currentEtablissement.etablissements;
+  const etabCourantId = currentEtablissement.currentId;
+  const selectEtab = currentEtablissement.selectEtablissement;
+  useEffect(() => {
+    if (!etabDemande || !etabsDispo?.length) return;
+    setEtabDemande(null);
+    if (etabDemande !== etabCourantId && etabsDispo.some((e) => e.id === etabDemande)) {
+      purgeEtabDataCaches();
+      Promise.resolve(selectEtab(etabDemande)).catch(() => {});
+    }
+  }, [etabDemande, etabsDispo, etabCourantId, selectEtab]);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return undefined;
+    const surMessage = (e) => {
+      if (e.data?.type !== 'sc-naviguer') return;
+      if (e.data.page) setPageRef.current(e.data.page);
+      if (e.data.etab) setEtabDemande(e.data.etab);
+    };
+    navigator.serviceWorker.addEventListener('message', surMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', surMessage);
+  }, []);
 
   useEffect(() => {
     setNavigationHandler(setPage);
