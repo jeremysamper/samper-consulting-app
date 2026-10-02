@@ -7,7 +7,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { addDays, isoDate, formatDateLongue, parseLocalDate } from '../../utils/dateHelpers.js';
 import { serviceParDefaut } from './statutsReservation.js';
-import { useParametresEnLigne } from './reservationEnLigne.js';
+import { useParametresEnLigne, envoyerConfirmation } from './reservationEnLigne.js';
 import ReservationTagSelector from './ReservationTagSelector.jsx';
 
 // Heures proposées : celles de la réservation en ligne (Prévisions, réglages
@@ -240,7 +240,18 @@ export default function ReservationForm({
           const { error: eTags } = await tags.bulkCreate(initialResa.id, form.tags);
           if (eTags) { echec(eTags, { partiel: true }); return; }
         }
-        notify(`Résa ${form.nom.trim()} · ${form.couverts} pax · ${form.heure.slice(0, 5)} modifiée ✓`, 'success');
+        // Date, heure, service ou couverts changés : le client reçoit le
+        // nouveau récapitulatif. Une simple correction de nom ou de note, non.
+        const avant = initialResa;
+        const change = avant.date_service !== payload.date_service
+          || String(avant.heure_arrivee || '').slice(0, 5) !== String(payload.heure_arrivee || '').slice(0, 5)
+          || avant.service !== payload.service
+          || Number(avant.nb_couverts) !== Number(payload.nb_couverts)
+          || (!avant.email && payload.email);
+        const mail = change && maj?.statut === 'confirme'
+          ? await envoyerConfirmation(maj, avant.email ? 'modification' : 'creation')
+          : { suffixe: '', ton: 'success' };
+        notify(`Résa ${form.nom.trim()} · ${form.couverts} pax · ${form.heure.slice(0, 5)} modifiée ✓${mail.suffixe}`, mail.ton);
         onSaved?.();
         if (ouvertRef.current) onClose();
       } else {
@@ -271,7 +282,8 @@ export default function ReservationForm({
           }
         }
         const h = resa.heure_arrivee?.slice(0, 5) ?? form.heure;
-        notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée ✓`, 'success');
+        const mail = await envoyerConfirmation(resa, 'creation');
+        notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée ✓${mail.suffixe}`, mail.ton);
         onSaved?.(resa);
         if (!ouvertRef.current) return;
         if (!keepOpen) { onClose(); return; }

@@ -208,6 +208,21 @@ export async function traiterDemande(resa, evenement) {
   return { error: null, message: `${base} L'e-mail au client n'a pas pu partir : pensez à le prévenir.`, ton: 'warning' };
 }
 
+// Confirmation par e-mail d'une réservation saisie par l'équipe (téléphone,
+// sur place), avec récapitulatif. evenement : 'creation' | 'modification'.
+// Le serveur prend l'établissement de la réservation elle-même. Ne bloque
+// jamais l'enregistrement : renvoie un texte à ajouter au toast, ou '' si le
+// client n'a pas laissé d'e-mail.
+export async function envoyerConfirmation(resa, evenement = 'creation') {
+  if (!resa?.id || !resa.email) return { suffixe: '', ton: 'success' };
+  const { data } = await appelerMailer('resa_confirmation', { reservationId: resa.id, evenement });
+  if (data?.envoye) return { suffixe: ' Confirmation envoyée par e-mail.', ton: 'success' };
+  if (data?.raison === 'non_configure') {
+    return { suffixe: " L'envoi d'e-mails n'est pas encore branché pour cet établissement.", ton: 'warning' };
+  }
+  return { suffixe: " L'e-mail de confirmation n'a pas pu partir.", ton: 'warning' };
+}
+
 // ── Liens et codes à mettre sur le site du restaurant ──────────────────────
 // L'origine est toujours la production : le site du restaurant doit pointer
 // vers samperconsulting-app.com, même si le réglage est fait depuis une préversion.

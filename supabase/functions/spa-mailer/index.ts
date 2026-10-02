@@ -51,6 +51,13 @@
 //                                    prénom, nom, accord pour les actualités)
 //   resa_statut            équipe  → e-mail « confirmée » ou « refusée » après
 //                                    traitement d'une demande venue du site
+//   resa_confirmation      équipe  → { reservationId, evenement: 'creation' |
+//                                    'modification' } : e-mail de confirmation
+//                                    avec récapitulatif, pour une réservation
+//                                    saisie par l'équipe (téléphone, sur place)
+// Tous les e-mails de table portent un encadré « Récapitulatif » et partent au
+// nom de l'établissement DE LA RÉSERVATION (lu sur la ligne reservations),
+// jamais de celui affiché à l'écran.
 // Mêmes protections anti-abus (journal spa_demandes_en_ligne partagé). Les
 // e-mails partent par le même canal que ceux du spa (boîte connectée de
 // l'établissement, sinon Resend), signés du nom de l'établissement.
@@ -250,10 +257,35 @@ function lienDesinscription(appUrl: string, token: string) {
   return `${appUrl}/api/spa-desinscription?t=${encodeURIComponent(token)}`;
 }
 
+type Recap = [string, string][];
+
+// Encadré « Récapitulatif » (réservations) : libellé à gauche, valeur à droite.
+function carteRecap(recap?: Recap | null) {
+  if (!recap?.length) return '';
+  const lignes = recap.map(([l, v]) => `
+        <tr>
+          <td style="padding:6px 12px 6px 0;font-size:13px;color:#8a8a8a;vertical-align:top;white-space:nowrap;">${esc(l)}</td>
+          <td style="padding:6px 0;font-size:14px;color:#2b2b2b;vertical-align:top;">${esc(v).replace(/\n/g, '<br>')}</td>
+        </tr>`).join('');
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 24px;border-collapse:separate;">
+      <tr><td style="border:1px solid #e6dccd;border-radius:14px;background:#fbf7f1;padding:18px 22px;">
+        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#9a8466;margin-bottom:8px;">Récapitulatif</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lignes}
+        </table>
+      </td></tr>
+    </table>`;
+}
+
+const texteRecap = (recap?: Recap | null) => (recap?.length
+  ? `\n\nRécapitulatif\n${recap.map(([l, v]) => `${l} : ${v}`).join('\n')}`
+  : '');
+
 function gabarit(opts: {
   etab: Etab; params: Params; titre: string; corps: string; bon?: Bon | null; lienDesinscr?: string | null;
+  recap?: Recap | null;
 }) {
-  const { etab, params, titre, corps, bon, lienDesinscr } = opts;
+  const { etab, params, titre, corps, bon, lienDesinscr, recap } = opts;
   const signature = (params.signature || '').trim() || `L'équipe ${etab.nom}`;
   const coordonnees = [etab.adresse, etab.tel, params.email_reponse || etab.email].filter(Boolean).map(esc).join('<br>');
   const carteBon = bon ? `
@@ -281,6 +313,7 @@ function gabarit(opts: {
         </td></tr>
         <tr><td style="padding:24px 32px 8px;font-family:Helvetica,Arial,sans-serif;">
           ${paragraphes(corps)}
+          ${carteRecap(recap)}
           ${carteBon}
           <p style="margin:0 0 4px;font-size:15px;line-height:1.6;color:#2b2b2b;">${esc(signature).replace(/\n/g, '<br>')}</p>
         </td></tr>
@@ -1065,14 +1098,14 @@ async function creneauxTable(sb: Admin, p: ParamsTable, date: string, couverts: 
 // E-mail transactionnel du restaurant (réponse à une réservation, pas de
 // publicité : pas de lien de désinscription). Pas de journal spa_envois : il
 // appartient au module Spa.
-async function mailTable(sb: Admin, cfg: Cfg, etab: Etab, dest: { email: string; sujet: string; corps: string; signature?: string }) {
+async function mailTable(sb: Admin, cfg: Cfg, etab: Etab, dest: { email: string; sujet: string; corps: string; signature?: string; recap?: Recap }) {
   if (!dest.email) return { envoye: false };
   const params = dest.signature ? { ...PARAMS_TABLE, signature: dest.signature } : PARAMS_TABLE;
   const res = await expedier(sb, cfg, etab, params, {
     to: dest.email,
     subject: dest.sujet,
-    html: gabarit({ etab, params, titre: dest.sujet, corps: dest.corps }),
-    text: texteBrut(dest.corps),
+    html: gabarit({ etab, params, titre: dest.sujet, corps: dest.corps, recap: dest.recap }),
+    text: texteBrut(dest.corps + texteRecap(dest.recap)),
   });
   if (!res.canal) return { envoye: false, nonConfigure: true };
   if (res.erreur) console.warn('[spa-mailer] e-mail table', res.erreur);
@@ -1080,6 +1113,28 @@ async function mailTable(sb: Admin, cfg: Cfg, etab: Etab, dest: { email: string;
 }
 
 const personnes = (n: number) => `${n} personne${n > 1 ? 's' : ''}`;
+
+const SERVICE_LIBELLE: Record<string, string> = { midi: 'Midi', soir: 'Soir', brunch: 'Brunch' };
+
+// Récapitulatif d'une réservation de table. Les notes saisies par l'équipe
+// sont internes : seul le message laissé par le client en ligne est repris.
+function recapTable(etab: Etab, r: {
+  nom?: string | null; date_service: string; service?: string | null; heure_arrivee: string;
+  nb_couverts: number; telephone?: string | null; notes_libres?: string | null; origine?: string | null;
+}): Recap {
+  const recap: Recap = [
+    ['Établissement', etab.nom],
+    ['Date', `${jourLong(r.date_service)} ${String(r.date_service).slice(0, 4)}`],
+    ['Heure d\'arrivée', String(r.heure_arrivee).slice(0, 5)],
+  ];
+  if (r.service && SERVICE_LIBELLE[r.service]) recap.push(['Service', SERVICE_LIBELLE[r.service]]);
+  recap.push(['Nombre de personnes', String(Number(r.nb_couverts || 0))]);
+  if (r.nom) recap.push(['Au nom de', r.nom]);
+  if (r.telephone) recap.push(['Téléphone', r.telephone]);
+  if (r.origine === 'en_ligne' && r.notes_libres) recap.push(['Votre message', r.notes_libres]);
+  if (etab.adresse) recap.push(['Adresse', etab.adresse]);
+  return recap;
+}
 
 async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: string, body: Record<string, unknown>) {
   const lu = await lireTableEnLigne(sb, String(body.slug || ''));
@@ -1182,14 +1237,18 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
 
   const confirmee = r.statut === 'confirme';
   const quand = `${jourLong(date)} à ${heure}`;
+  const recap = recapTable(etab, {
+    nom: `${prenom} ${nom}`, date_service: date, service, heure_arrivee: heure, nb_couverts: couverts,
+    telephone, notes_libres: message || null, origine: 'en_ligne',
+  });
   await mailTable(sb, cfg, etab, confirmee
     ? {
-      email,
+      email, recap,
       sujet: `Votre table du ${jourLong(date)} est réservée`,
       corps: `Bonjour ${prenom},\n\nC'est noté : une table pour ${personnes(couverts)} le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en répondant à ce message${etab.tel ? ` ou au ${etab.tel}` : ''}.\n\nÀ très bientôt.`,
     }
     : {
-      email,
+      email, recap,
       sujet: `Votre demande de réservation du ${jourLong(date)}`,
       corps: `Bonjour ${prenom},\n\nNous avons bien reçu votre demande : une table pour ${personnes(couverts)} le ${quand}.\n\nNous vous confirmons la réservation très vite. Pour toute question, répondez simplement à ce message.\n\nÀ bientôt.`,
     });
@@ -1380,13 +1439,47 @@ Deno.serve(async (req: Request) => {
     return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
   }
 
+  // Réservation saisie par l'équipe (téléphone, sur place) : confirmation au
+  // client avec récapitulatif, à la création ou après une modification de
+  // date, d'heure, de service ou de nombre de personnes. L'établissement est
+  // celui de la réservation : un client du Woodland reçoit un e-mail du
+  // Woodland, quel que soit l'établissement affiché dans l'app.
+  if (action === 'resa_confirmation') {
+    const { data: r } = await sb.from('reservations')
+      .select('id, etablissement_id, nom, email, telephone, date_service, service, heure_arrivee, nb_couverts, notes_libres, statut, origine')
+      .eq('id', String(body.reservationId || '')).maybeSingle();
+    if (!r) return json({ error: 'Réservation introuvable.' }, 404);
+    const etabResa = String(r.etablissement_id || '');
+    if (!autorise(qui, etabResa, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
+    if (r.statut !== 'confirme') return json({ envoye: false, raison: 'statut' });
+    if (!r.email) return json({ envoye: false, raison: 'sans_email' });
+    if (!(await peutEnvoyer(sb, cfg, etabResa))) return json({ envoye: false, raison: 'non_configure' });
+    const { data: etab } = await sb.from('etablissements').select('id, nom, adresse, tel, email').eq('id', etabResa).maybeSingle();
+    if (!etab) return json({ error: 'Établissement introuvable.' }, 404);
+    const modification = String(body.evenement || '') === 'modification';
+    const quand = `${jourLong(r.date_service)} à ${String(r.heure_arrivee).slice(0, 5)}`;
+    const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
+    const contact = `répondant à ce message${(etab as Etab).tel ? ` ou au ${(etab as Etab).tel}` : ''}`;
+    const res = await mailTable(sb, cfg, etab as Etab, {
+      email: r.email,
+      recap: recapTable(etab as Etab, r),
+      sujet: modification
+        ? `Votre réservation du ${jourLong(r.date_service)} a été modifiée`
+        : `Votre réservation du ${jourLong(r.date_service)} est confirmée`,
+      corps: modification
+        ? `Bonjour ${r.nom},\n\nVotre réservation a bien été modifiée : ${table} le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en ${contact}.\n\nÀ très bientôt.`
+        : `Bonjour ${r.nom},\n\nMerci pour votre réservation : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en ${contact}.\n\nÀ très bientôt.`,
+    });
+    return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
+  }
+
   // Réservation de table venue du site, confirmée ou refusée dans le module
   // Réservations : même principe que rdv_statut.
   if (action === 'resa_statut') {
     if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
     const evenement = String(body.evenement || '');
     const { data: r } = await sb.from('reservations')
-      .select('id, nom, email, date_service, heure_arrivee, nb_couverts, statut, origine')
+      .select('id, nom, email, telephone, date_service, service, heure_arrivee, nb_couverts, notes_libres, statut, origine')
       .eq('id', String(body.reservationId || '')).eq('etablissement_id', etabId).maybeSingle();
     if (!r) return json({ error: 'Réservation introuvable.' }, 404);
     if (r.origine !== 'en_ligne') return json({ envoye: false, raison: 'hors_ligne' });
@@ -1401,7 +1494,7 @@ Deno.serve(async (req: Request) => {
     const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
     const res = evenement === 'confirmation'
       ? await mailTable(sb, cfg, etab as Etab, {
-        email: r.email,
+        email: r.email, recap: recapTable(etab as Etab, r),
         sujet: `Votre table du ${jourLong(r.date_service)} est confirmée`,
         corps: `Bonjour ${r.nom},\n\nC'est confirmé : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en répondant à ce message.\n\nÀ très bientôt.`,
       })
