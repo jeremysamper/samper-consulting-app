@@ -3,6 +3,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getPendingPunchCount, subscribePendingPunches } from '../services/offline/punchSync.js';
 import { getPendingSaisieCount, subscribePendingSaisies } from '../services/offline/inventaireSync.js';
 import { applyPwaUpdate, isPwaUpdateReady, subscribePwaUpdate } from '../pwa/registerPwa.js';
+import UpdatePrompt from './UpdatePrompt.jsx';
 
 /**
  * OfflineBanner
@@ -15,6 +16,9 @@ import { applyPwaUpdate, isPwaUpdateReady, subscribePwaUpdate } from '../pwa/reg
  *   2. punches en attente  -> tokens info (réseau revenu, sync en cours) ;
  *                             disparaît seul une fois la file vidée
  *   3. mise à jour dispo   -> bouton « Mettre à jour » (skipWaiting maîtrisé)
+ *                             + grande fenêtre UpdatePrompt (le bandeau seul
+ *                             passait inaperçu) ; pas affichée hors-ligne ni
+ *                             tant qu'une saisie attend d'être synchronisée
  *
  * Aucun bouton « Ignorer » : c'est un état, pas une notification.
  */
@@ -45,11 +49,14 @@ export default function OfflineBanner() {
   }
   if (updateReady) {
     return (
-      <Band
-        kind="info"
-        text="Nouvelle version de l'app disponible"
-        action={{ label: 'Mettre à jour', onClick: applyPwaUpdate }}
-      />
+      <>
+        <Band
+          kind="info"
+          text="Nouvelle version de l'app disponible"
+          action={{ label: 'Mettre à jour', onClick: applyPwaUpdate }}
+        />
+        <UpdatePrompt />
+      </>
     );
   }
   return null;
