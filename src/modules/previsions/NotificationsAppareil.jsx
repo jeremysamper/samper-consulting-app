@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { notify } from '../../components/toast/index.js';
 import { activerPush, desactiverPush, etatPush, testerPush } from '../../services/pushNotifications.js';
 
@@ -7,6 +8,10 @@ import { activerPush, desactiverPush, etatPush, testerPush } from '../../service
 // chaque nouvelle réservation en ligne de l'établissement affiché. Chaque
 // appareil s'active une fois ; l'envoi part du serveur (Edge Function
 // « notifications »), même app fermée.
+//
+// Le panneau est une fenêtre centrée, rendue dans <body> (portail) : sur
+// téléphone la barre d'actions défile (overflow) et coupait un panneau
+// déroulant posé dedans, qui n'apparaissait jamais.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MESSAGES = {
@@ -19,7 +24,6 @@ export default function NotificationsAppareil({ etablissementId, user }) {
   const [etat, setEtat] = useState(null); // null = lecture en cours
   const [ouvert, setOuvert] = useState(false);
   const [enCours, setEnCours] = useState(false);
-  const racine = useRef(null);
 
   useEffect(() => {
     let vivant = true;
@@ -30,9 +34,9 @@ export default function NotificationsAppareil({ etablissementId, user }) {
 
   useEffect(() => {
     if (!ouvert) return undefined;
-    const fermer = (e) => { if (racine.current && !racine.current.contains(e.target)) setOuvert(false); };
-    document.addEventListener('pointerdown', fermer);
-    return () => document.removeEventListener('pointerdown', fermer);
+    const echap = (e) => { if (e.key === 'Escape') setOuvert(false); };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
   }, [ouvert]);
 
   async function activer() {
@@ -72,7 +76,7 @@ export default function NotificationsAppareil({ etablissementId, user }) {
 
   const actif = etat === 'actif';
   return (
-    <div ref={racine} style={{ position: 'relative' }}>
+    <>
       <button
         type="button"
         onClick={() => setOuvert((o) => !o)}
@@ -85,8 +89,10 @@ export default function NotificationsAppareil({ etablissementId, user }) {
       >
         {actif ? 'Notifications activées' : 'Notifications'}
       </button>
-      {ouvert && (
-        <div style={s.panneau} role="dialog" aria-label="Notifications sur cet appareil">
+      {ouvert && createPortal(
+        <div style={s.voile} onClick={(e) => { if (e.target === e.currentTarget) setOuvert(false); }}>
+        <div style={s.panneau} role="dialog" aria-modal="true" aria-label="Notifications sur cet appareil">
+          <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer" style={s.fermer}>×</button>
           <div style={s.titre}>Nouvelles réservations en ligne</div>
           {etat === null && <div style={s.texte}>Vérification…</div>}
           {MESSAGES[etat] && <div style={s.texte}>{MESSAGES[etat]}</div>}
@@ -110,8 +116,10 @@ export default function NotificationsAppareil({ etablissementId, user }) {
             </>
           )}
         </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }
 
@@ -121,12 +129,20 @@ const s = {
     background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600,
     fontFamily: 'var(--font)', cursor: 'pointer',
   },
-  panneau: {
-    position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, width: 'min(320px, 86vw)',
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-    boxShadow: 'var(--sh-lg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
+  voile: {
+    position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.45)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
   },
-  titre: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
+  panneau: {
+    position: 'relative', width: 'min(380px, 100%)',
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12,
+  },
+  fermer: {
+    position: 'absolute', top: 6, right: 8, width: 40, height: 40, border: 'none', background: 'transparent',
+    color: 'var(--text2)', fontSize: 24, cursor: 'pointer', lineHeight: 1,
+  },
+  titre: { fontSize: 16, fontWeight: 700, paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   texte: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 },
   principal: {
     padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff',

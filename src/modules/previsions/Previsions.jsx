@@ -93,6 +93,9 @@ export default function Previsions({ user, etablissement }) {
           sub={onglet === 'clients' ? 'Fichier clients, rempli par les réservations' : selectedDate ? null : 'Planning de la semaine, service par service'}
         />
         <div className="module-actions">
+          {/* Prévenir ce téléphone / cette tablette à chaque réservation en
+              ligne. En tête : visible sur téléphone sans faire défiler. */}
+          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
           {/* Le plan de salle en un tap : écran scindé plan + réservations du
               service en cours. Il n'était accessible que par la vue d'un jour,
               puis l'onglet « Plan de salle ». */}
@@ -119,8 +122,6 @@ export default function Previsions({ user, etablissement }) {
               placeholder="Nom ou téléphone…"
             />
           )}
-          {/* Prévenir ce téléphone / cette tablette à chaque réservation en ligne. */}
-          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
           {etabId && ROLES_EN_LIGNE.includes(user?.role) && (
             <button
               type="button"
