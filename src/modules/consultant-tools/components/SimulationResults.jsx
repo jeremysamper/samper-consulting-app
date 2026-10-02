@@ -19,7 +19,7 @@ export function SimulationResults({
     return (
       <div style={cs.empty}>
         <div style={{ fontSize: 32, opacity: 0.25 }}>📊</div>
-        <div style={cs.emptyText}>Lancez l'analyse IA pour obtenir les résultats</div>
+        <div style={cs.emptyText}>Lancez l'analyse pour obtenir les résultats</div>
       </div>
     );
   }
@@ -70,7 +70,7 @@ export function SimulationResults({
 
       {synthese && (
         <div style={cs.synthese}>
-          <div style={cs.syntheseTitle}>Synthèse IA</div>
+          <div style={cs.syntheseTitle}>Synthèse</div>
           <div style={cs.syntheseText}>{synthese}</div>
         </div>
       )}

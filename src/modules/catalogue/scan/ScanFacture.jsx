@@ -387,7 +387,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
 
         {etape === 'analyse' && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
-            Lecture de {fichiers.length} page(s)… l'IA extrait l'en-tête et les lignes.
+            Lecture en cours : {fichiers.length} page(s)…
             <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>Rien n'est encore écrit au catalogue.</div>
           </div>
         )}

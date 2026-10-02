@@ -387,11 +387,11 @@ const FichesSalle = ({ user, etablissement }) => {
       return;
     }
     if (!confirmLegacy(
-      `Générer ${targets.length} fiche(s) salle par IA ?\n\n`
+      `Générer ${targets.length} fiche(s) salle automatiquement ?\n\n`
       + (carteActive
         ? `Une fiche par plat fini de « ${carteActive.nom} », rattachée à cette carte. `
         : 'Une fiche par plat fini, rattachée aux cartes de son plat. ')
-      + `Cela effectue ${targets.length} appel(s) à l'IA. Les fiches sont créées en statut « Brouillon » - à relire avant publication.`
+      + `Cela effectue ${targets.length} rédaction(s) automatique(s). Les fiches sont créées en statut « Brouillon » - à relire avant publication.`
     )) return;
     bulkCancelRef.current = false;
     setBulkProgress({ done: 0, total: targets.length, created: 0 });
@@ -504,7 +504,7 @@ const FichesSalle = ({ user, etablissement }) => {
             )}
             {isConsultant && (
             <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
-              Générer (IA)
+              Générer
             </button>
             )}
             <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle</button>

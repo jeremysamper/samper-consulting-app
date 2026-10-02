@@ -1096,7 +1096,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       if (incertains.length) msg += ` À vérifier : ${incertains.map(labelOf).join(', ')}.`;
       notifyLegacy(msg, added.length ? 'success' : 'info');
     } catch (err) {
-      notifyLegacy('Détection IA impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Détection impossible : ' + (err.message || err), 'error');
     } finally {
       setAllergenAiBusy(false);
     }
@@ -1109,7 +1109,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (!targets.length) { notifyLegacy('Aucune recette avec des ingrédients à analyser.', 'info'); return; }
     if (!confirmLegacy(
       `Détecter les allergènes de ${targets.length} recette(s) ?\n\n`
-      + `Cela effectue ${targets.length} appel(s) à l'IA. Les allergènes détectés sont ajoutés sans retirer les existants.`
+      + `Cela lance ${targets.length} analyse(s). Les allergènes détectés sont ajoutés sans retirer les existants.`
     )) return;
     bulkAllergenCancelRef.current = false;
     setBulkAllergenProgress({ done: 0, total: targets.length, added: 0 });
@@ -1177,7 +1177,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Insère l'analyse HACCP générée dans les notes consultant de la recette.
   const insererHaccpDansNotes = () => {
     if (!haccpResult || !selected) return;
-    const lines = ['── Analyse HACCP (générée par IA - à valider par un responsable) ──'];
+    const lines = ['── Analyse HACCP (générée automatiquement - à valider par un responsable) ──'];
     (haccpResult.points || []).forEach(p => {
       lines.push(`• ${p.etape || '-'} - ${p.danger || '-'} [${p.type || '-'}]${p.ccp ? ' (CCP)' : ''}`);
       if (p.mesure) lines.push(`  Maîtrise : ${p.mesure}`);
@@ -1205,12 +1205,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       const { suggestRecipe } = await import('../../services/aiService.js');
       const res = await suggestRecipe(selected, (catalogue || []).map(p => p.nom));
       if (!res.ingredients.length && !res.etapes.length) {
-        notifyLegacy('L\'IA n\'a pas de suggestion - la recette semble complète.', 'info');
+        notifyLegacy('Aucune suggestion - la recette semble complète.', 'info');
       } else {
         setSuggestResult(res);
       }
     } catch (err) {
-      notifyLegacy('Suggestions IA impossibles : ' + (err.message || err), 'error');
+      notifyLegacy('Suggestions impossibles : ' + (err.message || err), 'error');
     } finally {
       setSuggestAiBusy(false);
     }
@@ -1485,7 +1485,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                               role="menuitem"
                               disabled={!!bulkAllergenProgress}
                               onClick={() => { setOutilsMenuOpen(false); detecterAllergenesToutes(); }}
-                            >✨ Allergènes IA - toutes les recettes</button>
+                            >✨ Allergènes - toutes les recettes</button>
                             {reviewCount > 0 && (
                               <button
                                 className="sc-menu-item"
@@ -1797,12 +1797,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
                 onClick={genererHaccpIA}
                 disabled={haccpAiBusy}
-              ><ShieldCheck size={14} /> {haccpAiBusy ? 'Analyse HACCP…' : 'Analyse HACCP (IA)'}</button>
+              ><ShieldCheck size={14} /> {haccpAiBusy ? 'Analyse HACCP…' : 'Analyse HACCP'}</button>
               <button
                 style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
                 onClick={suggererIA}
                 disabled={suggestAiBusy}
-              ><Sparkles size={14} /> {suggestAiBusy ? 'Suggestions…' : 'Suggestions (IA)'}</button>
+              ><Sparkles size={14} /> {suggestAiBusy ? 'Suggestions…' : 'Suggestions'}</button>
             </div>
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1836,7 +1836,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
                   <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
-                    Généré par IA - à valider par un responsable avant utilisation.
+                    Généré automatiquement - à valider par un responsable avant utilisation.
                   </div>
                   {(haccpResult.points || []).length === 0 && (
                     <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucun point de maîtrise identifié.</div>
@@ -1881,7 +1881,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(680px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>✨ Suggestions IA - {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>✨ Suggestions - {selected.nom}</div>
                   <button onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
@@ -2035,14 +2035,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <button
                     onClick={detectAllergenesIA}
                     disabled={allergenAiBusy}
-                    title="Détecter les allergènes à partir des ingrédients (IA)"
+                    title="Détecter les allergènes à partir des ingrédients"
                     style={{
                       padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
                       fontFamily: 'var(--font)', cursor: allergenAiBusy ? 'wait' : 'pointer',
                       background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)',
                       opacity: allergenAiBusy ? 0.6 : 1,
                     }}
-                  >{allergenAiBusy ? '✨ Analyse…' : '✨ Détecter (IA)'}</button>
+                  >{allergenAiBusy ? '✨ Analyse…' : '✨ Détecter'}</button>
                 </div>
                 <div style={{ padding: '10px 14px 4px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
                   {catalogue.length > 0

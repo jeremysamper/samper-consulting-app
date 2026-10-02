@@ -26,7 +26,7 @@ import ComptageRapide from './ComptageRapide.jsx';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
 import ProduitsMaisonModal from './ProduitsMaisonModal.jsx';
 import {
-  construireReferencesPrix, coutUnitaireRecette, masseRecette, ligneDepuisRecette, lierLigne, fichesActives,
+  construireReferencesPrix, coutUnitaireRecette, masseRecette, ligneDepuisRecette, lierLigne, fichesActives, cartesDesFiches,
 } from './produitsMaison.js';
 import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
@@ -172,7 +172,9 @@ const Inventaire = ({ user, etablissement }) => {
   const [exportEnCours, setExportEnCours] = React.useState(false);
   const perms = getPermissionsForRole(user.role);
   const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
-  // Actions d'import/export/impression réservées à consultant + patron
+  // Import et export Excel réservés à consultant + patron. L'onglet Achats
+  // (photos et PDF des factures), l'impression et l'export PDF sont ouverts à
+  // toute l'équipe qui a accès à l'inventaire.
   const canExport = ['consultant', 'patron'].includes(user.role);
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
@@ -214,12 +216,18 @@ const Inventaire = ({ user, etablissement }) => {
   // ─── Fiches recettes (produits maison) ───
   // Lues depuis le module Cartes & Recettes, jamais modifiées d'ici.
   const [recettes, setRecettes] = React.useState([]);
+  const [cartesParFiche, setCartesParFiche] = React.useState(() => new Map());
   React.useEffect(() => {
     if (!legacySB) return undefined;
     let vivant = true;
     legacySB.db.listRecettes(etabId)
       .then(rs => { if (vivant) setRecettes(fichesActives(rs)); })
       .catch(err => console.warn('[Inventaire] fiches recettes indisponibles', err));
+    // Cartes de chaque fiche (Buffet PDJ, Beverage…) : « + Produits » propose
+    // les fiches carte par carte. Facultatif : sans elles, liste à plat.
+    Promise.all([legacySB.db.listCartes(etabId), legacySB.db.listPlats(etabId)])
+      .then(([cartes, plats]) => { if (vivant) setCartesParFiche(cartesDesFiches(cartes, plats)); })
+      .catch(err => console.warn('[Inventaire] cartes indisponibles', err));
     return () => { vivant = false; };
   }, [etabId]);
 
@@ -1279,9 +1287,9 @@ const Inventaire = ({ user, etablissement }) => {
             canEditLignes && !sel.active && { label: '☑ Sélectionner des lignes', onClick: () => { setVue('ecarts'); sel.enter(); } },
             canExport && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
             canExport && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
-            canExport && { label: '🖨 Imprimer', onClick: printInventory },
+            { label: '🖨 Imprimer', onClick: printInventory },
             canManage && recettes.length > 0 && { label: '🍲 Produits maison (fiches recettes)', onClick: () => setShowMaison(true) },
-            canExport && { label: "⬇ État d'inventaire (PDF)", onClick: () => exporterEtat('pdf') },
+            { label: "⬇ État d'inventaire (PDF)", onClick: () => exporterEtat('pdf') },
             canExport && { label: "📊 État d'inventaire (Excel)", onClick: () => exporterEtat('xlsx') },
             canManage && inventairesEtab.length > 1 && { label: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
           ]} />
@@ -1292,7 +1300,7 @@ const Inventaire = ({ user, etablissement }) => {
       <SegmentedTabs
         active={vue}
         onChange={setVue}
-        tabs={VUES.filter(v => v.id !== 'achats' || canExport).map(v => ({ id: v.id, label: v.label }))}
+        tabs={VUES.map(v => ({ id: v.id, label: v.label }))}
       />
 
       {vue === 'comptage' && (
@@ -1311,7 +1319,7 @@ const Inventaire = ({ user, etablissement }) => {
         />
       )}
 
-      {canExport && achatsOuvert && (
+      {achatsOuvert && (
         <div style={{ display: vue === 'achats' ? 'block' : 'none' }}>
           <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
             <AchatsPanel
@@ -1322,7 +1330,7 @@ const Inventaire = ({ user, etablissement }) => {
               inv={inv}
               previousInv={previousInv}
               catalogue={catalogue}
-              canImport={user.role === 'consultant'}
+              canImport
               canEditLignes={canEditLignes}
               onAjouterLignes={ajouterLignes}
               onMajPrix={majPrixDepuisAchats}
@@ -1544,6 +1552,7 @@ const Inventaire = ({ user, etablissement }) => {
           lignesExistantes={inv.lignes || []}
           onAjouter={ajouterDepuisCatalogue}
           recettes={recettes}
+          cartesParFiche={cartesParFiche}
           infoFiche={infoFiche}
           onAjouterFiches={ajouterDepuisFiches}
           onClose={() => setShowAjout(false)}

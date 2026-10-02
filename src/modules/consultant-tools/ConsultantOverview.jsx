@@ -96,9 +96,9 @@ export default function ConsultantOverview({
     sansAllergenes.length > 0 && {
       key: 'allergenes', sev: 'danger', count: sansAllergenes.length,
       label: 'Recettes sans allergènes renseignés',
-      hint: 'Obligatoire pour la carte et les fiches salle. La détection IA les remplit à partir des ingrédients, sans retirer l\'existant.',
+      hint: 'Obligatoire pour la carte et les fiches salle. La détection automatique les remplit à partir des ingrédients, sans retirer l\'existant.',
       items: sansAllergenes.map(recChip),
-      actionLabel: 'Détecter par IA (toutes)', onAction: onBulkAllergenes,
+      actionLabel: 'Détecter automatiquement (toutes)', onAction: onBulkAllergenes,
     },
     fcEleves.length > 0 && {
       key: 'foodcost', sev: 'danger', count: fcEleves.length,

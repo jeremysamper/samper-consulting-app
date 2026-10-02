@@ -56,7 +56,7 @@ function mapAiRecipe(r) {
     notesConsultant: '',
     ingredients,
     etapes: (r.etapes || []).map(e => String(e || '').trim()).filter(Boolean),
-    _warnings: ingredients.length === 0 ? ['Aucun ingrédient détecté par l\'IA'] : [],
+    _warnings: ingredients.length === 0 ? ['Aucun ingrédient détecté'] : [],
   };
 }
 

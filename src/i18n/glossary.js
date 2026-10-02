@@ -40,7 +40,7 @@ export const UI_GLOSSARY = {
   'KDS Cuisine': 'Kitchen KDS',
   'SOPs & Checklists': 'SOPs & Checklists',
   'Outils consultant': 'Consultant tools',
-  'FAQ & Assistant IA': 'FAQ & AI assistant',
+  'FAQ & Assistant': 'FAQ & Assistant',
   'Messages privés': 'Private messages',
   'Messages': 'Messages',
   'Catalogue produits': 'Product catalogue',

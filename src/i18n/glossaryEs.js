@@ -39,7 +39,7 @@ export const UI_GLOSSARY_ES = {
   'KDS Cuisine': 'KDS cocina',
   'SOPs & Checklists': 'SOPs y checklists',
   'Outils consultant': 'Herramientas del consultor',
-  'FAQ & Assistant IA': 'FAQ y asistente IA',
+  'FAQ & Assistant': 'FAQ y asistente',
   'Messages privés': 'Mensajes privados',
   'Messages': 'Mensajes',
   'Catalogue produits': 'Catálogo de productos',

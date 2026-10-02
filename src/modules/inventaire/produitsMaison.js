@@ -270,3 +270,24 @@ export const sourceMaison = (ligne) => {
 };
 
 export const estMaison = (ligne) => !!ligne?.recetteId;
+
+// Cartes de chaque fiche, via les plats : carte → plats (carte_plats) →
+// fiches (plat_recettes). Sert à proposer les fiches carte par carte dans
+// « + Produits » (Buffet PDJ, Beverage…), une carte cochée d'un coup.
+// Les cartes archivées sont ignorées. Renvoie Map(recetteId → [{ id, nom, rang }]).
+export const cartesDesFiches = (cartes, plats) => {
+  const rangs = new Map();
+  (cartes || []).forEach((c, i) => { if (c && !c.archive) rangs.set(c.id, { id: c.id, nom: c.nom, rang: i }); });
+  const parFiche = new Map();
+  (plats || []).forEach((p) => {
+    const cartesDuPlat = (p?.carteIds || []).map(id => rangs.get(id)).filter(Boolean);
+    if (!cartesDuPlat.length) return;
+    (p.recettes || []).forEach(({ recetteId }) => {
+      if (!recetteId) return;
+      const liste = parFiche.get(recetteId) || [];
+      cartesDuPlat.forEach(c => { if (!liste.some(x => x.id === c.id)) liste.push(c); });
+      parFiche.set(recetteId, liste);
+    });
+  });
+  return parFiche;
+};

@@ -87,7 +87,7 @@ export function SimulationParams({
           ...(loading || !hasPlats ? cs.btnDisabled : cs.btnActive),
         }}
       >
-        {loading ? 'Analyse en cours…' : 'Analyser la carte IA'}
+        {loading ? 'Analyse en cours…' : 'Analyser la carte'}
       </button>
     </div>
   );

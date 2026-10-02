@@ -350,7 +350,9 @@ const TASK_ROLES: Record<string, string[]> = {
   'generate-fiche-salle':     CONSULTANT_ONLY,
   'analyse-simulation-carte': CONSULTANT_ONLY,
   'parse-catalogue':          CONSULTANT_ONLY,
-  'parse-facture':            CONSULTANT_ONLY,
+  // Lecture des factures et bons de l'onglet Achats de l'inventaire : ouverte
+  // à toute l'équipe (demande de Jérémy, octobre 2026).
+  'parse-facture':            ALL_ROLES,
   'dedupe-commande':          CONSULTANT_ONLY,
   'translate':                ALL_ROLES,
 };
@@ -579,13 +581,13 @@ Deno.serve(async (req: Request) => {
   // ── Fournisseur + clé ──
   const provider = (env('AI_PROVIDER') || 'anthropic').toLowerCase();
   if (!PROVIDERS[provider as keyof typeof PROVIDERS]) {
-    return json({ error: `Fournisseur IA inconnu : ${provider}` }, 500);
+    return json({ error: `Fournisseur inconnu : ${provider}` }, 500);
   }
   const apiKey = provider === 'openai'
     ? env('OPENAI_API_KEY')
     : env('ANTHROPIC_API_KEY');
   if (!apiKey) {
-    return json({ error: `Service IA non configuré (clé ${provider} manquante).` }, 503);
+    return json({ error: `Service de lecture non configuré (clé ${provider} manquante).` }, 503);
   }
   const model = env('AI_MODEL') || PROVIDERS[provider as keyof typeof PROVIDERS].model;
 
@@ -600,7 +602,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Corps de requête invalide' }, 400);
   }
   const cfg = TASKS[task];
-  if (!cfg) return json({ error: `Tâche IA inconnue : ${task}` }, 400);
+  if (!cfg) return json({ error: `Tâche inconnue : ${task}` }, 400);
 
   // ── Contrôle d'accès par rôle ──
   // L'utilisateur peut lire sa propre ligne profiles via RLS (id = auth.uid()::text).
@@ -609,7 +611,7 @@ Deno.serve(async (req: Request) => {
   const role = profile?.role ?? '';
   const allowedRoles = TASK_ROLES[task] ?? CONSULTANT_ONLY;
   if (!allowedRoles.includes(role)) {
-    return json({ error: 'Accès refusé : rôle non autorisé pour cette tâche IA.' }, 403);
+    return json({ error: 'Accès refusé : rôle non autorisé pour cette tâche.' }, 403);
   }
 
   let parts: Part[];
@@ -634,14 +636,14 @@ Deno.serve(async (req: Request) => {
       : await callAnthropic(apiKey, model, system, parts, cfg.maxTokens);
   } catch (e) {
     console.error('[ai-proxy]', e);
-    return json({ error: 'Erreur du service IA.' }, 502);
+    return json({ error: 'Erreur du service de lecture.' }, 502);
   }
 
   let result: unknown;
   try {
     result = JSON.parse(text);
   } catch {
-    return json({ error: 'Réponse IA non exploitable.', raw: text.slice(0, 400) }, 502);
+    return json({ error: 'Réponse non exploitable.', raw: text.slice(0, 400) }, 502);
   }
 
   // `target` renvoyé pour translate : le front vérifie que la langue traitée est

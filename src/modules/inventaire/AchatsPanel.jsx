@@ -23,8 +23,8 @@ import {
 // catalogue ni dans les prix ; les prix de l'inventaire ne changent que sur
 // un bouton explicite, et un rattachement douteux attend une décision.
 //
-// La lecture IA est réservée au consultant (ai-proxy refuse les autres
-// rôles) ; le patron voit les documents et le calcul.
+// La lecture des documents est ouverte à toute l'équipe qui a accès à
+// l'inventaire (ai-proxy : parse-facture autorisé pour tous les rôles).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CONCURRENCE = 3;
@@ -413,7 +413,7 @@ export default function AchatsPanel({
         <div style={st.carte}>
           <div style={st.titre}>Importer les factures et bons de la période</div>
           <div style={st.sousTitre}>
-            Sélectionnez tous les documents d'un coup : PDF reçus par mail ou photos. Chaque document est lu par l'IA,
+            Sélectionnez tous les documents d'un coup : PDF reçus par mail ou photos. Chaque document est lu automatiquement,
             ses lignes sont rattachées aux produits de l'inventaire. Rien n'est modifié dans le catalogue.
           </div>
           <div style={st.importLigne}>
@@ -442,7 +442,7 @@ export default function AchatsPanel({
                   </span>
                   <span data-no-translate style={{ flex: '1 1 160px', minWidth: 0, wordBreak: 'break-word', fontWeight: 600 }}>{t.nom}</span>
                   <span style={{ flex: '2 1 200px', minWidth: 0, color: t.statut === 'erreur' ? 'var(--danger-text)' : 'var(--text2)' }}>
-                    {t.statut === 'attente' ? 'en attente' : t.statut === 'lecture' ? 'lecture par l\'IA…' : t.message}
+                    {t.statut === 'attente' ? 'en attente' : t.statut === 'lecture' ? 'lecture en cours…' : t.message}
                   </span>
                   {t.statut === 'erreur' && <button type="button" style={st.btnMini} onClick={() => relancer(t)}>Réessayer</button>}
                 </div>
@@ -452,7 +452,7 @@ export default function AchatsPanel({
           )}
         </div>
       ) : (
-        <div style={st.info}>La lecture des factures par l'IA est réservée au consultant. Les documents déjà importés et le calcul restent consultables ici.</div>
+        <div style={st.info}>La lecture des factures n'est pas disponible pour votre compte. Les documents déjà importés et le calcul restent consultables ici.</div>
       )}
 
       {/* ── Lignes à rattacher ── */}

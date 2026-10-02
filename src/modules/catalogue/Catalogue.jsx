@@ -446,7 +446,7 @@ const Catalogue = ({ user, etablissement }) => {
             )}
             {isConsultant && (
             <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowAiImport(true)}>
-              ✨ Import IA
+              ✨ Import intelligent
             </button>
             )}
             <label style={{ ...cat.btn, background: 'var(--surface)', border: '1px solid var(--border)', cursor: importing ? 'wait' : 'pointer', color: 'var(--text)' }}>

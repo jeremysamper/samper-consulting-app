@@ -220,7 +220,7 @@ export default function LegacyModuleHost({
       const FAQAssistantComponent = FAQAssistant;
       // IA / assistant : réservé au consultant culinaire (garde dure, indépendante de la BDD).
       return user.role === 'consultant'
-        ? wrap('FAQ & Assistant IA', <FAQAssistantComponent user={user} etablissement={etablissement} setPage={setPage} />)
+        ? wrap('FAQ & Assistant', <FAQAssistantComponent user={user} etablissement={etablissement} setPage={setPage} />)
         : accessDenied;
     }
     case 'catalogue': {

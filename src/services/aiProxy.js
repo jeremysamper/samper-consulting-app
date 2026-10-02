@@ -10,7 +10,7 @@ import { supabase } from './supabase.js';
 export async function callAiProxy(task, payload) {
   const { data, error } = await supabase.functions.invoke('ai-proxy', { body: { task, payload } });
   if (error) {
-    let message = error.message || 'Appel IA échoué.';
+    let message = error.message || 'Lecture impossible.';
     // Le corps d'erreur de la fonction (JSON { error }) est dans error.context.
     try {
       const ctx = error.context && typeof error.context.json === 'function'

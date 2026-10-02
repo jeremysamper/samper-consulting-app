@@ -52,7 +52,7 @@ export default function FAQAssistant({ user, etablissement, setPage }) {
       <div style={fs.header}>
         <div style={fs.avatar}>JS</div>
         <div style={{ minWidth: 0 }}>
-          <div style={fs.title}>FAQ & Assistant IA</div>
+          <div style={fs.title}>FAQ & Assistant</div>
           <div style={fs.subtitle}>{etablissement?.nom || 'Etablissement'} · {user?.prenom || 'Equipe'}</div>
         </div>
         <span style={fs.status}>Fallback local actif</span>
@@ -116,7 +116,7 @@ export default function FAQAssistant({ user, etablissement, setPage }) {
           </Card>
 
           <Card style={fs.scopeCard}>
-            <SectionHeader title="Connexion IA future" sub="Aucun appel externe pour le moment" />
+            <SectionHeader title="Assistant à venir" sub="Aucun appel externe pour le moment" />
             <div style={fs.scopeList}>
               <span>Edge Function Supabase</span>
               <span>Journalisation des demandes</span>

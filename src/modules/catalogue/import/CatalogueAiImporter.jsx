@@ -266,11 +266,11 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       }
       // Gros fichier : on prévient avant de lancer de nombreux appels IA.
       if (chunks.length > 8 && !confirmLegacy(
-        `Ce fichier est volumineux : l'IA l'analysera en ${chunks.length} lots `
-        + `(~${chunks.length} appels IA, cela peut prendre quelques minutes).\n\n`
+        `Ce fichier est volumineux : il sera lu en ${chunks.length} lots `
+        + `(cela peut prendre quelques minutes).\n\n`
         + `Astuce : pour un fichier fournisseur déjà bien structuré, le bouton `
-        + `« Importer Excel » classique est instantané et sans coût IA.\n\n`
-        + `Lancer l'analyse IA ?`
+        + `« Importer Excel » classique est instantané et sans coût.\n\n`
+        + `Lancer la lecture ?`
       )) {
         setStep('pick');
         return;
@@ -295,7 +295,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       }
       setParseErrors(errCount);
       if (!all.length) {
-        notifyLegacy('Aucun produit détecté par l\'IA dans ce fichier.', 'info');
+        notifyLegacy('Aucun produit détecté dans ce fichier.', 'info');
         setStep('pick');
         return;
       }
@@ -305,7 +305,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       setProduits(all.map((p, i) => annotate(p, i)));
       setStep('preview');
     } catch (err) {
-      notifyLegacy('Import IA impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Import impossible : ' + (err.message || err), 'error');
       setStep('pick');
     }
   };
@@ -342,7 +342,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       setProgress({ done: Math.min(i + 10, toImport.length), total: toImport.length });
     }
     notifyLegacy(
-      `✓ Import IA terminé : ${saved} produit(s)${errors ? ` · ${errors} en erreur` : ''}.`,
+      `✓ Import terminé : ${saved} produit(s)${errors ? ` · ${errors} en erreur` : ''}.`,
       errors ? 'warning' : 'success',
     );
     onClose();
@@ -358,9 +358,9 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       <div style={st.modal} onClick={e => e.stopPropagation()}>
         <div style={st.head}>
           <div>
-            <div style={st.title}>✨ Import catalogue assisté par IA</div>
+            <div style={st.title}>✨ Import catalogue intelligent</div>
             <div style={st.sub}>
-              {fileName ? fileName : 'L\'IA lit n\'importe quel fichier fournisseur et vérifie chaque ligne.'}
+              {fileName ? fileName : 'Lit n\'importe quel fichier fournisseur et vérifie chaque ligne.'}
             </div>
           </div>
           <button style={st.closeBtn} onClick={onClose}>✕</button>
@@ -413,7 +413,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
             <div style={st.pickZone}>
               <div style={{ fontSize: 36 }}>⏳</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                Analyse du fichier par l'IA…
+                Lecture en cours…
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)' }}>
                 {progress.total > 0
@@ -444,7 +444,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                   : <span style={{ color: 'var(--success-text)' }}>aucune anomalie</span>}
                 {fournisseurNom && <span> · Fournisseur : <strong>{fournisseurNom}</strong></span>}
                 {parseErrors > 0 && (
-                  <span style={{ color: 'var(--danger-strong)' }}> · <strong>{parseErrors}</strong> lot(s) IA en erreur (voir console)</span>
+                  <span style={{ color: 'var(--danger-strong)' }}> · <strong>{parseErrors}</strong> lot(s) en erreur (voir console)</span>
                 )}
               </div>
               {/* Diagnostique par feuille - affiché seulement si plusieurs feuilles */}
@@ -457,7 +457,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                         ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide - ignorée</span>
                         : <>
                             <span style={{ color: 'var(--text2)' }}>
-                              {s.rowsData} ligne{s.rowsData !== 1 ? 's' : ''} · {s.chunks} lot{s.chunks !== 1 ? 's' : ''} IA
+                              {s.rowsData} ligne{s.rowsData !== 1 ? 's' : ''} · {s.chunks} lot{s.chunks !== 1 ? 's' : ''}
                             </span>
                             {s.catHint && s.catHint !== 'Autres' && (
                               <span style={st.catHintBadge}>{s.catHint}</span>

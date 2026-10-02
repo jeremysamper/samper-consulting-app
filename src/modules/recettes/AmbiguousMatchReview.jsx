@@ -93,10 +93,10 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
       if (product) {
         await resolveMany([{ recetteId: it.recetteId, ingId: it.ing.id, product }]);
       } else {
-        notify(`L'IA n'a pas trouvé de correspondance fiable pour « ${it.ing.nom} ».`, 'info');
+        notify(`Aucune correspondance fiable trouvée pour « ${it.ing.nom} ».`, 'info');
       }
     } catch (err) {
-      notify('Suggestion IA impossible : ' + (err.message || err), 'error');
+      notify('Suggestion impossible : ' + (err.message || err), 'error');
     } finally {
       setAiBusy(false);
     }
@@ -181,13 +181,13 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                   <button
                     disabled={busy || aiBusy}
                     onClick={() => suggererIA(it)}
-                    title="Laisser l'IA choisir le produit le plus pertinent"
+                    title="Choisir automatiquement le produit le plus pertinent"
                     style={{
                       padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
                       cursor: (busy || aiBusy) ? 'wait' : 'pointer',
                       background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)', fontWeight: 700,
                     }}
-                  >✨ IA</button>
+                  >✨ Auto</button>
                   <button
                     disabled={busy}
                     onClick={() => resolveOne(it, null)}

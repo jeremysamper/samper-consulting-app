@@ -108,7 +108,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
       const kind = detectKind(file);
       setParsingMsg(
         many ? `Lecture ${idx + 1}/${files.length} · ${file.name}…`
-          : (kind === 'photo' ? 'Analyse de la photo par l\'IA, quelques secondes…' : 'Lecture du fichier…'),
+          : (kind === 'photo' ? 'Lecture en cours, quelques secondes…' : 'Lecture du fichier…'),
       );
       try {
         if (kind === 'excel') {
@@ -129,7 +129,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           const result = await parsePdf(buf);
           if (result.scanned) {
             scannedCount += 1;
-            notes.push(`${file.name} : PDF scanné (image), prends-en une photo pour la lecture IA.`);
+            notes.push(`${file.name} : PDF scanné (image), prends-en une photo pour la lecture.`);
           } else if (result.recipes && result.recipes.length) {
             aggregated.push(...result.recipes);
           } else {
@@ -313,7 +313,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                 <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}>
                   Ce PDF semble être une image scannée (aucun texte sélectionnable).
                   Astuce : prends-en une photo et utilise l'option « Photo » ci-dessus
-                  pour le faire lire par l'IA.
+                  pour le faire lire automatiquement.
                 </div>
               )}
             </div>

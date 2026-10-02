@@ -18,11 +18,17 @@ import { nomMaison } from './produitsMaison.js';
 //
 // Second onglet : les fiches du module Cartes & Recettes, ajoutées comme
 // produits maison (prix = coût matière de la fiche, affiché avant l'ajout).
+// Elles sont rangées par carte (Buffet PDJ, Beverage…) : « Tout cocher » sur
+// une carte ajoute toutes ses recettes d'un coup. Une fiche présente sur deux
+// cartes apparaît sous chacune, et n'est ajoutée qu'une fois.
 //
 // Props : catalogue, lignesExistantes, onAjouter(produits, nomsLibres, zone),
-//         recettes, infoFiche(recette) → texte, onAjouterFiches(recettes, zone), onClose
+//         recettes, cartesParFiche (Map recetteId → [{ id, nom, rang }]),
+//         infoFiche(recette) → texte, onAjouterFiches(recettes, zone), onClose
 
-export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjouter, recettes, infoFiche, onAjouterFiches, onClose }) {
+const HORS_CARTE = 'Fiches hors carte';
+
+export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjouter, recettes, cartesParFiche, infoFiche, onAjouterFiches, onClose }) {
   const [source, setSource] = React.useState('catalogue');
   const [recherche, setRecherche] = React.useState('');
   const [coches, setCoches] = React.useState(() => new Set());
@@ -46,13 +52,12 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
   );
   // Les fiches passent par la même liste que le catalogue : nom d'inventaire,
   // catégorie de la fiche, coût matière en information.
-  const elementsFiches = React.useMemo(() => (source === 'fiches' ? (recettes || []).map(r => ({
-    id: 'fiche:' + r.id,
-    nom: nomMaison(r),
-    categorie: r.categorie || 'Fiches',
-    info: infoFiche ? infoFiche(r) : '',
-    recette: r,
-  })) : []), [source, recettes, infoFiche]);
+  const elementsFiches = React.useMemo(() => (source === 'fiches' ? (recettes || []).flatMap(r => {
+    const base = { nom: nomMaison(r), info: infoFiche ? infoFiche(r) : '', recette: r };
+    const cartes = cartesParFiche?.get(r.id) || [];
+    if (!cartes.length) return [{ ...base, id: 'fiche:' + r.id, categorie: HORS_CARTE, rang: Infinity }];
+    return cartes.map(c => ({ ...base, id: `fiche:${c.id}:${r.id}`, categorie: c.nom, rang: c.rang }));
+  }) : []), [source, recettes, cartesParFiche, infoFiche]);
   const actifs = source === 'fiches' ? elementsFiches : produitsCatalogue;
 
   const changerSource = (id) => {
@@ -71,8 +76,11 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
       if (!m.has(c)) m.set(c, []);
       m.get(c).push(p);
     });
-    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0], 'fr'));
-  }, [visibles]);
+    // Fiches : dans l'ordre des cartes, hors carte à la fin. Catalogue : alphabétique.
+    const rang = (produits) => produits[0]?.rang ?? 0;
+    return Array.from(m.entries()).sort((a, b) => (source === 'fiches' ? rang(a[1]) - rang(b[1]) : 0)
+      || a[0].localeCompare(b[0], 'fr'));
+  }, [visibles, source]);
 
   const selectionnable = (p) => !dejaPresents.has(cleProduit(p.nom)) && !(p.recette && fichesPresentes.has(p.recette.id));
 
@@ -109,12 +117,17 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
     if (!choisis.length && !libres.length) return;
     setBusy(true);
     try {
-      if (source === 'fiches') await onAjouterFiches(choisis.map(x => x.recette), zone);
+      if (source === 'fiches') {
+        const parId = new Map(choisis.map(x => [x.recette.id, x.recette]));
+        await onAjouterFiches(Array.from(parId.values()), zone);
+      }
       else await onAjouter(choisis, libres, zone);
     } finally { setBusy(false); }
   };
 
-  const nbCoches = coches.size;
+  const nbCoches = source === 'fiches'
+    ? new Set(actifs.filter(p => coches.has(p.id)).map(p => p.recette.id)).size
+    : coches.size;
   // Pendant une recherche, on déplie tout : le résultat doit se voir sans clic.
   const estOuverte = (cat) => match.active || ouvertes.has(cat) || parCategorie.length === 1;
 
