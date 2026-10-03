@@ -1015,7 +1015,15 @@ type ParamsTable = {
   delai_min_heures: number; horizon_jours: number; pas_minutes: number;
   jours_fermes: string[] | null; message_en_ligne: string | null;
   capacite_demi_heure: number | null; rythme: Record<string, Record<string, number>> | null;
+  capacite_jours: Record<string, Record<string, number>> | null;
 };
+
+// Plafond du service ce jour-là : réglage propre au jour de la semaine, sinon
+// défaut. Même règle que resa_reserver_en_ligne.
+function plafondService(p: ParamsTable, date: string, service: string): number {
+  const propre = (p.capacite_jours || {})[String(isoJour(date))]?.[service];
+  return typeof propre === 'number' ? propre : p.capacite_service;
+}
 
 // Plafond de la demi-heure d'arrivée : réglage propre au service, sinon défaut
 // (null = pas de plafond). Même règle que resa_reserver_en_ligne.
@@ -1050,7 +1058,7 @@ function servicesDuJour(p: ParamsTable, date: string) {
 
 // Heures d'arrivée encore ouvertes pour `couverts` personnes, par service :
 // fenêtre d'arrivée du jour, au-delà du délai minimal, sous la capacité du
-// service (réservations de l'équipe comprises) et, si elle est réglée, sous
+// service ce jour-là (réservations de l'équipe comprises) et, si elle est réglée, sous
 // celle de l'heure d'arrivée.
 async function creneauxTable(sb: Admin, p: ParamsTable, date: string, couverts: number) {
   const ecart = ecartJours(zurichToday(), date);
@@ -1070,7 +1078,7 @@ async function creneauxTable(sb: Admin, p: ParamsTable, date: string, couverts: 
   return services.map(({ service, de, a }) => {
     const du = (resas || []).filter((r) => r.service === service);
     const pris = du.reduce((n, r) => n + Number(r.nb_couverts || 0), 0);
-    const complet = pris + couverts > p.capacite_service;
+    const complet = pris + couverts > plafondService(p, date, service);
     const creneaux: string[] = [];
     if (!complet) {
       for (let t = de; t <= a; t += pas) {
