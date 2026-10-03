@@ -145,7 +145,11 @@ const es = {
   // visible quel que soit le filtre saisi.
   diversTitre: { padding: '10px 14px 5px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   // 16 px : en dessous, Safari iOS zoome la page au focus du champ.
-  rechercheInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, boxShadow: 'var(--sh-xs)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
+  // Contour accent permanent (comme « + Ajouter une étiquette ») et loupe à
+  // gauche : le champ se repère d'un coup d'œil, plus seulement au focus.
+  rechercheChamp: { position: 'relative', flex: 1, minWidth: 0, display: 'flex' },
+  rechercheLoupe: { position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)', pointerEvents: 'none', display: 'flex' },
+  rechercheInput: { flex: 1, minWidth: 0, padding: '11px 14px 11px 40px', borderWidth: 1.5, borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: 10, fontSize: 16, boxShadow: 'var(--sh-xs)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
   // En-tête du bloc « Étiquettes maison » : titre + bouton d'ajout, toujours
   // présent même quand la liste est vide (c'est par là qu'on crée la première).
   blocTitre: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 5px', flexWrap: 'wrap' },
@@ -637,15 +641,23 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           fallait faire défiler pour l'atteindre. Elle filtre les étiquettes
           maison et les recettes, jamais les cases Divers. */}
       <div style={es.rechercheWrap}>
-        <input
-          type="search"
-          enterKeyHint="search"
-          style={es.rechercheInput}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher une préparation…"
-          aria-label="Rechercher une préparation"
-        />
+        <div style={es.rechercheChamp}>
+          <span style={es.rechercheLoupe} aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            enterKeyHint="search"
+            style={es.rechercheInput}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher une préparation…"
+            aria-label="Rechercher une préparation"
+          />
+        </div>
         {search !== '' && (
           <button type="button" style={{ ...hs.exportBtn, flexShrink: 0 }} onClick={() => setSearch('')}>Effacer</button>
         )}
