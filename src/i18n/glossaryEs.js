@@ -710,4 +710,7 @@ export const UI_GLOSSARY_ES = {
   'Remettre à sa place': 'Devolver a su sitio',
   'Comme sur le plan de base': 'Como en el plano base',
   'Numéro de la tablée': 'Número de la mesa unida',
+  // Nom de l'offre, jamais traduit
+  'Passeport gourmand': 'Passeport gourmand',
+  'Offre': 'Oferta',
 };

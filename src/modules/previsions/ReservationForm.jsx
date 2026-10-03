@@ -57,7 +57,7 @@ function defaultState(dateInitiale, serviceInitial) {
   return {
     date, service, heure: HEURE_DEFAUT[service], heureCustom: false,
     couverts: 2, nom: '', telephone: '', email: '', accordActus: false,
-    groupe: false, tags: [], notes: '',
+    groupe: false, passeport: false, tags: [], notes: '',
   };
 }
 
@@ -90,6 +90,7 @@ function formFromResa(resa) {
     email:       resa.email         || '',
     accordActus: false,
     groupe:      resa.est_groupe    || false,
+    passeport:   resa.passeport_gourmand || false,
     tags:        Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [],
     notes:       resa.notes_libres  || '',
   };
@@ -225,6 +226,7 @@ export default function ReservationForm({
         telephone:     form.telephone.trim() || null,
         email:         form.email.trim().toLowerCase() || null,
         est_groupe:    form.groupe,
+        passeport_gourmand: form.passeport,
         notes_libres:  form.notes.trim() || null,
       };
 
@@ -545,6 +547,24 @@ export default function ReservationForm({
             </button>
             <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font)' }}>Groupe</span>
           </div>
+
+          {/* Passeport gourmand : la réservation est encadrée en vert dans
+              l'agenda. Bouton à bascule, vert quand il est actif. */}
+          <button
+            type="button"
+            aria-pressed={form.passeport}
+            onClick={() => set('passeport', !form.passeport)}
+            style={{
+              alignSelf: 'flex-start', minHeight: 44, padding: '8px 16px', borderRadius: 22,
+              borderWidth: 2, borderStyle: 'solid',
+              borderColor: form.passeport ? 'var(--success-text)' : 'var(--border)',
+              background: form.passeport ? 'var(--success-bg-soft)' : 'var(--surface)',
+              color: form.passeport ? 'var(--success-text)' : 'var(--text2)',
+              fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+            }}
+          >
+            {form.passeport ? '✓ Passeport gourmand' : 'Passeport gourmand'}
+          </button>
 
           {/* Tags */}
           <div>

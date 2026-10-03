@@ -66,14 +66,17 @@ function LigneResa({
   const placee  = tables.length > 0;
   const termine = statut === 'parti' || statut === 'no_show';
   const deplacable = canEdit && !termine;
+  const passeport = !!resa.passeport_gourmand;
 
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 6,
       padding: '6px 8px', borderRadius: 10,
-      borderWidth: 1, borderStyle: 'solid',
-      borderColor: enRetard ? 'var(--danger-bd)' : 'var(--border)',
-      background: 'var(--surface)',
+      // Passeport gourmand : cadre vert, comme dans l'agenda. Le retard,
+      // lui, garde la main : c'est l'alerte du moment.
+      borderWidth: passeport ? 2 : 1, borderStyle: 'solid',
+      borderColor: enRetard ? 'var(--danger-bd)' : passeport ? 'var(--success-text)' : 'var(--border)',
+      background: passeport ? 'var(--success-bg-soft)' : 'var(--surface)',
       opacity: enCours ? 0.35 : termine ? 0.6 : 1,
     }}>
       {/* Poignée : seule zone où le doigt ne fait pas défiler la liste */}
@@ -134,6 +137,7 @@ function LigneResa({
             </span>
           )}
           {resa.est_groupe && <span style={{ color: 'var(--info-text)', fontWeight: 600 }}>groupe</span>}
+          {passeport && <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>Passeport gourmand</span>}
           {allergies.length > 0 && (
             <span style={{ color: 'var(--danger-text)', fontWeight: 700 }}>{allergies.join(', ')}</span>
           )}

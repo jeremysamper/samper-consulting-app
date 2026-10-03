@@ -81,9 +81,15 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const snap  = (v) => Math.round(v / PLAN_GRID) * PLAN_GRID;
 
 // ── Une table sur le canevas ───────────────────────────────────────────────
+// Tablée rapprochée : seule la table qui porte le numéro parle (`tablee`
+// = 'principale' : numéro + nom des clients de toute la tablée, sans
+// capacité ni couverts) ; les autres restent muettes ('secondaire'). Le même
+// client répété sur chaque table avec des chiffres partout rendait la
+// tablée illisible.
 function TableShape({
   table, occupants, mode, estCible, canEdit,
   onPointerDownTable, onPointerDownOccupant, onEditTable, dragLienId, onOpenOccupant, onTap,
+  tablee = null, occupantsTablee = null,
 }) {
   const places   = table.nb_places || 0;
   // `part` et non `nb_couverts` : une tablée étalée sur deux tables ne pèse
@@ -107,6 +113,8 @@ function TableShape({
 
   const rayon = table.forme === 'ronde' ? '50%' : table.forme === 'carree' ? 10 : 8;
   const modePlan = mode === 'plan';
+  const sobre = tablee === 'principale';
+  const liste = sobre ? (occupantsTablee || []) : occupants;
   // Glisser la table elle-même : dessin du plan de base, ou ajustement de la
   // salle pour ce service.
   const deplacable = (modePlan || mode === 'ajuster') && canEdit;
@@ -145,20 +153,24 @@ function TableShape({
         userSelect: 'none', WebkitUserSelect: 'none',
       }}
     >
-      {/* Nom + capacité */}
+      {tablee !== 'secondaire' && (
+      <>
+      {/* Nom + capacité (le seul numéro, pour une tablée) */}
       <div style={{
-        fontSize: 11, fontWeight: 800, lineHeight: 1.1,
+        fontSize: sobre ? 13 : 11, fontWeight: 800, lineHeight: 1.1,
         color: 'var(--text)', fontFamily: 'var(--font-serif)',
         maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {table.nom}
       </div>
-      <div style={{ fontSize: 9, color: deborde ? 'var(--danger-text)' : 'var(--text3)', lineHeight: 1.1 }}>
-        {occupants.length ? `${assis}/${places}` : `${places} pl.`}
-      </div>
+      {!sobre && (
+        <div style={{ fontSize: 9, color: deborde ? 'var(--danger-text)' : 'var(--text3)', lineHeight: 1.1 }}>
+          {occupants.length ? `${assis}/${places}` : `${places} pl.`}
+        </div>
+      )}
 
       {/* Occupants - chaque pastille est une poignée de glisser */}
-      {occupants.slice(0, 3).map(({ lien, resa, etale }) => (
+      {liste.slice(0, 3).map(({ lien, resa, etale }) => (
         <div
           key={lien.id}
           data-plan-occupant={lien.id}
@@ -188,13 +200,15 @@ function TableShape({
         >
           {/* ⇄ : la tablée déborde sur une autre table, les couverts affichés
               sont ceux du groupe entier et non de cette seule table. */}
-          {etale ? '⇄ ' : ''}{resa.nom} · {resa.nb_couverts}
+          {sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} · ${resa.nb_couverts}`}
         </div>
       ))}
-      {occupants.length > 3 && (
+      {liste.length > 3 && (
         <div style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 700 }}>
-          +{occupants.length - 3}
+          +{liste.length - 3}
         </div>
+      )}
+      </>
       )}
     </div>
   );
@@ -527,7 +541,7 @@ export default function PlanSalle({
   }, [tablesVues, salles, salleId, salleDeTable]);
 
   // Contour des tablées rapprochées de la salle affichée : un cadre autour
-  // des tables réunies, avec leurs numéros et leurs places cumulées.
+  // des tables réunies.
   const tablees = useMemo(() => {
     const parCle = new Map();
     for (const t of tablesSalle) {
@@ -542,9 +556,7 @@ export default function PlanSalle({
         const y0 = Math.min(...membres.map((t) => Number(t.pos_y)));
         const x1 = Math.max(...membres.map((t) => Number(t.pos_x) + Number(t.largeur)));
         const y1 = Math.max(...membres.map((t) => Number(t.pos_y) + Number(t.hauteur)));
-        const noms = [...membres].sort(parNumero).map((t) => t.nom);
-        const places = membres.reduce((s, t) => s + (t.actif === false ? 0 : (t.nb_places || 0)), 0);
-        return { cle, x0, y0, x1, y1, noms, places, numero: principaleDe(membres)?.nom };
+        return { cle, x0, y0, x1, y1 };
       });
   }, [tablesSalle]);
 
@@ -1310,6 +1322,31 @@ export default function PlanSalle({
     })
     : tablesSalle;
 
+  // Rôle de chaque table dans sa tablée, et clients de toute la tablée pour
+  // celle qui porte le numéro (un client par réservation, pas un par table).
+  const roleTablee = new Map();
+  const occupantsDeTablee = new Map();
+  if (!modePlan) {
+    const parFusion = new Map();
+    for (const t of tablesSalle) {
+      if (!t.fusion) continue;
+      if (!parFusion.has(t.fusion)) parFusion.set(t.fusion, []);
+      parFusion.get(t.fusion).push(t);
+    }
+    for (const membres of parFusion.values()) {
+      if (membres.length < 2) continue;
+      const principale = principaleDe(membres);
+      const vus = new Map();
+      for (const m of membres) {
+        roleTablee.set(m.id, m.id === principale.id ? 'principale' : 'secondaire');
+        for (const o of occupantsParTable.get(m.id) || []) {
+          if (!vus.has(o.resa.id)) vus.set(o.resa.id, o);
+        }
+      }
+      occupantsDeTablee.set(principale.id, [...vus.values()]);
+    }
+  }
+
   // Fiche de la table touchée : la tablée entière, ses places, ses clients.
   const ficheTablee = tableOuverte ? tableeDe(tableOuverte) : [];
   const ficheOccupants = (() => {
@@ -1531,8 +1568,9 @@ export default function PlanSalle({
               backgroundSize: '5% 7.15%',
             }}
           >
-            {/* Tablées rapprochées pour ce service : un cadre autour des
-                tables réunies, numéros et places cumulées. */}
+            {/* Tablées rapprochées pour ce service : un simple cadre autour
+                des tables réunies. Le numéro et les clients sont portés par
+                la table principale, une seule fois. */}
             {tablees
               .filter((g) => !(enDeplacement && tablesSalle.some((t) => t.fusion === g.cle && enDeplacement.has(t.id))))
               .map((g) => (
@@ -1548,20 +1586,7 @@ export default function PlanSalle({
                     borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--accent)',
                     borderRadius: 12, pointerEvents: 'none', boxSizing: 'border-box',
                   }}
-                >
-                  {/* Étiquette au-dessus du cadre, ou dessous quand la
-                      tablée touche le haut du plan (sinon coupée). */}
-                  <span style={{
-                    position: 'absolute', left: 6,
-                    ...(g.y0 < 24 ? { bottom: -9 } : { top: -9 }),
-                    padding: '0 6px', borderRadius: 10,
-                    background: 'var(--accent)', color: 'var(--on-accent)',
-                    fontSize: 9, fontWeight: 700, lineHeight: '16px', whiteSpace: 'nowrap',
-                    fontFamily: 'var(--font)',
-                  }}>
-                    Table {g.numero} · {g.noms.join(' + ')} · {g.places} pl.
-                  </span>
-                </div>
+                />
               ))}
             {tablesDessinees.map((t) => (
               <TableShape
@@ -1570,6 +1595,8 @@ export default function PlanSalle({
                 occupants={occupantsParTable.get(t.id) || []}
                 mode={modeTable}
                 canEdit={canEdit}
+                tablee={roleTablee.get(t.id) || null}
+                occupantsTablee={occupantsDeTablee.get(t.id) || null}
                 estCible={!!cibleIds?.has(t.id)}
                 dragLienId={drag?.demarre && drag?.kind === 'lien' ? drag.lienId : null}
                 onPointerDownTable={ajusterActif ? onPointerDownTableService : onPointerDownTable}

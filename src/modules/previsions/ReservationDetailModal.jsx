@@ -13,7 +13,24 @@ export default function ReservationDetailModal({
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
   const [ficheClient, setFicheClient] = useState(false);
+  // Passeport gourmand : bascule optimiste, le parent relit ensuite. Null =
+  // suivre la valeur de la réservation reçue.
+  const [passeportLocal, setPasseportLocal] = useState(null);
+  const passeport = passeportLocal ?? !!resa.passeport_gourmand;
   const tags = Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [];
+
+  async function basculerPasseport() {
+    const valeur = !passeport;
+    setPasseportLocal(valeur);
+    const { error } = await reservations.update(resa.id, { passeport_gourmand: valeur });
+    if (error) {
+      if (ouverteRef.current) setPasseportLocal(!valeur);
+      notify(`Passeport gourmand de ${resa.nom} non enregistré : ${error}`, 'error');
+      return;
+    }
+    notify(valeur ? `${resa.nom} · Passeport gourmand` : `${resa.nom} · Passeport gourmand retiré`, 'success');
+    onResaUpdated?.();
+  }
 
   function LigneDetail({ label, valeur }) {
     if (!valeur && valeur !== 0) return null;
@@ -175,6 +192,28 @@ export default function ReservationDetailModal({
                 })}
               </div>
             </div>
+          )}
+
+          {/* Passeport gourmand : encadre la réservation en vert dans
+              l'agenda. Un tap, enregistré aussitôt. */}
+          {canEdit ? (
+            <button
+              type="button"
+              aria-pressed={passeport}
+              onClick={basculerPasseport}
+              style={{
+                minHeight: 44, padding: '8px 16px', borderRadius: 22, marginBottom: 10,
+                borderWidth: 2, borderStyle: 'solid',
+                borderColor: passeport ? 'var(--success-text)' : 'var(--border)',
+                background: passeport ? 'var(--success-bg-soft)' : 'var(--surface)',
+                color: passeport ? 'var(--success-text)' : 'var(--text2)',
+                fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+              }}
+            >
+              {passeport ? '✓ Passeport gourmand' : 'Passeport gourmand'}
+            </button>
+          ) : (
+            passeport && <LigneDetail label="Offre" valeur="Passeport gourmand" />
           )}
 
           <LigneDetail label="Date"      valeur={resa.date_service && formatDateLongue(resa.date_service)} />

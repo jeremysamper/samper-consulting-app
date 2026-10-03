@@ -24,6 +24,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
   const statut = resa.statut || 'confirme';
   const meta   = metaStatut(statut);
   const traite = statut !== 'confirme';
+  const passeport = !!resa.passeport_gourmand;
 
   return (
     <div
@@ -32,12 +33,14 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
         padding: '10px 14px', borderRadius: 8,
-        borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+        // Passeport gourmand : cadre vert, comme dans l'agenda.
+        borderWidth: passeport ? 2 : 1, borderStyle: 'solid',
+        borderColor: passeport ? 'var(--success-text)' : 'var(--border)',
         // Un liseré de statut plutôt qu'un fond teinté : la carte reste
         // lisible et l'état se lit d'un coup d'œil en balayant la colonne.
         borderLeftWidth: 3,
-        borderLeftColor: traite ? meta.bordure : 'transparent',
-        background: hovered ? 'var(--bg)' : 'var(--surface)',
+        borderLeftColor: traite ? meta.bordure : passeport ? 'var(--success-text)' : 'transparent',
+        background: passeport ? 'var(--success-bg-soft)' : hovered ? 'var(--bg)' : 'var(--surface)',
         opacity: statut === 'parti' || statut === 'no_show' ? 0.6 : 1,
         cursor: 'pointer', transition: 'background 0.1s',
         display: 'grid',
@@ -68,6 +71,15 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
               background: 'var(--info-bg-soft)', color: 'var(--info-text)', border: '1px solid #bfdbfe',
             }}>
               Groupe
+            </span>
+          )}
+          {passeport && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+              background: 'var(--success-bg-soft)', color: 'var(--success-text)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
+            }}>
+              Passeport gourmand
             </span>
           )}
         </div>

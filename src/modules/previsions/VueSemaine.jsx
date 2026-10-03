@@ -50,6 +50,7 @@ function ResaPuce({ resa, svc, onOpen }) {
   const meta      = SERVICE_META[svc];
   const demande   = resa.statut === 'demande';
   const noShow    = resa.statut === 'no_show';
+  const passeport = !!resa.passeport_gourmand;
   const allergies = (Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [])
     .filter((t) => t.type_tag === 'allergene' && t.valeur)
     .map((t) => t.valeur);
@@ -58,6 +59,7 @@ function ResaPuce({ resa, svc, onOpen }) {
     `${heure} ${resa.nom}, ${pluriel(resa.nb_couverts || 0, 'couvert')}`,
     resa.service === 'brunch' ? 'brunch' : null,
     demande ? 'demande en ligne à confirmer' : null,
+    passeport ? 'Passeport gourmand' : null,
     noShow ? 'no-show' : null,
     allergies.length ? `allergies : ${allergies.join(', ')}` : null,
   ].filter(Boolean).join(' · ');
@@ -74,9 +76,11 @@ function ResaPuce({ resa, svc, onOpen }) {
         padding: '4px 8px', borderRadius: 6,
         // Une demande venue du site n'est pas encore une réservation : trait
         // pointillé ambre, le même « à confirmer » que dans la vue jour.
-        borderWidth: 1, borderStyle: demande ? 'dashed' : 'solid',
-        borderColor: demande ? 'var(--warning-bd)' : meta.bordure,
-        background: meta.fond, color: 'var(--text)',
+        // Passeport gourmand : cadre vert, plus épais que le liseré d'un
+        // statut pour ne pas se confondre avec « à table ».
+        borderWidth: passeport ? 2 : 1, borderStyle: demande ? 'dashed' : 'solid',
+        borderColor: passeport ? 'var(--success-text)' : demande ? 'var(--warning-bd)' : meta.bordure,
+        background: passeport ? 'var(--success-bg-soft)' : meta.fond, color: 'var(--text)',
         fontFamily: 'var(--font)', fontSize: 12, lineHeight: 1.3,
         cursor: 'pointer', textAlign: 'left',
         opacity: noShow ? 0.55 : 1,

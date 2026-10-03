@@ -728,6 +728,9 @@ export const UI_GLOSSARY = {
   'Remettre à sa place': 'Put back in place',
   'Comme sur le plan de base': 'As on the base plan',
   'Numéro de la tablée': 'Number of the joined table',
+  // Nom de l'offre, jamais traduit
+  'Passeport gourmand': 'Passeport gourmand',
+  'Offre': 'Offer',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
