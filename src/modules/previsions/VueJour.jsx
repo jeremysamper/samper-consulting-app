@@ -298,6 +298,8 @@ export default function VueJour({
           onOpenResa={setSelectedResa}
           resasNonActualisees={nonActualise}
           onRelireResas={load}
+          onStatut={canEdit ? changerStatut : undefined}
+          onResasModifiees={() => { load(); onResaUpdated?.(); }}
         />
       )}
 

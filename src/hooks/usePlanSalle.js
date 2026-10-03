@@ -4,6 +4,10 @@ import { supabase } from '../services/supabase.js';
 const TABLE_PLAN   = 'salle_tables';
 const TABLE_LIENS  = 'reservation_tables';
 const TABLE_SALLES = 'salles';
+const TABLE_AJUST  = 'salle_tables_service';
+
+// Codes « table ou colonne absente » : la migration n'est pas passée.
+const CODES_SCHEMA_ABSENT = new Set(['42P01', 'PGRST205', '42703', 'PGRST204']);
 
 // Canevas virtuel du plan. Toutes les coordonnées stockées sont exprimées
 // dedans, jamais en pixels : le plan doit tomber juste sur l'iPad de l'entrée
@@ -232,10 +236,72 @@ export function usePlanSalle(etablissementId) {
       return { error: null };
     }
 
+    // ── Ajustements d'un service (tables déplacées ou rapprochées) ─────
+    // Le plan de base ne bouge pas : un service n'écrit que son écart, daté
+    // (date + midi/soir). Aucune ligne = plan de base, d'où un plan qui
+    // repart propre à chaque nouveau service.
+    //
+    // Tant que la migration 20261003_plan_salle_service n'est pas passée, la
+    // lecture rend une liste vide avec `indispo` : le plan s'affiche comme
+    // avant, seul l'ajustement est masqué.
+    async function listAjustements(dateService) {
+      const { data, error } = await supabase
+        .from(TABLE_AJUST)
+        .select('*')
+        .eq('etablissement_id', etablissementId)
+        .eq('date_service', dateService);
+      if (error && CODES_SCHEMA_ABSENT.has(String(error.code || ''))) {
+        return { data: [], error: null, indispo: true };
+      }
+      if (error) return { data: null, error: mapError(error) };
+      return { data: data || [], error: null, indispo: false };
+    }
+
+    // Écrit l'écart de plusieurs tables d'un coup (déplacement d'une tablée
+    // entière, fusion). `lignes` : [{ table_id, pos_x, pos_y, fusion }].
+    async function enregistrerAjustements(dateService, service, lignes) {
+      if (!lignes.length) return { data: [], error: null };
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from(TABLE_AJUST)
+        .upsert(lignes.map((l) => ({
+          etablissement_id: etablissementId,
+          date_service: dateService,
+          service,
+          table_id: l.table_id,
+          pos_x: l.pos_x ?? null,
+          pos_y: l.pos_y ?? null,
+          fusion: l.fusion ?? null,
+          updated_at: now,
+        })), { onConflict: 'table_id,date_service,service' })
+        .select();
+      if (error) return { data: null, error: mapError(error) };
+      return { data: data || [], error: null };
+    }
+
+    // Remet des tables à leur place et seules (supprime leur écart). Sans
+    // liste : tout le service repart du plan de base.
+    async function effacerAjustements(dateService, service, tableIds = null) {
+      let q = supabase
+        .from(TABLE_AJUST)
+        .delete()
+        .eq('etablissement_id', etablissementId)
+        .eq('date_service', dateService)
+        .eq('service', service);
+      if (tableIds) {
+        if (!tableIds.length) return { error: null };
+        q = q.in('table_id', tableIds);
+      }
+      const { error } = await q;
+      if (error) return { error: mapError(error) };
+      return { error: null };
+    }
+
     return {
       listSalles, createSalle, updateSalle, deleteSalle,
       listTables, createTable, updateTable, deleteTable,
       listLiensPourResas, assigner, retirer, retirerToutesPourResa,
+      listAjustements, enregistrerAjustements, effacerAjustements,
     };
   }, [etablissementId]);
 }

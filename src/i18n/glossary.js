@@ -705,6 +705,28 @@ export const UI_GLOSSARY = {
   'Accepte de recevoir les actualités et les bons cadeaux par e-mail': 'Agrees to receive news and gift vouchers by e-mail',
   'Le client accepte de recevoir les actualités et les bons cadeaux par e-mail': 'The customer agrees to receive news and gift vouchers by e-mail',
   'Table non notée': 'Table not recorded',
+  // Plan de salle en service : fiche d'une table, ajustement de la salle
+  'Client de passage': 'Walk-in',
+  'Sans réservation, installé maintenant': 'No booking, seated now',
+  'Réserver la table': 'Book the table',
+  'Nouvelle réservation posée sur cette table': 'New booking placed on this table',
+  'Assigner la table': 'Assign the table',
+  'Choisir une réservation du service': 'Pick a booking from this service',
+  'Donner cette table': 'Give this table',
+  'Ajouter à cette table': 'Add to this table',
+  'À cette table': 'At this table',
+  'Libérer': 'Free up',
+  'Combien de couverts ?': 'How many covers?',
+  'Autre nombre': 'Other number',
+  'Sans table': 'No table',
+  'Déjà placées': 'Already seated',
+  'Ajuster la salle': 'Adjust the room',
+  'Terminer l’ajustement': 'Finish adjusting',
+  'Plan de base': 'Base plan',
+  'Séparer cette table': 'Split this table off',
+  'Elle retourne seule à sa place habituelle': 'It goes back alone to its usual spot',
+  'Remettre à sa place': 'Put back in place',
+  'Comme sur le plan de base': 'As on the base plan',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

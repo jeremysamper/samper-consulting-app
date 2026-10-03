@@ -229,6 +229,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
               onTraiter={canEdit ? traiter : undefined}
               resasNonActualisees={nonActualise}
               onRelireResas={load}
+              onResasModifiees={() => { load(); onChange?.(); }}
             />
           </div>
         )}
