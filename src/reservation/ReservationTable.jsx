@@ -399,7 +399,7 @@ export default function ReservationTable() {
                     </Champ>
                   </div>
                   <div style={s.grille2}>
-                    <Champ label="E-mail" id="t-email" aide="La confirmation vous sera envoyée ici.">
+                    <Champ label="E-mail" id="t-email">
                       <input id="t-email" type="email" inputMode="email" autoComplete="email" style={s.champ} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
                     </Champ>
                     <Champ label="Téléphone" id="t-tel">
@@ -448,8 +448,8 @@ export default function ReservationTable() {
                 </h2>
                 <p style={s.texte}>
                   {resultat === 'confirmee'
-                    ? <>Merci {form.prenom.trim()}, c'est noté. Un récapitulatif part à <strong style={{ color: 'var(--t-ink)' }}>{form.email.trim()}</strong>.</>
-                    : <>Merci {form.prenom.trim()}. Nous vous confirmons la réservation par e-mail à <strong style={{ color: 'var(--t-ink)' }}>{form.email.trim()}</strong>.</>}
+                    ? <>Merci {form.prenom.trim()}, votre réservation est bien prise en compte.</>
+                    : <>Merci {form.prenom.trim()}, votre demande de réservation est bien prise en compte.</>}
                 </p>
                 {/* Le bon de réservation, tel que le restaurant le notera. */}
                 <dl style={s.bon}>
