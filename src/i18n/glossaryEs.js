@@ -709,4 +709,5 @@ export const UI_GLOSSARY_ES = {
   'Elle retourne seule à sa place habituelle': 'Vuelve sola a su sitio habitual',
   'Remettre à sa place': 'Devolver a su sitio',
   'Comme sur le plan de base': 'Como en el plano base',
+  'Numéro de la tablée': 'Número de la mesa unida',
 };

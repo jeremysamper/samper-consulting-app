@@ -727,6 +727,7 @@ export const UI_GLOSSARY = {
   'Elle retourne seule à sa place habituelle': 'It goes back alone to its usual spot',
   'Remettre à sa place': 'Put back in place',
   'Comme sur le plan de base': 'As on the base plan',
+  'Numéro de la tablée': 'Number of the joined table',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

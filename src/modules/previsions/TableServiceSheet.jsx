@@ -19,7 +19,8 @@ import { metaStatut } from './statutsReservation.js';
 //
 // Au-dessus, les clients déjà à cette table, avec leurs gestes du service
 // (arrivé, parti, libérer la table). Une tablée rapprochée (tables fusionnées)
-// s'ouvre comme une seule table.
+// s'ouvre comme une seule table, sous le numéro choisi parmi les siens
+// (« Numéro de la tablée ») : c'est lui qu'on annonce au passe.
 //
 // En mode « Ajuster la salle », la même fiche ne propose que les gestes sur
 // la table elle-même : la séparer de sa tablée, la remettre à sa place.
@@ -65,7 +66,8 @@ function SousTitre({ children }) {
 }
 
 export default function TableServiceSheet({
-  titre, places, occupants = [], resasService = [], tablesParResa,
+  titre, composition = '', numeros = [], numeroActuel, onChoisirNumero,
+  places, occupants = [], resasService = [], tablesParResa,
   canEdit, ajuster = false, groupe = false, deplacee = false,
   onClose, onPassage, onReserver, onAssigner, onOpenResa, onStatut, onLiberer,
   onSeparer, onRemettre,
@@ -140,6 +142,7 @@ export default function TableServiceSheet({
               {titre}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+              {composition ? `${composition} · ` : ''}
               {places} place{places > 1 ? 's' : ''}
               {occupants.length ? ` · ${assis} couvert${assis > 1 ? 's' : ''} ici` : ' · libre'}
             </div>
@@ -156,6 +159,37 @@ export default function TableServiceSheet({
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* ── Tablée rapprochée : le numéro qu'elle porte au passe ── */}
+          {numeros.length > 1 && onChoisirNumero && etape === 'menu' && (
+            <div style={{ marginBottom: 6 }}>
+              <SousTitre>Numéro de la tablée</SousTitre>
+              <div role="radiogroup" aria-label="Numéro de la tablée" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {numeros.map((n) => {
+                  const actif = n.id === numeroActuel;
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={actif}
+                      onClick={() => { if (!actif) onChoisirNumero(n.id); }}
+                      style={{
+                        minWidth: 56, minHeight: 48, padding: '6px 14px', borderRadius: 10,
+                        borderWidth: actif ? 2 : 1, borderStyle: 'solid',
+                        borderColor: actif ? 'var(--accent)' : 'var(--border)',
+                        background: actif ? 'var(--ai-bg-soft)' : 'var(--surface)',
+                        color: 'var(--text)', fontSize: 16, fontWeight: 800,
+                        fontFamily: 'var(--font-num)', cursor: actif ? 'default' : 'pointer',
+                      }}
+                    >
+                      {n.nom}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Ajuster la salle : gestes sur le meuble ── */}
           {ajuster && (
             <>

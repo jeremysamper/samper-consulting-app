@@ -66,6 +66,17 @@ const SERVICES = [
 // d'ouvrir la réservation.
 const SEUIL_DRAG = 6;
 
+const parNumero = (a, b) => String(a.nom).localeCompare(String(b.nom), undefined, { numeric: true });
+
+// Table dont la tablée porte le numéro. La clé de fusion EST l'id de cette
+// table : choisir le numéro d'une tablée, c'est réécrire sa clé. Si la table
+// désignée a été séparée entre-temps, la plus petite des restantes prend le
+// relais.
+function principaleDe(tablee) {
+  if (!tablee.length) return null;
+  return tablee.find((t) => t.id === tablee[0].fusion) || [...tablee].sort(parNumero)[0];
+}
+
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const snap  = (v) => Math.round(v / PLAN_GRID) * PLAN_GRID;
 
@@ -531,10 +542,9 @@ export default function PlanSalle({
         const y0 = Math.min(...membres.map((t) => Number(t.pos_y)));
         const x1 = Math.max(...membres.map((t) => Number(t.pos_x) + Number(t.largeur)));
         const y1 = Math.max(...membres.map((t) => Number(t.pos_y) + Number(t.hauteur)));
-        const noms = membres.map((t) => t.nom)
-          .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+        const noms = [...membres].sort(parNumero).map((t) => t.nom);
         const places = membres.reduce((s, t) => s + (t.actif === false ? 0 : (t.nb_places || 0)), 0);
-        return { cle, x0, y0, x1, y1, noms, places };
+        return { cle, x0, y0, x1, y1, noms, places, numero: principaleDe(membres)?.nom };
       });
   }, [tablesSalle]);
 
@@ -613,19 +623,33 @@ export default function PlanSalle({
 
   // Tables occupées par chaque réservation, en clair (« 3 + 10 »). Les non
   // placées remontent en tête : c'est ce qui reste à faire.
+  // Une tablée rapprochée s'annonce par SON numéro (celui choisi à la
+  // fusion), pas par la liste de ses tables : c'est ce numéro qu'on dit au
+  // passe.
   const tablesParResa = useMemo(() => {
-    const nomParTable = new Map((tables || []).map((t) => [t.id, t.nom]));
+    const liste = tablesVues || [];
+    const parFusion = new Map();
+    for (const t of liste) {
+      if (!t.fusion) continue;
+      if (!parFusion.has(t.fusion)) parFusion.set(t.fusion, []);
+      parFusion.get(t.fusion).push(t);
+    }
+    const nomParTable = new Map(liste.map((t) => {
+      const tablee = t.fusion ? parFusion.get(t.fusion) : null;
+      return [t.id, tablee && tablee.length > 1 ? principaleDe(tablee).nom : t.nom];
+    }));
     const m = new Map();
     for (const l of liens || []) {
       if (!m.has(l.reservation_id)) m.set(l.reservation_id, []);
       const nom = nomParTable.get(l.table_id);
-      if (nom) m.get(l.reservation_id).push(nom);
+      const noms = m.get(l.reservation_id);
+      if (nom && !noms.includes(nom)) noms.push(nom);
     }
     for (const noms of m.values()) {
       noms.sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
     }
     return m;
-  }, [liens, tables]);
+  }, [liens, tablesVues]);
 
   const resasTriees = useMemo(() => {
     const rang = (r) => ((tablesParResa.get(r.id) || []).length ? 1 : 0);
@@ -872,9 +896,21 @@ export default function PlanSalle({
   // ── Placement sur une tablée ────────────────────────────────────────
   // « Table 4 » ou « Tables 3 + 4 » : le nom tel qu'on le dit au passe.
   function nomTablee(tableId) {
-    const noms = tableeDe(tableId).map((t) => t.nom)
-      .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-    return noms.length > 1 ? `tables ${noms.join(' + ')}` : `table ${noms[0] ?? ''}`;
+    return `table ${principaleDe(tableeDe(tableId))?.nom ?? ''}`;
+  }
+
+  // Numéro d'une tablée : toutes ses tables reçoivent pour clé l'id de la
+  // table choisie. Les positions du service restent telles quelles.
+  async function choisirNumero(tableId, principaleId) {
+    const tablee = tableeDe(tableId);
+    if (tablee.length < 2 || !tablee.some((t) => t.id === principaleId)) return;
+    const lignes = tablee.map((t) => {
+      const a = ajustRef.current.get(t.id);
+      return { table_id: t.id, pos_x: a?.pos_x ?? null, pos_y: a?.pos_y ?? null, fusion: principaleId };
+    });
+    if (await ecrireAjustements(lignes)) {
+      notify(`Tablée ${tablee.map((t) => t.nom).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).join(' + ')} : table ${nomTable(principaleId)}`, 'success');
+    }
   }
 
   // Assied une réservation sur toutes les tables actives de la tablée.
@@ -1047,6 +1083,9 @@ export default function PlanSalle({
       .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
     const places = toutes.reduce((s, t) => s + (t.actif === false ? 0 : (t.nb_places || 0)), 0);
     notify(`Tables ${noms.join(' + ')} rapprochées · ${places} places`, 'success');
+    // La fiche de la tablée s'ouvre aussitôt : c'est là qu'on choisit le
+    // numéro qu'elle portera (celui de la table visée par défaut).
+    setTableOuverte(cibleId);
   }
 
   // Sortir une table de sa tablée : elle retourne seule à sa place de base.
@@ -1279,8 +1318,8 @@ export default function PlanSalle({
     const ids = new Set((liens || []).filter((l) => ici.has(l.table_id)).map((l) => l.reservation_id));
     return resasService.filter((r) => ids.has(r.id));
   })();
-  const ficheNoms = ficheTablee.map((t) => t.nom)
-    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  const ficheTriee    = [...ficheTablee].sort(parNumero);
+  const fichePrincipale = principaleDe(ficheTablee);
   // Même règle que partout ailleurs : un no-show n'est pas un couvert.
   const totalService = resasService.filter((r) => r.statut !== 'no_show')
     .reduce((s, r) => s + (r.nb_couverts || 0), 0);
@@ -1520,7 +1559,7 @@ export default function PlanSalle({
                     fontSize: 9, fontWeight: 700, lineHeight: '16px', whiteSpace: 'nowrap',
                     fontFamily: 'var(--font)',
                   }}>
-                    {g.noms.join(' + ')} · {g.places} pl.
+                    Table {g.numero} · {g.noms.join(' + ')} · {g.places} pl.
                   </span>
                 </div>
               ))}
@@ -1674,7 +1713,11 @@ export default function PlanSalle({
       {tableOuverte && ficheTablee.length > 0 && !modePlan && (
         <TableServiceSheet
           key={tableOuverte}
-          titre={ficheNoms.length > 1 ? `Tables ${ficheNoms.join(' + ')}` : `Table ${ficheNoms[0]}`}
+          titre={`Table ${fichePrincipale?.nom ?? ''}`}
+          composition={ficheTriee.length > 1 ? `Tables ${ficheTriee.map((t) => t.nom).join(' + ')} rapprochées` : ''}
+          numeros={ficheTriee.length > 1 ? ficheTriee.map((t) => ({ id: t.id, nom: t.nom })) : []}
+          numeroActuel={fichePrincipale?.id}
+          onChoisirNumero={canEdit && !ajustIndispo ? (id) => choisirNumero(tableOuverte, id) : undefined}
           places={ficheTablee.reduce((s, t) => s + (t.actif === false ? 0 : (t.nb_places || 0)), 0)}
           occupants={ficheOccupants}
           resasService={resasService}
