@@ -1,5 +1,7 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -49,36 +51,71 @@ const VUES = [
   { id: 'achats', label: 'Achats & consommation' },
 ];
 
-// Menu « Plus » : les actions rares (import, export, renommage...) sortent de
-// la barre, qui n'en montrait pas moins de onze d'un coup.
-function MenuPlus({ items }) {
+const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
+
+// Actions rares du module, rangées derrière deux boutons nommés : « Exporter »
+// (PDF, Excel, impression, ouverts à toute l'équipe) et « Gérer » (création,
+// renommage, import...). Ils remplacent un « ⋯ Plus » unique où l'export se
+// perdait parmi dix actions. Chaque action reste la même fonction qu'avant.
+//
+// Chaque bouton ouvre une fenêtre rendue dans <body> (portail) : sur téléphone
+// la barre d'actions défile (overflow) et coupait le menu déroulant posé
+// dedans, « ⋯ Plus » s'ouvrait sans que rien n'apparaisse.
+function BoutonActions({ id, label, style, disabled, titre, sousTitre, sections }) {
   const [ouvert, setOuvert] = React.useState(false);
-  const visibles = items.filter(Boolean);
+  const fermer = React.useCallback(() => setOuvert(false), []);
+  const visibles = sections
+    .map(s => ({ ...s, items: (s.items || []).filter(Boolean) }))
+    .filter(s => s.items.length);
   if (!visibles.length) return null;
   return (
-    <div style={{ position: 'relative' }}>
-      <button type="button" style={invs.exportBtn} onClick={() => setOuvert(o => !o)} aria-expanded={ouvert}>
-        ⋯ Plus
+    <>
+      <button type="button" style={style} disabled={disabled} onClick={() => setOuvert(true)} aria-haspopup="dialog" aria-expanded={ouvert}>
+        {label}
       </button>
       {ouvert && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 900 }} onClick={() => setOuvert(false)} />
-          <div style={invs.menu} role="menu">
-            {visibles.map(it => (
-              <button
-                key={it.label}
-                type="button"
-                role="menuitem"
-                style={{ ...invs.menuItem, ...(it.danger ? { color: 'var(--danger-strong)' } : {}) }}
-                onClick={() => { setOuvert(false); it.onClick(); }}
-              >
-                {it.label}
-              </button>
-            ))}
-          </div>
-        </>
+        <FenetreActions id={id} titre={titre} sousTitre={sousTitre} onClose={fermer}>
+          {visibles.map((s, i) => (
+            <div key={s.titre || i} style={invs.fenetreSection}>
+              {s.titre && <div style={invs.fenetreSectionTitre}>{s.titre}</div>}
+              {s.items.map(it => (
+                <button
+                  key={it.titre}
+                  type="button"
+                  style={{ ...invs.choix, ...(it.danger ? invs.choixDanger : {}) }}
+                  onClick={() => { fermer(); it.onClick(); }}
+                >
+                  <span style={{ ...invs.choixTitre, ...(it.danger ? { color: 'var(--danger-strong)' } : {}) }}>{it.titre}</span>
+                  {it.detail && <span style={invs.choixDetail}>{it.detail}</span>}
+                </button>
+              ))}
+            </div>
+          ))}
+        </FenetreActions>
       )}
-    </div>
+    </>
+  );
+}
+
+// Fenêtre centrée sur ordinateur, tiroir du bas sur téléphone (modal-sheet).
+// Se ferme par ×, Échap, un tap à côté ou le geste retour.
+function FenetreActions({ id, titre, sousTitre, onClose, children }) {
+  useBackLayer(true, onClose, id);
+  React.useEffect(() => {
+    const echap = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
+  }, [onClose]);
+  return createPortal(
+    <div className="modal-sheet-overlay" style={invs.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-sheet" style={invs.fenetre} role="dialog" aria-modal="true" aria-label={titre}>
+        <button type="button" onClick={onClose} aria-label="Fermer" style={invs.fenetreFermer}>×</button>
+        <div style={invs.fenetreTitre}>{titre}</div>
+        {sousTitre && <div style={invs.fenetreSousTitre}>{sousTitre}</div>}
+        {children}
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1196,10 +1233,18 @@ const Inventaire = ({ user, etablissement }) => {
     e.target.value = '';
   };
 
-  const totEcart = (inv.lignes || []).reduce((s,l) => s + Math.abs(Number(l.ecartValeur) || 0), 0);
+  // Synthèse des écarts (écart = stock réel - stock théorique, par ligne
+  // comptée). Le moins et le plus sont chiffrés séparément : leur somme en
+  // valeur absolue, affichée autrefois en négatif sous « Écarts défavorables »,
+  // mêlait les surplus aux manques.
   const totPositif = (inv.lignes || []).filter(l => l.ecart > 0).length;
   const totNegatif = (inv.lignes || []).filter(l => l.ecart < 0).length;
   const totNul = (inv.lignes || []).filter(l => l.ecart === 0).length;
+  const valeurEcartsMoins = (inv.lignes || []).reduce((s, l) => s + Math.min(0, Number(l.ecartValeur) || 0), 0);
+  const valeurEcartsPlus = (inv.lignes || []).reduce((s, l) => s + Math.max(0, Number(l.ecartValeur) || 0), 0);
+  const nbNonComptes = (inv.lignes || []).filter(l => !estCompte(l)).length;
+  const chfKpi = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const nbProduits = (n) => `${n} produit${n > 1 ? 's' : ''}`;
 
   const deltaValeur = previousInv ? (inv.valeurTotale - previousInv.valeurTotale) : null;
   const deltaPct = (previousInv && previousInv.valeurTotale > 0)
@@ -1315,20 +1360,59 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
         <div className="module-actions">
           {canEditLignes && <button style={invs.addBtn} onClick={() => setShowAjout(true)}>+ Produits</button>}
+          {/* Juste après « + Produits » : visible sur téléphone sans faire défiler la barre. */}
+          <BoutonActions
+            id="inventaire-exporter"
+            label={exportEnCours ? 'Export en cours…' : 'Exporter'}
+            style={invs.exporterBtn}
+            disabled={exportEnCours}
+            titre="Exporter l'inventaire"
+            sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}${estValide ? ', validé' : ', en cours'}`}
+            sections={[{
+              items: [
+                { titre: 'PDF', detail: "L'état d'inventaire complet, prêt à envoyer ou à archiver.", onClick: () => exporterEtat('pdf') },
+                { titre: 'Excel', detail: 'Le même état au format du classeur, à reprendre dans un tableur.', onClick: () => exporterEtat('xlsx') },
+                { titre: 'Imprimer', detail: "Le tableau des écarts et des valeurs, envoyé à l'imprimante.", onClick: printInventory },
+              ],
+            }]}
+          />
           {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>✓ Valider</button>}
           {canManage && estValide && <button style={invs.exportBtn} onClick={rouvrirInventaire}>↩ Rouvrir</button>}
-          <MenuPlus items={[
-            canManage && { label: '+ Nouvel inventaire', onClick: () => openNewInventory(perimetreActif) },
-            canManage && { label: '✎ Renommer le périmètre', onClick: openRename },
-            canEditLignes && !sel.active && { label: '☑ Sélectionner des lignes', onClick: () => { setVue('ecarts'); sel.enter(); } },
-            canImportXlsx && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
-            canImportXlsx && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
-            { label: '🖨 Imprimer', onClick: printInventory },
-            canManage && recettes.length > 0 && { label: '🍲 Produits maison (fiches recettes)', onClick: () => setShowMaison(true) },
-            { label: "⬇ État d'inventaire (PDF)", onClick: () => exporterEtat('pdf') },
-            { label: "📊 État d'inventaire (Excel)", onClick: () => exporterEtat('xlsx') },
-            canManage && inventairesEtab.length > 1 && { label: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
-          ]} />
+          <BoutonActions
+            id="inventaire-gerer"
+            label="Gérer"
+            style={invs.exportBtn}
+            titre="Gérer l'inventaire"
+            sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}`}
+            sections={[
+              {
+                titre: 'Inventaires',
+                items: [
+                  canManage && { titre: 'Nouvel inventaire', detail: 'Choisir le périmètre, la date et le point de départ du comptage.', onClick: () => openNewInventory(perimetreActif) },
+                  canManage && { titre: 'Renommer le périmètre', detail: `Change le nom « ${perimetreActif} » sur tous ses inventaires.`, onClick: openRename },
+                ],
+              },
+              {
+                titre: 'Lignes',
+                items: [
+                  canEditLignes && !sel.active && { titre: 'Sélectionner des lignes', detail: 'Pour en supprimer, les ranger par zone ou en exporter une partie en Excel.', onClick: () => { setVue('ecarts'); sel.enter(); } },
+                  canManage && recettes.length > 0 && { titre: 'Produits maison (fiches recettes)', detail: 'Relier les préparations maison à leur fiche, chiffrées au coût matière.', onClick: () => setShowMaison(true) },
+                ],
+              },
+              {
+                titre: 'Import Excel',
+                items: [
+                  canImportXlsx && { titre: 'Importer un classeur XLSX', detail: 'Met à jour les produits de cet inventaire, ou crée un inventaire complet depuis un classeur Sec / Positif / Négatif.', onClick: () => importXlsxRef.current?.click() },
+                  canImportXlsx && { titre: 'Télécharger le modèle XLSX', detail: 'Le fichier à remplir avant un import.', onClick: downloadInventoryTemplate },
+                ],
+              },
+              {
+                items: [
+                  canManage && inventairesEtab.length > 1 && { titre: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
+                ],
+              },
+            ]}
+          />
           {canImportXlsx && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
         </div>
       </div>
@@ -1388,42 +1472,74 @@ const Inventaire = ({ user, etablissement }) => {
           </span>
         </div>
 
+        {/* Chaque carte dit en clair ce qu'elle compte : un chiffre seul sous
+            « Écarts positifs » ne disait ni par rapport à quoi, ni en quoi. */}
         <div style={invs.kpiBar}>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Valeur du stock ({perimetreActif})</div><div style={invs.kpiVal}>CHF {(Number(inv.valeurTotale) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</div></div>
+          <div style={invs.kpiCard}>
+            <div style={invs.kpiLabel}>Valeur du stock ({perimetreActif})</div>
+            <div style={invs.kpiVal}>CHF {(Number(inv.valeurTotale) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</div>
+            <div style={invs.kpiNote}>
+              {nbNonComptes > 0
+                ? `Produits comptés × prix unitaire. ${nbProduits(nbNonComptes)} pas encore compté${nbNonComptes > 1 ? 's' : ''}, à 0 ici.`
+                : 'Produits comptés × prix unitaire.'}
+            </div>
+          </div>
           {/* Consolidé : dernier inventaire de CHAQUE périmètre. Additionner
               toute la liste compterait plusieurs fois le même stock. */}
           {perimetres.length > 1 && (
             <div style={invs.kpiCard}>
               <div style={invs.kpiLabel}>Stock total ({perimetres.length} périmètres)</div>
               <div style={invs.kpiVal}>CHF {valeurTousPerimetres.toLocaleString('fr-CH', {minimumFractionDigits:2})}</div>
+              <div style={invs.kpiNote}>Le dernier inventaire de chaque périmètre, additionnés.</div>
             </div>
           )}
-          {/* Évolution vs inventaire précédent */}
+          {/* Évolution vs inventaire précédent du même périmètre */}
           {previousInv && deltaValeur != null && (
             <div style={invs.kpiCard}>
-              <div style={invs.kpiLabel}>
-                Évolution vs précédent
-                <span style={{ fontSize: 9, color: 'var(--text2)', fontWeight: 400, marginLeft: 4 }}>
-                  ({previousInv.date})
-                </span>
-              </div>
+              <div style={invs.kpiLabel}>Depuis le {dateCH(previousInv.date)}</div>
               <div style={{
                 ...invs.kpiVal,
                 color: deltaValeur > 0 ? 'var(--success-strong)' : deltaValeur < 0 ? 'var(--danger-strong)' : 'var(--text2)',
               }}>
-                {deltaValeur > 0 ? '+' : ''}CHF {deltaValeur.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span style={{ whiteSpace: 'nowrap' }}>{deltaValeur > 0 ? '+' : ''}CHF {deltaValeur.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 {deltaPct != null && (
                   <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 6, opacity: 0.85 }}>
-                    ({deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(1)}%)
+                    ({deltaPct > 0 ? '+' : ''}{deltaPct.toLocaleString('fr-CH', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %)
                   </span>
                 )}
               </div>
+              <div style={invs.kpiNote}>
+                {deltaValeur > 0
+                  ? `Le stock vaut plus qu'à l'inventaire « ${perimetreActif} » du ${dateCH(previousInv.date)}.`
+                  : deltaValeur < 0
+                    ? `Le stock vaut moins qu'à l'inventaire « ${perimetreActif} » du ${dateCH(previousInv.date)}.`
+                    : `Même valeur qu'à l'inventaire « ${perimetreActif} » du ${dateCH(previousInv.date)}.`}
+              </div>
             </div>
           )}
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts défavorables</div><div style={{...invs.kpiVal, color:'var(--danger-strong)'}}>−CHF {totEcart.toFixed(2)}</div></div>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Lignes conformes</div><div style={{...invs.kpiVal, color:'var(--success-text)'}}>{totNul} / {(inv.lignes || []).length}</div></div>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts négatifs</div><div style={{...invs.kpiVal, color:'var(--danger-strong)'}}>{totNegatif} lignes</div></div>
-          <div style={invs.kpiCard}><div style={invs.kpiLabel}>Écarts positifs</div><div style={{...invs.kpiVal, color:'var(--success-strong)'}}>{totPositif} lignes</div></div>
+          <div style={invs.kpiCard}>
+            <div style={invs.kpiLabel}>Écarts en moins</div>
+            <div style={{...invs.kpiVal, color: totNegatif ? 'var(--danger-strong)' : 'var(--text2)'}}>
+              {valeurEcartsMoins < 0 ? '−' : ''}CHF {chfKpi(Math.abs(valeurEcartsMoins))}
+            </div>
+            <div style={invs.kpiNote}>{nbProduits(totNegatif)} compté{totNegatif > 1 ? 's' : ''} sous le stock théorique.</div>
+          </div>
+          <div style={invs.kpiCard}>
+            <div style={invs.kpiLabel}>Écarts en plus</div>
+            <div style={{...invs.kpiVal, color: totPositif ? 'var(--success-strong)' : 'var(--text2)'}}>
+              {valeurEcartsPlus > 0 ? '+' : ''}CHF {chfKpi(valeurEcartsPlus)}
+            </div>
+            <div style={invs.kpiNote}>{nbProduits(totPositif)} compté{totPositif > 1 ? 's' : ''} au-dessus du stock théorique.</div>
+          </div>
+          <div style={invs.kpiCard}>
+            <div style={invs.kpiLabel}>Sans écart</div>
+            <div style={{...invs.kpiVal, color:'var(--success-text)'}}>{totNul} / {(inv.lignes || []).length}</div>
+            <div style={invs.kpiNote}>Produits comptés exactement au stock théorique.</div>
+          </div>
+        </div>
+        <div style={invs.kpiAide}>
+          Stock théorique : la quantité de départ de chaque produit, reprise du comptage précédent (ou du classeur importé) ; un produit ajouté depuis part de 0.
+          Écart = stock réel compté - stock théorique.
         </div>
 
         <div style={invs.filters} className="no-print">
@@ -1617,14 +1733,28 @@ const invs = {
   stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
   zoneTag: {display:'inline-block',marginLeft:4,fontSize:10,color:'var(--text2)'},
   rangement: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize:13,color:'var(--text2)',padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
-  menu: {position:'absolute',right:0,top:'calc(100% + 6px)',zIndex:901,minWidth:240,maxWidth:'calc(100vw - 32px)',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,boxShadow:'0 12px 32px rgba(0,0,0,0.18)',padding:6,display:'flex',flexDirection:'column'},
-  menuItem: {textAlign:'left',padding:'10px 12px',minHeight:44,background:'none',border:'none',borderRadius:8,fontSize:13,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  // Fenêtre d'actions (Exporter, Gérer) : centrée, tiroir du bas sur téléphone.
+  voile: {position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
+  fenetre: {position:'relative',width:'min(440px, 100%)',maxHeight:'85vh',overflowY:'auto',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,boxShadow:'0 20px 60px rgba(0,0,0,0.3)',padding:'20px 18px 18px',display:'flex',flexDirection:'column',gap:12,boxSizing:'border-box'},
+  fenetreFermer: {position:'absolute',top:6,right:8,width:40,height:40,border:'none',background:'transparent',color:'var(--text2)',fontSize:24,cursor:'pointer',lineHeight:1},
+  fenetreTitre: {fontSize:16,fontWeight:700,paddingRight:32,color:'var(--text)',fontFamily:'var(--font-serif)'},
+  fenetreSousTitre: {fontSize:12,color:'var(--text2)',marginTop:-8},
+  // flexShrink 0 : dans une colonne qui défile, le min-height global des boutons
+  // sur tactile écraserait sinon la hauteur et les choix se chevaucheraient.
+  fenetreSection: {display:'flex',flexDirection:'column',gap:8,flexShrink:0},
+  fenetreSectionTitre: {fontSize:12,fontWeight:600,color:'var(--text2)',marginTop:2},
+  choix: {display:'flex',flexDirection:'column',alignItems:'flex-start',gap:3,width:'100%',textAlign:'left',padding:'12px 14px',minHeight:52,background:'var(--bg)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:10,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0,boxSizing:'border-box'},
+  choixDanger: {background:'var(--surface)',borderColor:'var(--danger-bd)'},
+  choixTitre: {fontSize:14,fontWeight:700,color:'var(--text)'},
+  choixDetail: {fontSize:12,color:'var(--text2)',lineHeight:1.4,whiteSpace:'normal'},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',padding:'5px 12px',borderRadius:12,fontSize:12,fontWeight:600},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   validateBtn: {padding:'8px 16px',background:'var(--success-bg)',border:'1px solid var(--success-bd)',color:'var(--success-text)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn: {padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
+  exporterBtn: {padding:'8px 16px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--accent)',color:'var(--accent)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
+  kpiNote: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.4}, kpiAide: {fontSize:11,color:'var(--text2)',lineHeight:1.5,marginTop:8},
   filters: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',minWidth:0}, catTabs: {display:'flex',gap:4,flexWrap:'wrap'}, catBtn: {padding:'5px 14px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}, catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:600,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:600,color:'var(--text)'}, catTag: {fontSize:10,fontWeight:600,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
   overlay: {position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}, modal: {background:'var(--surface)',borderRadius:14,width:420,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}, modalHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'}, closeBtn: {background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}, fieldLabel: {display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
