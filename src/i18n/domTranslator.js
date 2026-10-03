@@ -37,6 +37,7 @@
 //   · les PDF générés en vectoriel (fiche recette, étiquettes DLC, MEP,
 //     commande) partent des données, pas du DOM : ils restent en français.
 // ════════════════════════════════════════════════════════════════
+import { splitAffixes } from './affixes.js';
 import { DO_NOT_TRANSLATE, lookupGlossary } from './glossary.js';
 import { fetchSharedTranslations, pushSharedTranslations, translateTexts } from '../services/translationService.js';
 
@@ -165,26 +166,11 @@ async function ensureSharedCache(lang) {
 }
 
 // ── Éligibilité ───────────────────────────────────────────────────
-const WORDISH = /[\p{L}\p{N}]/u;
+// Découpe pre / core / post : voir affixes.js, partagé avec le glossaire, qui
+// indexe ses clés sur le même cœur.
 const URL_LIKE = /^(https?:\/\/|www\.|[\w.+-]+@[\w-]+\.)/i;
 const UUID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
-
-/**
- * Découpe « 🗑 Supprimer… » en { pre:'🗑 ', core:'Supprimer', post:'…' }.
- *
- * Isoler le cœur de la chaîne fait que « Supprimer », « 🗑 Supprimer » et
- * « Supprimer… » partagent la même entrée de glossaire et de cache : une seule
- * traduction au lieu de trois. Balayage linéaire volontaire - une version regex
- * backtrackait en O(n²) sur les textes longs (étapes de recette, notes).
- */
-function splitAffixes(text) {
-  let start = 0;
-  let end = text.length;
-  while (start < end && !WORDISH.test(text[start])) start += 1;
-  while (end > start && !WORDISH.test(text[end - 1])) end -= 1;
-  return { pre: text.slice(0, start), core: text.slice(start, end), post: text.slice(end) };
-}
 
 /** Le cœur de chaîne mérite-t-il une traduction ? */
 function isTranslatable(core) {

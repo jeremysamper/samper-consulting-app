@@ -9,11 +9,15 @@
 // Tout le reste (contenu saisi par les équipes : recettes, étapes, notes,
 // commentaires…) part à l'IA, puis est mis en cache local. Voir domTranslator.js
 //
-// Les clés sont les chaînes françaises EXACTES telles qu'affichées. Les préfixes
-// et suffixes non alphabétiques (emoji, flèches, « … », « : », « * ») sont
-// gérés par le moteur : inutile de les répéter ici.
+// Les clés sont les chaînes françaises telles qu'affichées. Leurs préfixes et
+// suffixes non alphanumériques (emoji, flèches, « … », « . », « : », « * »,
+// parenthèse fermante) sont retirés à l'indexation, exactement comme le moteur
+// les retire du texte affiché (affixes.js) : « Chargement… » et « Chargement »
+// désignent la même entrée. La traduction perd les mêmes affixes, que le
+// moteur remet ensuite autour d'elle depuis le texte affiché.
 // ════════════════════════════════════════════════════════════════
 import { normalizeSearch } from '../utils/searchText.js';
+import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
@@ -454,7 +458,6 @@ export const UI_GLOSSARY = {
   'Hors ligne': 'Offline',
   'En ligne': 'Online',
   // État dégradé au réveil : le réseau est justement incertain, donc pas d'IA.
-  // Clés SANS ponctuation finale (splitAffixes la retire avant la recherche).
   'Reconnexion en cours': 'Reconnecting',
   'Connexion bloquée. Fermez puis rouvrez l\'application': 'Connection blocked. Close and reopen the app',
 
@@ -714,48 +717,80 @@ export const DO_NOT_TRANSLATE = new Set([
 // Une table par langue cible, toutes indexées sur la même chaîne française.
 const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES };
 
-// Recherche insensible à la casse et aux accents, en repli de la clé exacte.
-// On réutilise le normaliseur partagé de l'app (même repli ligatures/accents
-// que la recherche des modules) plutôt qu'une variante locale. L'index d'une
-// langue est construit à sa première recherche : un appareil resté en English
-// ne paie jamais celui de l'espagnol.
-const NORMALIZED = {};
-function normalizedIndex(lang) {
-  if (!NORMALIZED[lang]) {
-    const index = new Map();
-    for (const [fr, out] of Object.entries(TABLES[lang])) {
-      const key = normalizeSearch(fr);
-      if (!index.has(key)) index.set(key, out);
+/**
+ * Forme indexée d'une entrée : la clé réduite à son cœur, comme le moteur
+ * réduit le texte affiché, et la traduction privée des mêmes affixes, puisque
+ * le moteur rend ceux du texte affiché autour d'elle. « Chargement… » →
+ * « Loading… » s'indexe « Chargement » → « Loading » et s'affiche
+ * « Loading » + « … », jamais « Loading…… ».
+ *
+ * Une traduction qui ne porte pas l'affixe de sa clé (« Supprimer ? » →
+ * « ¿Eliminar? ») perd le sien de ce côté : le moteur y remet celui du texte
+ * affiché, jamais les deux.
+ * Partagée avec scripts/check-glossary-parity.mjs, qui contrôle les collisions.
+ */
+export function glossaryEntryCore(fr, out) {
+  const key = splitAffixes(fr);
+  const val = splitAffixes(out);
+  let start = 0;
+  let end = out.length;
+  if (key.pre) start = out.startsWith(key.pre) ? key.pre.length : val.pre.length;
+  if (key.post) end = out.endsWith(key.post) ? out.length - key.post.length : out.length - val.post.length;
+  return { core: key.core, out: out.slice(start, Math.max(start, end)) };
+}
+
+// Index d'une langue, construit à sa première recherche : un appareil resté en
+// English ne paie jamais celui de l'espagnol.
+//   exact      : cœur de clé → traduction. Une clé déjà nue prime sur une clé
+//                ponctuée de même cœur (« Chargement » sur « Chargement… »).
+//                Une Map, pas l'objet : un texte affiché « constructor » ne
+//                remonte pas le prototype.
+//   normalized : le même, insensible à la casse et aux accents, en repli. On
+//                réutilise le normaliseur partagé de l'app (même repli
+//                ligatures/accents que la recherche des modules).
+const INDEXES = {};
+function glossaryIndex(lang) {
+  if (!INDEXES[lang]) {
+    const exact = new Map();
+    for (const [fr, raw] of Object.entries(TABLES[lang])) {
+      const { core, out } = glossaryEntryCore(fr, raw);
+      if (core === fr || !exact.has(core)) exact.set(core, out);
     }
-    NORMALIZED[lang] = index;
+    const normalized = new Map();
+    for (const [core, out] of exact) {
+      const key = normalizeSearch(core);
+      if (!normalized.has(key)) normalized.set(key, out);
+    }
+    INDEXES[lang] = { exact, normalized };
   }
-  return NORMALIZED[lang];
+  return INDEXES[lang];
 }
 
 /**
  * Traduit une chaîne via le glossaire statique de la langue demandée.
+ * Le moteur passe un cœur déjà découpé ; une chaîne ponctuée (« Chargement… »)
+ * est découpée de la même façon et retrouve ses affixes autour de la traduction.
  * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE » / « ELIMINAR »).
  * @param {string} source chaîne française
  * @param {'en'|'es'} [lang='en'] langue cible
  * @returns {string|null} la traduction, ou null si absente du glossaire.
  */
 export function lookupGlossary(source, lang = 'en') {
-  const table = TABLES[lang];
-  if (!table) return null;
-  // Propriété propre seulement : un texte affiché « constructor » ne doit pas
-  // remonter le prototype (hasOwnProperty.call plutôt qu'Object.hasOwn, absent
-  // des iPad restés sous iOS < 15.4).
-  const exact = Object.prototype.hasOwnProperty.call(table, source) ? table[source] : null;
-  if (exact) return exact;
+  if (!TABLES[lang]) return null;
+  const { pre, core, post } = splitAffixes(source);
+  const { exact, normalized } = glossaryIndex(lang);
 
-  const hit = normalizedIndex(lang).get(normalizeSearch(source));
-  if (!hit) return null;
-
-  // « SUPPRIMER » (tout en majuscules, plus d'un caractère) → « DELETE »
-  if (source.length > 1 && source === source.toUpperCase() && source !== source.toLowerCase()) {
-    return hit.toUpperCase();
+  let hit = exact.get(core);
+  if (!hit) {
+    hit = normalized.get(normalizeSearch(core));
+    if (!hit) return null;
+    // « SUPPRIMER » (tout en majuscules, plus d'un caractère) → « DELETE »
+    if (core.length > 1 && core === core.toUpperCase() && core !== core.toLowerCase()) {
+      hit = hit.toUpperCase();
+    } else if (core === core.toLowerCase()) {
+      // « supprimer » (tout en minuscules) → « delete »
+      hit = hit.toLowerCase();
+    }
   }
-  // « supprimer » (tout en minuscules) → « delete »
-  if (source === source.toLowerCase()) return hit.toLowerCase();
-  return hit;
+  return pre + hit + post;
 }
