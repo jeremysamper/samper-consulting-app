@@ -661,6 +661,7 @@ export const UI_GLOSSARY = {
   'Attendus': 'Expected',
   'À table': 'Seated',
   'Couverts': 'Covers',
+  'Couverts jour par jour': 'Covers day by day',
   'Quitter': 'Exit',
   'Libre': 'Free',
   'À placer': 'To seat',

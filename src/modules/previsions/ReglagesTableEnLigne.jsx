@@ -94,6 +94,14 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
     });
   }
 
+  function majCapaciteJour(jour, service, valeur) {
+    setForm((p) => {
+      const cases = { ...((p.capaciteJours || {})[String(jour)] || {}) };
+      if (valeur === '') delete cases[service]; else cases[service] = valeur;
+      return { ...p, capaciteJours: { ...(p.capaciteJours || {}), [String(jour)]: cases } };
+    });
+  }
+
   function majService(jour, service, valeur) {
     setForm((p) => {
       const jourActuel = { ...(p.horaires[String(jour)] || {}) };
@@ -271,7 +279,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
             <div style={s.carte}>
               <div style={s.titre}>Couverts</div>
               <div style={s.grille}>
-                <Champ label="Au plus par service" aide="Réservations prises au téléphone comprises.">
+                <Champ label="Au plus par service" aide="Réservations prises au téléphone comprises. Réglable jour par jour plus bas.">
                   <input type="number" min="1" max="2000" inputMode="numeric" style={s.champ} value={form.capaciteService}
                     onChange={(e) => set('capaciteService', e.target.value)} />
                 </Champ>
@@ -285,6 +293,47 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
                 </Champ>
               </div>
             </div>
+
+            {/* ── Couverts jour par jour ── */}
+            {joursOuverts > 0 && (
+              <div style={s.carte}>
+                <div style={s.titre}>Couverts jour par jour</div>
+                <div style={{ ...s.aide, marginTop: 0, marginBottom: 10 }}>
+                  Pour ouvrir moins (ou plus) certains jours : mercredi 40, jeudi 70…
+                  Case vide = {form.capaciteService || '-'} (valeur par défaut) ; 0 = pas de réservation en ligne sur ce service ce jour-là.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {JOURS.map(([jour, nom]) => {
+                    const services = SERVICES.filter(([sid]) => {
+                      const p = (form.horaires[String(jour)] || {})[sid];
+                      return p?.de && p?.a;
+                    });
+                    if (!services.length) return null;
+                    const valeurs = (form.capaciteJours || {})[String(jour)] || {};
+                    return (
+                      <div key={jour} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minHeight: 44 }}>
+                        <div style={{ width: 84, flexShrink: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{nom}</div>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: '1 1 160px', minWidth: 0 }}>
+                          {services.map(([sid, libelle]) => (
+                            <label key={sid} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
+                              {libelle}
+                              <input
+                                type="number" min="0" max="2000" inputMode="numeric"
+                                aria-label={`${nom}, ${libelle}, couverts au plus`}
+                                placeholder={String(form.capaciteService || '')}
+                                value={valeurs[sid] ?? ''}
+                                onChange={(e) => majCapaciteJour(jour, sid, e.target.value)}
+                                style={{ ...s.champ, width: 76, minHeight: 38, padding: '6px 8px', textAlign: 'center' }}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ── Rythme du service ── */}
             {SERVICES.some(([sid]) => demiHeuresDuService(form.horaires, sid).length > 0) && (

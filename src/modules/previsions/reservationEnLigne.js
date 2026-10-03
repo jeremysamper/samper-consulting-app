@@ -41,6 +41,7 @@ export const PARAMETRES_DEFAUT = {
   capaciteCreneau: null,
   capaciteDemiHeure: null,
   rythme: {},
+  capaciteJours: {},
   maxCouverts: 8,
   delaiMinHeures: 2,
   horizonJours: 60,
@@ -60,6 +61,7 @@ function depuisBase(r) {
     capaciteCreneau: r.capacite_creneau,
     capaciteDemiHeure: r.capacite_demi_heure ?? null,
     rythme: r.rythme || {},
+    capaciteJours: r.capacite_jours || {},
     maxCouverts: r.max_couverts,
     delaiMinHeures: r.delai_min_heures,
     horizonJours: r.horizon_jours,
@@ -71,7 +73,8 @@ function depuisBase(r) {
 
 // Rythme : { service: { "HH:MM": plafond } }. On ne garde que les nombres
 // saisis (0 compris : demi-heure fermée en ligne) ; une case vidée reprend le
-// plafond par défaut.
+// plafond par défaut. Même forme pour les couverts par jour :
+// { jour: { service: plafond } }.
 function nettoyerRythme(rythme) {
   const sortie = {};
   Object.entries(rythme || {}).forEach(([service, cases]) => {
@@ -93,6 +96,7 @@ function versBase(p) {
     capacite_creneau: p.capaciteCreneau ? Number(p.capaciteCreneau) : null,
     capacite_demi_heure: p.capaciteDemiHeure ? Number(p.capaciteDemiHeure) : null,
     rythme: nettoyerRythme(p.rythme),
+    capacite_jours: nettoyerRythme(p.capaciteJours),
     max_couverts: Number(p.maxCouverts) || 1,
     delai_min_heures: Number(p.delaiMinHeures) || 0,
     horizon_jours: Number(p.horizonJours) || 60,

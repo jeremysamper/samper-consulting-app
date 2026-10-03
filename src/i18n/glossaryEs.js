@@ -643,6 +643,7 @@ export const UI_GLOSSARY_ES = {
   'Attendus': 'Esperados',
   'À table': 'En la mesa',
   'Couverts': 'Cubiertos',
+  'Couverts jour par jour': 'Cubiertos día a día',
   'Quitter': 'Salir',
   'Libre': 'Libre',
   'À placer': 'Por ubicar',
