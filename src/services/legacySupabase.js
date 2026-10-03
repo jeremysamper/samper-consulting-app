@@ -2684,6 +2684,65 @@ export function installLegacySupabase() {
       const { error } = await client.from('achats_documents').delete().eq('id', id);
       if (error) throw error;
     },
+
+    // Pièces des documents d'achat (photos, PDF tels que déposés), rangées dans
+    // le bucket `documents` sous <etablissement>/achats/<id du document>/.
+    // La politique du bucket (dossier racine = établissement) les ouvre à toute
+    // l'équipe de l'établissement, sans colonne ni migration. Aucune ligne dans
+    // la table `documents` : elles n'apparaissent pas dans le module Documents.
+    async uploadAchatsPieces(etabId, docId, pieces) {
+      const chemins = [];
+      try {
+        for (let i = 0; i < pieces.length; i += 1) {
+          const { file, contentType } = pieces[i];
+          const nom = String(file.name || 'piece').replace(/[^a-zA-Z0-9._-]/g, '_');
+          const chemin = `${etabId}/achats/${docId}/${i + 1}-${nom}`;
+          const { error } = await client.storage.from('documents').upload(chemin, file, { contentType, upsert: false });
+          if (error) throw error;
+          chemins.push(chemin);
+        }
+      } catch (err) {
+        // Tout ou rien : un document à moitié photographié tromperait la relecture.
+        if (chemins.length) await client.storage.from('documents').remove(chemins).catch(() => {});
+        throw err;
+      }
+      return chemins;
+    },
+    // Ids des documents d'achat qui ont au moins une pièce enregistrée.
+    async listAchatsDocsAvecPieces(etabId) {
+      const { data, error } = await client.storage.from('documents').list(`${etabId}/achats`, { limit: 1000 });
+      if (error) throw error;
+      return new Set((data || []).map(e => e.name));
+    },
+    // Pièces d'un document, dans l'ordre des pages, avec une URL signée (1 h).
+    async listAchatsPieces(etabId, docId) {
+      const dossier = `${etabId}/achats/${docId}`;
+      const { data, error } = await client.storage.from('documents').list(dossier, { limit: 100 });
+      if (error) throw error;
+      const fichiers = (data || [])
+        .filter(f => f.id) // un sous-dossier n'a pas d'id
+        .sort((a, b) => (parseInt(a.name, 10) || 0) - (parseInt(b.name, 10) || 0));
+      if (!fichiers.length) return [];
+      const chemins = fichiers.map(f => `${dossier}/${f.name}`);
+      const { data: urls, error: errUrls } = await client.storage.from('documents').createSignedUrls(chemins, 3600);
+      if (errUrls) throw errUrls;
+      return fichiers.map((f, i) => ({
+        chemin: chemins[i],
+        nom: f.name.replace(/^\d+-/, ''),
+        type: f.metadata?.mimetype || '',
+        taille: f.metadata?.size || 0,
+        url: urls?.[i]?.signedUrl || null,
+      }));
+    },
+    async removeAchatsPieces(etabId, docId) {
+      const dossier = `${etabId}/achats/${docId}`;
+      const { data, error } = await client.storage.from('documents').list(dossier, { limit: 100 });
+      if (error) throw error;
+      const chemins = (data || []).filter(f => f.id).map(f => `${dossier}/${f.name}`);
+      if (!chemins.length) return;
+      const { error: errRm } = await client.storage.from('documents').remove(chemins);
+      if (errRm) throw errRm;
+    },
     mapAchatsDocumentFromDB(row) {
       if (!row) return null;
       return {

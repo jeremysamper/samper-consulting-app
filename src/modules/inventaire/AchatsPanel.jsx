@@ -1,6 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { cleProduit, ligneLibre } from './inventaireLignes.js';
 import {
@@ -25,6 +27,9 @@ import {
 //
 // La lecture des documents est ouverte à toute l'équipe qui a accès à
 // l'inventaire (ai-proxy : parse-facture autorisé pour tous les rôles).
+//
+// Depuis le 03.10.2026, chaque photo ou PDF déposé est aussi gardé (bucket
+// `documents`, <etab>/achats/<id>/) et se revoit par « Voir la photo ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CONCURRENCE = 3;
@@ -49,6 +54,50 @@ const uniteDepuisLigneDoc = (l) => {
   return l.uniteTotale === 'g' ? 'kg' : 'pcs';
 };
 
+// ── Pièces : les photos et PDF déposés, gardés pour être revus ──
+// Types acceptés par le bucket `documents`. Le type se déduit de l'extension
+// quand le navigateur ne le donne pas (photos HEIC sur Safari).
+const FORMATS = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+  heic: 'image/heic', heif: 'image/heif',
+};
+const estPdfFichier = (f) => /pdf$/i.test(f.type || '') || /\.pdf$/i.test(f.name || '');
+const typeDe = (f) => {
+  const ext = (/\.([a-z0-9]+)$/i.exec(f.name || '')?.[1] || '').toLowerCase();
+  return FORMATS[ext] || (Object.values(FORMATS).includes(f.type) ? f.type : null);
+};
+
+// Photo ramenée en JPEG de 2200 px au plus (une facture reste lisible, le
+// téléphone n'envoie pas 5 Mo par page). PDF gardé tel quel.
+const preparerPieces = async (fichiers) => {
+  const pieces = [];
+  for (const f of fichiers) {
+    if (estPdfFichier(f)) { pieces.push({ file: f, contentType: 'application/pdf' }); continue; }
+    try {
+      const { default: imageCompression } = await import('browser-image-compression');
+      const blob = await imageCompression(f, { maxSizeMB: 1.5, maxWidthOrHeight: 2200, useWebWorker: true, fileType: 'image/jpeg' });
+      const nom = String(f.name || 'photo').replace(/\.[a-z0-9]+$/i, '') + '.jpg';
+      pieces.push({ file: new File([blob], nom, { type: 'image/jpeg' }), contentType: 'image/jpeg' });
+    } catch {
+      // Format que ce navigateur ne sait pas redessiner (HEIC hors Safari) : l'original.
+      const type = typeDe(f);
+      if (!type) throw new Error(`format non accepté (${f.name})`);
+      pieces.push({ file: f, contentType: type });
+    }
+  }
+  return pieces;
+};
+
+// Libellé du bouton, d'après le nom gardé à l'import : « x.pdf »,
+// « IMG_1.jpg » ou « IMG_1.jpg (+2 pages) » pour des photos groupées.
+const libelleVoir = (d) => {
+  const nom = String(d.nomFichier || '');
+  if (/\.pdf$/i.test(nom)) return 'Voir le PDF';
+  const pages = /\(\+(\d+) pages?\)$/.exec(nom);
+  return pages ? `Voir les ${Number(pages[1]) + 1} photos` : 'Voir la photo';
+};
+
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,
   canImport, canEditLignes, onAjouterLignes, onMajPrix,
@@ -68,6 +117,13 @@ export default function AchatsPanel({
   const [docOuvert, setDocOuvert] = React.useState(null);
   const [creations, setCreations] = React.useState({}); // cle libellé -> nom en cours
   const [busy, setBusy] = React.useState(false);
+  // Ids des documents dont la photo ou le PDF est gardé (importés depuis le
+  // 03.10.2026 ; les plus anciens n'ont que leurs lignes lues).
+  const [avecPieces, setAvecPieces] = React.useState(() => new Set());
+  // { doc, pieces: null (chargement) | [...], erreur } | null
+  const [apercu, setApercu] = React.useState(null);
+  const fermerApercu = React.useCallback(() => setApercu(null), []);
+  useBackLayer(!!apercu, fermerApercu, 'achats-apercu');
   const fileRef = React.useRef(null);
   const cameraRef = React.useRef(null);
   const enCoursRef = React.useRef(0);
@@ -82,6 +138,10 @@ export default function AchatsPanel({
   // ── Chargement ──
   const reload = React.useCallback(async () => {
     if (!legacySB) { setDocs([]); return; }
+    // Photos gardées : sans elles, seuls les boutons « Voir » manquent.
+    legacySB.db.listAchatsDocsAvecPieces(etabId)
+      .then(setAvecPieces)
+      .catch(err => console.error('[AchatsPanel pièces]', err));
     try {
       const liste = await legacySB.db.listAchatsDocuments(etabId);
       if (liste === null) { docsRef.current = []; setDocs('absente'); return; }
@@ -102,6 +162,14 @@ export default function AchatsPanel({
     const unsub = legacySB?.realtime?.subscribeReload?.('achats_documents', reload);
     return () => { unsub && unsub(); };
   }, [etabId]);
+
+  // Échap ferme l'aperçu.
+  React.useEffect(() => {
+    if (!apercu) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setApercu(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [apercu]);
 
   React.useEffect(() => {
     if (!legacySB) return;
@@ -182,7 +250,36 @@ export default function AchatsPanel({
     if (!confirmLegacy(`Supprimer le document ${libelleType(doc.typeDocument).toLowerCase()} ${doc.numero || ''} de ${doc.fournisseurNom || 'fournisseur inconnu'} ?\nIl sort du calcul des achats.`)) return;
     majDocs(liste => liste.filter(d => d.id !== doc.id));
     try { await legacySB.db.deleteAchatsDocument(doc.id); }
-    catch (err) { notifyLegacy('Suppression impossible : ' + (err.message || err), 'error'); reload(); }
+    catch (err) { notifyLegacy('Suppression impossible : ' + (err.message || err), 'error'); reload(); return; }
+    // Toujours tenté : la liste des photos a pu ne pas se charger.
+    setAvecPieces(s => { const n = new Set(s); n.delete(doc.id); return n; });
+    legacySB.db.removeAchatsPieces(etabId, doc.id).catch(err => console.error('[AchatsPanel pièces]', err));
+  };
+
+  const voirPieces = async (doc) => {
+    setApercu({ doc, pieces: null, erreur: null });
+    try {
+      const pieces = await legacySB.db.listAchatsPieces(etabId, doc.id);
+      setApercu(a => (a?.doc.id === doc.id ? { ...a, pieces } : a));
+    } catch (err) {
+      setApercu(a => (a?.doc.id === doc.id ? { ...a, pieces: [], erreur: err.message || String(err) } : a));
+    }
+  };
+
+  // URL signée « pièce jointe » : le fichier s'enregistre, y compris sur iPad,
+  // au lieu de s'ouvrir dans un onglet.
+  const telechargerPiece = async (piece) => {
+    try {
+      const url = await legacySB.db.getFileURL(piece.chemin, { download: piece.nom });
+      const a = document.createElement('a');
+      a.href = url;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      notifyLegacy('Téléchargement impossible : ' + (err.message || err), 'error');
+    }
   };
 
   // Applique une décision à toutes les lignes portant ce libellé, dans tous
@@ -297,12 +394,30 @@ export default function AchatsPanel({
         majTravail(travail.key, { statut: 'doublon', message: `Déjà importé (${doc.fournisseurNom} n° ${doc.numero})` });
         return;
       }
-      const enregistre = await legacySB.db.upsertAchatsDocument(doc);
+      // La photo ou le PDF est gardé pour être revu (« Voir la photo »).
+      // Enregistré AVANT le document : quand il apparaît sur une autre
+      // tablette, sa pièce est déjà là. Un échec ici n'annule pas la lecture.
+      let pieceGardee = false;
+      try {
+        await legacySB.db.uploadAchatsPieces(etabId, doc.id, await preparerPieces(travail.fichiers));
+        pieceGardee = true;
+      } catch (err) {
+        console.error('[AchatsPanel pièces]', err);
+      }
+      let enregistre;
+      try {
+        enregistre = await legacySB.db.upsertAchatsDocument(doc);
+      } catch (err) {
+        if (pieceGardee) legacySB.db.removeAchatsPieces(etabId, doc.id).catch(() => {});
+        throw err;
+      }
       majDocs(liste => [enregistre, ...liste]);
+      if (pieceGardee) setAvecPieces(s => new Set(s).add(doc.id));
       majTravail(travail.key, {
         statut: 'ok',
         message: `${doc.fournisseurNom || 'Fournisseur non lu'} · ${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}`
-          + (doc.dateDocument ? ` · ${dateCH(doc.dateDocument)}` : ' · date non lue'),
+          + (doc.dateDocument ? ` · ${dateCH(doc.dateDocument)}` : ' · date non lue')
+          + (pieceGardee ? '' : estPdfFichier(travail.fichiers[0]) ? ' · PDF non conservé' : ' · photo non conservée'),
       });
     } catch (err) {
       majTravail(travail.key, { statut: 'erreur', message: err.message || String(err) });
@@ -623,6 +738,9 @@ export default function AchatsPanel({
                   <span style={{ ...st.statut, ...(s?.compte && !horsPeriode ? st.statutOk : {}) }}>
                     {!d.dateDocument ? 'date manquante' : horsPeriode ? 'hors période' : s?.compte ? 'compté' : (s?.raison || 'non compté')}
                   </span>
+                  {avecPieces.has(d.id) && (
+                    <button type="button" style={st.btnVoir} onClick={() => voirPieces(d)}>{libelleVoir(d)}</button>
+                  )}
                 </div>
               </div>
               {Math.abs(ecartTotal) > 0.05 && (
@@ -664,6 +782,7 @@ export default function AchatsPanel({
                     </button>
                     <button type="button" style={{ ...st.btnMini, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => supprimerDoc(d)}>Supprimer</button>
                     {d.nomFichier && <span data-no-translate style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>{d.nomFichier}</span>}
+                    {!avecPieces.has(d.id) && <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Pas de photo conservée pour ce document.</span>}
                   </div>
                 </div>
               )}
@@ -671,6 +790,50 @@ export default function AchatsPanel({
           );
         })}
       </div>
+
+      {/* ── Aperçu des pièces : toutes les pages à la suite, à faire défiler ── */}
+      {apercu && createPortal(
+        <div style={st.apercuFond} role="dialog" aria-modal="true" aria-label="Photo du document">
+          <div style={st.apercuTete}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={st.apercuNom}>
+                <span data-no-translate>{apercu.doc.fournisseurNom || 'Fournisseur non lu'}</span>
+                {apercu.doc.numero ? <span data-no-translate>{` · n° ${apercu.doc.numero}`}</span> : null}
+              </div>
+              <div style={st.apercuMeta}>
+                {libelleType(apercu.doc.typeDocument)}{apercu.doc.dateDocument ? ` du ${dateCH(apercu.doc.dateDocument)}` : ''}
+              </div>
+            </div>
+            <button type="button" style={st.apercuBtn} onClick={fermerApercu} aria-label="Fermer">✕</button>
+          </div>
+          <div style={st.apercuCorps}>
+            {apercu.pieces === null && <div style={st.apercuInfo}>Ouverture du document…</div>}
+            {apercu.erreur && <div style={st.apercuInfo}>Ouverture impossible : {apercu.erreur}</div>}
+            {apercu.pieces && !apercu.erreur && apercu.pieces.length === 0 && (
+              <div style={st.apercuInfo}>Pas de photo conservée pour ce document.</div>
+            )}
+            {(apercu.pieces || []).map((p, i, liste) => {
+              const pdf = p.type === 'application/pdf' || /\.pdf$/i.test(p.nom);
+              return (
+                <div key={p.chemin} style={st.apercuPiece}>
+                  <div style={st.apercuBarre}>
+                    <span style={{ flex: 1, minWidth: 0 }}>{liste.length > 1 ? `Page ${i + 1} sur ${liste.length}` : ''}</span>
+                    {/* Lien direct : l'URL est déjà signée, le tap reste un geste
+                        utilisateur et l'ouverture n'est pas bloquée sur iPad (où un
+                        PDF intégré n'affiche souvent que sa première page). */}
+                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={st.apercuBtn}>Plein écran</a>}
+                    <button type="button" style={st.apercuBtn} onClick={() => telechargerPiece(p)}>Télécharger</button>
+                  </div>
+                  {!p.url ? <div style={st.apercuInfo}>Lien indisponible, réessayez.</div>
+                    : pdf ? <iframe src={p.url} title={`Document, page ${i + 1}`} style={st.apercuPdf} />
+                      : <img src={p.url} alt={`Page ${i + 1} du document`} style={st.apercuImg} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -736,4 +899,17 @@ const st = {
   docAlerte: { fontSize: 11, color: 'var(--warning-text)', marginTop: 4 },
   docDetail: { marginTop: 6, padding: '8px 10px', background: 'var(--bg)', borderRadius: 8 },
   docDetailLigne: { display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
+  btnVoir: { padding: '6px 12px', borderRadius: 7, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
+  // Aperçu : fond noir comme la visionneuse du module Documents, quel que soit le thème.
+  apercuFond: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.94)', display: 'flex', flexDirection: 'column', zIndex: 1000 },
+  apercuTete: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(0,0,0,0.55)', color: '#fff', flexShrink: 0 },
+  apercuNom: { fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  apercuMeta: { fontSize: 11, opacity: 0.75, marginTop: 2 },
+  apercuBtn: { display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, textDecoration: 'none', flexShrink: 0 },
+  apercuCorps: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 },
+  apercuPiece: { width: '100%', maxWidth: 1000, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 },
+  apercuBarre: { display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontSize: 12, flexWrap: 'wrap' },
+  apercuImg: { width: '100%', height: 'auto', borderRadius: 6, background: '#fff', display: 'block' },
+  apercuPdf: { width: '100%', height: '78vh', border: 'none', background: '#fff', borderRadius: 6 },
+  apercuInfo: { color: '#fff', fontSize: 14, padding: 24, textAlign: 'center' },
 };

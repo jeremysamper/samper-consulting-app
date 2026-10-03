@@ -172,10 +172,11 @@ const Inventaire = ({ user, etablissement }) => {
   const [exportEnCours, setExportEnCours] = React.useState(false);
   const perms = getPermissionsForRole(user.role);
   const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
-  // Import et export Excel réservés à consultant + patron. L'onglet Achats
-  // (photos et PDF des factures), l'impression et l'export PDF sont ouverts à
-  // toute l'équipe qui a accès à l'inventaire.
-  const canExport = ['consultant', 'patron'].includes(user.role);
+  // Import d'un classeur Excel (et son modèle) réservé à consultant + patron.
+  // L'onglet Achats (photos et PDF des factures), l'impression et l'état
+  // d'inventaire en PDF comme en Excel sont ouverts à toute l'équipe qui a
+  // accès à l'inventaire.
+  const canImportXlsx = ['consultant', 'patron'].includes(user.role);
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
   // Quantités comptées pas encore parties. Affiché DANS le module en plus du
@@ -1320,15 +1321,15 @@ const Inventaire = ({ user, etablissement }) => {
             canManage && { label: '+ Nouvel inventaire', onClick: () => openNewInventory(perimetreActif) },
             canManage && { label: '✎ Renommer le périmètre', onClick: openRename },
             canEditLignes && !sel.active && { label: '☑ Sélectionner des lignes', onClick: () => { setVue('ecarts'); sel.enter(); } },
-            canExport && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
-            canExport && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
+            canImportXlsx && { label: '📥 Importer un classeur XLSX', onClick: () => importXlsxRef.current?.click() },
+            canImportXlsx && { label: '📄 Modèle XLSX', onClick: downloadInventoryTemplate },
             { label: '🖨 Imprimer', onClick: printInventory },
             canManage && recettes.length > 0 && { label: '🍲 Produits maison (fiches recettes)', onClick: () => setShowMaison(true) },
             { label: "⬇ État d'inventaire (PDF)", onClick: () => exporterEtat('pdf') },
-            canExport && { label: "📊 État d'inventaire (Excel)", onClick: () => exporterEtat('xlsx') },
+            { label: "📊 État d'inventaire (Excel)", onClick: () => exporterEtat('xlsx') },
             canManage && inventairesEtab.length > 1 && { label: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
           ]} />
-          {canExport && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
+          {canImportXlsx && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
         </div>
       </div>
 
