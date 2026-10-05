@@ -21,6 +21,10 @@
 -- Élargissement pur (expand) : table neuve, aucune donnée existante touchée.
 -- Le front déployé avant elle ne la lit pas ; le front qui la lit reste
 -- fonctionnel sans elle (statut 'absent', bouton caché, personne masquée).
+--
+-- APPLIQUÉ EN PROD via MCP le 05.10.2026, après le front (31f9a3b) : table vide,
+-- 3 policies, RLS active, publication realtime, aucun droit anon. Advisor
+-- sécurité sans alerte sur la table. Miroir repo == prod.
 -- ============================================================================
 
 create table if not exists public.planning_masques (
