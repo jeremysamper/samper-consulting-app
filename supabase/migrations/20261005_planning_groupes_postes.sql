@@ -35,6 +35,11 @@
 -- front qui les lit reste fonctionnel sans elles (statut 'absent', rien
 -- d'affiché en plus).
 -- Idempotente. Rollback en fin de fichier.
+--
+-- APPLIQUÉ EN PROD via MCP le 05.10.2026, avant le front : essai à blanc
+-- 28/28 sur les comptes réels de Woodland, 7 établissements avec Salle et
+-- Cuisine, 11 policies, publication realtime, corps des 7 fonctions comparés
+-- au fichier (md5 identiques). Advisor sécurité : aucune alerte nouvelle.
 -- ============================================================================
 
 -- ─── Tables ─────────────────────────────────────────────────────────────────
