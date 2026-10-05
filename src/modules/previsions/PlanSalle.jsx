@@ -78,6 +78,55 @@ function principaleDe(tablee) {
 }
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+// Contour d'un groupe de tables (canevas), et son centre.
+function cadreDe(membres) {
+  const x0 = Math.min(...membres.map((t) => Number(t.pos_x)));
+  const y0 = Math.min(...membres.map((t) => Number(t.pos_y)));
+  const x1 = Math.max(...membres.map((t) => Number(t.pos_x) + Number(t.largeur)));
+  const y1 = Math.max(...membres.map((t) => Number(t.pos_y) + Number(t.hauteur)));
+  return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
+
+// Une tablée rapprochée se DESSINE comme un seul rectangle, quelles que
+// soient les formes réunies : un rond collé à un carré ne ressemble pas à des
+// tables poussées l'une contre l'autre. Le contour de la tablée est découpé
+// en tranches, une par table, dans l'ordre où elles se suivent (en ligne si
+// elles se suivent de gauche à droite sans se chevaucher, sinon en colonne).
+// Seul le dessin change : les positions et tailles en base restent celles
+// des tables, et une table séparée retrouve sa forme.
+function trancherTablee(membres) {
+  const c = cadreDe(membres);
+  const enLigne = (() => {
+    const triX = [...membres].sort((a, b) => Number(a.pos_x) - Number(b.pos_x));
+    if (triX.every((t, i) => i === 0
+      || Number(t.pos_x) >= Number(triX[i - 1].pos_x) + Number(triX[i - 1].largeur) - 1)) return true;
+    const triY = [...membres].sort((a, b) => Number(a.pos_y) - Number(b.pos_y));
+    if (triY.every((t, i) => i === 0
+      || Number(t.pos_y) >= Number(triY[i - 1].pos_y) + Number(triY[i - 1].hauteur) - 1)) return false;
+    return (c.x1 - c.x0) >= (c.y1 - c.y0);
+  })();
+  const deb = enLigne ? 'pos_x' : 'pos_y';
+  const lon = enLigne ? 'largeur' : 'hauteur';
+  const centre = (t) => Number(t[deb]) + Number(t[lon]) / 2;
+  const tri = [...membres].sort((a, b) => centre(a) - centre(b));
+  // Limite entre deux voisines : au milieu de l'espace qui les sépare, ou de
+  // leurs centres si elles se chevauchent.
+  const bornes = [enLigne ? c.x0 : c.y0];
+  for (let i = 0; i < tri.length - 1; i++) {
+    const finA = Number(tri[i][deb]) + Number(tri[i][lon]);
+    const debB = Number(tri[i + 1][deb]);
+    bornes.push(debB >= finA ? (finA + debB) / 2 : (centre(tri[i]) + centre(tri[i + 1])) / 2);
+  }
+  bornes.push(enLigne ? c.x1 : c.y1);
+  const m = new Map();
+  tri.forEach((t, i) => {
+    m.set(t.id, enLigne
+      ? { pos_x: bornes[i], pos_y: c.y0, largeur: bornes[i + 1] - bornes[i], hauteur: c.y1 - c.y0 }
+      : { pos_x: c.x0, pos_y: bornes[i], largeur: c.x1 - c.x0, hauteur: bornes[i + 1] - bornes[i] });
+  });
+  return m;
+}
 const snap  = (v) => Math.round(v / PLAN_GRID) * PLAN_GRID;
 
 // ── Une table sur le canevas ───────────────────────────────────────────────
@@ -1234,6 +1283,57 @@ export default function PlanSalle({
     await ecrireAjustements([{ table_id: tableId, pos_x, pos_y, fusion: a?.fusion ?? null, pivotee }]);
   }
 
+  // Tablée rapprochée : elle tourne d'un bloc autour de son centre, chaque
+  // table pivotant avec elle. Un quart de tour dans un sens, puis dans
+  // l'autre (le sens suit la table qui porte le numéro), pour qu'un aller-
+  // retour la remette en place ; la borne du canevas décale le bloc entier,
+  // d'où le même souvenir du dernier quart de tour que pour une table seule.
+  const dernierQuartTableeRef = useRef(new Map());
+
+  async function tournerTablee(tableId) {
+    if (pivotIndispo) {
+      notify('Tourner une table pour un service demande une mise à jour de la base (migration 20261005_plan_salle_pivot).', 'warning');
+      return;
+    }
+    const membres = tableeDe(tableId);
+    if (membres.length < 2) { await tournerTableService(tableId); return; }
+    const cle = membres[0].fusion;
+    const actuel = membres.map((t) => ({
+      table_id: t.id, pos_x: Number(t.pos_x), pos_y: Number(t.pos_y),
+      fusion: cle, pivotee: !!ajustRef.current.get(t.id)?.pivotee,
+    }));
+    const dernier = dernierQuartTableeRef.current.get(cle);
+    let lignes;
+    if (dernier && dernier.avant.length === membres.length
+        && membres.every((t) => dernier.apres.has(t.id) && memePlace(t, dernier.apres.get(t.id)))) {
+      lignes = dernier.avant;
+    } else {
+      const { cx, cy } = cadreDe(membres);
+      const horaire = !principaleDe(membres)?.pivotee;
+      const tournees = membres.map((t) => {
+        const x = Number(t.pos_x); const y = Number(t.pos_y);
+        const w = Number(t.largeur); const h = Number(t.hauteur);
+        return {
+          id: t.id, largeur: h, hauteur: w,
+          pos_x: horaire ? cx - (y + h - cy) : cx + (y - cy),
+          pos_y: horaire ? cy + (x - cx) : cy - (x + w - cx),
+        };
+      });
+      const c = cadreDe(tournees);
+      const dx = c.x0 < 0 ? -c.x0 : c.x1 > PLAN_W ? PLAN_W - c.x1 : 0;
+      const dy = c.y0 < 0 ? -c.y0 : c.y1 > PLAN_H ? PLAN_H - c.y1 : 0;
+      lignes = tournees.map((t) => ({
+        table_id: t.id, pos_x: t.pos_x + dx, pos_y: t.pos_y + dy,
+        fusion: cle, pivotee: !ajustRef.current.get(t.id)?.pivotee,
+      }));
+    }
+    dernierQuartTableeRef.current.set(cle, {
+      avant: actuel,
+      apres: new Map(lignes.map((l) => [l.table_id, { pos_x: l.pos_x, pos_y: l.pos_y }])),
+    });
+    await ecrireAjustements(lignes);
+  }
+
   async function revenirAuPlanDeBase() {
     if (!window.confirm('Remettre toutes les tables de ce service à leur place habituelle ? Les clients placés restent sur leurs tables.')) return;
     const ids = [...ajustParTable.keys()];
@@ -1421,12 +1521,31 @@ export default function PlanSalle({
   const enDeplacement = drag?.demarre && drag.kind === 'tableService'
     ? new Map(drag.membres.map((m) => [m.id, m]))
     : null;
-  const tablesDessinees = enDeplacement
+  const tablesPosees = enDeplacement
     ? tablesSalle.map((t) => {
       const m = enDeplacement.get(t.id);
       return m ? { ...t, pos_x: m.x0 + drag.dx, pos_y: m.y0 + drag.dy } : t;
     })
     : tablesSalle;
+  // Tablées dessinées en un seul rectangle (voir trancherTablee).
+  const tablesDessinees = (() => {
+    if (modePlan) return tablesPosees;
+    const parFusion = new Map();
+    for (const t of tablesPosees) {
+      if (!t.fusion) continue;
+      if (!parFusion.has(t.fusion)) parFusion.set(t.fusion, []);
+      parFusion.get(t.fusion).push(t);
+    }
+    const tranches = new Map();
+    for (const membres of parFusion.values()) {
+      if (membres.length < 2) continue;
+      for (const [id, g] of trancherTablee(membres)) tranches.set(id, g);
+    }
+    if (!tranches.size) return tablesPosees;
+    return tablesPosees.map((t) => (tranches.has(t.id)
+      ? { ...t, ...tranches.get(t.id), forme: 'rectangle' }
+      : t));
+  })();
 
   // Rôle de chaque table dans sa tablée, et clients de toute la tablée pour
   // celle qui porte le numéro (un client par réservation, pas un par table).
@@ -1456,14 +1575,18 @@ export default function PlanSalle({
   // Bouton ⟳ posé sur la table elle-même, là où on manipule le meuble :
   // dessin du plan de base, ou ajustement de la salle pour ce service. En
   // service, le quart de tour passe par la fiche de la table (le toucher
-  // sert déjà à l'ouvrir). Une table ronde ou carrée n'a pas de sens ; une
-  // table d'une tablée rapprochée suit sa tablée (séparer d'abord).
+  // sert déjà à l'ouvrir). Une table ronde ou carrée seule n'a pas de sens ;
+  // une tablée rapprochée tourne d'un bloc, par le bouton de la table qui
+  // porte son numéro.
   const nonCarree = (t) => Number(t.largeur) !== Number(t.hauteur);
   const tournerSurCanevas = (t) => {
-    if (!canEdit || !nonCarree(t)) return null;
-    if (modePlan) return tournerTableBase;
-    if (ajusterActif && !pivotIndispo && !roleTablee.has(t.id)) return tournerTableService;
-    return null;
+    if (!canEdit) return null;
+    if (modePlan) return nonCarree(t) ? tournerTableBase : null;
+    if (!ajusterActif || pivotIndispo) return null;
+    const role = roleTablee.get(t.id);
+    if (role === 'principale') return tournerTablee;
+    if (role) return null;
+    return nonCarree(t) ? tournerTableService : null;
   };
 
   // Fiche de la table touchée : la tablée entière, ses places, ses clients.
@@ -1873,11 +1996,13 @@ export default function PlanSalle({
           ajuster={ajusterActif}
           groupe={ficheTablee.length > 1}
           deplacee={!!(ficheTablee[0]?.deplacee || ficheTablee[0]?.pivotee)}
-          verticale={ficheTablee.length === 1
-            && Number(ficheTablee[0].hauteur) > Number(ficheTablee[0].largeur)}
+          verticale={ficheTablee.length > 0 && (() => {
+            const c = cadreDe(ficheTablee);
+            return c.y1 - c.y0 > c.x1 - c.x0;
+          })()}
           onTourner={canEdit && !ajustIndispo && !pivotIndispo
-            && ficheTablee.length === 1 && nonCarree(ficheTablee[0])
-            ? () => tournerTableService(tableOuverte) : undefined}
+            && (ficheTablee.length > 1 || nonCarree(ficheTablee[0]))
+            ? () => tournerTablee(tableOuverte) : undefined}
           onClose={() => setTableOuverte(null)}
           onPassage={(n) => clientDePassage(tableOuverte, n)}
           onReserver={() => { reservePoseeRef.current = false; setReserverSur(tableOuverte); }}
