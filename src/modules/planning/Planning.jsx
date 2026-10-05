@@ -16,7 +16,9 @@ import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/
 import { zurichToday } from '../../utils/zurichTime.js';
 import AbsencesModal from './AbsencesModal.jsx';
 import MasquesModal from './MasquesModal.jsx';
+import GroupesModal from './GroupesModal.jsx';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
+import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -72,6 +74,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [loading, setLoading] = React.useState(true);
   // Refetch des shifts de l'effet courant, rejoué au réveil de l'appareil.
   const reloadShiftsRef = React.useRef(null);
+  // Horaires dont un pointage est en cours d'envoi : un double tap sur l'iPad
+  // partagé ne repart pas en second appel (qui reviendrait en « déjà pointé »).
+  const punchEnCoursRef = React.useRef(new Set());
   const [isMobile, setIsMobile] = React.useState(browserWindow?.innerWidth < 768);
 
   // === Export CCNT ===
@@ -93,21 +98,56 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const canWrite = !!perms.planning && canManageModule(user.role, 'planning');
   const canExport = ['consultant', 'patron'].includes(user.role);
 
-  // canPoint(shift) : seul le propriétaire du shift peut pointer (ou un manager pour corriger)
+  const etabId = etablissement?.id || 'etab-1';
+
+  // Groupes (Salle, Cuisine, plus ceux ajoutés) et comptes de pointage
+  // partagés. Sans la migration (status 'absent'), rien ne change à l'écran.
+  // Droits dérivés de la RLS : groupes = qui gère le planning (même règle que
+  // user_peut_gerer('planning')), comptes partagés = consultant et patron.
+  const groupesEtab = usePlanningGroupes(etabId);
+  const groupesActifs = groupesEtab.status === 'ready' && groupesEtab.groupes.length > 0;
+  const canGererGroupes = canWrite;
+  const canPostes = ['consultant', 'patron'].includes(user.role);
+  const [showGroupes, setShowGroupes] = React.useState(false);
+  const [groupeFiltre, setGroupeFiltre] = React.useState('tous'); // 'tous' | id de groupe | 'sans'
+  // Ce compte est-il un compte de pointage partagé (iPad du restaurant) ?
+  const mesGroupesPoste = groupesEtab.postesParCompte.get(user.id) || null;
+  const estComptePoste = !!mesGroupesPoste && mesGroupesPoste.size > 0;
+  const userById = React.useMemo(() => {
+    const map = new Map();
+    demoData.utilisateurs.forEach(u => map.set(u.id, u));
+    return map;
+  }, [demoData.utilisateurs]);
+  const groupeDeId = (userId) => groupesEtab.groupeDe(userById.get(userId) || { id: userId });
+
+  // Un compte partagé ouvre le module sur le pointage.
+  const pointageOuvertRef = React.useRef(false);
+  React.useEffect(() => {
+    if (estComptePoste && !initialTab && !pointageOuvertRef.current) {
+      pointageOuvertRef.current = true;
+      setActiveTab('pointage');
+    }
+  }, [estComptePoste, initialTab]);
+
+  // canPoint(shift) : le propriétaire du shift, un manager (pour corriger), ou
+  // un compte de pointage partagé rattaché au groupe de la personne. Même règle
+  // que peut_pointer_pour() côté base.
   const canPointShift = (shift) => {
     if (!shift) return false;
     if (!perms.planning) return false;
     if (shift.userId === user.id) return true;
-    return canWrite; // managers peuvent corriger un pointage
+    if (canWrite) return true;
+    return estComptePoste && mesGroupesPoste.has(groupeDeId(shift.userId));
   };
-  const etabId = etablissement?.id || 'etab-1';
 
-  // Équipe de cet établissement (sauf consultant et patron qui ne sont pas planifiés)
-  const equipe = demoData.utilisateurs.filter(u =>
+  // Équipe de cet établissement (sauf consultant et patron qui ne sont pas
+  // planifiés, et les comptes de pointage partagés qui ne sont pas des personnes)
+  const equipeEtab = demoData.utilisateurs.filter(u =>
     u.etablissementIds?.includes(etabId) &&
     !['consultant', 'patron'].includes(u.role) &&
     u.actif !== false
   );
+  const equipe = equipeEtab.filter(u => !groupesEtab.postesParCompte.has(u.id));
 
   // Personnes masquées par le consultant ou le patron : absentes du planning et
   // du pointage pour toute l'équipe. Chacun garde ses propres horaires (pour
@@ -117,6 +157,41 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const canMasquer = ['consultant', 'patron'].includes(user.role) && masquesEtab.status !== 'absent';
   const estMasque = (userId) => userId !== user.id && masquesEtab.masques.has(userId);
   const employees = equipe.filter(u => !estMasque(u.id));
+
+  // ─── Groupes : filtre et sections ───
+  // Un compte partagé qui ne gère pas le planning ne voit au pointage que ses
+  // groupes ; partout ailleurs, tous les groupes.
+  const groupesPointage = groupesActifs && estComptePoste && !canWrite
+    ? groupesEtab.groupes.filter(g => mesGroupesPoste.has(g.id))
+    : groupesEtab.groupes;
+  const groupesProposes = activeTab === 'pointage' ? groupesPointage : groupesEtab.groupes;
+  const aSansGroupe = groupesActifs && employees.some(e => !groupeDeId(e.id));
+  const restreintPoste = activeTab === 'pointage' && groupesActifs && estComptePoste && !canWrite;
+  const filtreEffectif = groupeFiltre !== 'tous' && !groupesProposes.some(g => g.id === groupeFiltre) && groupeFiltre !== 'sans'
+    ? 'tous' : groupeFiltre;
+  const passeFiltre = (userId) => {
+    if (!groupesActifs) return true;
+    const gid = groupeDeId(userId);
+    if (restreintPoste && userId !== user.id && !mesGroupesPoste.has(gid)) return false;
+    if (filtreEffectif === 'tous') return true;
+    if (filtreEffectif === 'sans') return !gid;
+    return gid === filtreEffectif;
+  };
+  // Découpe une liste en sections par groupe (ordre des groupes, « Sans groupe »
+  // à la fin). Sans groupes ou avec un filtre posé : une seule section sans titre.
+  const enSections = (items, userIdOf) => {
+    if (!groupesActifs || filtreEffectif !== 'tous') return [{ id: null, nom: null, items }];
+    const sections = groupesEtab.groupes.map(g => ({ id: g.id, nom: g.nom, items: items.filter(it => groupeDeId(userIdOf(it)) === g.id) }));
+    sections.push({ id: 'sans', nom: 'Sans groupe', items: items.filter(it => !groupeDeId(userIdOf(it))) });
+    return sections.filter(s => s.items.length > 0);
+  };
+  const ongletsGroupes = groupesActifs && (groupesProposes.length + (aSansGroupe && !restreintPoste ? 1 : 0)) > 1
+    ? [
+        { id: 'tous', label: restreintPoste ? 'Mes groupes' : 'Tous' },
+        ...groupesProposes.map(g => ({ id: g.id, label: g.nom })),
+        ...(aSansGroupe && !restreintPoste ? [{ id: 'sans', label: 'Sans groupe' }] : []),
+      ]
+    : null;
 
   // Absences de l'équipe (congé, formation, absence), posées par la direction.
   const absencesEtab = useAbsences(etabId);
@@ -373,6 +448,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
       applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t });
       return;
     }
+    const cle = `${shift.id}:${type}`;
+    if (punchEnCoursRef.current.has(cle)) return;
+    punchEnCoursRef.current.add(cle);
     try {
       const res = await punchOnlineOrQueue({
         call: () => (type === 'arrivee' ? legacySB.db.pointerArrivee(shift.id) : legacySB.db.pointerDepart(shift.id)),
@@ -394,6 +472,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
       }
     } catch (err) {
       notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
+    } finally {
+      punchEnCoursRef.current.delete(cle);
     }
   };
 
@@ -1001,14 +1081,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
     }, 100);
   };
 
-  const allShifts = planningVisible.filter(s => s.date === pointageDate);
+  const allShifts = planningVisible
+    .filter(s => s.date === pointageDate && passeFiltre(s.userId))
+    .sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
+  const sectionsPointage = enSections(allShifts, s => s.userId);
 
   // ── VUE MOBILE : agenda par jour (refonte lisibilité)
   // Une seule journée à la fois, navigation jour sticky, cartes « heure-héros »,
   // bandeau couleur par rôle, résumé de couverture. La grille desktop est inchangée.
   const renderMobilePlanning = () => {
     const dayShifts = planningVisible
-      .filter(s => s.date === mobileDate)
+      .filter(s => s.date === mobileDate && passeFiltre(s.userId))
       .sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
     const isToday = mobileDate === todayStr;
     const dayLabel = new Date(mobileDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -1022,9 +1105,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
       famCount[roleFamily(e?.role)]++;
     });
     const coverageParts = [];
-    if (famCount.cuisine) coverageParts.push(`${famCount.cuisine} cuisine`);
-    if (famCount.salle) coverageParts.push(`${famCount.salle} salle`);
-    if (famCount.autre) coverageParts.push(`${famCount.autre} autre${famCount.autre > 1 ? 's' : ''}`);
+    if (groupesActifs) {
+      // Répartition par groupe (Salle, Cuisine, groupes ajoutés).
+      enSections(uniqueEmpIds, id => id).forEach(sec => {
+        if (sec.nom) coverageParts.push(`${sec.items.length} ${sec.nom.toLowerCase()}`);
+      });
+    } else {
+      if (famCount.cuisine) coverageParts.push(`${famCount.cuisine} cuisine`);
+      if (famCount.salle) coverageParts.push(`${famCount.salle} salle`);
+      if (famCount.autre) coverageParts.push(`${famCount.autre} autre${famCount.autre > 1 ? 's' : ''}`);
+    }
 
     return (
       <div style={pls.mobilePlanWrap}>
@@ -1067,7 +1157,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
           ) : (
             <>
-              {dayShifts.map(shift => {
+              {enSections(dayShifts, s => s.userId).map(sec => (
+                <React.Fragment key={sec.id || 'tous'}>
+                {sec.nom && <div style={pls.groupeTitreMobile}>{sec.nom} <span style={pls.groupeCompte}>{new Set(sec.items.map(s => s.userId)).size}</span></div>}
+                {sec.items.map(shift => {
                 const emp = userDisplay(shift.userId);
                 const role = emp.role ? demoData.roles[emp.role] : null;
                 const roleColor = role?.couleur || 'var(--text3)';
@@ -1100,6 +1193,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   </div>
                 );
               })}
+                </React.Fragment>
+              ))}
               {canWrite && !selectionMode && (
                 <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>+ Ajouter un horaire</button>
               )}
@@ -1116,10 +1211,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
       <div style={pls.mobilePlanList} id="pointage-print">
         <div style={pls.mobileTitle}>Pointages - {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         {allShifts.length === 0 && <div style={{ padding: 20, fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>Aucun horaire ce jour.</div>}
-        {(allShifts || []).map(shift => {
+        {sectionsPointage.map(sec => (
+          <React.Fragment key={sec.id || 'tous'}>
+          {sec.nom && <div style={pls.groupeTitreMobile}>{sec.nom} <span style={pls.groupeCompte}>{new Set(sec.items.map(s => s.userId)).size}</span></div>}
+          {sec.items.map(shift => {
           const emp = userDisplay(shift.userId);
           const role = emp.role ? demoData.roles[emp.role] : null;
-          const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
           const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
           const enPoste = shift.pointageDebut && !shift.pointageFin;
           return (
@@ -1143,12 +1240,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }} className="no-print">
                   {!shift.pointageDebut && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
                   {shift.pointageDebut && !shift.pointageFin && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerDepart(shift)}>Départ</button>}
-                  {shift.pointageDebut && shift.pointageFin && <button style={{ ...pls.ghostBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => resetPointage(shift)}>Réinit.</button>}
+                  {shift.pointageDebut && shift.pointageFin && canWrite && <button style={{ ...pls.ghostBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => resetPointage(shift)}>Réinit.</button>}
                 </div>
               )}
             </div>
           );
         })}
+          </React.Fragment>
+        ))}
       </div>
     );
   };
@@ -1191,6 +1290,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
         {activeTab === 'planning' && absencesEtab.status !== 'absent' && (
           <button style={pls.exportBtn} onClick={() => setShowAbsences(true)}>Absences</button>
         )}
+        {groupesActifs && (canGererGroupes || canPostes) && (
+          <button style={pls.exportBtn} onClick={() => setShowGroupes(true)}>Groupes</button>
+        )}
         {canMasquer && (
           <button style={pls.exportBtn} onClick={() => setShowMasques(true)}>
             Personnes masquées{masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}
@@ -1202,6 +1304,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
         {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>Imprimer</button>}
         {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>Exporter en PDF</button>}
       </div>
+
+      {/* Filtre par groupe (Salle, Cuisine, groupes ajoutés) */}
+      {ongletsGroupes && (
+        <div style={pls.groupeFiltre}>
+          <SegmentedTabs size="sm" active={filtreEffectif} onChange={setGroupeFiltre} tabs={ongletsGroupes} />
+        </div>
+      )}
 
       {/* Contenu */}
       {activeTab === 'planning' ? (
@@ -1215,7 +1324,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ ...pls.grid, gridTemplateColumns: `200px repeat(${DAYS.length}, minmax(90px,1fr))`, minWidth: 200 + DAYS.length * 90 }}>
                 <div style={pls.empColHeader} />
                 {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 11, fontWeight: 700 }}>{d.label}</div></div>)}
-                {employees.map(emp => {
+                {enSections(employees.filter(e => passeFiltre(e.id)), e => e.id).map(sec => (
+                  <React.Fragment key={sec.id || 'tous'}>
+                  {sec.nom && <div style={pls.groupeTitreGrille}>{sec.nom} <span style={pls.groupeCompte}>{sec.items.length}</span></div>}
+                  {sec.items.map(emp => {
                   const role = demoData.roles[emp.role];
                   const totalHours = weeklyHoursByUser[emp.id] || 0;
                   const monthHours = monthlyHoursByUser[emp.id] || 0;
@@ -1254,6 +1366,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     </React.Fragment>
                   );
                 })}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           </div>
@@ -1263,9 +1377,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <div style={pls.card} id="pointage-print">
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)', marginBottom: 10 }}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={pls.ptTable}>
-              <div style={pls.ptHead}><span>Employé</span><span>Prévu</span><span>Arrivée</span><span>Départ</span><span>Durée</span><span>Statut</span></div>
+              <div style={pls.ptHead}><span>Employé</span><span>Prévu</span><span>Arrivée</span><span>Départ</span><span>Durée</span><span>Statut</span><span /></div>
               {allShifts.length === 0 && <div style={{ padding: 20, color: 'var(--text2)', fontSize: 13 }}>Aucun horaire pour cette date.</div>}
-              {(allShifts || []).map(shift => {
+              {sectionsPointage.map(sec => (
+                <React.Fragment key={sec.id || 'tous'}>
+                {sec.nom && <div style={pls.groupeTitrePointage}>{sec.nom} <span style={pls.groupeCompte}>{new Set(sec.items.map(s => s.userId)).size}</span></div>}
+                {sec.items.map(shift => {
                 const emp = userDisplay(shift.userId);
                 const role = emp.role ? demoData.roles[emp.role] : null;
                 const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
@@ -1280,9 +1397,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
                     <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '-'}</span>
                     <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
+                    {/* Pointage en un geste depuis la liste (iPad du restaurant, compte partagé) */}
+                    <span style={pls.ptAction} className="no-print" onClick={e => e.stopPropagation()}>
+                      {canPointShift(shift) && !shift.pointageDebut && <button style={pls.ptPointBtn} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
+                      {canPointShift(shift) && enPoste && <button style={pls.ptPointBtn} onClick={() => pointerDepart(shift)}>Départ</button>}
+                    </span>
                   </div>
                 );
               })}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         )
@@ -1846,6 +1970,18 @@ const Planning = ({ user, etablissement, initialTab }) => {
         />
       )}
 
+      {showGroupes && groupesActifs && (
+        <GroupesModal
+          onClose={() => setShowGroupes(false)}
+          groupesEtab={groupesEtab}
+          personnes={equipe}
+          comptes={equipeEtab}
+          canGerer={canGererGroupes}
+          canPostes={canPostes}
+          roles={demoData.roles}
+        />
+      )}
+
       {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
       {showAbsences && (
         <AbsencesModal
@@ -1918,6 +2054,27 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       {allEmpSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
                     </button>
                   </div>
+                  {/* Sélection d'un groupe entier (ajoute ses membres, ou les retire s'ils sont tous cochés) */}
+                  {groupesActifs && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      {groupesEtab.groupes.map(g => {
+                        const ids = employees.filter(e => groupeDeId(e.id) === g.id).map(e => e.id);
+                        if (!ids.length) return null;
+                        const tousCoches = ids.every(id => batchUserIds.has(id));
+                        return (
+                          <button key={g.id} type="button"
+                            style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 10px', ...(tousCoches ? { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)' } : {}) }}
+                            onClick={() => setBatchUserIds(prev => {
+                              const next = new Set(prev);
+                              ids.forEach(id => (tousCoches ? next.delete(id) : next.add(id)));
+                              return next;
+                            })}>
+                            {g.nom} ({ids.length})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                     {employees.map(emp => {
                       const role = demoData.roles[emp.role];
