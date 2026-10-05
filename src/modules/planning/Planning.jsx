@@ -15,6 +15,8 @@ import { useAbsences } from '../../hooks/useAbsences.js';
 import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import AbsencesModal from './AbsencesModal.jsx';
+import MasquesModal from './MasquesModal.jsx';
+import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -100,12 +102,21 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
   const etabId = etablissement?.id || 'etab-1';
 
-  // Employés de cet établissement (sauf consultant et patron qui ne sont pas planifiés)
-  const employees = demoData.utilisateurs.filter(u =>
+  // Équipe de cet établissement (sauf consultant et patron qui ne sont pas planifiés)
+  const equipe = demoData.utilisateurs.filter(u =>
     u.etablissementIds?.includes(etabId) &&
     !['consultant', 'patron'].includes(u.role) &&
     u.actif !== false
   );
+
+  // Personnes masquées par le consultant ou le patron : absentes du planning et
+  // du pointage pour toute l'équipe. Chacun garde ses propres horaires (pour
+  // pointer) ; le relevé CCNT travaille sur l'équipe complète.
+  const masquesEtab = usePlanningMasques(etabId);
+  const [showMasques, setShowMasques] = React.useState(false);
+  const canMasquer = ['consultant', 'patron'].includes(user.role) && masquesEtab.status !== 'absent';
+  const estMasque = (userId) => userId !== user.id && masquesEtab.masques.has(userId);
+  const employees = equipe.filter(u => !estMasque(u.id));
 
   // Absences de l'équipe (congé, formation, absence), posées par la direction.
   const absencesEtab = useAbsences(etabId);
@@ -113,10 +124,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const { assurerDepuis: assurerAbsencesDepuis } = absencesEtab;
   React.useEffect(() => { assurerAbsencesDepuis(selectedDate); }, [selectedDate, assurerAbsencesDepuis]);
   React.useEffect(() => { assurerAbsencesDepuis(mobileDate); }, [mobileDate, assurerAbsencesDepuis]);
-  const absencesVisibles = absencesEtab.status === 'absent' ? [] : absencesEtab.absences;
+  const absencesVisibles = absencesEtab.status === 'absent' ? [] : absencesEtab.absences.filter(a => !estMasque(a.userId));
 
   // Planning de cet établissement uniquement
   const planningEtab = planning.filter(s => (s.etablissementId || 'etab-1') === etabId);
+  // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
+  // de chevauchement : un horaire masqué existe toujours.
+  const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
 
   // Téléphones saisis par chacun dans « Mon compte » (consultant et patron).
   const phones = useTeamPhones(user.role);
@@ -200,8 +214,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
     return arr;
   }, [selectedDate, horizon, isMobile]);
 
-  const getShift = (userId, date) => planningEtab.find(s => s.userId === userId && s.date === date);
-  const getShiftsDay = (userId, date) => planningEtab.filter(s => s.userId === userId && s.date === date);
+  const getShift = (userId, date) => planningVisible.find(s => s.userId === userId && s.date === date);
+  const getShiftsDay = (userId, date) => planningVisible.filter(s => s.userId === userId && s.date === date);
 
   const calcHeures = (debut, fin, pause) => {
     if (!debut || !fin) return null;
@@ -529,8 +543,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Horaires actuellement visibles dans la vue planning - base du « tout sélectionner ».
   // En mobile, l'unité affichée est le jour ; en desktop, la plage de jours de la grille.
   const visibleShifts = isMobile
-    ? planningEtab.filter(s => s.date === mobileDate)
-    : planningEtab.filter(s => DAYS.some(d => d.date === s.date));
+    ? planningVisible.filter(s => s.date === mobileDate)
+    : planningVisible.filter(s => DAYS.some(d => d.date === s.date));
 
   const toggleSelectionMode = () => {
     setSelectionMode(prev => {
@@ -875,7 +889,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Conforme aux art. 15 et 21 CCNT hôtellerie-restauration suisse
 
   const openCCNTModal = () => {
-    setCcntEmployeeId(employees[0]?.id || null);
+    setCcntEmployeeId(equipe[0]?.id || null);
     setCcntMonth(todayStr.slice(0, 7));
     setShowCCNTModal(true);
   };
@@ -987,13 +1001,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
     }, 100);
   };
 
-  const allShifts = planningEtab.filter(s => s.date === pointageDate);
+  const allShifts = planningVisible.filter(s => s.date === pointageDate);
 
   // ── VUE MOBILE : agenda par jour (refonte lisibilité)
   // Une seule journée à la fois, navigation jour sticky, cartes « heure-héros »,
   // bandeau couleur par rôle, résumé de couverture. La grille desktop est inchangée.
   const renderMobilePlanning = () => {
-    const dayShifts = planningEtab
+    const dayShifts = planningVisible
       .filter(s => s.date === mobileDate)
       .sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
     const isToday = mobileDate === todayStr;
@@ -1176,6 +1190,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
         )}
         {activeTab === 'planning' && absencesEtab.status !== 'absent' && (
           <button style={pls.exportBtn} onClick={() => setShowAbsences(true)}>Absences</button>
+        )}
+        {canMasquer && (
+          <button style={pls.exportBtn} onClick={() => setShowMasques(true)}>
+            Personnes masquées{masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}
+          </button>
         )}
         <div style={{ flex: 1 }} />
         {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>Dupliquer la semaine</button>}
@@ -1458,7 +1477,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <label style={pls.fieldLabel}>Collaborateur</label>
                   <select style={pls.fieldInput} value={ccntEmployeeId || ''} onChange={e => setCcntEmployeeId(e.target.value)}>
                     <option value="">Choisir…</option>
-                    {employees.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
+                    {equipe.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
                   </select>
                 </div>
                 <div>
@@ -1814,6 +1833,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
             onClick={() => setShowBulkDeleteConfirm(true)}
           >Supprimer ({selectedIds.size})</button>
         </div>
+      )}
+
+      {showMasques && canMasquer && (
+        <MasquesModal
+          onClose={() => setShowMasques(false)}
+          employees={equipe}
+          masques={masquesEtab.masques}
+          masquer={masquesEtab.masquer}
+          afficher={masquesEtab.afficher}
+          roles={demoData.roles}
+        />
       )}
 
       {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
