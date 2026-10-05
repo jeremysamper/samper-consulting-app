@@ -726,6 +726,11 @@ export const UI_GLOSSARY = {
   'Séparer cette table': 'Split this table off',
   'Elle retourne seule à sa place habituelle': 'It goes back alone to its usual spot',
   'Remettre à sa place': 'Put back in place',
+  'Tourner la table': 'Rotate the table',
+  'Mettre à la verticale': 'Turn upright',
+  'Mettre à l’horizontale': 'Lay flat',
+  'La mettre à la verticale, pour ce service seulement': 'Turn it upright, for this service only',
+  'La remettre à l’horizontale, pour ce service seulement': 'Lay it flat again, for this service only',
   'Comme sur le plan de base': 'As on the base plan',
   'Numéro de la tablée': 'Number of the joined table',
   // Nom de l'offre, jamais traduit

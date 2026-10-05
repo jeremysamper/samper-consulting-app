@@ -89,7 +89,7 @@ const snap  = (v) => Math.round(v / PLAN_GRID) * PLAN_GRID;
 function TableShape({
   table, occupants, mode, estCible, canEdit,
   onPointerDownTable, onPointerDownOccupant, onEditTable, dragLienId, onOpenOccupant, onTap,
-  tablee = null, occupantsTablee = null,
+  tablee = null, occupantsTablee = null, onTourner = null,
 }) {
   const places   = table.nb_places || 0;
   // `part` et non `nb_couverts` : une tablée étalée sur deux tables ne pèse
@@ -153,6 +153,31 @@ function TableShape({
         userSelect: 'none', WebkitUserSelect: 'none',
       }}
     >
+      {/* Quart de tour : à l'horizontale ou à la verticale. L'appui ne doit
+          ni lancer le glisser de la table ni ouvrir ses réglages. */}
+      {onTourner && (
+        <button
+          type="button"
+          className="mini"
+          aria-label="Tourner la table"
+          title={Number(table.largeur) >= Number(table.hauteur) ?'Mettre à la verticale' : 'Mettre à l’horizontale'}
+          onPointerDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onTourner(table.id); }}
+          style={{
+            position: 'absolute', top: 3, right: 3, zIndex: 1,
+            width: 26, height: 26, minHeight: 0, padding: 0,
+            borderRadius: '50%',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+            background: 'var(--surface)', color: 'var(--accent)',
+            fontSize: 14, fontWeight: 700, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', touchAction: 'manipulation',
+          }}
+        >
+          ⟳
+        </button>
+      )}
       {tablee !== 'secondaire' && (
       <>
       {/* Nom + capacité (le seul numéro, pour une tablée) */}
@@ -318,6 +343,9 @@ export default function PlanSalle({
   // que la migration 20261003_plan_salle_service n'est pas passée.
   const [ajustements,  setAjustements]  = useState([]);
   const [ajustIndispo, setAjustIndispo] = useState(false);
+  // Vrai tant que la migration 20261005_plan_salle_pivot n'est pas passée :
+  // la rotation reste possible sur le plan de base, pas pour un service.
+  const [pivotIndispo, setPivotIndispo] = useState(false);
   const [ajuster,      setAjuster]      = useState(false);   // « Ajuster la salle »
   const [tableOuverte, setTableOuverte] = useState(null);    // id de la table touchée
   const [reserverSur,  setReserverSur]  = useState(null);    // table de « Réserver la table »
@@ -397,9 +425,9 @@ export default function PlanSalle({
       const ids = (resasRef.current || []).map((r) => r.id);
       const { data: l, error: eL } = await plan.listLiensPourResas(ids);
       if (eL) { echec(eL); return; }
-      const { data: aj, error: eA, indispo } = date
+      const { data: aj, error: eA, indispo, pivotIndispo: sansPivot } = date
         ? await plan.listAjustements(date)
-        : { data: [], error: null, indispo: false };
+        : { data: [], error: null, indispo: false, pivotIndispo: false };
       if (eA) { echec(eA); return; }
       // Adoption des tables orphelines (salle_id null : posées par un bundle
       // antérieur à la migration des salles, ou dont la salle a été
@@ -426,6 +454,7 @@ export default function PlanSalle({
       setLiens(l);
       setAjustements(aj || []);
       setAjustIndispo(!!indispo);
+      setPivotIndispo(!!sansPivot);
       setLoading(false);
       setError(null);
       setNonActualise(false);
@@ -495,12 +524,17 @@ export default function PlanSalle({
       const a = ajustParTable.get(t.id);
       if (!a) return t;
       const deplacee = a.pos_x != null && a.pos_y != null;
+      // Quart de tour pour ce service : largeur et hauteur échangées.
+      const pivotee = !!a.pivotee;
       return {
         ...t,
         pos_x: deplacee ? Number(a.pos_x) : t.pos_x,
         pos_y: deplacee ? Number(a.pos_y) : t.pos_y,
+        largeur: pivotee ? t.hauteur : t.largeur,
+        hauteur: pivotee ? t.largeur : t.hauteur,
         fusion: a.fusion || null,
         deplacee,
+        pivotee,
       };
     });
   }, [tables, ajustParTable]);
@@ -1013,14 +1047,21 @@ export default function PlanSalle({
     ]);
   }
 
-  async function ecrireAjustements(lignes, supprimes = []) {
+  async function ecrireAjustements(lignesBrutes, supprimes = []) {
+    // Une ligne qui ne dit rien du quart de tour garde celui de la table :
+    // déplacer ou rapprocher une table tournée ne doit pas la redresser.
+    const lignes = lignesBrutes.map((l) => ({
+      ...l,
+      pivotee: l.pivotee ?? !!ajustRef.current.get(l.table_id)?.pivotee,
+    }));
     majAjustementsLocaux(lignes, supprimes);
     if (supprimes.length) {
       const { error: e } = await plan.effacerAjustements(date, serviceActif, supprimes);
       if (e) { notify(e, 'error'); load(); return false; }
     }
     if (lignes.length) {
-      const { error: e } = await plan.enregistrerAjustements(date, serviceActif, lignes);
+      const { error: e, pivotIndispo: sansPivot } = await plan.enregistrerAjustements(date, serviceActif, lignes);
+      if (sansPivot) setPivotIndispo(true);
       if (e) { notify(e, 'error'); load(); return false; }
     }
     return true;
@@ -1110,8 +1151,9 @@ export default function PlanSalle({
     if (restants.length === 1) {
       const r = restants[0];
       const a = ajustRef.current.get(r.id);
-      if (a?.pos_x != null && a?.pos_y != null) lignes.push({ table_id: r.id, pos_x: a.pos_x, pos_y: a.pos_y, fusion: null });
-      else supprimes.push(r.id);
+      if ((a?.pos_x != null && a?.pos_y != null) || a?.pivotee) {
+        lignes.push({ table_id: r.id, pos_x: a.pos_x ?? null, pos_y: a.pos_y ?? null, fusion: null });
+      } else supprimes.push(r.id);
     }
     if (!(await ecrireAjustements(lignes, supprimes))) return;
     const idsRestants = new Set(restants.map((t) => t.id));
@@ -1126,6 +1168,70 @@ export default function PlanSalle({
     if (await ecrireAjustements([], [tableId])) {
       notify(`Table ${nomTable(tableId)} remise à sa place`, 'info');
     }
+  }
+
+  // ── Quart de tour ───────────────────────────────────────────────────
+  // Une table tournée échange sa largeur et sa hauteur autour de son centre :
+  // elle pivote sur place au lieu de partir vers la droite. Bornée au canevas
+  // et sans aimantation. Près d'un mur, la borne la décale : un second quart
+  // de tour fait au même endroit la ramène alors à sa place de départ, et non
+  // à un centre déjà décalé (voir dernierQuartRef et commeLaBase).
+  const memePlace = (a, b) => Math.abs(Number(a.pos_x) - Number(b.pos_x)) < 0.5
+    && Math.abs(Number(a.pos_y) - Number(b.pos_y)) < 0.5;
+  // Plan de base : dernier quart de tour de chaque table, { avant, apres }.
+  const dernierQuartRef = useRef(new Map());
+
+  function apresQuartDeTour(t) {
+    const w = Number(t.largeur);
+    const h = Number(t.hauteur);
+    return {
+      largeur: h,
+      hauteur: w,
+      pos_x: clamp(Number(t.pos_x) + (w - h) / 2, 0, PLAN_W - h),
+      pos_y: clamp(Number(t.pos_y) + (h - w) / 2, 0, PLAN_H - w),
+    };
+  }
+
+  // Plan de base (« Modifier le plan ») : la table elle-même change de sens.
+  async function tournerTableBase(tableId) {
+    const t = (tablesRef.current || []).find((x) => x.id === tableId);
+    if (!t) return;
+    // Retour du quart de tour précédent, la table n'ayant pas bougé depuis :
+    // elle reprend exactement sa place d'avant.
+    const dernier = dernierQuartRef.current.get(tableId);
+    const patch = dernier && memePlace(t, dernier.apres) && Number(t.largeur) === dernier.apres.largeur
+      ? { ...dernier.avant }
+      : apresQuartDeTour(t);
+    dernierQuartRef.current.set(tableId, {
+      avant: { largeur: Number(t.largeur), hauteur: Number(t.hauteur), pos_x: Number(t.pos_x), pos_y: Number(t.pos_y) },
+      apres: patch,
+    });
+    setTables((prev) => (prev || []).map((x) => (x.id === tableId ? { ...x, ...patch } : x)));
+    const { error: e } = await plan.updateTable(tableId, patch);
+    if (e) { notify(`Table ${t.nom} non tournée : ${e}`, 'error'); load(); }
+  }
+
+  // Service (ou « Ajuster la salle ») : un écart de plus, daté, le plan de
+  // base ne bouge pas. Revenue dans son sens et à sa place, seule, la table
+  // n'a plus d'écart : la ligne est effacée.
+  async function tournerTableService(tableId) {
+    if (pivotIndispo) {
+      notify('Tourner une table pour un service demande une mise à jour de la base (migration 20261005_plan_salle_pivot).', 'warning');
+      return;
+    }
+    const vue  = (tablesVuesRef.current || []).find((x) => x.id === tableId);
+    const base = (tablesRef.current || []).find((x) => x.id === tableId);
+    if (!vue || !base) return;
+    const a = ajustRef.current.get(tableId);
+    const pivotee = !a?.pivotee;
+    // Tournée depuis sa place de base sans avoir bougé depuis : le quart de
+    // tour inverse la remet à sa place de base, même si la borne du canevas
+    // l'avait décalée.
+    const commeLaBase = !pivotee && memePlace(vue, apresQuartDeTour(base));
+    if (commeLaBase && !a?.fusion) { await ecrireAjustements([], [tableId]); return; }
+    const { pos_x, pos_y } = commeLaBase ? base : apresQuartDeTour(vue);
+    if (!pivotee && !a?.fusion && memePlace({ pos_x, pos_y }, base)) { await ecrireAjustements([], [tableId]); return; }
+    await ecrireAjustements([{ table_id: tableId, pos_x, pos_y, fusion: a?.fusion ?? null, pivotee }]);
   }
 
   async function revenirAuPlanDeBase() {
@@ -1347,6 +1453,19 @@ export default function PlanSalle({
     }
   }
 
+  // Bouton ⟳ posé sur la table elle-même, là où on manipule le meuble :
+  // dessin du plan de base, ou ajustement de la salle pour ce service. En
+  // service, le quart de tour passe par la fiche de la table (le toucher
+  // sert déjà à l'ouvrir). Une table ronde ou carrée n'a pas de sens ; une
+  // table d'une tablée rapprochée suit sa tablée (séparer d'abord).
+  const nonCarree = (t) => Number(t.largeur) !== Number(t.hauteur);
+  const tournerSurCanevas = (t) => {
+    if (!canEdit || !nonCarree(t)) return null;
+    if (modePlan) return tournerTableBase;
+    if (ajusterActif && !pivotIndispo && !roleTablee.has(t.id)) return tournerTableService;
+    return null;
+  };
+
   // Fiche de la table touchée : la tablée entière, ses places, ses clients.
   const ficheTablee = tableOuverte ? tableeDe(tableOuverte) : [];
   const ficheOccupants = (() => {
@@ -1420,7 +1539,7 @@ export default function PlanSalle({
       }}>
         {ajusterActif && (
           <div style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12, color: 'var(--text2)', order: 2 }}>
-            Ce service seulement : glisse une table pour la déplacer, lâche-la sur une autre pour les rapprocher, touche-la pour la séparer.
+            Ce service seulement : glisse une table pour la déplacer, lâche-la sur une autre pour les rapprocher, touche-la pour la séparer, ⟳ pour la tourner.
           </div>
         )}
         {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
@@ -1439,7 +1558,7 @@ export default function PlanSalle({
         )}
         {modePlan && (
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text2)' }}>
-            Glisse les tables pour les déplacer · double-clic pour les régler
+            Glisse les tables pour les déplacer · ⟳ pour les tourner · double-clic pour les régler
           </div>
         )}
         {canEdit && (
@@ -1601,6 +1720,7 @@ export default function PlanSalle({
                 dragLienId={drag?.demarre && drag?.kind === 'lien' ? drag.lienId : null}
                 onPointerDownTable={ajusterActif ? onPointerDownTableService : onPointerDownTable}
                 onPointerDownOccupant={onPointerDownOccupant}
+                onTourner={tournerSurCanevas(t)}
                 onEditTable={setEditTable}
                 onTap={(table) => {
                   if (Date.now() - finGesteRef.current < 400) return;
@@ -1752,7 +1872,12 @@ export default function PlanSalle({
           canEdit={canEdit}
           ajuster={ajusterActif}
           groupe={ficheTablee.length > 1}
-          deplacee={!!ficheTablee[0]?.deplacee}
+          deplacee={!!(ficheTablee[0]?.deplacee || ficheTablee[0]?.pivotee)}
+          verticale={ficheTablee.length === 1
+            && Number(ficheTablee[0].hauteur) > Number(ficheTablee[0].largeur)}
+          onTourner={canEdit && !ajustIndispo && !pivotIndispo
+            && ficheTablee.length === 1 && nonCarree(ficheTablee[0])
+            ? () => tournerTableService(tableOuverte) : undefined}
           onClose={() => setTableOuverte(null)}
           onPassage={(n) => clientDePassage(tableOuverte, n)}
           onReserver={() => { reservePoseeRef.current = false; setReserverSur(tableOuverte); }}

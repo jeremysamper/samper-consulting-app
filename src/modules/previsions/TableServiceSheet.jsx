@@ -68,9 +68,9 @@ function SousTitre({ children }) {
 export default function TableServiceSheet({
   titre, composition = '', numeros = [], numeroActuel, onChoisirNumero,
   places, occupants = [], resasService = [], tablesParResa,
-  canEdit, ajuster = false, groupe = false, deplacee = false,
+  canEdit, ajuster = false, groupe = false, deplacee = false, verticale = false,
   onClose, onPassage, onReserver, onAssigner, onOpenResa, onStatut, onLiberer,
-  onSeparer, onRemettre,
+  onSeparer, onRemettre, onTourner,
 }) {
   const [etape, setEtape]       = useState('menu');   // menu | passage | assigner
   const [couverts, setCouverts] = useState(2);
@@ -216,6 +216,16 @@ export default function TableServiceSheet({
               )}
             </>
           )}
+          {ajuster && onTourner && (
+            <button type="button" style={styleBouton(false)} onClick={() => { onTourner(); onClose(); }}>
+              <span>⟳ Tourner la table</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>
+                {verticale
+                  ? 'La remettre à l’horizontale, pour ce service seulement.'
+                  : 'La mettre à la verticale, pour ce service seulement.'}
+              </span>
+            </button>
+          )}
 
           {/* ── Service : clients à cette table ── */}
           {!ajuster && etape === 'menu' && occupants.length > 0 && (
@@ -281,6 +291,18 @@ export default function TableServiceSheet({
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>Choisir une réservation du service.</span>
               </button>
             </>
+          )}
+
+          {/* ── Le meuble, pour ce service : quart de tour ── */}
+          {!ajuster && etape === 'menu' && onTourner && (
+            <button type="button" style={styleBouton(false)} onClick={() => { onTourner(); onClose(); }}>
+              <span>⟳ Tourner la table</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>
+                {verticale
+                  ? 'La remettre à l’horizontale, pour ce service seulement.'
+                  : 'La mettre à la verticale, pour ce service seulement.'}
+              </span>
+            </button>
           )}
 
           {!ajuster && etape === 'menu' && !canEdit && occupants.length === 0 && (

@@ -254,15 +254,32 @@ export function usePlanSalle(etablissementId) {
         return { data: [], error: null, indispo: true };
       }
       if (error) return { data: null, error: mapError(error) };
-      return { data: data || [], error: null, indispo: false };
+      // Quart de tour d'un service (migration 20261005_plan_salle_pivot) :
+      // une ligne lue dit si la colonne existe ; sans ligne ce jour-là, une
+      // sonde d'une ligne tranche. Sans elle, la rotation en service est
+      // masquée plutôt que d'écrire un déplacement sans son quart de tour.
+      let pivotIndispo;
+      if ((data || []).length) {
+        pivotIndispo = !('pivotee' in data[0]);
+      } else {
+        const { error: eP } = await supabase
+          .from(TABLE_AJUST).select('pivotee').eq('etablissement_id', etablissementId).limit(1);
+        pivotIndispo = !!eP && CODES_SCHEMA_ABSENT.has(String(eP.code || ''));
+      }
+      return { data: data || [], error: null, indispo: false, pivotIndispo };
     }
 
     // Écrit l'écart de plusieurs tables d'un coup (déplacement d'une tablée
-    // entière, fusion). `lignes` : [{ table_id, pos_x, pos_y, fusion }].
+    // entière, fusion, quart de tour).
+    // `lignes` : [{ table_id, pos_x, pos_y, fusion, pivotee }].
+    //
+    // Tant que la migration 20261005_plan_salle_pivot n'est pas passée, la
+    // colonne `pivotee` est inconnue : on réécrit sans elle (déplacer et
+    // rapprocher continuent de marcher) et `pivotIndispo` le signale.
     async function enregistrerAjustements(dateService, service, lignes) {
       if (!lignes.length) return { data: [], error: null };
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const ecrire = (avecPivot) => supabase
         .from(TABLE_AJUST)
         .upsert(lignes.map((l) => ({
           etablissement_id: etablissementId,
@@ -272,11 +289,19 @@ export function usePlanSalle(etablissementId) {
           pos_x: l.pos_x ?? null,
           pos_y: l.pos_y ?? null,
           fusion: l.fusion ?? null,
+          ...(avecPivot ? { pivotee: !!l.pivotee } : {}),
           updated_at: now,
         })), { onConflict: 'table_id,date_service,service' })
         .select();
-      if (error) return { data: null, error: mapError(error) };
-      return { data: data || [], error: null };
+      let { data, error } = await ecrire(true);
+      let pivotIndispo = false;
+      if (error && CODES_SCHEMA_ABSENT.has(String(error.code || ''))
+          && /pivotee/.test(`${error.message || ''} ${error.details || ''}`)) {
+        pivotIndispo = true;
+        ({ data, error } = await ecrire(false));
+      }
+      if (error) return { data: null, error: mapError(error), pivotIndispo };
+      return { data: data || [], error: null, pivotIndispo };
     }
 
     // Remet des tables à leur place et seules (supprime leur écart). Sans

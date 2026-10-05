@@ -708,6 +708,11 @@ export const UI_GLOSSARY_ES = {
   'Séparer cette table': 'Separar esta mesa',
   'Elle retourne seule à sa place habituelle': 'Vuelve sola a su sitio habitual',
   'Remettre à sa place': 'Devolver a su sitio',
+  'Tourner la table': 'Girar la mesa',
+  'Mettre à la verticale': 'Poner en vertical',
+  'Mettre à l’horizontale': 'Poner en horizontal',
+  'La mettre à la verticale, pour ce service seulement': 'Ponerla en vertical, solo para este servicio',
+  'La remettre à l’horizontale, pour ce service seulement': 'Volver a ponerla en horizontal, solo para este servicio',
   'Comme sur le plan de base': 'Como en el plano base',
   'Numéro de la tablée': 'Número de la mesa unida',
   // Nom de l'offre, jamais traduit
