@@ -8,6 +8,11 @@ import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import PlanTableForm from './PlanTableForm.jsx';
 import PlanSallesManager from './PlanSallesManager.jsx';
+import PlanElementForm from './PlanElementForm.jsx';
+import {
+  ELEMENTS, ELEMENT_PAR_TYPE, ElementDecor, GrillePlan, estObstacle,
+  redimensionner, apresQuartDeTour as quartDeTourElement,
+} from './planDecor.jsx';
 import ServicePanneau from './ServicePanneau.jsx';
 import TableServiceSheet from './TableServiceSheet.jsx';
 import ReservationForm from './ReservationForm.jsx';
@@ -36,6 +41,14 @@ import { serviceAffiche } from './statutsReservation.js';
 //
 // Toucher une table en service ouvre TableServiceSheet : client de passage,
 // réserver la table, assigner une réservation, et les clients déjà assis.
+//
+// DÉCOR ET PLACES DE BAR
+// Murs, baies, porte, bar, accueil... (salle_elements, voir planDecor.jsx) se
+// dessinent dans « Modifier le plan » et restent inertes partout ailleurs,
+// sous les tables. Une place de bar est une table de forme 'tabouret' :
+// petite, numérotée à part (B1, B2...), placée comme une table, jamais
+// rapprochée en tablée. Le quadrillage n'apparaît que dans « Modifier le
+// plan » : en service, il brouillait la lecture de la salle.
 //
 // GLISSER-DÉPOSER AU POINTEUR, PAS EN HTML5
 // L'API HTML5 (draggable + dragstart) ne produit rien au doigt : elle
@@ -67,6 +80,22 @@ const SERVICES = [
 const SEUIL_DRAG = 6;
 
 const parNumero = (a, b) => String(a.nom).localeCompare(String(b.nom), undefined, { numeric: true });
+
+// Place de bar : une table dessinée petite, numérotée à part.
+const estTabouret = (t) => t?.forme === 'tabouret';
+
+// Pas entre deux places de bar posées à la suite (tabouret de 50 + 10).
+const PAS_TABOURET = 60;
+
+// Bouton de la rangée « Ajouter » du dessin. flexShrink 0 : dans une rangée
+// qui défile, un bouton comprimé passerait sous son voisin.
+const puce = {
+  flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 8,
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+  background: 'var(--surface)', color: 'var(--text)',
+  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+  whiteSpace: 'nowrap',
+};
 
 // Table dont la tablée porte le numéro. La clé de fusion EST l'id de cette
 // table : choisir le numéro d'une tablée, c'est réécrire sa clé. Si la table
@@ -160,7 +189,8 @@ function TableShape({
   else if (deborde)      background = 'var(--danger-bg-soft)';
   else if (occupants.length) background = 'var(--success-bg-soft)';
 
-  const rayon = table.forme === 'ronde' ? '50%' : table.forme === 'carree' ? 10 : 8;
+  const tabouret = estTabouret(table);
+  const rayon = table.forme === 'ronde' || tabouret ? '50%' : table.forme === 'carree' ? 10 : 8;
   const modePlan = mode === 'plan';
   const sobre = tablee === 'principale';
   const liste = sobre ? (occupantsTablee || []) : occupants;
@@ -169,6 +199,9 @@ function TableShape({
   const deplacable = (modePlan || mode === 'ajuster') && canEdit;
 
   let titre = `${table.nom} · ${places} place${places > 1 ? 's' : ''}`;
+  // Une place de bar n'a la place d'écrire que trois lettres : le nom entier
+  // passe dans l'info-bulle.
+  if (tabouret && occupants.length) titre = `${table.nom} · ${occupants.map((o) => o.resa.nom).join(', ')}`;
   if (modePlan) titre = `${table.nom} · glisser pour déplacer, double-clic pour régler`;
   else if (mode === 'ajuster') titre = `${table.nom} · glisser pour déplacer, lâcher sur une autre table pour les rapprocher`;
 
@@ -193,7 +226,7 @@ function TableShape({
         boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        gap: 1, padding: 3, overflow: 'hidden',
+        gap: tabouret ? 0 : 1, padding: tabouret ? 1 : 3, overflow: 'hidden',
         opacity: inactive ? 0.45 : 1,
         cursor: deplacable ? 'grab' : onTap ? 'pointer' : 'default',
         touchAction: deplacable ? 'none' : 'auto',
@@ -231,20 +264,21 @@ function TableShape({
       <>
       {/* Nom + capacité (le seul numéro, pour une tablée) */}
       <div style={{
-        fontSize: sobre ? 13 : 11, fontWeight: 800, lineHeight: 1.1,
+        fontSize: tabouret ? 10 : sobre ? 13 : 11, fontWeight: 800, lineHeight: 1.1,
         color: 'var(--text)', fontFamily: 'var(--font-serif)',
         maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {table.nom}
       </div>
-      {!sobre && (
+      {!sobre && !tabouret && (
         <div style={{ fontSize: 9, color: deborde ? 'var(--danger-text)' : 'var(--text3)', lineHeight: 1.1 }}>
           {occupants.length ? `${assis}/${places}` : `${places} pl.`}
         </div>
       )}
 
-      {/* Occupants - chaque pastille est une poignée de glisser */}
-      {liste.slice(0, 3).map(({ lien, resa, etale }) => (
+      {/* Occupants - chaque pastille est une poignée de glisser. Sur une
+          place de bar, une seule pastille de trois lettres. */}
+      {liste.slice(0, tabouret ? 1 : 3).map(({ lien, resa, etale }) => (
         <div
           key={lien.id}
           data-plan-occupant={lien.id}
@@ -256,7 +290,7 @@ function TableShape({
             ? (e) => { e.stopPropagation(); onOpenOccupant(resa); }
             : undefined}
           style={{
-            maxWidth: '100%', padding: '1px 5px', borderRadius: 20,
+            maxWidth: '100%', padding: tabouret ? '0 3px' : '1px 5px', borderRadius: 20,
             // Une table occupée par des clients déjà assis se distingue de
             // celle qui les attend : c'est la question qu'on se pose en
             // regardant le plan pendant le service.
@@ -264,7 +298,7 @@ function TableShape({
                       : resa.statut === 'parti'  ? 'var(--text3)'
                       : 'var(--accent)',
             color: '#fff',
-            fontSize: 9, fontWeight: 700, lineHeight: 1.35,
+            fontSize: tabouret ? 8 : 9, fontWeight: 700, lineHeight: 1.35,
             fontFamily: 'var(--font)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             cursor: mode === 'service' && canEdit ? 'grab' : mode === 'service' && onOpenOccupant ? 'pointer' : 'default',
@@ -274,10 +308,12 @@ function TableShape({
         >
           {/* ⇄ : la tablée déborde sur une autre table, les couverts affichés
               sont ceux du groupe entier et non de cette seule table. */}
-          {sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} · ${resa.nb_couverts}`}
+          {tabouret
+            ? `${String(resa.nom || '').trim().slice(0, 3)}${liste.length > 1 ? '+' : ''}`
+            : sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} · ${resa.nb_couverts}`}
         </div>
       ))}
-      {liste.length > 3 && (
+      {!tabouret && liste.length > 3 && (
         <div style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 700 }}>
           +{liste.length - 3}
         </div>
@@ -399,14 +435,24 @@ export default function PlanSalle({
   const [tableOuverte, setTableOuverte] = useState(null);    // id de la table touchée
   const [reserverSur,  setReserverSur]  = useState(null);    // table de « Réserver la table »
   const reservePoseeRef = useRef(false);
+  // Décor de la salle (murs, baies, bar...), vrai tant que la migration
+  // 20261007_plan_salle_elements n'est pas passée : décor et place de bar
+  // restent alors masqués.
+  const [elements,        setElements]        = useState([]);
+  const [elementsIndispo, setElementsIndispo] = useState(false);
+  const [selection,       setSelection]       = useState(null);  // id de l'élément choisi
+  const [supprEnAttente,  setSupprEnAttente]  = useState(false); // « Supprimer » touché une fois
+  const [nommer,          setNommer]          = useState(null);  // élément dont on règle le nom
 
   // Refs miroir : les gestionnaires de pointeur sont posés une seule fois par
   // geste, ils liraient sinon un état figé au moment de l'appui.
   const dragRef   = useRef(null);
   const tablesRef = useRef(null);
   const liensRef  = useRef(null);
+  const elementsRef = useRef([]);
   tablesRef.current = tables;
   liensRef.current  = liens;
+  elementsRef.current = elements;
   // Heure du dernier glisser relâché : le clic que le navigateur émet parfois
   // juste après ne doit pas ouvrir la réservation qu'on vient de déplacer.
   const finGesteRef = useRef(0);
@@ -433,6 +479,24 @@ export default function PlanSalle({
   const largeurPlan = ajusteHauteur && zone && zone.h > 0
     ? Math.max(240, Math.floor(Math.min(zone.w, zone.h * (PLAN_W / PLAN_H))))
     : null;
+
+  // Largeur du canevas à l'écran : les lignes fines du quadrillage (tous les
+  // 10) ne s'affichent que si elles restent espacées d'au moins 7 px.
+  const [largeurCanevas, setLargeurCanevas] = useState(0);
+  const observateurCanevasRef = useRef(null);
+  const canevasRef = useCallback((el) => {
+    canvasRef.current = el;
+    observateurCanevasRef.current?.disconnect();
+    observateurCanevasRef.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entree]) => {
+      const w = Math.round(entree.contentRect.width);
+      setLargeurCanevas((v) => (v === w ? v : w));
+    });
+    ro.observe(el);
+    observateurCanevasRef.current = ro;
+  }, []);
+  useEffect(() => () => observateurCanevasRef.current?.disconnect(), []);
 
   // ── Chargement ──────────────────────────────────────────────────────
   // La clé de rechargement est la LISTE DES IDS sérialisée, pas le tableau
@@ -478,6 +542,8 @@ export default function PlanSalle({
         ? await plan.listAjustements(date)
         : { data: [], error: null, indispo: false, pivotIndispo: false };
       if (eA) { echec(eA); return; }
+      const { data: el, error: eE, indispo: sansDecor } = await plan.listElements();
+      if (eE) { echec(eE); return; }
       // Adoption des tables orphelines (salle_id null : posées par un bundle
       // antérieur à la migration des salles, ou dont la salle a été
       // supprimée). Tant qu'elles restent orphelines, l'affichage les
@@ -504,6 +570,8 @@ export default function PlanSalle({
       setAjustements(aj || []);
       setAjustIndispo(!!indispo);
       setPivotIndispo(!!sansPivot);
+      setElements(el || []);
+      setElementsIndispo(!!sansDecor);
       setLoading(false);
       setError(null);
       setNonActualise(false);
@@ -522,12 +590,15 @@ export default function PlanSalle({
   useEffect(() => {
     const bridge = dbService.getBridge();
     if (!bridge?.realtime) return undefined;
+    // salle_elements seulement une fois la table créée : un canal ouvert sur
+    // une table qui n'existe pas encore ne recevrait rien.
     const unsub = bridge.realtime.subscribeReload(
-      ['salles', 'salle_tables', 'reservation_tables', 'salle_tables_service'],
+      ['salles', 'salle_tables', 'reservation_tables', 'salle_tables_service',
+        ...(elementsIndispo ? [] : ['salle_elements'])],
       () => { if (!dragRef.current) load(); },
     );
     return () => { unsub && unsub(); };
-  }, [load]);
+  }, [load, elementsIndispo]);
 
   // ── Service affiché ─────────────────────────────────────────────────
   // Par défaut celui qui a le plus de couverts ce jour-là : ouvrir sur
@@ -622,6 +693,17 @@ export default function PlanSalle({
     if (!(salles || []).length) return tablesVues;   // pas encore de salles : tout afficher
     return tablesVues.filter((t) => salleDeTable(t) === salleId);
   }, [tablesVues, salles, salleId, salleDeTable]);
+
+  // Décor de la salle affichée. Les zones d'abord : elles se dessinent au
+  // sol, sous les murs et le mobilier.
+  const elementsSalle = useMemo(() => (elements || [])
+    .filter((e) => e.salle_id === salleId)
+    .sort((a, b) => (a.type === 'zone' ? 0 : 1) - (b.type === 'zone' ? 0 : 1)),
+  [elements, salleId]);
+
+  // Changer de salle ou quitter le dessin désélectionne : la barre d'actions
+  // parlerait d'un élément qu'on ne voit plus.
+  useEffect(() => { setSelection(null); setSupprEnAttente(false); }, [salleId, mode]);
 
   // Contour des tablées rapprochées de la salle affichée : un cadre autour
   // des tables réunies.
@@ -801,6 +883,9 @@ export default function PlanSalle({
   function onPointerDownTable(e, table) {
     const p = versCanevas(e.clientX, e.clientY);
     if (!p) return;
+    // Prendre une table lâche l'élément de décor choisi.
+    setSelection(null);
+    setSupprEnAttente(false);
     demarrerGeste(e, {
       kind: 'table', tableId: table.id,
       grabDX: p.x - Number(table.pos_x),
@@ -820,6 +905,29 @@ export default function PlanSalle({
     }));
     if (!membres.length) return;
     demarrerGeste(e, { kind: 'tableService', tableId: table.id, membres, grabX: p.x, grabY: p.y, dx: 0, dy: 0 });
+  }
+
+  // Décor (« Modifier le plan ») : glisser l'élément, ou tirer sa poignée.
+  // La géométrie d'avant le geste voyage avec lui : si l'écriture échoue, on
+  // la remet sans dépendre d'une relecture qui peut échouer aussi.
+  const geometrie = (el) => ({
+    pos_x: el.pos_x, pos_y: el.pos_y, largeur: el.largeur, hauteur: el.hauteur, rotation: el.rotation,
+  });
+
+  function onPointerDownElement(e, el) {
+    const p = versCanevas(e.clientX, e.clientY);
+    if (!p) return;
+    setSupprEnAttente(false);
+    demarrerGeste(e, {
+      kind: 'element', elementId: el.id, avant: geometrie(el),
+      grabDX: p.x - Number(el.pos_x),
+      grabDY: p.y - Number(el.pos_y),
+    });
+  }
+
+  function onPointerDownPoignee(e, el) {
+    setSupprEnAttente(false);
+    demarrerGeste(e, { kind: 'elementTaille', elementId: el.id, avant: geometrie(el) });
   }
 
   // Un seul jeu d'écouteurs par geste, posé à l'appui et retiré au relâcher.
@@ -858,6 +966,22 @@ export default function PlanSalle({
         return;
       }
 
+      if (d.kind === 'element' || d.kind === 'elementTaille') {
+        const p = versCanevas(e.clientX, e.clientY);
+        const el = (elementsRef.current || []).find((x) => x.id === d.elementId);
+        if (!p || !el) return;
+        const patch = d.kind === 'element'
+          ? {
+            pos_x: clamp(snap(p.x - d.grabDX), 0, PLAN_W - Number(el.largeur)),
+            pos_y: clamp(snap(p.y - d.grabDY), 0, PLAN_H - Number(el.hauteur)),
+          }
+          : redimensionner(el, p.x, p.y);
+        setElements((prev) => (prev || []).map((x) => (x.id === d.elementId ? { ...x, ...patch } : x)));
+        // Comme pour les tables, la géométrie retenue est portée par le geste.
+        majDrag({ x: e.clientX, y: e.clientY, patch });
+        return;
+      }
+
       if (d.kind === 'tableService') {
         const p = versCanevas(e.clientX, e.clientY);
         if (!p) return;
@@ -874,11 +998,15 @@ export default function PlanSalle({
         // deux. Les tables traînées sont elles-mêmes sous le doigt, d'où
         // elementsFromPoint (toute la pile) et non elementFromPoint.
         const ids = new Set(m.map((t) => t.id));
+        // Une place de bar ne se rapproche pas en tablée : traînée, elle se
+        // déplace seulement, et une table lâchée sur elle aussi.
+        const tabourets = new Set((tablesRef.current || []).filter(estTabouret).map((t) => t.id));
+        const traineTabouret = m.some((t) => tabourets.has(t.id));
         let cible = null;
-        for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
+        for (const el of traineTabouret ? [] : document.elementsFromPoint(e.clientX, e.clientY)) {
           const tEl = el.closest?.('[data-plan-table]');
           const id = tEl?.getAttribute('data-plan-table');
-          if (id && !ids.has(id)) { cible = id; break; }
+          if (id && !ids.has(id) && !tabourets.has(id)) { cible = id; break; }
         }
         majDrag({ x: e.clientX, y: e.clientY, dx, dy, over: cible ? { tableId: cible } : null });
         return;
@@ -914,6 +1042,9 @@ export default function PlanSalle({
       // Un geste interrompu (appel entrant, geste système) ne doit pas laisser
       // une table déplacée à l'écran mais pas en base.
       if (d?.kind === 'table') load();
+      if (d?.avant && (d.kind === 'element' || d.kind === 'elementTaille')) {
+        setElements((prev) => (prev || []).map((x) => (x.id === d.elementId ? { ...x, ...d.avant } : x)));
+      }
     }
 
     function nettoyer() {
@@ -941,6 +1072,19 @@ export default function PlanSalle({
       if (d.posX == null || d.posY == null) return;   // posée sans avoir bougé
       const { error: e } = await plan.updateTable(d.tableId, { pos_x: d.posX, pos_y: d.posY });
       if (e) { notify(e, 'error'); load(); }
+      return;
+    }
+
+    if (d.kind === 'element' || d.kind === 'elementTaille') {
+      // L'élément manipulé reste choisi : sa poignée apparaît, on peut
+      // l'allonger juste après l'avoir posé.
+      setSelection(d.elementId);
+      if (!d.patch) return;
+      const { error: e } = await plan.updateElement(d.elementId, d.patch);
+      if (e) {
+        setElements((prev) => (prev || []).map((x) => (x.id === d.elementId ? { ...x, ...d.avant } : x)));
+        notify(e, 'error');
+      }
       return;
     }
 
@@ -991,7 +1135,8 @@ export default function PlanSalle({
   // ── Placement sur une tablée ────────────────────────────────────────
   // « Table 4 » ou « Tables 3 + 4 » : le nom tel qu'on le dit au passe.
   function nomTablee(tableId) {
-    return `table ${principaleDe(tableeDe(tableId))?.nom ?? ''}`;
+    const principale = principaleDe(tableeDe(tableId));
+    return `${estTabouret(principale) ? 'place de bar' : 'table'} ${principale?.nom ?? ''}`;
   }
 
   // Numéro d'une tablée : toutes ses tables reçoivent pour clé l'id de la
@@ -1136,8 +1281,13 @@ export default function PlanSalle({
     // droite par principe posait la table sur sa voisine.
     const idsBouges = new Set([...membres.map((m) => m.id), ...cible.map((t) => t.id)]);
     const salleCible = salleDeTable(cible[0]);
-    const obstacles = (tablesVuesRef.current || []).filter((t) =>
-      !idsBouges.has(t.id) && salleDeTable(t) === salleCible);
+    // Le décor compte aussi (mur, bar, pilier...), sauf les zones, qui ne
+    // sont qu'un marquage au sol.
+    const obstacles = [
+      ...(tablesVuesRef.current || []).filter((t) =>
+        !idsBouges.has(t.id) && salleDeTable(t) === salleCible),
+      ...(elementsRef.current || []).filter((el) => el.salle_id === salleCible && estObstacle(el)),
+    ];
     const libre = (x, y) => obstacles.every((t) => {
       const ox = Number(t.pos_x); const oy = Number(t.pos_y);
       return x + mw <= ox || x >= ox + Number(t.largeur) || y + mh <= oy || y >= oy + Number(t.hauteur);
@@ -1347,11 +1497,22 @@ export default function PlanSalle({
   // Numérotation continue à l'échelle de la MAISON et non de la salle : dans
   // un restaurant les numéros de table ne se répètent pas d'une salle à
   // l'autre, sinon « table 3 » ne désigne plus rien au passe.
+  // Les places de bar ont leur propre suite (B1, B2...) : « B3 » ne doit pas
+  // faire sauter la table suivante au numéro 4.
+  const numeroDe = (t) => parseInt(String(t.nom).replace(/\D/g, ''), 10);
+
   function prochainNumero() {
-    const nums = (tables || [])
-      .map((t) => parseInt(String(t.nom).replace(/\D/g, ''), 10))
+    const nums = (tables || []).filter((t) => !estTabouret(t))
+      .map(numeroDe)
       .filter((n) => Number.isFinite(n));
     return String(nums.length ? Math.max(...nums) + 1 : 1);
+  }
+
+  function prochainNumeroBar() {
+    const nums = (tables || []).filter(estTabouret)
+      .map(numeroDe)
+      .filter((n) => Number.isFinite(n));
+    return `B${nums.length ? Math.max(...nums) + 1 : 1}`;
   }
 
   // Pose en quinconce pour ne pas empiler les nouvelles tables au même point.
@@ -1362,16 +1523,61 @@ export default function PlanSalle({
     };
   }
 
-  async function ajouterTable() {
-    // Sans salle, on en crée une d'office : une table doit vivre quelque part.
-    let cible = salleId;
-    if (!cible) {
-      const { data: s, error: eS } = await plan.createSalle('Salle', 0);
-      if (eS) { notify(eS, 'error'); return; }
-      setSalles((prev) => [...(prev || []), s]);
-      setSalleId(s.id);
-      cible = s.id;
+  // Sans salle, on en crée une d'office : une table ou un mur doit vivre
+  // quelque part.
+  async function salleCible() {
+    if (salleId) return salleId;
+    const { data: s, error: eS } = await plan.createSalle('Salle', 0);
+    if (eS) { notify(eS, 'error'); return null; }
+    setSalles((prev) => [...(prev || []), s]);
+    setSalleId(s.id);
+    return s.id;
+  }
+
+  // Place de bar suivante : à côté de la dernière, dans le sens du bar. La
+  // première se pose le long du bar de la salle, du côté où il reste de la
+  // place ; sans bar dessiné, comme une table.
+  function positionTabouret() {
+    const T = 50;
+    const bar = elementsSalle.find((el) => el.type === 'bar');
+    const vertical = bar ? Number(bar.hauteur) > Number(bar.largeur) : false;
+    const derniere = [...tablesSalle.filter(estTabouret)].sort(parNumero).pop();
+    let x;
+    let y;
+    if (derniere) {
+      x = Number(derniere.pos_x) + (vertical ? 0 : PAS_TABOURET);
+      y = Number(derniere.pos_y) + (vertical ? PAS_TABOURET : 0);
+    } else if (bar) {
+      const bx = Number(bar.pos_x); const by = Number(bar.pos_y);
+      const bw = Number(bar.largeur); const bh = Number(bar.hauteur);
+      if (vertical) {
+        x = bx + bw + 10 + T <= PLAN_W ? bx + bw + 10 : bx - 10 - T;
+        y = by + 10;
+      } else {
+        x = bx + 10;
+        y = by + bh + 10 + T <= PLAN_H ? by + bh + 10 : by - 10 - T;
+      }
+    } else {
+      return positionLibre(tablesSalle.length);
     }
+    return { pos_x: clamp(x, 0, PLAN_W - T), pos_y: clamp(y, 0, PLAN_H - T) };
+  }
+
+  async function ajouterTabouret() {
+    const cible = await salleCible();
+    if (!cible) return;
+    const { data, error: e } = await plan.createTable({
+      nom: prochainNumeroBar(), nb_places: 1, forme: 'tabouret',
+      salle_id: cible, ...positionTabouret(),
+    });
+    if (e) { notify(e, 'error'); return; }
+    // Pas de réglages ouverts : on pose une rangée de tabourets d'affilée.
+    setTables((prev) => [...(prev || []), data]);
+  }
+
+  async function ajouterTable() {
+    const cible = await salleCible();
+    if (!cible) return;
 
     const { pos_x, pos_y } = positionLibre(tablesSalle.length);
     const { data, error: e } = await plan.createTable({
@@ -1394,14 +1600,96 @@ export default function PlanSalle({
     const decale = (v, max) => Math.min(v + 40, max);
     const { data, error: e } = await plan.createTable({
       ...modele,
-      nom: prochainNumero(),
+      nom: estTabouret(modele) ? prochainNumeroBar() : prochainNumero(),
       pos_x: decale(Number(modele.pos_x) || 0, PLAN_W - Number(modele.largeur || 90)),
       pos_y: decale(Number(modele.pos_y) || 0, PLAN_H - Number(modele.hauteur || 90)),
     });
     if (e) { notify(`Duplication de la table ${modele.nom} impossible : ${e}`, 'error'); return false; }
     setTables((prev) => [...(prev || []), data]);
-    notify(`Table ${data.nom} créée`, 'success');
+    notify(`${estTabouret(data) ? 'Place de bar' : 'Table'} ${data.nom} créée`, 'success');
     return true;
+  }
+
+  // ── Décor (mode plan) ───────────────────────────────────────────────
+  // Nouvel élément au milieu du plan, décalé à chaque ajout pour ne pas
+  // empiler deux murs au même endroit. Il arrive choisi : on le glisse et on
+  // l'allonge dans la foulée.
+  async function ajouterElement(type) {
+    const def = ELEMENT_PAR_TYPE.get(type);
+    if (!def) return;
+    const cible = await salleCible();
+    if (!cible) return;
+    const n = elementsSalle.length % 6;
+    const { data, error: e } = await plan.createElement({
+      type, salle_id: cible, largeur: def.largeur, hauteur: def.hauteur,
+      pos_x: clamp(snap((PLAN_W - def.largeur) / 2 + n * 20), 0, PLAN_W - def.largeur),
+      pos_y: clamp(snap((PLAN_H - def.hauteur) / 2 + n * 20), 0, PLAN_H - def.hauteur),
+    });
+    if (e) { notify(`Ajout impossible (${def.label}) : ${e}`, 'error'); return; }
+    setElements((prev) => [...(prev || []), data]);
+    setSupprEnAttente(false);
+    setSelection(data.id);
+    // Une zone ne dit rien sans son nom (cuisine, WC...) : on le demande tout
+    // de suite.
+    if (type === 'zone') setNommer(data);
+  }
+
+  async function enregistrerElement(id, patch) {
+    const { data, error: e } = await plan.updateElement(id, patch);
+    if (e) { notify(e, 'error'); return false; }
+    setElements((prev) => (prev || []).map((x) => (x.id === id ? data : x)));
+    return true;
+  }
+
+  async function tournerElement(el) {
+    const avant = geometrie(el);
+    const patch = quartDeTourElement(el);
+    setElements((prev) => (prev || []).map((x) => (x.id === el.id ? { ...x, ...patch } : x)));
+    const { error: e } = await plan.updateElement(el.id, patch);
+    if (e) {
+      setElements((prev) => (prev || []).map((x) => (x.id === el.id ? { ...x, ...avant } : x)));
+      notify(e, 'error');
+    }
+  }
+
+  async function dupliquerElement(el) {
+    const w = Number(el.largeur);
+    const h = Number(el.hauteur);
+    const { data, error: e } = await plan.createElement({
+      type: el.type, libelle: el.libelle, salle_id: el.salle_id,
+      largeur: w, hauteur: h, rotation: el.rotation,
+      pos_x: clamp(Number(el.pos_x) + 20, 0, PLAN_W - w),
+      pos_y: clamp(Number(el.pos_y) + 20, 0, PLAN_H - h),
+    });
+    if (e) { notify(e, 'error'); return; }
+    setElements((prev) => [...(prev || []), data]);
+    setSelection(data.id);
+  }
+
+  // Deux temps : le premier appui arme, le second supprime. Retiré tout de
+  // suite de l'écran, remis tel quel si la base refuse.
+  async function supprimerElement(el) {
+    if (!supprEnAttente) { setSupprEnAttente(true); return; }
+    setSupprEnAttente(false);
+    setSelection(null);
+    setElements((prev) => (prev || []).filter((x) => x.id !== el.id));
+    const { error: e } = await plan.deleteElement(el.id);
+    if (e) {
+      setElements((prev) => ((prev || []).some((x) => x.id === el.id) ? prev : [...(prev || []), el]));
+      notify(e, 'error');
+    }
+  }
+
+  // Premier toucher : choisir l'élément (sa poignée apparaît). Toucher un
+  // élément déjà choisi ouvre son nom, s'il en porte un.
+  function toucherElement(el) {
+    if (Date.now() - finGesteRef.current < 400) return;   // clic émis après un glisser
+    if (selection === el.id) {
+      if (ELEMENT_PAR_TYPE.get(el.type)?.nomme) setNommer(el);
+      return;
+    }
+    setSupprEnAttente(false);
+    setSelection(el.id);
   }
 
   // ── Gestion des salles ──────────────────────────────────────────────
@@ -1442,6 +1730,7 @@ export default function PlanSalle({
     if (e) { notify(e, 'error'); return false; }
     setSalles((prev) => (prev || []).filter((s) => s.id !== id));
     setTables((prev) => (prev || []).filter((t) => t.salle_id !== id));
+    setElements((prev) => (prev || []).filter((el) => el.salle_id !== id));
     setLiens((prev) => {
       const restantes = new Set((tablesRef.current || [])
         .filter((t) => t.salle_id !== id).map((t) => t.id));
@@ -1499,14 +1788,21 @@ export default function PlanSalle({
     );
   }
 
-  const aucuneTable = tablesSalle.length === 0;
-  // Distinguer « la maison n'a pas de plan » de « cette salle-ci est vide » :
-  // le message et l'action ne sont pas les mêmes.
-  const autresSallesGarnies = (tables || []).length > 0;
   // Le mode plan est DÉRIVÉ du droit, pas seulement de l'état : un rôle
   // rétrogradé en cours de session verrait sinon le bouton « Terminer »
   // disparaître et resterait coincé dans l'éditeur.
   const modePlan    = mode === 'plan' && canEdit;
+  // Salle sans rien à montrer. En dessin, le canevas reste affiché même vide :
+  // c'est là qu'on pose le premier mur.
+  const aucuneTable = tablesSalle.length === 0 && elementsSalle.length === 0 && !modePlan;
+  // Distinguer « la maison n'a pas de plan » de « cette salle-ci est vide » :
+  // le message et l'action ne sont pas les mêmes.
+  const autresSallesGarnies = (tables || []).length > 0;
+  // Élément de décor choisi (mode plan) : la barre propose ses actions.
+  const elementChoisi = modePlan && selection
+    ? elementsSalle.find((el) => el.id === selection) || null
+    : null;
+  const defChoisi = elementChoisi ? ELEMENT_PAR_TYPE.get(elementChoisi.type) : null;
   // « Ajuster la salle » : même dérivation du droit, et seulement une fois
   // la migration des ajustements passée.
   const ajusterActif = ajuster && canEdit && !modePlan && !ajustIndispo;
@@ -1681,7 +1977,11 @@ export default function PlanSalle({
         )}
         {modePlan && (
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text2)' }}>
-            Glisse les tables pour les déplacer · ⟳ pour les tourner · double-clic pour les régler
+            {elementChoisi
+              ? (defChoisi?.forme === 'ligne'
+                ? 'Glisse pour déplacer, tire le rond pour allonger.'
+                : 'Glisse pour déplacer, tire le rond pour agrandir.')
+              : 'Glisse pour déplacer. Double-clic sur une table pour la régler, touche un élément du décor pour le modifier.'}
           </div>
         )}
         {canEdit && (
@@ -1714,23 +2014,14 @@ export default function PlanSalle({
               </button>
             )}
             {modePlan && (
-              <>
-                <button type="button" onClick={ajouterTable} style={{
-                  padding: '8px 14px', borderRadius: 8, border: 'none',
-                  background: 'var(--accent)', color: '#fff',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
-                }}>
-                  + Table
-                </button>
-                <button type="button" onClick={() => setGestionSalles(true)} style={{
-                  padding: '8px 14px', borderRadius: 8,
-                  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                  background: 'var(--surface)', color: 'var(--text)',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
-                }}>
-                  Salles
-                </button>
-              </>
+              <button type="button" onClick={() => setGestionSalles(true)} style={{
+                padding: '8px 14px', borderRadius: 8,
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                background: 'var(--surface)', color: 'var(--text)',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+              }}>
+                Salles
+              </button>
             )}
             <button
               type="button"
@@ -1748,6 +2039,94 @@ export default function PlanSalle({
           </div>
         )}
       </div>
+      )}
+
+      {/* ── Dessin : ce qu'on peut ajouter, ou les actions de l'élément
+             choisi. Une seule rangée, de hauteur fixe : choisir un élément ne
+             fait pas sauter le plan sous le doigt. Pas de menu déroulant
+             dedans (la rangée défile, elle le couperait). ── */}
+      {modePlan && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          minHeight: 44, marginBottom: 10,
+          overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+        }}>
+          {elementChoisi ? (
+            <>
+              <span style={{
+                flexShrink: 0, fontSize: 12, fontWeight: 800, color: 'var(--text)',
+                fontFamily: 'var(--font-serif)', marginRight: 4, whiteSpace: 'nowrap',
+              }}>
+                {defChoisi?.label}
+                {defChoisi?.nomme && elementChoisi.libelle ? ` « ${elementChoisi.libelle} »` : ''}
+              </span>
+              {(elementChoisi.type === 'porte'
+                || Number(elementChoisi.largeur) !== Number(elementChoisi.hauteur)) && (
+                <button type="button" style={puce} onClick={() => tournerElement(elementChoisi)}>
+                  Tourner
+                </button>
+              )}
+              {defChoisi?.nomme && (
+                <button type="button" style={puce} onClick={() => setNommer(elementChoisi)}>
+                  Nommer
+                </button>
+              )}
+              <button type="button" style={puce} onClick={() => dupliquerElement(elementChoisi)}>
+                Dupliquer
+              </button>
+              <button
+                type="button"
+                onClick={() => supprimerElement(elementChoisi)}
+                style={{
+                  ...puce,
+                  borderColor: supprEnAttente ? 'var(--danger-text)' : 'var(--border)',
+                  background: supprEnAttente ? 'var(--danger-text)' : 'var(--surface)',
+                  color: supprEnAttente ? '#fff' : 'var(--danger-text)',
+                }}
+              >
+                {supprEnAttente ? 'Confirmer la suppression' : 'Supprimer'}
+              </button>
+              <button
+                type="button"
+                style={{ ...puce, marginLeft: 'auto' }}
+                onClick={() => { setSelection(null); setSupprEnAttente(false); }}
+              >
+                Fermer
+              </button>
+            </>
+          ) : (
+            <>
+              <span style={{
+                flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--text3)',
+                marginRight: 2, whiteSpace: 'nowrap',
+              }}>
+                Ajouter
+              </span>
+              <button
+                type="button"
+                onClick={ajouterTable}
+                style={{ ...puce, borderColor: 'var(--accent)', background: 'var(--accent)', color: '#fff' }}
+              >
+                Table
+              </button>
+              {/* Décor et places de bar : seulement une fois la migration
+                  20261007_plan_salle_elements passée, sinon la base les
+                  refuserait. */}
+              {!elementsIndispo && (
+                <>
+                  <button type="button" style={puce} onClick={ajouterTabouret}>
+                    Place de bar
+                  </button>
+                  {ELEMENTS.map((def) => (
+                    <button key={def.type} type="button" style={puce} onClick={() => ajouterElement(def.type)}>
+                      {def.label}
+                    </button>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* ── Onglets de salle ── */}
@@ -1794,7 +2173,13 @@ export default function PlanSalle({
             }}
           >
           <div
-            ref={canvasRef}
+            ref={canevasRef}
+            // Toucher le sol du plan lâche l'élément de décor choisi.
+            onClick={modePlan ? (e) => {
+              if (e.target !== e.currentTarget) return;
+              setSelection(null);
+              setSupprEnAttente(false);
+            } : undefined}
             style={{
               position: 'relative',
               width: largeurPlan ? largeurPlan : '100%',
@@ -1802,14 +2187,28 @@ export default function PlanSalle({
               minWidth: isMobile ? 560 : 0,
               aspectRatio: `${PLAN_W} / ${PLAN_H}`,
               background: 'var(--bg)',
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: modePlan ? 'var(--border2)' : 'var(--border)',
               borderRadius: 12, overflow: 'hidden',
-              backgroundImage:
-                'linear-gradient(var(--border) 1px, transparent 1px),' +
-                'linear-gradient(90deg, var(--border) 1px, transparent 1px)',
-              backgroundSize: '5% 7.15%',
             }}
           >
+            {/* Quadrillage : seulement pour dessiner le plan. En service, il
+                brouillait la lecture de la salle. */}
+            {modePlan && <GrillePlan fine={largeurCanevas >= 700} />}
+
+            {/* Décor : sous les tables, inerte hors du dessin. */}
+            {elementsSalle.map((el) => (
+              <ElementDecor
+                key={el.id}
+                el={el}
+                editable={modePlan}
+                selectionne={modePlan && selection === el.id}
+                onPointerDown={onPointerDownElement}
+                onPoignee={onPointerDownPoignee}
+                onClick={toucherElement}
+                onDoubleClick={(x) => { if (ELEMENT_PAR_TYPE.get(x.type)?.nomme) setNommer(x); }}
+              />
+            ))}
+
             {/* Tablées rapprochées pour ce service : un simple cadre autour
                 des tables réunies. Le numéro et les clients sont portés par
                 la table principale, une seule fois. */}
@@ -1974,6 +2373,17 @@ export default function PlanSalle({
           onDelete={supprimerTable}
           onDuplicate={dupliquerTable}
           nbOccupants={(occupantsParTable.get(editTable.id) || []).length}
+          tabouretPossible={!elementsIndispo}
+        />
+      )}
+
+      {/* ── Nom d'un élément de décor (zone, bar, accueil) ── */}
+      {nommer && modePlan && (
+        <PlanElementForm
+          key={nommer.id}
+          element={nommer}
+          onClose={() => setNommer(null)}
+          onSave={enregistrerElement}
         />
       )}
 
@@ -1983,7 +2393,7 @@ export default function PlanSalle({
       {tableOuverte && ficheTablee.length > 0 && !modePlan && (
         <TableServiceSheet
           key={tableOuverte}
-          titre={`Table ${fichePrincipale?.nom ?? ''}`}
+          titre={`${estTabouret(fichePrincipale) ? 'Place de bar' : 'Table'} ${fichePrincipale?.nom ?? ''}`}
           composition={ficheTriee.length > 1 ? `Tables ${ficheTriee.map((t) => t.nom).join(' + ')} rapprochées` : ''}
           numeros={ficheTriee.length > 1 ? ficheTriee.map((t) => ({ id: t.id, nom: t.nom })) : []}
           numeroActuel={fichePrincipale?.id}

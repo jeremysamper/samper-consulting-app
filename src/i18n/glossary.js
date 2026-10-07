@@ -700,6 +700,28 @@ export const UI_GLOSSARY = {
   'Toute l\x27équipe': 'Whole team',
   'Choisis une personne': 'Pick a person',
 
+  // ── Plan de salle : décor et places de bar ──
+  // « Banque d'accueil » et non « Accueil », déjà traduit « Home ».
+  'Mur': 'Wall',
+  'Baie vitrée': 'Picture window',
+  'Porte': 'Door',
+  'Banque d’accueil': 'Reception desk',
+  'Pilier': 'Pillar',
+  'Plante': 'Plant',
+  'Place de bar': 'Bar seat',
+  'Table': 'Table',
+  'Tourner': 'Rotate',
+  'Nommer': 'Name',
+  'Agrandir': 'Enlarge',
+  'Confirmer la suppression': 'Confirm deletion',
+  'Nom affiché sur le plan': 'Name shown on the plan',
+  'Tirer pour allonger': 'Pull to lengthen',
+  'Tirer pour agrandir': 'Pull to enlarge',
+  'Glisse pour déplacer, tire le rond pour allonger': 'Drag to move, pull the dot to lengthen',
+  'Glisse pour déplacer, tire le rond pour agrandir': 'Drag to move, pull the dot to enlarge',
+  'Glisse pour déplacer. Double-clic sur une table pour la régler, touche un élément du décor pour le modifier':
+    'Drag to move. Double-click a table to set it up, tap a decor item to change it',
+
   // ── Réservations : fichier clients ──
   'Clients': 'Customers',
   'Nouveau client': 'New customer',

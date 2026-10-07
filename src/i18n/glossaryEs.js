@@ -682,6 +682,27 @@ export const UI_GLOSSARY_ES = {
   'Toute l\x27équipe': 'Todo el equipo',
   'Choisis une personne': 'Elige a una persona',
 
+  // ── Plan de salle : décor et places de bar ──
+  'Mur': 'Pared',
+  'Baie vitrée': 'Ventanal',
+  'Porte': 'Puerta',
+  'Banque d’accueil': 'Mostrador de recepción',
+  'Pilier': 'Pilar',
+  'Plante': 'Planta',
+  'Place de bar': 'Taburete de barra',
+  'Table': 'Mesa',
+  'Tourner': 'Girar',
+  'Nommer': 'Nombrar',
+  'Agrandir': 'Agrandar',
+  'Confirmer la suppression': 'Confirmar la eliminación',
+  'Nom affiché sur le plan': 'Nombre mostrado en el plano',
+  'Tirer pour allonger': 'Tirar para alargar',
+  'Tirer pour agrandir': 'Tirar para agrandar',
+  'Glisse pour déplacer, tire le rond pour allonger': 'Arrastra para mover, tira del círculo para alargar',
+  'Glisse pour déplacer, tire le rond pour agrandir': 'Arrastra para mover, tira del círculo para agrandar',
+  'Glisse pour déplacer. Double-clic sur une table pour la régler, touche un élément du décor pour le modifier':
+    'Arrastra para mover. Doble clic en una mesa para ajustarla, toca un elemento del decorado para modificarlo',
+
   // ── Réservations : fichier clients ──
   'Clients': 'Clientes',
   'Nouveau client': 'Nuevo cliente',

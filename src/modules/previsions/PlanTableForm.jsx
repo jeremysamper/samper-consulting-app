@@ -17,12 +17,17 @@ const FORMES = [
   { id: 'ronde',     label: 'Ronde' },
   { id: 'carree',    label: 'Carrée' },
   { id: 'rectangle', label: 'Rectangle' },
+  // Place de bar : un tabouret, petit, une place. Proposée seulement une fois
+  // la migration 20261007_plan_salle_elements passée (la base la refuserait).
+  { id: 'tabouret',  label: 'Place de bar' },
 ];
 
 export default function PlanTableForm({
   table, salles = [], onClose, onSave, onDelete, onDuplicate, nbOccupants = 0,
+  tabouretPossible = false,
 }) {
   const isMobile = useIsMobile();
+  const formes = FORMES.filter((f) => f.id !== 'tabouret' || tabouretPossible || table.forme === 'tabouret');
   const [nom,     setNom]     = useState(table.nom || '');
   const [places,  setPlaces]  = useState(table.nb_places || 2);
   const [forme,   setForme]   = useState(table.forme || 'ronde');
@@ -150,7 +155,7 @@ export default function PlanTableForm({
           borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
         }}>
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
-            Table {table.nom}
+            {table.forme === 'tabouret' ? 'Place de bar' : 'Table'} {table.nom}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" style={{
             background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
@@ -213,7 +218,7 @@ export default function PlanTableForm({
               display: 'flex', borderRadius: 8, overflow: 'hidden',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
             }}>
-              {FORMES.map((f) => (
+              {formes.map((f) => (
                 <button key={f.id} type="button" onClick={() => setForme(f.id)} style={{
                   flex: 1, padding: '10px 2px', border: 'none', cursor: 'pointer',
                   fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',

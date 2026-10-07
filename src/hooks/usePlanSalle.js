@@ -5,6 +5,7 @@ const TABLE_PLAN   = 'salle_tables';
 const TABLE_LIENS  = 'reservation_tables';
 const TABLE_SALLES = 'salles';
 const TABLE_AJUST  = 'salle_tables_service';
+const TABLE_DECOR  = 'salle_elements';
 
 // Codes « table ou colonne absente » : la migration n'est pas passée.
 const CODES_SCHEMA_ABSENT = new Set(['42P01', 'PGRST205', '42703', 'PGRST204']);
@@ -61,6 +62,9 @@ function mapError(error) {
 // une rectangulaire est plus large que profonde. Le plan reste lisible sans
 // demander à personne de redimensionner quoi que ce soit à la main.
 export function tailleParDefaut(forme, nbPlaces) {
+  // Place de bar : un tabouret, à peu près la moitié d'une table de deux,
+  // quel que soit le nombre de places qu'on lui donne.
+  if (forme === 'tabouret') return { largeur: 50, hauteur: 50 };
   const p = Math.max(1, Number(nbPlaces) || 2);
   if (forme === 'rectangle') {
     // ~55 unités de long par paire de couverts, borné pour rester dans le plan
@@ -322,11 +326,65 @@ export function usePlanSalle(etablissementId) {
       return { error: null };
     }
 
+    // ── Le décor (murs, baies, bar, accueil...) ───────────────────────
+    // Tant que la migration 20261007_plan_salle_elements n'est pas passée,
+    // la lecture rend une liste vide avec `indispo` : le plan s'affiche comme
+    // avant, le décor et la place de bar sont masqués.
+    async function listElements() {
+      const { data, error } = await supabase
+        .from(TABLE_DECOR)
+        .select('*')
+        .eq('etablissement_id', etablissementId);
+      if (error && CODES_SCHEMA_ABSENT.has(String(error.code || ''))) {
+        return { data: [], error: null, indispo: true };
+      }
+      if (error) return { data: null, error: mapError(error) };
+      return { data: data || [], error: null, indispo: false };
+    }
+
+    async function createElement(partial) {
+      const { data, error } = await supabase
+        .from(TABLE_DECOR)
+        .insert({
+          etablissement_id: etablissementId,
+          salle_id: partial.salle_id,
+          type:     partial.type,
+          libelle:  partial.libelle ?? null,
+          pos_x:    partial.pos_x,
+          pos_y:    partial.pos_y,
+          largeur:  partial.largeur,
+          hauteur:  partial.hauteur,
+          rotation: partial.rotation ?? 0,
+        })
+        .select()
+        .single();
+      if (error) return { data: null, error: mapError(error) };
+      return { data, error: null };
+    }
+
+    async function updateElement(id, partial) {
+      const { data, error } = await supabase
+        .from(TABLE_DECOR)
+        .update({ ...partial, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) return { data: null, error: mapError(error) };
+      return { data, error: null };
+    }
+
+    async function deleteElement(id) {
+      const { error } = await supabase.from(TABLE_DECOR).delete().eq('id', id);
+      if (error) return { error: mapError(error) };
+      return { error: null };
+    }
+
     return {
       listSalles, createSalle, updateSalle, deleteSalle,
       listTables, createTable, updateTable, deleteTable,
       listLiensPourResas, assigner, retirer, retirerToutesPourResa,
       listAjustements, enregistrerAjustements, effacerAjustements,
+      listElements, createElement, updateElement, deleteElement,
     };
   }, [etablissementId]);
 }
