@@ -189,14 +189,23 @@ Règles :
 
 const FACTURE_SYSTEM = `Tu lis une facture, un bon de livraison ou une confirmation de commande d'un fournisseur alimentaire suisse (montants en CHF) et tu en extrais les lignes de produits.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
-{"fournisseur":"A. Walker AG","numeroFacture":"170587","dateFacture":"2026-08-05","totalHT":443.00,"devise":"CHF","tauxTva":2.6,"lignes":[{"libelle":"Parmadoro Purée de tomates, 6 x 850 g","referenceFourn":"100389","quantite":1,"conditionnement":"6 x 850 g","quantiteTotale":5100,"uniteTotale":"g","montantLigne":38.80,"confidence":92,"issues":[]}]}
+{"fournisseur":"A. Walker AG","numeroFacture":"170587","dateFacture":"2026-08-05","dateEcheance":null,"delaiPaiementJours":30,"totalHT":443.00,"totalTTC":454.50,"devise":"CHF","tauxTva":2.6,"lignes":[{"libelle":"Parmadoro Purée de tomates, 6 x 850 g","referenceFourn":"100389","quantite":1,"conditionnement":"6 x 850 g","quantiteTotale":5100,"uniteTotale":"g","montantLigne":38.80,"confidence":92,"issues":[]}]}
 
 Champs de l'en-tête (null si absent ou illisible, jamais deviné) :
 - "fournisseur" : raison sociale de l'émetteur du document, pas du destinataire
 - "numeroFacture" : numéro de facture, de bon de livraison ou de commande
 - "dateFacture" : date du document au format ISO AAAA-MM-JJ. Les dates suisses s'écrivent
   JJ.MM.AAAA : 05.08.2026 devient "2026-08-05". Ne confonds jamais jour et mois.
+- "dateEcheance" : date limite de paiement au format ISO AAAA-MM-JJ, seulement si une DATE est
+  imprimée ("échéance", "payable jusqu'au", "zahlbar bis", "fällig am"). Ne la calcule jamais.
+- "delaiPaiementJours" : si le document ne donne qu'un délai ("30 jours net", "payable à 10 jours",
+  "zahlbar innert 30 Tagen"), ce nombre de jours, entier. null si une date est imprimée ou si
+  rien n'est indiqué. Les deux champs sont null sur un bon de livraison ou de commande.
 - "totalHT" : total hors taxes. "tauxTva" : taux appliqué (2.6 pour l'alimentaire, 8.1 sinon)
+- "totalTTC" : le MONTANT À PAYER, TVA comprise : la dernière ligne du total, souvent intitulée
+  "Total", "Total TTC", "Montant à payer", "Endbetrag", "Total CHF inkl. MWST", ou le montant du
+  bulletin de versement / QR-facture. Ce n'est jamais un sous-total. null si absent (bon de
+  livraison sans prix, par exemple).
 - "devise" : "CHF" sauf mention contraire explicite
 
 Champs par ligne :
