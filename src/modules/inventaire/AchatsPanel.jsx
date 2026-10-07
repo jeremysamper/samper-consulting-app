@@ -1,16 +1,16 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { cleProduit, ligneLibre } from './inventaireLignes.js';
 import {
-  TYPES_DOCUMENT, libelleType, devinerTypeDocument, periodeInventaire, dansPeriode,
-  statutsDocuments, trouverDoublon, quantiteEnUniteInventaire,
+  TYPES_DOCUMENT, libelleType, periodeInventaire, dansPeriode,
+  statutsDocuments, quantiteEnUniteInventaire,
   construireContexteRapprochement, rapprocherLigneDoc, calculerConsommation,
   SEUIL_ECART_PRIX_PCT, nomDepuisLibelle,
 } from './achatsLogic.js';
+import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
+import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Onglet « Achats & consommation » de l'inventaire.
@@ -30,9 +30,10 @@ import {
 //
 // Depuis le 03.10.2026, chaque photo ou PDF déposé est aussi gardé (bucket
 // `documents`, <etab>/achats/<id>/) et se revoit par « Voir la photo ».
+// Depuis le 07.10.2026, les documents, l'import et la visionneuse sont
+// partagés avec l'onglet « Factures » (prop `achats` = useAchatsDocuments
+// appelé par Inventaire.jsx, ImportDocumentsAchats, achatsPieces).
 // ─────────────────────────────────────────────────────────────────────────────
-
-const CONCURRENCE = 3;
 
 const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
@@ -54,133 +55,32 @@ const uniteDepuisLigneDoc = (l) => {
   return l.uniteTotale === 'g' ? 'kg' : 'pcs';
 };
 
-// ── Pièces : les photos et PDF déposés, gardés pour être revus ──
-// Types acceptés par le bucket `documents`. Le type se déduit de l'extension
-// quand le navigateur ne le donne pas (photos HEIC sur Safari).
-const FORMATS = {
-  pdf: 'application/pdf',
-  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
-  heic: 'image/heic', heif: 'image/heif',
-};
-const estPdfFichier = (f) => /pdf$/i.test(f.type || '') || /\.pdf$/i.test(f.name || '');
-const typeDe = (f) => {
-  const ext = (/\.([a-z0-9]+)$/i.exec(f.name || '')?.[1] || '').toLowerCase();
-  return FORMATS[ext] || (Object.values(FORMATS).includes(f.type) ? f.type : null);
-};
-
-// Photo ramenée en JPEG de 2200 px au plus (une facture reste lisible, le
-// téléphone n'envoie pas 5 Mo par page). PDF gardé tel quel.
-const preparerPieces = async (fichiers) => {
-  const pieces = [];
-  for (const f of fichiers) {
-    if (estPdfFichier(f)) { pieces.push({ file: f, contentType: 'application/pdf' }); continue; }
-    try {
-      const { default: imageCompression } = await import('browser-image-compression');
-      const blob = await imageCompression(f, { maxSizeMB: 1.5, maxWidthOrHeight: 2200, useWebWorker: true, fileType: 'image/jpeg' });
-      const nom = String(f.name || 'photo').replace(/\.[a-z0-9]+$/i, '') + '.jpg';
-      pieces.push({ file: new File([blob], nom, { type: 'image/jpeg' }), contentType: 'image/jpeg' });
-    } catch {
-      // Format que ce navigateur ne sait pas redessiner (HEIC hors Safari) : l'original.
-      const type = typeDe(f);
-      if (!type) throw new Error(`format non accepté (${f.name})`);
-      pieces.push({ file: f, contentType: type });
-    }
-  }
-  return pieces;
-};
-
-// Libellé du bouton, d'après le nom gardé à l'import : « x.pdf »,
-// « IMG_1.jpg » ou « IMG_1.jpg (+2 pages) » pour des photos groupées.
-const libelleVoir = (d) => {
-  const nom = String(d.nomFichier || '');
-  if (/\.pdf$/i.test(nom)) return 'Voir le PDF';
-  const pages = /\(\+(\d+) pages?\)$/.exec(nom);
-  return pages ? `Voir les ${Number(pages[1]) + 1} photos` : 'Voir la photo';
-};
-
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,
-  canImport, canEditLignes, onAjouterLignes, onMajPrix,
+  canImport, canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats,
 }) {
   const legacySB = dbService.getBridge();
-  // null = chargement, 'absente' = migration non appliquée, [] = aucun document
-  const [docs, setDocs] = React.useState(null);
-  const [loadError, setLoadError] = React.useState(false);
-  const docsRef = React.useRef([]);
+  // Documents partagés avec l'onglet Factures (useAchatsDocuments, tenu par Inventaire.jsx).
+  const {
+    docs, tousLesDocs, tableAbsente, loadError, docsRef, majDocs, reload, avecPieces, setAvecPieces,
+  } = achats;
   const [aliasCatalogue, setAliasCatalogue] = React.useState([]);
-  const [fournisseurs, setFournisseurs] = React.useState([]);
 
-  const [file, setFile] = React.useState([]); // travaux de lecture
-  const [typeImport, setTypeImport] = React.useState('auto');
-  const [grouper, setGrouper] = React.useState(false);
   const [tousDocs, setTousDocs] = React.useState(false);
   const [docOuvert, setDocOuvert] = React.useState(null);
   const [creations, setCreations] = React.useState({}); // cle libellé -> nom en cours
   const [busy, setBusy] = React.useState(false);
-  // Ids des documents dont la photo ou le PDF est gardé (importés depuis le
-  // 03.10.2026 ; les plus anciens n'ont que leurs lignes lues).
-  const [avecPieces, setAvecPieces] = React.useState(() => new Set());
-  // { doc, pieces: null (chargement) | [...], erreur } | null
+  // Document dont on regarde la photo ou le PDF, ou null.
   const [apercu, setApercu] = React.useState(null);
   const fermerApercu = React.useCallback(() => setApercu(null), []);
-  useBackLayer(!!apercu, fermerApercu, 'achats-apercu');
-  const fileRef = React.useRef(null);
-  const cameraRef = React.useRef(null);
-  const enCoursRef = React.useRef(0);
-  const attenteRef = React.useRef([]);
-
-  const majDocs = React.useCallback((calculer) => {
-    const liste = Array.isArray(docsRef.current) ? docsRef.current : [];
-    docsRef.current = calculer(liste);
-    setDocs(docsRef.current);
-  }, []);
-
-  // ── Chargement ──
-  const reload = React.useCallback(async () => {
-    if (!legacySB) { setDocs([]); return; }
-    // Photos gardées : sans elles, seuls les boutons « Voir » manquent.
-    legacySB.db.listAchatsDocsAvecPieces(etabId)
-      .then(setAvecPieces)
-      .catch(err => console.error('[AchatsPanel pièces]', err));
-    try {
-      const liste = await legacySB.db.listAchatsDocuments(etabId);
-      if (liste === null) { docsRef.current = []; setDocs('absente'); return; }
-      docsRef.current = liste;
-      setDocs(liste);
-      setLoadError(false);
-    } catch (err) {
-      console.error('[AchatsPanel load]', err);
-      setLoadError(true);
-      setDocs(prev => (prev === null ? [] : prev));
-    }
-  }, [etabId]);
-
-  React.useEffect(() => {
-    docsRef.current = [];
-    setDocs(null);
-    reload();
-    const unsub = legacySB?.realtime?.subscribeReload?.('achats_documents', reload);
-    return () => { unsub && unsub(); };
-  }, [etabId]);
-
-  // Échap ferme l'aperçu.
-  React.useEffect(() => {
-    if (!apercu) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') setApercu(null); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [apercu]);
 
   React.useEffect(() => {
     if (!legacySB) return;
     let vivant = true;
     legacySB.db.listProduitAliasEtab(etabId).then(a => { if (vivant) setAliasCatalogue(a || []); }).catch(() => {});
-    legacySB.db.listFournisseurs(etabId).then(f => { if (vivant) setFournisseurs(f || []); }).catch(() => {});
     return () => { vivant = false; };
   }, [etabId]);
 
-  const tableAbsente = docs === 'absente';
-  const tousLesDocs = Array.isArray(docs) ? docs : [];
 
   // ── Période et documents du périmètre ──
   const periode = periodeInventaire(inv, previousInv);
@@ -247,39 +147,13 @@ export default function AchatsPanel({
   };
 
   const supprimerDoc = async (doc) => {
-    if (!confirmLegacy(`Supprimer le document ${libelleType(doc.typeDocument).toLowerCase()} ${doc.numero || ''} de ${doc.fournisseurNom || 'fournisseur inconnu'} ?\nIl sort du calcul des achats.`)) return;
+    if (!confirmLegacy(`Supprimer le document ${libelleType(doc.typeDocument).toLowerCase()} ${doc.numero || ''} de ${doc.fournisseurNom || 'fournisseur inconnu'} ?\nIl sort du calcul des achats${doc.regleLe ? ' et de la liste des factures, avec son règlement' : ''}.`)) return;
     majDocs(liste => liste.filter(d => d.id !== doc.id));
     try { await legacySB.db.deleteAchatsDocument(doc.id); }
     catch (err) { notifyLegacy('Suppression impossible : ' + (err.message || err), 'error'); reload(); return; }
     // Toujours tenté : la liste des photos a pu ne pas se charger.
     setAvecPieces(s => { const n = new Set(s); n.delete(doc.id); return n; });
     legacySB.db.removeAchatsPieces(etabId, doc.id).catch(err => console.error('[AchatsPanel pièces]', err));
-  };
-
-  const voirPieces = async (doc) => {
-    setApercu({ doc, pieces: null, erreur: null });
-    try {
-      const pieces = await legacySB.db.listAchatsPieces(etabId, doc.id);
-      setApercu(a => (a?.doc.id === doc.id ? { ...a, pieces } : a));
-    } catch (err) {
-      setApercu(a => (a?.doc.id === doc.id ? { ...a, pieces: [], erreur: err.message || String(err) } : a));
-    }
-  };
-
-  // URL signée « pièce jointe » : le fichier s'enregistre, y compris sur iPad,
-  // au lieu de s'ouvrir dans un onglet.
-  const telechargerPiece = async (piece) => {
-    try {
-      const url = await legacySB.db.getFileURL(piece.chemin, { download: piece.nom });
-      const a = document.createElement('a');
-      a.href = url;
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (err) {
-      notifyLegacy('Téléchargement impossible : ' + (err.message || err), 'error');
-    }
   };
 
   // Applique une décision à toutes les lignes portant ce libellé, dans tous
@@ -345,128 +219,6 @@ export default function AchatsPanel({
     } finally { setBusy(false); }
   };
 
-  // ── Lecture des documents par l'IA ──
-  const majTravail = (key, patch) => setFile(f => f.map(t => (t.key === key ? { ...t, ...patch } : t)));
-
-  const trouverFournisseurId = (nom) => {
-    const n = normalizeName(nom);
-    if (!n) return null;
-    const f = fournisseurs.find(x => normalizeName(x.nom) === n)
-      || fournisseurs.find(x => { const y = normalizeName(x.nom); return y && (y.includes(n) || n.includes(y)); });
-    return f?.id || null;
-  };
-
-  const traiter = async (travail) => {
-    majTravail(travail.key, { statut: 'lecture' });
-    try {
-      const { parseFacture } = await import('../../services/aiService.js');
-      const res = await parseFacture(travail.fichiers);
-      const doc = {
-        id: 'achat-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),
-        etablissementId: etabId,
-        perimetre: travail.perimetre,
-        typeDocument: travail.type === 'auto' ? devinerTypeDocument(travail.nom) : travail.type,
-        fournisseurNom: res.fournisseur || '',
-        fournisseurId: trouverFournisseurId(res.fournisseur),
-        numero: res.numeroFacture || '',
-        dateDocument: res.dateFacture || null,
-        totalHT: res.totalHT,
-        lignes: (res.lignes || []).map(l => ({
-          libelle: l.libelle,
-          referenceFourn: l.referenceFourn || '',
-          quantite: l.quantite,
-          conditionnement: l.conditionnement || '',
-          quantiteTotale: l.quantiteTotale,
-          uniteTotale: l.uniteTotale,
-          montantLigne: l.montantLigne,
-          issues: l.issues || [],
-        })),
-        source: res.source,
-        nomFichier: travail.nom,
-        createdBy: user?.id || null,
-      };
-      if (!doc.lignes.length) {
-        majTravail(travail.key, { statut: 'erreur', message: 'Aucune ligne de produit lisible.' });
-        return;
-      }
-      const doublon = trouverDoublon(docsRef.current || [], doc);
-      if (doublon) {
-        majTravail(travail.key, { statut: 'doublon', message: `Déjà importé (${doc.fournisseurNom} n° ${doc.numero})` });
-        return;
-      }
-      // La photo ou le PDF est gardé pour être revu (« Voir la photo »).
-      // Enregistré AVANT le document : quand il apparaît sur une autre
-      // tablette, sa pièce est déjà là. Un échec ici n'annule pas la lecture.
-      let pieceGardee = false;
-      try {
-        await legacySB.db.uploadAchatsPieces(etabId, doc.id, await preparerPieces(travail.fichiers));
-        pieceGardee = true;
-      } catch (err) {
-        console.error('[AchatsPanel pièces]', err);
-      }
-      let enregistre;
-      try {
-        enregistre = await legacySB.db.upsertAchatsDocument(doc);
-      } catch (err) {
-        if (pieceGardee) legacySB.db.removeAchatsPieces(etabId, doc.id).catch(() => {});
-        throw err;
-      }
-      majDocs(liste => [enregistre, ...liste]);
-      if (pieceGardee) setAvecPieces(s => new Set(s).add(doc.id));
-      majTravail(travail.key, {
-        statut: 'ok',
-        message: `${doc.fournisseurNom || 'Fournisseur non lu'} · ${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}`
-          + (doc.dateDocument ? ` · ${dateCH(doc.dateDocument)}` : ' · date non lue')
-          + (pieceGardee ? '' : estPdfFichier(travail.fichiers[0]) ? ' · PDF non conservé' : ' · photo non conservée'),
-      });
-    } catch (err) {
-      majTravail(travail.key, { statut: 'erreur', message: err.message || String(err) });
-    }
-  };
-
-  // File à concurrence bornée : trois lectures en parallèle, pas trente.
-  const pomper = () => {
-    while (enCoursRef.current < CONCURRENCE && attenteRef.current.length) {
-      const travail = attenteRef.current.shift();
-      enCoursRef.current += 1;
-      traiter(travail).finally(() => { enCoursRef.current -= 1; pomper(); });
-    }
-  };
-
-  const deposer = (liste) => {
-    const fichiers = Array.from(liste || []);
-    if (!fichiers.length) return;
-    const estPdf = (f) => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
-    const pdfs = fichiers.filter(estPdf);
-    const images = fichiers.filter(f => !estPdf(f));
-    const travaux = pdfs.map(f => [f]);
-    if (grouper && images.length) {
-      for (let i = 0; i < images.length; i += 5) travaux.push(images.slice(i, i + 5));
-    } else {
-      images.forEach(f => travaux.push([f]));
-    }
-    const nouveaux = travaux.map((fs, i) => ({
-      key: `${Date.now()}-${i}-${fs[0].name}`,
-      fichiers: fs,
-      nom: fs.length > 1 ? `${fs[0].name} (+${fs.length - 1} page${fs.length > 2 ? 's' : ''})` : fs[0].name,
-      type: typeImport,
-      perimetre: perimetreActif,
-      statut: 'attente',
-      message: '',
-    }));
-    setFile(f => [...nouveaux, ...f]);
-    attenteRef.current.push(...nouveaux);
-    pomper();
-  };
-
-  const relancer = (travail) => {
-    majTravail(travail.key, { statut: 'attente', message: '' });
-    attenteRef.current.push(travail);
-    pomper();
-  };
-
-  const enAttente = file.filter(t => t.statut === 'attente' || t.statut === 'lecture').length;
-
   // ─────────── Rendu ───────────
   if (docs === null) {
     return <div style={st.info}>Chargement des documents…</div>;
@@ -525,47 +277,19 @@ export default function AchatsPanel({
 
       {/* ── Import ── */}
       {canImport ? (
-        <div style={st.carte}>
-          <div style={st.titre}>Importer les factures et bons de la période</div>
-          <div style={st.sousTitre}>
-            Sélectionnez tous les documents d'un coup : PDF reçus par mail ou photos. Chaque document est lu automatiquement,
-            ses lignes sont rattachées aux produits de l'inventaire. Rien n'est modifié dans le catalogue.
-          </div>
-          <div style={st.importLigne}>
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }}
-              onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-              onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
-            <button type="button" style={st.btnPrimaire} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>📄 Choisir des documents</button>
-            <button type="button" style={st.btn} disabled={tableAbsente} onClick={() => cameraRef.current?.click()}>📷 Photographier</button>
-            <select value={typeImport} onChange={e => setTypeImport(e.target.value)} style={st.select} aria-label="Type des documents">
-              <option value="auto">Type : deviner</option>
-              {TYPES_DOCUMENT.map(t => <option key={t.id} value={t.id}>Type : {t.pluriel}</option>)}
-            </select>
-            <label style={st.caseLabel}>
-              <input type="checkbox" checked={grouper} onChange={e => setGrouper(e.target.checked)} style={{ width: 18, height: 18 }} />
-              Photos = pages d'un même document
-            </label>
-          </div>
-          {file.length > 0 && (
-            <div style={st.file}>
-              {enAttente > 0 && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Lecture en cours : {enAttente} document{enAttente > 1 ? 's' : ''}. Vous pouvez continuer à compter en attendant.</div>}
-              {file.map(t => (
-                <div key={t.key} style={st.travail}>
-                  <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
-                    {t.statut === 'ok' ? '✓' : t.statut === 'erreur' ? '⚠' : t.statut === 'doublon' ? '≡' : t.statut === 'lecture' ? '…' : '·'}
-                  </span>
-                  <span data-no-translate style={{ flex: '1 1 160px', minWidth: 0, wordBreak: 'break-word', fontWeight: 600 }}>{t.nom}</span>
-                  <span style={{ flex: '2 1 200px', minWidth: 0, color: t.statut === 'erreur' ? 'var(--danger-text)' : 'var(--text2)' }}>
-                    {t.statut === 'attente' ? 'en attente' : t.statut === 'lecture' ? 'lecture en cours…' : t.message}
-                  </span>
-                  {t.statut === 'erreur' && <button type="button" style={st.btnMini} onClick={() => relancer(t)}>Réessayer</button>}
-                </div>
-              ))}
-              {enAttente === 0 && <button type="button" style={{ ...st.lien, marginTop: 4 }} onClick={() => setFile([])}>Effacer cette liste</button>}
-            </div>
-          )}
-        </div>
+        <ImportDocumentsAchats
+          user={user}
+          etabId={etabId}
+          perimetreActif={perimetreActif}
+          docsRef={docsRef}
+          tableAbsente={tableAbsente}
+          onImporte={(doc, pieceGardee) => {
+            majDocs(liste => [doc, ...liste]);
+            if (pieceGardee) setAvecPieces(s => new Set(s).add(doc.id));
+          }}
+          titre="Importer les factures et bons de la période"
+          sousTitre="Sélectionnez tous les documents d'un coup : PDF reçus par mail ou photos. Chaque document est lu automatiquement, ses lignes sont rattachées aux produits de l'inventaire. Rien n'est modifié dans le catalogue."
+        />
       ) : (
         <div style={st.info}>La lecture des factures n'est pas disponible pour votre compte. Les documents déjà importés et le calcul restent consultables ici.</div>
       )}
@@ -729,6 +453,9 @@ export default function AchatsPanel({
                     type="date"
                     value={d.dateDocument || ''}
                     onChange={e => enregistrerDoc({ ...d, dateDocument: e.target.value || null })}
+                    // Facture réglée : sa date est verrouillée en base pour qui ne règle pas les factures.
+                    disabled={!!d.regleLe && !canRegler}
+                    title={d.regleLe && !canRegler ? 'Facture réglée : date verrouillée' : undefined}
                     style={{ ...st.select, ...(d.dateDocument ? {} : { borderColor: 'var(--warning-bd)' }) }}
                     aria-label="Date du document"
                   />
@@ -739,7 +466,7 @@ export default function AchatsPanel({
                     {!d.dateDocument ? 'date manquante' : horsPeriode ? 'hors période' : s?.compte ? 'compté' : (s?.raison || 'non compté')}
                   </span>
                   {avecPieces.has(d.id) && (
-                    <button type="button" style={st.btnVoir} onClick={() => voirPieces(d)}>{libelleVoir(d)}</button>
+                    <button type="button" style={st.btnVoir} onClick={() => setApercu(d)}>{libelleVoir(d)}</button>
                   )}
                 </div>
               </div>
@@ -780,7 +507,13 @@ export default function AchatsPanel({
                     <button type="button" style={st.btnMini} onClick={() => enregistrerDoc({ ...d, exclu: !d.exclu })}>
                       {d.exclu ? 'Réintégrer au calcul' : 'Exclure du calcul'}
                     </button>
-                    <button type="button" style={{ ...st.btnMini, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => supprimerDoc(d)}>Supprimer</button>
+                    {/* Une facture réglée est une pièce comptable : la base refuse sa
+                        suppression à qui n'a pas le droit de régler les factures. */}
+                    {d.regleLe && !canRegler ? (
+                      <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Facture réglée : seule une personne qui règle les factures peut la supprimer.</span>
+                    ) : (
+                      <button type="button" style={{ ...st.btnMini, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => supprimerDoc(d)}>Supprimer</button>
+                    )}
                     {d.nomFichier && <span data-no-translate style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>{d.nomFichier}</span>}
                     {!avecPieces.has(d.id) && <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Pas de photo conservée pour ce document.</span>}
                   </div>
@@ -791,49 +524,7 @@ export default function AchatsPanel({
         })}
       </div>
 
-      {/* ── Aperçu des pièces : toutes les pages à la suite, à faire défiler ── */}
-      {apercu && createPortal(
-        <div style={st.apercuFond} role="dialog" aria-modal="true" aria-label="Photo du document">
-          <div style={st.apercuTete}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={st.apercuNom}>
-                <span data-no-translate>{apercu.doc.fournisseurNom || 'Fournisseur non lu'}</span>
-                {apercu.doc.numero ? <span data-no-translate>{` · n° ${apercu.doc.numero}`}</span> : null}
-              </div>
-              <div style={st.apercuMeta}>
-                {libelleType(apercu.doc.typeDocument)}{apercu.doc.dateDocument ? ` du ${dateCH(apercu.doc.dateDocument)}` : ''}
-              </div>
-            </div>
-            <button type="button" style={st.apercuBtn} onClick={fermerApercu} aria-label="Fermer">✕</button>
-          </div>
-          <div style={st.apercuCorps}>
-            {apercu.pieces === null && <div style={st.apercuInfo}>Ouverture du document…</div>}
-            {apercu.erreur && <div style={st.apercuInfo}>Ouverture impossible : {apercu.erreur}</div>}
-            {apercu.pieces && !apercu.erreur && apercu.pieces.length === 0 && (
-              <div style={st.apercuInfo}>Pas de photo conservée pour ce document.</div>
-            )}
-            {(apercu.pieces || []).map((p, i, liste) => {
-              const pdf = p.type === 'application/pdf' || /\.pdf$/i.test(p.nom);
-              return (
-                <div key={p.chemin} style={st.apercuPiece}>
-                  <div style={st.apercuBarre}>
-                    <span style={{ flex: 1, minWidth: 0 }}>{liste.length > 1 ? `Page ${i + 1} sur ${liste.length}` : ''}</span>
-                    {/* Lien direct : l'URL est déjà signée, le tap reste un geste
-                        utilisateur et l'ouverture n'est pas bloquée sur iPad (où un
-                        PDF intégré n'affiche souvent que sa première page). */}
-                    {p.url && <a href={p.url} target="_blank" rel="noreferrer" style={st.apercuBtn}>Plein écran</a>}
-                    <button type="button" style={st.apercuBtn} onClick={() => telechargerPiece(p)}>Télécharger</button>
-                  </div>
-                  {!p.url ? <div style={st.apercuInfo}>Lien indisponible, réessayez.</div>
-                    : pdf ? <iframe src={p.url} title={`Document, page ${i + 1}`} style={st.apercuPdf} />
-                      : <img src={p.url} alt={`Page ${i + 1} du document`} style={st.apercuImg} />}
-                </div>
-              );
-            })}
-          </div>
-        </div>,
-        document.body,
-      )}
+      {apercu && <VisionneusePieces doc={apercu} etabId={etabId} onClose={fermerApercu} />}
     </div>
   );
 }
@@ -870,15 +561,10 @@ const st = {
   kpiVal: { fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 4 },
   kpiNote: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   avertissements: { margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.55 },
-  importLigne: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  btnPrimaire: { padding: '10px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   btn: { padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
   lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 40 },
-  caseLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)', minHeight: 44, cursor: 'pointer' },
-  file: { display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--border)', paddingTop: 10 },
-  travail: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '4px 0', color: 'var(--text)' },
   aRattacher: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' },
   actionsLigne: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', flex: '2 1 300px', minWidth: 0 },
   suggestion: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--accent)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
@@ -900,16 +586,4 @@ const st = {
   docDetail: { marginTop: 6, padding: '8px 10px', background: 'var(--bg)', borderRadius: 8 },
   docDetailLigne: { display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
   btnVoir: { padding: '6px 12px', borderRadius: 7, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
-  // Aperçu : fond noir comme la visionneuse du module Documents, quel que soit le thème.
-  apercuFond: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.94)', display: 'flex', flexDirection: 'column', zIndex: 1000 },
-  apercuTete: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(0,0,0,0.55)', color: '#fff', flexShrink: 0 },
-  apercuNom: { fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  apercuMeta: { fontSize: 11, opacity: 0.75, marginTop: 2 },
-  apercuBtn: { display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, textDecoration: 'none', flexShrink: 0 },
-  apercuCorps: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 },
-  apercuPiece: { width: '100%', maxWidth: 1000, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 },
-  apercuBarre: { display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontSize: 12, flexWrap: 'wrap' },
-  apercuImg: { width: '100%', height: 'auto', borderRadius: 6, background: '#fff', display: 'block' },
-  apercuPdf: { width: '100%', height: '78vh', border: 'none', background: '#fff', borderRadius: 6 },
-  apercuInfo: { color: '#fff', fontSize: 14, padding: 24, textAlign: 'center' },
 };

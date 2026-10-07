@@ -32,10 +32,13 @@ import {
 } from './produitsMaison.js';
 import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
+import { useAchatsDocuments } from './useAchatsDocuments.js';
 
 // L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
 // seulement quand on l'ouvre, le comptage reste léger sur la tablette.
 const AchatsPanel = React.lazy(() => import('./AchatsPanel.jsx'));
+// Même principe pour l'onglet Factures (lecture IA, visionneuse).
+const FacturesPanel = React.lazy(() => import('./FacturesPanel.jsx'));
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
@@ -49,6 +52,7 @@ const VUES = [
   { id: 'comptage', label: 'Comptage' },
   { id: 'ecarts', label: 'Écarts & valeur' },
   { id: 'achats', label: 'Achats & consommation' },
+  { id: 'factures', label: 'Factures' },
 ];
 
 const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
@@ -176,6 +180,8 @@ const Inventaire = ({ user, etablissement }) => {
   // Un seul périmètre à l'écran : tout le module (sélecteur de date, KPI,
   // comparaison vs précédent) ne travaille que sur cette pile.
   const inventaires = inventairesEtab.filter(i => perimetreOf(i) === perimetreActif).sort(parDateDesc);
+  // Bornes des périodes de l'onglet Factures : chaque inventaire du périmètre.
+  const datesInventairesPerimetre = inventaires.map(i => i.date);
   const [selectedId, setSelectedId] = React.useState(() => readLegacyStorage('sc_inventaire_selected', inventaires[0]?.id));
   const [catFilter, setCatFilter] = React.useState('Tous');
   const [typeFilter, setTypeFilter] = React.useState('Tous');
@@ -204,6 +210,10 @@ const Inventaire = ({ user, etablissement }) => {
   // L'onglet Achats reste monté une fois ouvert : une lecture de factures en
   // cours ne doit pas s'arrêter parce qu'on repasse au comptage.
   const [achatsOuvert, setAchatsOuvert] = React.useState(vue === 'achats');
+  const [facturesOuvert, setFacturesOuvert] = React.useState(vue === 'factures');
+  // Factures et bons d'achat : une seule liste pour les deux onglets, lue
+  // seulement quand l'un d'eux a été ouvert (cf. useAchatsDocuments).
+  const achats = useAchatsDocuments(etabId, { actif: achatsOuvert || facturesOuvert });
   const importXlsxRef = React.useRef(null);
   // Export de l'état d'inventaire en cours (Excel ou PDF).
   const [exportEnCours, setExportEnCours] = React.useState(false);
@@ -214,6 +224,10 @@ const Inventaire = ({ user, etablissement }) => {
   // d'inventaire en PDF comme en Excel sont ouverts à toute l'équipe qui a
   // accès à l'inventaire.
   const canImportXlsx = ['consultant', 'patron'].includes(user.role);
+  // Marquer une facture réglée : droit à part (Rôles & accès, « Régler les
+  // factures »), donné au comptable sans lui ouvrir le reste. La base applique
+  // la même règle (déclencheur achats_documents_garde_reglement).
+  const canRegler = canManageModule(user.role, 'factures_achat');
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
   // Quantités comptées pas encore parties. Affiché DANS le module en plus du
@@ -307,6 +321,7 @@ const Inventaire = ({ user, etablissement }) => {
   React.useEffect(() => {
     writeLegacyStorage('sc_inventaire_vue', vue);
     if (vue === 'achats') setAchatsOuvert(true);
+    if (vue === 'factures') setFacturesOuvert(true);
   }, [vue]);
 
   // Helper pour push un inventaire modifié vers Supabase.
@@ -484,6 +499,15 @@ const Inventaire = ({ user, etablissement }) => {
         const parId = new Map(renommes.map(i => [i.id, i]));
         appliquerListe(liste => liste.map(i => parId.get(i.id) || i));
         setPerimetre(cible);
+        // Les factures et bons du périmètre suivent : sinon ils restent rangés
+        // sous un nom qu'aucun onglet ne propose plus, et ne se règlent plus.
+        try {
+          await legacySB.db.renommerPerimetreAchats(etabId, perimetreActif, cible);
+          achats.reload();
+        } catch (err) {
+          console.error('[renommerPerimetre achats]', err);
+          notifyLegacy(`Les factures sont restées rangées dans « ${perimetreActif} » : ${err.message || err}`, 'warning');
+        }
         notifyLegacy(
           fusion
             ? `${renommes.length} inventaire(s) rattaché(s) à « ${cible} ».`
@@ -1452,8 +1476,27 @@ const Inventaire = ({ user, etablissement }) => {
               catalogue={catalogue}
               canImport
               canEditLignes={canEditLignes}
+              canRegler={canRegler}
+              achats={achats}
               onAjouterLignes={ajouterLignes}
               onMajPrix={majPrixDepuisAchats}
+            />
+          </React.Suspense>
+        </div>
+      )}
+
+      {/* Factures : gardé monté une fois ouvert, comme Achats (import en cours). */}
+      {facturesOuvert && (
+        <div style={{ display: vue === 'factures' ? 'block' : 'none' }}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+            <FacturesPanel
+              user={user}
+              etabId={etabId}
+              perimetreActif={perimetreActif}
+              datesInventaires={datesInventairesPerimetre}
+              canRegler={canRegler}
+              canModifier={canManage || canRegler}
+              achats={achats}
             />
           </React.Suspense>
         </div>

@@ -324,6 +324,19 @@ export async function parseFacture(files, options = {}) {
   return normaliserFacture(data, { source: 'scan', pages: images.length });
 }
 
+// Échéance d'une facture lue : la date imprimée, sinon date de facture +
+// délai (« 30 jours net »). Le calcul est fait ici et non par le modèle, qui
+// se trompe volontiers en ajoutant des jours à une date.
+function echeanceFacture(r) {
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  if (iso.test(String(r.dateEcheance || ''))) return r.dateEcheance;
+  const jours = Number(r.delaiPaiementJours);
+  if (!iso.test(String(r.dateFacture || '')) || !Number.isInteger(jours) || jours < 0 || jours > 365) return '';
+  const d = new Date(`${r.dateFacture}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + jours);
+  return d.toISOString().slice(0, 10);
+}
+
 // Normalise la réponse IA. Le modèle rend un TOTAL de ligne et une quantité
 // totale ; le prix unitaire s'en déduit, ce qui évite le piège de la colonne
 // « Prix » dont l'unité change d'une ligne à l'autre sur les vrais documents.
@@ -381,7 +394,12 @@ function normaliserFacture(data, meta) {
     fournisseur: r.fournisseur ? String(r.fournisseur).trim() : '',
     numeroFacture: r.numeroFacture ? String(r.numeroFacture).trim() : '',
     dateFacture: /^\d{4}-\d{2}-\d{2}$/.test(String(r.dateFacture || '')) ? r.dateFacture : '',
+    // Échéance et montant à payer TTC : lus depuis le 07.10.2026 (onglet
+    // Factures). Une fonction ai-proxy plus ancienne ne les renvoie pas :
+    // échéance vide, TTC null, comme une date ou un total non lu.
+    dateEcheance: echeanceFacture(r),
     totalHT,
+    totalTTC: num(r.totalTTC),
     tauxTva: num(r.tauxTva),
     devise: r.devise ? String(r.devise).trim() : 'CHF',
     sommeLignes: Math.round(somme * 100) / 100,

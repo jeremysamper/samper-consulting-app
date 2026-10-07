@@ -72,10 +72,22 @@ export const rolesEcritureBase = {
 // Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.
 export const defaultManageRoles = ['consultant', 'patron'];
 
-// Rôles par défaut du droit « gérer » d'un module (defaultRoles du module,
-// sinon defaultManageRoles).
+// Droits d'action plus fins qu'un module entier, rattachés à un module. Même
+// stockage que « gérer » (clé manage:<id> dans permissions et
+// permissions_utilisateurs) : canManageModule(role, id) les lit côté front,
+// user_peut_gerer(id, …) côté base.
+//   factures_achat : marquer une facture d'achat réglée (Inventaire, onglet
+//   Factures). Vérifié en base par le déclencheur achats_documents_garde_reglement
+//   (migration 20261007), avec les mêmes rôles par défaut : les tenir en phase.
+export const droitsAction = [
+  { id: 'factures_achat', module: 'inventaire', label: 'Régler les factures', defaultRoles: ['consultant', 'patron'] },
+];
+
+// Rôles par défaut du droit « gérer » d'un module ou d'un droit d'action
+// (defaultRoles de l'entrée, sinon defaultManageRoles).
 export function getDefaultManageRoles(moduleId) {
-  const entry = manageableModules.find((m) => m.id === moduleId);
+  const entry = manageableModules.find((m) => m.id === moduleId)
+    || droitsAction.find((d) => d.id === moduleId);
   return entry?.defaultRoles || defaultManageRoles;
 }
 

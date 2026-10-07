@@ -2659,7 +2659,14 @@ export function installLegacySupabase() {
       }
       return (data || []).map(r => this.mapAchatsDocumentFromDB(r));
     },
-    async upsertAchatsDocument(d) {
+    // Les colonnes de l'onglet Factures (migration 20261007) ne passent pas par
+    // cet upsert, qui réécrit le document entier depuis l'état d'un écran :
+    //   - le règlement (regle_*) n'y passe jamais : il a ses propres écritures
+    //     ciblées (reglerFacturesAchat), sinon un rattachement de ligne fait
+    //     depuis un état un peu ancien effacerait un règlement tout juste posé ;
+    //   - le TTC et l'échéance seulement à la création (`creation: true`, la
+    //     lecture IA) ; ensuite ils se corrigent par majFactureAchat.
+    async upsertAchatsDocument(d, { creation = false } = {}) {
       const payload = {
         id: d.id || ('achat-' + Date.now() + Math.floor(Math.random() * 1000)),
         etablissement_id: d.etablissementId,
@@ -2676,6 +2683,10 @@ export function installLegacySupabase() {
         nom_fichier: d.nomFichier || null,
         created_by: d.createdBy || null,
       };
+      if (creation) {
+        payload.total_ttc = d.totalTTC != null && d.totalTTC !== '' ? Number(d.totalTTC) : null;
+        payload.date_echeance = d.dateEcheance || null;
+      }
       const { data, error } = await client.from('achats_documents').upsert(payload).select().single();
       if (error) throw error;
       return this.mapAchatsDocumentFromDB(data);
@@ -2683,6 +2694,47 @@ export function installLegacySupabase() {
     async deleteAchatsDocument(id) {
       const { error } = await client.from('achats_documents').delete().eq('id', id);
       if (error) throw error;
+    },
+    // Montant à payer, échéance ou date d'une facture, corrigés à la main
+    // depuis l'onglet Factures : seuls les champs passés sont écrits.
+    async majFactureAchat(id, { totalTTC, dateEcheance, dateDocument }) {
+      const patch = {};
+      if (totalTTC !== undefined) patch.total_ttc = totalTTC != null && totalTTC !== '' ? Number(totalTTC) : null;
+      if (dateEcheance !== undefined) patch.date_echeance = dateEcheance || null;
+      if (dateDocument !== undefined) patch.date_document = dateDocument || null;
+      const { data, error } = await client.from('achats_documents').update(patch).eq('id', id).select().single();
+      if (error) throw error;
+      return this.mapAchatsDocumentFromDB(data);
+    },
+    // Règlement d'une ou plusieurs factures. `reglement` null = annuler le
+    // règlement. Refusé en base (42501) sans le droit manage:factures_achat ;
+    // une ligne que la RLS cache ne revient pas : on compte ce qui est revenu.
+    // `nouveau` : ne touche que les factures encore à régler, pour qu'un
+    // second appareil n'écrase pas en silence le règlement posé par un autre
+    // (l'appelant voit la différence entre demandées et revenues).
+    async reglerFacturesAchat(ids, reglement, { nouveau = false } = {}) {
+      const liste = (ids || []).filter(Boolean);
+      if (!liste.length) return [];
+      const patch = reglement
+        ? { regle_le: reglement.regleLe, regle_mode: reglement.regleMode || null, regle_note: (reglement.regleNote || '').trim() || null }
+        : { regle_le: null, regle_mode: null, regle_note: null };
+      let q = client.from('achats_documents').update(patch).in('id', liste);
+      if (nouveau) q = q.is('regle_le', null);
+      const { data, error } = await q.select();
+      if (error) throw error;
+      return (data || []).map(r => this.mapAchatsDocumentFromDB(r));
+    },
+    // Renommage d'un périmètre d'inventaire : ses factures et bons suivent.
+    // « Général » couvre aussi les documents enregistrés sans périmètre.
+    async renommerPerimetreAchats(etabId, ancien, nouveau) {
+      let q = client.from('achats_documents').update({ perimetre: nouveau }).eq('etablissement_id', etabId);
+      q = ancien === 'Général' ? q.in('perimetre', ['Général', '']) : q.eq('perimetre', ancien);
+      const { data, error } = await q.select('id');
+      if (error) {
+        if (_relationAbsente(error)) return 0;
+        throw error;
+      }
+      return (data || []).length;
     },
 
     // Pièces des documents d'achat (photos, PDF tels que déposés), rangées dans
@@ -2752,6 +2804,9 @@ export function installLegacySupabase() {
         fournisseurNom: row.fournisseur_nom || '', fournisseurId: row.fournisseur_id,
         numero: row.numero || '', dateDocument: row.date_document,
         totalHT: row.total_ht != null ? Number(row.total_ht) : null,
+        totalTTC: row.total_ttc != null ? Number(row.total_ttc) : null,
+        dateEcheance: row.date_echeance || null,
+        regleLe: row.regle_le || null, regleMode: row.regle_mode || '', regleNote: row.regle_note || '',
         lignes: row.lignes || [], exclu: !!row.exclu,
         source: row.source || '', nomFichier: row.nom_fichier || '',
         createdAt: row.created_at, createdBy: row.created_by,

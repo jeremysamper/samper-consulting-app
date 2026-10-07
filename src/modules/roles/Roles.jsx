@@ -1,7 +1,7 @@
 import React from 'react';
 import { getDemoData, getRoleInfo } from '../../data/demoData.js';
 import {
-  manageableModules, getDefaultManageRoles, navItems, defaultPermissions, rolesEcritureBase,
+  manageableModules, getDefaultManageRoles, navItems, defaultPermissions, rolesEcritureBase, droitsAction,
 } from '../moduleConfig.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -32,6 +32,16 @@ import PhoneLink from '../../components/PhoneLink.jsx';
 // LegacyModuleHost : aucune case ne pourrait les ouvrir à quelqu'un d'autre.
 const MODULES = navItems.filter((n) => n.permKey !== 'consultant_tools');
 const GERABLES = new Set(manageableModules.map((m) => m.id));
+
+// Droits d'action (moduleConfig.droitsAction), rangés sous leur module : une
+// case de plus sous la ligne du module, réglée comme « Modifier » (clé
+// manage:<id>, seul l'écart au rôle est enregistré). Indépendants de
+// « Modifier » : la base ne vérifie que ce droit-là (user_peut_gerer), on peut
+// donc régler les factures sans pouvoir modifier l'inventaire.
+const DROITS_PAR_MODULE = droitsAction.reduce((acc, d) => {
+  (acc[d.module] = acc[d.module] || []).push(d);
+  return acc;
+}, {});
 
 // Gardes dures par rôle dans LegacyModuleHost : ces modules ne s'ouvrent qu'à
 // ces rôles, quelle que soit la case.
@@ -75,6 +85,19 @@ function etatModule(rolePerms, personne, ecarts, moduleId) {
     ecriture,
     ajuste: aCle(ecarts, moduleId) || aCle(ecarts, cleGerer(moduleId)),
   };
+}
+
+// État d'un droit d'action pour une personne. Valeur du rôle calculée par
+// droitsDuRole, comme la case « Modifier » : sinon une case remise à la
+// valeur du rôle resterait enregistrée comme écart. Aucun verrou par rôle
+// (rolesEcritureBase ne les vise pas) : n'importe quel compte peut le
+// recevoir, un comptable par exemple. Sans accès au module, l'onglet est
+// introuvable : la case est montrée décochée et grisée, comme « Modifier ».
+function etatDroitAction(rolePerms, personne, ecarts, droitId, accesModule) {
+  const cle = cleGerer(droitId);
+  const duRole = droitsDuRole(rolePerms, personne.role, droitId).gerer;
+  const brut = aCle(ecarts, cle) ? !!ecarts[cle] : duRole;
+  return { duRole, actif: accesModule && brut, ajuste: aCle(ecarts, cle) };
 }
 
 // Case à cocher avec une cible de 44 px : une case nue de 16 px se rate au
@@ -506,30 +529,60 @@ const Roles = ({ user }) => {
                 }
                 const note = notes.length ? notes.join('. ') : null;
                 return (
-                  <div key={m.permKey} style={{ ...ros.moduleRow, padding: '2px 18px', opacity: e.accesVerrouille ? 0.6 : 1 }}>
-                    <div style={{ flex: 1, minWidth: 0, padding: '8px 0' }}>
-                      <div style={{ fontSize: 13, color: 'var(--text)' }}>{label}</div>
-                      {note && (
-                        <div style={{ fontSize: 11, marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
+                  <React.Fragment key={m.permKey}>
+                    <div style={{ ...ros.moduleRow, padding: '2px 18px', opacity: e.accesVerrouille ? 0.6 : 1 }}>
+                      <div style={{ flex: 1, minWidth: 0, padding: '8px 0' }}>
+                        <div style={{ fontSize: 13, color: 'var(--text)' }}>{label}</div>
+                        {note && (
+                          <div style={{ fontSize: 11, marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
+                        )}
+                      </div>
+                      <Case
+                        checked={e.acces}
+                        disabled={!casesActives || e.accesVerrouille}
+                        label={`Accès à ${label} pour ${u.prenom}`}
+                        onChange={() => basculer(u, m.permKey, e.duRole.acces, e.acces)}
+                      />
+                      {GERABLES.has(m.permKey) ? (
+                        <Case
+                          checked={e.gerer}
+                          disabled={!casesActives || e.gererVerrouille || !e.acces}
+                          label={`Modifier dans ${label} pour ${u.prenom}`}
+                          onChange={() => basculer(u, cleGerer(m.permKey), e.duRole.gerer, e.gerer)}
+                        />
+                      ) : (
+                        <span title="Rien à régler : ce module n'a pas d'actions réservées" style={{ width: 44, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>-</span>
                       )}
                     </div>
-                    <Case
-                      checked={e.acces}
-                      disabled={!casesActives || e.accesVerrouille}
-                      label={`Accès à ${label} pour ${u.prenom}`}
-                      onChange={() => basculer(u, m.permKey, e.duRole.acces, e.acces)}
-                    />
-                    {GERABLES.has(m.permKey) ? (
-                      <Case
-                        checked={e.gerer}
-                        disabled={!casesActives || e.gererVerrouille || !e.acces}
-                        label={`Modifier dans ${label} pour ${u.prenom}`}
-                        onChange={() => basculer(u, cleGerer(m.permKey), e.duRole.gerer, e.gerer)}
-                      />
-                    ) : (
-                      <span title="Rien à régler : ce module n'a pas d'actions réservées" style={{ width: 44, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>-</span>
-                    )}
-                  </div>
+                    {(DROITS_PAR_MODULE[m.permKey] || []).map((d) => {
+                      const da = etatDroitAction(rolePerms, u, ecarts, d.id, e.acces);
+                      const notesDroit = [];
+                      if (da.ajuste) notesDroit.push(`Ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})`);
+                      // Case grisée faute d'accès au module : dire quoi faire,
+                      // sinon elle passe pour un bug. Un accès réservé à d'autres
+                      // rôles est déjà expliqué sur la ligne du module.
+                      if (!e.acces && !e.accesVerrouille) notesDroit.push('Donne d’abord l’accès au module');
+                      const noteDroit = notesDroit.length ? notesDroit.join('. ') : null;
+                      return (
+                        <div key={d.id} style={{ ...ros.moduleRow, ...ros.droitRow, opacity: e.accesVerrouille ? 0.6 : 1 }}>
+                          <div style={{ flex: 1, minWidth: 0, padding: '6px 0' }}>
+                            <div style={{ fontSize: 12, color: e.acces ? 'var(--text2)' : 'var(--text3)' }}>{d.label}</div>
+                            {noteDroit && (
+                              <div style={{ fontSize: 11, marginTop: 2, color: da.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{noteDroit}</div>
+                            )}
+                          </div>
+                          {/* Colonne « Accès » vide : le droit suit l'accès du module. */}
+                          <span aria-hidden="true" style={{ width: 44, flexShrink: 0 }} />
+                          <Case
+                            checked={da.actif}
+                            disabled={!casesActives || !e.acces}
+                            label={`${d.label} dans ${label} pour ${u.prenom}`}
+                            onChange={() => basculer(u, cleGerer(d.id), da.duRole, da.actif)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -654,6 +707,8 @@ const ros = {
   modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap', gap: 10 },
   moduleList: { display: 'flex', flexDirection: 'column' },
   moduleRow: { display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' },
+  // Droit d'action sous son module : en retrait, sans icône, libellé plus petit.
+  droitRow: { padding: '0 18px 0 34px' },
   permBadge: { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap', flexShrink: 0 },
   userAvatar: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
