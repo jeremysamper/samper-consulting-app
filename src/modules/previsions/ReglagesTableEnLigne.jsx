@@ -55,6 +55,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
   const [form, setForm] = useState(null);
   const [enCours, setEnCours] = useState(false);
   const [jourFerme, setJourFerme] = useState('');
+  const [serviceFerme, setServiceFerme] = useState('jour');
   const [couleur, setCouleur] = useState(COULEUR_DEFAUT);
   const [qr, setQr] = useState(null);
   const slugForm = form?.slug || '';
@@ -163,11 +164,46 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
       a.remove();
     }
 
+    // Fermeture d'une date : toute la journée (joursFermes) ou un seul
+    // service (servicesFermes). Fermer la journée remplace les fermetures de
+    // service de cette date.
     function ajouterJourFerme() {
       if (!jourFerme || jourFerme < aujourdhui) return;
-      if (!form.joursFermes.includes(jourFerme)) set('joursFermes', [...form.joursFermes, jourFerme].sort());
+      const services = { ...(form.servicesFermes || {}) };
+      if (serviceFerme === 'jour') {
+        delete services[jourFerme];
+        setForm((p) => ({
+          ...p,
+          joursFermes: p.joursFermes.includes(jourFerme) ? p.joursFermes : [...p.joursFermes, jourFerme].sort(),
+          servicesFermes: services,
+        }));
+      } else {
+        if (form.joursFermes.includes(jourFerme)) { notify('Ce jour est déjà fermé toute la journée.', 'info'); return; }
+        const deja = services[jourFerme] || [];
+        services[jourFerme] = SERVICES.map(([sid]) => sid).filter((sid) => sid === serviceFerme || deja.includes(sid));
+        set('servicesFermes', services);
+      }
       setJourFerme('');
     }
+
+    function retirerServiceFerme(date, service) {
+      const services = { ...(form.servicesFermes || {}) };
+      const reste = (services[date] || []).filter((x) => x !== service);
+      if (reste.length) services[date] = reste; else delete services[date];
+      set('servicesFermes', services);
+    }
+
+    // Services proposés au choix : midi et soir d'office, le brunch s'il
+    // ouvre au moins un jour de la semaine.
+    const servicesProposes = SERVICES.filter(([sid]) => sid === 'midi' || sid === 'soir'
+      || Object.values(form.horaires || {}).some((j) => j?.[sid]?.de && j?.[sid]?.a));
+    const rangService = (sid) => SERVICES.findIndex(([x]) => x === sid);
+    const fermetures = [
+      ...form.joursFermes.filter((d) => d >= aujourdhui).map((d) => ({ date: d, service: null })),
+      ...Object.entries(form.servicesFermes || {}).filter(([d]) => d >= aujourdhui)
+        .flatMap(([d, liste]) => (liste || []).map((service) => ({ date: d, service }))),
+    ].sort((a, b) => a.date.localeCompare(b.date) || rangService(a.service) - rangService(b.service));
+    const libelleService = (sid) => (SERVICES.find(([x]) => x === sid)?.[1] || sid).toLowerCase();
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -405,19 +441,31 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
             {/* ── Jours fermés ── */}
             <div style={s.carte}>
               <div style={s.titre}>Jours de fermeture</div>
-              <div style={{ ...s.aide, marginTop: 0, marginBottom: 8 }}>Vacances, privatisation : ces jours-là, rien n'est proposé en ligne.</div>
+              <div style={{ ...s.aide, marginTop: 0, marginBottom: 8 }}>Vacances, privatisation : toute la journée, ou seulement le midi ou le soir. Rien n'est alors proposé en ligne sur ce moment-là.</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input type="date" aria-label="Jour de fermeture" min={aujourdhui} value={jourFerme} onChange={(e) => setJourFerme(e.target.value)} style={{ ...s.champ, width: 200, flex: '0 0 auto' }} />
+                <select aria-label="Moment fermé" value={serviceFerme} onChange={(e) => setServiceFerme(e.target.value)} style={{ ...s.champ, width: 'auto', flex: '0 0 auto' }}>
+                  <option value="jour">Toute la journée</option>
+                  {servicesProposes.map(([sid, libelle]) => <option key={sid} value={sid}>{libelle} seulement</option>)}
+                </select>
                 <button type="button" onClick={ajouterJourFerme} disabled={!jourFerme} style={{ ...s.secondaire, opacity: jourFerme ? 1 : 0.55 }}>Ajouter</button>
               </div>
-              {form.joursFermes.filter((d) => d >= aujourdhui).length > 0 && (
+              {fermetures.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                  {form.joursFermes.filter((d) => d >= aujourdhui).map((d) => (
-                    <span key={d} style={s.puce}>
-                      {formatDateLongue(d)}
-                      <button type="button" aria-label={`Retirer le ${formatDateLongue(d)}`} onClick={() => set('joursFermes', form.joursFermes.filter((x) => x !== d))} style={s.puceX}>×</button>
-                    </span>
-                  ))}
+                  {fermetures.map(({ date: d, service }) => {
+                    const libelle = service ? `${formatDateLongue(d)}, ${libelleService(service)}` : formatDateLongue(d);
+                    return (
+                      <span key={`${d}|${service || 'jour'}`} style={s.puce}>
+                        {libelle}
+                        <button
+                          type="button"
+                          aria-label={`Retirer le ${libelle}`}
+                          onClick={() => (service ? retirerServiceFerme(d, service) : set('joursFermes', form.joursFermes.filter((x) => x !== d)))}
+                          style={s.puceX}
+                        >×</button>
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>

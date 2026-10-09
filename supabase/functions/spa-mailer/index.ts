@@ -1016,6 +1016,7 @@ type ParamsTable = {
   jours_fermes: string[] | null; message_en_ligne: string | null;
   capacite_demi_heure: number | null; rythme: Record<string, Record<string, number>> | null;
   capacite_jours: Record<string, Record<string, number>> | null;
+  services_fermes: Record<string, string[]> | null;
 };
 
 // Plafond du service ce jour-là : réglage propre au jour de la semaine, sinon
@@ -1049,9 +1050,18 @@ async function lireTableEnLigne(sb: Admin, slug: string) {
   return { p: p as ParamsTable, etab: etab as Etab };
 }
 
+// Services fermés pour cette date seulement (soir privatisé, midi fermé...).
+// Même règle que resa_reserver_en_ligne.
+const servicesFermesLe = (p: ParamsTable, date: string): string[] => {
+  const liste = (p.services_fermes || {})[date];
+  return Array.isArray(liste) ? liste : [];
+};
+
 function servicesDuJour(p: ParamsTable, date: string) {
   const jour = (p.horaires || {})[String(isoJour(date))] || {};
-  return SERVICES_TABLE.filter((s) => HEURE_OK.test(jour[s]?.de || '') && HEURE_OK.test(jour[s]?.a || ''))
+  const fermes = servicesFermesLe(p, date);
+  return SERVICES_TABLE.filter((s) => !fermes.includes(s))
+    .filter((s) => HEURE_OK.test(jour[s]?.de || '') && HEURE_OK.test(jour[s]?.a || ''))
     .map((s) => ({ service: s, de: enMinutes(jour[s].de!), a: enMinutes(jour[s].a!) }))
     .filter((x) => x.de <= x.a);
 }
@@ -1162,7 +1172,12 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       maxCouverts: p.max_couverts,
       horizonJours: p.horizon_jours,
       joursOuverts: jours,
-      joursFermes: (p.jours_fermes || []).filter((d) => d >= aujourdhui),
+      // Une date dont tous les services du jour sont fermés un par un se
+      // présente comme un jour fermé.
+      joursFermes: [...new Set([
+        ...(p.jours_fermes || []),
+        ...Object.keys(p.services_fermes || {}).filter((d) => DATE_OK.test(d) && !servicesDuJour(p, d).length),
+      ])].filter((d) => d >= aujourdhui).sort(),
       aujourdhui,
     });
   }
@@ -1235,6 +1250,7 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       demi_heure: 'Cette heure vient d\'être prise. Choisissez-en une autre.',
       horaire: 'Cette heure est en dehors des heures de réservation.',
       jour_ferme: 'Le restaurant est fermé ce jour-là.',
+      service_ferme: 'Ce service est fermé ce jour-là. Choisissez un autre moment.',
       couverts: `En ligne, jusqu'à ${personnes(p.max_couverts)}. Pour un groupe, appelez-nous.`,
       ferme: 'La réservation en ligne n\'est pas ouverte pour ce restaurant.',
     };

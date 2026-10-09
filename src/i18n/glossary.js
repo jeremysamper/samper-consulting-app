@@ -664,6 +664,13 @@ export const UI_GLOSSARY = {
   'Copier le lien': 'Copy link',
   'Voir la page': 'View page',
   'Jours de fermeture': 'Closing days',
+  'Toute la journée': 'All day',
+  'Midi seulement': 'Lunch only',
+  'Soir seulement': 'Dinner only',
+  'Brunch seulement': 'Brunch only',
+  'Moment fermé': 'Closed period',
+  'Ce jour est déjà fermé toute la journée.': 'This day is already closed all day.',
+  'Vacances, privatisation : toute la journée, ou seulement le midi ou le soir. Rien n\'est alors proposé en ligne sur ce moment-là.': 'Holidays, private events: all day, or only lunch or dinner. Nothing is offered online for that time.',
   'Heures d\'arrivée proposées': 'Arrival times offered',
   'Enregistrer les réglages': 'Save settings',
 

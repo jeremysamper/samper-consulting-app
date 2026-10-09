@@ -646,6 +646,13 @@ export const UI_GLOSSARY_ES = {
   'Copier le lien': 'Copiar el enlace',
   'Voir la page': 'Ver la página',
   'Jours de fermeture': 'Días de cierre',
+  'Toute la journée': 'Todo el día',
+  'Midi seulement': 'Solo mediodía',
+  'Soir seulement': 'Solo noche',
+  'Brunch seulement': 'Solo brunch',
+  'Moment fermé': 'Momento cerrado',
+  'Ce jour est déjà fermé toute la journée.': 'Este día ya está cerrado todo el día.',
+  'Vacances, privatisation : toute la journée, ou seulement le midi ou le soir. Rien n\'est alors proposé en ligne sur ce moment-là.': 'Vacaciones, eventos privados: todo el día, o solo el mediodía o la noche. En ese momento no se ofrece nada en línea.',
   'Heures d\'arrivée proposées': 'Horas de llegada propuestas',
   'Enregistrer les réglages': 'Guardar los ajustes',
 

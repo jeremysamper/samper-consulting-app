@@ -47,6 +47,7 @@ export const PARAMETRES_DEFAUT = {
   horizonJours: 60,
   pasMinutes: 15,
   joursFermes: [],
+  servicesFermes: {},
   messageEnLigne: '',
 };
 
@@ -67,6 +68,7 @@ function depuisBase(r) {
     horizonJours: r.horizon_jours,
     pasMinutes: r.pas_minutes,
     joursFermes: r.jours_fermes || [],
+    servicesFermes: r.services_fermes && typeof r.services_fermes === 'object' ? r.services_fermes : {},
     messageEnLigne: r.message_en_ligne || '',
   };
 }
@@ -82,6 +84,19 @@ function nettoyerRythme(rythme) {
       .filter(([, v]) => v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v)) && Number(v) >= 0)
       .map(([h, v]) => [h, Math.round(Number(v))]);
     if (gardees.length) sortie[service] = Object.fromEntries(gardees);
+  });
+  return sortie;
+}
+
+// Services fermés par date : { "2026-10-12": ["soir"] }. On garde les dates
+// à venir qui ont au moins un service, sans doublon.
+function nettoyerServicesFermes(services) {
+  const aujourdhui = zurichToday();
+  const sortie = {};
+  Object.entries(services || {}).forEach(([date, liste]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < aujourdhui || !Array.isArray(liste)) return;
+    const gardes = [...new Set(liste.filter((x) => typeof x === 'string' && x))];
+    if (gardes.length) sortie[date] = gardes;
   });
   return sortie;
 }
@@ -102,6 +117,7 @@ function versBase(p) {
     horizon_jours: Number(p.horizonJours) || 60,
     pas_minutes: Number(p.pasMinutes) || 15,
     jours_fermes: [...new Set(p.joursFermes || [])].sort(),
+    services_fermes: nettoyerServicesFermes(p.servicesFermes),
     message_en_ligne: String(p.messageEnLigne || '').trim() || null,
     updated_at: new Date().toISOString(),
   };
