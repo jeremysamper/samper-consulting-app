@@ -64,7 +64,7 @@ const pls = {
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   addHint: { fontSize: 18, color: 'var(--text2)' },
   ptTable: { display: 'flex', flexDirection: 'column' },
-  ptHead: { display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr 120px', padding: '8px 16px', background: 'var(--bg)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)' },
+  ptHead: { display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr 120px', padding: '8px 16px', background: 'var(--bg)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' },
   ptRow: { display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr 120px', padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer' },
   ptEmp: { display: 'flex', alignItems: 'center', gap: 10 },
   ptAvatar: { width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 10 },
@@ -87,8 +87,8 @@ const pls = {
   mobileDayNavRow: { display: 'flex', alignItems: 'center', gap: 8 },
   mobileNavArrow: { width: 44, height: 44, flexShrink: 0, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 22, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   mobileDayNavCenter: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, textAlign: 'center', overflow: 'hidden' },
-  mobileDayName: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'capitalize' },
-  mobileTodayChip: { fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-light)', padding: '1px 8px', borderRadius: 10, textTransform: 'uppercase', letterSpacing: 0.4 },
+  mobileDayName: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  mobileTodayChip: { fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-light)', padding: '1px 8px', borderRadius: 10 },
   mobileTodayBtn: { width: '100%', minHeight: 44, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Pointage en un geste depuis la liste desktop / iPad.
   ptAction: { display: 'flex', justifyContent: 'flex-end' },
@@ -122,13 +122,13 @@ const pls = {
   modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
   modalTitle: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 },
   fieldInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
 
   // Navigation temporelle du header (Refonte UI/UX)
   weekNav: { display: 'flex', alignItems: 'center', gap: 4 },
   navArrow: { width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 18, lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  weekLabel: { fontSize: 13, fontWeight: 600, color: 'var(--text)', minWidth: 130, textAlign: 'center', textTransform: 'capitalize' },
+  weekLabel: { fontSize: 13, fontWeight: 600, color: 'var(--text)', minWidth: 130, textAlign: 'center' },
 
   // Menu overflow ⋯
   overflowBackdrop: { position: 'fixed', inset: 0, zIndex: 40 },

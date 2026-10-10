@@ -63,9 +63,13 @@ export default function ExportModal({
           { etablissement, filename: `planning-equipe-${base}.pdf` },
         );
       } else if (doc === 'personnes') {
-        const seul = choisis.length === 1 ? choisis[0] : null;
+        // « Toutes » : pas de page pour qui n'a aucun horaire sur la période.
+        const avecHoraires = choisis.length > 1
+          ? choisis.filter(p => shifts.some(s => s.userId === p.id && s.date >= debut && s.date <= fin))
+          : choisis;
+        const seul = avecHoraires.length === 1 ? avecHoraires[0] : null;
         await pdfUtils.exportPlanningPdf(
-          payloadPersonnes({ titre: 'Planning', sousTitre, debut, fin, personnes: choisis, shifts, absenceDe, nomDe }),
+          payloadPersonnes({ titre: 'Planning', sousTitre, debut, fin, personnes: avecHoraires, shifts, absenceDe, nomDe }),
           { etablissement, filename: seul ? `planning-${nomDe(seul.id).toLowerCase().replace(/\s+/g, '-')}-${base}.pdf` : `planning-par-personne-${base}.pdf` },
         );
       } else if (doc === 'pointages') {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Fenetre, Options, st } from './planningUi.jsx';
 import { ajouterJours, chevauche } from './planningModeles.js';
+import { libellePeriode } from './planningExport.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dupliquer : une seule fenêtre pour recopier une semaine, les horaires d'une
@@ -17,14 +18,7 @@ import { ajouterJours, chevauche } from './planningModeles.js';
 
 const jourCourt = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(',', '');
 const jourLong = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
-const periode = (debut) => {
-  const fin = ajouterJours(debut, 6);
-  const a = new Date(debut + 'T12:00:00');
-  const b = new Date(fin + 'T12:00:00');
-  const moisA = a.toLocaleDateString('fr-CH', { month: 'long' });
-  const moisB = b.toLocaleDateString('fr-CH', { month: 'long' });
-  return moisA === moisB ? `du ${a.getDate()} au ${b.getDate()} ${moisB}` : `du ${a.getDate()} ${moisA} au ${b.getDate()} ${moisB}`;
-};
+const periode = (debut) => libellePeriode(debut, ajouterJours(debut, 6));
 const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 const estPointe = (s) => !!(s.pointageDebut || s.pointageFin);
 

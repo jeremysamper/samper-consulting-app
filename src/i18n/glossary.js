@@ -814,6 +814,32 @@ export const UI_GLOSSARY = {
   'TTC': 'incl. VAT',
   'Pas de photo conservée pour cette facture': 'No photo kept for this invoice',
   'Aucune facture importée pour cette période': 'No invoice imported for this period',
+
+  // ── Planning : modèles d'horaires, duplication, export ──
+  'Mon planning': 'My schedule',
+  'Gérer': 'Manage',
+  'Gérer le planning': 'Manage the schedule',
+  'Coupure': 'Split shift',
+  'Longue': 'Long shift',
+  'Longue matin': 'Long morning',
+  'Longue soir': 'Long evening',
+  'Continue': 'Continuous',
+  'Repos': 'Day off',
+  'Prochain service': 'Next shift',
+  'Autre horaire': 'Other hours',
+  'Un horaire': 'One shift',
+  'Ajouter des horaires': 'Add shifts',
+  'Dupliquer des horaires': 'Duplicate shifts',
+  "Modèles d'horaires": 'Shift templates',
+  'Télécharger mon planning': 'Download my schedule',
+  'Revenir à cette semaine': 'Back to this week',
+  "Toute l'équipe": 'Whole team',
+  'Pointages': 'Clock-ins',
+  'Relevé CCNT': 'CCNT statement',
+  'Période': 'Period',
+  'Le mois': 'The month',
+  'Personne': 'Person',
+  'Document': 'Document',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -15,16 +15,19 @@ const capitale = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 export const jourLong = (iso) => capitale(new Date(iso + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' }));
 const jourCourt = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(',', '');
 
+// « 1er » comme on l'écrit, pas « 1 ».
+const jourDuMois = (d) => (d.getDate() === 1 ? '1er' : String(d.getDate()));
+const mois = (d, annee) => d.toLocaleDateString('fr-CH', annee ? { month: 'long', year: 'numeric' } : { month: 'long' });
+
 export const libellePeriode = (debut, fin) => {
   const a = new Date(debut + 'T12:00:00');
   const b = new Date(fin + 'T12:00:00');
-  if (debut === fin) return `le ${a.getDate()} ${b.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' })}`;
+  if (debut === fin) return `le ${jourDuMois(a)} ${mois(b, true)}`;
   const memeMois = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
   const memeAnnee = a.getFullYear() === b.getFullYear();
-  if (memeMois) return `du ${a.getDate()} au ${b.getDate()} ${b.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' })}`;
-  const ga = a.toLocaleDateString('fr-CH', memeAnnee ? { day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' });
-  const gb = b.toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `du ${ga} au ${gb}`;
+  if (memeMois) return `du ${jourDuMois(a)} au ${jourDuMois(b)} ${mois(b, true)}`;
+  const ga = `${jourDuMois(a)} ${mois(a, !memeAnnee)}`;
+  return `du ${ga} au ${jourDuMois(b)} ${mois(b, true)}`;
 };
 
 const triHeure = (a, b) => (a.debut || '').localeCompare(b.debut || '');

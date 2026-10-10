@@ -1510,7 +1510,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </>
               ) : (
                 <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)' }}>
                     Correction manuelle du pointage
                   </div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1847,7 +1847,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Récapitulatif sélection */}
                 <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Horaires à dupliquer</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>Horaires à dupliquer</div>
                   <div style={{ fontSize: 13 }}>
                     <strong>{sources.length}</strong> horaire{sources.length > 1 ? 's' : ''} sélectionné{sources.length > 1 ? 's' : ''}, copié{sources.length > 1 ? 's' : ''} pour chaque personne et chaque jour cochés ci-dessous
                   </div>
