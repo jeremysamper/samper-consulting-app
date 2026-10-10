@@ -311,7 +311,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             <button
               style={{
                 ...ss.chip,
-                ...(onboardingMode ? { background: 'var(--warning-text)', color: '#fff', borderColor: 'var(--warning-text)' } : {}),
+                ...(onboardingMode ? { background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)', fontWeight: 700 } : {}),
               }}
               onClick={() => setOnboardingMode(prev => !prev)}
               title="Afficher uniquement les SOPs taggées 'essentielle'"
