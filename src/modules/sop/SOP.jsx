@@ -9,7 +9,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
-import { Pencil, Trash2 } from 'lucide-react';
+import { BookmarkCheck, BookmarkPlus, Pencil, Trash2 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -420,14 +420,16 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                         <button
                           style={{ ...ss.iconBtn, color: '#15803d', borderColor: '#86efac', cursor: 'default' }}
                           title="Déjà dans la bibliothèque de templates"
+                          aria-label="Déjà dans la bibliothèque de templates"
                           disabled
-                        >Template</button>
+                        ><BookmarkCheck size={14} aria-hidden="true" /></button>
                       ) : (
                         <button
                           style={ss.iconBtn}
                           onClick={() => onAddToTemplates && onAddToTemplates(sop)}
                           title="Ajouter à la bibliothèque de templates (pour export vers d'autres établissements)"
-                        >+ Template</button>
+                          aria-label="Ajouter à la bibliothèque de templates"
+                        ><BookmarkPlus size={14} aria-hidden="true" /></button>
                       )
                     )}
                     <button

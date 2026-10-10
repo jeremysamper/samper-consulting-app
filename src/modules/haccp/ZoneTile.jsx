@@ -41,13 +41,13 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
     }
   }
 
-  const bg = conforme===null ? 'var(--surface)' : conforme ? 'var(--success-bg-soft)' : 'var(--danger-bg-soft)';
-  const bc = conforme===null ? 'var(--border)'  : conforme ? 'var(--success-bd)' : 'var(--danger-bd)';
+  // Pas de tuile encadrée : la zone se lit en ligne, son statut porté par la
+  // couleur de la valeur et du libellé « Conforme / Non conforme ».
   const vc = conforme===null ? 'var(--text2)'   : conforme ? 'var(--success-text)' : 'var(--danger-strong)';
 
   return (
-    <div style={{ ...hs.zoneTile, background: bg, border: `2px solid ${bc}`, flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${bc}` }}>
+    <div style={{ ...hs.zoneTile, borderRadius: 0, borderBottom: '1px solid var(--border)', flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: 0 }}>
+      <div style={{ padding: '10px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{zone.nom}</div>
@@ -73,7 +73,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
           <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucun relevé</div>
         )}
       </div>
-      <div style={{ padding: '10px 14px' }}>
+      <div style={{ padding: '0 0 10px' }}>
         {!isActive ? (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <div>

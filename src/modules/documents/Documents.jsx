@@ -699,8 +699,8 @@ const ds = {
   // que borderColor (cf. npm run lint:borders).
   ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 10px 10px 14px', minHeight: 60, cursor: 'pointer', borderWidth: '0 0 1px 0', borderStyle: 'solid', borderColor: 'var(--border)', background: 'transparent', outline: 'none' },
   ligneSel: { background: 'var(--bg)', borderColor: 'var(--accent)' },
-  icone: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'var(--bg)', color: 'var(--text2)' },
-  iconeDossier: { background: 'var(--accent)', color: '#fff' },
+  icone: { width: 28, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--text2)' },
+  iconeDossier: { color: 'var(--accent)' },
   ligneInfo: { flex: 1, minWidth: 0 },
   ligneNom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
   ligneMeta: { fontSize: 11.5, color: 'var(--text2)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },

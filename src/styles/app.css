@@ -1806,39 +1806,65 @@ html[data-theme="dark"] button:not(:disabled):active {
   .haccp-nav .haccp-nav-titre { font-size: 14px !important; }
 }
 
-/* ─── Moins d'encadrés ───────────────────────────────────────────────────────
-   Un bloc entouré d'un filet sur chaque côté, à chaque niveau de la page, fait
-   interface générée. Les conteneurs (pas les champs ni les boutons) qui portent
-   le cadre standard `border: 1px solid var(--border)` (ou `--spa-line` dans le
-   module Spa) en style inline perdent leur filet : le fond et l'espace
-   suffisent à grouper. Un bloc imbriqué dans
-   un autre garde seulement un filet bas, pour séparer les lignes d'une liste.
-   Le filet reste transparent plutôt que retiré : aucune ligne ne bouge.
-   Un bloc imbriqué sur fond neutre perd aussi ce fond : la liste se lit en
-   lignes, plus en tuiles empilées.
-   Restent encadrés : menus, popovers et fenêtres (position absolute/fixed ou
-   rôle de dialogue), les groupes qui jouent le rôle d'un champ ou d'un
-   sélecteur (un champ ou deux boutons en enfants directs), et tout élément
-   marqué `data-cadre`. Sans :has() (navigateur ancien), la règle entière est
-   ignorée et l'écran garde ses cadres. */
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)) {
+/* ─── Plus de carrés ─────────────────────────────────────────────────────────
+   Un bloc posé dans un cadre arrondi, sur un fond à part, à chaque niveau de
+   la page, fait interface générée. Les conteneurs en style inline qui portent
+   un cadre ou un fond de surface (`--surface`, `--surface2`, `--bg`, et leurs
+   équivalents du module Spa) perdent fond, contour, coins arrondis, ombre et
+   retrait latéral : le contenu se pose sur la page, aligné sur les titres, et
+   chaque bloc se sépare du suivant par un filet bas.
+   Restent tels quels : les champs et les groupes qui contiennent un champ,
+   les fenêtres et leur panneau (enfant direct d'un élément fixed/absolute,
+   ombre portée, rôle de dialogue, classes modal-*), les barres sticky, les
+   menus, les jauges et pastilles à hauteur fixe, les aplats à texte blanc, et
+   tout élément marqué `data-cadre`. Sans :has() (navigateur ancien), la règle
+   entière est ignorée et l'écran garde ses cadres. */
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea)) {
+  background: transparent !important;
   border-color: transparent !important;
-}
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button))
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)) {
   border-bottom-color: var(--spa-line, var(--border)) !important;
   border-radius: 0 !important;
+  box-shadow: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button))
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):is([style*="background: var(--bg)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)) {
+
+/* Les lignes de liste en bouton pleine largeur suivent la même règle. */
+button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"])[style*="width: 100%"][style*="text-align: left"]:not([data-cadre]) {
   background: transparent !important;
+  border-color: transparent !important;
+  border-bottom-color: var(--border) !important;
+  border-radius: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
-/* Un bloc cliquable retrouve son filet au survol de la souris. */
-@media (hover: hover) and (pointer: fine) {
-  :is(div, section, article, aside, li, header, footer, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"])[style*="cursor: pointer"]:not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)):hover {
-    border-color: var(--border2) !important;
-    border-radius: var(--r-sm) !important;
-  }
+
+/* Boutons secondaires : du texte, plus de cadre. Les boutons d'action pleins
+   (accent, danger, succès) et les états actifs gardent leur aplat. */
+button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]),
+.ui-btn--ghost {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Cases d'ajout en pointillés : le « + » suffit. */
+div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
+  border-color: transparent !important;
+}
+
+/* Barres d'onglets : soulignement de l'onglet actif au lieu d'une pilule. */
+.segmented-tabs {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  padding-left: 0 !important;
+}
+.segmented-tab.is-active {
+  background: transparent !important;
+  box-shadow: inset 0 -2px 0 var(--accent) !important;
+  border-radius: 0 !important;
+  color: var(--accent) !important;
 }
 
 /* ─── Pastilles en texte ─────────────────────────────────────────────────────
