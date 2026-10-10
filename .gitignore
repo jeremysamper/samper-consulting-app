@@ -47,10 +47,11 @@ vite.config.js.timestamp-*
 probe-*.txt
 
 # === OUTILS DE DÉVELOPPEMENT ===
-# .claude/ reste local, sauf le hook de démarrage partagé (task-observer).
+# .claude/ reste local, sauf les réglages, hooks et agents partagés.
 .claude/*
 !.claude/settings.json
 !.claude/hooks/
+!.claude/agents/
 
 # === ÉDITEURS / OS ===
 .DS_Store
