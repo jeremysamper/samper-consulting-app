@@ -435,10 +435,10 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 <strong>{produits.length}</strong> produit(s) détecté(s) ·{' '}
                 <strong>{selectedCount}</strong> à importer ·{' '}
                 {dupCount > 0 && (
-                  <span style={{ color: '#b45309' }}><strong>{dupCount}</strong> doublon(s) · </span>
+                  <span style={{ color: 'var(--warning-text)' }}><strong>{dupCount}</strong> doublon(s) · </span>
                 )}
                 {flaggedCount > 0
-                  ? <span style={{ color: '#b45309' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
+                  ? <span style={{ color: 'var(--warning-text)' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
                   : <span style={{ color: 'var(--success-text)' }}>aucune anomalie</span>}
                 {fournisseurNom && <span> · Fournisseur : <strong>{fournisseurNom}</strong></span>}
                 {parseErrors > 0 && (

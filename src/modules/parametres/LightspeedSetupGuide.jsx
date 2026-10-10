@@ -52,8 +52,8 @@ function CodeLine({ value }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
       <code style={{
         flex: 1, padding: '5px 10px', borderRadius: 6,
-        background: '#f1f5f9', border: '1px solid #e2e8f0',
-        fontSize: 12, color: '#0f172a', fontFamily: 'var(--font)',
+        background: 'var(--surface2)', border: '1px solid var(--border)',
+        fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)',
         wordBreak: 'break-all',
       }}>
         {value}
@@ -188,8 +188,8 @@ export default function LightspeedSetupGuide({ onClose }) {
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <code style={{
                       padding: '3px 9px', borderRadius: 5,
-                      background: '#f1f5f9', border: '1px solid #e2e8f0',
-                      fontSize: 12, fontFamily: 'var(--font)', fontWeight: 700, color: '#0f172a',
+                      background: 'var(--surface2)', border: '1px solid var(--border)',
+                      fontSize: 12, fontFamily: 'var(--font)', fontWeight: 700, color: 'var(--text)',
                       flexShrink: 0, minWidth: 148,
                     }}>
                       {key}
@@ -200,8 +200,8 @@ export default function LightspeedSetupGuide({ onClose }) {
                 ))}
               </div>
               <div style={{
-                fontSize: 12, color: '#0369a1',
-                background: '#f0f9ff', border: '1px solid #bae6fd',
+                fontSize: 12, color: 'var(--info-text)',
+                background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>
                 Une fois les secrets ajoutés, recharge cette page - le bouton

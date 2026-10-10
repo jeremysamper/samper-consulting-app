@@ -989,7 +989,7 @@ const ls = {
   mobileNav: { display: 'flex', background: 'var(--surface)', borderTop: '1px solid var(--border)', flexShrink: 0, position: 'relative', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
   mobileNavBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 4px 10px', background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', gap: 2, minHeight: 58 },
   mobileNavActive: { color: 'var(--accent)' },
-  mobileAvatar: { width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
+  mobileAvatar: { width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
   moreDrawer: { position: 'absolute', bottom: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px 12px 0 0', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', padding: '8px 0', maxHeight: '70vh', overflowY: 'auto' },
   moreItem: { display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px', background: 'none', border: 'none', width: '100%', cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)', transition: 'background .1s' },
 };

@@ -94,7 +94,7 @@ function AllMappedState({ total }) {
       <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--success-text)' }}>
         Tous les plats sont mappés !
       </div>
-      <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13, color: 'var(--success-text)', lineHeight: 1.6 }}>
         {total} plat{total > 1 ? 's' : ''} relié{total > 1 ? 's' : ''} à une recette.
         Les vues Mise en place et Top/Flop sont prêtes pour J4.
       </div>

@@ -8,6 +8,7 @@ import {
 } from '../../modules/moduleConfig.js';
 import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 // ─────────────────────────────────────────────────────
 // PARAMÈTRES - Gestion des établissements (Consultant)
@@ -368,14 +369,21 @@ const Parametres = ({ user, etablissement }) => {
                 {etab.nom}
                 {etab.actif===false && <span style={ps.inactifBadge}>Inactif</span>}
               </div>
-              <div style={ps.etabMeta}>{etab.type} · {etab.adresse || 'Adresse non renseignée'}</div>
-              {etab.tel && <div style={ps.etabMeta}>{etab.tel}{etab.email && ` · ${etab.email}`}</div>}
+              <div style={ps.etabMeta}>{etab.type}, {etab.adresse || 'Adresse non renseignée'}</div>
+              {etab.tel && <div style={ps.etabMeta}>{etab.tel}{etab.email && `, ${etab.email}`}</div>}
               {modulesReady && <div style={ps.etabMeta}>{moduleCountLabel(etab.modulesActifs)}</div>}
             </div>
-            <div style={{display:'flex',gap:8,flexShrink:0}}>
-              <button style={ps.ghostBtn} onClick={()=>openEdit(etab)}>Modifier</button>
-              <button style={{...ps.ghostBtn,color:'var(--danger-strong)',borderColor:'var(--danger-bd)'}} onClick={()=>setShowConfirm(etab.id)}>Supprimer</button>
-            </div>
+            <BoutonActions
+              id={`etab-gerer-${etab.id}`}
+              label="Gérer"
+              style={ps.ghostBtn}
+              titre={etab.nom}
+              sousTitre={etab.type}
+              sections={[
+                { items: [{ titre: 'Modifier', detail: 'Nom, type, adresse, contact, couleur et modules actifs.', onClick: () => openEdit(etab) }] },
+                { items: [{ titre: 'Supprimer l\'établissement', danger: true, onClick: () => setShowConfirm(etab.id) }] },
+              ]}
+            />
           </div>
         ))}
       </div>
@@ -436,10 +444,6 @@ const Parametres = ({ user, etablissement }) => {
                 display:'flex', alignItems:'center', gap:12, padding:'12px 20px',
                 borderBottom:'1px solid var(--border)', flexWrap:'wrap',
               }}>
-                {/* Icône + clé technique */}
-                <div style={{ width:24, textAlign:'center', fontSize:15, flexShrink:0 }}>
-                  {item.icon || '•'}
-                </div>
                 <div style={{ flex:1, minWidth:160 }}>
                   {isEditing ? (
                     <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
@@ -462,10 +466,7 @@ const Parametres = ({ user, etablissement }) => {
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                       <span style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{displayLabel}</span>
                       {isCustomised && (
-                        <span style={{
-                          fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:20,
-                          background:'var(--info-bg-soft)', color:'var(--info-text)', border:'1px solid #bfdbfe',
-                        }}>
+                        <span style={{ fontSize:11, fontWeight:600, color:'var(--info-text)' }}>
                           personnalisé
                         </span>
                       )}
@@ -488,7 +489,7 @@ const Parametres = ({ user, etablissement }) => {
                     </button>
                     {isCustomised && (
                       <button
-                        style={{ ...ps.ghostBtn, color:'var(--warning-text)', borderColor:'var(--warning-bd)' }}
+                        style={ps.ghostBtn}
                         onClick={() => resetLabelItem(item.id)}
                         title={`Rétablir "${item.label}"`}
                       >
@@ -551,9 +552,9 @@ const Parametres = ({ user, etablissement }) => {
 
 const ps = {
   root: { display:'flex', flexDirection:'column', gap:16 },
-  banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, background:'var(--nav)', color:'#fff', padding:'22px 26px', borderRadius:12, flexWrap:'wrap' },
-  bannerTitle: { fontSize:18, fontWeight:700, fontFamily:'var(--font-serif)', color:'#fff' },
-  bannerSub: { fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:4 },
+  banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'4px 0', flexWrap:'wrap' },
+  bannerTitle: { fontSize:20, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)' },
+  bannerSub: { fontSize:13, color:'var(--text2)', marginTop:4 },
   addBtn: { padding:'10px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
   statsRow: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 },
   statCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', padding:'14px 18px' },

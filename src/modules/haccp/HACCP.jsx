@@ -923,7 +923,7 @@ const HACCP = ({ user, etablissement }) => {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {z.nom}
-                      {!z.actif && <span style={{fontSize:10,fontWeight:600,background:'#f1f5f9',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      {!z.actif && <span style={{fontSize:10,fontWeight:600,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
                       {ZONE_TYPES.find(t=>t.id===z.type)?.label} · Cible : {z.cible}{z.unite} · Plage : [{z.min??'-'} ; {z.max??'+∞'}]{z.unite}
@@ -957,7 +957,7 @@ const HACCP = ({ user, etablissement }) => {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {c.label}
-                      {!c.actif&&<span style={{fontSize:10,fontWeight:600,background:'#f1f5f9',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      {!c.actif&&<span style={{fontSize:10,fontWeight:600,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
                       {CTRL_TYPES.find(t=>t.id===c.type)?.label} · {c.frequence}

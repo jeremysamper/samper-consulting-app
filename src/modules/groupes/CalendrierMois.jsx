@@ -137,7 +137,7 @@ export default function CalendrierMois({
           };
 
           if (!actif) {
-            return <div key={c.iso} style={styleCase}>{contenu}</div>;
+            return <div key={c.iso} data-cadre style={styleCase}>{contenu}</div>;
           }
 
           const d = new Date(c.iso + 'T00:00:00');
@@ -148,6 +148,7 @@ export default function CalendrierMois({
             <button
               key={c.iso}
               type="button"
+              data-cadre
               aria-label={etiquetteAria}
               onClick={() => onJour?.(c.iso, duJour)}
               style={{ ...styleCase, ...s.caseBouton }}
@@ -181,7 +182,7 @@ const s = {
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color: 'var(--text2)',
-    background: 'var(--bg)',
+    background: 'transparent',
     borderBottom: '1px solid var(--border)',
   },
   enTeteWeekend: { color: 'var(--text3)' },
@@ -194,7 +195,7 @@ const s = {
     minWidth: 0,
     padding: 4,
     boxSizing: 'border-box',
-    background: 'var(--surface)',
+    background: 'transparent',
     borderStyle: 'solid',
     borderColor: 'var(--border)',
     borderWidth: '0 1px 1px 0',
@@ -204,8 +205,8 @@ const s = {
     color: 'var(--text)',
   },
   caseBouton: { cursor: 'pointer', margin: 0 },
-  caseWeekend: { background: 'var(--bg)' },
-  caseHorsMois: { background: 'var(--bg)', opacity: 0.55 },
+  caseWeekend: { background: 'color-mix(in oklab, var(--text) 3%, transparent)' },
+  caseHorsMois: { background: 'transparent', opacity: 0.4 },
   // Un groupe passé reste visible (on y revient pour le refaire l'an prochain)
   // mais ne doit plus attirer l'œil autant qu'un groupe à venir.
   casePassee: { opacity: 0.55 },

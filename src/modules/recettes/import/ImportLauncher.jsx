@@ -366,7 +366,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                     </span>
                   )}
                   {parseStats.sheetsSkipped.length > 0 && (
-                    <span style={{ color: '#b45309' }}>
+                    <span style={{ color: 'var(--warning-text)' }}>
                       {' '}· ignoré(s) : {parseStats.sheetsSkipped.join(', ')}
                     </span>
                   )}

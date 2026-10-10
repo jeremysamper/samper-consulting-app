@@ -9,7 +9,8 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
-import { BookmarkCheck, BookmarkPlus, Pencil, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -310,7 +311,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             <button
               style={{
                 ...ss.chip,
-                ...(onboardingMode ? { background: '#92400e', color: '#fff', borderColor: '#92400e' } : {}),
+                ...(onboardingMode ? { background: 'var(--warning-text)', color: '#fff', borderColor: 'var(--warning-text)' } : {}),
               }}
               onClick={() => setOnboardingMode(prev => !prev)}
               title="Afficher uniquement les SOPs taggées 'essentielle'"
@@ -350,8 +351,8 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
       {/* Bandeau d'info quand mode nouveau cuisinier actif */}
       {onboardingMode && (
         <div style={{
-          padding:'10px 14px', background:'#fef3c7', border:'1px solid #fde68a',
-          borderRadius:8, marginBottom:12, fontSize:12, color:'#78350f', lineHeight:1.5,
+          padding:'10px 14px', background:'var(--warning-bg)', border:'1px solid var(--warning-bd)',
+          borderRadius:8, marginBottom:12, fontSize:12, color:'var(--warning-text)', lineHeight:1.5,
         }}>
           <strong>Mode "Nouveau cuisinier"</strong> - Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
         </div>
@@ -383,8 +384,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
               return (
                 <div key={sop.id} style={{
                   ...ss.sopCard,
-                  ...(doneToday ? { borderColor: '#86efac', background: '#f0fdf4' } : {}),
-                  ...(sel.active && sel.isSelected(sop.id) ? { borderColor: 'var(--accent)', background: 'var(--bg)' } : {}),
+                  ...(sel.active && sel.isSelected(sop.id) ? { borderColor: 'var(--accent)' } : {}),
                 }}>
                   {sel.active && (
                     <input
@@ -398,52 +398,44 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                     <div style={ss.sopCardTitle}>{sop.titre}</div>
                     {sop.description && <div style={ss.sopCardDesc}>{sop.description}</div>}
                     <div style={ss.sopCardMeta}>
-                      <span style={{ ...ss.miniBadge, background: '#f1f5f9', color: 'var(--text2)' }}>{sop.categorie}</span>
+                      <span style={ss.sopCardCat}>{sop.categorie}</span>
                       <span style={ss.sopCardSteps}>{totalSteps} étape{totalSteps > 1 ? 's' : ''}</span>
                       {(sop.tags || []).map(t => (
-                        <span key={t} style={{ ...ss.miniBadge, background: '#fef3c7', color: '#92400e' }}>{t}</span>
+                        <span key={t} style={ss.sopCardTag}>{t}</span>
                       ))}
                       {doneToday && (
                         <span
-                          style={{ ...ss.miniBadge, background: '#16a34a', color: '#fff' }}
+                          style={ss.sopCardFait}
                           title={`Validée à ${new Date(doneToday.heureFin || doneToday.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })} par ${doneToday.operateurNom || '-'}`}
                         >Fait aujourd'hui</span>
                       )}
                     </div>
-                  </div>
-                  <div style={ss.sopCardActions}>
-                    {canManage && (
-                      <button style={ss.iconBtn} onClick={() => onEdit(sop)} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
-                    )}
-                    {canManage && (
-                      inTemplates ? (
-                        <button
-                          style={{ ...ss.iconBtn, color: '#15803d', borderColor: '#86efac', cursor: 'default' }}
-                          title="Déjà dans la bibliothèque de templates"
-                          aria-label="Déjà dans la bibliothèque de templates"
-                          disabled
-                        ><BookmarkCheck size={14} aria-hidden="true" /></button>
-                      ) : (
-                        <button
-                          style={ss.iconBtn}
-                          onClick={() => onAddToTemplates && onAddToTemplates(sop)}
-                          title="Ajouter à la bibliothèque de templates (pour export vers d'autres établissements)"
-                          aria-label="Ajouter à la bibliothèque de templates"
-                        ><BookmarkPlus size={14} aria-hidden="true" /></button>
-                      )
-                    )}
-                    <button
-                      style={{
-                        ...ss.startBtn,
-                        ...(doneToday && sop.frequence === 'quotidien'
-                            ? { background: 'var(--surface)', color: 'var(--text2)', border: '1px solid var(--border)' }
-                            : {}),
-                      }}
-                      onClick={() => handleStart(sop)}
-                      title={doneToday && sop.frequence === 'quotidien'
-                        ? "Relancer (déjà validée aujourd'hui)"
-                        : "Lancer la checklist"}
-                    >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
+                    <div style={ss.sopCardActions}>
+                      <button
+                        style={doneToday && sop.frequence === 'quotidien' ? ss.gererBtn : ss.startBtn}
+                        onClick={() => handleStart(sop)}
+                        title={doneToday && sop.frequence === 'quotidien'
+                            ? "Relancer (déjà validée aujourd'hui)"
+                            : "Lancer la checklist"}
+                      >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
+                      {canManage && (
+                        <BoutonActions
+                          id={`sop-gerer-${sop.id}`}
+                          label="Gérer"
+                          style={ss.gererBtn}
+                          titre={sop.titre}
+                          sousTitre={`${sop.categorie || 'SOP'}, ${totalSteps} étape${totalSteps > 1 ? 's' : ''}`}
+                          sections={[{
+                            items: [
+                              { titre: 'Modifier', detail: 'Titre, description, fréquence, sections et étapes.', onClick: () => onEdit(sop) },
+                              inTemplates
+                                ? { titre: 'Déjà dans la bibliothèque', detail: "Cette SOP figure parmi les templates, prête à être reprise par d'autres établissements.", disabled: true, onClick: () => {} }
+                                : { titre: 'Ajouter à la bibliothèque', detail: 'La proposer comme template aux autres établissements.', onClick: () => onAddToTemplates && onAddToTemplates(sop) },
+                            ],
+                          }]}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -911,11 +903,11 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{tpl.titre}</div>
           {tpl.description && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>{tpl.description}</div>}
           <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-            <span style={{ ...ss.miniBadge, background: '#f1f5f9', color: 'var(--text2)' }}>{tpl.categorie}</span>
+            <span style={{ ...ss.miniBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>{tpl.categorie}</span>
             <span style={{ ...ss.miniBadge, background: FREQ_MAP[tpl.frequence]?.couleur + '22', color: FREQ_MAP[tpl.frequence]?.couleur }}>{FREQ_MAP[tpl.frequence]?.label}</span>
-            <span style={{ ...ss.miniBadge, background: 'var(--bg)', color: 'var(--text2)' }}>{totalSteps} étapes · {(tpl.sections || []).length} sections</span>
+            <span style={{ ...ss.miniBadge, background: 'var(--bg)', color: 'var(--text2)' }}>{totalSteps} étapes, {(tpl.sections || []).length} sections</span>
             {(tpl.tags || []).map(t => (
-              <span key={t} style={{ ...ss.miniBadge, background: '#fef3c7', color: '#92400e' }}>{t}</span>
+              <span key={t} style={{ ...ss.miniBadge, background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>{t}</span>
             ))}
           </div>
           {alreadyExists && <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>Déjà dans cet établissement</div>}
@@ -961,8 +953,8 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
             <button
               style={{
                 padding: '8px 14px', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)',
-                cursor: busy ? 'default' : 'pointer', background: '#fef2f2',
-                border: '1px solid #fca5a5', color: '#b91c1c', opacity: busy ? 0.5 : 1,
+                cursor: busy ? 'default' : 'pointer', background: 'var(--danger-bg-soft)',
+                border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', opacity: busy ? 0.5 : 1,
               }}
               onClick={removeSelected}
               disabled={busy}
@@ -1063,7 +1055,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
         <button style={{ ...ss.backBtn, width: 'auto', padding: '0 14px', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }} onClick={onBack}>← Retour</button>
         <div style={{ flex: 1 }} />
         {!isNew && (
-          <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }} onClick={deleteSop}>Supprimer</button>
+          <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: 'var(--danger-bd)' }} onClick={deleteSop}>Supprimer</button>
         )}
         <button style={ss.primaryBtn} onClick={save} disabled={saving}>
           {saving ? '...' : (isNew ? 'Créer' : 'Enregistrer')}
@@ -1191,13 +1183,17 @@ const ss = {
   cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 },
   sopCard: { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: 14, display: 'flex', alignItems: 'flex-start', gap: 10 },
   sopCardTitle: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
-  sopCardDesc: { fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 },
-  sopCardMeta: { display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
-  sopCardSteps: { fontSize: 10, color: 'var(--text2)' },
-  sopCardActions: { display: 'flex', gap: 4, flexShrink: 0 },
-  startBtn: { padding: '6px 10px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' },
+  sopCardDesc: { fontSize: 12, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
+  sopCardMeta: { display: 'flex', gap: '4px 10px', marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
+  sopCardSteps: { fontSize: 11, color: 'var(--text2)' },
+  sopCardCat: { fontSize: 11, fontWeight: 600, color: 'var(--text2)' },
+  sopCardTag: { fontSize: 11, fontWeight: 600, color: 'var(--warning-text)' },
+  sopCardFait: { fontSize: 11, fontWeight: 600, color: 'var(--success-text)' },
+  sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
+  gererBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, whiteSpace: 'nowrap' },
+  startBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' },
   iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text2)' },
-  iconBtnDanger: { width: 28, height: 28, padding: 0, background: 'none', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontSize: 11, color: '#dc2626', flexShrink: 0 },
+  iconBtnDanger: { width: 28, height: 28, padding: 0, background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 6, cursor: 'pointer', fontSize: 11, color: '#dc2626', flexShrink: 0 },
   miniBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4 },
 
   // Checklist
@@ -1211,7 +1207,7 @@ const ss = {
   sectionTitle: { fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   sectionCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 600 },
   etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
-  etapeRowChecked: { background: '#f0fdf4' },
+  etapeRowChecked: { background: 'var(--success-bg-soft)' },
   checkbox: { width: 26, height: 26, borderRadius: 6, borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
   checkboxChecked: { background: '#16a34a', borderColor: '#16a34a' },
   etapeLabel: { fontSize: 14, color: 'var(--text)', lineHeight: 1.4 },
@@ -1226,7 +1222,7 @@ const ss = {
   zoomClose: { position: 'absolute', top: 12, right: 12, width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', fontSize: 18, cursor: 'pointer' },
   notesInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', resize: 'vertical', marginTop: 4 },
   checklistFooter: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', gap: 10, zIndex: 10 },
-  abandonBtn: { flex: 1, padding: '12px', background: 'none', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  abandonBtn: { flex: 1, padding: '12px', background: 'none', color: '#dc2626', border: '1px solid var(--danger-bd)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
   validateBtn: { flex: 2, padding: '12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700 },
 
   // Historique

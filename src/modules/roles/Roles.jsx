@@ -10,6 +10,7 @@ import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RÔLES & ACCÈS : les comptes et leurs droits, personne par personne.
@@ -427,7 +428,7 @@ const Roles = ({ user }) => {
                 {u.prenom} {u.nom}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {role.label}{u.poste ? ` · ${u.poste}` : ''}
+                {role.label}{u.poste ? `, ${u.poste}` : ''}
               </div>
             </div>
             {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>Inactif</span>}
@@ -452,7 +453,7 @@ const Roles = ({ user }) => {
       <div style={ros.modulesCol}>
         {/* ── La personne ── */}
         <div style={{ ...ros.modulesHeader, alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', gap: 12, minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', gap: 12, minWidth: 0, flex: '1 1 260px' }}>
             <div style={{ ...ros.userAvatar, background: role.couleur || '#888' }}>{u.avatar}</div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
@@ -461,21 +462,39 @@ const Roles = ({ user }) => {
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
                 {u.email}
-                {phones[u.id] && (<>{' · '}<PhoneLink tel={phones[u.id]} /></>)}
+                {phones[u.id] && (<>{', '}<PhoneLink tel={phones[u.id]} /></>)}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                {role.label}{u.poste ? ` · ${u.poste}` : ''} · {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
+                {role.label}{u.poste ? `, ${u.poste}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
               </div>
             </div>
           </div>
           {canEdit && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button style={ros.smallGhost} onClick={() => openEditUser(u)}>Modifier le compte</button>
-              <button style={ros.smallGhost} onClick={() => toggleUserActif(u)}>{u.actif === false ? 'Activer' : 'Désactiver'}</button>
-              {u.id !== user.id && !estConsultant && (
-                <button style={{ ...ros.smallGhost, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => deleteUser(u)}>Supprimer</button>
-              )}
-            </div>
+            <BoutonActions
+              id={`roles-compte-${u.id}`}
+              label="Gérer le compte"
+              style={ros.smallGhost}
+              titre={`${u.prenom} ${u.nom}`}
+              sousTitre={u.email}
+              sections={[
+                {
+                  items: [
+                    { titre: 'Modifier le compte', detail: 'Nom, e-mail, rôle, poste et établissements.', onClick: () => openEditUser(u) },
+                    u.actif === false
+                      ? { titre: 'Activer', detail: "La personne retrouve son accès à l'app.", onClick: () => toggleUserActif(u) }
+                      : { titre: 'Désactiver', detail: 'La personne ne peut plus se connecter. Son historique reste.', onClick: () => toggleUserActif(u) },
+                  ],
+                },
+                {
+                  items: [
+                    u.id !== user.id && !estConsultant && { titre: 'Supprimer le compte', danger: true, onClick: () => deleteUser(u) },
+                  ],
+                },
+              ]}
+            />
           )}
         </div>
 
@@ -596,7 +615,7 @@ const Roles = ({ user }) => {
     <div style={ros.root}>
       <div style={ros.tabs} className="no-print">
         <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-          {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''} · les droits se règlent personne par personne
+          {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''}, les droits se règlent personne par personne
         </div>
         <div style={{ flex: 1 }} />
         {canEdit && <button style={ros.addBtn} onClick={openNewUser}>+ Nouvel utilisateur</button>}
@@ -710,7 +729,7 @@ const ros = {
   // Droit d'action sous son module : en retrait, sans icône, libellé plus petit.
   droitRow: { padding: '0 18px 0 34px' },
   permBadge: { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap', flexShrink: 0 },
-  userAvatar: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
+  userAvatar: { width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
   modal: { background: 'var(--surface)', borderRadius: 14, width: 500, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
   modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },

@@ -1795,7 +1795,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8, background: 'var(--bg)' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '-'}</span>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '-'}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--info-bg)', color: 'var(--info-text)' }}>{p.type || '-'}</span>
                         {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>CCP</span>}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>{p.danger || '-'}</div>
@@ -2425,7 +2425,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <div style={{ fontSize: 11, color: 'var(--warning-text)', marginBottom: 8, lineHeight: 1.5 }}>
                       Si vous supprimez la recette, ces plats perdront leur composante (les autres recettes liées resteront en place) :
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#78350f' }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)' }}>
                       {platsImpactes.slice(0, 8).map(p => (
                         <li key={p.id} style={{ marginBottom: 2 }}>
                           <strong>{p.nom}</strong>

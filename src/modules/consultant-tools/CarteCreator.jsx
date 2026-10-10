@@ -314,7 +314,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
         <div style={{
           ...mcs.status,
           borderColor: draftStatus.state === 'error' ? '#fca5a5' : '#bbf7d0',
-          background: draftStatus.state === 'error' ? '#fef2f2' : '#f0fdf4',
+          background: draftStatus.state === 'error' ? 'var(--danger-bg-soft)' : 'var(--success-bg-soft)',
           color: draftStatus.state === 'error' ? '#b91c1c' : '#166534',
         }}>
           <span>{draftStatus.message}</span>
@@ -550,7 +550,7 @@ const mcs = {
   itemName: { padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, minWidth: 0 },
   itemPrice: { padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, width: '100%', boxSizing: 'border-box' },
   itemDescription: { padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 12, lineHeight: 1.4, resize: 'vertical' },
-  removeBtn: { width: 26, height: 26, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', borderRadius: 6, cursor: 'pointer', fontSize: 16, lineHeight: 1 },
+  removeBtn: { width: 26, height: 26, border: '1px solid var(--danger-bd)', background: 'transparent', color: '#dc2626', borderRadius: 6, cursor: 'pointer', fontSize: 16, lineHeight: 1 },
   libraryFilters: { padding: 12, borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
   sourceList: { maxHeight: 520, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 },
   sourceItem: { textAlign: 'left', padding: '9px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },

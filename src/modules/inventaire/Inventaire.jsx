@@ -1377,7 +1377,7 @@ const Inventaire = ({ user, etablissement }) => {
           <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
             {(inventaires || []).map(i => <option key={i.id} value={i.id}>{i.date} - {i.statut}</option>)}
           </select>
-          <span style={{...invs.badge, background: estValide ? 'var(--success-bg)' : 'var(--warning-bg)', color: estValide ? 'var(--success-text)' : 'var(--warning-text)'}}>
+          <span style={{...invs.badge, color: estValide ? 'var(--success-text)' : 'var(--text2)'}}>
             {estValide ? (validateurNom ? `Validé par ${validateurNom}` : 'Validé') : `${nbComptes}/${(inv.lignes || []).length} comptés`}
           </span>
         </div>
@@ -1387,7 +1387,7 @@ const Inventaire = ({ user, etablissement }) => {
           <BoutonActions
             id="inventaire-exporter"
             label={exportEnCours ? 'Export en cours…' : 'Exporter'}
-            style={invs.exporterBtn}
+            style={invs.exportBtn}
             disabled={exportEnCours}
             titre="Exporter l'inventaire"
             sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}${estValide ? ', validé' : ', en cours'}`}
@@ -1785,11 +1785,10 @@ const invs = {
   choixDanger: {background:'var(--surface)',borderColor:'var(--danger-bd)'},
   choixTitre: {fontSize:14,fontWeight:700,color:'var(--text)'},
   choixDetail: {fontSize:12,color:'var(--text2)',lineHeight:1.4,whiteSpace:'normal'},
-  invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',padding:'5px 12px',borderRadius:12,fontSize:12,fontWeight:600},
+  invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',fontSize:13,fontWeight:500,whiteSpace:'nowrap'},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   validateBtn: {padding:'8px 16px',background:'var(--success-bg)',border:'1px solid var(--success-bd)',color:'var(--success-text)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn: {padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  exporterBtn: {padding:'8px 16px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--accent)',color:'var(--accent)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
   kpiNote: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.4},

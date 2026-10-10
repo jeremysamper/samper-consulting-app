@@ -547,7 +547,7 @@ const pts = {
   cell:{fontSize:13,color:'var(--text)'},
   cellBold:{fontSize:13,fontWeight:600,color:'var(--text)'},
   badge:{display:'inline-block',padding:'3px 9px',borderRadius:12,fontSize:11,fontWeight:600},
-  motifTag:{fontSize:11,background:'#f1f5f9',color:'var(--text2)',padding:'2px 8px',borderRadius:8,fontWeight:500},
+  motifTag:{fontSize:11,background:'var(--surface2)',color:'var(--text2)',padding:'2px 8px',borderRadius:8,fontWeight:500},
   empDot:{width:22,height:22,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:9,flexShrink:0},
   valBtn:{background:'none',border:'1px solid var(--success-text)',color:'var(--success-text)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   deleteBtn:{background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},

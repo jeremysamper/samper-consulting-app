@@ -776,7 +776,7 @@ const Factures = ({ user, etablissement }) => {
           <h2 style={fac.title}>Facturation</h2>
           <div style={fac.sub}>Génération de factures de prestation</div>
         </div>
-        <button style={fac.ghostBtn} onClick={newFacture}>+ Nouvelle facture</button>
+        <button style={{ ...fac.ghostBtn, flex: 'none', minWidth: 0 }} onClick={newFacture}>+ Nouvelle facture</button>
       </div>
 
       <div style={fac.layout}>
@@ -1585,12 +1585,12 @@ const fac = {
   // min(380px, 100%) : 2 colonnes sur desktop, empilement naturel sur mobile
   layout: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: 18 },
 
-  formCol: { display: 'flex', flexDirection: 'column', gap: 14 },
+  formCol: { display: 'flex', flexDirection: 'column', gap: 26 },
   previewCol: { display: 'flex', flexDirection: 'column', gap: 8 },
   previewLabel: { fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 },
 
-  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 12 },
+  section: { padding: 0 },
+  sectionTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 8 },
 
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4, marginTop: 10 },
   input: { width: '100%', padding: '8px 11px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },

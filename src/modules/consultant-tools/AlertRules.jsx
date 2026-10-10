@@ -1,5 +1,6 @@
 import React from 'react';
-import { Bell, Pencil, Trash2 } from 'lucide-react';
+import { Bell } from 'lucide-react';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { useAlertRules } from '../../hooks/useAlertRules.js';
 import { notify } from '../../components/toast/index.js';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
@@ -87,32 +88,33 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
           </span>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-          {scheduleLabel(rule)} · {lastInfo}
+          {scheduleLabel(rule)}, {lastInfo.charAt(0).toLowerCase() + lastInfo.slice(1)}
         </div>
         {rule.description && (
           <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{rule.description}</div>
         )}
       </div>
 
-      {/* Boutons action */}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', flexShrink: 0, flexWrap: 'wrap' }}>
-        <button style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={onEdit}>
-          <Pencil size={13} aria-hidden="true" /> Modifier
-        </button>
-        <button
-          style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: rule.is_active ? 'var(--warning-strong)' : 'var(--success-strong)' }}
-          onClick={onToggle}
-        >
-          {rule.is_active ? 'Désactiver' : 'Activer'}
-        </button>
-        <button
-          style={{ ...cts.ghostBtn, fontSize: 12, padding: '5px 10px', color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
-          onClick={onDelete}
-          aria-label={`Supprimer la règle ${rule.name}`}
-          title="Supprimer"
-        >
-          <Trash2 size={14} aria-hidden="true" />
-        </button>
+      {/* Un seul bouton, les actions dans une fenêtre */}
+      <div style={{ flexShrink: 0 }}>
+        <BoutonActions
+          id={`alerte-gerer-${rule.id}`}
+          label="Gérer"
+          style={{ ...cts.ghostBtn, fontSize: 13 }}
+          titre={rule.name}
+          sousTitre={`${sev.label}, ${typeLabel}`}
+          sections={[
+            {
+              items: [
+                { titre: 'Modifier', detail: 'Type, gravité, horaire de vérification et destinataires.', onClick: onEdit },
+                rule.is_active
+                  ? { titre: 'Désactiver', detail: 'La règle n\'est plus vérifiée, elle reste enregistrée.', onClick: onToggle }
+                  : { titre: 'Activer', detail: 'La règle est de nouveau vérifiée.', onClick: onToggle },
+              ],
+            },
+            { items: [{ titre: 'Supprimer la règle', danger: true, onClick: onDelete }] },
+          ]}
+        />
       </div>
     </div>
   );

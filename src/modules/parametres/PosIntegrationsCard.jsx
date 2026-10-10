@@ -110,7 +110,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 14px', borderRadius: 8, marginBottom: 6, cursor: 'pointer',
               border: `2px solid ${selected?.locationId === loc.locationId ? 'var(--accent)' : 'var(--border)'}`,
-              background: selected?.locationId === loc.locationId ? '#fff7ed' : 'var(--bg)',
+              background: selected?.locationId === loc.locationId ? 'var(--accent-light)' : 'var(--bg)',
             }}>
               <input type="radio" name="location" value={loc.locationId}
                 checked={selected?.locationId === loc.locationId}
@@ -226,7 +226,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
   let step2Icon, step2Color;
   if (checking)        { step2Icon = '…'; step2Color = 'var(--text3)'; }
   else if (configured) { step2Icon = '✓'; step2Color = 'var(--success-text)'; }
-  else                 { step2Icon = '!'; step2Color = '#c2410c'; }
+  else                 { step2Icon = '!'; step2Color = 'var(--warning-text)'; }
 
   const steps = [
     { icon: '①', color: 'var(--text2)', label: 'Créer une app sur le portail développeur Lightspeed' },
@@ -270,8 +270,8 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
       {/* Alerte si secrets absents */}
       {secretsConfigured === false && (
         <div style={{
-          fontSize: 12, color: '#c2410c',
-          background: '#fff7ed', border: '1px solid #fed7aa',
+          fontSize: 12, color: 'var(--warning-text)',
+          background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
           borderRadius: 8, padding: '8px 12px',
         }}>
           Configure d'abord les secrets Supabase (étape 2) avant de connecter.
@@ -481,7 +481,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
               {loading && <span style={{ fontSize: 11, color: 'var(--text3)' }}>Chargement…</span>}
               {!loading && isConnected    && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' }}>Connecté</span>}
               {!loading && isError        && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' }}>Erreur</span>}
-              {!loading && needsLocation  && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>Sélection requise</span>}
+              {!loading && needsLocation  && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--warning-bg-soft)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}>Sélection requise</span>}
             </div>
             {isConnected && (
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
@@ -493,7 +493,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
               <div style={{ fontSize: 12, color: 'var(--danger-text)', marginTop: 4, background: 'var(--danger-bg-soft)', padding: '5px 9px', borderRadius: 6 }}>{status.last_error}</div>
             )}
             {needsLocation && (
-              <div style={{ fontSize: 12, color: '#c2410c', marginTop: 3 }}>
+              <div style={{ fontSize: 12, color: 'var(--warning-text)', marginTop: 3 }}>
                 Plusieurs restaurants détectés - choisissez la location ci-dessous.
               </div>
             )}
@@ -518,7 +518,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
                   )}
                   {isError && (
                     <button type="button" onClick={handleConnect} disabled={busy}
-                      style={{ padding: '8px 14px', borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
+                      style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
                       Reconnecter
                     </button>
                   )}
@@ -612,7 +612,7 @@ export default function PosIntegrationsCard({ etablissement, user }) {
         ))
       )}
 
-      <div style={{ padding: '10px 20px', background: '#f0f9ff', borderTop: '1px solid #bae6fd', fontSize: 11, color: '#0369a1' }}>
+      <div style={{ padding: '10px 20px', background: 'var(--info-bg-soft)', borderTop: '1px solid var(--info-bd)', fontSize: 11, color: 'var(--info-text)' }}>
         Les identifiants POS sont chiffrés côté serveur et ne sont jamais exposés dans l'application.
       </div>
     </div>

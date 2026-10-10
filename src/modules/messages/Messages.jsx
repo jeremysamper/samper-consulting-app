@@ -356,7 +356,7 @@ const ms = {
   // (min-height 44px) superposerait sinon les lignes sur iPad.
   contactRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 8px', background: 'transparent', borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56, flexShrink: 0 },
   contactRowActive: { borderColor: 'var(--accent-bd)', background: 'var(--accent-light)' },
-  avatar: { width: 36, height: 36, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
+  avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
   contactBody: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 },
   contactTop: { display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 },
   contactName: { flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
