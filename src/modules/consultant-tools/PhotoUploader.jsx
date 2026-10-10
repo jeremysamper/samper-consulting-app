@@ -6,7 +6,7 @@ import {
   getExtension, convertHeicToJpeg, maybeCompress,
 } from './photoProcessing.js';
 
-export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100, emoji = '' }) {
+export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100 }) {
   const fileRef = React.useRef(null);
   const [busy, setBusy] = React.useState(false);
   const [busyLabel, setBusyLabel] = React.useState('');
@@ -88,15 +88,38 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
     }
   };
 
+  const champFichier = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+      style={{ display: 'none' }}
+      onChange={handleChange}
+    />
+  );
+
+  // Sans photo : un bouton qui dit ce qu'il fait, pas un carré vide avec une
+  // icône posée dans un coin.
+  if (!photoUrl) {
+    return (
+      <div style={{ flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '8px 14px', background: 'var(--surface2)', border: 'none', borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}
+        >
+          <Camera size={15} aria-hidden="true" />
+          {busy ? (busyLabel || 'Envoi…') : 'Ajouter une photo'}
+        </button>
+        {champFichier}
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      {photoUrl ? (
-        <img src={photoUrl} alt="" style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}/>
-      ) : (
-        <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 8, fontSize: size / 3, color: 'var(--text2)' }}>
-          {emoji}
-        </div>
-      )}
+      <img src={photoUrl} alt="" style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8 }}/>
       <div style={{ position: 'absolute', bottom: 4, right: 4, display: 'flex', gap: 4 }}>
         <button
           type="button"
@@ -114,13 +137,7 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
           >✕</button>
         )}
       </div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
-        style={{ display: 'none' }}
-        onChange={handleChange}
-      />
+      {champFichier}
     </div>
   );
 }

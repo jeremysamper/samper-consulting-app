@@ -2495,7 +2495,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   <PhotoUploader
                     photoUrl={p.photoUrl}
-                    emoji=""
+                   
                     onUpload={async (file) => {
                       // Pour les nouveaux plats sans id, on génère un id temporaire
                       const tempId = p.id || ('plat-temp-' + Date.now());
