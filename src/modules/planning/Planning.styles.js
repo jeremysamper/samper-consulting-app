@@ -59,7 +59,8 @@ const pls = {
   // Mobile : cible de tap confortable sans agrandir la carte.
   mobilePhone: { alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 13 },
   dayCell: { minHeight: 72, padding: 6, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
-  shiftCell: { borderRadius: 8, padding: '8px 6px', position: 'relative', border: '1px solid var(--border)' },
+  // Sans filet : la teinte du type (midi, soir, longue) suffit à détacher l'horaire.
+  shiftCell: { borderRadius: 6, padding: '8px 6px', position: 'relative' },
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   addHint: { fontSize: 18, color: 'var(--text2)' },
   ptTable: { display: 'flex', flexDirection: 'column' },
@@ -94,6 +95,8 @@ const pls = {
   ptPointBtn: { minHeight: 44, minWidth: 100, padding: '0 14px', background: 'var(--success-text)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Groupes (Salle, Cuisine, groupes ajoutés) : filtre et titres de section.
   groupeFiltre: { marginBottom: 10, minWidth: 0, maxWidth: '100%' },
+  // Bandeau du mode remplissage, collé sous la barre d'actions.
+  remplissage: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderBottom: '2px solid var(--accent)', fontSize: 13, color: 'var(--text)', position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)' },
   groupeCompte: { fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginLeft: 4 },
   groupeTitreGrille: { gridColumn: '1 / -1', padding: '10px 12px 6px', fontSize: 13, fontWeight: 600, color: 'var(--text)', background: 'var(--bg)', borderBottom: '1px solid var(--border)' },
   groupeTitrePointage: { padding: '10px 16px 6px', fontSize: 13, fontWeight: 600, color: 'var(--text)', background: 'var(--bg)', borderBottom: '1px solid var(--border)' },

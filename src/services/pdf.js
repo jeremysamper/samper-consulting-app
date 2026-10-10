@@ -2380,6 +2380,241 @@ export const pdfUtils = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  // PLANNING - équipe, personne par personne, pointages (jsPDF natif)
+  // Construit depuis les données, jamais depuis l'écran : lignes jamais
+  // coupées entre deux pages, en-têtes de colonnes répétés, aucune
+  // capitale, aucun aplat. Le payload arrive prêt à écrire
+  // (planningExport.js) :
+  //   { kind: 'equipe', titre, sousTitre, semaines: [{ titre, jours: [{ court }],
+  //       sections: [{ nom, lignes: [{ nom, total, cases: [[texte…]] }] }] }] }
+  //   { kind: 'personnes', titre, sousTitre, personnes: [{ nom, total,
+  //       jours: [{ label, horaires: [texte…], duree }] }] }
+  //   { kind: 'pointages', titre, sousTitre, jours: [{ label,
+  //       lignes: [{ nom, prevu, arrivee, depart, duree, ecart, alerte }] }] }
+  // options : { etablissement, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportPlanningPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const kind = payload?.kind || 'equipe';
+      const doc = this._nouveauDocA4(jsPDF, kind === 'equipe' ? 'landscape' : 'portrait');
+      const opts = { ...options, etablissement: etab, logoDataUrl };
+      if (kind === 'equipe') this._renderPlanningEquipe(doc, payload, opts);
+      else if (kind === 'personnes') this._renderPlanningPersonnes(doc, payload, opts);
+      else this._renderPlanningPointages(doc, payload, opts);
+      doc.save(options.filename || 'planning.pdf');
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportPlanningPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  // En-tête de page des documents du planning : celui de la DA, sans le nom
+  // d'établissement en capitales (il passe dans le sous-titre).
+  _entetePlanning(doc, payload, options) {
+    return this._enTeteDocument(doc, {
+      titre: pdfSafeText(payload.titre || 'Planning'),
+      sousTitre: pdfSafeText(payload.sousTitre || ''),
+      meta: '',
+      etablissement: '',
+      logoDataUrl: options.logoDataUrl || null,
+    });
+  },
+
+  // Libellés de colonnes en minuscules, gris, posés sur un filet.
+  _colonnesPlanning(doc, colonnes, x, y, w) {
+    setBrandFont(doc, 'data');
+    doc.setFontSize(BRAND.size.note);
+    doc.setTextColor(...PDF.stone);
+    colonnes.forEach((c) => {
+      const t = pdfSafeText(c.label || '');
+      if (c.align === 'right') this._texteDroite(doc, t, c.x, y);
+      else if (c.align === 'center') this._texteCentre(doc, t, c.x, y);
+      else doc.text(t, c.x, y);
+    });
+    doc.setDrawColor(...PDF.rule);
+    doc.setLineWidth(RULE.medium);
+    doc.line(x, y + 2, x + w, y + 2);
+    return y + 6.5;
+  },
+
+  _renderPlanningEquipe(doc, payload, options) {
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    const PAGE_H = doc.internal.pageSize.getHeight();
+    const M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const nomW = 44, totalW = 16;
+    const jourW = (contentW - nomW - totalW) / 7;
+    const LINE_H = 3.5;
+    const bodyBottom = PAGE_H - M;
+    const semaines = Array.isArray(payload.semaines) ? payload.semaines : [];
+
+    const entete = () => this._entetePlanning(doc, payload, options);
+    let y = entete();
+
+    const colonnesDe = (sem) => [
+      { label: 'Personne', x: M },
+      ...sem.jours.map((j, i) => ({ label: j.court, x: M + nomW + i * jourW + jourW / 2, align: 'center' })),
+      { label: 'Total', x: M + contentW, align: 'right' },
+    ];
+
+    if (!semaines.length) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      doc.text('Aucun horaire sur cette période.', M, y + 4);
+    }
+
+    semaines.forEach((sem, si) => {
+      if (si > 0) { doc.addPage(); y = entete(); }
+      const titreSemaine = (suite) => {
+        y = this._titreBloc(doc, pdfSafeText(sem.titre) + (suite ? ' (suite)' : ''), M, y, contentW);
+        y = this._colonnesPlanning(doc, colonnesDe(sem), M, y, contentW);
+      };
+      titreSemaine(false);
+      (sem.sections || []).forEach((sec) => {
+        if (sec.nom) {
+          if (y + 12 > bodyBottom) { doc.addPage(); y = entete(); titreSemaine(true); }
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.blockTitle); doc.setTextColor(...PDF.primary);
+          doc.text(pdfSafeText(sec.nom), M, y + 1);
+          y += 5;
+        }
+        (sec.lignes || []).forEach((l) => {
+          setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
+          const nomLignes = doc.splitTextToSize(pdfSafeText(l.nom), nomW - 2);
+          const cases = (l.cases || []).map(c => (c || []).flatMap(t => doc.splitTextToSize(pdfSafeText(t), jourW - 2)));
+          const n = Math.max(nomLignes.length, ...cases.map(c => c.length), 1);
+          const rowH = n * LINE_H + 3;
+          if (y + rowH > bodyBottom) { doc.addPage(); y = entete(); titreSemaine(true); }
+          setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.ink);
+          nomLignes.forEach((t, k) => doc.text(t, M, y + k * LINE_H));
+          cases.forEach((c, i) => {
+            const cx = M + nomW + i * jourW + jourW / 2;
+            c.forEach((t, k) => {
+              // Les heures en encre, le reste (type, absence) en gris.
+              doc.setTextColor(...(/\d{2}:\d{2}/.test(t) ? PDF.ink : PDF.stone));
+              this._texteCentre(doc, t, cx, y + k * LINE_H);
+            });
+          });
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+          this._texteDroite(doc, pdfSafeText(l.total || ''), M + contentW, y);
+          this._filetInterne(doc, M, y + rowH - 2.6, M + contentW);
+          y += rowH;
+        });
+        y += 2;
+      });
+    });
+  },
+
+  _renderPlanningPersonnes(doc, payload, options) {
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const LINE_H = 4.4;
+    const bodyBottom = PAGE_H - M;
+    const personnes = Array.isArray(payload.personnes) ? payload.personnes : [];
+    const jourX = M, horairesX = M + 50, dureeRight = M + contentW;
+    const horairesW = contentW - 50 - 22;
+
+    personnes.forEach((p, pi) => {
+      if (pi > 0) doc.addPage();
+      let y = this._entetePlanning(doc, { ...payload, titre: pdfSafeText(p.nom), sousTitre: payload.sousTitre }, options);
+      y = this._colonnesPlanning(doc, [
+        { label: 'Jour', x: jourX },
+        { label: 'Horaires', x: horairesX },
+        { label: 'Durée', x: dureeRight, align: 'right' },
+      ], M, y, contentW);
+      (p.jours || []).forEach((j) => {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+        const textes = (j.horaires && j.horaires.length ? j.horaires : ['Repos'])
+          .flatMap(t => doc.splitTextToSize(pdfSafeText(t), horairesW));
+        const rowH = Math.max(1, textes.length) * LINE_H + 3;
+        if (y + rowH > bodyBottom) {
+          doc.addPage();
+          y = this._entetePlanning(doc, { ...payload, titre: pdfSafeText(p.nom) + ' (suite)' }, options);
+        }
+        doc.setTextColor(...PDF.ink);
+        doc.text(pdfSafeText(j.label), jourX, y);
+        const repos = !(j.horaires && j.horaires.length);
+        doc.setTextColor(...(repos ? PDF.stone : PDF.ink));
+        textes.forEach((t, k) => doc.text(t, horairesX, y + k * LINE_H));
+        if (j.duree) {
+          setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+          this._texteDroite(doc, pdfSafeText(j.duree), dureeRight, y);
+        }
+        this._filetInterne(doc, M, y + rowH - 2.8, M + contentW);
+        y += rowH;
+      });
+      // Total de la période
+      if (y + 10 > bodyBottom) { doc.addPage(); y = this._entetePlanning(doc, payload, options); }
+      y += 3;
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      doc.text('Total prévu', horairesX, y);
+      setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amountLarge); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, pdfSafeText(p.total || ''), dureeRight, y);
+    });
+    if (!personnes.length) {
+      const y = this._entetePlanning(doc, payload, options);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      doc.text('Aucun horaire sur cette période.', M, y + 4);
+    }
+  },
+
+  _renderPlanningPointages(doc, payload, options) {
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const bodyBottom = PAGE_H - M;
+    const jours = Array.isArray(payload.jours) ? payload.jours : [];
+    const nomX = M, nomW = 46;
+    const prevuX = M + 48, arrX = M + 86, depX = M + 106, dureeR = M + 142, ecartR = M + contentW;
+    const COLS = [
+      { label: 'Personne', x: nomX },
+      { label: 'Prévu', x: prevuX },
+      { label: 'Arrivée', x: arrX },
+      { label: 'Départ', x: depX },
+      { label: 'Durée', x: dureeR, align: 'right' },
+      { label: 'Écart', x: ecartR, align: 'right' },
+    ];
+    let y = this._entetePlanning(doc, payload, options);
+    const titreJour = (label, suite) => {
+      y = this._titreBloc(doc, pdfSafeText(label) + (suite ? ' (suite)' : ''), M, y, contentW);
+      y = this._colonnesPlanning(doc, COLS, M, y, contentW);
+    };
+    if (!jours.length) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      doc.text('Aucun horaire sur cette période.', M, y + 4);
+    }
+    jours.forEach((j) => {
+      if (y + 24 > bodyBottom) { doc.addPage(); y = this._entetePlanning(doc, payload, options); }
+      titreJour(j.label, false);
+      (j.lignes || []).forEach((l) => {
+        setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
+        const nomL = doc.splitTextToSize(pdfSafeText(l.nom), nomW);
+        const rowH = Math.max(1, nomL.length) * 4 + 2.6;
+        if (y + rowH > bodyBottom) { doc.addPage(); y = this._entetePlanning(doc, payload, options); titreJour(j.label, true); }
+        doc.setTextColor(...PDF.ink);
+        nomL.forEach((t, k) => doc.text(t, nomX, y + k * 4));
+        doc.setTextColor(...PDF.stone);
+        doc.text(pdfSafeText(l.prevu || '-'), prevuX, y);
+        doc.setTextColor(...(l.arrivee ? PDF.ink : PDF.stone));
+        doc.text(pdfSafeText(l.arrivee || '-'), arrX, y);
+        doc.setTextColor(...(l.depart ? PDF.ink : PDF.stone));
+        doc.text(pdfSafeText(l.depart || '-'), depX, y);
+        setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+        this._texteDroite(doc, pdfSafeText(l.duree || '-'), dureeR, y);
+        doc.setTextColor(...(l.alerte ? PDF.alert : PDF.stone));
+        this._texteDroite(doc, pdfSafeText(l.ecart || ''), ecartR, y);
+        this._filetInterne(doc, M, y + rowH - 2.6, M + contentW);
+        y += rowH;
+      });
+      y += 4;
+    });
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   // EXÉCUTION DE SOP / CHECKLIST - génération jsPDF native
   // Rapport d'audit d'une checklist exécutée : qui, quand, quelles
   // étapes validées et - surtout - lesquelles ne l'ont pas été. Même

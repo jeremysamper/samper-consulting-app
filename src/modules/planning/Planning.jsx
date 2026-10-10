@@ -13,12 +13,20 @@ import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
 import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
-import { zurichToday } from '../../utils/zurichTime.js';
+import { zurichClock, zurichToday } from '../../utils/zurichTime.js';
 import AbsencesModal from './AbsencesModal.jsx';
 import MasquesModal from './MasquesModal.jsx';
 import GroupesModal from './GroupesModal.jsx';
+import SaisieRapide from './SaisieRapide.jsx';
+import DupliquerModal from './DupliquerModal.jsx';
+import ExportModal from './ExportModal.jsx';
+import MonPlanning from './MonPlanning.jsx';
+import ModelesModal from './ModelesModal.jsx';
+import { BoutonActions } from './planningUi.jsx';
+import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
+import { usePlanningModeles } from '../../hooks/usePlanningModeles.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -119,6 +127,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     return map;
   }, [demoData.utilisateurs]);
   const groupeDeId = (userId) => groupesEtab.groupeDe(userById.get(userId) || { id: userId });
+  const nomDe = (userId) => userDisplay(userId).name;
 
   // Un compte partagé ouvre le module sur le pointage.
   const pointageOuvertRef = React.useRef(false);
@@ -157,6 +166,28 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const canMasquer = ['consultant', 'patron'].includes(user.role) && masquesEtab.status !== 'absent';
   const estMasque = (userId) => userId !== user.id && masquesEtab.masques.has(userId);
   const employees = equipe.filter(u => !estMasque(u.id));
+
+  // Modèles d'horaires de l'établissement (Midi, Soir, Coupure, Longue…).
+  const modelesEtab = usePlanningModeles(etabId);
+  const modeles = modelesEtab.modeles;
+  const [showModeles, setShowModeles] = React.useState(false);
+
+  // Fenêtres de la refonte : saisie en un geste, remplissage, duplication, export.
+  const [saisieRapide, setSaisieRapide] = React.useState(null); // { userId, date } | null
+  const [remplissage, setRemplissage] = React.useState(null); // modèle posé à chaque case touchée
+  const [showDupliquer, setShowDupliquer] = React.useState(false);
+  const [exportOuvert, setExportOuvert] = React.useState(false);
+
+  // « Mon planning » : la vue de chaque personne planifiée. C'est la vue
+  // d'ouverture de ceux qui ne gèrent pas le planning.
+  const moiPlanifie = equipe.some(u => u.id === user.id);
+  const ongletMoiOuvertRef = React.useRef(false);
+  React.useEffect(() => {
+    if (moiPlanifie && !canWrite && !estComptePoste && !initialTab && !ongletMoiOuvertRef.current) {
+      ongletMoiOuvertRef.current = true;
+      setActiveTab('moi');
+    }
+  }, [moiPlanifie, canWrite, estComptePoste, initialTab]);
 
   // ─── Groupes : filtre et sections ───
   // Un compte partagé qui ne gère pas le planning ne voit au pointage que ses
@@ -364,24 +395,68 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setShowDetailModal(false);
   };
 
-  // Manipulation directe : un clic sur une cellule vide ouvre « + Ajouter » (modale unifiée)
-  // pré-remplie pour cet employé + ce jour. Le single est le cas dégénéré du groupé.
-  const openAddPrefill = (userId = '', date = selectedDate, typeShift = 'simple') => {
-    const presets = typeShift === 'midi' ? { d: '10:00', f: '15:00', p: 0 }
-                  : typeShift === 'soir' ? { d: '17:00', f: '23:00', p: 0 }
-                  : { d: '09:00', f: '17:00', p: 30 };
-    const day = date || selectedDate;
-    setBatchUserIds(new Set(userId ? [userId] : []));
-    setBatchStart(day);
-    setBatchEnd(day);
-    setBatchWeekdays(new Set([0, 1, 2, 3, 4, 5, 6]));
-    setBatchTypeShift(typeShift);
-    setBatchDebut(presets.d);
-    setBatchFin(presets.f);
-    setBatchPause(presets.p);
-    setBatchPoste('');
-    setBatchConflictMode('skip');
-    setShowBatchModal(true);
+  // Toucher une case ouvre la saisie en un geste : on choisit un modèle, c'est
+  // posé. Sans personne (ajout depuis la vue du jour), on la choisit d'abord.
+  const openAddPrefill = (userId = '', date = selectedDate) => {
+    setSaisieRapide({ userId, date: date || selectedDate });
+  };
+
+  // « Autre horaire » : le formulaire complet, prérempli pour cette case.
+  const openNouvelHoraire = (userId, date) => {
+    setEditForm({ userId: userId || '', date: date || selectedDate, debut: '09:00', fin: '17:00', pause: 30, typeShift: 'simple', statut: 'confirmé', poste: '' });
+    setShowDetailModal(false);
+    setShowEditModal(true);
+  };
+
+  // Pose un modèle (un ou deux créneaux) chez une personne un jour donné. Un
+  // créneau qui chevauche un horaire existant est laissé de côté : le service
+  // coupé reste possible, rien n'est écrasé sans le demander.
+  const poserModele = async (modele, userId, date, { silencieux = false } = {}) => {
+    if (!canWrite || !modele || !userId || !date) return;
+    const { aCreer, ignores } = horairesDuModele(modele, { userId, date, etablissementId: etabId, existants: planningEtab });
+    if (!aCreer.length) {
+      if (!silencieux) notifyLegacy('Ce créneau est déjà occupé.', 'warning');
+      return;
+    }
+    try {
+      let crees;
+      if (legacySB) {
+        const rows = await legacySB.db.createShifts(aCreer);
+        crees = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
+      } else {
+        crees = aCreer.map((s, i) => ({ ...s, id: 'sm' + Date.now() + '-' + i }));
+      }
+      setPlanning(prev => [...prev, ...crees.filter(c => !prev.some(p => p.id === c.id))]);
+      if (ignores && !silencieux) notifyLegacy('Une partie était déjà occupée : seul le créneau libre a été posé.', 'info');
+    } catch (err) {
+      notifyLegacy('Erreur enregistrement : ' + err.message, 'error');
+    }
+  };
+
+  // Mode remplissage : chaque case touchée reçoit le modèle choisi.
+  const remplirCase = (userId, date) => poserModele(remplissage, userId, date);
+
+  // Duplication validée dans la fenêtre Dupliquer : un effacement groupé
+  // (ce qui est remplacé) puis une création groupée.
+  const appliquerDuplication = async ({ aCreer, aSupprimer }) => {
+    try {
+      let crees;
+      if (legacySB) {
+        if (aSupprimer.length) await legacySB.db.deleteShifts(aSupprimer);
+        const rows = await legacySB.db.createShifts(aCreer);
+        crees = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
+      } else {
+        crees = aCreer.map((s, i) => ({ ...s, id: 'sd' + Date.now() + '-' + i }));
+      }
+      const retires = new Set(aSupprimer);
+      setPlanning(prev => [...prev.filter(s => !retires.has(s.id)), ...crees.filter(c => !prev.some(p => p.id === c.id))]);
+      let msg = `${crees.length} horaire${crees.length > 1 ? 's' : ''} créé${crees.length > 1 ? 's' : ''}`;
+      if (aSupprimer.length) msg += `, ${aSupprimer.length} remplacé${aSupprimer.length > 1 ? 's' : ''}`;
+      notifyLegacy(msg + '.', 'success');
+    } catch (err) {
+      notifyLegacy('Erreur duplication : ' + err.message, 'error');
+      throw err;
+    }
   };
 
   // Clic sur un shift existant → édition directe (plus de modale Détail intermédiaire côté planning).
@@ -553,10 +628,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   // ═══════════════ DUPLICATION ═══════════════
 
-  // State pour la modale de duplication (journée OU semaine)
-  const [duplicateMode, setDuplicateMode] = React.useState(null); // null | 'day' | 'week'
-  const [duplicateSource, setDuplicateSource] = React.useState({ userId: '', sourceDate: '', targetDate: '' });
-
   // ─── État pour la correction manuelle du pointage ───
   // Le pointage normal passe par RPC Supabase (heures générées côté serveur,
   // anti-fraude). Cette correction est réservée aux managers et permet de
@@ -596,6 +667,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [batchPause, setBatchPause] = React.useState(30);
   const [batchPoste, setBatchPoste] = React.useState('');
   const [batchConflictMode, setBatchConflictMode] = React.useState('skip'); // 'skip' = ignorer+signaler | 'replace' = écraser
+  // Modèle à plusieurs créneaux choisi (Coupure) : ses créneaux remplacent les heures saisies.
+  const [batchModele, setBatchModele] = React.useState(null);
   const [batchSaving, setBatchSaving] = React.useState(false);
 
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
@@ -671,18 +744,27 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // ═══════════════ SAISIE GROUPÉE (Axe 3) ═══════════════
 
   const openBatchModal = () => {
+    const premier = modeles.find(m => m.segments.length === 1) || null;
+    const seg = premier?.segments[0];
     setBatchUserIds(new Set());
     setBatchStart(selectedDate);
-    setBatchEnd(selectedDate);
+    setBatchEnd(ajouterJoursIso(selectedDate, 6));
     setBatchWeekdays(new Set([0, 1, 2, 3, 4, 5, 6]));
-    setBatchTypeShift('simple');
-    setBatchDebut('09:00');
-    setBatchFin('17:00');
-    setBatchPause(30);
+    setBatchTypeShift(seg?.typeShift || 'simple');
+    setBatchDebut(seg?.debut || '09:00');
+    setBatchFin(seg?.fin || '17:00');
+    setBatchPause(seg?.pause ?? 30);
+    setBatchModele(null);
     setBatchPoste('');
     setBatchConflictMode('skip');
     setShowBatchModal(true);
   };
+
+  // Créneaux posés par la saisie groupée : ceux du modèle à plusieurs créneaux
+  // choisi, sinon le créneau saisi.
+  const batchSegments = () => (batchModele
+    ? batchModele.segments
+    : [{ typeShift: batchTypeShift, debut: batchDebut, fin: batchFin, pause: batchPause }]);
 
   const toggleBatchUser = (uid) => {
     setBatchUserIds(prev => {
@@ -719,8 +801,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
 
   const doBatchCreate = async () => {
-    if (batchUserIds.size === 0) { alertLegacy('Sélectionne au moins un employé.'); return; }
-    if (!batchDebut || !batchFin) { alertLegacy('Renseigne le créneau (début et fin).'); return; }
+    if (batchUserIds.size === 0) { alertLegacy('Sélectionne au moins une personne.'); return; }
+    const segments = batchSegments();
+    if (segments.some(s => !s.debut || !s.fin)) { alertLegacy('Renseigne le créneau (début et fin).'); return; }
     const dates = buildBatchDates();
     if (dates.length === 0) { alertLegacy('Aucune date valide (vérifie la plage et les jours sélectionnés).'); return; }
 
@@ -731,28 +814,31 @@ const Planning = ({ user, etablissement, initialTab }) => {
     try {
       for (const uid of batchUserIds) {
         for (const date of dates) {
-          // Conflit = chevauchement horaire uniquement. Un horaire existant qui ne
-          // chevauche pas le nouveau créneau (ex. midi déjà posé, on ajoute le soir)
-          // est conservé → le service coupé reste possible.
-          const overlapping = planningEtab.filter(s => s.userId === uid && s.date === date && shiftsOverlap(s.debut, s.fin, batchDebut, batchFin));
-          if (overlapping.length > 0) {
-            if (batchConflictMode === 'skip') { skipped += overlapping.length; continue; }
-            // 'replace' : on ne supprime que les horaires qui se chevauchent
-            overlapping.forEach(ex => idsToRemove.add(ex.id));
+          for (const seg of segments) {
+            // Conflit = chevauchement horaire uniquement. Un horaire existant qui ne
+            // chevauche pas le nouveau créneau (ex. midi déjà posé, on ajoute le soir)
+            // est conservé → le service coupé reste possible. Un horaire déjà
+            // pointé n'est jamais remplacé.
+            const overlapping = planningEtab.filter(s => s.userId === uid && s.date === date && shiftsOverlap(s.debut, s.fin, seg.debut, seg.fin));
+            if (overlapping.length > 0) {
+              if (batchConflictMode === 'skip' || overlapping.some(ex => ex.pointageDebut || ex.pointageFin)) { skipped += 1; continue; }
+              // 'replace' : on ne supprime que les horaires qui se chevauchent
+              overlapping.forEach(ex => idsToRemove.add(ex.id));
+            }
+            toCreate.push({
+              etablissementId: etabId,
+              userId: uid,
+              date,
+              debut: seg.debut,
+              fin: seg.fin,
+              pause: seg.pause || 0,
+              poste: batchPoste || '',
+              typeShift: seg.typeShift || 'simple',
+              statut: 'confirmé',
+              pointageDebut: null,
+              pointageFin: null,
+            });
           }
-          toCreate.push({
-            etablissementId: etabId,
-            userId: uid,
-            date,
-            debut: batchDebut,
-            fin: batchFin,
-            pause: batchPause || 0,
-            poste: batchPoste || '',
-            typeShift: batchTypeShift,
-            statut: 'confirmé',
-            pointageDebut: null,
-            pointageFin: null,
-          });
         }
       }
 
@@ -785,90 +871,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
     } finally {
       setBatchSaving(false);
     }
-  };
-
-  const openDuplicateWeek = () => {
-    setDuplicateMode('week');
-    // Source = lundi de la semaine courante, cible = lundi suivant
-    const nextMonday = new Date(selectedDate + 'T12:00:00');
-    nextMonday.setDate(nextMonday.getDate() + 7);
-    setDuplicateSource({
-      userId: '',
-      sourceDate: selectedDate,
-      targetDate: nextMonday.toISOString().slice(0, 10),
-    });
-  };
-
-  // Duplique tous les shifts d'un employé à une date source vers N employés sur 1 date OU une plage.
-  // Duplique TOUTE la semaine (tous les employés) vers une autre semaine
-  const doDuplicateWeek = async () => {
-    const { sourceDate, targetDate } = duplicateSource;
-    if (!sourceDate || !targetDate) { alertLegacy('Remplissez les dates.'); return; }
-    if (sourceDate === targetDate) { alertLegacy('La semaine cible doit être différente.'); return; }
-
-    // Construire la liste des 7 jours source et 7 jours cible
-    const sourceDays = [];
-    const targetDays = [];
-    const srcStart = new Date(sourceDate + 'T12:00:00');
-    const tgtStart = new Date(targetDate + 'T12:00:00');
-    for (let i = 0; i < 7; i++) {
-      const d1 = new Date(srcStart); d1.setDate(d1.getDate() + i);
-      const d2 = new Date(tgtStart); d2.setDate(d2.getDate() + i);
-      sourceDays.push(d1.toISOString().slice(0, 10));
-      targetDays.push(d2.toISOString().slice(0, 10));
-    }
-
-    const shiftsToCopy = planningEtab.filter(s => sourceDays.includes(s.date));
-    if (shiftsToCopy.length === 0) {
-      alertLegacy('Aucun horaire à dupliquer sur cette semaine.');
-      return;
-    }
-
-    // Vérifier les conflits
-    const existing = planningEtab.filter(s => targetDays.includes(s.date));
-    if (existing.length > 0) {
-      if (!confirmLegacy(`La semaine cible contient déjà ${existing.length} horaire(s). Les remplacer ?`)) return;
-      if (legacySB) {
-        try {
-          for (const s of existing) await legacySB.db.deleteShift(s.id);
-        } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
-      }
-    }
-
-    // Créer les nouveaux shifts
-    const newShifts = [];
-    const now = Date.now();
-    for (let i = 0; i < shiftsToCopy.length; i++) {
-      const src = shiftsToCopy[i];
-      const dayIndex = sourceDays.indexOf(src.date);
-      const newDate = targetDays[dayIndex];
-      const copy = {
-        id: 's' + now + '-' + i,
-        etablissementId: etabId,
-        userId: src.userId,
-        date: newDate,
-        debut: src.debut,
-        fin: src.fin,
-        pause: src.pause,
-        poste: src.poste,
-        typeShift: src.typeShift,
-        statut: 'confirmé',
-        pointageDebut: null,
-        pointageFin: null,
-        note: src.note,
-      };
-      if (legacySB) {
-        try {
-          const saved = await legacySB.db.createShift(copy);
-          newShifts.push(legacySB.db.mapShiftFromDB(saved));
-        } catch (err) { notifyLegacy('Erreur création : ' + err.message, 'error'); return; }
-      } else {
-        newShifts.push(copy);
-      }
-    }
-    setPlanning(prev => [...prev.filter(s => !existing.find(e => e.id === s.id)), ...newShifts]);
-    setDuplicateMode(null);
-    alertLegacy(`Semaine dupliquée : ${newShifts.length} horaire${newShifts.length > 1 ? 's' : ''} créé${newShifts.length > 1 ? 's' : ''}.`);
   };
 
   // ─── « Dupliquer vers… » depuis le mode sélection ───
@@ -1003,15 +1005,20 @@ const Planning = ({ user, etablissement, initialTab }) => {
       const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dateObj = new Date(dateStr + 'T12:00:00');
       const dayName = dateObj.toLocaleDateString('fr-CH', { weekday: 'short' });
-      const shift = planning.find(s => s.userId === ccntEmployeeId && s.date === dateStr && (s.etablissementId || 'etab-1') === etabId);
+      // Tous les horaires du jour : un service coupé (midi et soir) compte ses
+      // deux créneaux. Le premier reste la référence de l'affichage du relevé.
+      const shiftsJour = planning
+        .filter(s => s.userId === ccntEmployeeId && s.date === dateStr && (s.etablissementId || 'etab-1') === etabId)
+        .sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
+      const shift = shiftsJour[0] || null;
 
       let heuresPrev = 0, heuresReel = 0;
-      if (shift) {
-        heuresPrev = parseFloat(calcHeures(shift.debut, shift.fin, shift.pause)) || 0;
-        if (shift.pointageDebut && shift.pointageFin) {
-          heuresReel = parseFloat(calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause)) || 0;
+      shiftsJour.forEach(sh => {
+        heuresPrev += parseFloat(calcHeures(sh.debut, sh.fin, sh.pause)) || 0;
+        if (sh.pointageDebut && sh.pointageFin) {
+          heuresReel += parseFloat(calcHeures(sh.pointageDebut, sh.pointageFin, sh.pause)) || 0;
         }
-      }
+      });
 
       totalPrev += heuresPrev;
       totalMois += heuresReel;
@@ -1022,6 +1029,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
         isWeekend: dateObj.getDay() === 0 || dateObj.getDay() === 6,
         shift,
+        shifts: shiftsJour,
         heuresPrev,
         heuresReel,
       });
@@ -1135,7 +1143,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           {/* Résumé de couverture du jour : qui / combien / quels postes */}
           {uniqueEmpIds.length > 0 && (
             <div style={pls.mobileCoverage}>
-              {`${uniqueEmpIds.length} personne${uniqueEmpIds.length > 1 ? 's' : ''}${coverageParts.length ? ' · ' + coverageParts.join(' · ') : ''}`}
+              {`${uniqueEmpIds.length} personne${uniqueEmpIds.length > 1 ? 's' : ''}${coverageParts.length ? ', dont ' + coverageParts.join(', ') : ''}`}
             </div>
           )}
 
@@ -1169,7 +1177,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const onCardClick = selectionMode
                   ? () => toggleShiftSelected(shift.id)
                   : () => { if (canWrite) openEditShift(shift); };
-                const typeLabel = shift.typeShift === 'midi' ? 'Midi' : shift.typeShift === 'soir' ? 'Soir' : null;
+                const typeLabel = typeHoraire(shift.typeShift).label;
                 const statusLabel = enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : null;
                 return (
                   <div key={shift.id} style={{ ...pls.mobileCard, ...(selected ? pls.mobileCardSelected : {}) }} onClick={onCardClick}>
@@ -1178,7 +1186,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <div style={pls.mobileCardBody}>
                       <div style={pls.mobileCardTop}>
                         {/* Heure = élément héros */}
-                        <span style={pls.mobileHour}>{shift.debut} – {shift.fin}</span>
+                        <span style={pls.mobileHour}>{shift.debut} à {shift.fin}</span>
                         {selectionMode
                           ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
                           : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
@@ -1186,7 +1194,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       <div style={pls.mobileName}>{emp.name}</div>
                       <PhoneLink tel={phones[shift.userId]} style={pls.mobilePhone} />
                       <div style={pls.mobileMeta}>
-                        <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{shift.poste || role?.label || 'Poste'}{typeLabel ? ` · ${typeLabel}` : ''}</span>
+                        <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{typeLabel}{shift.poste ? `, ${shift.poste}` : ''}</span>
                         {shift.pause > 0 && <span style={pls.mobilePause}>Pause {shift.pause} min</span>}
                       </div>
                     </div>
@@ -1225,7 +1233,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp.avatar}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{emp.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste} · prévu {shift.debut}–{shift.fin}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
                 </div>
                 <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
                   {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
@@ -1258,11 +1266,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
       <div style={pls.tabs} className="no-print">
         <SegmentedTabs
           active={activeTab}
-          onChange={setActiveTab}
-          tabs={[{ id: 'planning', label: 'Planning' }, { id: 'pointage', label: 'Pointage' }]}
+          onChange={(v) => { setActiveTab(v); setRemplissage(null); }}
+          tabs={[
+            ...(moiPlanifie && !estComptePoste ? [{ id: 'moi', label: 'Mon planning' }] : []),
+            { id: 'planning', label: canWrite ? 'Planning' : 'Équipe' },
+            { id: 'pointage', label: 'Pointage' },
+          ]}
         />
         <div style={{ flex: 1 }} />
-        {activeTab === 'planning' ? (!isMobile && (
+        {activeTab === 'moi' ? null : activeTab === 'planning' ? (!isMobile && (
           <>
             <div style={pls.weekNav}>
               <button style={pls.navArrow} onClick={() => shiftWeek(-1)} title="Semaine précédente" aria-label="Semaine précédente">‹</button>
@@ -1279,41 +1291,90 @@ const Planning = ({ user, etablissement, initialTab }) => {
       </div>
 
       {/* ─── Actions du module (posées, jamais flottantes ; scroll horizontal sur mobile) ─── */}
+      {/* Quatre entrées : Ajouter, Dupliquer, Exporter, Gérer. Les actions
+          rares sont rangées dans des fenêtres (portail : la barre défile sur
+          téléphone et couperait un menu posé dedans). */}
+      {activeTab !== 'moi' && (
       <div className="module-actions no-print">
-        {canWrite && activeTab === 'planning' && <button style={pls.addBtn} onClick={openBatchModal}>+ Ajouter</button>}
         {canWrite && activeTab === 'planning' && (
-          <button
-            style={{ ...pls.exportBtn, ...(selectionMode ? { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)' } : {}) }}
-            onClick={toggleSelectionMode}
-          >{selectionMode ? 'Quitter la sélection' : 'Sélectionner'}</button>
+          <BoutonActions
+            id="planning-ajouter"
+            label="+ Ajouter"
+            style={pls.addBtn}
+            titre="Ajouter des horaires"
+            sousTitre="Ou touche directement une case du planning."
+            sections={[
+              { items: [
+                { titre: 'Un horaire', detail: 'Une personne, un jour, heures au choix.', onClick: () => openNouvelHoraire('', isMobile ? mobileDate : selectedDate) },
+                { titre: 'Plusieurs personnes ou plusieurs jours', detail: 'Le même horaire pour toute une équipe ou toute une semaine.', onClick: openBatchModal },
+              ] },
+              !isMobile && {
+                titre: 'Remplir la grille avec un modèle',
+                items: modeles.map(m => ({ titre: `Remplir avec « ${m.nom} »`, detail: `${libelleModele(m)}. Touche ensuite chaque case à remplir.`, onClick: () => { setSelectionMode(false); setSelectedIds(new Set()); setRemplissage(m); } })),
+              },
+            ].filter(Boolean)}
+          />
         )}
-        {activeTab === 'planning' && absencesEtab.status !== 'absent' && (
-          <button style={pls.exportBtn} onClick={() => setShowAbsences(true)}>Absences</button>
+        {canWrite && activeTab === 'planning' && (
+          <button style={pls.exportBtn} onClick={() => setShowDupliquer(true)}>Dupliquer</button>
         )}
-        {groupesActifs && (canGererGroupes || canPostes) && (
-          <button style={pls.exportBtn} onClick={() => setShowGroupes(true)}>Groupes</button>
+        {canExport && (
+          <button style={pls.exportBtn} onClick={() => setExportOuvert(true)}>Exporter</button>
         )}
-        {canMasquer && (
-          <button style={pls.exportBtn} onClick={() => setShowMasques(true)}>
-            Personnes masquées{masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}
-          </button>
-        )}
-        <div style={{ flex: 1 }} />
-        {canExport && activeTab === 'planning' && <button style={pls.exportBtn} onClick={openDuplicateWeek}>Dupliquer la semaine</button>}
-        {canExport && <button style={pls.exportBtn} onClick={openCCNTModal}>Relevé CCNT</button>}
-        {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.printElement(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'Planning' : 'Pointage', { etablissement, orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>Imprimer</button>}
-        {canExport && <button style={pls.exportBtn} onClick={() => pdfUtils?.exportElementToPdf(activeTab === 'planning' ? 'planning-print' : 'pointage-print', activeTab === 'planning' ? 'planning.pdf' : 'pointage.pdf', { etablissement, title: activeTab === 'planning' ? 'Planning' : 'Pointage', orientation: activeTab === 'planning' && !isMobile ? 'landscape' : 'portrait' })}>Exporter en PDF</button>}
+        <BoutonActions
+          id="planning-gerer"
+          label="Gérer"
+          style={pls.exportBtn}
+          titre="Gérer le planning"
+          sections={[{ items: [
+            canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
+            activeTab === 'planning' && absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) },
+            canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => setShowModeles(true) },
+            groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => setShowGroupes(true) },
+            canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => setShowMasques(true) },
+          ] }]}
+        />
       </div>
+      )}
+
+      {/* Mode remplissage : chaque case touchée reçoit le modèle choisi */}
+      {remplissage && activeTab === 'planning' && !isMobile && (
+        <div className="no-print" style={pls.remplissage} role="status">
+          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+            <div style={{ fontWeight: 700 }}>Remplissage avec « {remplissage.nom} »</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)' }}>{libelleModele(remplissage)}. Touche les cases à remplir ; un créneau déjà pris est laissé tel quel.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {modeles.map(m => (
+              <button key={m.id || m.nom} type="button" onClick={() => setRemplissage(m)} aria-pressed={remplissage === m}
+                style={{ ...pls.smallBtn, ...(remplissage === m || remplissage.nom === m.nom ? pls.smallBtnActive : null) }}>
+                {m.nom}
+              </button>
+            ))}
+            <button type="button" style={pls.addBtn} onClick={() => setRemplissage(null)}>Terminer</button>
+          </div>
+        </div>
+      )}
 
       {/* Filtre par groupe (Salle, Cuisine, groupes ajoutés) */}
-      {ongletsGroupes && (
+      {ongletsGroupes && activeTab !== 'moi' && (
         <div style={pls.groupeFiltre}>
           <SegmentedTabs size="sm" active={filtreEffectif} onChange={setGroupeFiltre} tabs={ongletsGroupes} />
         </div>
       )}
 
       {/* Contenu */}
-      {activeTab === 'planning' ? (
+      {activeTab === 'moi' ? (
+        <MonPlanning
+          userId={user.id}
+          shifts={planningEtab}
+          absenceDe={(uid, d) => { const a = absenceDe(absencesVisibles, uid, d); return a ? metaMotif(a.motif).label : null; }}
+          semaineInitiale={getMondayOfCurrentWeek()}
+          aujourdhui={zurichToday()}
+          maintenant={zurichClock()}
+          onExporter={() => setExportOuvert(true)}
+        />
+      ) : activeTab === 'planning' ? (
         isMobile ? renderMobilePlanning() : (
           <div style={pls.card} id="planning-print">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -1356,13 +1417,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                               style={{ fontSize: 10, color: 'var(--text2)' }}
                               title={`Total ${currentMonthLabel}`}
                             >
-                              · {monthHours.toFixed(0)}h <span style={{ fontSize: 9 }}>mois</span>
+                              {monthHours.toFixed(0)}h <span style={{ fontSize: 9 }}>ce mois</span>
                             </span>
                           </div>
                           <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
                         </div>
                       </div>
-                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)}/></div>)}
+                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null}/></div>)}
                     </React.Fragment>
                   );
                 })}
@@ -1392,7 +1453,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
                     <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: role?.couleur }}>{emp.avatar}</div><div><div style={pls.ptName}>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
-                    <span style={pls.ptCell}>{shift.debut}–{shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev}h prévues</span></span>
+                    <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev}h prévues</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
                     <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '-'}</span>
@@ -1430,7 +1491,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 );
               })()}
               <div><strong>Date :</strong> {selectedShift.date}</div>
-              <div><strong>Horaire :</strong> {selectedShift.debut}–{selectedShift.fin}</div>
+              <div><strong>Horaire :</strong> {selectedShift.debut} à {selectedShift.fin}</div>
               <div><strong>Poste :</strong> {selectedShift.poste || '-'}</div>
               <div><strong>Pause :</strong> {selectedShift.pause} min</div>
               {!pointageEditMode ? (
@@ -1495,30 +1556,29 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
               <div>
                 <label style={pls.fieldLabel}>Type de service</label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {[
-                    { id: 'simple', label: 'Journée continue', icon: '' },
-                    { id: 'midi', label: 'Service midi', icon: '☀' },
-                    { id: 'soir', label: 'Service soir', icon: '🌙' },
-                  ].map(t => (
-                    <button key={t.id} type="button"
-                      onClick={() => {
-                        const defaults = t.id === 'midi' ? { debut: '10:00', fin: '15:00' }
-                                       : t.id === 'soir' ? { debut: '17:00', fin: '23:00' }
-                                       : { debut: '09:00', fin: '17:00' };
-                        setEditForm({ ...editForm, typeShift: t.id, ...defaults });
-                      }}
-                      style={{
-                        flex: 1, padding: '10px 8px', borderRadius: 8, fontSize: 12,
-                        background: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-bg)' : t.id === 'soir' ? 'var(--info-bg)' : 'var(--success-bg)') : 'var(--surface)',
-                        border: '1px solid',
-                        borderColor: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-bd)' : t.id === 'soir' ? 'var(--info-bd)' : 'var(--success-bd)') : 'var(--border)',
-                        color: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-text)' : t.id === 'soir' ? 'var(--info-text)' : 'var(--success-text)') : 'var(--text2)',
-                        fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
-                      }}>
-                      {t.label}
-                    </button>
-                  ))}
+                {/* Le type règle aussi les heures, d'après le premier modèle de ce
+                    type de l'établissement ; elles restent modifiables dessous. */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {Object.entries(TYPES_HORAIRE).map(([id, t]) => {
+                    const actif = (editForm.typeShift || 'simple') === id;
+                    return (
+                      <button key={id} type="button" aria-pressed={actif}
+                        onClick={() => {
+                          const seg = modeles.flatMap(m => m.segments).find(s => s.typeShift === id);
+                          setEditForm({ ...editForm, typeShift: id, ...(seg && !editForm.id ? { debut: seg.debut, fin: seg.fin, pause: seg.pause } : null) });
+                        }}
+                        style={{
+                          flex: '1 1 90px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13,
+                          background: actif ? t.fond : 'var(--surface)',
+                          borderWidth: 1, borderStyle: 'solid',
+                          borderColor: actif ? 'var(--accent)' : 'var(--border)',
+                          color: actif ? t.texte : 'var(--text2)',
+                          fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
+                        }}>
+                        {t.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 10 }}>
@@ -1544,40 +1604,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 )}
                 <button style={pls.exportBtn} onClick={() => setShowEditModal(false)}>Annuler</button>
                 <button style={pls.addBtn} onClick={saveShift}>{editForm.id ? 'Enregistrer' : 'Créer'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═════════ MODALE DUPLIQUER ═════════ */}
-      {/* Mode 'day' = duplication multi-employés × multi-dates ; mode 'week' = semaine complète vers semaine */}
-      {duplicateMode === 'week' && (
-        <div className="modal-full-overlay" style={pls.overlay} onClick={() => setDuplicateMode(null)}>
-          <div className="modal-full" style={{ ...pls.modal, width: 480 }} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Dupliquer une semaine complète</div>
-              <button style={pls.closeBtn} onClick={() => setDuplicateMode(null)}>✕</button>
-            </div>
-            <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={pls.fieldLabel}>Lundi de la semaine source</label>
-                  <input type="date" style={pls.fieldInput} value={duplicateSource.sourceDate}
-                    onChange={e => setDuplicateSource({ ...duplicateSource, sourceDate: e.target.value })} />
-                </div>
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={pls.fieldLabel}>Lundi de la semaine cible</label>
-                  <input type="date" style={pls.fieldInput} value={duplicateSource.targetDate}
-                    onChange={e => setDuplicateSource({ ...duplicateSource, targetDate: e.target.value })} />
-                </div>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: 10, borderRadius: 6, lineHeight: 1.5 }}>
-                Tous les horaires de tous les employés de la semaine source (7 jours à partir du lundi choisi) seront copiés vers la semaine cible. Les pointages ne sont pas copiés.
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
-                <button style={pls.exportBtn} onClick={() => setDuplicateMode(null)}>Annuler</button>
-                <button style={pls.addBtn} onClick={doDuplicateWeek}>Dupliquer</button>
               </div>
             </div>
           </div>
@@ -1690,9 +1716,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <tr key={j.date} style={j.isWeekend ? ccnt.ligneZebre : ccnt.ligneNormale}>
                     <td style={ccntCell}>{String(j.jour).padStart(2, '0')}</td>
                     <td style={ccntCell}>{j.dayName}</td>
-                    <td style={ccntCell}>{j.shift?.pointageDebut || j.shift?.debut || ''}</td>
-                    <td style={ccntCell}>{j.shift?.pointageFin || j.shift?.fin || ''}</td>
-                    <td style={ccntCell}>{j.shift ? (j.shift.pause || 0) : ''}</td>
+                    <td style={ccntCell}>{(j.shifts || []).map((sh, k) => <div key={k}>{sh.pointageDebut || sh.debut}</div>)}</td>
+                    <td style={ccntCell}>{(j.shifts || []).map((sh, k) => <div key={k}>{sh.pointageFin || sh.fin}</div>)}</td>
+                    <td style={ccntCell}>{j.shifts && j.shifts.length ? j.shifts.reduce((t, sh) => t + (sh.pause || 0), 0) : ''}</td>
                     <td style={{ ...ccntCell, ...ccnt.valeur }}>{j.heuresPrev ? j.heuresPrev.toFixed(2) : ''}</td>
                     <td style={{ ...ccntCell, ...ccnt.valeur }}>{j.heuresReel ? j.heuresReel.toFixed(2) : ''}</td>
                     <td style={ccntCell}></td>
@@ -1823,7 +1849,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Horaires à dupliquer</div>
                   <div style={{ fontSize: 13 }}>
-                    <strong>{sources.length}</strong> horaire{sources.length > 1 ? 's' : ''} sélectionné{sources.length > 1 ? 's' : ''} · copié{sources.length > 1 ? 's' : ''} vers chaque employé × jour coché ci-dessous
+                    <strong>{sources.length}</strong> horaire{sources.length > 1 ? 's' : ''} sélectionné{sources.length > 1 ? 's' : ''}, copié{sources.length > 1 ? 's' : ''} pour chaque personne et chaque jour cochés ci-dessous
                   </div>
                 </div>
 
@@ -1860,7 +1886,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           />
                           <span style={{ flex: 1 }}>
                             {d.label}
-                            {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)', marginLeft: 4 }}>(src)</span>}
+                            {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
                           </span>
                         </label>
                       );
@@ -1903,7 +1929,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           <div style={{ ...pls.empAvatar, background: role?.couleur, width: 22, height: 22, fontSize: 9 }}>{emp.avatar}</div>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {emp.prenom} {emp.nom}
-                            {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)', marginLeft: 4 }}>(src)</span>}
+                            {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
                           </span>
                         </label>
                       );
@@ -1913,7 +1939,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
                 {/* Avertissement */}
                 <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: 10, fontSize: 11, color: 'var(--warning-text)' }}>
-                  Si un employé a déjà un horaire à une date sélectionnée, il sera <strong>remplacé</strong> par celui-ci.
+                  Un horaire qui chevauche la copie est <strong>remplacé</strong> ; un horaire qui ne la chevauche pas (un midi quand on copie un soir) est gardé.
                 </div>
 
                 {/* Footer */}
@@ -1957,6 +1983,61 @@ const Planning = ({ user, etablissement, initialTab }) => {
             onClick={() => setShowBulkDeleteConfirm(true)}
           >Supprimer ({selectedIds.size})</button>
         </div>
+      )}
+
+      {saisieRapide && canWrite && (
+        <SaisieRapide
+          date={saisieRapide.date}
+          userId={saisieRapide.userId}
+          employees={employees}
+          nomDe={nomDe}
+          modeles={modeles}
+          existants={planningEtab}
+          onPoser={(m, uid, d) => poserModele(m, uid, d)}
+          onAutre={openNouvelHoraire}
+          onClose={() => setSaisieRapide(null)}
+        />
+      )}
+
+      {showDupliquer && canWrite && (
+        <DupliquerModal
+          semaine={selectedDate}
+          existants={planningEtab}
+          employees={employees}
+          nomDe={nomDe}
+          estAbsent={(uid, d) => !!absenceDe(absencesVisibles, uid, d)}
+          etablissementId={etabId}
+          onDupliquer={appliquerDuplication}
+          onClose={() => setShowDupliquer(false)}
+        />
+      )}
+
+      {exportOuvert && (
+        <ExportModal
+          semaine={activeTab === 'moi' ? getMondayOfCurrentWeek() : selectedDate}
+          horizon={activeTab === 'moi' ? 1 : horizon}
+          user={user}
+          peutExporterEquipe={canExport}
+          personnes={canExport ? employees : equipe.filter(u => u.id === user.id)}
+          groupes={groupesActifs ? groupesEtab.groupes : []}
+          groupeDe={groupeDeId}
+          groupeNomDe={(uid) => groupesEtab.groupes.find(g => g.id === groupeDeId(uid))?.nom || ''}
+          shifts={canExport ? planningVisible : planningEtab.filter(s => s.userId === user.id)}
+          absenceDe={(uid, d) => { const a = absenceDe(absencesVisibles, uid, d); return a ? metaMotif(a.motif).label : null; }}
+          nomDe={nomDe}
+          etablissement={etablissement}
+          onCCNT={openCCNTModal}
+          onClose={() => setExportOuvert(false)}
+        />
+      )}
+
+      {showModeles && canWrite && (
+        <ModelesModal
+          modeles={modeles}
+          personnalises={modelesEtab.personnalises}
+          onEnregistrer={modelesEtab.enregistrer}
+          onClose={() => setShowModeles(false)}
+        />
       )}
 
       {showMasques && canMasquer && (
@@ -2027,15 +2108,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const dates = buildBatchDates();
         // Conflits = couples (employé, date) dont un horaire existant CHEVAUCHE le créneau
         // (un midi déjà posé n'est pas un conflit quand on ajoute un soir → service coupé).
+        const segs = batchSegments();
         let conflictCount = 0;
+        let pointesBloquants = 0;
         batchUserIds.forEach(uid => {
           dates.forEach(date => {
-            if (planningEtab.some(s => s.userId === uid && s.date === date && shiftsOverlap(s.debut, s.fin, batchDebut, batchFin))) conflictCount++;
+            segs.forEach(seg => {
+              const chev = planningEtab.filter(s => s.userId === uid && s.date === date && shiftsOverlap(s.debut, s.fin, seg.debut, seg.fin));
+              if (chev.length) {
+                conflictCount++;
+                if (chev.some(s => s.pointageDebut || s.pointageFin)) pointesBloquants++;
+              }
+            });
           });
         });
-        const totalPairs = batchUserIds.size * dates.length;
-        const willCreate = batchConflictMode === 'skip' ? totalPairs - conflictCount : totalPairs;
-        const heuresCreneau = calcHeures(batchDebut, batchFin, batchPause);
+        const totalPairs = batchUserIds.size * dates.length * segs.length;
+        const willCreate = batchConflictMode === 'skip' ? totalPairs - conflictCount : totalPairs - pointesBloquants;
+        const heuresCreneau = segs.reduce((t, s) => t + (parseFloat(calcHeures(s.debut, s.fin, s.pause)) || 0), 0).toFixed(1);
         return (
           <div className="modal-full-overlay" style={pls.overlay} onClick={() => !batchSaving && setShowBatchModal(false)}>
             <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -2127,27 +2216,46 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 {/* ── Créneau ── */}
                 <div>
                   <label style={pls.fieldLabel}>Créneau</label>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                    {[
-                      { id: 'simple', label: 'Journée continue', d: '09:00', f: '17:00' },
-                      { id: 'midi', label: 'Service midi', d: '10:00', f: '15:00' },
-                      { id: 'soir', label: 'Service soir', d: '17:00', f: '23:00' },
-                    ].map(t => {
-                      const active = batchTypeShift === t.id;
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                    {modeles.map(m => {
+                      const seg = m.segments[0];
+                      const active = m.segments.length > 1
+                        ? batchModele === m
+                        : !batchModele && batchTypeShift === seg.typeShift && batchDebut === seg.debut && batchFin === seg.fin;
                       return (
-                        <button key={t.id} type="button"
-                          onClick={() => { setBatchTypeShift(t.id); setBatchDebut(t.d); setBatchFin(t.f); }}
-                          style={{ flex: 1, padding: '10px 8px', borderRadius: 8, fontSize: 12, background: active ? 'var(--accent-light)' : 'var(--surface)', border: '1px solid', borderColor: active ? 'var(--accent)' : 'var(--border)', color: active ? 'var(--accent)' : 'var(--text2)', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
-                          {t.label}
+                        <button key={m.id || m.nom} type="button" aria-pressed={active}
+                          onClick={() => {
+                            if (m.segments.length > 1) { setBatchModele(m); return; }
+                            setBatchModele(null); setBatchTypeShift(seg.typeShift); setBatchDebut(seg.debut); setBatchFin(seg.fin); setBatchPause(seg.pause || 0);
+                          }}
+                          style={{ flex: '1 1 110px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13, background: active ? 'var(--accent-light)' : 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: active ? 'var(--accent)' : 'var(--border)', color: active ? 'var(--accent)' : 'var(--text2)', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                          {m.nom}
                         </button>
                       );
                     })}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                    <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
-                    <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
-                    <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
-                  </div>
+                  {batchModele ? (
+                    <div style={{ fontSize: 13, color: 'var(--text)' }}>
+                      {libelleModele(batchModele)} : deux horaires par jour.{' '}
+                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: 'var(--font)' }} onClick={() => setBatchModele(null)}>Saisir d'autres heures</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                        {Object.entries(TYPES_HORAIRE).map(([id, t]) => (
+                          <button key={id} type="button" aria-pressed={batchTypeShift === id} onClick={() => setBatchTypeShift(id)}
+                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--accent)' : 'transparent', background: batchTypeShift === id ? t.fond : 'transparent', color: batchTypeShift === id ? t.texte : 'var(--text2)' }}>
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
+                      </div>
+                    </>
+                  )}
                   <div style={{ marginTop: 10 }}>
                     <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Poste / Tâche (optionnel)</label>
                     <input type="text" style={pls.fieldInput} value={batchPoste} placeholder="Ex : Cuisine, Salle…" onChange={e => setBatchPoste(e.target.value)} />
