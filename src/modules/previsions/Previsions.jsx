@@ -29,6 +29,11 @@ const ROLES_EN_LIGNE = ['consultant', 'patron'];
 // Réservé pour les futurs affichages de chiffre d'affaires estimé.
 const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 
+// Boutons de la barre d'actions : un plein (l'action principale), les autres
+// en secondaire uniforme.
+const btnPrincipal = { padding: '9px 16px', borderRadius: 8, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)' };
+const btnSecondaire = { padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer' };
+
 export default function Previsions({ user, etablissement }) {
   const [showForm,     setShowForm]     = useState(false);
   const [selectedDate, setSelectedDate] = useState(null); // null = vue semaine
@@ -92,24 +97,28 @@ export default function Previsions({ user, etablissement }) {
           title="Réservations"
           sub={onglet === 'clients' ? 'Fichier clients, rempli par les réservations' : selectedDate ? null : 'Planning de la semaine, service par service'}
         />
+        {/* L'action principale d'abord, puis le mode service et la recherche ;
+            les réglages (en ligne, e-mails) et les notifications ferment la
+            rangée. Un seul style de bouton secondaire. */}
         <div className="module-actions">
-          {/* Prévenir ce téléphone / cette tablette à chaque réservation en
-              ligne. En tête : visible sur téléphone sans faire défiler. */}
-          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => etabId ? setShowForm(true) : null}
+              disabled={!etabId}
+              title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
+              style={{ ...btnPrincipal, background: etabId ? 'var(--accent)' : 'var(--border)', cursor: etabId ? 'pointer' : 'not-allowed', opacity: etabId ? 1 : 0.6 }}>
+              + Nouvelle réservation
+            </button>
+          )}
           {/* Le plan de salle en un tap : écran scindé plan + réservations du
-              service en cours. Il n'était accessible que par la vue d'un jour,
-              puis l'onglet « Plan de salle ». */}
+              service en cours. */}
           {etabId && (
             <button
               type="button"
               onClick={() => ouvrirModeService(zurichToday())}
               title="Plan de salle et réservations attendues, côte à côte"
-              style={{
-                padding: '9px 16px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-                background: 'var(--surface)', color: 'var(--accent)',
-                fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer',
-              }}>
+              style={btnSecondaire}>
               Mode service
             </button>
           )}
@@ -126,32 +135,13 @@ export default function Previsions({ user, etablissement }) {
             <button
               type="button"
               onClick={() => setReglagesEnLigne(true)}
-              style={{
-                padding: '9px 16px', borderRadius: 8,
-                border: '1px solid var(--border)', background: 'var(--surface)',
-                color: 'var(--text)', fontSize: 13, fontWeight: 600,
-                fontFamily: 'var(--font)', cursor: 'pointer',
-              }}>
-              Réservation en ligne & e-mails
+              title="Réservation en ligne et e-mails aux clients"
+              style={btnSecondaire}>
+              Réglages
             </button>
           )}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => etabId ? setShowForm(true) : null}
-              disabled={!etabId}
-              title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
-              style={{
-                padding: '9px 16px', borderRadius: 8, border: 'none',
-                background: etabId ? 'var(--accent)' : 'var(--border)',
-                color: '#fff', fontSize: 13, fontWeight: 600,
-                fontFamily: 'var(--font)',
-                cursor: etabId ? 'pointer' : 'not-allowed',
-                opacity: etabId ? 1 : 0.6,
-              }}>
-              + Nouvelle réservation
-            </button>
-          )}
+          {/* Prévenir ce téléphone / cette tablette à chaque réservation en ligne. */}
+          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
         </div>
       </div>
 

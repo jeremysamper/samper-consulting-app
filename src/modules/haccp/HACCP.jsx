@@ -15,6 +15,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import HaccpNav from './HaccpNav.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
 
@@ -630,13 +631,24 @@ const HACCP = ({ user, etablissement }) => {
           {activeTab==='config' && isConsultant && (
             <>
               <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>+ Ajouter zone</button>
-              <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>+ Ajouter contrôle</button>
+              <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>+ Ajouter contrôle</button>
             </>
           )}
           {/* Onglet relevés : choix de période (journalier / mensuel) avant génération.
               Autres onglets : impression/export de la vue affichée, comme avant. */}
-          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>Imprimer</button>}
-          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>PDF</button>}
+          {/* Un seul bouton pour sortir le registre : PDF ou imprimante. */}
+          {showPrintExport && (
+            <BoutonActions
+              id="haccp-exporter"
+              label="Exporter"
+              style={hs.exportBtn}
+              titre="Exporter le registre"
+              sections={[{ items: [
+                { titre: 'Télécharger le PDF', detail: activeTab==='releves' ? 'Journalier ou mensuel, au choix ensuite.' : 'La vue affichée.', onClick: () => activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf') },
+                { titre: 'Imprimer', detail: 'Le même registre, envoyé à l\'imprimante.', onClick: () => activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP') },
+              ] }]}
+            />
+          )}
         </div>
       </div>
       )}

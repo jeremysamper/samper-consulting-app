@@ -18,7 +18,9 @@ const ns = {
   // auto-fit : trois colonnes dès que la largeur le permet, deux ou une sinon.
   // Le plancher de 104 px garde trois tuiles côte à côte sur un téléphone.
   grillePrincipale: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(104px, 1fr))', gap: 8 },
-  grilleSecondaire: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(104px, 1fr))', gap: 8 },
+  // Les écrans de consultation sont des onglets soulignés, pas une seconde
+  // rangée de tuiles : deux niveaux de navigation ne doivent pas se ressembler.
+  grilleSecondaire: { display: 'flex', gap: 22, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', marginTop: 4 },
   principal: {
     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 4,
     minHeight: 84, padding: '14px 16px', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font)',
@@ -30,12 +32,12 @@ const ns = {
   titre: { fontSize: 16, fontWeight: 600, lineHeight: 1.2, overflowWrap: 'break-word' },
   aide: { fontSize: 12, lineHeight: 1.3, opacity: 0.75 },
   secondaire: {
-    minHeight: 44, padding: '8px 12px', cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 13, fontWeight: 600, lineHeight: 1.2,
-    background: 'var(--surface)', color: 'var(--text2)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, minWidth: 0,
+    minHeight: 44, padding: '8px 2px', cursor: 'pointer', fontFamily: 'var(--font)',
+    fontSize: 14, fontWeight: 600, lineHeight: 1.2,
+    background: 'none', color: 'var(--text2)',
+    borderStyle: 'solid', borderWidth: '0 0 2px', borderColor: 'transparent', marginBottom: -1, minWidth: 0,
   },
-  secondaireActif: { background: 'var(--bg)', color: 'var(--text)', borderColor: 'var(--accent)' },
+  secondaireActif: { color: 'var(--accent)', borderColor: 'transparent transparent var(--accent)' },
 };
 
 // tabs : [{ id, l, aide?, principal? }]

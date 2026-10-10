@@ -4,7 +4,8 @@ import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
-import { ChevronDown, ChevronRight, FileDown, Loader2, Pencil, Plus, Printer, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -279,21 +280,37 @@ const Commande = ({ user, etablissement }) => {
             tabs={categories.map(c => ({ id: c, label: c }))}
           />
         </div>
+        {/* Ajouter d'abord ; sortir la liste (PDF, imprimante) dans « Exporter » ;
+            générer et vider, réservés au consultant, dans « Gérer ». */}
         <div className="module-actions">
-          {totalCount > 0 && (
-            <>
-              <button style={s.ghostBtn} onClick={printList} title="Imprimer"><Printer size={14} /> Imprimer</button>
-              <button style={s.ghostBtn} onClick={exportPdf} title="Export PDF"><FileDown size={14} /> Export PDF</button>
-            </>
-          )}
           <button style={s.ghostBtn} onClick={() => setShowAdd(true)}><Plus size={14} /> Produit</button>
+          {totalCount > 0 && (
+            <BoutonActions
+              id="commande-exporter"
+              label="Exporter"
+              style={s.ghostBtn}
+              titre="Exporter la commande"
+              sections={[{ items: [
+                { titre: 'Télécharger le PDF', detail: 'La liste rangée par rayon, prête à envoyer.', onClick: exportPdf },
+                { titre: 'Imprimer', detail: 'La même liste, envoyée à l\'imprimante.', onClick: printList },
+              ] }]}
+            />
+          )}
           {isConsultant && (
-            <>
-              {totalCount > 0 && <button style={s.ghostBtn} onClick={viderAuto} disabled={busy}>Vider</button>}
-              <button style={s.aiBtn} onClick={openGenModal} disabled={busy}>
-                {busy ? <Loader2 size={14} /> : <Sparkles size={14} />} {busy ? 'Génération…' : 'Générer depuis les cartes'}
-              </button>
-            </>
+            busy
+              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)' }}><Loader2 size={14} /> Génération…</span>
+              : (
+                <BoutonActions
+                  id="commande-gerer"
+                  label="Gérer"
+                  style={s.ghostBtn}
+                  titre="Gérer la commande"
+                  sections={[{ items: [
+                    { titre: 'Générer depuis les cartes', detail: 'Les produits des recettes de la carte, aux bonnes quantités.', onClick: openGenModal },
+                    totalCount > 0 && { titre: 'Vider la liste', detail: 'Retire les produits ajoutés automatiquement.', danger: true, onClick: viderAuto },
+                  ] }]}
+                />
+              )
           )}
         </div>
       </div>

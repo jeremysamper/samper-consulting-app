@@ -17,6 +17,7 @@ import { dureesVie } from '../../utils/etiquettesDlc.js';
 import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 
 // CARTES & RECETTES
@@ -570,8 +571,17 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
         {canEtiqueter && (
           <button style={rs.etiquetteBtn} onClick={() => setShowEtiquette(true)}>Étiquette DLC</button>
         )}
-        <button style={rs.printBtn} onClick={printRecipe}>Imprimer</button>
-        <button style={rs.printBtn} onClick={exportRecipePdf}>Export PDF</button>
+        <BoutonActions
+          id="fiche-exporter"
+          label="Exporter"
+          style={rs.printBtn}
+          titre="Exporter la fiche"
+          sousTitre={recette.nom}
+          sections={[{ items: [
+            { titre: 'Télécharger le PDF', detail: 'La fiche technique sur une page.', onClick: exportRecipePdf },
+            { titre: 'Imprimer', detail: 'La même fiche, envoyée à l\'imprimante.', onClick: printRecipe },
+          ] }]}
+        />
         {canDuplicate && (
           <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
         )}
@@ -1012,7 +1022,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
         <div style={ms.sticky}>
           <div style={ms.header}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⤓ Export multiple</div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Exporter des fiches</div>
               <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Une fiche par page A4, dans un seul PDF</div>
             </div>
             <button style={smStyle.closeBtn} onClick={() => !busy && onClose()}>✕</button>
@@ -1631,8 +1641,8 @@ const Recettes = ({ user, etablissement }) => {
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />
           {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
               en icône seule, la loupe 🔎 se confondait avec la loupe de recherche. */}
-          <button style={{...rs.printBtn, background:'var(--warning-bg)', borderColor:'var(--warning-bd)', color:'var(--warning-text)', fontWeight:600}} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
-          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
+          <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
+          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
         </div>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
       </div>
@@ -1705,9 +1715,9 @@ const Recettes = ({ user, etablissement }) => {
                   explicitement que la brigade ne la voit pas, sinon rien ne
                   distingue à l'écran une carte publiée d'une carte masquée. */}
               {activeCarte.masquee === true ? (
-                <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)', padding:'6px 16px', fontSize:12}} title="Visible du consultant uniquement">Cachée</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
               ) : (
-                <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--success-text)' }}>Carte active</span>
               )}
             </div>
           </div>

@@ -132,8 +132,8 @@ const SOP = ({ user, etablissement }) => {
         <div className="module-actions">
           {canManage && (
             <>
-              <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>Templates</button>
               <button style={ss.primaryBtn} onClick={() => setSelectedSop({})}>+ Nouvelle SOP</button>
+              <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>Templates</button>
             </>
           )}
         </div>

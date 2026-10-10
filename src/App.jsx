@@ -333,7 +333,7 @@ export default function App() {
             sélection…). Sans ça, un module gardé monté rechargeait ses données
             mais conservait l'état de l'ancien établissement à l'écran. */}
         {pagesToRender.map((p) => (
-          <div key={`${p}::${currentEtablissement.currentId || 'boot'}`} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
+          <div key={`${p}::${currentEtablissement.currentId || 'boot'}`} data-module={p} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
             <LegacyModuleHost
               page={p}
               user={auth.profile}

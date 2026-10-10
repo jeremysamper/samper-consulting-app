@@ -14,6 +14,7 @@ import {
   normalizeAllergenes, partitionAllergenes,
 } from '../../utils/allergenes.js';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -498,16 +499,20 @@ const FichesSalle = ({ user, etablissement }) => {
           />
         </div>
         {canEdit && !sel.active && (
+          /* L'action principale d'abord ; générer (consultant) et sélectionner
+             rangés dans « Gérer ». */
           <div className="module-actions">
-            {fiches.length > 0 && (
-              <button style={fss.selectBtn} onClick={sel.enter}>Sélectionner</button>
-            )}
-            {isConsultant && (
-            <button style={fss.aiBtn} onClick={genererFichesSalleIA} disabled={!!bulkProgress}>
-              Générer
-            </button>
-            )}
-            <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle</button>
+            <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche</button>
+            <BoutonActions
+              id="fiches-gerer"
+              label="Gérer"
+              style={fss.selectBtn}
+              titre="Gérer les fiches salle"
+              sections={[{ items: [
+                isConsultant && !bulkProgress && { titre: 'Générer les fiches', detail: 'Une fiche par plat de la carte, à relire ensuite.', onClick: genererFichesSalleIA },
+                fiches.length > 0 && { titre: 'Sélectionner plusieurs fiches', detail: 'Pour les supprimer ou les exporter ensemble.', onClick: sel.enter },
+              ] }]}
+            />
           </div>
         )}
       </div>

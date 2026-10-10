@@ -281,7 +281,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
             fontSize: 13, fontWeight: 700, color: 'var(--text)',
             fontFamily: 'var(--font-num)', minWidth: 110, textAlign: 'center',
           }}>
-            {formatDateCourte(dateDebut)} – {formatDateCourte(addDays(dateDebut, 6))}
+            {formatDateCourte(dateDebut)} au {formatDateCourte(addDays(dateDebut, 6))}
           </span>
           <Btn small onClick={() => setDateDebut((d) => addDays(d, 7))}>→</Btn>
         </div>

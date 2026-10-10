@@ -9,6 +9,7 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 
 // PERTES
@@ -206,8 +207,16 @@ const Pertes = ({ user, etablissement }) => {
           {canManage && !sel.active && (
             <button style={pts.exportBtn} onClick={sel.enter}>Sélectionner</button>
           )}
-          <button style={pts.exportBtn} onClick={printPertes}>Imprimer</button>
-          <button style={pts.exportBtn} onClick={exportPertes}>Export</button>
+          <BoutonActions
+            id="pertes-exporter"
+            label="Exporter"
+            style={pts.exportBtn}
+            titre="Exporter le registre des pertes"
+            sections={[{ items: [
+              { titre: 'Télécharger le PDF', detail: 'Le registre de la période affichée.', onClick: exportPertes },
+              { titre: 'Imprimer', detail: 'Le même registre, envoyé à l\'imprimante.', onClick: printPertes },
+            ] }]}
+          />
         </div>
       </div>
 
@@ -528,7 +537,7 @@ const pts = {
   motifActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  kpiBar:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12},
+  kpiBar:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:'12px 32px'},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
   kpiLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
   kpiVal:{fontSize:22,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},

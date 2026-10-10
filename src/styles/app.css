@@ -153,18 +153,18 @@
     /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
        pour la teinte de la marque (~225). C'est ce virage qui donne au dark
        son atmosphère « Opal » — profondeur froide, lumière aqua. */
-    --bg: oklch(13.5% 0.015 225);
-    --bg2: oklch(11% 0.012 225);
-    --surface: oklch(17.5% 0.018 225);
-    --surface2: oklch(20.5% 0.016 225);
-    --border: oklch(27% 0.018 225);
-    --border2: oklch(31% 0.016 225);
-    --text: oklch(90% 0.008 210);
-    --text2: oklch(71% 0.012 215);
-    --text3: oklch(50% 0.012 220);
+    --bg: oklch(19.5% 0.024 225);
+    --bg2: oklch(16.5% 0.02 225);
+    --surface: oklch(22.5% 0.024 225);
+    --surface2: oklch(26% 0.022 225);
+    --border: oklch(33% 0.022 225);
+    --border2: oklch(38% 0.02 225);
+    --text: oklch(94% 0.007 210);
+    --text2: oklch(78% 0.014 215);
+    --text3: oklch(62% 0.014 220);
     --accent: #74aec3;
     --accent2: #90bfd0;
-    --accent-light: #192b34;
+    --accent-light: #1d3440;
     --accent-bd: #335c6b;
     --on-accent: #06202b;
     --nav: #04222f;
@@ -222,18 +222,18 @@
 
 html[data-theme="dark"] {
   /* Contenu identique au bloc @media ci-dessus — voir le commentaire là-haut. */
-  --bg: oklch(13.5% 0.015 225);
-  --bg2: oklch(11% 0.012 225);
-  --surface: oklch(17.5% 0.018 225);
-  --surface2: oklch(20.5% 0.016 225);
-  --border: oklch(27% 0.018 225);
-  --border2: oklch(31% 0.016 225);
-  --text: oklch(90% 0.008 210);
-  --text2: oklch(71% 0.012 215);
-  --text3: oklch(50% 0.012 220);
+  --bg: oklch(19.5% 0.024 225);
+  --bg2: oklch(16.5% 0.02 225);
+  --surface: oklch(22.5% 0.024 225);
+  --surface2: oklch(26% 0.022 225);
+  --border: oklch(33% 0.022 225);
+  --border2: oklch(38% 0.02 225);
+  --text: oklch(94% 0.007 210);
+  --text2: oklch(78% 0.014 215);
+  --text3: oklch(62% 0.014 220);
   --accent: #74aec3;
   --accent2: #90bfd0;
-  --accent-light: #192b34;
+  --accent-light: #1d3440;
   --accent-bd: #335c6b;
   --on-accent: #06202b;
   --nav: #04222f;
@@ -1884,6 +1884,18 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   box-shadow: inset 0 -2px 0 var(--accent) !important;
   border-radius: 0 !important;
   color: var(--accent) !important;
+}
+
+/* ─── Petits titres en casse normale ────────────────────────────────────────
+   Les étiquettes en capitales interlettrées (« TAUX DE CONFORMITÉ », « JOUR »,
+   « MIDI »…), posées partout en style inline, se disputaient l'attention :
+   écrites en casse normale, elles se lisent comme des titres et laissent le
+   contenu passer devant. Une seule règle plutôt que deux cents retouches ;
+   `data-casse` garde les capitales là où elles sont voulues. Planning &
+   Pointage et Documents (data-module posé par App.jsx) ne sont pas concernés. */
+[style*="text-transform: uppercase"]:not([data-casse]):not(:is([data-module="planning"], [data-module="documents"]) *) {
+  text-transform: none !important;
+  letter-spacing: normal !important;
 }
 
 /* ─── Pastilles en texte ─────────────────────────────────────────────────────
