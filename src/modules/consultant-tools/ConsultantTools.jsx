@@ -27,8 +27,9 @@ import PlatPicker from './components/PlatPicker.jsx';
 import EtablissementTransferModal from './components/EtablissementTransferModal.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
-import { AlertTriangle, Archive, ArchiveRestore, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileDown, Link2, Loader2, Pencil, Printer, Search, ShieldCheck, Sparkles, Trash2, UtensilsCrossed } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Link2, Loader2, Pencil, Search } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import {
   applyProductToIngredient,
@@ -406,7 +407,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const recSel = useSelection();
   const [recBulkBusy, setRecBulkBusy] = React.useState(false);
   // Menu « ⋯ » : actions ponctuelles sorties de l'en-tête de la colonne gauche
-  const [outilsMenuOpen, setOutilsMenuOpen] = React.useState(false);
   // Détection IA des allergènes en cours
   const [allergenAiBusy, setAllergenAiBusy] = React.useState(false);
   // Génération IA de l'analyse HACCP
@@ -1440,73 +1440,33 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             </SelectionToolbar>
           ) : (
             <>
+              {/* Une rangée : ajouter, gérer, chercher. Le reste est rangé dans
+                  les fenêtres de ces deux boutons (portail : jamais coupé). */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button style={{ ...cts.newBtn, flex: 1 }} onClick={createNew}>+ Recette</button>
-                <button
-                  style={{ ...cts.newBtn, flex: 1, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}
-                  onClick={() => { setEditPlat(null); setShowPlatForm(true); }}
-                >+ Plat</button>
+                <BoutonActions
+                  id="recettes-ajouter"
+                  label="+ Ajouter"
+                  style={{ ...cts.newBtn, flex: 1 }}
+                  titre="Ajouter"
+                  sections={[{ items: [
+                    { titre: 'Une recette', detail: 'Une fiche technique : ingrédients, étapes, coûts.', onClick: createNew },
+                    { titre: 'Un plat', detail: 'Ce qui est vendu à la carte, fait d\'une ou plusieurs recettes.', onClick: () => { setEditPlat(null); setShowPlatForm(true); } },
+                    { titre: 'Importer des recettes', detail: 'Depuis un fichier Excel ou un document.', onClick: () => setShowImport(true) },
+                  ] }]}
+                />
+                <BoutonActions
+                  id="recettes-gerer"
+                  label={`Gérer${reviewCount > 0 ? ` (${reviewCount})` : ''}`}
+                  style={{ ...cts.ghostBtn, flex: 1 }}
+                  titre="Gérer les recettes"
+                  sections={[{ items: [
+                    { titre: 'Sélectionner plusieurs recettes', detail: 'Pour les rattacher, archiver, cacher, transférer ou supprimer.', onClick: recSel.enter },
+                    reviewCount > 0 && { titre: `Correspondances à valider (${reviewCount})`, detail: 'Ingrédients rapprochés du catalogue avec un doute.', onClick: () => setShowMatchReview(true) },
+                    unlinkedCount > 0 && { titre: `Lier les ingrédients au catalogue (${unlinkedCount})`, detail: 'Ingrédients encore sans produit du catalogue.', onClick: () => setShowBulkLinker(true) },
+                    !bulkAllergenProgress && { titre: 'Détecter les allergènes de toutes les recettes', detail: 'Analyse des ingrédients, à vérifier ensuite.', onClick: detecterAllergenesToutes },
+                  ] }]}
+                />
                 <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />
-              </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
-                <button
-                  style={{ ...cts.ghostBtn, flex: 1, fontSize: 11, padding: '6px 8px' }}
-                  onClick={recSel.enter}
-                >Sélectionner</button>
-                {(() => {
-                  return (
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <button
-                        style={{ ...cts.ghostBtn, fontSize: 13, padding: '6px 12px', height: '100%', lineHeight: 1 }}
-                        onClick={() => setOutilsMenuOpen(v => !v)}
-                        title="Autres outils"
-                        aria-haspopup="menu"
-                        aria-expanded={outilsMenuOpen}
-                      >
-                        ⋯
-                        {reviewCount > 0 && <span style={cts.menuDot} title={`${reviewCount} correspondance(s) à valider`} />}
-                      </button>
-                      {outilsMenuOpen && (
-                        <>
-                          {/* Voile transparent : ferme le menu au clic à côté
-                              sans écouteur global sur document. */}
-                          <div style={cts.menuBackdrop} onClick={() => setOutilsMenuOpen(false)} />
-                          <div style={cts.menuPanel} role="menu">
-                            <button
-                              className="sc-menu-item"
-                              style={cts.menuItem}
-                              role="menuitem"
-                              onClick={() => { setOutilsMenuOpen(false); setShowImport(true); }}
-                            >Importer des recettes</button>
-                            <button
-                              className="sc-menu-item"
-                              style={{ ...cts.menuItem, color: 'var(--ai-text)' }}
-                              role="menuitem"
-                              disabled={!!bulkAllergenProgress}
-                              onClick={() => { setOutilsMenuOpen(false); detecterAllergenesToutes(); }}
-                            >Allergènes - toutes les recettes</button>
-                            {reviewCount > 0 && (
-                              <button
-                                className="sc-menu-item"
-                                style={{ ...cts.menuItem, color: 'var(--warning-text)' }}
-                                role="menuitem"
-                                onClick={() => { setOutilsMenuOpen(false); setShowMatchReview(true); }}
-                              >Correspondances à valider ({reviewCount})</button>
-                            )}
-                            {unlinkedCount > 0 && (
-                              <button
-                                className="sc-menu-item"
-                                style={cts.menuItem}
-                                role="menuitem"
-                                onClick={() => { setOutilsMenuOpen(false); setShowBulkLinker(true); }}
-                              >Lier les ingrédients au catalogue ({unlinkedCount})</button>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             </>
           )}
@@ -1747,70 +1707,61 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             </div>
           )}
           {/* Actions bar */}
+          {/* Deux boutons nommés au lieu de neuf : « Exporter » (la fiche en PDF
+              ou à l'imprimante) et « Actions » (le reste, rangé par usage). */}
           <div style={cts.actionBar} className="no-print">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={duplicate}><Copy size={14} /> Dupliquer</button>
-              <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' }}
-                onClick={() => setLinkPlatPickerForRecette(selected.id)}
-              >
-                <UtensilsCrossed size={14} /> Rattacher à un plat
-                {(() => {
-                  const linkedCount = plats.filter(p => p.recettes.some(pr => pr.recetteId === selected.id)).length;
-                  return linkedCount > 0 ? ` (${linkedCount})` : '';
-                })()}
-              </button>
-              {/* borderColor explicite dans les deux branches : React réutilise le
-                  nœud <button> au toggle et retirer borderColor sur un border
-                  shorthand déclenche un warning de conflit de styles. */}
-              {selected.statut === 'archivée' ? (
-                <button
-                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent)', borderColor: 'var(--accent-bd)' }}
-                  onClick={() => archiverSelected(false)}
-                  title="Restaurer la recette (repasse en brouillon)"
-                ><ArchiveRestore size={14} /> Désarchiver</button>
-              ) : (
-                <button
-                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: 'var(--border)' }}
-                  onClick={() => archiverSelected(true)}
-                  title="Sortir la recette de la bibliothèque et des plats, sans la supprimer"
-                ><Archive size={14} /> Archiver</button>
-              )}
-              {/* Même contrat de bordure que le bouton Archiver : borderColor
-                  posé dans les deux branches. */}
-              {selected.masquee === true ? (
-                <button
-                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' }}
-                  onClick={() => cacherSelected(false)}
-                  title="Réafficher la recette dans Cartes & Recettes"
-                ><Eye size={14} /> Rendre visible</button>
-              ) : (
-                <button
-                  style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: 'var(--border)' }}
-                  onClick={() => cacherSelected(true)}
-                  title="Cacher la recette dans Cartes & Recettes (tous les rôles). Elle reste ici et en production."
-                ><EyeOff size={14} /> Cacher</button>
-              )}
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => setShowDeleteConfirm(true)}><Trash2 size={14} /> Supprimer</button>
-              <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
-                onClick={genererHaccpIA}
-                disabled={haccpAiBusy}
-              ><ShieldCheck size={14} /> {haccpAiBusy ? 'Analyse HACCP…' : 'Analyse HACCP'}</button>
-              <button
-                style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }}
-                onClick={suggererIA}
-                disabled={suggestAiBusy}
-              ><Sparkles size={14} /> {suggestAiBusy ? 'Suggestions…' : 'Suggestions'}</button>
-            </div>
+            {(() => {
+              const nbPlats = plats.filter(p => p.recettes.some(pr => pr.recetteId === selected.id)).length;
+              const donneesPdf = () => buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions });
+              return (
+                <>
+                  <BoutonActions
+                    id="recette-exporter"
+                    label="Exporter"
+                    style={cts.ghostBtn}
+                    titre="Exporter la fiche"
+                    sousTitre={selected.nom}
+                    sections={[{ items: [
+                      { titre: 'Télécharger le PDF', detail: 'La fiche technique sur une page.', onClick: () => pdfUtils?.exportRecettePdf(donneesPdf(), { etablissement, filename: `Fiche_${slug(selected.nom)}.pdf` }) },
+                      { titre: 'Imprimer', detail: 'La même fiche, envoyée à l\'imprimante.', onClick: () => pdfUtils?.exportRecettePdf(donneesPdf(), { etablissement, autoPrint: true }) },
+                    ] }]}
+                  />
+                  <BoutonActions
+                    id="recette-actions"
+                    label="Actions"
+                    style={cts.ghostBtn}
+                    titre="Actions sur la recette"
+                    sousTitre={selected.nom}
+                    sections={[
+                      { titre: 'Organiser', items: [
+                        { titre: nbPlats > 0 ? `Rattacher à un plat (déjà dans ${nbPlats})` : 'Rattacher à un plat', detail: 'La recette entre dans la composition d\'un plat.', onClick: () => setLinkPlatPickerForRecette(selected.id) },
+                        { titre: 'Dupliquer', detail: 'Une copie à modifier, l\'originale reste telle quelle.', onClick: duplicate },
+                        selected.masquee === true
+                          ? { titre: 'Rendre visible', detail: 'La recette réapparaît dans Cartes & Recettes.', onClick: () => cacherSelected(false) }
+                          : { titre: 'Cacher', detail: 'Invisible dans Cartes & Recettes pour tous ; elle reste ici et en production.', onClick: () => cacherSelected(true) },
+                        selected.statut === 'archivée'
+                          ? { titre: 'Désarchiver', detail: 'La recette repasse en brouillon.', onClick: () => archiverSelected(false) }
+                          : { titre: 'Archiver', detail: 'Sort la recette de la bibliothèque et des plats, sans la supprimer.', onClick: () => archiverSelected(true) },
+                      ] },
+                      { titre: 'Aide à la rédaction', items: [
+                        !haccpAiBusy && { titre: 'Analyse HACCP', detail: 'Points de contrôle proposés, à valider par un responsable.', onClick: genererHaccpIA },
+                        !suggestAiBusy && { titre: 'Suggestions', detail: 'Ce qui manque à la fiche pour être complète.', onClick: suggererIA },
+                      ] },
+                      { items: [
+                        { titre: 'Supprimer la recette', danger: true, onClick: () => setShowDeleteConfirm(true) },
+                      ] },
+                    ]}
+                  />
+                  {(haccpAiBusy || suggestAiBusy) && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text2)' }}><Loader2 size={12} /> {haccpAiBusy ? 'Analyse HACCP…' : 'Suggestions…'}</span>
+                  )}
+                </>
+              );
+            })()}
             <div style={{ flex: 1 }} />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
-              {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--success-text)', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
-              {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--danger-strong)', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, autoPrint: true })}><Printer size={14} /> Imprimer</button>
-              <button style={{ ...cts.ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => pdfUtils?.exportRecettePdf(buildRecettePdfData(selected, { isConsultant: user?.role === 'consultant', portions: selected.portions }), { etablissement, filename: `Fiche_${slug(selected.nom)}.pdf` })}><FileDown size={14} /> Export PDF</button>
-            </div>
+            {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
+            {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--success-text)', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
+            {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--danger-strong)', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
           </div>
 
           {/* Une recette cachée ne se distingue pas à l'édition : le bandeau dit
@@ -2035,10 +1986,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     disabled={allergenAiBusy}
                     title="Détecter les allergènes à partir des ingrédients"
                     style={{
-                      padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700,
-                      fontFamily: 'var(--font)', cursor: allergenAiBusy ? 'wait' : 'pointer',
-                      background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)',
-                      opacity: allergenAiBusy ? 0.6 : 1,
+                      ...cts.ghostBtn, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                      cursor: allergenAiBusy ? 'wait' : 'pointer', opacity: allergenAiBusy ? 0.6 : 1,
                     }}
                   >{allergenAiBusy ? 'Analyse…' : 'Détecter'}</button>
                 </div>

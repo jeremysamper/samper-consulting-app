@@ -11,6 +11,7 @@ import { normalizeSearch } from '../../utils/searchText.js';
 import { resolvePrixProduit } from '../../services/prixResolution.js';
 import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './categoriesCatalogue.js';
 import { Pencil, Trash2 } from 'lucide-react';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -439,23 +440,23 @@ const Catalogue = ({ user, etablissement }) => {
           <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''} · {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
         {canWrite && (
+          // Une action principale, une secondaire, et les trois façons
+          // d'importer rangées dans une seule fenêtre.
           <div className="module-actions">
-            {isConsultant && (
-            <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowScan(true)}>
-              Scanner une facture
-            </button>
-            )}
-            {isConsultant && (
-            <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowAiImport(true)}>
-              Import intelligent
-            </button>
-            )}
-            <label style={{ ...cat.btn, background: 'var(--surface)', border: '1px solid var(--border)', cursor: importing ? 'wait' : 'pointer', color: 'var(--text)' }}>
-              {importing ? 'Import…' : 'Importer Excel'}
-              <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
-            </label>
-            <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>+ Fournisseur</button>
             <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none' }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>+ Produit</button>
+            <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>+ Fournisseur</button>
+            <BoutonActions
+              id="catalogue-importer"
+              label={importing ? 'Import…' : 'Importer'}
+              style={cat.btn}
+              titre="Importer des produits"
+              sections={[{ items: [
+                isConsultant && { titre: 'Scanner une facture', detail: 'Photo ou PDF d\'une facture : les produits et les prix sont lus pour vous.', onClick: () => setShowScan(true) },
+                isConsultant && { titre: 'Import intelligent', detail: 'Un fichier de fournisseur, quelle que soit sa forme.', onClick: () => setShowAiImport(true) },
+                !importing && { titre: 'Fichier Excel', detail: 'Le modèle du catalogue, une ligne par produit.', onClick: () => fileRef.current?.click() },
+              ] }]}
+            />
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
           </div>
         )}
       </div>
@@ -587,7 +588,7 @@ const Catalogue = ({ user, etablissement }) => {
                     <tr>
                       {canWrite && <th style={{ ...cat.th, width: 36 }}></th>}
                       {['Produit', 'Référence', 'Catégorie', 'Fournisseur', 'Prix / unité', 'Unité', ''].map(h => (
-                        <th key={h} style={cat.th}>{h}</th>
+                        <th key={h} style={{ ...cat.th, ...(h === 'Prix / unité' ? { textAlign: 'right' } : null) }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -631,7 +632,7 @@ const Catalogue = ({ user, etablissement }) => {
                             p.fournisseurNom || <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>-</span>
                           )}
                         </td>
-                        <td style={{ ...cat.td, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)' }}>
+                        <td style={{ ...cat.td, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', textAlign: 'right' }}>
                           {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>-</span>}
                         </td>
                         <td style={{ ...cat.td, color: 'var(--text2)' }}>/{p.uniteRef}</td>
@@ -1218,7 +1219,7 @@ const cat = {
   tableWrap: { overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   selectBar: { padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-  th: { padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid var(--border)', background: 'var(--bg)', whiteSpace: 'nowrap' },
+  th: { padding: '10px 14px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
   tr: { borderBottom: '1px solid var(--border)' },
   td: { padding: '9px 14px', verticalAlign: 'middle' },
   tdAction: { padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' },
@@ -1232,7 +1233,7 @@ const cat = {
   modalBody: { padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 },
   modalFoot: { padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  lbl: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
+  lbl: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 4 },
   inp: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
   row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 },
@@ -1401,7 +1402,7 @@ const ipm = {
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
   kpisRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '14px 20px' },
   kpiBox: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', textAlign: 'center' },
-  kpiLabel: { fontSize: 10, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  kpiLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
   kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-num)', marginTop: 4 },
   tabsBar: { display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid var(--border)' },
   tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent' },

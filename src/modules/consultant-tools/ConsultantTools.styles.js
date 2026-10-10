@@ -6,9 +6,9 @@ export const cts = {
   tabBtnActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
   tabsDivider: { width: 1, height: 22, background: 'var(--border)', margin: '0 8px' },
   fallback: { padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 13 },
-  root: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, height: 'calc(100vh - 160px)', minHeight: 600 },
-  leftCol: { display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
-  leftHeader: { padding: 12, borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
+  root: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, height: 'calc(100vh - 160px)', minHeight: 600 },
+  leftCol: { display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', paddingRight: 16, overflow: 'hidden', minWidth: 0 },
+  leftHeader: { padding: '0 0 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
   newBtn: { padding: '9px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   search: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none' },
   leftList: { flex: 1, overflowY: 'auto' },
@@ -16,14 +16,14 @@ export const cts = {
   recetteItemActive: { background: 'var(--accent-light)', borderLeft: '3px solid var(--accent)' },
   // ─── Hiérarchie cartes > plats ───
   carteHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer' },
-  carteFolderName: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  carteFolderName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   carteCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
   platHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 8px 8px 6px', borderBottom: '1px solid var(--border)' },
   platToggle: { width: 22, height: 22, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, color: 'var(--text2)', flexShrink: 0 },
   platName: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   platMeta: { fontSize: 10, color: 'var(--text2)', marginTop: 2 },
   platEditBtn: { width: 24, height: 24, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text2)', borderRadius: 4, flexShrink: 0 },
-  orphelinHeader: { padding: '8px 14px', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
+  orphelinHeader: { padding: '14px 14px 6px', fontSize: 13, fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' },
   recItemName: { fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 3 },
   recItemMeta: { fontSize: 11, color: 'var(--text2)' },
   // Recette cachée dans Cartes & Recettes (colonne recettes.masquee).
@@ -38,18 +38,18 @@ export const cts = {
   titleInput: { width: '100%', fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', border: 'none', background: 'transparent', outline: 'none', padding: 0 },
   inlineField: { display: 'flex', flexDirection: 'column', gap: 3 },
   inlineInput: { padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, background: 'var(--bg)', fontFamily: 'var(--font)', color: 'var(--text)' },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px 32px' },
   card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
-  cardTitle: { padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  paramGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, padding: 14 },
+  cardTitle: { padding: '4px 0 10px', fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
+  paramGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px 16px', padding: '4px 0 14px' },
   field: { display: 'flex', flexDirection: 'column', gap: 4 },
-  label: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
   input: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box', width: '100%' },
-  kpiGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 14 },
-  kpiItem: { display: 'flex', flexDirection: 'column', gap: 4, padding: 10, background: 'var(--bg)', borderRadius: 8 },
-  kpiLabel: { fontSize: 11, color: 'var(--text2)', fontWeight: 500 },
+  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px 24px', padding: '4px 0 14px' },
+  kpiItem: { display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap', fontSize: 17, fontFamily: 'var(--font-num)' },
+  kpiLabel: { fontSize: 12, color: 'var(--text2)', fontWeight: 500, whiteSpace: 'normal', fontFamily: 'var(--font)' },
   smallBtn: { padding: '5px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
   ingRow: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', alignItems: 'center' },
   ingInput: { padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
   // ─── Barre de recalcul des quantités (carte Ingrédients) ──────────────────
@@ -58,7 +58,7 @@ export const cts = {
   // actif ne surchargeant que sa couleur (cf. npm run lint:borders).
   echelleBar: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 16px', background: 'var(--bg)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
   echelleBarActive: { background: 'var(--warning-bg)', borderBottomColor: 'var(--warning-bd)' },
-  echelleLabel: { fontSize: 10, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  echelleLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
   echelleTexte: { fontSize: 12, color: 'var(--text2)' },
   // Pas de filet séparateur : la barre passe à la ligne sous 1000px et le trait
   // se retrouvait collé au bord gauche, à séparer de rien.
@@ -93,5 +93,6 @@ export const cts = {
 
 if (getBrowserWindow()?.innerWidth < 900) {
   cts.root = { ...cts.root, gridTemplateColumns: '1fr', height: 'auto' };
+  cts.leftCol = { ...cts.leftCol, borderRight: 'none', paddingRight: 0, borderBottom: '1px solid var(--border)', paddingBottom: 12 };
   cts.grid = { ...cts.grid, gridTemplateColumns: '1fr' };
 }

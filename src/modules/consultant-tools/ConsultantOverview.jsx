@@ -1,5 +1,6 @@
 import React from 'react';
 import { computeCoutMatiere } from '../../services/prixResolution.js';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Vue d'ensemble - cockpit d'arrivée des Outils consultant.
@@ -10,18 +11,18 @@ import { computeCoutMatiere } from '../../services/prixResolution.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const S = {
-  root: { display: 'flex', flexDirection: 'column', gap: 16 },
-  kpiRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 },
+  root: { display: 'flex', flexDirection: 'column', gap: 20 },
+  kpiRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px 32px' },
   kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  kpiLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  kpiLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
   kpiValue: { fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-num)', color: 'var(--text)', lineHeight: 1.1 },
   kpiSub: { fontSize: 11, color: 'var(--text3)' },
   actionsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   ghostBtn: { padding: '9px 16px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  twoCols: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' },
+  twoCols: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px 40px', alignItems: 'start' },
   card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', minWidth: 0 },
-  cardTitle: { padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  cardTitle: { padding: '4px 0 10px', borderBottom: '1px solid var(--border)', fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   okBanner: { padding: '14px 16px', fontSize: 13, color: 'var(--success-text)', background: 'var(--success-bg)', display: 'flex', alignItems: 'center', gap: 8 },
   alertHead: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
   alertLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)' },
@@ -164,6 +165,23 @@ export default function ConsultantOverview({
 
   return (
     <div style={S.root}>
+      {/* ─── Actions, en tête : ajouter, puis les deux outils de carte ─── */}
+      <div style={S.actionsRow}>
+        <BoutonActions
+          id="consultant-ajouter"
+          label="+ Ajouter"
+          style={S.primaryBtn}
+          titre="Ajouter"
+          sections={[{ items: [
+            { titre: 'Une recette', detail: 'Une fiche technique : ingrédients, étapes, coûts.', onClick: onNewRecette },
+            { titre: 'Un plat', detail: 'Ce qui est vendu à la carte, fait d\'une ou plusieurs recettes.', onClick: onNewPlat },
+            { titre: 'Importer des recettes', detail: 'Depuis un fichier Excel ou un document.', onClick: onImport },
+          ] }]}
+        />
+        <button style={S.ghostBtn} onClick={() => onGoTab('creation_carte')}>Créer une carte</button>
+        <button style={S.ghostBtn} onClick={() => onGoTab('simulation')}>Simuler une carte</button>
+      </div>
+
       {/* ─── KPIs ─── */}
       <div style={S.kpiRow}>
         <div style={S.kpiCard}>
@@ -190,14 +208,6 @@ export default function ConsultantOverview({
         </div>
       </div>
 
-      {/* ─── Actions rapides ─── */}
-      <div style={S.actionsRow}>
-        <button style={S.primaryBtn} onClick={onNewRecette}>+ Nouvelle recette</button>
-        <button style={S.ghostBtn} onClick={onNewPlat}>+ Nouveau plat</button>
-        <button style={S.ghostBtn} onClick={onImport}>Importer des recettes</button>
-        <button style={S.ghostBtn} onClick={() => onGoTab('creation_carte')}>Créer une carte</button>
-        <button style={S.ghostBtn} onClick={() => onGoTab('simulation')}>Simuler une carte</button>
-      </div>
 
       <div style={S.twoCols}>
         {/* ─── À traiter ─── */}
