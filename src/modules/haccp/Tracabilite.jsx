@@ -332,7 +332,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
                 <button style={hs.cancelBtn} onClick={retakePending} disabled={busy}>
                   <Camera size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />Reprendre la photo
                 </button>
-                <button style={hs.saveBtn} onClick={savePending} disabled={busy}>{busy ? (busyLabel || '…') : '✓ Valider et enregistrer'}</button>
+                <button style={hs.saveBtn} onClick={savePending} disabled={busy}>{busy ? (busyLabel || '…') : 'Valider et enregistrer'}</button>
               </div>
             </div>
           </div>

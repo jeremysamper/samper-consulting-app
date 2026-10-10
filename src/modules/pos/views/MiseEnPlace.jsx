@@ -29,7 +29,7 @@ function ReliableBadge({ reliable, occurrences }) {
         whiteSpace:   'nowrap',
         flexShrink:   0,
       }}>
-        🟢 fiable · {occurrences}×
+        fiable, {occurrences} fois
       </span>
     );
   }
@@ -44,7 +44,7 @@ function ReliableBadge({ reliable, occurrences }) {
       whiteSpace:   'nowrap',
       flexShrink:   0,
     }}>
-      ⚠ historique court · {occurrences} jour{occurrences !== 1 ? 's' : ''}
+      historique court, {occurrences} jour{occurrences !== 1 ? 's' : ''}
     </span>
   );
 }

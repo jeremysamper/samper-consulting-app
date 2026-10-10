@@ -49,10 +49,9 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
     <div style={{ ...hs.zoneTile, background: bg, border: `2px solid ${bc}`, flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${bc}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>{zone.icone}</span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{zone.nom}</div>
-            <div style={{ fontSize: 10, color: 'var(--text2)' }}>Cible {zone.cible}{zone.unite} · [{zone.min ?? '-'}–{zone.max ?? '+∞'}]</div>
+            <div style={{ fontSize: 10, color: 'var(--text2)' }}>Cible {zone.cible}{zone.unite} · de {zone.min ?? '-'} à {zone.max ?? '+∞'}</div>
           </div>
         </div>
         {last ? (
@@ -67,7 +66,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
               )}
             </div>
             <div style={{ fontSize: 10, color: delaiAlert ? 'var(--danger-strong)' : 'var(--text2)', fontWeight: delaiAlert ? 700 : 400 }}>
-              {delaiAlert ? '⚠ ' : ''}{delaiLabel}
+              {delaiLabel}
             </div>
           </div>
         ) : (
@@ -81,10 +80,10 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
               {last && (
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10,
                   background: conforme ? 'var(--success-bg)' : 'var(--danger-bg)', color: conforme ? 'var(--success-text)' : 'var(--danger-strong)' }}>
-                  {conforme ? '✓ Conforme' : '✕ Non conforme'}
+                  {conforme ? 'Conforme' : 'Non conforme'}
                 </span>
               )}
-              {delaiAlert && <div style={{ fontSize: 10, color: 'var(--danger-strong)', marginTop: 4, fontWeight: 600 }}>⚠ Relevé en retard !</div>}
+              {delaiAlert && <div style={{ fontSize: 10, color: 'var(--danger-strong)', marginTop: 4, fontWeight: 600 }}>Relevé en retard !</div>}
             </div>
             {canWrite && (
               <button

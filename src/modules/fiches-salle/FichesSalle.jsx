@@ -42,7 +42,7 @@ const ACCORD_TYPES = [
   { id: 'sans_alcool', label: 'Sans alcool', icon: '🥤' },
 ];
 const ACCORD_TYPE_IDS = ACCORD_TYPES.map(t => t.id);
-const accordIcon = (type) => (ACCORD_TYPES.find(t => t.id === type) || {}).icon || '🥤';
+const accordLabel = (type) => (ACCORD_TYPES.find(t => t.id === type) || {}).label || 'Boisson';
 
 // Catégories de recettes « techniques » qui ne sont pas des plats servis
 // au client - elles ne donnent pas lieu à une fiche salle.
@@ -535,7 +535,7 @@ const FichesSalle = ({ user, etablissement }) => {
       {bulkProgress && (
         <div className="no-print" style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(20,16,12,0.55)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
-            <div style={{fontSize:15,fontWeight:800,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>✨ Génération des fiches salle</div>
+            <div style={{fontSize:15,fontWeight:800,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>Génération des fiches salle</div>
             <div style={{fontSize:13,color:'var(--text2)'}}>
               {bulkProgress.done} / {bulkProgress.total} plat(s) · {bulkProgress.created} fiche(s) créée(s)
             </div>
@@ -552,7 +552,6 @@ const FichesSalle = ({ user, etablissement }) => {
       {/* Intro banner pour serveurs */}
       {user.role === 'serveur' && (
         <div style={fss.serverBanner}>
-          <div style={{fontSize:20}}>🍽</div>
           <div>
             <div style={{fontWeight:700,fontSize:14,color:'var(--text)'}}>Fiches techniques salle</div>
             <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>Descriptions plats, allergènes et accords mets & vins - pour vous aider à conseiller les clients avec assurance.</div>
@@ -583,7 +582,6 @@ const FichesSalle = ({ user, etablissement }) => {
             {/* Placeholder image */}
             <div style={fss.cardImg}>
               <div style={fss.cardImgPlaceholder}>
-                <span style={{fontSize:28}}>{f.categorie==='Entrées'?'🥗':f.categorie==='Plats'?'🍽':f.categorie==='Desserts'?'🍰':'🧀'}</span>
                 <span style={{fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'var(--font)',marginTop:4}}>photo {f.categorie.toLowerCase()}</span>
               </div>
             </div>
@@ -602,7 +600,7 @@ const FichesSalle = ({ user, etablissement }) => {
                 </div>
               )}
               <div style={fss.cardFooter}>
-                <span style={fss.tempBadge}>⏱ {f.tempsPreparation}</span>
+                <span style={fss.tempBadge}>{f.tempsPreparation}</span>
                 <span style={{...fss.statutBadge,background:f.statut==='active'?'var(--success-bg)':'#f1f5f9',color:f.statut==='active'?'var(--success-text)':'var(--text2)'}}>{f.statut==='active'?'Active':'Brouillon'}</span>
                 <span style={fss.accordCount}>{f.accords?.length||0} accord{f.accords?.length!==1?'s':''}</span>
               </div>
@@ -674,17 +672,17 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
           <div style={fss.descText}>{fiche.descriptionService}</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:14}}>
             <div style={fss.infoBlock}>
-              <div style={fss.infoLabel}>🌡 Température de service</div>
+              <div style={fss.infoLabel}>Température de service</div>
               <div style={fss.infoVal}>{fiche.temperatureService}</div>
             </div>
             <div style={fss.infoBlock}>
-              <div style={fss.infoLabel}>⏱ Temps de préparation</div>
+              <div style={fss.infoLabel}>Temps de préparation</div>
               <div style={fss.infoVal}>{fiche.tempsPreparation}</div>
             </div>
           </div>
           {fiche.dressageNotes && (
             <div style={fss.infoBlock}>
-              <div style={fss.infoLabel}>🍽 Notes de dressage / service</div>
+              <div style={fss.infoLabel}>Notes de dressage / service</div>
               <div style={fss.infoVal}>{fiche.dressageNotes}</div>
             </div>
           )}
@@ -692,7 +690,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
 
         {/* Allergènes */}
         <div style={fss.detailCard}>
-          <div style={fss.detailCardTitle}>⚠ Allergènes</div>
+          <div style={fss.detailCardTitle}>Allergènes</div>
           {fiche.allergenes?.length > 0 ? (
             <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
               {(fiche.allergenes || []).map(a=>(
@@ -701,7 +699,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
                 </div>
               ))}
             </div>
-          ) : <div style={{fontSize:13,color:'var(--success-text)',marginTop:8}}>✓ Aucun allergène majeur déclaré</div>}
+          ) : <div style={{fontSize:13,color:'var(--success-text)',marginTop:8}}>Aucun allergène majeur déclaré</div>}
           {fiche.infosService && (
             <div style={{marginTop:14,padding:'10px 12px',background:'var(--warning-bg-soft)',border:'1px solid var(--warning-bd)',borderRadius:8,fontSize:12,color:'var(--warning-text)',lineHeight:1.5}}>
               <strong>Info service :</strong> {fiche.infosService}
@@ -711,7 +709,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
 
         {/* Accords */}
         <div style={{...fss.detailCard,gridColumn:'1/-1'}}>
-          <div style={fss.detailCardTitle}>🍷 Accords mets & boissons</div>
+          <div style={fss.detailCardTitle}>Accords mets & boissons</div>
           {fiche.accordsGeneraux?.length > 0 && (
             <div style={{marginTop:10,marginBottom:4}}>
               <div style={{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3,marginBottom:6}}>
@@ -734,17 +732,16 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
                     key={g.id}
                     style={{...fss.accordTab,flexShrink:0,...(groupeActif.id===g.id?fss.accordTabActive:{})}}
                     onClick={()=>setAccordTab(g.id)}
-                  >{g.icon} {g.label} ({g.items.length})</button>
+                  >{g.label} ({g.items.length})</button>
                 ))}
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12}}>
                 {groupeActif.items.map((a,i)=>(
                   <div key={i} style={fss.accordCard}>
-                    <div style={fss.accordIcon}>{groupeActif.icon}</div>
                     <div>
                       <div style={fss.accordNom}>{a.nom}</div>
                       {a.region && <div style={fss.accordRegion}>{a.region}</div>}
-                      {a.alternative && <div style={fss.accordAlt}>↪ {a.alternative}</div>}
+                      {a.alternative && <div style={fss.accordAlt}>{a.alternative}</div>}
                       <div style={fss.accordNotes}>{a.notes}</div>
                     </div>
                   </div>
@@ -890,7 +887,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 </select>
                 {fiche?.recetteId && (
                   <div style={{ fontSize: 11, color: 'var(--success-text)', marginTop: 4, fontWeight: 600 }}>
-                    ✓ Allergènes importés depuis la recette
+                    Allergènes importés depuis la recette
                   </div>
                 )}
               </div>
@@ -902,7 +899,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 Allergènes
                 {fiche?.allergenes?.length > 0 && (
                   <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700 }}>
-                    ⚠ {fiche.allergenes.length} actif{fiche.allergenes.length > 1 ? 's' : ''}
+                    {fiche.allergenes.length} actif{fiche.allergenes.length > 1 ? 's' : ''}
                   </span>
                 )}
               </label>
@@ -955,14 +952,14 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                     un défilement horizontal dans la modale. */}
                 <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
                   {ACCORD_TYPES.map(t=>(
-                    <button key={t.id} style={fss.smallBtn} onClick={()=>addAccord(t.id)}>+ {t.icon} {t.label}</button>
+                    <button key={t.id} style={fss.smallBtn} onClick={()=>addAccord(t.id)}>+ {t.label}</button>
                   ))}
                 </div>
               </div>
               {(fiche?.accords||[]).map((a,i)=>(
                 <div key={i} style={{border:'1px solid var(--border)',borderRadius:8,padding:8,marginBottom:8}}>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr 110px 28px',gap:8,alignItems:'center'}}>
-                    <span style={{fontSize:16}}>{accordIcon(a.type)}</span>
+                    <span style={{fontSize:12,color:'var(--text2)'}}>{accordLabel(a.type)}</span>
                     <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
                     <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)}>✕</button>

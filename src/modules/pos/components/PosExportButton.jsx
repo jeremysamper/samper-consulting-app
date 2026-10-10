@@ -85,7 +85,7 @@ export function PosExportButton({ printId, title, etablissement, fileName, label
         ...style,
       }}
     >
-      {busy ? 'Génération…' : (label ?? '📥 Exporter PDF')}
+      {busy ? 'Génération…' : (label ?? 'Exporter PDF')}
     </button>
   );
 }

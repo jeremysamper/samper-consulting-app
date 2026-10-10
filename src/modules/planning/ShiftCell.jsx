@@ -1,6 +1,7 @@
 import React from 'react';
 import { pls } from './Planning.styles.js';
 import { metaMotif } from '../../utils/absences.js';
+import { Moon, Sun } from 'lucide-react';
 
 // Pastille d'absence (congé, formation, absence) posée en tête de case.
 const PuceAbsence = ({ absence }) => {
@@ -30,7 +31,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
         const selected = selectionMode && selectedIds?.has(shift.id);
         const bg = selected ? 'var(--accent-light)' : enPoste ? 'var(--success-bg)' : shift.pointageDebut ? 'var(--info-bg)' : shift.typeShift === 'midi' ? 'var(--warning-bg)' : shift.typeShift === 'soir' ? 'var(--info-bg)' : 'var(--surface2)';
         const fg = enPoste ? 'var(--success-text)' : shift.pointageDebut ? 'var(--info-text)' : 'var(--text)';
-        const label = shift.typeShift === 'midi' ? '☀' : shift.typeShift === 'soir' ? '🌙' : null;
+        const label = shift.typeShift === 'midi' ? <Sun size={10} aria-label="Midi" /> : shift.typeShift === 'soir' ? <Moon size={10} aria-label="Soir" /> : null;
         const onClick = (e) => {
           e.stopPropagation();
           if (selectionMode) { toggleShiftSelected?.(shift.id); return; }
@@ -42,7 +43,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
               <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected?.(shift.id)} onClick={(e) => e.stopPropagation()} style={{ marginTop: 1 }} />
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: fg }}>{label && <span style={{marginRight:3}}>{label}</span>}{shift.debut}–{shift.fin}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: fg }}>{label && <span style={{marginRight:3, verticalAlign:'-1px'}}>{label}</span>}{shift.debut}-{shift.fin}</div>
               {shift.poste && <div style={{ fontSize: 9, color: 'var(--text2)' }}>{shift.poste}</div>}
               {heures && <div style={{ fontSize: 9, fontWeight: 600, color: fg }}>{heures}h</div>}
             </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { grouperParCategorie, categorieDuPlat } from '../../../utils/categoriesPlat.js';
 import { makeSearchMatcher, normalizeSearch } from '../../../utils/searchText.js';
 import { cts } from '../ConsultantTools.styles.js';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PlatPicker - modale « Rattacher à un plat », rangée comme une carte.
@@ -119,7 +120,7 @@ export default function PlatPicker({
       >
         <div style={ps.header}>
           <div style={{ minWidth: 0 }}>
-            <div style={ps.title}>🍽 {title}</div>
+            <div style={ps.title}>{title}</div>
             {subtitle && <div style={ps.subtitle}>{subtitle}</div>}
           </div>
           <button style={ps.closeBtn} onClick={() => onClose?.()} disabled={busy} title="Fermer">✕</button>
@@ -175,7 +176,7 @@ export default function PlatPicker({
                     }}
                     title={replie ? 'Développer' : 'Réduire'}
                   >
-                    <span style={{ fontSize: 10, color: 'var(--text2)' }}>{replie ? '▶' : '▼'}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text2)' }}>{!replie ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                     <span style={ps.carteNom}>{dossier.icone} {dossier.nom}</span>
                     <span style={ps.carteCount}>{dossier.plats.length}</span>
                   </div>

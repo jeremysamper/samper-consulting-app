@@ -543,7 +543,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         setSelectedShift(prev => prev ? { ...prev, pointageDebut: newDebut, pointageFin: newFin } : prev);
       }
       setPointageEditMode(false);
-      notifyLegacy('✓ Pointage corrigé manuellement', 'success');
+      notifyLegacy('Pointage corrigé manuellement', 'success');
     } catch (err) {
       notifyLegacy('Erreur : ' + err.message, 'error');
     } finally {
@@ -657,7 +657,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       }
       const idSet = new Set(ids);
       setPlanning(prev => prev.filter(s => !idSet.has(s.id)));
-      notifyLegacy(`✓ ${ids.length} horaire${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`, 'success');
+      notifyLegacy(`${ids.length} horaire${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`, 'success');
       setSelectedIds(new Set());
       setSelectionMode(false);
       setShowBulkDeleteConfirm(false);
@@ -775,7 +775,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...createdShifts]);
 
       const empCount = batchUserIds.size;
-      let msg = `✓ ${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''} pour ${empCount} employé${empCount > 1 ? 's' : ''} sur ${dates.length} jour${dates.length > 1 ? 's' : ''}`;
+      let msg = `${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''} pour ${empCount} employé${empCount > 1 ? 's' : ''} sur ${dates.length} jour${dates.length > 1 ? 's' : ''}`;
       if (idsToRemove.size > 0) msg += ` (${idsToRemove.size} remplacé${idsToRemove.size > 1 ? 's' : ''})`;
       if (skipped > 0) msg += ` - ${skipped} conflit${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}`;
       notifyLegacy(msg, 'success');
@@ -868,7 +868,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     }
     setPlanning(prev => [...prev.filter(s => !existing.find(e => e.id === s.id)), ...newShifts]);
     setDuplicateMode(null);
-    alertLegacy(`✓ Semaine dupliquée : ${newShifts.length} horaire${newShifts.length > 1 ? 's' : ''} créé${newShifts.length > 1 ? 's' : ''}.`);
+    alertLegacy(`Semaine dupliquée : ${newShifts.length} horaire${newShifts.length > 1 ? 's' : ''} créé${newShifts.length > 1 ? 's' : ''}.`);
   };
 
   // ─── « Dupliquer vers… » depuis le mode sélection ───
@@ -952,7 +952,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
       setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...createdShifts]);
 
-      let msg = `✓ ${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''}`;
+      let msg = `${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''}`;
       if (replaced > 0) msg += ` (${replaced} remplacé${replaced > 1 ? 's' : ''})`;
       notifyLegacy(msg, 'success');
       closeDemult();
@@ -1450,7 +1450,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               ) : (
                 <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                    ✎ Correction manuelle du pointage
+                    Correction manuelle du pointage
                   </div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 120px' }}>
@@ -1465,12 +1465,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
-                    💡 Action manager : utilise ce mode quand un employé a oublié de pointer. Laisse vide pour effacer une heure. Le pointage normal (RPC sécurisé côté serveur) reste prioritaire.
+                    Action manager : utilise ce mode quand un employé a oublié de pointer. Laisse vide pour effacer une heure. Le pointage normal (RPC sécurisé côté serveur) reste prioritaire.
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button style={pls.exportBtn} onClick={cancelPointageEdit} disabled={pointageEditSaving}>Annuler</button>
                     <button style={{ ...pls.addBtn, opacity: pointageEditSaving ? 0.5 : 1 }} onClick={savePointageEdit} disabled={pointageEditSaving}>
-                      {pointageEditSaving ? '⏳ Enregistrement…' : 'Enregistrer la correction'}
+                      {pointageEditSaving ? 'Enregistrement…' : 'Enregistrer la correction'}
                     </button>
                   </div>
                 </div>
@@ -1516,7 +1516,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         color: (editForm.typeShift || 'simple') === t.id ? (t.id === 'midi' ? 'var(--warning-text)' : t.id === 'soir' ? 'var(--info-text)' : 'var(--success-text)') : 'var(--text2)',
                         fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
                       }}>
-                      {t.icon && <span style={{marginRight:4}}>{t.icon}</span>}{t.label}
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -1573,7 +1573,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </div>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--bg)', padding: 10, borderRadius: 6, lineHeight: 1.5 }}>
-                💡 Tous les horaires de tous les employés de la semaine source (7 jours à partir du lundi choisi) seront copiés vers la semaine cible. Les pointages ne sont pas copiés.
+                Tous les horaires de tous les employés de la semaine source (7 jours à partir du lundi choisi) seront copiés vers la semaine cible. Les pointages ne sont pas copiés.
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
                 <button style={pls.exportBtn} onClick={() => setDuplicateMode(null)}>Annuler</button>
@@ -1913,7 +1913,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
                 {/* Avertissement */}
                 <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: 10, fontSize: 11, color: 'var(--warning-text)' }}>
-                  ⚠ Si un employé a déjà un horaire à une date sélectionnée, il sera <strong>remplacé</strong> par celui-ci.
+                  Si un employé a déjà un horaire à une date sélectionnée, il sera <strong>remplacé</strong> par celui-ci.
                 </div>
 
                 {/* Footer */}
@@ -1929,7 +1929,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     onClick={saveDemult}
                     disabled={realPreview === 0 || demultSaving}
                   >
-                    {demultSaving ? '⏳ Création…' : `Dupliquer (${realPreview})`}
+                    {demultSaving ? 'Création…' : `Dupliquer (${realPreview})`}
                   </button>
                 </div>
               </div>
@@ -2013,7 +2013,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   style={{ ...pls.addBtn, background: 'var(--danger-strong)', borderColor: 'var(--danger-strong)', opacity: bulkDeleting ? 0.5 : 1 }}
                   onClick={doBulkDelete}
                   disabled={bulkDeleting}
-                >{bulkDeleting ? '⏳ Suppression…' : `Supprimer (${selectedIds.size})`}</button>
+                >{bulkDeleting ? 'Suppression…' : `Supprimer (${selectedIds.size})`}</button>
               </div>
             </div>
           </div>
@@ -2159,7 +2159,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 {conflictCount > 0 && (
                   <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
-                      ⚠ {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (créneau qui en chevauche un autre)
+                      {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (créneau qui en chevauche un autre)
                     </div>
                     <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>
                       {[
@@ -2184,7 +2184,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   </span>
                   <button style={pls.exportBtn} onClick={() => setShowBatchModal(false)} disabled={batchSaving}>Annuler</button>
                   <button style={{ ...pls.addBtn, opacity: willCreate === 0 || batchSaving ? 0.5 : 1 }} onClick={doBatchCreate} disabled={willCreate === 0 || batchSaving}>
-                    {batchSaving ? '⏳ Création…' : `Créer (${willCreate})`}
+                    {batchSaving ? 'Création…' : `Créer (${willCreate})`}
                   </button>
                 </div>
               </div>

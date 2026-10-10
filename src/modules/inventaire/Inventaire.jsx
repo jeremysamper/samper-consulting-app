@@ -693,7 +693,6 @@ const Inventaire = ({ user, etablissement }) => {
   if (!inv) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 40, opacity: 0.4 }}>📦</div>
         <div style={{ fontSize: 16, fontWeight: 600, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
           Créez un inventaire par périmètre : cuisine, boissons, matériel… chacun avec son propre rythme de comptage.
@@ -1190,7 +1189,7 @@ const Inventaire = ({ user, etablissement }) => {
           await saveInv(updated);
 
           notifyLegacy(
-            `✓ Inventaire importé dans « ${perimetreActif} »\n\n` +
+            `Inventaire importé dans « ${perimetreActif} »\n\n` +
             `• ${stats.sec} produit${stats.sec > 1 ? 's' : ''} Sec\n` +
             `• ${stats.positif} produit${stats.positif > 1 ? 's' : ''} Positif\n` +
             `• ${stats.negatif} produit${stats.negatif > 1 ? 's' : ''} Négatif\n\n` +
@@ -1247,7 +1246,7 @@ const Inventaire = ({ user, etablissement }) => {
           nouveaux = restantes.length;
           return [...fusionnees, ...restantes];
         });
-        notifyLegacy(`✓ Import terminé\n${nouveaux} produit${nouveaux > 1 ? 's' : ''} ajouté${nouveaux > 1 ? 's' : ''}\n${misAJour} produit${misAJour > 1 ? 's' : ''} mis à jour`, 'success');
+        notifyLegacy(`Import terminé\n${nouveaux} produit${nouveaux > 1 ? 's' : ''} ajouté${nouveaux > 1 ? 's' : ''}\n${misAJour} produit${misAJour > 1 ? 's' : ''} mis à jour`, 'success');
       } catch (err) {
         console.error(err);
         notifyLegacy('Erreur lors de l\'import : ' + err.message, 'error');
@@ -1368,8 +1367,8 @@ const Inventaire = ({ user, etablissement }) => {
       {saisiesEnAttente > 0 && (
         <div style={invs.saisiesAttente} className="no-print">
           {saisiesEnAttente > 1
-            ? `⏳ ${saisiesEnAttente} quantités comptées en attente de synchronisation. Elles partiront seules au retour du réseau : vous pouvez fermer l'app.`
-            : "⏳ 1 quantité comptée en attente de synchronisation. Elle partira seule au retour du réseau : vous pouvez fermer l'app."}
+            ? `${saisiesEnAttente} quantités comptées en attente de synchronisation. Elles partiront seules au retour du réseau : vous pouvez fermer l'app.`
+            : "1 quantité comptée en attente de synchronisation. Elle partira seule au retour du réseau : vous pouvez fermer l'app."}
         </div>
       )}
 
@@ -1379,7 +1378,7 @@ const Inventaire = ({ user, etablissement }) => {
             {(inventaires || []).map(i => <option key={i.id} value={i.id}>{i.date} - {i.statut}</option>)}
           </select>
           <span style={{...invs.badge, background: estValide ? 'var(--success-bg)' : 'var(--warning-bg)', color: estValide ? 'var(--success-text)' : 'var(--warning-text)'}}>
-            {estValide ? (validateurNom ? `✓ Validé par ${validateurNom}` : '✓ Validé') : `⏳ ${nbComptes}/${(inv.lignes || []).length} comptés`}
+            {estValide ? (validateurNom ? `Validé par ${validateurNom}` : 'Validé') : `${nbComptes}/${(inv.lignes || []).length} comptés`}
           </span>
         </div>
         <div className="module-actions">
@@ -1400,8 +1399,8 @@ const Inventaire = ({ user, etablissement }) => {
               ],
             }]}
           />
-          {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>✓ Valider</button>}
-          {canManage && estValide && <button style={invs.exportBtn} onClick={rouvrirInventaire}>↩ Rouvrir</button>}
+          {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>Valider</button>}
+          {canManage && estValide && <button style={invs.exportBtn} onClick={rouvrirInventaire}>Rouvrir</button>}
           <BoutonActions
             id="inventaire-gerer"
             label="Gérer"
@@ -1610,7 +1609,7 @@ const Inventaire = ({ user, etablissement }) => {
             onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(l => l.id)))}
             onDelete={supprimerLignesSelection}
             onExport={exporterLignesSelection}
-            exportLabel="⬇ Exporter Excel"
+            exportLabel="Exporter Excel"
             onCancel={sel.exit}
             busy={bulkBusy}
           />

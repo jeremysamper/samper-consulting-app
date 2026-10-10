@@ -668,7 +668,6 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           est déjà reprogrammé. Les cases Divers restent imprimables. */}
       {status === 'error' && (
         <div style={es.banniere}>
-          <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <strong>Liste des préparations indisponible</strong>
             <span style={{ display: 'block', marginTop: 3 }}>

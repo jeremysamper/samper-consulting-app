@@ -55,7 +55,6 @@ export function MappingStats({ total, mapped, auto: autoCount, suggested, manual
 function Pill({ color, bg, border, icon, label, count }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-      <span style={{ fontSize: 11 }}>{icon}</span>
       <span style={{ fontSize: 12, fontWeight: 700, color }}>{count}</span>
       <span style={{ fontSize: 11, color: 'var(--text3)' }}>{label}</span>
     </div>

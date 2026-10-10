@@ -111,7 +111,7 @@ const CatalogueImportPreview = ({ produits, onChange }) => {
                         {lowConf && <span style={s.confBadge}>confiance {p.confidence || 0}%</span>}
                       </div>
                     )}
-                    {!flagged && !p._existing && <span style={s.okBadge}>✓ fiable</span>}
+                    {!flagged && !p._existing && <span style={s.okBadge}>fiable</span>}
                     {p._existing && (
                       <div style={s.dupBox}>
                         <div style={s.dupInfo}>
@@ -125,7 +125,7 @@ const CatalogueImportPreview = ({ produits, onChange }) => {
                         >
                           <option value="update">↻ Mettre à jour</option>
                           <option value="create">＋ Créer quand même</option>
-                          <option value="skip">✕ Ignorer</option>
+                          <option value="skip">Ignorer</option>
                         </select>
                       </div>
                     )}

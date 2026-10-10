@@ -6,7 +6,6 @@ import { heureEnMinutes } from './HACCP.utils.js';
 
 export const ZoneForm = ({ zone, onSave, onCancel }) => {
   const [f, setF] = React.useState(zone || { nom:'', type:'froid', cible:'', min:'', max:'', unite:'°C', icone:'❄', actif:true });
-  const typeInfo = ZONE_TYPES.find(t=>t.id===f.type) || ZONE_TYPES[0];
 
   const handleSave = () => {
     if (!f.nom.trim() || f.cible === '') { alertLegacy('Nom et température cible obligatoires.'); return; }
@@ -36,26 +35,12 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
                 value={f.nom} onChange={e=>setF({...f,nom:e.target.value})}/>
             </div>
 
-            {/* Type + icône */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div style={hs.field}>
-                <label style={hs.fLabel}>Type d'équipement</label>
-                <select style={hs.fInput} value={f.type} onChange={e=>setF({...f,type:e.target.value,icone:ZONE_TYPES.find(t=>t.id===e.target.value)?.icones[0]||'◉'})}>
-                  {ZONE_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-              </div>
-              <div style={hs.field}>
-                <label style={hs.fLabel}>Icône</label>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {(typeInfo.icones||['◉','◎','⊕']).map(ic=>(
-                    <button key={ic} onClick={()=>setF({...f,icone:ic})}
-                      style={{width:36,height:36,fontSize:20,border:`2px solid ${f.icone===ic?'var(--accent)':'var(--border)'}`,borderRadius:8,background:f.icone===ic?'var(--accent-light)':'var(--surface)',cursor:'pointer'}}>
-                      {ic}
-                    </button>
-                  ))}
-                  <input style={{...hs.fInput,width:60,textAlign:'center',fontSize:18}} maxLength={2} value={f.icone} onChange={e=>setF({...f,icone:e.target.value})} title="Saisir un emoji personnalisé"/>
-                </div>
-              </div>
+            {/* Type (l'icône suit le type, elle n'est plus affichée) */}
+            <div style={hs.field}>
+              <label style={hs.fLabel}>Type d'équipement</label>
+              <select style={hs.fInput} value={f.type} onChange={e=>setF({...f,type:e.target.value,icone:ZONE_TYPES.find(t=>t.id===e.target.value)?.icones[0]||'◉'})}>
+                {ZONE_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
             </div>
 
             {/* Températures */}

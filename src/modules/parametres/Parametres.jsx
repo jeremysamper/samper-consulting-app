@@ -405,7 +405,7 @@ const Parametres = ({ user, etablissement }) => {
             </div>
           </div>
           <div style={{ background:'var(--warning-bg-soft)', border:'1px solid var(--warning-bd)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--warning-text)' }}>
-            🔐 Mot de passe et identifiants gérés par l'administrateur Samper Consulting.
+            Mot de passe et identifiants gérés par l'administrateur Samper Consulting.
           </div>
         </div>
       </div>
@@ -513,11 +513,11 @@ const Parametres = ({ user, etablissement }) => {
             Réinitialiser toutes les données de l'application aux valeurs de démonstration : planning, recettes, inventaires, pertes, utilisateurs, établissements, permissions, HACCP, fiches salle. Le logo personnalisé sera également supprimé.
           </div>
           <div style={{ background:'var(--danger-bg-soft)', border:'1px solid var(--danger-bd)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--danger-text)' }}>
-            ⚠ <strong>Action irréversible.</strong> Toutes les données saisies seront effacées. Exportez vos documents importants avant de continuer.
+            <strong>Action irréversible.</strong> Toutes les données saisies seront effacées. Exportez vos documents importants avant de continuer.
           </div>
           <div>
             <button style={{...ps.saveBtn, background:'var(--danger-strong)', width:'auto', padding:'10px 20px'}} onClick={handleReset}>
-              🔄 Réinitialiser toutes les données
+              Réinitialiser toutes les données
             </button>
           </div>
         </div>

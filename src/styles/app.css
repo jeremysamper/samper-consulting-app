@@ -1805,3 +1805,51 @@ html[data-theme="dark"] button:not(:disabled):active {
   .haccp-nav .haccp-nav-principal { padding: 12px 10px !important; min-height: 72px !important; }
   .haccp-nav .haccp-nav-titre { font-size: 14px !important; }
 }
+
+/* ─── Moins d'encadrés ───────────────────────────────────────────────────────
+   Un bloc entouré d'un filet sur chaque côté, à chaque niveau de la page, fait
+   interface générée. Les conteneurs (pas les champs ni les boutons) qui portent
+   le cadre standard `border: 1px solid var(--border)` (ou `--spa-line` dans le
+   module Spa) en style inline perdent leur filet : le fond et l'espace
+   suffisent à grouper. Un bloc imbriqué dans
+   un autre garde seulement un filet bas, pour séparer les lignes d'une liste.
+   Le filet reste transparent plutôt que retiré : aucune ligne ne bouge.
+   Un bloc imbriqué sur fond neutre perd aussi ce fond : la liste se lit en
+   lignes, plus en tuiles empilées.
+   Restent encadrés : menus, popovers et fenêtres (position absolute/fixed ou
+   rôle de dialogue), les groupes qui jouent le rôle d'un champ ou d'un
+   sélecteur (un champ ou deux boutons en enfants directs), et tout élément
+   marqué `data-cadre`. Sans :has() (navigateur ancien), la règle entière est
+   ignorée et l'écran garde ses cadres. */
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)) {
+  border-color: transparent !important;
+}
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button))
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)) {
+  border-bottom-color: var(--spa-line, var(--border)) !important;
+  border-radius: 0 !important;
+}
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button))
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, nav, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"]):is([style*="background: var(--bg)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)) {
+  background: transparent !important;
+}
+/* Un bloc cliquable retrouve son filet au survol de la souris. */
+@media (hover: hover) and (pointer: fine) {
+  :is(div, section, article, aside, li, header, footer, figure):is([style*="border: 1px solid var(--border)"], [style*="border: 1px solid var(--spa-line)"])[style*="cursor: pointer"]:not([data-cadre]):not(:has(> input, > select, > textarea, > button + button)):hover {
+    border-color: var(--border2) !important;
+    border-radius: var(--r-sm) !important;
+  }
+}
+
+/* ─── Pastilles en texte ─────────────────────────────────────────────────────
+   Une étiquette de statut (span arrondi à petit rembourrage sur fond teinté)
+   se lit comme du texte coloré : le fond, le filet et le rembourrage latéral
+   tombent, la couleur du texte porte le statut. Restent des pastilles : les
+   compteurs en texte blanc sur aplat, les éléments positionnés (bulles de
+   notification), les éléments cliquables et tout élément marqué `data-cadre`. */
+span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2px "], [style*="padding: 3px "], [style*="padding: 4px "])[style*="border-radius"][style*="background"]:not([style*="color: rgb(255, 255, 255)"]):not([style*="color: white"]):not([style*="color: var(--on-accent)"]):not([style*="position: absolute"]):not([style*="cursor: pointer"]):not([data-cadre]) {
+  background: transparent !important;
+  border-color: transparent !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}

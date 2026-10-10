@@ -311,7 +311,7 @@ const Roles = ({ user }) => {
           const parts = [];
           if (emailChanged) parts.push('Email : ' + newEmail);
           if (wantsPassword) parts.push('Mot de passe : ' + u.password);
-          alertLegacy(`✓ Identifiants de ${u.prenom} ${u.nom} mis à jour.\n\nTransmettez-lui :\n• ${parts.join('\n• ')}`);
+          alertLegacy(`Identifiants de ${u.prenom} ${u.nom} mis à jour.\n\nTransmettez-lui :\n• ${parts.join('\n• ')}`);
         }
       } else {
         // Nouveau compte : créer via Edge Function
@@ -327,7 +327,7 @@ const Roles = ({ user }) => {
             role: u.role, poste: u.poste || null,
             etablissement_ids: u.etablissementIds,
           });
-          alertLegacy(`✓ Utilisateur ${u.prenom} ${u.nom} créé avec succès.\n\nTransmettez-lui :\n• Email : ${u.email}\n• Mot de passe : ${u.password}\n\nIl pourra se connecter immédiatement.`);
+          alertLegacy(`Utilisateur ${u.prenom} ${u.nom} créé avec succès.\n\nTransmettez-lui :\n• Email : ${u.email}\n• Mot de passe : ${u.password}\n\nIl pourra se connecter immédiatement.`);
         } catch (err) {
           notifyLegacy('Erreur lors de la création : ' + err.message + '\n\nVérifiez que les Edge Functions "create-user" et "delete-user" sont bien déployées sur Supabase.', 'error');
           return;
@@ -646,7 +646,7 @@ const Roles = ({ user }) => {
                     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
                     const pwd = Array.from({length:10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
                     setEditingUser({ ...editingUser, password: pwd });
-                  }}>🎲 Générer</button>
+                  }}>Générer</button>
                 </div>
                 <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>
                   {editingUser.id

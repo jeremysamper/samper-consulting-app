@@ -10,6 +10,7 @@ import { ALLERGENES } from '../../utils/allergenes.js';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { resolvePrixProduit } from '../../services/prixResolution.js';
 import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './categoriesCatalogue.js';
+import { Pencil, Trash2 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -418,7 +419,7 @@ const Catalogue = ({ user, etablissement }) => {
         }
       }
       setImportReport(null);
-      notifyLegacy(`✓ Import terminé : ${saved} produit(s)${errors.length ? `\n⚠ ${errors.length} en erreur (voir console).` : '.'}`, 'success');
+      notifyLegacy(`Import terminé : ${saved} produit(s)${errors.length ? `\n${errors.length} en erreur (voir console).` : '.'}`, 'success');
     } finally {
       setImporting(false);
     }
@@ -441,16 +442,16 @@ const Catalogue = ({ user, etablissement }) => {
           <div className="module-actions">
             {isConsultant && (
             <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowScan(true)}>
-              📷 Scanner une facture
+              Scanner une facture
             </button>
             )}
             {isConsultant && (
             <button style={{ ...cat.btn, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', borderColor: 'var(--ai-bd)' }} onClick={() => setShowAiImport(true)}>
-              ✨ Import intelligent
+              Import intelligent
             </button>
             )}
             <label style={{ ...cat.btn, background: 'var(--surface)', border: '1px solid var(--border)', cursor: importing ? 'wait' : 'pointer', color: 'var(--text)' }}>
-              {importing ? '⏳ Import…' : '📥 Importer Excel'}
+              {importing ? 'Import…' : 'Importer Excel'}
               <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
             </label>
             <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>+ Fournisseur</button>
@@ -464,8 +465,8 @@ const Catalogue = ({ user, etablissement }) => {
         active={activeTab}
         onChange={setActiveTab}
         tabs={[
-          { id: 'produits', label: `🛒 Produits (${produits.length})` },
-          { id: 'fournisseurs', label: `🏭 Fournisseurs (${fournisseurs.length})` },
+          { id: 'produits', label: `Produits (${produits.length})` },
+          { id: 'fournisseurs', label: `Fournisseurs (${fournisseurs.length})` },
         ]}
       />
 
@@ -485,7 +486,6 @@ const Catalogue = ({ user, etablissement }) => {
           {/* Table produits */}
           {filtered.length === 0 ? (
             <div style={cat.empty}>
-              <div style={{ fontSize: 40, opacity: 0.3 }}>🛒</div>
               <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>
                 {produits.length === 0 ? 'Catalogue vide' : 'Aucun résultat'}
               </div>
@@ -535,7 +535,7 @@ const Catalogue = ({ user, etablissement }) => {
                             } catch (err) { console.error(err); }
                           }
                           setSelected(new Set());
-                          alertLegacy(`✓ ${ok} produit${ok > 1 ? 's' : ''} mis à jour.`);
+                          alertLegacy(`${ok} produit${ok > 1 ? 's' : ''} mis à jour.`);
                         }}
                       >
                         <option value="">Choisir…</option>
@@ -563,12 +563,12 @@ const Catalogue = ({ user, etablissement }) => {
                           if (errors > 0) {
                             notifyLegacy(`${ok} produit(s) supprimé(s), ${errors} en erreur (voir console).`, 'warning');
                           } else {
-                            notifyLegacy(`✓ ${ok} produit${ok > 1 ? 's' : ''} supprimé${ok > 1 ? 's' : ''}.`, 'success');
+                            notifyLegacy(`${ok} produit${ok > 1 ? 's' : ''} supprimé${ok > 1 ? 's' : ''}.`, 'success');
                           }
                         }}
                         title="Supprimer définitivement les produits sélectionnés"
                       >
-                        🗑 Supprimer
+                        Supprimer
                       </button>
                       <button
                         style={{ ...cat.miniBtn, color: 'var(--text2)' }}
@@ -638,8 +638,8 @@ const Catalogue = ({ user, etablissement }) => {
                         <td style={cat.tdAction}>
                           {canWrite && (
                             <>
-                              <button style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }}>✎</button>
-                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)}>🗑</button>
+                              <button style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
+                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
                             </>
                           )}
                         </td>
@@ -657,7 +657,6 @@ const Catalogue = ({ user, etablissement }) => {
         <div style={cat.tableWrap}>
           {fournisseurs.length === 0 ? (
             <div style={cat.empty}>
-              <div style={{ fontSize: 40, opacity: 0.3 }}>🏭</div>
               <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>Aucun fournisseur</div>
             </div>
           ) : (
@@ -682,8 +681,8 @@ const Catalogue = ({ user, etablissement }) => {
                       <td style={cat.tdAction}>
                         {canWrite && (
                           <>
-                            <button style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }}>✎</button>
-                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)}>🗑</button>
+                            <button style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
+                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
                           </>
                         )}
                       </td>
@@ -1010,14 +1009,14 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                       : [...(form.allergenes || []), a.id]
                     )}
                   >
-                    {a.emoji} {a.label}
+                    {a.label}
                   </button>
                 );
               })}
             </div>
             {(form.allergenes || []).length > 0 && (
               <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6, fontWeight: 600 }}>
-                ⚠ {(form.allergenes || []).length} allergène{(form.allergenes || []).length > 1 ? 's' : ''} sélectionné{(form.allergenes || []).length > 1 ? 's' : ''}
+                {(form.allergenes || []).length} allergène{(form.allergenes || []).length > 1 ? 's' : ''} sélectionné{(form.allergenes || []).length > 1 ? 's' : ''}
               </div>
             )}
           </div>
@@ -1048,7 +1047,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <td style={{ ...cat.td, fontWeight: 600, color: 'var(--accent)' }}>
                           {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '-'}
                         </td>
-                        <td style={cat.td}>{pf.estPrincipal ? '⭐' : ''}</td>
+                        <td style={cat.td}>{pf.estPrincipal ? 'Principal' : ''}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1153,7 +1152,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
         <div style={cat.modalFoot}>
           <button style={cat.ghostBtn} onClick={onClose}>Annuler</button>
           <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none', opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? '⏳ Enregistrement…' : prod ? 'Modifier' : 'Ajouter'}
+            {saving ? 'Enregistrement…' : prod ? 'Modifier' : 'Ajouter'}
           </button>
         </div>
       </div>
@@ -1249,7 +1248,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
       <div className="modal-full" style={ipm.modal} onClick={e => e.stopPropagation()}>
         <div style={ipm.header}>
           <div>
-            <div style={ipm.title}>📋 Prévisualisation de l'import</div>
+            <div style={ipm.title}>Prévisualisation de l'import</div>
             <div style={ipm.subtitle}>{totalScanned} ligne{totalScanned > 1 ? 's' : ''} analysée{totalScanned > 1 ? 's' : ''}</div>
           </div>
           <button style={ipm.closeBtn} onClick={onCancel}>✕</button>
@@ -1258,15 +1257,15 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
         {/* KPIs */}
         <div style={ipm.kpisRow}>
           <div style={{ ...ipm.kpiBox, borderColor: 'var(--success-strong)' }}>
-            <div style={ipm.kpiLabel}>✓ Nouveaux</div>
+            <div style={ipm.kpiLabel}>Nouveaux</div>
             <div style={{ ...ipm.kpiValue, color: 'var(--success-strong)' }}>{newItems.length}</div>
           </div>
           <div style={{ ...ipm.kpiBox, borderColor: duplicates.length > 0 ? 'var(--warning-strong)' : 'var(--border)' }}>
-            <div style={ipm.kpiLabel}>⚠ Doublons</div>
+            <div style={ipm.kpiLabel}>Doublons</div>
             <div style={{ ...ipm.kpiValue, color: duplicates.length > 0 ? 'var(--warning-strong)' : 'var(--text2)' }}>{duplicates.length}</div>
           </div>
           <div style={{ ...ipm.kpiBox, borderColor: aberrants.length > 0 ? 'var(--danger-strong)' : 'var(--border)' }}>
-            <div style={ipm.kpiLabel}>🚫 Prix suspects</div>
+            <div style={ipm.kpiLabel}>Prix suspects</div>
             <div style={{ ...ipm.kpiValue, color: aberrants.length > 0 ? 'var(--danger-strong)' : 'var(--text2)' }}>{aberrants.length}</div>
           </div>
         </div>
@@ -1281,13 +1280,13 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
             <button
               style={{ ...ipm.tab, ...(activeTab === 'duplicates' ? ipm.tabActive : {}) }}
               onClick={() => setActiveTab('duplicates')}
-            >⚠ Doublons ({duplicates.length})</button>
+            >Doublons ({duplicates.length})</button>
           )}
           {aberrants.length > 0 && (
             <button
               style={{ ...ipm.tab, ...(activeTab === 'aberrants' ? ipm.tabActive : {}) }}
               onClick={() => setActiveTab('aberrants')}
-            >🚫 Prix suspects ({aberrants.length})</button>
+            >Prix suspects ({aberrants.length})</button>
           )}
         </div>
 
@@ -1296,7 +1295,6 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
           {activeTab === 'summary' && (
             <div style={{ padding: '8px 4px' }}>
               <div style={ipm.summaryItem}>
-                <span style={{ fontSize: 22 }}>✓</span>
                 <div>
                   <div style={{ fontWeight: 700 }}>{newItems.length} nouveaux produits prêts à être ajoutés</div>
                   <div style={ipm.summaryHint}>Aucun conflit détecté avec votre catalogue actuel.</div>
@@ -1304,7 +1302,6 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
               </div>
               {duplicates.length > 0 && (
                 <div style={{ ...ipm.summaryItem, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)' }}>
-                  <span style={{ fontSize: 22 }}>⚠</span>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--warning-text)' }}>{duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} détecté{duplicates.length > 1 ? 's' : ''}</div>
                     <div style={ipm.summaryHint}>Ces produits existent déjà (même référence ou nom). Si vous importez "tout", ils seront <strong>écrasés</strong> par les nouvelles valeurs.</div>
@@ -1313,7 +1310,6 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
               )}
               {aberrants.length > 0 && (
                 <div style={{ ...ipm.summaryItem, background: 'var(--danger-bg-soft)', borderColor: 'var(--danger-bd)' }}>
-                  <span style={{ fontSize: 22 }}>🚫</span>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--danger-strong)' }}>{aberrants.length} prix suspect{aberrants.length > 1 ? 's' : ''}</div>
                     <div style={ipm.summaryHint}>Probablement un mauvais ratio prix/quantité dans la source. Vérifiez l'onglet "Prix suspects" avant d'importer.</div>
@@ -1331,9 +1327,9 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                     <div style={ipm.rowName}>{p.nom}</div>
                     <div style={ipm.rowMeta}>
                       {p.intraDup ? (
-                        <span style={{ color: 'var(--warning-strong)' }}>↔ Présent 2× dans le fichier</span>
+                        <span style={{ color: 'var(--warning-strong)' }}>Présent 2× dans le fichier</span>
                       ) : (
-                        <>↔ Doublon (par {p._matchReason}) - existant : <strong>{p._existing?.nom}</strong> {p._existing?.prixUnitaire ? `· ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
+                        <>Doublon (par {p._matchReason}) - existant : <strong>{p._existing?.nom}</strong> {p._existing?.prixUnitaire ? `· ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
                       )}
                     </div>
                     <div style={ipm.rowMeta}>
@@ -1356,7 +1352,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                 <div key={i} style={{ ...ipm.row, background: 'var(--danger-bg-soft)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={ipm.rowName}>{p.nom}</div>
-                    <div style={{ ...ipm.rowMeta, color: 'var(--danger-strong)' }}>🚫 {p._reason}</div>
+                    <div style={{ ...ipm.rowMeta, color: 'var(--danger-strong)' }}>{p._reason}</div>
                     <div style={ipm.rowMeta}>
                       Catégorie : {p.categorie}
                       {p.referenceFourn && ` · réf ${p.referenceFourn}`}
@@ -1380,7 +1376,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
               disabled={importing}
               title="Importer aussi les doublons (écrasement) et les prix suspects"
             >
-              {importing ? '⏳…' : `Tout importer (${newItems.length + duplicates.length + aberrants.length})`}
+              {importing ? 'Import…' : `Tout importer (${newItems.length + duplicates.length + aberrants.length})`}
             </button>
           )}
           <button
@@ -1388,7 +1384,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
             onClick={onConfirmSafe}
             disabled={importing || newItems.length === 0}
           >
-            {importing ? '⏳ Import…' : `✓ Importer ${newItems.length} nouveau${newItems.length > 1 ? 'x' : ''}`}
+            {importing ? 'Import…' : `Importer ${newItems.length} nouveau${newItems.length > 1 ? 'x' : ''}`}
           </button>
         </div>
       </div>

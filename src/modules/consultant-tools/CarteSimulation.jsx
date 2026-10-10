@@ -89,7 +89,6 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
   if (totalPlats === 0) {
     return (
       <div style={cs.empty}>
-        <div style={{ fontSize: 40, opacity: 0.3 }}>📊</div>
         <div style={cs.emptyTitle}>Aucune recette ni plat à analyser</div>
         <div style={cs.emptyHint}>
           Créez des recettes (onglet "Plats & Recettes") pour lancer la simulation.
@@ -102,7 +101,7 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
     <div style={cs.root}>
       {/* Header */}
       <div style={cs.header}>
-        <div style={cs.title}>📊 Simulation de la carte</div>
+        <div style={cs.title}>Simulation de la carte</div>
         <div style={cs.subtitle}>
           {etablissement?.nom || ''}
           {etablissement?.nom ? ' · ' : ''}
@@ -160,7 +159,7 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
 
       {/* Erreur IA */}
       {error && (
-        <div style={cs.errorBox}>⚠ {error}</div>
+        <div style={cs.errorBox}>{error}</div>
       )}
 
       {/* Analyse par plat */}

@@ -342,7 +342,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       setProgress({ done: Math.min(i + 10, toImport.length), total: toImport.length });
     }
     notifyLegacy(
-      `✓ Import terminé : ${saved} produit(s)${errors ? ` · ${errors} en erreur` : ''}.`,
+      `Import terminé : ${saved} produit(s)${errors ? ` · ${errors} en erreur` : ''}.`,
       errors ? 'warning' : 'success',
     );
     onClose();
@@ -358,7 +358,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       <div style={st.modal} onClick={e => e.stopPropagation()}>
         <div style={st.head}>
           <div>
-            <div style={st.title}>✨ Import catalogue intelligent</div>
+            <div style={st.title}>Import catalogue intelligent</div>
             <div style={st.sub}>
               {fileName ? fileName : 'Lit n\'importe quel fichier fournisseur et vérifie chaque ligne.'}
             </div>
@@ -369,7 +369,6 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
         <div style={st.body}>
           {step === 'pick' && (
             <div style={st.pickZone}>
-              <div style={{ fontSize: 40, opacity: 0.4 }}>📄</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
                 Choisir un fichier fournisseur
               </div>
@@ -411,7 +410,6 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
 
           {step === 'parsing' && (
             <div style={st.pickZone}>
-              <div style={{ fontSize: 36 }}>⏳</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
                 Lecture en cours…
               </div>
@@ -452,7 +450,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 <div style={st.sheetStats}>
                   {fileStats.map(s => (
                     <div key={s.sheet} style={{ ...st.sheetItem, ...(s.skipped ? st.sheetItemSkipped : {}) }}>
-                      <span style={{ fontWeight: 600 }}>📄 {s.sheet}</span>
+                      <span style={{ fontWeight: 600 }}>{s.sheet}</span>
                       {s.skipped
                         ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide - ignorée</span>
                         : <>

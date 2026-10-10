@@ -226,7 +226,7 @@ function StockFields({ config, set, onChange, etablissementId }) {
         {typed && products && (
           <div style={{ fontSize: 11, marginTop: 4, color: match ? 'var(--success-text)' : 'var(--warning-text)' }}>
             {match
-              ? '✓ Produit trouvé dans les inventaires.'
+              ? 'Produit trouvé dans les inventaires.'
               : "Produit introuvable dans les inventaires : l'alerte ne pourra pas se déclencher tant qu'il n'y figure pas."}
           </div>
         )}

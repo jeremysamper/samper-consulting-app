@@ -204,10 +204,10 @@ const Pertes = ({ user, etablissement }) => {
         <div className="module-actions">
           {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>+ Déclarer une perte</button>}
           {canManage && !sel.active && (
-            <button style={pts.exportBtn} onClick={sel.enter}>☑ Sélectionner</button>
+            <button style={pts.exportBtn} onClick={sel.enter}>Sélectionner</button>
           )}
-          <button style={pts.exportBtn} onClick={printPertes}>🖨 Imprimer</button>
-          <button style={pts.exportBtn} onClick={exportPertes}>⬇ Export</button>
+          <button style={pts.exportBtn} onClick={printPertes}>Imprimer</button>
+          <button style={pts.exportBtn} onClick={exportPertes}>Export</button>
         </div>
       </div>
 
@@ -244,7 +244,7 @@ const Pertes = ({ user, etablissement }) => {
           onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(p => p.id)))}
           onDelete={supprimerSelection}
           onExport={exporterSelection}
-          exportLabel="⬇ Exporter Excel"
+          exportLabel="Exporter Excel"
           onCancel={sel.exit}
           busy={bulkBusy}
         />
@@ -306,7 +306,7 @@ const Pertes = ({ user, etablissement }) => {
               </span>
               <span style={pts.cell}>
                 <span style={{...pts.badge, background:p.valide?'var(--success-bg)':'var(--warning-bg)', color:p.valide?'var(--success-text)':'var(--warning-text)'}}>
-                  {p.valide ? '✓ Validé' : '⏳ À valider'}
+                  {p.valide ? 'Validé' : 'À valider'}
                 </span>
               </span>
               {canManage && (

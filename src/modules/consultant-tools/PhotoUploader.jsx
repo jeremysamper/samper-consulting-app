@@ -1,11 +1,12 @@
 import React from 'react';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
+import { Camera } from 'lucide-react';
 import {
   ACCEPTED_MIME, HEIC_EXTENSIONS, MAX_FILE_SIZE_MB, COMPRESSION_THRESHOLD_MB,
   getExtension, convertHeicToJpeg, maybeCompress,
 } from './photoProcessing.js';
 
-export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100, emoji = '📖' }) {
+export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100, emoji = '' }) {
   const fileRef = React.useRef(null);
   const [busy, setBusy] = React.useState(false);
   const [busyLabel, setBusyLabel] = React.useState('');
@@ -103,7 +104,7 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
           title={photoUrl ? 'Changer la photo' : 'Ajouter une photo'}
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-        >{busy ? (busyLabel || '⏳') : '📷'}</button>
+        >{busy ? (busyLabel || '…') : <Camera size={14} aria-hidden="true" />}</button>
         {photoUrl && !busy && (
           <button
             type="button"

@@ -253,7 +253,7 @@ export default function ReservationForm({
         const mail = change && maj?.statut === 'confirme'
           ? await envoyerConfirmation(maj, avant.email ? 'modification' : 'creation')
           : { suffixe: '', ton: 'success' };
-        notify(`Résa ${form.nom.trim()} · ${form.couverts} pax · ${form.heure.slice(0, 5)} modifiée ✓${mail.suffixe}`, mail.ton);
+        notify(`Résa ${form.nom.trim()} · ${form.couverts} pax · ${form.heure.slice(0, 5)} modifiée${mail.suffixe}`, mail.ton);
         onSaved?.();
         if (ouvertRef.current) onClose();
       } else {
@@ -285,7 +285,7 @@ export default function ReservationForm({
         }
         const h = resa.heure_arrivee?.slice(0, 5) ?? form.heure;
         const mail = await envoyerConfirmation(resa, 'creation');
-        notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée ✓${mail.suffixe}`, mail.ton);
+        notify(`Résa ${resa.nom} · ${resa.nb_couverts} pax · ${h} enregistrée${mail.suffixe}`, mail.ton);
         onSaved?.(resa);
         if (!ouvertRef.current) return;
         if (!keepOpen) { onClose(); return; }

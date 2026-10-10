@@ -2310,7 +2310,7 @@ export default function PlanSalle({
                 <div style={{ fontSize: 12, color: 'var(--success-text)', padding: '2px 2px 8px', lineHeight: 1.5 }}>
                   {drag?.demarre && drag?.kind === 'lien'
                     ? 'Lâche ici pour retirer du plan.'
-                    : 'Tout le monde est placé ✓'}
+                    : 'Tout le monde est placé'}
                 </div>
               )}
 

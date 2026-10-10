@@ -461,8 +461,8 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Tableau des allergènes - la carte</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button style={cts.ghostBtn} onClick={handlePrintAllergenes}>🖨 Imprimer</button>
-                <button style={cts.ghostBtn} onClick={handleExportAllergenesPdf} disabled={exporting}>{exporting ? 'Export…' : '⬇ Export PDF'}</button>
+                <button style={cts.ghostBtn} onClick={handlePrintAllergenes}>Imprimer</button>
+                <button style={cts.ghostBtn} onClick={handleExportAllergenesPdf} disabled={exporting}>{exporting ? 'Export…' : 'Export PDF'}</button>
                 <button style={cts.ghostBtn} onClick={() => setShowAllergenMatrix(false)}>Fermer</button>
               </div>
             </div>

@@ -22,7 +22,6 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
     return (
       <div style={as.screen}>
         <div style={as.panel}>
-          <div style={{ fontSize: 40, textAlign: 'center', marginBottom: 10 }}>⚙️</div>
           <div style={as.title}>Configuration requise</div>
           <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, marginTop: 14 }}>
             Les variables <code style={as.code}>VITE_SUPABASE_URL</code> et <code style={as.code}>VITE_SUPABASE_ANON_KEY</code> doivent être renseignées dans <code style={as.code}>.env</code>.

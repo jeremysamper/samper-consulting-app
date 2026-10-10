@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { Pencil, Trash2 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Gestion des salles : ajouter, renommer, réordonner, supprimer.
@@ -194,12 +195,12 @@ export default function PlanSallesManager({
                         <button type="button" aria-label={`Renommer ${s.nom}`}
                           onClick={() => { setEditId(s.id); setEditNom(s.nom); setConfirm(null); }}
                           style={btnIcone(true)}>
-                          ✎
+                          <Pencil size={15} aria-hidden="true" />
                         </button>
                         <button type="button" aria-label={`Supprimer ${s.nom}`}
                           onClick={() => setConfirm(enConfirm ? null : s.id)}
                           style={{ ...btnIcone(true), color: 'var(--danger-text)' }}>
-                          🗑
+                          <Trash2 size={15} aria-hidden="true" />
                         </button>
                       </>
                     )}

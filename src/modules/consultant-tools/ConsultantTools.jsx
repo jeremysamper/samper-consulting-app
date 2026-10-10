@@ -27,7 +27,7 @@ import PlatPicker from './components/PlatPicker.jsx';
 import EtablissementTransferModal from './components/EtablissementTransferModal.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
-import { Copy, UtensilsCrossed, Trash2, ShieldCheck, Sparkles, Loader2, Check, AlertTriangle, Printer, FileDown, Archive, ArchiveRestore, Eye, EyeOff } from 'lucide-react';
+import { AlertTriangle, Archive, ArchiveRestore, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, FileDown, Link2, Loader2, Pencil, Printer, Search, ShieldCheck, Sparkles, Trash2, UtensilsCrossed } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
 import {
@@ -95,7 +95,6 @@ const ConsultantToolsGate = (props) => {
   if (props.user?.role !== 'consultant') {
     return (
       <div style={{ padding: 60, textAlign: 'center', maxWidth: 480, margin: '40px auto' }}>
-        <div style={{ fontSize: 48, opacity: 0.3 }}>🔒</div>
         <div style={{ fontSize: 18, fontWeight: 700, marginTop: 12, fontFamily: 'var(--font-serif)' }}>
           Accès réservé
         </div>
@@ -260,7 +259,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             const serverRec = fresh.find(r => r.id === editingId);
             if (serverRec && lastSavedSerializedRef.current &&
                 serializeRecipeCore(serverRec) !== lastSavedSerializedRef.current) {
-              notifyLegacy('⚠ Recette modifiée depuis un autre appareil. Vos modifications locales sont conservées.', 'warning');
+              notifyLegacy('Recette modifiée depuis un autre appareil. Vos modifications locales sont conservées.', 'warning');
             }
             if (localRec) return fresh.map(r => (r.id === editingId ? localRec : r));
           }
@@ -1382,7 +1381,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {bulkAllergenProgress && (
         <div className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>✨ Détection des allergènes</div>
+            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Détection des allergènes</div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
               {bulkAllergenProgress.done} / {bulkAllergenProgress.total} recette(s) · {bulkAllergenProgress.added} allergène(s) ajouté(s)
             </div>
@@ -1415,7 +1414,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               onToggleAll={() => (recSel.count === filtered.length ? recSel.clear() : recSel.selectAll(filtered.map(r => r.id)))}
               onDelete={supprimerRecettesSelection}
               onExport={exporterRecettesSelection}
-              exportLabel="⬇ Excel"
+              exportLabel="Excel"
               onCancel={recSel.exit}
               busy={recBulkBusy}
               /* La recherche reste accessible : « Tout » sélectionne la liste
@@ -1423,19 +1422,19 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               headExtra={<SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />}
             >
               <Btn small variant="ghost" onClick={() => setBulkLinkPlatOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
-                🍽 Rattacher
+                Rattacher
               </Btn>
               <Btn small variant="ghost" onClick={archiverRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
-                🗄 Archiver
+                Archiver
               </Btn>
               <Btn small variant="ghost" onClick={cacherRecettesSelection} disabled={recSel.count === 0 || recBulkBusy}>
-                {selectionToutesCachees ? '👁 Rendre visible' : '🙈 Cacher'}
+                {selectionToutesCachees ? 'Rendre visible' : 'Cacher'}
               </Btn>
               {/* legacySB : le transfert écrit en base, il n'a pas de sens en
                   mode démo (bridge absent) où il ne ferait rien. */}
               {legacySB && etablissementsCibles.length > 0 && (
                 <Btn small variant="ghost" onClick={() => setBulkTransferOpen(true)} disabled={recSel.count === 0 || recBulkBusy}>
-                  🏛 Transférer
+                  Transférer
                 </Btn>
               )}
             </SelectionToolbar>
@@ -1453,7 +1452,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <button
                   style={{ ...cts.ghostBtn, flex: 1, fontSize: 11, padding: '6px 8px' }}
                   onClick={recSel.enter}
-                >☑ Sélectionner</button>
+                >Sélectionner</button>
                 {(() => {
                   return (
                     <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -1478,21 +1477,21 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                               style={cts.menuItem}
                               role="menuitem"
                               onClick={() => { setOutilsMenuOpen(false); setShowImport(true); }}
-                            >📥 Importer des recettes</button>
+                            >Importer des recettes</button>
                             <button
                               className="sc-menu-item"
                               style={{ ...cts.menuItem, color: 'var(--ai-text)' }}
                               role="menuitem"
                               disabled={!!bulkAllergenProgress}
                               onClick={() => { setOutilsMenuOpen(false); detecterAllergenesToutes(); }}
-                            >✨ Allergènes - toutes les recettes</button>
+                            >Allergènes - toutes les recettes</button>
                             {reviewCount > 0 && (
                               <button
                                 className="sc-menu-item"
                                 style={{ ...cts.menuItem, color: 'var(--warning-text)' }}
                                 role="menuitem"
                                 onClick={() => { setOutilsMenuOpen(false); setShowMatchReview(true); }}
-                              >⚠ Correspondances à valider ({reviewCount})</button>
+                              >Correspondances à valider ({reviewCount})</button>
                             )}
                             {unlinkedCount > 0 && (
                               <button
@@ -1500,7 +1499,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                                 style={cts.menuItem}
                                 role="menuitem"
                                 onClick={() => { setOutilsMenuOpen(false); setShowBulkLinker(true); }}
-                              >⛓ Lier les ingrédients au catalogue ({unlinkedCount})</button>
+                              >Lier les ingrédients au catalogue ({unlinkedCount})</button>
                             )}
                           </div>
                         </>
@@ -1595,9 +1594,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         setExpandedPlats(next);
                       }}
                       title={isExpanded ? 'Réduire' : 'Développer'}
-                    >{isExpanded ? '▼' : '▶'}</button>
+                    >{isExpanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</button>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={cts.platName}>🍽 {plat.nom}</div>
+                      <div style={cts.platName}>{plat.nom}</div>
                       <div style={cts.platMeta}>
                         {plat.categorie}
                         {plat.prixVente != null && ` · CHF ${plat.prixVente.toFixed(2)}`}
@@ -1615,7 +1614,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       style={cts.platEditBtn}
                       onClick={() => { setEditPlat(plat); setShowPlatForm(true); }}
                       title="Modifier le plat"
-                    >✎</button>
+                      aria-label="Modifier le plat"
+                    ><Pencil size={14} aria-hidden="true" /></button>
                   </div>
                   {isExpanded && (platRecettes.length === 0 ? (
                     <div style={{ padding: '8px 14px 8px 56px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
@@ -1666,8 +1666,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         }}
                         title={collapsed ? 'Développer' : 'Réduire'}
                       >
-                        <span style={{ fontSize: 10, color: 'var(--text2)' }}>{collapsed ? '▶' : '▼'}</span>
-                        <span style={cts.carteFolderName}>{folder.id === '__none__' ? '🗂' : '📋'} {folder.nom}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text2)' }}>{!collapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                        <span style={cts.carteFolderName}>{folder.nom}</span>
                         <span style={cts.carteCount}>{folder.plats.length}</span>
                       </div>
                       {!collapsed && folder.plats.map(plat => renderPlatBlock(plat, folder))}
@@ -1700,8 +1700,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       onClick={() => setShowArchivees(v => !v)}
                       title={showArchivees ? 'Réduire' : 'Développer'}
                     >
-                      <span style={{ fontSize: 10 }}>{showArchivees ? '▼' : '▶'}</span>
-                      <span>🗄 Archivées ({archiveesFiltrees.length})</span>
+                      <span style={{ fontSize: 10 }}>{showArchivees ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                      <span>Archivées ({archiveesFiltrees.length})</span>
                     </div>
                     {showArchivees && archiveesFiltrees.map(r => (
                       <div key={'arch-' + r.id} style={{ opacity: 0.6 }}>
@@ -1723,7 +1723,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {/* Colonne droite : éditeur */}
       {!selected ? (
         <div style={cts.emptyState}>
-          <div style={{ fontSize: 40, opacity: 0.4 }}>📖</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Aucune recette sélectionnée</div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>Créez une nouvelle recette ou sélectionnez-en une dans la liste.</div>
           <button style={cts.newBtn} onClick={createNew}>+ Nouvelle recette</button>
@@ -1738,7 +1737,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
               <span style={{ fontSize: 13, color: 'var(--warning-text)', flex: 1, minWidth: 200 }}>
-                ⚠ {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) - des modifications locales n'ont pas été synchronisées.
+                {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) - des modifications locales n'ont pas été synchronisées.
               </span>
               <button
                 style={{ ...cts.ghostBtn, background: 'var(--success-text)', color: '#fff', borderColor: 'var(--success-text)' }}
@@ -1831,7 +1830,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(760px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>🛡 Analyse HACCP - {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Analyse HACCP - {selected.nom}</div>
                   <button onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
@@ -1848,7 +1847,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: '#e0e7ff', color: '#3730a3' }}>{p.type || '-'}</span>
                         {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>CCP</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>⚠ {p.danger || '-'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>{p.danger || '-'}</div>
                       {p.mesure && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Maîtrise : {p.mesure}</div>}
                       {p.limiteCritique && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Limite critique : {p.limiteCritique}</div>}
                       {p.surveillance && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Surveillance : {p.surveillance}</div>}
@@ -1881,7 +1880,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(680px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>✨ Suggestions - {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Suggestions - {selected.nom}</div>
                   <button onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
@@ -1922,7 +1921,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               {/* Photo */}
               <PhotoUploader
                 photoUrl={selected.photoUrl}
-                emoji="📖"
                 onUpload={async (file) => {
                   try {
                     const { url } = await legacySB.db.uploadRecettePhoto({ etabId, type: 'recette', id: selected.id, file });
@@ -1966,7 +1964,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         onChange={e => toggleActifSurCarte(selected, e.target.checked)}
                         style={{accentColor:'var(--success-text)'}}/>
                       <span style={{fontSize:12, fontWeight:600, color: isRecetteActive(selected) ? 'var(--success-text)' : 'var(--text2)'}}>
-                        {isRecetteActive(selected) ? '✓ Visible sur la carte' : 'Non publiée'}
+                        {isRecetteActive(selected) ? 'Visible sur la carte' : 'Non publiée'}
                       </span>
                     </label>
                   </div>
@@ -2042,11 +2040,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)',
                       opacity: allergenAiBusy ? 0.6 : 1,
                     }}
-                  >{allergenAiBusy ? '✨ Analyse…' : '✨ Détecter'}</button>
+                  >{allergenAiBusy ? 'Analyse…' : 'Détecter'}</button>
                 </div>
                 <div style={{ padding: '10px 14px 4px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
                   {catalogue.length > 0
-                    ? '✓ Auto-détectés depuis le catalogue lors de la sélection d\'un ingrédient. Cliquer pour ajuster manuellement.'
+                    ? 'Auto-détectés depuis le catalogue lors de la sélection d\'un ingrédient. Cliquer pour ajuster manuellement.'
                     : 'Sélectionner manuellement. Alimentez le catalogue produits pour une auto-détection.'}
                 </div>
                 <div style={{ padding: '6px 14px 14px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -2116,7 +2114,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         style={{ padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}
                         onClick={() => setCatalogPicker('multi')}
                       >
-                        🔍 Depuis catalogue
+                        Depuis catalogue
                       </button>
                     )}
                     <button style={cts.smallBtn} onClick={addIngredient}>+ Ingrédient</button>
@@ -2239,14 +2237,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                             style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 5, fontSize: 11, color: 'var(--success-text)', cursor: 'pointer' }}
                             title="Lié au catalogue (matching automatique) · clic pour délier"
                             onClick={() => updateIngredient(idx, 'produitId', null)}
-                          >⛓</span>
+                          ><Link2 size={13} aria-hidden="true" /></span>
                         )}
                         {!isLinked && ing.needsReview && (
                           <span
                             style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 5, fontSize: 11, color: 'var(--warning-text)', cursor: 'pointer' }}
                             title="Correspondance catalogue incertaine · cliquer pour choisir"
                             onClick={() => { setPickerSearch(ing.nom || ''); setCatalogPicker(ing.id); }}
-                          >⚠</span>
+                          ><AlertTriangle size={13} aria-hidden="true" /></span>
                         )}
                         <DebouncedField
                           key={`${ing.id}:${ing.produitId || ''}:${ing.needsReview ? 'r' : ''}`}
@@ -2281,7 +2279,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           style={{ padding: '0 8px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5, fontSize: 12, cursor: 'pointer', color: 'var(--text2)', whiteSpace: 'nowrap' }}
                           title="Choisir depuis le catalogue"
                           onClick={() => setCatalogPicker(ing.id)}
-                        >🔍</button>
+                          aria-label="Choisir depuis le catalogue"
+                        ><Search size={13} aria-hidden="true" /></button>
                         {suggestions.length > 0 && (
                           <div style={cts.suggestionsCompact}>
                             {(suggestions || []).map(p => (
@@ -2302,7 +2301,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         <DebouncedField type="number" min="0" step="0.01" value={ing.quantite} onCommit={v => updateIngredient(idx, 'quantite', Number(v))} style={cts.ingInput} />
                         {estEchelle && (
                           <div style={cts.ingQteRecalc}>
-                            {estCible ? '🎯 ' : '→ '}{fmtQte((Number(ing.quantite) || 0) * ratioEch)}
+                            {estCible ? 'réf. ' : 'soit '}{fmtQte((Number(ing.quantite) || 0) * ratioEch)}
                           </div>
                         )}
                       </div>
@@ -2472,7 +2471,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     padding: 12, marginBottom: 14,
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 6 }}>
-                      ⚠ Cette recette est utilisée dans {platsImpactes.length} plat{platsImpactes.length > 1 ? 's' : ''}
+                      Cette recette est utilisée dans {platsImpactes.length} plat{platsImpactes.length > 1 ? 's' : ''}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--warning-text)', marginBottom: 8, lineHeight: 1.5 }}>
                       Si vous supprimez la recette, ces plats perdront leur composante (les autres recettes liées resteront en place) :
@@ -2539,7 +2538,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             <div className="modal-full" style={{ ...cts.modal, width: 480, maxWidth: '94vw' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>
-                  🍽 {p.id ? 'Modifier le plat' : 'Nouveau plat'}
+                  {p.id ? 'Modifier le plat' : 'Nouveau plat'}
                 </div>
                 <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>✕</button>
               </div>
@@ -2547,7 +2546,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   <PhotoUploader
                     photoUrl={p.photoUrl}
-                    emoji="🍽"
+                    emoji=""
                     onUpload={async (file) => {
                       // Pour les nouveaux plats sans id, on génère un id temporaire
                       const tempId = p.id || ('plat-temp-' + Date.now());
@@ -2639,7 +2638,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               </div>
               <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'space-between' }}>
                 {p.id && (
-                  <button style={{ ...cts.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={deletePlat}>🗑 Supprimer</button>
+                  <button style={{ ...cts.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={deletePlat}>Supprimer</button>
                 )}
                 <div style={{ flex: 1 }} />
                 <button style={cts.ghostBtn} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>Annuler</button>
@@ -2752,7 +2751,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>
-                    🔍 {isMultiMode ? 'Ajouter depuis le catalogue' : 'Choisir un produit'}
+                    {isMultiMode ? 'Ajouter depuis le catalogue' : 'Choisir un produit'}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
                     {isMultiMode

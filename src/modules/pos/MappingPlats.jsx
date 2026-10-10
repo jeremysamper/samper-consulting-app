@@ -91,7 +91,6 @@ function AllMappedState({ total }) {
       gap:           10,
       textAlign:     'center',
     }}>
-      <div style={{ fontSize: 36 }}>🎉</div>
       <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--success-text)' }}>
         Tous les plats sont mappés !
       </div>
@@ -203,7 +202,7 @@ export default function MappingPlats({ user, etablissement }) {
       } else if (suggestion) {
         await changeMapping(posItemId, suggestion.recipeId, suggestion.score);
       }
-      notify('Mapping validé ✓', 'success');
+      notify('Mapping validé', 'success');
     } catch (e) {
       notify(e?.message ?? 'Erreur de validation', 'error');
     }
@@ -212,7 +211,7 @@ export default function MappingPlats({ user, etablissement }) {
   async function handleChange(posItemId, recipeId, score) {
     try {
       await changeMapping(posItemId, recipeId, score);
-      notify('Recette modifiée ✓', 'success');
+      notify('Recette modifiée', 'success');
     } catch (e) {
       notify(e?.message ?? 'Erreur de modification', 'error');
     }
@@ -233,7 +232,7 @@ export default function MappingPlats({ user, etablissement }) {
   if (!loading && posItems.length === 0 && !error) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader title="Mapping plats POS ↔ Recettes" subtitle={etabNom} />
+        <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
         <EmptyState type="no_pos" />
       </div>
     );
@@ -242,7 +241,7 @@ export default function MappingPlats({ user, etablissement }) {
   if (!loading && recettes.length === 0 && !error) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader title="Mapping plats POS ↔ Recettes" subtitle={etabNom} />
+        <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
         <EmptyState type="no_recettes" />
       </div>
     );
@@ -251,7 +250,7 @@ export default function MappingPlats({ user, etablissement }) {
   if (!loading && !error && posItems.length > 0 && mappedCount === posItems.length) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader title="Mapping plats POS ↔ Recettes" subtitle={etabNom} />
+        <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
         <MappingStats
           total={posItems.length} mapped={mappedCount}
           auto={counts.auto} suggested={counts.suggested} manual={counts.manual}
@@ -265,7 +264,7 @@ export default function MappingPlats({ user, etablissement }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
-        title="Mapping plats POS ↔ Recettes"
+        title="Mapping plats POS et recettes"
         subtitle={etabNom ? `${etabNom} · Lightspeed` : 'Lightspeed'}
       />
 

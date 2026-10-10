@@ -32,7 +32,7 @@ const CreneauxDuJour = ({ suivi = [], dateLabel, saisissable, onSaisir }) => {
               <span style={hs.creneauHeure}>{c.heure}</span>
               <span style={hs.creneauLabel}>{c.label}</span>
               <span style={{ ...hs.creneauEtat, color: couleur }}>
-                {c.complet ? '✓ Relevée' : `${c.faites}/${c.total} zone${c.total > 1 ? 's' : ''}`}
+                {c.complet ? 'Relevée' : `${c.faites}/${c.total} zone${c.total > 1 ? 's' : ''}`}
               </span>
             </>
           );

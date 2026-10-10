@@ -296,7 +296,6 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   style={{ display: 'none' }}
                   onChange={onInputChange}
                 />
-                <div style={{ fontSize: 40, lineHeight: 1 }}>📥</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
                   Glissez vos fiches ici, ou cliquez pour parcourir
                 </div>
@@ -305,7 +304,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
-                <Btn variant="ghost" small onClick={downloadTemplate}>⬇ Télécharger le template Excel</Btn>
+                <Btn variant="ghost" small onClick={downloadTemplate}>Télécharger le template Excel</Btn>
               </div>
               {parsing && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--accent)' }}>⟳ {parsingMsg}</div>}
               {parseError && <div style={errBox}>{parseError}</div>}
@@ -408,7 +407,6 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Terminé ── */}
           {step === 'done' && (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 32 }}>✓</div>
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '8px 0' }}>
                 Import terminé
               </div>

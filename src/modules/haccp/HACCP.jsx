@@ -582,11 +582,11 @@ const HACCP = ({ user, etablissement }) => {
 
     // Feedback
     if (errors.length > 0) {
-      notifyLegacy(`⚠ ${created.length} relevés enregistrés à ${heure}, ${errors.length} en erreur`, 'warning');
+      notifyLegacy(`${created.length} relevés enregistrés à ${heure}, ${errors.length} en erreur`, 'warning');
     } else if (nbAnomalies > 0) {
-      notifyLegacy(`✓ ${created.length} relevés enregistrés à ${heure} (${nbAnomalies} anomalie${nbAnomalies > 1 ? 's' : ''})`, 'warning');
+      notifyLegacy(`${created.length} relevés enregistrés à ${heure} (${nbAnomalies} anomalie${nbAnomalies > 1 ? 's' : ''})`, 'warning');
     } else {
-      notifyLegacy(`✓ ${created.length} relevé${created.length > 1 ? 's' : ''} conforme${created.length > 1 ? 's' : ''} enregistré${created.length > 1 ? 's' : ''} à ${heure}`, 'success');
+      notifyLegacy(`${created.length} relevé${created.length > 1 ? 's' : ''} conforme${created.length > 1 ? 's' : ''} enregistré${created.length > 1 ? 's' : ''} à ${heure}`, 'success');
     }
   };
 
@@ -635,8 +635,8 @@ const HACCP = ({ user, etablissement }) => {
           )}
           {/* Onglet relevés : choix de période (journalier / mensuel) avant génération.
               Autres onglets : impression/export de la vue affichée, comme avant. */}
-          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>🖨 Imprimer</button>}
-          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>⬇ PDF</button>}
+          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'Registre HACCP')}>Imprimer</button>}
+          {showPrintExport && <button style={hs.exportBtn} onClick={()=> activeTab==='releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(activeTab==='controles' ? 'haccp-controls-print' : 'haccp-dashboard-print', 'registre-haccp.pdf')}>PDF</button>}
         </div>
       </div>
       )}
@@ -666,20 +666,19 @@ const HACCP = ({ user, etablissement }) => {
                 onClick={() => ouvrirSaisieRapide()}
                 title="Saisir rapidement les températures de toutes les zones"
               >
-                ✓ Tout conforme - saisie rapide
+                Tout conforme - saisie rapide
               </button>
             )}
           </div>
           <div style={hs.zoneGrid}>{(activeZones || []).map(z=><ZoneTile key={z.id} zone={z} last={latestByZone[z.id]} trend={trendByZone[z.id]} inlineReleve={inlineReleve} inlineTempInput={inlineTempInput} canWrite={canWrite} setInlineReleve={setInlineReleve} setInlineTempInput={setInlineTempInput} submitInlineReleve={submitInlineReleve}/>)}</div>
           {(anomalies || []).length>0&&(
             <div style={hs.anomCard}>
-              <div style={hs.anomHeader}>⚠ Anomalies enregistrées</div>
+              <div style={hs.anomHeader}>Anomalies enregistrées</div>
               {(anomalies || []).map(a=>{
                 const zone=zones.find(z=>z.id===a.zoneId);
                 const op=userDisplay(a.operateur);
                 return(
                   <div key={a.id} style={hs.anomRow}>
-                    <div style={hs.anomIcon}>{zone?.icone}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{zone?.nom}</div>
                       <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure} · {op.name}</div>
@@ -709,7 +708,7 @@ const HACCP = ({ user, etablissement }) => {
               <button
                 onClick={sel.enter}
                 style={{ padding: '7px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' }}
-              >☑ Sélectionner</button>
+              >Sélectionner</button>
             </div>
           )}
           {sel.active && (
@@ -720,7 +719,7 @@ const HACCP = ({ user, etablissement }) => {
               onToggleAll={() => (sel.count === todayReleves.length ? sel.clear() : sel.selectAll(todayReleves.map(r => r.id)))}
               onDelete={supprimerRelevesSelection}
               onExport={exporterRelevesSelection}
-              exportLabel="⬇ Exporter Excel"
+              exportLabel="Exporter Excel"
               onCancel={sel.exit}
               busy={bulkBusy}
             />
@@ -742,11 +741,11 @@ const HACCP = ({ user, etablissement }) => {
                       <input type="checkbox" checked={sel.isSelected(r.id)} onChange={() => sel.toggle(r.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                     </span>
                   )}
-                  <span style={{fontSize:13,fontWeight:600}}>{zone?.icone} {zone?.nom}</span>
+                  <span style={{fontSize:13,fontWeight:600}}>{zone?.nom}</span>
                   <span style={hs.cell}>{r.heure}</span>
                   <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-num)'}}>{r.valeur}{zone?.unite}</span>
                   <span style={hs.cell}>{op.name}</span>
-                  <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'✓ OK':'✕ Anomalie'}</span></span>
+                  <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'OK':'Anomalie'}</span></span>
                   <span style={{...hs.cell,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'-'}</span>
                   {canManage && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
                 </div>
@@ -798,7 +797,7 @@ const HACCP = ({ user, etablissement }) => {
                   <span style={hs.cell}>{c.date}</span>
                   <span style={hs.cell}>{c.heure}</span>
                   <span style={hs.cell}>{op.name}</span>
-                  <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'✓ Conforme':'✕ Non conforme'}</span></span>
+                  <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'Conforme':'Non conforme'}</span></span>
                   <span style={{...hs.cell,fontSize:12,color:'var(--text2)'}}>{c.notes||'-'}</span>
                   {canManage && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
                 </div>
@@ -831,7 +830,6 @@ const HACCP = ({ user, etablissement }) => {
         <div style={{display:'flex',flexDirection:'column',gap:20}}>
           {/* Banner */}
           <div style={{background:'var(--nav)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-            <span style={{fontSize:28}}>⚙</span>
             <div style={{flex:1,minWidth:220}}>
               <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP - Réservé au consultant</div>
               <div style={{color:'rgba(255,255,255,0.5)',fontSize:12,marginTop:3}}>Gérez les zones de contrôle et les contrôles d'hygiène de l'établissement. Ces paramètres s'appliquent à toute l'équipe.</div>
@@ -864,7 +862,6 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
                   {CRENEAUX_PRESETS.map(p=>(
                     <button key={p.id} onClick={()=>appliquerPresetCreneaux(p)} style={{...hs.periodBtn,width:'auto',flex:'1 1 240px',maxWidth:340}}>
-                      <span style={{fontSize:20,flexShrink:0}}>⏱</span>
                       <span style={{flex:1,minWidth:0}}>
                         <span style={{display:'block',fontSize:13,fontWeight:700,color:'var(--text)'}}>{p.label}</span>
                         <span style={{display:'block',fontSize:11,color:'var(--text2)',marginTop:2}}>{p.sub}</span>
@@ -911,7 +908,6 @@ const HACCP = ({ user, etablissement }) => {
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {zones.map(z=>(
                 <div key={z.id} style={{...hcfg.row, opacity:z.actif?1:0.5}}>
-                  <div style={hcfg.rowIcon}>{z.icone}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {z.nom}
@@ -979,7 +975,7 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={hs.field}>
                   <label style={hs.fLabel}>Zone / Équipement</label>
                   <select style={hs.fInput} value={formRel.zoneId} onChange={e=>setFormRel({...formRel,zoneId:e.target.value})}>
-                    {(activeZones || []).map(z=><option key={z.id} value={z.id}>{z.icone} {z.nom}</option>)}
+                    {(activeZones || []).map(z=><option key={z.id} value={z.id}>{z.nom}</option>)}
                   </select>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12}}>
@@ -1009,7 +1005,7 @@ const HACCP = ({ user, etablissement }) => {
                     const zone=zones.find(z=>z.id===formRel.zoneId);
                     const ok=isConforme(zone,formRel.valeur);
                     return<div style={{marginTop:8,padding:'8px 12px',borderRadius:8,background:ok?'var(--success-bg)':'var(--danger-bg)',color:ok?'var(--success-text)':'var(--danger-strong)',fontSize:13,fontWeight:600,textAlign:'center'}}>
-                      {ok?`✓ Conforme - plage autorisée : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`:`✕ Hors plage - [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`}
+                      {ok?`Conforme - plage autorisée : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`:`Hors plage - [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`}
                     </div>;
                   })()}
                 </div>
@@ -1046,7 +1042,7 @@ const HACCP = ({ user, etablissement }) => {
                   <div style={{display:'flex',gap:8}}>
                     {['conforme','non-conforme'].map(s=>(
                       <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,padding:'10px',border:`2px solid ${formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--border)'}`,borderRadius:8,background:formCtrl.statut===s?(s==='conforme'?'var(--success-bg)':'var(--danger-bg)'):'var(--surface)',color:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--text2)',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'}}>
-                        {s==='conforme'?'✓ Conforme':'✕ Non conforme'}
+                        {s==='conforme'?'Conforme':'Non conforme'}
                       </button>
                     ))}
                   </div>
@@ -1072,7 +1068,7 @@ const HACCP = ({ user, etablissement }) => {
         <div className="modal-sheet-overlay" style={hs.overlay} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>
           <div className="modal-sheet" style={{...hs.modal, width: 460}} onClick={e=>e.stopPropagation()}>
             <div style={hs.modalHeader}>
-              <div style={hs.modalTitle}>{exportRelevesMode==='print' ? '🖨 Imprimer les relevés' : '⬇ Exporter les relevés en PDF'}</div>
+              <div style={hs.modalTitle}>{exportRelevesMode==='print' ? 'Imprimer les relevés' : 'Exporter les relevés en PDF'}</div>
               <button style={hs.closeBtn} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>✕</button>
             </div>
             <div style={hs.modalBody}>
@@ -1081,13 +1077,12 @@ const HACCP = ({ user, etablissement }) => {
               </div>
               <div style={{display:'flex', flexDirection:'column', gap:10}}>
                 {[
-                  { id:'jour', icon:'📄', label:'Journalier', sub:capitalize(fmtJour(dateFilter)), count:todayReleves.length },
-                  { id:'mois', icon:'📅', label:'Mensuel', sub:capitalize(moisLabel), count:monthReleves.length },
+                  { id:'jour', label:'Journalier', sub:capitalize(fmtJour(dateFilter)), count:todayReleves.length },
+                  { id:'mois', label:'Mensuel', sub:capitalize(moisLabel), count:monthReleves.length },
                 ].map(opt=>(
                   <button key={opt.id} disabled={exportRelevesBusy}
                     style={{...hs.periodBtn, opacity:(opt.count===0 || exportRelevesBusy) ? 0.55 : 1}}
                     onClick={()=>runRelevesExport(opt.id)}>
-                    <span style={{fontSize:22, flexShrink:0}}>{opt.icon}</span>
                     <span style={{flex:1, minWidth:0}}>
                       <span style={{display:'block', fontSize:14, fontWeight:700, color:'var(--text)'}}>{opt.label}</span>
                       <span style={{display:'block', fontSize:11, color:'var(--text2)', marginTop:2}}>{opt.sub} · {opt.count} relevé{opt.count>1?'s':''}</span>
@@ -1096,7 +1091,7 @@ const HACCP = ({ user, etablissement }) => {
                   </button>
                 ))}
               </div>
-              {exportRelevesBusy && <div style={{marginTop:12, fontSize:12, color:'var(--text2)', textAlign:'center'}}>⏳ Génération du document…</div>}
+              {exportRelevesBusy && <div style={{marginTop:12, fontSize:12, color:'var(--text2)', textAlign:'center'}}>Génération du document…</div>}
             </div>
           </div>
         </div>
@@ -1108,7 +1103,7 @@ const HACCP = ({ user, etablissement }) => {
           <div className="modal-full" style={hs.qrModal} onClick={e => e.stopPropagation()}>
             <div style={hs.qrHeader}>
               <div>
-                <div style={hs.qrTitle}>✓ Saisie rapide des relevés</div>
+                <div style={hs.qrTitle}>Saisie rapide des relevés</div>
                 <div style={hs.qrSubtitle}>
                   Saisissez les températures pour toutes les zones d'un coup. Les valeurs cibles sont pré-remplies - modifiez ce qui doit l'être, laissez vide pour ignorer.
                 </div>
@@ -1124,7 +1119,7 @@ const HACCP = ({ user, etablissement }) => {
                 <button key={c.id} type="button" disabled={quickSaving}
                   onClick={() => setQuickHeure(c.heure)}
                   style={{ ...hs.creneauChip, ...(quickHeure === c.heure ? hs.creneauChipOn : {}) }}>
-                  {c.heure} · {c.label}{c.complet ? ' ✓' : ''}
+                  {c.heure}, {c.label}{c.complet ? ', fait' : ''}
                 </button>
               ))}
               <button type="button" disabled={quickSaving}
@@ -1153,7 +1148,6 @@ const HACCP = ({ user, etablissement }) => {
                                : conf ? 'var(--success-bd)'
                                : 'var(--danger-bd)',
                   }}>
-                    <span style={{ fontSize: 22 }}>{zone.icone}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{zone.nom}</div>
                       <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -1176,7 +1170,7 @@ const HACCP = ({ user, etablissement }) => {
                            : conf ? 'var(--success-text)'
                            : 'var(--danger-strong)',
                     }}>
-                      {!hasVal ? '-' : conf ? '✓' : '⚠'}
+                      {!hasVal ? '-' : conf ? '✓' : '✕'}
                     </span>
                   </div>
                 );
@@ -1192,7 +1186,7 @@ const HACCP = ({ user, etablissement }) => {
               </span>
               <button style={hs.qrGhostBtn} onClick={() => setShowQuickReleves(false)} disabled={quickSaving}>Annuler</button>
               <button style={hs.qrPrimaryBtn} onClick={saveQuickReleves} disabled={quickSaving}>
-                {quickSaving ? '⏳ Enregistrement…' : '✓ Enregistrer les relevés'}
+                {quickSaving ? 'Enregistrement…' : 'Enregistrer les relevés'}
               </button>
             </div>
           </div>

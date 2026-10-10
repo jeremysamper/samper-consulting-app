@@ -1,6 +1,7 @@
 import React from 'react';
 import { Btn } from '../../../components/ui/index.jsx';
 import { CATEGORIES_REC, UNITES_REC } from '../../consultant-tools/ConsultantTools.constants.js';
+import { AlertTriangle } from 'lucide-react';
 
 // Une recette est importable si elle a un nom et au moins un ingrédient.
 export const isRecipeValid = (r) => Boolean(r && String(r.nom || '').trim()) && (r.ingredients || []).length > 0;
@@ -92,13 +93,13 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                   {(r.ingredients || []).length} ingr. · {(r.etapes || []).length} étape(s)
                 </span>
                 {!valid && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger-strong)' }}>⚠ non importable</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger-strong)' }}>non importable</span>
                 )}
                 {valid && flagged > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>⚠ {flagged} ligne(s) à vérifier</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>{flagged} ligne(s) à vérifier</span>
                 )}
                 {alertes.map((w, i) => (
-                  <span key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>⚠ {w}</span>
+                  <span key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>{w}</span>
                 ))}
                 <Btn small variant="ghost" onClick={() => toggleExpand(id)} style={{ marginLeft: 'auto' }}>
                   {open ? '▲ Réduire' : '▼ Détail'}
@@ -131,7 +132,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                           {!UNITES_REC.includes(ing.unite) && <option value={ing.unite}>{ing.unite}</option>}
                         </select>
                         {warn && ing._import.originalText && (
-                          <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 11, color: 'var(--danger-strong)', cursor: 'help' }}>⚠</span>
+                          <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 11, color: 'var(--danger-strong)', cursor: 'help', display: 'inline-flex' }}><AlertTriangle size={12} aria-hidden="true" /></span>
                         )}
                         <button onClick={() => removeIngredient(rIdx, iIdx)} title="Supprimer" style={{ ...cell, cursor: 'pointer', color: 'var(--danger-strong)', width: 28 }}>✕</button>
                       </div>

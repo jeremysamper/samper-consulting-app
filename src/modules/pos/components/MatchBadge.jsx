@@ -52,7 +52,6 @@ export function MatchBadge({ status, score }) {
       color:         cfg.color,
       border:        `1px solid ${cfg.border}`,
     }}>
-      <span style={{ fontSize: 10 }}>{cfg.dot}</span>
       <span>{cfg.label}</span>
       {score != null && status !== 'manual' && (
         <span style={{ opacity: 0.75 }}>· {score}</span>

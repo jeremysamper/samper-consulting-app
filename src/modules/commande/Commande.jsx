@@ -4,7 +4,7 @@ import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
-import { Sparkles, Loader2, Trash2, Plus, Printer, FileDown, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileDown, Loader2, Pencil, Plus, Printer, Sparkles, Trash2 } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -310,7 +310,6 @@ const Commande = ({ user, etablissement }) => {
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {totalCount === 0 ? (
           <div style={s.empty}>
-            <div style={{ fontSize: 40, opacity: 0.4 }}>🛒</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Liste de commande vide</div>
             <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
               {isConsultant
@@ -329,7 +328,7 @@ const Commande = ({ user, etablissement }) => {
                   style={s.sectionHead}
                   onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(group.categorie) ? n.delete(group.categorie) : n.add(group.categorie); return n; })}
                 >
-                  <span style={{ fontSize: 10, color: 'var(--text2)' }} className="no-print">{isCollapsed ? '▶' : '▼'}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                   <span style={s.sectionTitle}>{group.categorie}</span>
                   <span style={s.sectionCount}>{group.items.length}</span>
                 </div>

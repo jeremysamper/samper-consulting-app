@@ -162,7 +162,7 @@ export default function Previsions({ user, etablissement }) {
           background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
           color: 'var(--warning-text)', fontSize: 13, fontFamily: 'var(--font)',
         }}>
-          ⚠️ Aucun établissement sélectionné. Sélectionne un établissement avant de saisir des réservations.
+          Aucun établissement sélectionné. Sélectionne un établissement avant de saisir des réservations.
         </div>
       )}
 

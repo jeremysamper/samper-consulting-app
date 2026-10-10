@@ -52,7 +52,7 @@ export function SelectionToolbar({
             <Btn small variant="ghost" onClick={onExport} disabled={count === 0 || busy}>{exportLabel}</Btn>
           )}
           {onDelete && (
-            <Btn small variant="danger" onClick={onDelete} disabled={count === 0 || busy}>🗑 Supprimer</Btn>
+            <Btn small variant="danger" onClick={onDelete} disabled={count === 0 || busy}>Supprimer</Btn>
           )}
         </div>
       </div>
@@ -86,7 +86,7 @@ export function SelectionToolbar({
       )}
       {onDelete && (
         <Btn small variant="danger" onClick={onDelete} disabled={count === 0 || busy}>
-          🗑 Supprimer ({count})
+          Supprimer ({count})
         </Btn>
       )}
       <Btn small variant="ghost" onClick={onCancel} disabled={busy}>Annuler</Btn>

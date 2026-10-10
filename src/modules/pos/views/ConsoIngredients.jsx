@@ -201,7 +201,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
             printId={PRINT_ID}
             title={`Conso ingrédients - ${periodLabel}`}
             etablissement={etablissement}
-            label="📥 Exporter PDF"
+            label="Exporter PDF"
           />
         )}
       </div>

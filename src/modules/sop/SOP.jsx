@@ -9,6 +9,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { Pencil, Trash2 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -314,7 +315,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
               onClick={() => setOnboardingMode(prev => !prev)}
               title="Afficher uniquement les SOPs taggées 'essentielle'"
             >
-              🆕 Nouveau cuisinier ({essentialCount})
+              Nouveau cuisinier ({essentialCount})
             </button>
           )}
           {!onboardingMode && (
@@ -326,7 +327,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             />
           )}
           {canManage && !sel.active && (
-            <button style={ss.chip} onClick={sel.enter} title="Sélectionner plusieurs SOP">☑ Sélectionner</button>
+            <button style={ss.chip} onClick={sel.enter} title="Sélectionner plusieurs SOP">Sélectionner</button>
           )}
         </div>
       </div>
@@ -340,7 +341,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
           onToggleAll={() => (sel.count === filtered.length ? sel.clear() : sel.selectAll(filtered.map(s => s.id)))}
           onDelete={bulkDelete}
           onExport={bulkAddToTemplates}
-          exportLabel="📚 Ajouter aux templates"
+          exportLabel="Ajouter aux templates"
           onCancel={sel.exit}
           busy={bulkBusy}
         />
@@ -352,18 +353,17 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
           padding:'10px 14px', background:'#fef3c7', border:'1px solid #fde68a',
           borderRadius:8, marginBottom:12, fontSize:12, color:'#78350f', lineHeight:1.5,
         }}>
-          <strong>🆕 Mode "Nouveau cuisinier"</strong> - Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
+          <strong>Mode "Nouveau cuisinier"</strong> - Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
         </div>
       )}
 
       {filtered.length === 0 && (
         <div style={ss.empty}>
-          <div style={{ fontSize: 40, opacity: 0.3 }}>📋</div>
           <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>
             {sops.length === 0 ? 'Aucune procédure' : 'Aucun résultat'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-            {sops.length === 0 ? 'Créez une SOP avec "+ Nouvelle SOP", ou importez-en une depuis "📚 Templates".' : 'Modifiez vos filtres.'}
+            {sops.length === 0 ? 'Créez une SOP avec "+ Nouvelle SOP", ou importez-en une depuis "Templates".' : 'Modifiez vos filtres.'}
           </div>
         </div>
       )}
@@ -407,13 +407,13 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                         <span
                           style={{ ...ss.miniBadge, background: '#16a34a', color: '#fff' }}
                           title={`Validée à ${new Date(doneToday.heureFin || doneToday.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })} par ${doneToday.operateurNom || '-'}`}
-                        >✓ Fait aujourd'hui</span>
+                        >Fait aujourd'hui</span>
                       )}
                     </div>
                   </div>
                   <div style={ss.sopCardActions}>
                     {canManage && (
-                      <button style={ss.iconBtn} onClick={() => onEdit(sop)} title="Modifier">✎</button>
+                      <button style={ss.iconBtn} onClick={() => onEdit(sop)} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
                     )}
                     {canManage && (
                       inTemplates ? (
@@ -421,13 +421,13 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                           style={{ ...ss.iconBtn, color: '#15803d', borderColor: '#86efac', cursor: 'default' }}
                           title="Déjà dans la bibliothèque de templates"
                           disabled
-                        >📚✓</button>
+                        >Template</button>
                       ) : (
                         <button
                           style={ss.iconBtn}
                           onClick={() => onAddToTemplates && onAddToTemplates(sop)}
                           title="Ajouter à la bibliothèque de templates (pour export vers d'autres établissements)"
-                        >📚+</button>
+                        >+ Template</button>
                       )
                     )}
                     <button
@@ -441,7 +441,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                       title={doneToday && sop.frequence === 'quotidien'
                         ? "Relancer (déjà validée aujourd'hui)"
                         : "Lancer la checklist"}
-                    >▶ {doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
+                    >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
                   </div>
                 </div>
               );
@@ -583,7 +583,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
                         {etape.label}
                       </div>
                       {etape.info && (
-                        <div style={ss.etapeInfo}>ℹ {etape.info}</div>
+                        <div style={ss.etapeInfo}>{etape.info}</div>
                       )}
                       {/* Photo de référence : repliée par défaut, le clic ne coche pas l'étape */}
                       {etape.photoUrl && (
@@ -594,7 +594,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
                             onClick={(e) => { e.stopPropagation(); togglePhoto(path); }}
                             aria-expanded={photoOpen}
                           >
-                            {photoOpen ? '▾ Masquer la photo' : '📷 Voir la photo'}
+                            {photoOpen ? 'Masquer la photo' : 'Voir la photo'}
                           </button>
                           {photoOpen && (
                             <img
@@ -633,7 +633,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
       <div style={ss.checklistFooter}>
         <button style={ss.abandonBtn} onClick={() => finish('abandonnee')} disabled={busy}>Abandonner</button>
         <button style={ss.validateBtn} onClick={() => finish('terminee')} disabled={busy}>
-          {busy ? '...' : `✓ Valider (${checkedSteps}/${totalSteps})`}
+          {busy ? '...' : `Valider (${checkedSteps}/${totalSteps})`}
         </button>
       </div>
 
@@ -737,7 +737,6 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
 
   if (sorted.length === 0) return (
     <div style={ss.empty}>
-      <div style={{ fontSize: 40, opacity: 0.3 }}>📊</div>
       <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>Aucune exécution enregistrée</div>
       <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>L'historique apparaîtra ici dès la première checklist validée.</div>
     </div>
@@ -776,13 +775,13 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
                     {exec.operateurNom && ` · ${exec.operateurNom}`}
                   </div>
                   {exec.notes && (
-                    <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, fontStyle: 'italic' }}>📝 {exec.notes}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, fontStyle: 'italic' }}>{exec.notes}</div>
                   )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: couleur }}>{exec.etapesCochees}/{exec.totalEtapes}</div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    {exec.statut === 'terminee' ? '✓ Terminée' : exec.statut === 'abandonnee' ? 'Abandonnée' : 'En cours'}
+                    {exec.statut === 'terminee' ? 'Terminée' : exec.statut === 'abandonnee' ? 'Abandonnée' : 'En cours'}
                   </div>
                   <button
                     style={{
@@ -795,7 +794,7 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
                     onClick={(e) => { e.stopPropagation(); exportExecutionPDF(exec); }}
                     disabled={!!pdfBusyId}
                     title="Exporter cette exécution en PDF (audit)"
-                  >{pdfBusyId === exec.id ? '… PDF' : '📄 PDF'}</button>
+                  >{pdfBusyId === exec.id ? '… PDF' : 'PDF'}</button>
                 </div>
               </div>
             );
@@ -917,14 +916,15 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
               <span key={t} style={{ ...ss.miniBadge, background: '#fef3c7', color: '#92400e' }}>{t}</span>
             ))}
           </div>
-          {alreadyExists && <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>✓ Déjà dans cet établissement</div>}
+          {alreadyExists && <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>Déjà dans cet établissement</div>}
         </div>
         {item.source === 'db' && (
           <button
             onClick={(e) => { e.stopPropagation(); removeTemplate(tpl); }}
             title="Retirer de la bibliothèque de templates"
-            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: '#dc2626', fontSize: 13, padding: '4px 8px' }}
-          >🗑</button>
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: '#dc2626', fontSize: 13, padding: '4px 8px', display: 'inline-flex' }}
+            aria-label="Retirer de la bibliothèque"
+          ><Trash2 size={14} aria-hidden="true" /></button>
         )}
       </div>
     );
@@ -935,10 +935,10 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
       <div className="modal-full" style={ss.modal} onClick={e => e.stopPropagation()}>
         <div style={ss.modalHeader}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>📚 Bibliothèque de templates SOP</div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Bibliothèque de templates SOP</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
               Importez des SOP dans cet établissement. Pour partager une SOP, ajoutez-la
-              à la bibliothèque via le bouton 📚+ sur sa carte.
+              à la bibliothèque via le bouton « + Template » sur sa carte.
             </div>
           </div>
           <button style={ss.closeBtn} onClick={onClose}>✕</button>
@@ -946,7 +946,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
           {dbItems.length === 0 && (
             <div style={{ padding: '24px 18px', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', textAlign: 'center' }}>
-              Aucun template dans la bibliothèque. Utilisez le bouton 📚+ sur une SOP pour l'ajouter ici.
+              Aucun template dans la bibliothèque. Utilisez le bouton « + Template » sur une SOP pour l'ajouter ici.
             </div>
           )}
           {dbItems.map(renderItem)}
@@ -965,7 +965,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
               onClick={removeSelected}
               disabled={busy}
             >
-              🗑 Supprimer ({selectedDbItems.length})
+              Supprimer ({selectedDbItems.length})
             </button>
           )}
           <button style={ss.ghostBtn} onClick={onClose}>Fermer</button>
@@ -1061,7 +1061,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
         <button style={{ ...ss.backBtn, width: 'auto', padding: '0 14px', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }} onClick={onBack}>← Retour</button>
         <div style={{ flex: 1 }} />
         {!isNew && (
-          <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }} onClick={deleteSop}>🗑 Supprimer</button>
+          <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: '#fca5a5' }} onClick={deleteSop}>Supprimer</button>
         )}
         <button style={ss.primaryBtn} onClick={save} disabled={saving}>
           {saving ? '...' : (isNew ? 'Créer' : 'Enregistrer')}
@@ -1121,7 +1121,6 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                 <PhotoUploader
                   photoUrl={etape.photoUrl}
                   size={64}
-                  emoji="📷"
                   onUpload={async (file) => {
                     try {
                       const { url } = await legacySB.db.uploadRecettePhoto({

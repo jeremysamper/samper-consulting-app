@@ -1,5 +1,6 @@
 import React from 'react';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
+import { Pencil } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CarteTabBar - barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
@@ -158,16 +159,16 @@ export default function CarteTabBar({
             className={'segmented-tab' + (active ? ' is-active' : '')}
             onClick={() => onSelect?.(carte.id)}
           >
-            {/* 🙈 : carte cachée. Seul le consultant reçoit ces cartes, le
+            {/* « (cachée) » : carte cachée. Seul le consultant reçoit ces cartes, le
                 marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
-            <span>{carte.masquee === true && '🙈 '}{carte.id === homeId && '★ '}{carte.nom}</span>
+            <span>{carte.id === homeId && '★ '}{carte.nom}{carte.masquee === true && ' (cachée)'}</span>
             {canManage && active && (
               <button
                 className="mini"
                 style={s.editBtn}
                 title="Modifier la carte"
                 onClick={(e) => { e.stopPropagation(); openEdit(carte); }}
-              >✎</button>
+              ><Pencil size={14} aria-hidden="true" /></button>
             )}
           </div>
         );
@@ -200,7 +201,7 @@ export default function CarteTabBar({
           style={s.archivesBtn}
           onClick={() => setShowArchives(true)}
           title="Cartes archivées - cliquer pour restaurer"
-        >🗄 Archives ({archivedCartes.length})</button>
+        >Archives ({archivedCartes.length})</button>
       )}
 
       {modal && (
@@ -233,14 +234,14 @@ export default function CarteTabBar({
             </div>
             <div style={s.modalFooter}>
               {modal.mode === 'edit' && (
-                <button style={{ ...s.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={remove}>🗑 Supprimer</button>
+                <button style={{ ...s.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={remove}>Supprimer</button>
               )}
               {modal.mode === 'edit' && onArchiveCarte && (
                 <button
                   style={s.ghostBtn}
                   onClick={archive}
                   title="Retirer la carte des onglets sans rien supprimer (restaurable via Archives)"
-                >🗄 Archiver</button>
+                >Archiver</button>
               )}
               {modal.mode === 'edit' && canHide && onHideCarte && (
                 <button
@@ -249,7 +250,7 @@ export default function CarteTabBar({
                   title={carteEditee?.masquee === true
                     ? 'Rendre cette carte visible par toute l\'équipe'
                     : 'Cacher cette carte : elle ne sera visible que par le consultant. Rien n\'est supprimé.'}
-                >{carteEditee?.masquee === true ? '👁 Rendre visible' : '🙈 Cacher'}</button>
+                >{carteEditee?.masquee === true ? 'Rendre visible' : 'Cacher'}</button>
               )}
               <div style={{ flex: 1 }} />
               <button style={s.ghostBtn} onClick={close}>Annuler</button>
@@ -333,7 +334,7 @@ export default function CarteTabBar({
                       await onArchiveCarte?.(carte.id, false);
                       if (archivedCartes.length <= 1) setShowArchives(false);
                     }}
-                  >↩ Restaurer</button>
+                  >Restaurer</button>
                 </div>
               ))}
             </div>

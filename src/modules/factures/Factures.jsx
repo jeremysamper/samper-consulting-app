@@ -763,7 +763,6 @@ const Factures = ({ user, etablissement }) => {
   if (!isConsultant) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 40 }}>🔐</div>
         <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10 }}>Accès consultant uniquement</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6 }}>Le module Factures est réservé au consultant.</div>
       </div>
@@ -882,7 +881,7 @@ const Factures = ({ user, etablissement }) => {
               enregistrés pour <strong>{selectedEtabNom}</strong>. Chaque client peut avoir ses propres textes.
             </div>
             <button style={fac.smallBtn} onClick={openTextsEditor}>
-              ✎ Modifier les textes de la facture
+              Modifier les textes de la facture
             </button>
           </div>
 
@@ -945,7 +944,7 @@ const Factures = ({ user, etablissement }) => {
             )}
 
             <button style={{ ...fac.smallBtn, marginTop: 10 }} onClick={openTextsEditor}>
-              ✎ Modifier les données de paiement
+              Modifier les données de paiement
             </button>
           </div>
 
@@ -972,7 +971,7 @@ const Factures = ({ user, etablissement }) => {
                 style={fac.smallBtn}
                 onClick={() => setShowTemplateEditor(true)}
               >
-                ✎ Modifier le message type
+                Modifier le message type
               </button>
               {emailDraft && (
                 <button
@@ -980,7 +979,7 @@ const Factures = ({ user, etablissement }) => {
                   onClick={() => setShowEmailModal(true)}
                   title={`Brouillon de la facture ${emailDraft.fileName}`}
                 >
-                  ✉ Rouvrir le dernier brouillon
+                  Rouvrir le dernier brouillon
                 </button>
               )}
             </div>
@@ -992,20 +991,20 @@ const Factures = ({ user, etablissement }) => {
               onClick={() => generatePDF(true)}
               disabled={busy}
             >
-              {busy ? '⏳ Génération…' : '📤 Envoyer dans Documents'}
+              {busy ? 'Génération…' : 'Envoyer dans Documents'}
             </button>
             <button
               style={{ ...fac.ghostBtn, opacity: busy ? 0.6 : 1 }}
               onClick={() => generatePDF(false)}
               disabled={busy}
             >
-              ⬇ Télécharger PDF
+              Télécharger PDF
             </button>
           </div>
 
           {savedToDocs && (
             <div style={fac.successBanner}>
-              ✓ Facture enregistrée dans Documents › Factures › {new Date(form.dateFacturation + 'T12:00:00').getFullYear()} › {String(new Date(form.dateFacturation + 'T12:00:00').getMonth() + 1).padStart(2, '0')} - {capitalize(new Date(form.dateFacturation + 'T12:00:00').toLocaleDateString('fr-CH', { month: 'long' }))}
+              Facture enregistrée dans Documents › Factures › {new Date(form.dateFacturation + 'T12:00:00').getFullYear()} › {String(new Date(form.dateFacturation + 'T12:00:00').getMonth() + 1).padStart(2, '0')} - {capitalize(new Date(form.dateFacturation + 'T12:00:00').toLocaleDateString('fr-CH', { month: 'long' }))}
             </div>
           )}
 
@@ -1015,7 +1014,6 @@ const Factures = ({ user, etablissement }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {recentFactures.map(f => (
                   <div key={f.id} style={fac.recentRow}>
-                    <span style={{ fontSize: 16 }}>📄</span>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600 }}>{f.nom}</span>
                     <span style={{ fontSize: 10, color: 'var(--text2)' }}>{new Date(f.createdAt).toLocaleDateString('fr-CH', { day: '2-digit', month: 'short' })}</span>
                   </div>
@@ -1133,7 +1131,6 @@ const Factures = ({ user, etablissement }) => {
                   on met donc le PDF à un clic de la fenêtre de rédaction. */}
               <div style={attachmentSaved ? fac.attachBoxDone : fac.attachBox}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 18 }}>📎</span>
                   <div style={{ flex: 1, minWidth: 180 }}>
                     <div style={{ fontSize: 12, fontWeight: 700 }}>Pièce jointe</div>
                     <div style={{ fontSize: 11, opacity: 0.85, wordBreak: 'break-all' }}>{emailDraft.fileName}</div>
@@ -1152,7 +1149,7 @@ const Factures = ({ user, etablissement }) => {
                       }
                     }}
                   >
-                    {attachmentSaved ? '✓ Téléchargé' : '⬇ Récupérer le PDF'}
+                    {attachmentSaved ? 'Téléchargé' : 'Récupérer le PDF'}
                   </button>
                 </div>
                 <div style={{ fontSize: 11, marginTop: 8, lineHeight: 1.5, opacity: 0.9 }}>
@@ -1184,7 +1181,7 @@ const Factures = ({ user, etablissement }) => {
                   }
                 }}
               >
-                📋 Copier
+                Copier
               </button>
 
               {/* Repli pour un autre client mail que Gmail */}
@@ -1214,7 +1211,7 @@ const Factures = ({ user, etablissement }) => {
                   setTimeout(() => setShowEmailModal(false), 400);
                 }}
               >
-                ✉ Ouvrir le brouillon Gmail
+                Ouvrir le brouillon Gmail
               </button>
             </div>
           </div>
@@ -1300,7 +1297,7 @@ const Factures = ({ user, etablissement }) => {
               </button>
               <div style={{ flex: 1 }} />
               <button style={fac.modalPrimaryBtn} onClick={() => setShowTemplateEditor(false)}>
-                ✓ Enregistrer
+                Enregistrer
               </button>
             </div>
           </div>
@@ -1390,7 +1387,7 @@ const Factures = ({ user, etablissement }) => {
                 onClick={saveFactureTexts}
                 disabled={textsBusy}
               >
-                {textsBusy ? '⏳ Enregistrement…' : '✓ Enregistrer'}
+                {textsBusy ? 'Enregistrement…' : 'Enregistrer'}
               </button>
             </div>
           </div>

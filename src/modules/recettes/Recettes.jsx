@@ -16,6 +16,7 @@ import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { dureesVie } from '../../utils/etiquettesDlc.js';
 import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 
 // CARTES & RECETTES
@@ -37,7 +38,6 @@ const RETRY_MAX_MS = 30000;
 // réveil de la tablette.
 const PanneauEtat = ({ titre, texte, onRetry }) => (
   <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)'}}>
-    <div style={{fontSize:40, opacity:0.4}}>🍽</div>
     <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>{titre}</div>
     <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>{texte}</div>
     {onRetry && (
@@ -56,7 +56,7 @@ const PanneauEtat = ({ titre, texte, onRetry }) => (
 // (dégradé pétrole) au lieu de l'ancien display:none qui effaçait l'image en
 // silence et laissait le cadre se réagencer. Le placeholder est tokenisé :
 // l'ancien dégradé #2a2a2a→#1a1a1a rendait un rectangle quasi noir en clair.
-const RecettePhoto = ({ src, alt = '', placeholder = '🍽', style }) => {
+const RecettePhoto = ({ src, alt = '', placeholder = '', style }) => {
   const [broken, setBroken] = React.useState(false);
   React.useEffect(() => { setBroken(false); }, [src]);
   if (!src || broken) {
@@ -222,11 +222,11 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 
     if (successes.length > 0) {
       const list = successes.map(s => s.etabNom).filter(Boolean).join(', ');
-      notifyLegacy(`✓ "${recette.nom}" dupliquée vers ${successes.length} établissement${successes.length > 1 ? 's' : ''} : ${list}`, 'success');
+      notifyLegacy(`"${recette.nom}" dupliquée vers ${successes.length} établissement${successes.length > 1 ? 's' : ''} : ${list}`, 'success');
     }
     if (failures.length > 0) {
       const list = failures.map(f => `${f.etabNom} (${f.reason})`).join(' · ');
-      notifyLegacy(`⚠ ${failures.length} duplication(s) non effectuée(s) : ${list}`, 'warning');
+      notifyLegacy(`${failures.length} duplication(s) non effectuée(s) : ${list}`, 'warning');
     }
     if (successes.length > 0) onClose();
   };
@@ -236,7 +236,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
       <div className="modal-full" style={{ ...smStyle.modal, maxWidth: 640, width: '94vw' }} onClick={e => e.stopPropagation()}>
         <div style={smStyle.header}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>🔀 Dupliquer la recette vers…</div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Dupliquer la recette vers…</div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>« {recette.nom} »</div>
           </div>
           <button style={smStyle.closeBtn} onClick={() => !saving && onClose()}>✕</button>
@@ -284,7 +284,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                         <input type="checkbox" checked={checked} onChange={() => toggleEtab(e.id)} />
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.couleur || 'var(--accent)', flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.nom}</span>
-                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 10, color: 'var(--warning-text)', fontWeight: 700 }}>⚠ déjà présente</span>}
+                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 10, color: 'var(--warning-text)', fontWeight: 700 }}>déjà présente</span>}
                       </label>
                     );
                   })}
@@ -323,7 +323,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
               {Array.from(selectedEtabIds).some(id => existingByEtab[id]) && (
                 <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
-                    ⚠ Cette recette existe déjà dans certains établissements sélectionnés
+                    Cette recette existe déjà dans certains établissements sélectionnés
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text)' }}>
                     {[
@@ -356,7 +356,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
               style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
               onClick={handleDuplicate}
               disabled={selectedEtabIds.size === 0 || saving}>
-              {saving ? '⏳ Duplication…' : `🔀 Dupliquer (${selectedEtabIds.size})`}
+              {saving ? 'Duplication…' : `Dupliquer (${selectedEtabIds.size})`}
             </button>
           </div>
         </div>
@@ -582,7 +582,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
            voile. L'export PDF et Imprimer passent par le jsPDF vectoriel
            (buildRecettePdfData) : ce héros est purement écran. */
         <div style={{ ...rs.detailHero, height: isMobile ? 190 : 240 }}>
-          <RecettePhoto src={recette.photoUrl} alt={recette.nom} placeholder="📖" style={rs.detailHeroImg} />
+          <RecettePhoto src={recette.photoUrl} alt={recette.nom} style={rs.detailHeroImg} />
           <div style={rs.detailHeroScrim} aria-hidden="true" />
           <span style={{...rs.badge, ...rs.detailHeroBadge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
           <div style={rs.detailHeroText}>
@@ -590,9 +590,9 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
             <div style={rs.detailHeroSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
             {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
               <div style={rs.detailHeroTimes}>
-                {recette.tempsPreparation != null && <span>⏱ Prépa {recette.tempsPreparation} min</span>}
-                {recette.tempsCuisson != null && <span>🔥 Cuisson {recette.tempsCuisson} min</span>}
-                {recette.tempsTotal != null && <span>⏳ Total {recette.tempsTotal} min</span>}
+                {recette.tempsPreparation != null && <span>Prépa {recette.tempsPreparation} min</span>}
+                {recette.tempsCuisson != null && <span>Cuisson {recette.tempsCuisson} min</span>}
+                {recette.tempsTotal != null && <span>Total {recette.tempsTotal} min</span>}
               </div>
             )}
           </div>
@@ -604,9 +604,9 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
             <div style={rs.detailSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
             {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
               <div style={{display:'flex', gap:14, marginTop:8, fontSize:12, color:'var(--text2)', flexWrap:'wrap'}}>
-                {recette.tempsPreparation != null && <span>⏱ Prépa : <strong style={{color:'var(--text)'}}>{recette.tempsPreparation} min</strong></span>}
-                {recette.tempsCuisson != null && <span>🔥 Cuisson : <strong style={{color:'var(--text)'}}>{recette.tempsCuisson} min</strong></span>}
-                {recette.tempsTotal != null && <span>⏳ Total : <strong style={{color:'var(--accent)'}}>{recette.tempsTotal} min</strong></span>}
+                {recette.tempsPreparation != null && <span>Prépa : <strong style={{color:'var(--text)'}}>{recette.tempsPreparation} min</strong></span>}
+                {recette.tempsCuisson != null && <span>Cuisson : <strong style={{color:'var(--text)'}}>{recette.tempsCuisson} min</strong></span>}
+                {recette.tempsTotal != null && <span>Total : <strong style={{color:'var(--accent)'}}>{recette.tempsTotal} min</strong></span>}
               </div>
             )}
           </div>
@@ -666,7 +666,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
               const enSaisie = saisieQte && saisieQte.idx === idx;
               return (
                 <div key={i.id || idx} style={{...rs.ingRow, gridTemplateColumns: ingCols, ...(estRef ? rs.ingRowRef : null)}}>
-                  <span style={sIngName}>{estRef ? '🎯 ' : ''}{i.nom}</span>
+                  <span style={sIngName}>{i.nom}{estRef ? ' (réf.)' : ''}</span>
                   {base > 0 ? (
                     <div style={{minWidth:0}}>
                       <input
@@ -1064,7 +1064,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
                           <button type="button" className="mini" style={ms.expandBtn}
                             title={expanded ? 'Masquer le contenu' : 'Voir le contenu'}
                             onClick={() => toggleSet(setExpandedCartes, c.id)}>
-                            {expanded ? '▼' : '▶'}
+                            {expanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
                           </button>
                         )}
                       </div>
@@ -1264,7 +1264,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
       <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
         <div style={smStyle.header}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>⚠ Recherche allergène / ingrédient</div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Recherche allergène / ingrédient</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Trouvez dans quelles recettes un produit apparaît</div>
           </div>
           <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
@@ -1309,7 +1309,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
                           <span key={i.id} style={is.matchIng}>{i.nom}</span>
                         ))}
                         {matchedAllerg.map(a => (
-                          <span key={a} style={is.matchAllerg}>⚠ {ALLERGENES_MAP[a] || a}</span>
+                          <span key={a} style={is.matchAllerg}>{ALLERGENES_MAP[a] || a}</span>
                         ))}
                       </div>
                     </div>
@@ -1328,7 +1328,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
                           <span key={i.id} style={is.matchIng}>{i.nom}{i.quantite ? ` · ${i.quantite}${i.unite || ''}` : ''}</span>
                         ))}
                         {matchedAllerg.map(a => (
-                          <span key={a} style={is.matchAllerg}>⚠ {ALLERGENES_MAP[a] || a}</span>
+                          <span key={a} style={is.matchAllerg}>{ALLERGENES_MAP[a] || a}</span>
                         ))}
                       </div>
                     </div>
@@ -1418,7 +1418,7 @@ const Recettes = ({ user, etablissement }) => {
     setDefaultCarteId(next);
     try {
       await legacySB?.db?.setUserSetting?.('cartes_default:' + etabId, next);
-      notifyLegacy(next ? '★ Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
+      notifyLegacy(next ? 'Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
     } catch (e) { notifyLegacy('Erreur enregistrement : ' + (e.message || e), 'error'); }
   };
 
@@ -1631,7 +1631,7 @@ const Recettes = ({ user, etablissement }) => {
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />
           {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
               en icône seule, la loupe 🔎 se confondait avec la loupe de recherche. */}
-          <button style={{...rs.printBtn, background:'var(--warning-bg)', borderColor:'var(--warning-bd)', color:'var(--warning-text)', fontWeight:600}} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">⚠ Allergènes</button>
+          <button style={{...rs.printBtn, background:'var(--warning-bg)', borderColor:'var(--warning-bd)', color:'var(--warning-text)', fontWeight:600}} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
           <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">{isMobile ? '⤓' : '⤓ Export multiple'}</button>
         </div>
         {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
@@ -1697,15 +1697,15 @@ const Recettes = ({ user, etablissement }) => {
                   title={defaultCarteId === activeCarte.id ? 'Carte d\'accueil - clic pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
                 >
                   {defaultCarteId === activeCarte.id
-                    ? (isMobile ? '★ Accueil' : '★ Carte d\'accueil')
-                    : (isMobile ? '☆ Par défaut' : '☆ Définir par défaut')}
+                    ? (isMobile ? 'Accueil' : 'Carte d\'accueil')
+                    : (isMobile ? 'Par défaut' : 'Définir par défaut')}
                 </button>
               )}
               {/* Une carte cachée n'est servie qu'au consultant : le badge dit
                   explicitement que la brigade ne la voit pas, sinon rien ne
                   distingue à l'écran une carte publiée d'une carte masquée. */}
               {activeCarte.masquee === true ? (
-                <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)', padding:'6px 16px', fontSize:12}} title="Visible du consultant uniquement">🙈 Cachée</span>
+                <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)', padding:'6px 16px', fontSize:12}} title="Visible du consultant uniquement">Cachée</span>
               ) : (
                 <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)', padding:'6px 16px', fontSize:12}}>● Active</span>
               )}
@@ -1765,7 +1765,7 @@ const Recettes = ({ user, etablissement }) => {
                           <div style={rs.platScrim} aria-hidden="true" />
                           <div style={rs.platOverlay}>
                             <div style={rs.platCardName}>{plat.nom}</div>
-                            {tempsMax > 0 && <div style={rs.platOverlayMeta}>⏱ {tempsMax} min</div>}
+                            {tempsMax > 0 && <div style={rs.platOverlayMeta}>{tempsMax} min</div>}
                           </div>
                         </div>
                         <div style={rs.platBody}>
@@ -1869,7 +1869,7 @@ const Recettes = ({ user, etablissement }) => {
                     activerRecette(r);
                   }
                 }}>
-                <RecettePhoto src={r.photoUrl} alt={r.nom} placeholder="📖" style={rs.thumb} />
+                <RecettePhoto src={r.photoUrl} alt={r.nom} style={rs.thumb} />
                 <div style={rs.recetteInfo}>
                   <div style={rs.recetteName}>{r.nom}</div>
                   <div style={rs.recetteMeta}>{r.categorie} · {r.portions} portions · v{r.version} · modifié {r.modifie}</div>
@@ -1929,7 +1929,7 @@ const Recettes = ({ user, etablissement }) => {
                         <RecettePhoto src={plat.photoUrl} alt={plat.nom} style={rs.thumb} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={rs.platName}>
-                            <span style={{ marginRight: 8, fontSize: 12, color: 'var(--text2)' }}>{isExpanded ? '▼' : '▶'}</span>
+                            <span style={{ marginRight: 8, fontSize: 12, color: 'var(--text2)' }}>{isExpanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                             {plat.nom}
                           </div>
                           <div style={rs.recetteMeta}>

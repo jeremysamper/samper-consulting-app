@@ -352,11 +352,11 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
               <button
                 onClick={() => fileRef.current?.click()}
                 style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontWeight: 700, padding: '10px 16px', minHeight: 44 }}
-              >📄 Choisir un PDF ou une image</button>
+              >Choisir un PDF ou une image</button>
               <button
                 onClick={() => cameraRef.current?.click()}
                 style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', padding: '10px 16px', minHeight: 44 }}
-              >📷 Photographier</button>
+              >Photographier</button>
               <span style={{ fontSize: 11, color: 'var(--text3)' }}>
                 {fichiers.length}/5. Un PDF multi-pages compte pour un seul fichier.
               </span>
@@ -368,7 +368,6 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                   <div key={a.nom + i} style={{ position: 'relative' }}>
                     {a.pdf ? (
                       <div style={{ width: 110, height: 140, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8 }}>
-                        <span style={{ fontSize: 26 }}>📄</span>
                         <span data-no-translate style={{ fontSize: 9, color: 'var(--text2)', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>{a.nom}</span>
                       </div>
                     ) : (

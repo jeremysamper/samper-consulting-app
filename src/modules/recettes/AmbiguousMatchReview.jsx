@@ -144,7 +144,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
         <div style={{ padding: 14, overflowY: 'auto' }}>
           {filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 13 }}>
-              ✓ Aucune correspondance en attente.
+              Aucune correspondance en attente.
             </div>
           )}
           {filtered.map((it) => {
@@ -187,7 +187,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                       cursor: (busy || aiBusy) ? 'wait' : 'pointer',
                       background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)', fontWeight: 700,
                     }}
-                  >✨ Auto</button>
+                  >Auto</button>
                   <button
                     disabled={busy}
                     onClick={() => resolveOne(it, null)}

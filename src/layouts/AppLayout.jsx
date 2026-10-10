@@ -16,7 +16,7 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from 'lucide-react';
+import { Bell, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
 import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
@@ -490,7 +490,7 @@ export default function AppLayout({
       if (legacySB) {
         try {
           await legacySB.db.updateEtablissementLogo(etablissement.id, dataUrl);
-          notifyLegacy('✓ Logo mis à jour pour ' + etablissement.nom, 'success');
+          notifyLegacy('Logo mis à jour pour ' + etablissement.nom, 'success');
         } catch (err) {
           notifyLegacy('Erreur enregistrement logo : ' + err.message, 'error');
           return;
@@ -564,7 +564,7 @@ export default function AppLayout({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: size > 30 ? 14 : 10, color: '#fff',
           }}>
-            ✎
+            <Pencil size={size > 30 ? 16 : 12} aria-hidden="true" />
           </div>
         )}
       </LogoTag>
@@ -582,11 +582,11 @@ export default function AppLayout({
           onChange={handleLogoUpload}
         />
         <button style={ls.logoMenuBtn} onClick={() => fileInputRef.current?.click()}>
-          📁 Changer le logo
+          Changer le logo
         </button>
         {appLogo && (
           <button style={{ ...ls.logoMenuBtn, color: 'var(--danger-strong)' }} onClick={handleLogoRemove}>
-            🗑 Retirer le logo
+            Retirer le logo
           </button>
         )}
         <div style={{ fontSize: 10, color: 'var(--text2)', padding: '8px 12px 4px', borderTop: '1px solid var(--border)' }}>
@@ -629,7 +629,7 @@ export default function AppLayout({
         {/* État vide */}
         {!alertsLoading && alerts.length === 0 && (
           <div style={{ ...itemStyle, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid var(--success-strong)' }}>
-            ✓ Aucune alerte active
+            Aucune alerte active
           </div>
         )}
         {/* Liste des alertes */}

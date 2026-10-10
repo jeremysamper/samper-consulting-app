@@ -94,7 +94,7 @@ export default function EtablissementTransferModal({
       >
         <div style={ts.header}>
           <div style={{ minWidth: 0 }}>
-            <div style={ts.title}>🏛 Transférer vers un autre établissement</div>
+            <div style={ts.title}>Transférer vers un autre établissement</div>
             <div style={ts.subtitle}>
               {aTransferer.length} recette{aTransferer.length > 1 ? 's' : ''} sélectionnée{aTransferer.length > 1 ? 's' : ''}
               {sourceNom ? ` depuis « ${sourceNom} »` : ''}.

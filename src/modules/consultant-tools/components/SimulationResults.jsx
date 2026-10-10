@@ -18,7 +18,6 @@ export function SimulationResults({
   if (!hasResult) {
     return (
       <div style={cs.empty}>
-        <div style={{ fontSize: 32, opacity: 0.25 }}>📊</div>
         <div style={cs.emptyText}>Lancez l'analyse pour obtenir les résultats</div>
       </div>
     );
@@ -32,7 +31,7 @@ export function SimulationResults({
     <div style={cs.root}>
       {alerte && (
         <div style={cs.alerte}>
-          ⚠ Charge élevée - risque en coup de feu
+          Charge élevée - risque en coup de feu
         </div>
       )}
 

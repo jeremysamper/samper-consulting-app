@@ -170,8 +170,8 @@ export default function ImportDocumentsAchats({
           onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
           onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
-        <button type="button" style={st.btnPrimaire} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>📄 Choisir des documents</button>
-        <button type="button" style={st.btn} disabled={tableAbsente} onClick={() => cameraRef.current?.click()}>📷 Photographier</button>
+        <button type="button" style={st.btnPrimaire} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>Choisir des documents</button>
+        <button type="button" style={st.btn} disabled={tableAbsente} onClick={() => cameraRef.current?.click()}>Photographier</button>
         <select value={typeImport} onChange={e => setTypeImport(e.target.value)} style={st.select} aria-label="Type des documents">
           <option value="auto">Type : deviner</option>
           {TYPES_DOCUMENT.map(t => <option key={t.id} value={t.id}>Type : {t.pluriel}</option>)}
@@ -187,7 +187,7 @@ export default function ImportDocumentsAchats({
           {file.map(t => (
             <div key={t.key} style={st.travail}>
               <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
-                {t.statut === 'ok' ? '✓' : t.statut === 'erreur' ? '⚠' : t.statut === 'doublon' ? '≡' : t.statut === 'lecture' ? '…' : '·'}
+                {t.statut === 'ok' ? '✓' : t.statut === 'erreur' ? '!' : t.statut === 'doublon' ? '≡' : t.statut === 'lecture' ? '…' : '·'}
               </span>
               <span data-no-translate style={{ flex: '1 1 160px', minWidth: 0, wordBreak: 'break-word', fontWeight: 600 }}>{t.nom}</span>
               <span style={{ flex: '2 1 200px', minWidth: 0, color: t.statut === 'erreur' ? 'var(--danger-text)' : 'var(--text2)' }}>

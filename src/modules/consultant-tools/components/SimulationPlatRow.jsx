@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 const SCORE_COLORS = {
   1: 'var(--success-strong)',
@@ -29,7 +30,7 @@ export function SimulationPlatRow({ plat }) {
             ))}
           </div>
           <span style={{ ...cs.scoreNum, color }}>{score}/5</span>
-          {score >= 4 && <span style={cs.alertIcon}>⚠</span>}
+          {score >= 4 && <span style={cs.alertIcon}><AlertTriangle size={14} aria-label="Charge élevée" /></span>}
         </div>
       </div>
 
@@ -39,7 +40,6 @@ export function SimulationPlatRow({ plat }) {
 
       {suggestion && score >= 4 && (
         <div style={cs.suggestion}>
-          <span style={cs.suggestionIcon}>💡</span>
           <span>
             {suggestion}
             {impact_si_simplifie != null && (

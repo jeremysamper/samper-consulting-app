@@ -292,7 +292,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
           <span style={s.table}>Table {order.tableNo || '-'}</span>
           {order.couverts != null && <span style={s.couv}>{order.couverts} couv.</span>}
           {allBumped
-            ? <span style={s.served}>✓ prêt</span>
+            ? <span style={s.served}>prêt</span>
             : <span style={{ ...s.timer, color: ageColor(min) }}>{elapsedLabel(order.openedAt)}</span>}
         </div>
 
@@ -353,7 +353,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
         )}
 
         <div style={s.footer}>
-          <button style={s.completeBtn} onClick={() => completeOrder(order)}>✓ Terminer la commande</button>
+          <button style={s.completeBtn} onClick={() => completeOrder(order)}>Terminer la commande</button>
         </div>
       </div>
     );

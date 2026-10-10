@@ -147,7 +147,7 @@ export function PosItemRow({
                 disabled={busy}
                 style={{ fontSize: 12, padding: '4px 10px' }}
               >
-                ✓ Valider
+                Valider
               </Btn>
             )}
 

@@ -74,7 +74,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
         businessId: selected.businessId,
         locationId: selected.locationId,
       });
-      notify(`Location "${selected.locationName}" sélectionnée ✓`, 'success');
+      notify(`Location "${selected.locationName}" sélectionnée`, 'success');
       onSelected();
     } catch (err) {
       notify(`Erreur : ${err.message}`, 'error');
@@ -162,7 +162,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
 
       setProgress({ done: result.daysProcessed, total: 14 });
       setDone(true);
-      notify(`Historique importé : ${result.salesTotal} ventes sur ${result.daysProcessed} jours ✓`, 'success');
+      notify(`Historique importé : ${result.salesTotal} ventes sur ${result.daysProcessed} jours`, 'success');
       onComplete?.();
     } catch (err) {
       notify(`Backfill échoué : ${err.message}`, 'error');
@@ -224,9 +224,9 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
 
   // Indicateur visuel de l'étape 2 (secrets Supabase)
   let step2Icon, step2Color;
-  if (checking)        { step2Icon = '⌛'; step2Color = 'var(--text3)'; }
-  else if (configured) { step2Icon = '✅'; step2Color = 'var(--success-text)'; }
-  else                 { step2Icon = '⚠️'; step2Color = '#c2410c'; }
+  if (checking)        { step2Icon = '…'; step2Color = 'var(--text3)'; }
+  else if (configured) { step2Icon = '✓'; step2Color = 'var(--success-text)'; }
+  else                 { step2Icon = '!'; step2Color = '#c2410c'; }
 
   const steps = [
     { icon: '①', color: 'var(--text2)', label: 'Créer une app sur le portail développeur Lightspeed' },
@@ -274,7 +274,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
           background: '#fff7ed', border: '1px solid #fed7aa',
           borderRadius: 8, padding: '8px 12px',
         }}>
-          ⚠ Configure d'abord les secrets Supabase (étape 2) avant de connecter.
+          Configure d'abord les secrets Supabase (étape 2) avant de connecter.
           Clique sur "Voir le guide" pour les instructions détaillées.
         </div>
       )}
@@ -291,7 +291,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
             cursor: 'pointer', fontFamily: 'var(--font)',
           }}
         >
-          📖 Voir le guide de configuration
+          Voir le guide de configuration
         </button>
         <button
           type="button"
@@ -361,7 +361,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
       if (type === 'pos_oauth_success') {
         setAction(null);
         const name = locationName ? ` (${locationName})` : '';
-        notify(`Lightspeed connecté${name} ✓`, 'success');
+        notify(`Lightspeed connecté${name}`, 'success');
         loadStatus();
       } else if (type === 'pos_oauth_needs_location') {
         setAction(null);
@@ -400,7 +400,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
     setAction('testing');
     try {
       const res = await callEdgeFn(POS_OAUTH_FN, 'test', { etablissementId, providerId: provider.id });
-      notify(res.message || 'Connexion opérationnelle ✓', 'success');
+      notify(res.message || 'Connexion opérationnelle', 'success');
       loadStatus();
     } catch (err) {
       notify(`Test échoué : ${err.message}`, 'error');
@@ -490,7 +490,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
               </div>
             )}
             {isError && status?.last_error && (
-              <div style={{ fontSize: 12, color: 'var(--danger-text)', marginTop: 4, background: 'var(--danger-bg-soft)', padding: '5px 9px', borderRadius: 6 }}>⚠ {status.last_error}</div>
+              <div style={{ fontSize: 12, color: 'var(--danger-text)', marginTop: 4, background: 'var(--danger-bg-soft)', padding: '5px 9px', borderRadius: 6 }}>{status.last_error}</div>
             )}
             {needsLocation && (
               <div style={{ fontSize: 12, color: '#c2410c', marginTop: 3 }}>
@@ -613,7 +613,7 @@ export default function PosIntegrationsCard({ etablissement, user }) {
       )}
 
       <div style={{ padding: '10px 20px', background: '#f0f9ff', borderTop: '1px solid #bae6fd', fontSize: 11, color: '#0369a1' }}>
-        🔐 Les identifiants POS sont chiffrés côté serveur et ne sont jamais exposés dans l'application.
+        Les identifiants POS sont chiffrés côté serveur et ne sont jamais exposés dans l'application.
       </div>
     </div>
   );

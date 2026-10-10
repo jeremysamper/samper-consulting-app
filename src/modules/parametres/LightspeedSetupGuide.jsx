@@ -40,7 +40,7 @@ function CopyBtn({ value }) {
         transition: 'all 0.15s',
       }}
     >
-      {copied ? 'Copié ✓' : 'Copier'}
+      {copied ? 'Copié' : 'Copier'}
     </button>
   );
 }
@@ -157,7 +157,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>
-                ⚠ Note le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création
+                Note le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création
                 - tu en auras besoin à l'étape&nbsp;2.
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 background: '#f0f9ff', border: '1px solid #bae6fd',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>
-                💡 Une fois les secrets ajoutés, recharge cette page - le bouton
+                Une fois les secrets ajoutés, recharge cette page - le bouton
                 "Connecter" s'activera automatiquement.
               </div>
             </div>

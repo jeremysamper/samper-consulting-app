@@ -313,7 +313,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
             <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
               {visibles.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 13 }}>
-                  {search ? 'Aucun nom ne correspond au filtre.' : '✓ Rien dans cette pile.'}
+                  {search ? 'Aucun nom ne correspond au filtre.' : 'Rien dans cette pile.'}
                 </div>
               )}
               {visibles.map(g => {

@@ -163,7 +163,7 @@ export default function ComptageRapide({
             aria-pressed={rangement}
             onClick={() => setRangement(r => !r)}
           >
-            {rangement ? '✓ Rangement terminé' : '📍 Ranger par zone'}
+            {rangement ? 'Rangement terminé' : 'Ranger par zone'}
           </button>
         )}
         <input
@@ -207,7 +207,7 @@ export default function ComptageRapide({
         <div style={st.vide}>
           {total === 0
             ? 'Aucun produit dans cet inventaire. Ajoutez-les depuis le catalogue avec « + Produits », ou tapez un nom ci-dessus.'
-            : filtre === 'a_compter' ? 'Tout est compté. 👍' : 'Aucun produit ne correspond.'}
+            : filtre === 'a_compter' ? 'Tout est compté.' : 'Aucun produit ne correspond.'}
         </div>
       )}
 
@@ -239,7 +239,7 @@ export default function ComptageRapide({
                       <span>
                         {l.precedent != null
                           ? <>préc. {l.precedent} {l.unite}</>
-                          : compte ? <>✓ compté</> : <>à compter</>}
+                          : compte ? <>compté</> : <>à compter</>}
                       </span>
                       {canEdit && onChangerZone && rangement && (
                         <ChoixZone

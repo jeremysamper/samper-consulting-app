@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * PosTokenAlertBanner
@@ -19,8 +20,8 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
 
   const n = unhealthy.length;
   const message = n === 1
-    ? `⚠ Lightspeed déconnecté pour ${unhealthy[0].nom} - la sync des ventes est en pause.`
-    : `⚠ Lightspeed déconnecté pour ${n} établissements - la sync est en pause.`;
+    ? `Lightspeed déconnecté pour ${unhealthy[0].nom} - la sync des ventes est en pause.`
+    : `Lightspeed déconnecté pour ${n} établissements - la sync est en pause.`;
 
   // ── Pastille mobile ──────────────────────────────────────────────
   if (variant === 'pill') {
@@ -47,7 +48,7 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
           lineHeight: 1,
         }}
       >
-        ⚠
+        <AlertTriangle size={16} aria-hidden="true" />
       </button>
     );
   }
