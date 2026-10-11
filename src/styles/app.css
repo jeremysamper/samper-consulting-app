@@ -152,7 +152,7 @@
   :root:not([data-theme="light"]) {
     /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
        pour la teinte de la marque (~225). C'est ce virage qui donne au dark
-       son atmosphère « Opal » — profondeur froide, lumière aqua. */
+       son atmosphère « Opal » : profondeur froide, lumière aqua. */
     --bg: oklch(19.5% 0.024 225);
     --bg2: oklch(16.5% 0.02 225);
     --surface: oklch(22.5% 0.024 225);
@@ -221,7 +221,7 @@
 }
 
 html[data-theme="dark"] {
-  /* Contenu identique au bloc @media ci-dessus — voir le commentaire là-haut. */
+  /* Contenu identique au bloc @media ci-dessus, voir le commentaire là-haut. */
   --bg: oklch(19.5% 0.024 225);
   --bg2: oklch(16.5% 0.02 225);
   --surface: oklch(22.5% 0.024 225);
@@ -847,7 +847,7 @@ body {
 body {
   font-family: var(--font);
   /* Ambiance : lueur pétrole en haut de page, posée sous tout le contenu.
-     Deux couches — le radial (--ambient) puis la couleur de fond. */
+     Deux couches : le radial (--ambient) puis la couleur de fond. */
   background: var(--ambient) no-repeat, var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -995,7 +995,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent) !important;
-  /* Anneau sur token : suit le thème (pétrole en light, aqua en dark —
+  /* Anneau sur token : suit le thème (pétrole en light, aqua en dark ;
      l'ancien rgba(0,48,66,…) était invisible sur fond sombre). */
   box-shadow: 0 0 0 3px var(--focus-ring);
 }

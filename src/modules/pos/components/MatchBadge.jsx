@@ -3,7 +3,7 @@
  *
  * Variantes :
  *   🟢 auto      → score ≥ 85 ou validation manuelle
- *   🟡 suggested → score 50–84, confirmation requise
+ *   🟡 suggested → score de 50 à 84, confirmation requise
  *   ⚪ manual    → score < 50 ou non calculé
  */
 
@@ -54,7 +54,7 @@ export function MatchBadge({ status, score }) {
     }}>
       <span>{cfg.label}</span>
       {score != null && status !== 'manual' && (
-        <span style={{ opacity: 0.75 }}>· {score}</span>
+        <span style={{ opacity: 0.75 }}>({score})</span>
       )}
     </span>
   );

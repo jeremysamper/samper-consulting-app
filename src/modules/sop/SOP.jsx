@@ -127,7 +127,7 @@ const SOP = ({ user, etablissement }) => {
           <h1 style={ss.title}>SOPs & Checklists</h1>
           <div style={ss.subtitle}>
             {sops.filter(s => s.actif).length} procédure{sops.filter(s => s.actif).length > 1 ? 's' : ''}
-            {' · '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
+            {', '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
           </div>
         </div>
         <div className="module-actions">
@@ -530,7 +530,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sop.titre}</div>
           <div style={{ fontSize: 11, color: 'var(--text2)' }}>
             {new Date(execution.heureDebut).toLocaleString('fr-CH', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-            {execution.operateurNom && ` · ${execution.operateurNom}`}
+            {execution.operateurNom && `, ${execution.operateurNom}`}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -766,7 +766,7 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>
                     {new Date(exec.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
                     {exec.heureFin && ` → ${new Date(exec.heureFin).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}`}
-                    {exec.operateurNom && ` · ${exec.operateurNom}`}
+                    {exec.operateurNom && `, ${exec.operateurNom}`}
                   </div>
                   {exec.notes && (
                     <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, fontStyle: 'italic' }}>{exec.notes}</div>

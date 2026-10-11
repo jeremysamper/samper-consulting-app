@@ -8,7 +8,7 @@
  *
  * Seuils (validés dans le brief J3) :
  *   ≥ 85 → 'auto'      (badge vert  🟢)
- *   50–84 → 'suggested' (badge jaune 🟡)
+ *   50 à 84 → 'suggested' (badge jaune 🟡)
  *   < 50  → 'manual'   (badge gris  ⚪)
  */
 
@@ -36,11 +36,11 @@ function bigrams(str) {
 
 /**
  * Coefficient Dice entre deux chaînes DÉJÀ normalisées.
- * Retourne un entier 0–100.
+ * Retourne un entier de 0 à 100.
  *
  * @param {string} a  Chaîne normalisée
  * @param {string} b  Chaîne normalisée
- * @returns {number}  0–100
+ * @returns {number}  de 0 à 100
  */
 export function diceCoefficient(a, b) {
   if (!a || !b) return 0;
@@ -65,7 +65,7 @@ export function diceCoefficient(a, b) {
  *
  * @param {string} posName     Nom du plat côté POS
  * @param {string} recipeName  Nom de la recette
- * @returns {number}           0–100
+ * @returns {number}           de 0 à 100
  */
 export function diceScore(posName, recipeName) {
   return diceCoefficient(normalizeString(posName), normalizeString(recipeName));
@@ -74,7 +74,7 @@ export function diceScore(posName, recipeName) {
 /**
  * Statut de matching basé sur le score.
  *
- * @param {number} score  0–100
+ * @param {number} score  de 0 à 100
  * @returns {'auto'|'suggested'|'manual'}
  */
 export function getMatchStatus(score) {

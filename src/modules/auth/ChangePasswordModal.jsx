@@ -126,7 +126,7 @@ export default function ChangePasswordModal({ email, onClose }) {
             </button>
           </div>
 
-          {/* flexShrink: 0 — sans lui la règle tactile globale (min-height 44px)
+          {/* flexShrink: 0 : sans lui la règle tactile globale (min-height 44px)
               écrase la hauteur des boutons en colonne sur mobile. */}
           <div style={s.actions}>
             <button type="button" style={{ ...s.btn, ...s.btnGhost }} onClick={onClose} disabled={loading}>

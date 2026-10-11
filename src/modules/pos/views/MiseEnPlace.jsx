@@ -138,7 +138,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
         <div style={{ fontSize: 12, color: 'var(--text2)' }}>
           {mappedCount} plat{mappedCount !== 1 ? 's' : ''} mappé{mappedCount !== 1 ? 's' : ''}
           {unmappedCount > 0 && (
-            <> · <span style={{ color: 'var(--text3)' }}>
+            <>, <span style={{ color: 'var(--text3)' }}>
               {unmappedCount} non mappé{unmappedCount !== 1 ? 's' : ''} exclus
             </span></>
           )}

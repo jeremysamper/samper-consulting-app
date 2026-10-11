@@ -266,7 +266,7 @@ export const fichesActives = (recettes) => (recettes || []).filter(r => r?.nom &
 // Texte « sources » de l'état d'inventaire pour une ligne liée.
 export const sourceMaison = (ligne) => {
   const prix = Number(ligne.prixUnit) || 0;
-  return `Produit maison · fiche « ${ligne.recetteNom || nomCherche(ligne.produit)} » : ${prix.toFixed(2)} CHF/${ligne.unite} (coût matière)`;
+  return `Produit maison, fiche « ${ligne.recetteNom || nomCherche(ligne.produit)} » : ${prix.toFixed(2)} CHF/${ligne.unite} (coût matière)`;
 };
 
 export const estMaison = (ligne) => !!ligne?.recetteId;

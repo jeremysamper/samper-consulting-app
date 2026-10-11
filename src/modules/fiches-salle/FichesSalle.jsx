@@ -326,7 +326,7 @@ const FichesSalle = ({ user, etablissement }) => {
       updated.size === 0
         ? 'Aucune fiche rattachée.'
         : `${updated.size} fiche(s) ${mode === 'replace' ? 'déplacée(s) vers' : 'rattachée(s) à'} ${noms || 'aucune carte'}`
-          + `${echecs ? ` · ${echecs} échec(s)` : ''}.`,
+          + `${echecs ? `, ${echecs} échec(s)` : ''}.`,
       updated.size === 0 ? 'error' : 'success',
     );
   };
@@ -420,7 +420,7 @@ const FichesSalle = ({ user, etablissement }) => {
           const allergLabels = allergIds.map(labelAllergene);
           const platRecipe = { nom: u.nom, categorie: u.categorie, portions: '', ingredients, etapes };
           const ai = await generateFicheSalle(platRecipe, allergLabels);
-          const infosService = [ai.infosService, nuances.length ? `Précisions allergènes : ${nuances.join(' · ')}` : '']
+          const infosService = [ai.infosService, nuances.length ? `Précisions allergènes : ${nuances.join(' ; ')}` : '']
             .filter(Boolean).join(' ');
           const fiche = {
             id: null,
@@ -465,7 +465,7 @@ const FichesSalle = ({ user, etablissement }) => {
     notifyLegacy(
       `Génération terminée : ${created} fiche(s) salle créée(s) sur ${done} traitée(s)`
       + `${carteActive ? ` dans « ${carteActive.nom} »` : ''}`
-      + `${bulkCancelRef.current ? ' · interrompu' : ''}.`,
+      + `${bulkCancelRef.current ? ', interrompu' : ''}.`,
       created > 0 ? 'success' : 'info',
     );
   };
@@ -542,7 +542,7 @@ const FichesSalle = ({ user, etablissement }) => {
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
             <div style={{fontSize:15,fontWeight:800,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>Génération des fiches salle</div>
             <div style={{fontSize:13,color:'var(--text2)'}}>
-              {bulkProgress.done} / {bulkProgress.total} plat(s) · {bulkProgress.created} fiche(s) créée(s)
+              {bulkProgress.done} / {bulkProgress.total} plat(s), {bulkProgress.created} fiche(s) créée(s)
             </div>
             <div style={{height:10,background:'var(--bg)',borderRadius:6,margin:'12px 0',overflow:'hidden',border:'1px solid var(--border)'}}>
               <div style={{height:'100%',width:`${bulkProgress.total?(bulkProgress.done/bulkProgress.total)*100:0}%`,background:'var(--accent)',transition:'width 0.2s'}}/>
@@ -794,7 +794,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
       ...f,
       recetteId,
       allergenes: newAllergs,
-      infosService: [f.infosService, nuances.length ? `Précisions allergènes : ${nuances.join(' · ')}` : '']
+      infosService: [f.infosService, nuances.length ? `Précisions allergènes : ${nuances.join(' ; ')}` : '']
         .filter(Boolean).join(' '),
       // Pré-remplir la description si vide
       descriptionService: f.descriptionService || rec.nom,

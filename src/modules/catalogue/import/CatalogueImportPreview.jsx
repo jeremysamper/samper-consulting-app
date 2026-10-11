@@ -116,7 +116,7 @@ const CatalogueImportPreview = ({ produits, onChange }) => {
                       <div style={s.dupBox}>
                         <div style={s.dupInfo}>
                           Au catalogue : <strong>{p._existing.nom}</strong>
-                          {' · '}{fmtPrix(p._existing.prixUnitaire, p._existing.uniteRef)}
+                          {', '}{fmtPrix(p._existing.prixUnitaire, p._existing.uniteRef)}
                         </div>
                         <select
                           style={{ ...s.inp, width: '100%' }}

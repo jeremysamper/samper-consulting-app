@@ -63,7 +63,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
             {resa.nom}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-            · {resa.nb_couverts} pax
+            {resa.nb_couverts} pax
           </span>
           {resa.est_groupe && (
             <span style={{
@@ -216,14 +216,14 @@ export default function VueJour({
           {!loading && actives.length > 0 && (
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 1 }}>
               {totalCouverts} couvert{totalCouverts > 1 ? 's' : ''}
-              {totalGroupes > 0 ? ` · ${totalGroupes} groupe${totalGroupes > 1 ? 's' : ''}` : ''}
+              {totalGroupes > 0 ? `, ${totalGroupes} groupe${totalGroupes > 1 ? 's' : ''}` : ''}
               {serviceEnCours && attables > 0 && (
                 <>
-                  {' · '}
+                  {', '}
                   <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>
                     {attables} à table
                   </span>
-                  {resteAVenir > 0 ? ` · ${resteAVenir} attendu${resteAVenir > 1 ? 's' : ''}` : ''}
+                  {resteAVenir > 0 ? `, ${resteAVenir} attendu${resteAVenir > 1 ? 's' : ''}` : ''}
                 </>
               )}
             </div>

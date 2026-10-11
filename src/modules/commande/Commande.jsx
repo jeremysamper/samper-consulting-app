@@ -133,7 +133,7 @@ const Commande = ({ user, etablissement }) => {
       const n = await legacySB.db.generateCommande(etabId, computed);
       const rows = await legacySB.db.listCommandeItems(etabId);
       setItems(Array.isArray(rows) ? rows : []);
-      setCartesLabel(selCartes.map(c => c.nom).filter(Boolean).join(' · '));
+      setCartesLabel(selCartes.map(c => c.nom).filter(Boolean).join(', '));
       setShowGen(false);
       notifyLegacy(`Liste générée : ${n} produit(s) pour ${selCartes.length} carte${selCartes.length > 1 ? 's' : ''}.`, 'success');
     } catch (err) {
@@ -478,7 +478,7 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={s.carteName}>{c.nom || 'Carte sans nom'}</div>
                         <div style={s.carteMeta}>
-                          {cnt} plat{cnt > 1 ? 's' : ''}{formatCartePeriode(c) ? ' · ' + formatCartePeriode(c) : ''}
+                          {cnt} plat{cnt > 1 ? 's' : ''}{formatCartePeriode(c) ? ', ' + formatCartePeriode(c) : ''}
                         </div>
                       </div>
                     </label>
@@ -506,7 +506,7 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
 // Periode d'une carte, format court fr-CH, si renseignee.
 function formatCartePeriode(c) {
   const fmt = (d) => { try { return new Date(d).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return ''; } };
-  if (c.dateDebut && c.dateFin) return `${fmt(c.dateDebut)} – ${fmt(c.dateFin)}`;
+  if (c.dateDebut && c.dateFin) return `du ${fmt(c.dateDebut)} au ${fmt(c.dateFin)}`;
   if (c.dateDebut) return `dès le ${fmt(c.dateDebut)}`;
   if (c.dateFin) return `jusqu'au ${fmt(c.dateFin)}`;
   return '';

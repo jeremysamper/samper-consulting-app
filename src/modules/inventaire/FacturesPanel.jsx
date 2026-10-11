@@ -440,9 +440,9 @@ export default function FacturesPanel({
                 <span style={st.periodeTotaux}>
                   <span>
                     <span>{t.n}</span>{t.n > 1 ? ' factures' : ' facture'}
-                    {t.n > 0 && <span data-no-translate>{` · CHF ${chf(t.total)}`}</span>}
+                    {t.n > 0 && <span data-no-translate>{` pour CHF ${chf(t.total)}`}</span>}
                     {t.sansTTC > 0 && <span>{t.sansTTC > 1 ? `, dont ${t.sansTTC} sans montant TTC` : ', dont une sans montant TTC'}</span>}
-                    {liste.length !== t.n && <span>{` · ${liste.length} affichée${liste.length > 1 ? 's' : ''}`}</span>}
+                    {liste.length !== t.n && <span>{`, ${liste.length} affichée${liste.length > 1 ? 's' : ''}`}</span>}
                   </span>
                   {/* Montant à régler seulement s'il diffère du total : « 3 factures,
                       CHF 2 432,40, à régler CHF 2 432,40 » se répétait. */}
@@ -605,7 +605,7 @@ function LigneFacture({
           </span>
           <span style={st.factureMeta}>
             {f.dateDocument ? `Facture du ${dateLongue(f.dateDocument)}` : 'Date non lue'}
-            {echeance && <span style={echeance.ton || undefined}>{` · ${echeance.texte}`}</span>}
+            {echeance && <span style={echeance.ton || undefined}>{`, ${echeance.texte}`}</span>}
           </span>
         </button>
         <div style={st.factureMontant}>

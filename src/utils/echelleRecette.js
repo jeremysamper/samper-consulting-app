@@ -8,8 +8,8 @@
 // même chose, et le facteur ne s'arrondissait pas pareil.
 //
 // Les deux entrées du recalcul restent celles d'origine :
-//   · un nombre de portions voulu ;
-//   · la quantité réelle d'un ingrédient, sur laquelle toute la recette se cale.
+//   - un nombre de portions voulu ;
+//   - la quantité réelle d'un ingrédient, sur laquelle toute la recette se cale.
 // L'une comme l'autre se ramènent à un nombre de portions, seule grandeur
 // conservée par les modules appelants (le ratio en découle, et l'export PDF
 // reflète alors exactement ce qui est à l'écran).
@@ -51,7 +51,7 @@ export function fmtFacteur(ratio) {
 
 /**
  * Virgule décimale acceptée : c'est ce que la brigade tape sur un pavé iPad.
- * Renvoie NaN si la saisie n'est pas un nombre — les appelants testent `> 0`.
+ * Renvoie NaN si la saisie n'est pas un nombre : les appelants testent `> 0`.
  */
 export function parseNombre(txt) {
   return parseFloat(String(txt).replace(',', '.'));

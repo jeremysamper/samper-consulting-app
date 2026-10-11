@@ -77,7 +77,7 @@ export function heureEnMinutes(heure) {
 // Rattachement au plus proche SANS fenêtre de tolérance : un relevé pris à
 // 09:40 alors que les créneaux sont 07:00 et 18:00 compte pour la tournée du
 // matin. Une fenêtre stricte laisserait des relevés orphelins et afficherait
-// « 0 zone relevée » sur une tournée pourtant faite — pire que le décalage.
+// « 0 zone relevée » sur une tournée pourtant faite, pire que le décalage.
 //
 // Le rattachement est purement indicatif : l'heure réellement enregistrée sur
 // le relevé n'est jamais réécrite.

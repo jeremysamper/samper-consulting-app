@@ -237,7 +237,7 @@ const Inventaire = ({ user, etablissement }) => {
   // ═══ Load Supabase + Realtime ═══
   // Lecture stricte : une erreur remonte au lieu de rendre []. Sans ça un JWT
   // expiré au réveil d'une tablette affiche « Aucun inventaire » alors que la
-  // base est pleine — et la brigade recrée un périmètre en double par-dessus.
+  // base est pleine, et la brigade recrée un périmètre en double par-dessus.
   const [loadError, setLoadError] = React.useState(false);
   const reloadRef = React.useRef(null);
   React.useEffect(() => {
@@ -697,7 +697,7 @@ const Inventaire = ({ user, etablissement }) => {
         <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
           Créez un inventaire par périmètre : cuisine, boissons, matériel… chacun avec son propre rythme de comptage.
         </div>
-        {loadError && <div style={invs.loadError}>Données indisponibles pour le moment — ne créez pas d'inventaire avant d'avoir réessayé.</div>}
+        {loadError && <div style={invs.loadError}>Données indisponibles pour le moment. Ne créez pas d'inventaire avant d'avoir réessayé.</div>}
         {canManage && <button style={invs.addBtn} onClick={() => openNewInventory()} type="button">+ Créer le premier inventaire</button>}
         {/* Pas de renommage ici : sans inventaire, il n'y a aucun périmètre à renommer. */}
         {renderNewInventoryModal()}
@@ -716,7 +716,7 @@ const Inventaire = ({ user, etablissement }) => {
 
   // ─── Validation ───
   // Un inventaire validé est une pièce comptable : il se fige. Les lignes ne
-  // bougent plus tant qu'il n'est pas explicitement rouvert — sinon la valeur
+  // bougent plus tant qu'il n'est pas explicitement rouvert, sinon la valeur
   // de stock validée le mois dernier peut changer après coup sans trace.
   const estValide = inv.statut === 'validé';
   const canEditLignes = canManage && !estValide;
@@ -1223,7 +1223,7 @@ const Inventaire = ({ user, etablissement }) => {
 
         if (imported.length === 0) { alertLegacy('Aucun produit valide trouvé dans le fichier.'); return; }
 
-        // Ce format fusionne dans l'inventaire affiché — impossible s'il est
+        // Ce format fusionne dans l'inventaire affiché : impossible s'il est
         // validé. (Le format Samper multi-feuilles, lui, crée un inventaire
         // neuf : il reste autorisé, plus haut dans cette fonction.)
         if (estValide) {
@@ -1359,7 +1359,7 @@ const Inventaire = ({ user, etablissement }) => {
 
       {loadError && (
         <div style={invs.loadError} className="no-print">
-          Données indisponibles pour le moment — la liste affichée peut être incomplète.
+          Données indisponibles pour le moment. La liste affichée peut être incomplète.
           <button style={{ ...invs.exportBtn, marginLeft: 10 }} onClick={() => reloadRef.current?.()}>Réessayer</button>
         </div>
       )}
@@ -1510,7 +1510,7 @@ const Inventaire = ({ user, etablissement }) => {
           <span style={invs.docTitleDate}>Inventaire du {inv.date}</span>
           {/* Sur un document imprimé, « validé » sans nom de valideur ne prouve rien. */}
           <span style={invs.docTitleDate}>
-            {estValide ? `· Validé${validateurNom ? ' par ' + validateurNom : ''}` : '· En cours'}
+            {estValide ? `Validé${validateurNom ? ' par ' + validateurNom : ''}` : 'En cours'}
           </span>
         </div>
 

@@ -9,7 +9,7 @@ import { tailleParDefaut } from '../../hooks/usePlanSalle.js';
 // Pas de poignées de redimensionnement sur le canevas : la taille découle de
 // la forme et du nombre de places (une table de 8 est plus grande qu'un
 // deux-couverts). Redimensionner à la main aurait ajouté un geste de plus au
-// doigt pour un plan qui n'a pas à être à l'échelle du mètre — il doit être
+// doigt pour un plan qui n'a pas à être à l'échelle du mètre : il doit être
 // reconnaissable, pas exact.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -261,7 +261,7 @@ export default function PlanTableForm({
             )}
           </div>
 
-          {/* Actif — cible tactile de 44px, la case nue est trop petite au doigt */}
+          {/* Actif : cible tactile de 44px, la case nue est trop petite au doigt */}
           <label style={{
             display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer',
           }}>

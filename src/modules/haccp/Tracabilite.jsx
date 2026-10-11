@@ -231,16 +231,16 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
         {year && !month && <span>{year}</span>}
         {year && month && (
           <>
-            <span>·</span>
+            <span>›</span>
             <button style={gStyles.crumbBtn} onClick={() => { setMonth(null); setDay(null); }}>{year}</button>
           </>
         )}
         {year && month && !day && <span>{MOIS[Number(month) - 1]}</span>}
         {year && month && day && (
           <>
-            <span>·</span>
+            <span>›</span>
             <button style={gStyles.crumbBtn} onClick={() => setDay(null)}>{MOIS[Number(month) - 1]}</button>
-            <span>·</span>
+            <span>›</span>
             <span>{day}</span>
           </>
         )}
@@ -320,7 +320,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
                 </div>
                 <div style={hs.field}>
                   <label style={hs.fLabel}>Produit / fournisseur (optionnel)</label>
-                  <input type="text" style={hs.fInput} placeholder="ex : Filet de bœuf – Boucherie Martin" value={form.produit} onChange={e => setForm(f => ({ ...f, produit: e.target.value }))} disabled={busy} />
+                  <input type="text" style={hs.fInput} placeholder="ex : Filet de bœuf, Boucherie Martin" value={form.produit} onChange={e => setForm(f => ({ ...f, produit: e.target.value }))} disabled={busy} />
                 </div>
                 <div style={hs.field}>
                   <label style={hs.fLabel}>Notes (n° de lot, DLC…)</label>

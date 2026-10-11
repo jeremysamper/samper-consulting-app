@@ -107,7 +107,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
       const file = files[idx];
       const kind = detectKind(file);
       setParsingMsg(
-        many ? `Lecture ${idx + 1}/${files.length} · ${file.name}…`
+        many ? `Lecture ${idx + 1}/${files.length} : ${file.name}…`
           : (kind === 'photo' ? 'Lecture en cours, quelques secondes…' : 'Lecture du fichier…'),
       );
       try {
@@ -300,7 +300,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   Glissez vos fiches ici, ou cliquez pour parcourir
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-                  Excel, CSV, PDF ou photos · plusieurs fichiers à la fois
+                  Excel, CSV, PDF ou photos, plusieurs fichiers à la fois
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
@@ -355,10 +355,10 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
             <div>
               {parseStats && (
                 <div style={statsBanner}>
-                  <strong>{parseStats.sheetsTotal}</strong> feuille(s) dans le classeur ·{' '}
-                  <strong>{parseStats.sheetsRead.length}</strong> lue(s) ·{' '}
-                  <strong>{parseStats.rowsTotal}</strong> ligne(s) analysée(s) ·{' '}
-                  <strong>{recipes.length}</strong> recette(s) détectée(s) ·{' '}
+                  <strong>{parseStats.sheetsTotal}</strong> feuille(s) dans le classeur,{' '}
+                  <strong>{parseStats.sheetsRead.length}</strong> lue(s),{' '}
+                  <strong>{parseStats.rowsTotal}</strong> ligne(s) analysée(s),{' '}
+                  <strong>{recipes.length}</strong> recette(s) détectée(s),{' '}
                   <strong>{recipes.reduce((s, r) => s + (r.ingredients || []).length, 0)}</strong> ingrédient(s)
                   {parseStats.sheetsRead.length > 0 && (
                     <span style={{ color: 'var(--text2)' }}>
@@ -367,7 +367,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   )}
                   {parseStats.sheetsSkipped.length > 0 && (
                     <span style={{ color: 'var(--warning-text)' }}>
-                      {' '}· ignoré(s) : {parseStats.sheetsSkipped.join(', ')}
+                      {', '}ignoré(s) : {parseStats.sheetsSkipped.join(', ')}
                     </span>
                   )}
                 </div>
@@ -412,8 +412,8 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
               </div>
               <div style={{ fontSize: 13, color: 'var(--text2)' }}>
                 {progress.imported} recette(s) importée(s)
-                {progress.failed > 0 ? ` · ${progress.failed} échec(s)` : ''}
-                {cancelRef.current ? ' · interrompu' : ''}
+                {progress.failed > 0 ? `, ${progress.failed} échec(s)` : ''}
+                {cancelRef.current ? ', interrompu' : ''}
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
                 <Btn variant="ghost" onClick={reset}>Importer un autre fichier</Btn>

@@ -19,9 +19,9 @@ import { metaStatut, metaType, rangStatut } from './typesGroupe.js';
 // Le parent décide de ce qu'ouvre un tap selon le nombre de groupes du jour.
 //
 // Trois densités, choisies par le parent d'après la largeur réelle du
-// calendrier : 'large' (iPad couché, bureau) « Apéro dînatoire n°1 · 120 pax ·
-// 19:00 », 'moyenne' (iPad debout) « Apéro n°1 · 120 pax », 'compacte'
-// (téléphone) « AD1 · 120p ». Dans les trois, le numéro du menu est un élément
+// calendrier : 'large' (iPad couché, bureau) « Apéro dînatoire n°1, 120 pax,
+// 19:00 », 'moyenne' (iPad debout) « Apéro n°1, 120 pax », 'compacte'
+// (téléphone) « AD1, 120p ». Dans les trois, le numéro du menu est un élément
 // à part qui ne rétrécit pas : c'est le nom du type qui cède (ellipse), jamais
 // le « n°4 » - « mariage n°4 » est le vocabulaire de la maison.
 //
@@ -117,7 +117,7 @@ export default function CalendrierMois({
                         : null}
                     </span>
                     <span style={s.etiquettePax}>
-                      {g.nbPax}{compact ? 'p' : ' pax'}{densite === 'large' && g.heure ? ` · ${g.heure}` : ''}
+                      {g.nbPax}{compact ? 'p' : ' pax'}{densite === 'large' && g.heure ? `, ${g.heure}` : ''}
                     </span>
                   </span>
                 );

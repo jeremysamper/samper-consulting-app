@@ -6,8 +6,8 @@ import { hs } from './HACCP.styles.js';
 //
 // Rend visible la grille horaire de l'établissement (configurée dans l'onglet
 // ✦ Paramètres) et ce qu'il reste à faire : « Ouverture 06:30 ✓ fait »,
-// « Fermeture 15:00 · 0/6 zones ». Un seul shift au Rucher, quatre tournées à
-// Woodland — la brigade lit sa propre organisation, pas un modèle générique.
+// « Fermeture 15:00, 0/6 zones ». Un seul shift au Rucher, quatre tournées à
+// Woodland : la brigade lit sa propre organisation, pas un modèle générique.
 //
 // Cliquable uniquement sur la journée en cours : la saisie enregistre à la date
 // du jour, proposer le bouton sur une date passée ferait enregistrer des relevés
@@ -19,7 +19,7 @@ const CreneauxDuJour = ({ suivi = [], dateLabel, saisissable, onSaisir }) => {
   return (
     <div style={hs.tableCard}>
       <div style={hs.tableCardHeader}>
-        Tournées de relevé · {dateLabel}
+        Tournées de relevé : {dateLabel?.toLowerCase()}
       </div>
       <div style={hs.creneauStrip}>
         {suivi.map(c => {

@@ -221,7 +221,7 @@ export default function PlatPicker({
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={ps.platNom}>{p.nom}</div>
                                 <div style={ps.platMeta}>
-                                  {p.prixVente != null ? `CHF ${Number(p.prixVente).toFixed(2)} · ` : ''}
+                                  {p.prixVente != null ? `CHF ${Number(p.prixVente).toFixed(2)}, ` : ''}
                                   {(p.recettes || []).length} composant{(p.recettes || []).length > 1 ? 's' : ''}
                                 </div>
                               </div>

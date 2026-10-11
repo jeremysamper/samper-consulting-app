@@ -21,7 +21,7 @@ import EtiquettesDlc from './EtiquettesDlc.jsx';
 
 
 // ─────────────────────────────────────────────────────
-// MODULE HACCP - Relevés · Contrôles hygiène · Config consultant
+// MODULE HACCP : relevés, contrôles hygiène, config consultant
 // ─────────────────────────────────────────────────────
 
 // toLocaleDateString('fr-CH') rend les libellés en minuscules ("jeudi 10 juillet")
@@ -693,7 +693,7 @@ const HACCP = ({ user, etablissement }) => {
                   <div key={a.id} style={hs.anomRow}>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{zone?.nom}</div>
-                      <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure} · {op.name}</div>
+                      <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure}, {op.name}</div>
                       {a.commentaire&&<div style={{fontSize:12,color:'var(--danger-strong)',marginTop:2}}>{a.commentaire}</div>}
                     </div>
                     <div style={{fontSize:20,fontWeight:700,color:'var(--danger-strong)',fontFamily:'var(--font-num)'}}>{a.valeur}{zone?.unite}</div>
@@ -780,7 +780,7 @@ const HACCP = ({ user, etablissement }) => {
                     <div style={{...hs.ctrlCheck,background:done?(done.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--border)'}}>{done?(done.statut==='conforme'?'✓':'✕'):''}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{tpl.label}</div>
-                      <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>{tpl.frequence} · {CTRL_TYPES.find(t=>t.id===tpl.type)?.label}</div>
+                      <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>{tpl.frequence}, {CTRL_TYPES.find(t=>t.id===tpl.type)?.label}</div>
                       {tpl.description&&<div style={{fontSize:11,color:'var(--text2)',marginTop:2,fontStyle:'italic'}}>{tpl.description}</div>}
                       {done?.notes&&<div style={{fontSize:11,color:done.statut==='conforme'?'var(--text2)':'var(--danger-strong)',marginTop:3,fontStyle:'italic'}}>{done.notes}</div>}
                     </div>
@@ -856,7 +856,7 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={hcfg.sectionSub}>
                   {creneaux.length === 0
                     ? "Aucun créneau - l'heure est saisie librement à chaque relevé"
-                    : `${creneaux.length} créneau${creneaux.length>1?'x':''} configuré${creneaux.length>1?'s':''} · ${activeCreneaux.length} actif${activeCreneaux.length>1?'s':''}`}
+                    : `${creneaux.length} créneau${creneaux.length>1?'x':''} configuré${creneaux.length>1?'s':''}, ${activeCreneaux.length} actif${activeCreneaux.length>1?'s':''}`}
                 </div>
               </div>
               <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>+ Ajouter un créneau</button>
@@ -877,7 +877,7 @@ const HACCP = ({ user, etablissement }) => {
                       <span style={{flex:1,minWidth:0}}>
                         <span style={{display:'block',fontSize:13,fontWeight:700,color:'var(--text)'}}>{p.label}</span>
                         <span style={{display:'block',fontSize:11,color:'var(--text2)',marginTop:2}}>{p.sub}</span>
-                        <span style={{display:'block',fontSize:11,color:'var(--accent)',marginTop:3,fontWeight:600}}>{p.creneaux.map(c=>c.heure).join(' · ')}</span>
+                        <span style={{display:'block',fontSize:11,color:'var(--accent)',marginTop:3,fontWeight:600}}>{p.creneaux.map(c=>c.heure).join(', ')}</span>
                       </span>
                     </button>
                   ))}
@@ -894,7 +894,7 @@ const HACCP = ({ user, etablissement }) => {
                         {!c.actif && <span style={{fontSize:10,fontWeight:600,background:'var(--bg)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                       </div>
                       <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
-                        Tournée de {activeZones.length} zone{activeZones.length>1?'s':''} · heure locale
+                        Tournée de {activeZones.length} zone{activeZones.length>1?'s':''}, heure locale
                       </div>
                     </div>
                     <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}} onClick={()=>toggleCreneau(c)}>
@@ -913,7 +913,7 @@ const HACCP = ({ user, etablissement }) => {
             <div style={hcfg.sectionHeader}>
               <div>
                 <div style={hcfg.sectionTitle}>Zones & équipements</div>
-                <div style={hcfg.sectionSub}>{zones.length} zone{zones.length>1?'s':''} configurée{zones.length>1?'s':''} · {activeZones.length} active{activeZones.length>1?'s':''}</div>
+                <div style={hcfg.sectionSub}>{zones.length} zone{zones.length>1?'s':''} configurée{zones.length>1?'s':''}, {activeZones.length} active{activeZones.length>1?'s':''}</div>
               </div>
               <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>+ Ajouter une zone</button>
             </div>
@@ -926,7 +926,7 @@ const HACCP = ({ user, etablissement }) => {
                       {!z.actif && <span style={{fontSize:10,fontWeight:600,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
-                      {ZONE_TYPES.find(t=>t.id===z.type)?.label} · Cible : {z.cible}{z.unite} · Plage : [{z.min??'-'} ; {z.max??'+∞'}]{z.unite}
+                      {ZONE_TYPES.find(t=>t.id===z.type)?.label}, cible : {z.cible}{z.unite}, plage : [{z.min??'-'} ; {z.max??'+∞'}]{z.unite}
                     </div>
                   </div>
                   {/* Toggle actif */}
@@ -946,7 +946,7 @@ const HACCP = ({ user, etablissement }) => {
             <div style={hcfg.sectionHeader}>
               <div>
                 <div style={hcfg.sectionTitle}>Contrôles d'hygiène</div>
-                <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''} · {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
+                <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''}, {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
               </div>
               <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>+ Ajouter un contrôle</button>
             </div>
@@ -960,8 +960,8 @@ const HACCP = ({ user, etablissement }) => {
                       {!c.actif&&<span style={{fontSize:10,fontWeight:600,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
-                      {CTRL_TYPES.find(t=>t.id===c.type)?.label} · {c.frequence}
-                      {c.description&&<span> · <em>{c.description.slice(0,60)}{c.description.length>60?'…':''}</em></span>}
+                      {CTRL_TYPES.find(t=>t.id===c.type)?.label}, {c.frequence}
+                      {c.description&&<span>, <em>{c.description.slice(0,60)}{c.description.length>60?'…':''}</em></span>}
                     </div>
                   </div>
                   <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}}
@@ -1002,7 +1002,7 @@ const HACCP = ({ user, etablissement }) => {
                       <button key={c.id} type="button"
                         onClick={()=>setFormRel({...formRel, heure:c.heure})}
                         style={{...hs.creneauChip, ...(formRel.heure===c.heure ? hs.creneauChipOn : {})}}>
-                        {c.heure} · {c.label}
+                        {c.heure}, {c.label}
                       </button>
                     ))}
                     <button type="button" onClick={()=>setFormRel({...formRel, heure:zurichClock()})} style={hs.creneauChip}>Maintenant</button>
@@ -1097,7 +1097,7 @@ const HACCP = ({ user, etablissement }) => {
                     onClick={()=>runRelevesExport(opt.id)}>
                     <span style={{flex:1, minWidth:0}}>
                       <span style={{display:'block', fontSize:14, fontWeight:700, color:'var(--text)'}}>{opt.label}</span>
-                      <span style={{display:'block', fontSize:11, color:'var(--text2)', marginTop:2}}>{opt.sub} · {opt.count} relevé{opt.count>1?'s':''}</span>
+                      <span style={{display:'block', fontSize:11, color:'var(--text2)', marginTop:2}}>{opt.sub}, {opt.count} relevé{opt.count>1?'s':''}</span>
                     </span>
                     <span style={{color:'var(--text2)', fontSize:18, flexShrink:0}}>›</span>
                   </button>
@@ -1164,7 +1164,7 @@ const HACCP = ({ user, etablissement }) => {
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{zone.nom}</div>
                       <div style={{ fontSize: 11, color: 'var(--text2)' }}>
                         Cible : {zone.cible}{zone.unite || '°C'}
-                        {(zone.min != null && zone.max != null) && ` · plage ${zone.min} → ${zone.max}${zone.unite || '°C'}`}
+                        {(zone.min != null && zone.max != null) && `, plage de ${zone.min} à ${zone.max}${zone.unite || '°C'}`}
                       </div>
                     </div>
                     <input

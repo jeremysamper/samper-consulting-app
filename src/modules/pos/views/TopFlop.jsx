@@ -150,7 +150,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
         </div>
         <PosExportButton
           printId={PRINT_ID}
-          title={`Top/Flop - ${filter === 'top10' ? 'Top 10 · ' : filter === 'flop10' ? 'Flop 10 · ' : ''}Semaine ${periodLabel}`}
+          title={`Top/Flop - ${filter === 'top10' ? 'Top 10 de la semaine ' : filter === 'flop10' ? 'Flop 10 de la semaine ' : 'Semaine '}${periodLabel}`}
           etablissement={etablissement}
         />
       </div>
@@ -166,9 +166,8 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
           paddingBottom: 4,
           borderBottom:  '1px solid var(--border)',
         }}>
-          {filter === 'top10'  ? 'Top 10 · ' : ''}
-          {filter === 'flop10' ? 'Flop 10 · ' : ''}
-          Semaine {periodLabel}
+          {filter === 'top10' ? 'Top 10 de la semaine ' : filter === 'flop10' ? 'Flop 10 de la semaine ' : 'Semaine '}
+          {periodLabel}
         </div>
 
         {/* Tableau */}

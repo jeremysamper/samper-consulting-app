@@ -24,7 +24,7 @@ export const PLAN_GRID = 10;
 
 // Le plan de salle repose sur des tables ajoutées par les migrations
 // 20260817. Tant qu'elles ne sont pas passées, PostgREST répond « relation
-// inconnue » — un cas qu'il faut nommer et non noyer dans un « erreur
+// inconnue », un cas qu'il faut nommer et non noyer dans un « erreur
 // technique » générique : c'est une installation incomplète, pas une panne,
 // et la personne qui la lit doit savoir quoi faire.
 const MESSAGE_SCHEMA_ABSENT =

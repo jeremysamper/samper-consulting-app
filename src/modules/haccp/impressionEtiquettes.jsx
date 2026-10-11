@@ -17,7 +17,7 @@ import { hs } from './HACCP.styles.js';
 
 // Feuille de partage du système : le PDF y arrive directement, « Imprimer » est
 // sous le pouce, et l'écran d'aperçu disparaît du parcours. C'est le chemin le
-// plus court qu'une page web puisse offrir sur iPad — aucun navigateur n'expose
+// plus court qu'une page web puisse offrir sur iPad : aucun navigateur n'expose
 // d'impression silencieuse, seul l'agent local sait faire mieux.
 //
 // Rien d'asynchrone ici : iOS n'autorise le partage que dans la tâche du geste
@@ -94,7 +94,7 @@ export async function imprimerLot({
   // Onglet ouvert AVANT le moindre await, et rempli avec le PDF une fois
   // celui-ci prêt : iOS refuse window.open dès qu'une promesse s'est
   // intercalée depuis le geste de l'opérateur. Inutile si l'impression part
-  // par l'agent — on le referme alors, mais seulement une fois le lot déposé.
+  // par l'agent : on le referme alors, mais seulement une fois le lot déposé.
   const fenetrePdf = agent ? null : ouvrirOngletVide();
 
   setBusy(true);

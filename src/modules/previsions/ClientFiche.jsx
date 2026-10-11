@@ -172,9 +172,9 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
             {!nouveau && historique && (
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                 {pluriel(venues.length, 'venue')}
-                {derniere ? ` · dernière le ${dateCh(derniere)}` : ''}
-                {prochaine ? ` · prochaine le ${dateCh(prochaine)}` : ''}
-                {noShows ? ` · ${pluriel(noShows, 'no-show')}` : ''}
+                {derniere ? `, dernière le ${dateCh(derniere)}` : ''}
+                {prochaine ? `, prochaine le ${dateCh(prochaine)}` : ''}
+                {noShows ? `, ${pluriel(noShows, 'no-show')}` : ''}
               </div>
             )}
           </div>
@@ -243,7 +243,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
               {!nouveau && (
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 8 }}>
-                    Historique · {pluriel((historique || []).length, 'réservation')}
+                    Historique ({pluriel((historique || []).length, 'réservation')})
                   </div>
                   {(historique || []).length === 0 && (
                     <div style={{ fontSize: 13, color: 'var(--text3)' }}>Aucune réservation rattachée.</div>
@@ -280,7 +280,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                           </div>
                           {(tags.length > 0 || r.notes_libres) && (
                             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 3 }}>
-                              {tags.join(', ')}{tags.length && r.notes_libres ? ' · ' : ''}{r.notes_libres || ''}
+                              {tags.join(', ')}{tags.length && r.notes_libres ? '. ' : ''}{r.notes_libres || ''}
                             </div>
                           )}
                         </div>

@@ -8,7 +8,7 @@ import { normalizeSearch } from '../../utils/searchText.js';
 // (relevé du 01.10.2026 : 340 lignes sur 391). Ce classeur range un nom de
 // produit dans un rayon, sans IA, hors ligne, en trois temps :
 //   1. préparation maison : le nom est celui d'une recette de l'établissement
-//      (insert, sauce, pickles…) — à produire, pas à commander ;
+//      (insert, sauce, pickles…), à produire, pas à commander ;
 //   2. catalogue : le produit existe dans le catalogue de l'établissement, on
 //      reprend sa catégorie ;
 //   3. mots-clés : dictionnaire de cuisine ci-dessous.
@@ -276,7 +276,7 @@ export function classerProduit(nom, ctx = null, categorieConnue = null) {
 
 // « Herbes / épices » (libellé du catalogue, et des lignes générées avant la
 // séparation) est re-trié par le nom : herbe fraîche ou fleur d'un côté, tout
-// le reste en épices — c'est le cas par défaut d'un produit sec du rayon.
+// le reste en épices : c'est le cas par défaut d'un produit sec du rayon.
 function scinderHerbesEpices(nom, categorie) {
   if (categorie !== HERBES_EPICES_CATALOGUE) return categorie;
   return rayonParMotsCles(nom) === HERBES_FLEURS ? HERBES_FLEURS : EPICES;

@@ -45,7 +45,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
   return (
     <div>
       <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
-        <strong style={{ color: 'var(--text)' }}>{recipes.length}</strong> recette(s) détectée(s) ·{' '}
+        <strong style={{ color: 'var(--text)' }}>{recipes.length}</strong> recette(s) détectée(s),{' '}
         <strong style={{ color: validCount === recipes.length ? 'var(--success-text)' : 'var(--warning-strong)' }}>{validCount}</strong> valide(s)
       </div>
 
@@ -90,7 +90,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                   title="Portions" style={{ ...cell, width: 56 }}
                 />
                 <span style={{ fontSize: 11, color: 'var(--text2)' }}>
-                  {(r.ingredients || []).length} ingr. · {(r.etapes || []).length} étape(s)
+                  {(r.ingredients || []).length} ingr., {(r.etapes || []).length} étape(s)
                 </span>
                 {!valid && (
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger-strong)' }}>non importable</span>

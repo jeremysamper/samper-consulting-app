@@ -111,7 +111,7 @@ export const DEMO_DATA = {
         'Déglacer au vin blanc. Laisser absorber complètement.',
         'Ajouter le bouillon chaud louche par louche (env. 80 ml) en remuant. Attendre absorption avant d\'ajouter la suivante.',
         'En parallèle, saisir les champignons à feu très vif dans une poêle séparée. Saler en fin de cuisson.',
-        'Après 16–18 min de cuisson du riz, incorporer les champignons.',
+        'Après 16 à 18 min de cuisson du riz, incorporer les champignons.',
         'Mantecatura : retirer du feu, incorporer le beurre froid en dés et le parmesan râpé. Remuer vigoureusement.',
         'Ajuster l\'assaisonnement. Servir immédiatement dans des assiettes creuses préchauffées.'
       ],
@@ -148,7 +148,7 @@ export const DEMO_DATA = {
         'Chauffer une poêle en fonte à feu très vif. Ajouter le beurre clarifié.',
         'Saisir les pavés 2 min de chaque côté pour former une croûte dorée.',
         'Réduire à feu moyen. Ajouter le beurre, le thym et l\'ail écrasé.',
-        'Arroser continuellement pendant 3–4 min selon l\'épaisseur et la cuisson souhaitée.',
+        'Arroser continuellement pendant 3 à 4 min selon l\'épaisseur et la cuisson souhaitée.',
         'Laisser reposer 5 min sur une grille sous papier aluminium.',
         'Déglacer la poêle avec le fond de veau. Réduire de moitié. Monter au beurre hors feu.',
         'Saler au sel de Guérande, poivrer au moment du service.'
@@ -220,7 +220,7 @@ export const DEMO_DATA = {
     },
     {
       id: 'carte-2',
-      nom: 'Carte Hiver 2025–2026',
+      nom: 'Carte Hiver 2025-2026',
       statut: 'archivée',
       dateDebut: '2025-11-01',
       dateFin: '2026-02-28',

@@ -119,7 +119,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
             Mode service
           </div>
           <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-            {formatDateLongue(date)}{aujourdhui ? '' : ' · pas aujourd’hui'}
+            {formatDateLongue(date)}{aujourdhui ? '' : ', pas aujourd’hui'}
           </div>
         </div>
 
@@ -127,7 +127,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
           <SegmentedTabs
             tabs={onglets.map((s) => ({
               id: s,
-              label: parService[s] ? `${SERVICE_META[s].label} · ${parService[s]}` : SERVICE_META[s].label,
+              label: parService[s] ? `${SERVICE_META[s].label} (${parService[s]})` : SERVICE_META[s].label,
             }))}
             active={svc}
             onChange={setService}
@@ -176,7 +176,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
         {service !== null && isMobile && (
           <div style={{ width: '100%', fontSize: 12, color: 'var(--text2)' }}>
             <strong style={{ color: 'var(--success-text)' }}>{pluriel(couverts(aTable), 'couvert')} à table</strong>
-            {' · '}{couverts(attendus)} attendus · {pluriel(couverts(prevus), 'couvert')} prévus
+            {', '}{couverts(attendus)} attendus, {pluriel(couverts(prevus), 'couvert')} prévus
           </div>
         )}
       </header>

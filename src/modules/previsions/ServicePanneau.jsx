@@ -229,13 +229,13 @@ export default function ServicePanneau({
       )}
 
       {demandes.length > 0 && (
-        <Section titre={`À confirmer · ${demandes.length}`} detail={pluriel(couverts(demandes), 'couvert')} ton="alerte">
+        <Section titre={`À confirmer (${demandes.length})`} detail={pluriel(couverts(demandes), 'couvert')} ton="alerte">
           {demandes.map(ligne)}
         </Section>
       )}
 
       {resas.length > 0 && (
-        <Section titre={`Attendus · ${attendus.length}`} detail={pluriel(couverts(attendus), 'couvert')}>
+        <Section titre={`Attendus (${attendus.length})`} detail={pluriel(couverts(attendus), 'couvert')}>
           {attendus.length === 0
             ? <div style={{ fontSize: 12, color: 'var(--text3)' }}>Plus personne n'est attendu.</div>
             : attendus.map(ligne)}
@@ -243,7 +243,7 @@ export default function ServicePanneau({
       )}
 
       {aTable.length > 0 && (
-        <Section titre={`À table · ${aTable.length}`} detail={pluriel(couverts(aTable), 'couvert')} ton="succes">
+        <Section titre={`À table (${aTable.length})`} detail={pluriel(couverts(aTable), 'couvert')} ton="succes">
           {aTable.map(ligne)}
         </Section>
       )}
@@ -261,7 +261,7 @@ export default function ServicePanneau({
               color: 'var(--text3)',
             }}
           >
-            {voirTermines ? '▾' : '▸'} Partis et no-shows · {termines.length}
+            {voirTermines ? '▾' : '▸'} Partis et no-shows ({termines.length})
           </button>
           {voirTermines && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

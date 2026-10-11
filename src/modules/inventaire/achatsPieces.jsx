@@ -102,7 +102,7 @@ export function VisionneusePieces({ doc, etabId, onClose }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={st.nom}>
             <span data-no-translate>{doc.fournisseurNom || 'Fournisseur non lu'}</span>
-            {doc.numero ? <span data-no-translate>{` · n° ${doc.numero}`}</span> : null}
+            {doc.numero ? <span data-no-translate>{`, n° ${doc.numero}`}</span> : null}
           </div>
           <div style={st.meta}>
             {libelleType(doc.typeDocument)}{doc.dateDocument ? ` du ${dateCH(doc.dateDocument)}` : ''}

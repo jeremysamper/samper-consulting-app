@@ -32,8 +32,8 @@ export const CRENEAU_LABELS = [
 ];
 
 // Modèles proposés quand aucun créneau n'est configuré. Ils reproduisent les
-// deux organisations réelles du parc — un seul shift (Le Rucher d'Evolène,
-// départ 6h) et double service (Woodland Village) — et restent modifiables
+// deux organisations réelles du parc (un seul shift au Rucher d'Evolène,
+// départ 6h, et double service à Woodland Village) et restent modifiables
 // créneau par créneau une fois appliqués.
 export const CRENEAUX_PRESETS = [
   {

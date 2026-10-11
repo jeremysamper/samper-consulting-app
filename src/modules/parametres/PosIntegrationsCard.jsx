@@ -119,7 +119,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
               />
               <div>
                 <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{loc.locationName}</div>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{loc.businessName} · {loc.locationId}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{loc.businessName}, {loc.locationId}</div>
               </div>
             </label>
           ))}
@@ -485,7 +485,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             </div>
             {isConnected && (
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
-                {status.ls_business_location_id ? `Location : ${status.ls_business_location_id} · ` : ''}
+                {status.ls_business_location_id ? `Location : ${status.ls_business_location_id}, ` : ''}
                 Dernière sync : {formatDate(status.last_sync_at)}
               </div>
             )}
@@ -597,7 +597,7 @@ export default function PosIntegrationsCard({ etablissement, user }) {
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Intégrations POS</div>
-          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Synchronisation des ventes · {etablissement?.nom || etablissementId}</div>
+          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Synchronisation des ventes : {etablissement?.nom || etablissementId}</div>
         </div>
         <div style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px' }}>Beta</div>
       </div>

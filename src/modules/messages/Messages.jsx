@@ -287,7 +287,7 @@ const Messages = ({ user, isActive = true }) => {
                     {formatTime(m.createdAt)}
                     {mine && (
                       <span style={{ color: m.readAt ? 'var(--success-text)' : 'var(--text3)', fontWeight: 700 }}>
-                        {m.readAt ? ' · Lu' : ' · Envoyé'}
+                        {m.readAt ? ', lu' : ', envoyé'}
                       </span>
                     )}
                   </div>

@@ -437,7 +437,7 @@ const Catalogue = ({ user, etablissement }) => {
       <div style={cat.header}>
         <div>
           <div style={cat.title}>Catalogue produits</div>
-          <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''} · {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
+          <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''}, {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
         {canWrite && (
           // Une action principale, une secondaire, et les trois façons
@@ -1330,7 +1330,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                       {p.intraDup ? (
                         <span style={{ color: 'var(--warning-strong)' }}>Présent 2× dans le fichier</span>
                       ) : (
-                        <>Doublon (par {p._matchReason}) - existant : <strong>{p._existing?.nom}</strong> {p._existing?.prixUnitaire ? `· ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
+                        <>Doublon (par {p._matchReason}) - existant : <strong>{p._existing?.nom}</strong>{p._existing?.prixUnitaire ? `, ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
                       )}
                     </div>
                     <div style={ipm.rowMeta}>
@@ -1356,8 +1356,8 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                     <div style={{ ...ipm.rowMeta, color: 'var(--danger-strong)' }}>{p._reason}</div>
                     <div style={ipm.rowMeta}>
                       Catégorie : {p.categorie}
-                      {p.referenceFourn && ` · réf ${p.referenceFourn}`}
-                      {p.conditionnement && ` · ${p.conditionnement}`}
+                      {p.referenceFourn && `, réf ${p.referenceFourn}`}
+                      {p.conditionnement && `, ${p.conditionnement}`}
                     </div>
                   </div>
                 </div>

@@ -22,7 +22,7 @@ export function zurichToday() {
   }).format(new Date());
 }
 
-// Minutes écoulées depuis minuit à Zurich (0–1439), indépendamment du fuseau du device.
+// Minutes écoulées depuis minuit à Zurich (de 0 à 1439), indépendamment du fuseau du device.
 export function zurichNowMinutes() {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: ZURICH_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',

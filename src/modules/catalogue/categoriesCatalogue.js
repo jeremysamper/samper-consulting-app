@@ -1,7 +1,7 @@
 import { EPICES, HERBES_FLEURS, rayonParMotsCles } from '../commande/classerProduit.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Catégories officielles du catalogue produits — source unique pour l'écran
+// Catégories officielles du catalogue produits, source unique pour l'écran
 // Catalogue, l'import IA et l'aperçu d'import (elles étaient recopiées dans
 // trois fichiers).
 //
@@ -9,7 +9,7 @@ import { EPICES, HERBES_FLEURS, rayonParMotsCles } from '../commande/classerProd
 // (herbes fraîches, fleurs comestibles, cueillette) et « Épices » (poivres,
 // sels, épices, vanille, herbes séchées), mêmes libellés que les rayons de la
 // commande. L'ancien libellé peut encore arriver : fonction `ai-proxy`
-// (liste de catégories imposée à l'IA), fichier d'import, anciennes lignes —
+// (liste de catégories imposée à l'IA), fichier d'import, anciennes lignes :
 // `affinerCategorie` le range alors d'après le nom du produit.
 // ─────────────────────────────────────────────────────────────────────────────
 

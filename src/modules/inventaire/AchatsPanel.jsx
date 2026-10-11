@@ -255,7 +255,7 @@ export default function AchatsPanel({
         <div style={st.periode}>
           Période du <strong>{dateCH(periode.debutInclus ? periode.debut : lendemain(periode.debut))}</strong> au <strong>{dateCH(periode.fin)}</strong>
           <span style={{ color: 'var(--text2)' }}>
-            {previousInv ? ` · depuis l'inventaire « ${perimetreActif} » du ${dateCH(previousInv.date)}` : ' · premier inventaire du périmètre, période ramenée au mois'}
+            {previousInv ? `, depuis l'inventaire « ${perimetreActif} » du ${dateCH(previousInv.date)}` : ', premier inventaire du périmètre, période ramenée au mois'}
           </span>
         </div>
         <div style={st.kpis}>
@@ -320,7 +320,7 @@ export default function AchatsPanel({
                 <div data-no-translate style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-word' }}>{e.ligne.libelle}</div>
                 <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
                   <span data-no-translate>{e.fournisseur || 'Fournisseur non lu'}</span>
-                  {' · '}CHF {chf(e.montant)}{e.occurrences > 1 ? ` sur ${e.occurrences} documents` : ''}
+                  {', '}CHF {chf(e.montant)}{e.occurrences > 1 ? ` sur ${e.occurrences} documents` : ''}
                 </div>
               </div>
               <div style={st.actionsLigne}>
@@ -445,7 +445,7 @@ export default function AchatsPanel({
                   <span style={{ width: 14, display: 'inline-block' }}>{ouvert ? '▾' : '▸'}</span>
                   <span style={{ fontWeight: 700 }} data-no-translate>{d.fournisseurNom || 'Fournisseur non lu'}</span>
                   <span style={{ color: 'var(--text2)' }}>
-                    {d.numero ? ` · n° ${d.numero}` : ''} · {(d.lignes || []).length} ligne{(d.lignes || []).length > 1 ? 's' : ''} · CHF {chf(d.totalHT != null ? d.totalHT : somme)}
+                    {d.numero ? `, n° ${d.numero}` : ''}, {(d.lignes || []).length} ligne{(d.lignes || []).length > 1 ? 's' : ''}, CHF {chf(d.totalHT != null ? d.totalHT : somme)}
                   </span>
                 </button>
                 <div style={st.docChamps}>

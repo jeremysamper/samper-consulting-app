@@ -238,8 +238,8 @@ export const UI_GLOSSARY_ES = {
   'Revenir à la base': 'Volver a la base',
   'Change les portions, ou tape la quantité que tu as sur une ligne : toute la recette suit.':
     'Cambia las raciones o escribe en una línea la cantidad que tienes: toda la receta se ajusta.',
-  'portion · fiche enregistrée inchangée': 'ración · ficha guardada sin cambios',
-  'portions · fiche enregistrée inchangée': 'raciones · ficha guardada sin cambios',
+  'portion, fiche enregistrée inchangée': 'ración, ficha guardada sin cambios',
+  'portions, fiche enregistrée inchangée': 'raciones, ficha guardada sin cambios',
   'Allergènes': 'Alérgenos',
   'Allergène': 'Alérgeno',
   'Tableau des allergènes': 'Tabla de alérgenos',

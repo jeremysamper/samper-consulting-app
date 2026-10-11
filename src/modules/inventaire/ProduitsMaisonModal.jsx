@@ -75,7 +75,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
                 <div data-no-translate style={st.nom}>{l.produit}</div>
                 <div style={st.info}>
                   fiche « <span data-no-translate>{recette?.nom || l.recetteNom || '?'}</span> »
-                  {calcul.detail ? ` · ${calcul.detail}` : ''}
+                  {calcul.detail ? `, ${calcul.detail}` : ''}
                 </div>
               </div>
               <div style={st.prix}>
@@ -110,7 +110,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
                       <div data-no-translate style={st.nom}>{l.produit}</div>
                       <div style={st.info}>
                         → fiche « <span data-no-translate>{s.recette.nom}</span> » {s.sure ? '' : `(${s.confidence} %, à confirmer)`}
-                        {calcul.detail ? ` · ${calcul.detail}` : ''}
+                        {calcul.detail ? `, ${calcul.detail}` : ''}
                       </div>
                     </div>
                     <div style={st.prix}>

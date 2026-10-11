@@ -32,14 +32,14 @@ export default function OfflineBanner() {
   const saisieLabel = `${saisies} quantité${saisies > 1 ? 's' : ''} d'inventaire en attente de synchronisation`;
   // Les deux files coexistent : on annonce ce qui attend réellement plutôt
   // qu'un compteur agrégé, qui ne dirait pas à qui s'adresser en cas de blocage.
-  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null].filter(Boolean).join(' · ');
+  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null].filter(Boolean).join(', ');
 
   if (!online) {
     return (
       <Band
         kind="warning"
         text={enAttente
-          ? `Hors ligne · ${enAttente}`
+          ? `Hors ligne : ${enAttente}`
           : 'Hors ligne : pointages, comptages d\'inventaire et fiches déjà chargées restent disponibles'}
       />
     );

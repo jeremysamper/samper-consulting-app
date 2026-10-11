@@ -782,7 +782,7 @@ export const pdfUtils = {
     const dateFmt = new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: 'long', year: 'numeric' });
     const etabName = etablissement?.nom || '';
     const etabAdresse = etablissement?.adresse || '';
-    const sousTitre = [etabName, etabAdresse].filter(Boolean).join(' · ');
+    const sousTitre = [etabName, etabAdresse].filter(Boolean).join(', ');
     return `
       <div class="pdf-header">
         <h1 class="pdf-doc-title">${title}</h1>
@@ -1837,7 +1837,7 @@ export const pdfUtils = {
     const drawHeader = () => this._enTeteDocument(doc, {
       titre: titreDoc,
       sousTitre: sousTitreDoc,
-      meta: [dateStr, ...compteurs].join('  ·  '),
+      meta: [dateStr, ...compteurs].join(', '),
       etablissement: etabName,
       logoDataUrl,
     });
@@ -1957,7 +1957,7 @@ export const pdfUtils = {
     const drawHeader = () => this._enTeteDocument(doc, {
       titre,
       sousTitre,
-      meta: `${dateStr}  ·  ${totalCount} préparation${totalCount > 1 ? 's' : ''}  ·  ${faitCount} faite${faitCount > 1 ? 's' : ''}`,
+      meta: `${dateStr}, ${totalCount} préparation${totalCount > 1 ? 's' : ''}, ${faitCount} faite${faitCount > 1 ? 's' : ''}`,
       etablissement: etabName,
       logoDataUrl,
     });
@@ -2311,7 +2311,7 @@ export const pdfUtils = {
       titre: 'Relevés de température',
       sousTitre: periodeLabel,
       meta: stats && stats.total != null
-        ? `${stats.total} relevé${stats.total > 1 ? 's' : ''}  ·  ${stats.conformes} conforme${stats.conformes > 1 ? 's' : ''}  ·  ${stats.anomalies} anomalie${stats.anomalies > 1 ? 's' : ''}  ·  taux de conformité ${stats.taux}%`
+        ? `${stats.total} relevé${stats.total > 1 ? 's' : ''}, ${stats.conformes} conforme${stats.conformes > 1 ? 's' : ''}, ${stats.anomalies} anomalie${stats.anomalies > 1 ? 's' : ''}, taux de conformité ${stats.taux}%`
         : dateStr,
       etablissement: etabName,
       logoDataUrl,
@@ -2697,8 +2697,8 @@ export const pdfUtils = {
     const drawHeader = () => {
       let ty = this._enTeteDocument(doc, {
         titre,
-        sousTitre: dateLabel + (categorie ? `   ·   ${categorie}` : ''),
-        meta: `${heureDebut} -> ${heureFin}   ·   Opérateur : ${operateur}`,
+        sousTitre: dateLabel + (categorie ? `, ${categorie}` : ''),
+        meta: `Début ${heureDebut}, fin ${heureFin}, opérateur : ${operateur}`,
         etablissement: etabName,
         logoDataUrl,
       });
@@ -2713,7 +2713,7 @@ export const pdfUtils = {
       doc.text(statutLabel.toUpperCase(), M + 4, ty + 0.6, { charSpace: BRAND.charSpace.label });
       const statutW = this._largeurTexte(doc, statutLabel.toUpperCase(), BRAND.charSpace.label);
       setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
-      doc.text(`   ·   ${cochees}/${total} étape${total > 1 ? 's' : ''} validée${cochees > 1 ? 's' : ''} (${taux}%)`, M + 4 + statutW, ty + 0.6);
+      doc.text(`   ${cochees}/${total} étape${total > 1 ? 's' : ''} validée${cochees > 1 ? 's' : ''} (${taux}%)`, M + 4 + statutW, ty + 0.6);
       return ty + h + 3;
     };
 

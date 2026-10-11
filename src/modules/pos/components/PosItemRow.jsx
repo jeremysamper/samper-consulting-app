@@ -5,7 +5,7 @@
  *   • Mappé + manually_validated     → 🟢 [Modifier] [Délier]
  *   • Mappé + !manually_validated    → badge selon confidence [✓ Valider] [Modifier]
  *   • Non mappé + suggestion ≥ 85    → 🟢 auto [✓ Confirmer] [Changer]
- *   • Non mappé + suggestion 50–84   → 🟡 suggestion [✓ Valider] [Changer]
+ *   • Non mappé + suggestion 50 à 84 → 🟡 suggestion [✓ Valider] [Changer]
  *   • Non mappé + suggestion < 50    → ⚪ manuel [Choisir une recette]
  */
 

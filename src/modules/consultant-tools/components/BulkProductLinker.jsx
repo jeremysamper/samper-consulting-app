@@ -345,7 +345,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                       <div style={{ flex: '1 1 180px', minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{g.nom}</div>
                         <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
-                          {g.nbOccurrences} ligne{g.nbOccurrences > 1 ? 's' : ''} · {g.nbRecettes} recette{g.nbRecettes > 1 ? 's' : ''}
+                          {g.nbOccurrences} ligne{g.nbOccurrences > 1 ? 's' : ''}, {g.nbRecettes} recette{g.nbRecettes > 1 ? 's' : ''}
                         </div>
                       </div>
                       {choisi && (
@@ -433,7 +433,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                 {nbSelection === 0
                   ? 'Aucune liaison sélectionnée.'
                   : <>
-                      <strong style={{ color: 'var(--text)' }}>{nbSelection}</strong> nom(s) ·{' '}
+                      <strong style={{ color: 'var(--text)' }}>{nbSelection}</strong> nom(s),{' '}
                       <strong style={{ color: 'var(--text)' }}>{nbLignesSelection}</strong> ligne(s) dans{' '}
                       <strong style={{ color: 'var(--text)' }}>{nbRecettesSelection}</strong> recette(s)
                     </>}
@@ -455,8 +455,8 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
               Liaison en cours
             </div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-              {progress.done}/{progress.total} recette(s) · {progress.lignes} ligne(s) liée(s)
-              {progress.echecs ? ` · ${progress.echecs} échec(s)` : ''}
+              {progress.done}/{progress.total} recette(s), {progress.lignes} ligne(s) liée(s)
+              {progress.echecs ? `, ${progress.echecs} échec(s)` : ''}
             </div>
             <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--border)', margin: '12px 0' }}>
               <div style={{ width: `${Math.round((progress.done / progress.total) * 100)}%`, height: '100%', background: 'var(--accent)', transition: 'width .15s linear' }} />

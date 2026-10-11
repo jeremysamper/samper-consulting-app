@@ -12,7 +12,7 @@ import BandeauNonActualise from './BandeauNonActualise.jsx';
 // ═══════════════════════════════════════════════════════════════════════════
 // Planning de la semaine : les réservations par NOM, service par service.
 //
-// Il affichait « Midi 24 · Soir 40 » : juste pour la cuisine, muet pour la
+// Il affichait « Midi 24, Soir 40 » : juste pour la cuisine, muet pour la
 // salle qui veut savoir QUI vient. Chaque jour montre désormais ses
 // réservations dans la colonne de leur service, avec le code couleur des
 // services (midi orange, soir bleu). Le brunch est dans la colonne du midi :
@@ -62,7 +62,7 @@ function ResaPuce({ resa, svc, onOpen }) {
     passeport ? 'Passeport gourmand' : null,
     noShow ? 'no-show' : null,
     allergies.length ? `allergies : ${allergies.join(', ')}` : null,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(' ; ');
 
   return (
     <button
@@ -239,7 +239,7 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
               fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5,
               color: SERVICE_META[svc].couleur, marginBottom: 4,
             }}>
-              {SERVICE_META[svc].label} · {pluriel(couvertsService(jour, svc), 'couvert')}
+              {SERVICE_META[svc].label} : {pluriel(couvertsService(jour, svc), 'couvert')}
             </div>
             <ListeService resas={jour.resas[svc]} svc={svc} onOpen={onOpen} vide={false} />
           </div>

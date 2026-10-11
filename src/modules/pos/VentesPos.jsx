@@ -49,7 +49,7 @@ export default function VentesPos({ user, etablissement }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <SectionHeader
         title="Ventes POS"
-        subtitle={`Synchronisation Lightspeed · ${etabNom}`}
+        subtitle={`Synchronisation Lightspeed : ${etabNom}`}
       />
 
       {/* ── Barre connexion / synchro (couplage + sync manuelle) ── */}

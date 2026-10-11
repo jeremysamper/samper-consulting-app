@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// QR-FACTURE SUISSE — données du Swiss QR Code (norme SPC v0200)
+// QR-FACTURE SUISSE : données du Swiss QR Code (norme SPC v0200)
 // ───────────────────────────────────────────────────────────────
 // Ce fichier ne dessine rien : il produit et valide la CHAÎNE encodée dans le
 // QR code, plus la matrice de modules. Le dessin (récépissé + section paiement)
@@ -9,7 +9,7 @@
 //
 // 1. Depuis le 21 novembre 2025 seules les adresses STRUCTURÉES sont admises
 //    (type S : rue / n° / NPA / localité / pays séparés). L'adresse combinée
-//    (type K, deux lignes libres) n'est plus acceptée — d'où l'analyseur
+//    (type K, deux lignes libres) n'est plus acceptée, d'où l'analyseur
 //    parserAdresse() qui découpe le bloc client saisi en texte libre.
 // 2. Le jeu de caractères est restreint au latin. Un caractère hors jeu ne fait
 //    pas échouer la génération : il produit un QR que certaines banques

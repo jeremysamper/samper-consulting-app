@@ -110,9 +110,9 @@ export default function ImportDocumentsAchats({
       onImporte(enregistre, pieceGardee);
       majTravail(travail.key, {
         statut: 'ok',
-        message: `${doc.fournisseurNom || 'Fournisseur non lu'} · ${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}`
-          + (doc.dateDocument ? ` · ${dateCH(doc.dateDocument)}` : ' · date non lue')
-          + (pieceGardee ? '' : estPdfFichier(travail.fichiers[0]) ? ' · PDF non conservé' : ' · photo non conservée'),
+        message: `${doc.fournisseurNom || 'Fournisseur non lu'}, ${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}`
+          + (doc.dateDocument ? `, ${dateCH(doc.dateDocument)}` : ', date non lue')
+          + (pieceGardee ? '' : estPdfFichier(travail.fichiers[0]) ? ', PDF non conservé' : ', photo non conservée'),
       });
     } catch (err) {
       majTravail(travail.key, { statut: 'erreur', message: err.message || String(err) });
@@ -187,7 +187,7 @@ export default function ImportDocumentsAchats({
           {file.map(t => (
             <div key={t.key} style={st.travail}>
               <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
-                {t.statut === 'ok' ? '✓' : t.statut === 'erreur' ? '!' : t.statut === 'doublon' ? '≡' : t.statut === 'lecture' ? '…' : '·'}
+                {t.statut === 'ok' ? '✓' : t.statut === 'erreur' ? '!' : t.statut === 'doublon' ? '≡' : t.statut === 'lecture' ? '…' : '○'}
               </span>
               <span data-no-translate style={{ flex: '1 1 160px', minWidth: 0, wordBreak: 'break-word', fontWeight: 600 }}>{t.nom}</span>
               <span style={{ flex: '2 1 200px', minWidth: 0, color: t.statut === 'erreur' ? 'var(--danger-text)' : 'var(--text2)' }}>

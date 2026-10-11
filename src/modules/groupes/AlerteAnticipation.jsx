@@ -82,7 +82,7 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
               key={g.id}
               type="button"
               onClick={() => onOuvrir?.(g)}
-              title={`${g.nom} · ${m.detail}`}
+              title={`${g.nom} : ${m.detail}`}
               style={{
                 flex: '1 1 250px', minWidth: 0, maxWidth: '100%', minHeight: 44, boxSizing: 'border-box',
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -101,7 +101,7 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
               }}>
                 {libelleGroupe(g.typeGroupe, g.menuNumero)}
                 <span style={{ fontWeight: 500, color: 'var(--text2)' }}>
-                  {' '}· {formatJourSemaine(g.dateEvenement)} {formatDateCourte(g.dateEvenement)} · {g.nbPax} pax
+                  {', '}{formatJourSemaine(g.dateEvenement)} {formatDateCourte(g.dateEvenement)}, {g.nbPax} pax
                 </span>
               </span>
               <span style={{

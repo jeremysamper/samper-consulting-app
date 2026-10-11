@@ -198,12 +198,12 @@ function TableShape({
   // salle pour ce service.
   const deplacable = (modePlan || mode === 'ajuster') && canEdit;
 
-  let titre = `${table.nom} · ${places} place${places > 1 ? 's' : ''}`;
+  let titre = `${table.nom} : ${places} place${places > 1 ? 's' : ''}`;
   // Une place de bar n'a la place d'écrire que trois lettres : le nom entier
   // passe dans l'info-bulle.
-  if (tabouret && occupants.length) titre = `${table.nom} · ${occupants.map((o) => o.resa.nom).join(', ')}`;
-  if (modePlan) titre = `${table.nom} · glisser pour déplacer, double-clic pour régler`;
-  else if (mode === 'ajuster') titre = `${table.nom} · glisser pour déplacer, lâcher sur une autre table pour les rapprocher`;
+  if (tabouret && occupants.length) titre = `${table.nom} : ${occupants.map((o) => o.resa.nom).join(', ')}`;
+  if (modePlan) titre = `${table.nom} : glisser pour déplacer, double-clic pour régler`;
+  else if (mode === 'ajuster') titre = `${table.nom} : glisser pour déplacer, lâcher sur une autre table pour les rapprocher`;
 
   return (
     <div
@@ -310,7 +310,7 @@ function TableShape({
               sont ceux du groupe entier et non de cette seule table. */}
           {tabouret
             ? `${String(resa.nom || '').trim().slice(0, 3)}${liste.length > 1 ? '+' : ''}`
-            : sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} · ${resa.nb_couverts}`}
+            : sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} (${resa.nb_couverts})`}
         </div>
       ))}
       {!tabouret && liste.length > 3 && (
@@ -377,8 +377,8 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
           {resa.nom}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-          {(resa.heure_arrivee || '').slice(0, 5)} · {resa.nb_couverts} pax
-          {resa.est_groupe ? ' · groupe' : ''}
+          {(resa.heure_arrivee || '').slice(0, 5)}, {resa.nb_couverts} pax
+          {resa.est_groupe ? ', groupe' : ''}
         </div>
         <div style={{
           fontSize: 10, marginTop: 2, fontWeight: 700,
@@ -1174,7 +1174,7 @@ export default function PlanSalle({
     }
     if (nouveaux.length) setLiens((prev) => [...(prev || []), ...nouveaux]);
     if (!silencieux && nouveaux.length) {
-      notify(`${resa.nom} · ${resa.nb_couverts} pax → ${nomTablee(tableId)}`, 'success');
+      notify(`${resa.nom} (${resa.nb_couverts} pax) à la ${nomTablee(tableId)}`, 'success');
     }
     return true;
   }
@@ -1208,14 +1208,14 @@ export default function PlanSalle({
     const posee = await poserSurTablee(resa, tableId, { silencieux: true });
     if (!posee) return;
     if (!(await retirerLiens(ailleurs))) return;
-    notify(`${resa.nom} · ${resa.nb_couverts} pax → ${nomTablee(tableId)}`, 'success');
+    notify(`${resa.nom} (${resa.nb_couverts} pax) à la ${nomTablee(tableId)}`, 'success');
   }
 
   const relireResas = () => (onResasModifiees || onRelireResas)?.();
 
   // Client de passage : créé « arrivé », à l'heure qu'il est, et assis.
   async function clientDePassage(tableId, nbCouverts) {
-    const nom = `Passage · ${nomTablee(tableId)}`;
+    const nom = `Passage, ${nomTablee(tableId)}`;
     const { data: resa, error: e } = await reservations.create({
       date_service:  date,
       service:       serviceActif,
@@ -1334,7 +1334,7 @@ export default function PlanSalle({
     const noms = toutes.map((t) => t.nom)
       .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
     const places = toutes.reduce((s, t) => s + (t.actif === false ? 0 : (t.nb_places || 0)), 0);
-    notify(`Tables ${noms.join(' + ')} rapprochées · ${places} places`, 'success');
+    notify(`Tables ${noms.join(' + ')} rapprochées, ${places} places`, 'success');
     // La fiche de la tablée s'ouvre aussitôt : c'est là qu'on choisit le
     // numéro qu'elle portera (celui de la table visée par défaut).
     setTableOuverte(cibleId);
@@ -1967,7 +1967,7 @@ export default function PlanSalle({
             <SegmentedTabs
               tabs={SERVICES.map((s) => ({
                 id: s.id,
-                label: couvertsParService[s.id] ? `${s.label} · ${couvertsParService[s.id]}` : s.label,
+                label: couvertsParService[s.id] ? `${s.label} (${couvertsParService[s.id]})` : s.label,
               }))}
               active={serviceActif}
               onChange={setService}
@@ -2135,7 +2135,7 @@ export default function PlanSalle({
           tabs={(salles || []).map((s) => ({
             id: s.id,
             label: modePlan
-              ? `${s.nom} · ${nbTablesParSalle.get(s.id) || 0}`
+              ? `${s.nom} (${nbTablesParSalle.get(s.id) || 0})`
               : s.nom,
           }))}
           active={salleId}
@@ -2159,7 +2159,7 @@ export default function PlanSalle({
           {/* Canevas. Sur téléphone il garde une largeur plancher et défile
               DANS son cadre : à 335 px de large, une table de deux couverts
               tomberait à 31 px, illisible et increvable au doigt. La page,
-              elle, ne pane jamais — le débordement reste enfermé ici. */}
+              elle, ne pane jamais : le débordement reste enfermé ici. */}
           {aucuneTable ? (
             <div style={{ flex: 1, minWidth: 0, width: '100%' }}>{planVide}</div>
           ) : (
@@ -2296,8 +2296,8 @@ export default function PlanSalle({
                 letterSpacing: 0.5, color: 'var(--text3)', marginBottom: 8,
               }}>
                 {nbAPlacer > 0
-                  ? `À placer · ${nbAPlacer}/${resasService.length}`
-                  : `Réservations · ${resasService.length}`}
+                  ? `À placer (${nbAPlacer}/${resasService.length})`
+                  : `Réservations (${resasService.length})`}
               </div>
 
               {resasService.length === 0 && (
@@ -2336,8 +2336,8 @@ export default function PlanSalle({
                 borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)',
                 fontSize: 11, color: 'var(--text3)', lineHeight: 1.5,
               }}>
-                {totalService} couvert{totalService > 1 ? 's' : ''} · {placesTotales} place{placesTotales > 1 ? 's' : ''} en salle
-                {enService && nbAPlacer > 0 ? ` · ${nbAPlacer} à placer` : ''}
+                {totalService} couvert{totalService > 1 ? 's' : ''}, {placesTotales} place{placesTotales > 1 ? 's' : ''} en salle
+                {enService && nbAPlacer > 0 ? `, ${nbAPlacer} à placer` : ''}
               </div>
             </div>
           )}
@@ -2355,7 +2355,7 @@ export default function PlanSalle({
           fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
           boxShadow: '0 6px 20px rgba(0,0,0,0.28)', whiteSpace: 'nowrap',
         }}>
-          {drag.resa?.nom} · {drag.resa?.nb_couverts} pax
+          {drag.resa?.nom}, {drag.resa?.nb_couverts} pax
         </div>
       )}
 

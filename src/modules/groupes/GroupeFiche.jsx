@@ -14,7 +14,7 @@ import { STATUTS, libelleGroupe, lignesParSection, metaStatut } from './typesGro
 // Fiche d'un groupe : ce que la brigade lit, et l'endroit où elle dit qu'elle
 // l'a lu.
 //
-// L'état se règle d'un tap sur un sélecteur à trois positions (À lire · Lu ·
+// L'état se règle d'un tap sur un sélecteur à trois positions (À lire, Lu,
 // Prêt), ouvert à TOUS les rôles : c'est la cuisine qui fait passer la case du
 // rouge au vert, pas le patron. « Lu par » et l'heure sont posés par la base.
 //
@@ -119,9 +119,9 @@ export default function GroupeFiche({
 
         <div style={st.entete}>
           <div style={{ minWidth: 0 }}>
-            <div style={st.titre}>{libelleGroupe(groupe.typeGroupe, groupe.menuNumero)} · {groupe.nom}</div>
+            <div style={st.titre}>{libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}</div>
             <div style={st.sousTitre}>
-              {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` · ${groupe.heure}` : ''} · {groupe.nbPax} pax
+              {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` à ${groupe.heure}` : ''}, {groupe.nbPax} pax
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
@@ -168,7 +168,7 @@ export default function GroupeFiche({
                 {groupe.statut !== 'a_lire' && groupe.luAt
                   && `Lu par ${userDisplayName(groupe.luPar)} le ${horodatage(groupe.luAt)}`}
                 {groupe.statut === 'pret' && groupe.pretAt
-                  && ` · Préparé par ${userDisplayName(groupe.pretPar)} le ${horodatage(groupe.pretAt)}`}
+                  && `${groupe.luAt ? '. ' : ''}Préparé par ${userDisplayName(groupe.pretPar)} le ${horodatage(groupe.pretAt)}`}
               </div>
             </div>
           )}
@@ -184,7 +184,7 @@ export default function GroupeFiche({
               {conflits.length > 0 && (
                 <div style={{ ...st.encart, ...st.encartDanger }}>
                   <strong style={{ fontWeight: 700 }}>Allergènes présents dans le menu.</strong>{' '}
-                  {conflits.map((c) => `${c.label} (${c.plats.join(', ')})`).join(' · ')}.
+                  {conflits.map((c) => `${c.label} (${c.plats.join(', ')})`).join(' ; ')}.
                   {' '}À vérifier sur les fiches techniques.
                 </div>
               )}
@@ -212,7 +212,7 @@ export default function GroupeFiche({
 
               <div>
                 <div style={st.rubrique}>
-                  {groupe.menuNumero ? `Menu n°${groupe.menuNumero}` : 'Menu'}{menu?.nom ? ` · ${menu.nom}` : ''}
+                  {groupe.menuNumero ? `Menu n°${groupe.menuNumero}` : 'Menu'}{menu?.nom ? ` : ${menu.nom}` : ''}
                 </div>
                 {!groupe.menuNumero && <div style={st.vide}>Menu à définir.</div>}
                 {groupe.menuNumero && !sections.length && (
@@ -232,7 +232,7 @@ export default function GroupeFiche({
                             <div style={st.menuPlat}>
                               {l.libelle}
                               {Number(l.parPersonne) > 0 && Number(l.parPersonne) !== 1
-                                ? <span style={st.menuMention}> · {String(l.parPersonne).replace('.', ',')} par personne</span>
+                                ? <span style={st.menuMention}>, {String(l.parPersonne).replace('.', ',')} par personne</span>
                                 : null}
                             </div>
                             {l.description && <div style={st.menuNote}>{l.description}</div>}

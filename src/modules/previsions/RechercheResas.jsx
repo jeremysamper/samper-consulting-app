@@ -36,7 +36,7 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
             {resa.nom}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-            · {resa.nb_couverts} pax
+            {resa.nb_couverts} pax
           </span>
           {traite && (
             <span style={{
@@ -49,8 +49,8 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
           )}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-          {formatDateLongue(resa.date_service)} · {(resa.heure_arrivee || '').slice(0, 5)}
-          {resa.telephone ? ` · ${resa.telephone}` : ''}
+          {formatDateLongue(resa.date_service)} à {(resa.heure_arrivee || '').slice(0, 5)}
+          {resa.telephone ? `, ${resa.telephone}` : ''}
         </div>
       </button>
       <button
@@ -162,7 +162,7 @@ export default function RechercheResas({
                 fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
                 letterSpacing: 0.5, color: 'var(--text3)',
               }}>
-                {titre} · {liste.length}
+                {titre} ({liste.length})
               </div>
               {liste.map((r) => (
                 <LigneResultat

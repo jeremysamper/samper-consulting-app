@@ -42,7 +42,7 @@ function lt(actual, n) {
   if (actual >= n) throw new Error(`Expected < ${n}, got ${actual}`);
 }
 function between(actual, lo, hi) {
-  if (actual < lo || actual > hi) throw new Error(`Expected [${lo}–${hi}], got ${actual}`);
+  if (actual < lo || actual > hi) throw new Error(`Expected [${lo}, ${hi}], got ${actual}`);
 }
 
 // ── Tests diceCoefficient (pré-normalisé) ─────────────────────────
@@ -74,7 +74,7 @@ test('Cas auto ≥ 85 : "Risotto safran" ↔ "Risotto au safran"', () => {
   gte(score, THRESHOLD_AUTO);
 });
 
-test('Cas suggestion 50–84 : "Tartare bœuf" ↔ "Tartare de bœuf à l\'italienne"', () => {
+test('Cas suggestion 50 à 84 : "Tartare bœuf" ↔ "Tartare de bœuf à l\'italienne"', () => {
   const score = diceScore('Tartare bœuf', "Tartare de bœuf à l'italienne");
   between(score, THRESHOLD_SUGGESTED, THRESHOLD_AUTO - 1);
 });

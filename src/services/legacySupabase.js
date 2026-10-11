@@ -65,7 +65,7 @@ export function installLegacySupabase() {
   }
 
   // Relation absente : la migration qui crée la table n'est pas encore
-  // appliquée. Ce n'est PAS un échec de lecture — aucun réessai ne la fera
+  // appliquée. Ce n'est PAS un échec de lecture : aucun réessai ne la fera
   // apparaître, et l'appelant doit voir un référentiel vide plutôt qu'un état
   // « indisponible » permanent. Distinction indispensable dès qu'une lecture
   // passe en strict sur une table déployée après le front.
@@ -74,7 +74,7 @@ export function installLegacySupabase() {
 
   // Colonne absente : même logique que RELATION_ABSENTE, à la colonne près. Sert
   // aux écritures qui portent un champ ajouté par une migration pas encore
-  // appliquée — l'appelant réécrit sans ce champ au lieu de perdre la saisie.
+  // appliquée : l'appelant réécrit sans ce champ au lieu de perdre la saisie.
   // 42703 = undefined_column (Postgres), PGRST204 = colonne inconnue du cache
   // de schéma PostgREST.
   const _colonneAbsente = (error, colonne) => (
@@ -1583,7 +1583,7 @@ export function installLegacySupabase() {
       // une saisie d'inventaire en service - le périmètre est perdu, les stocks
       // comptés ne le sont pas.
       if (_colonneAbsente(error, 'nom')) {
-        console.warn('[upsertInventaire] colonne "nom" absente (migration 20260810 non appliquée) — écriture sans périmètre');
+        console.warn('[upsertInventaire] colonne "nom" absente (migration 20260810 non appliquée), écriture sans périmètre');
         const { nom, ...sansNom } = payload;
         const retry = await client.from('inventaires').upsert(sansNom).select().single();
         if (retry.error) throw retry.error;

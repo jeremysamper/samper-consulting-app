@@ -33,7 +33,7 @@ function cleanAuthParamsFromUrl() {
  *  - l'événement `PASSWORD_RECOVERY`, émis après coup par supabase-js.
  *
  * `linkErrorCode` porte le cas « lien périmé ou déjà utilisé » : Supabase
- * renvoie alors sur l'app avec un simple #error=… et aucune session — sans ça
+ * renvoie alors sur l'app avec un simple #error=… et aucune session : sans ça
  * l'utilisateur retombe sur l'écran de connexion sans la moindre explication.
  */
 export function usePasswordRecovery() {

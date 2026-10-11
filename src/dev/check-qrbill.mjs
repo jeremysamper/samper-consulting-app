@@ -94,7 +94,7 @@ const vrai = (cond, label, extra = '') => {
 
 const pas = 46 / qr.matrice.taille;
 const modules = appels.filter((a) => a.type === 'rect' && a.couleur === '#000000' && a.h > 0 && Math.abs(a.h - pas) < 1e-9);
-console.log('\n— Swiss QR Code —');
+console.log('\n[Swiss QR Code]');
 proche(Math.min(...modules.map((m) => m.x)), 67, 0.01, 'bord gauche');
 proche(Math.max(...modules.map((m) => m.x + m.l)), 113, 0.01, 'bord droit');
 proche(Math.min(...modules.map((m) => m.y)), 209, 0.01, 'bord haut');
@@ -119,7 +119,7 @@ vrai(manquants === 0, 'tous les modules noirs sont dessinés', `(${manquants} ma
 vrai(enTrop === 0, 'aucun module blanc noirci', `(${enTrop} en trop)`);
 
 const blanc = appels.find((a) => a.type === 'rect' && a.couleur === '#ffffff' && Math.abs(a.l - 7) < 1e-9);
-console.log('\n— Croix suisse —');
+console.log('\n[Croix suisse]');
 vrai(!!blanc, 'liseré blanc 7 × 7 mm présent');
 proche(blanc.x + 3.5, 90, 0.01, 'centre x');
 proche(blanc.y + 3.5, 232, 0.01, 'centre y');
@@ -129,13 +129,13 @@ proche(Math.min(barres[0].l, barres[0].h), 1.18, 0.01, 'épaisseur de barre (6/3
 proche(Math.max(barres[0].l, barres[0].h), 3.94, 0.01, 'longueur de barre (20/32 du carré)');
 
 const lignes = appels.filter((a) => a.type === 'ligne' && a.pointilles);
-console.log('\n— Traits de découpe —');
+console.log('\n[Traits de découpe]');
 vrai(lignes.length === 2, 'deux traits pointillés', `(${lignes.length})`);
 vrai(lignes.some((l) => l.y1 === 192 && l.x1 === 0 && l.x2 === 210), 'horizontal sur toute la largeur à 192 mm');
 vrai(lignes.some((l) => l.x1 === 62 && l.y1 === 192 && l.y2 === 297), 'vertical à 62 mm');
 
 const textes = appels.filter((a) => a.type === 'texte');
-console.log('\n— Rubriques imposées —');
+console.log('\n[Rubriques imposées]');
 // « Payable par » devient « Payable par (nom/adresse) » quand le débiteur est
 // inconnu : la rubrique demande alors de remplir, elle ne constate plus.
 ['Récépissé', 'Section paiement', 'Compte / Payable à', 'Référence', 'Monnaie', 'Montant', 'Point de dépôt']

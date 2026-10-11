@@ -317,7 +317,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
                     </span>
                     {item.modifiers.length > 0 && (
                       <span style={{ ...s.itemMods, display: 'block' }}>
-                        {item.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(' · ')}
+                        {item.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(', ')}
                       </span>
                     )}
                   </span>
@@ -333,7 +333,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
         {suiteItems.length > 0 && (
           <div style={s.suiteBlock}>
             <div style={s.suiteHead}>
-              À suivre · {suiteItems.length}
+              À suivre ({suiteItems.length})
               <button style={s.suiteRelance} onClick={() => relanceSuite(order)}>Relancer la suite</button>
             </div>
             {suiteItems.map((item) => (
@@ -342,7 +342,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
                   {item.qty != null ? `${item.qty}× ` : ''}{item.nom}
                   {item.modifiers.length > 0 && (
                     <span style={{ ...s.itemMods, display: 'block' }}>
-                      {item.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(' · ')}
+                      {item.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(', ')}
                     </span>
                   )}
                 </span>
@@ -370,7 +370,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
           <div style={s.sub}>Commandes Lightspeed en direct - tap sur un plat pour le marquer fait</div>
         </div>
         <div style={s.kpi}>
-          {atPasse.length} table{atPasse.length > 1 ? 's' : ''} · {counts.faire} à faire{counts.suite > 0 ? ` · ${counts.suite} à suivre` : ''}
+          {atPasse.length} table{atPasse.length > 1 ? 's' : ''}, {counts.faire} à faire{counts.suite > 0 ? `, ${counts.suite} à suivre` : ''}
         </div>
         <div style={s.syncWrap}>
           <span style={s.syncDot(conn.state === 'ok')} />
@@ -406,7 +406,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
 
       {terminees.length > 0 && (
         <div style={s.doneWrap}>
-          <div style={s.doneHead}>Terminées · {terminees.length}<span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 12 }}> (conservées pour revue)</span></div>
+          <div style={s.doneHead}>Terminées ({terminees.length})<span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 12 }}>, conservées pour revue</span></div>
           <div style={s.doneGrid}>
             {terminees.map((o) => (
               <div key={o.id} style={s.doneCard}>

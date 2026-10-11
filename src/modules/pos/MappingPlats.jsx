@@ -265,7 +265,7 @@ export default function MappingPlats({ user, etablissement }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
         title="Mapping plats POS et recettes"
-        subtitle={etabNom ? `${etabNom} · Lightspeed` : 'Lightspeed'}
+        subtitle={etabNom ? `${etabNom}, Lightspeed` : 'Lightspeed'}
       />
 
       {/* Stats */}

@@ -170,7 +170,7 @@ const litAllergenes = (raw) => {
   const { ids, nuances } = splitAllergenesText(raw);
   return {
     allergenesIds: ids,
-    _noteAllergenes: nuances.length ? `Allergènes (fichier source) : ${nuances.join(' · ')}` : '',
+    _noteAllergenes: nuances.length ? `Allergènes (fichier source) : ${nuances.join(' ; ')}` : '',
     _warnAllergenes: nuances.length ? ['Allergènes à vérifier (précision non normalisée)'] : [],
   };
 };

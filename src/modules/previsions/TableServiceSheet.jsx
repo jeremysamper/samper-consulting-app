@@ -100,11 +100,11 @@ export default function TableServiceSheet({
           borderColor: r.nb_couverts > places && places > 0 ? 'var(--warning-bd)' : 'var(--border)',
         }}
       >
-        <span>{r.nom} · {r.nb_couverts} pax</span>
+        <span>{r.nom}, {r.nb_couverts} pax</span>
         <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>
           {(r.heure_arrivee || '').slice(0, 5)}
-          {r.statut === 'arrive' ? ' · arrivé' : ''}
-          {ailleurs.length ? ` · déplacer depuis la table ${ailleurs.join(' + ')}` : ''}
+          {r.statut === 'arrive' ? ', arrivé' : ''}
+          {ailleurs.length ? `, déplacer depuis la table ${ailleurs.join(' + ')}` : ''}
         </span>
       </button>
     );
@@ -142,9 +142,9 @@ export default function TableServiceSheet({
               {titre}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-              {composition ? `${composition} · ` : ''}
+              {composition ? `${composition}, ` : ''}
               {places} place{places > 1 ? 's' : ''}
-              {occupants.length ? ` · ${assis} couvert${assis > 1 ? 's' : ''} ici` : ' · libre'}
+              {occupants.length ? `, ${assis} couvert${assis > 1 ? 's' : ''} ici` : ', libre'}
             </div>
           </div>
           <button
@@ -247,10 +247,10 @@ export default function TableServiceSheet({
                       }}
                     >
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                        {r.nom} · {r.nb_couverts} pax
+                        {r.nom}, {r.nb_couverts} pax
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                        {(r.heure_arrivee || '').slice(0, 5)} · {metaStatut(r.statut || 'confirme').label}
+                        {(r.heure_arrivee || '').slice(0, 5)}, {metaStatut(r.statut || 'confirme').label}
                       </div>
                     </button>
                     {canEdit && onStatut && (r.statut === 'confirme' || r.statut === 'demande') && (

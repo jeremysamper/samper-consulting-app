@@ -53,7 +53,7 @@ export default function FAQAssistant({ user, etablissement, setPage }) {
         <div style={fs.avatar}>JS</div>
         <div style={{ minWidth: 0 }}>
           <div style={fs.title}>FAQ & Assistant</div>
-          <div style={fs.subtitle}>{etablissement?.nom || 'Etablissement'} · {user?.prenom || 'Equipe'}</div>
+          <div style={fs.subtitle}>{etablissement?.nom || 'Etablissement'}, {user?.prenom || 'Equipe'}</div>
         </div>
         <span style={fs.status}>Fallback local actif</span>
       </div>

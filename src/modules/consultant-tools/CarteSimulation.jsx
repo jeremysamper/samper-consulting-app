@@ -104,7 +104,7 @@ const CarteSimulation = ({ plats, recettes, etablissement }) => {
         <div style={cs.title}>Simulation de la carte</div>
         <div style={cs.subtitle}>
           {etablissement?.nom || ''}
-          {etablissement?.nom ? ' · ' : ''}
+          {etablissement?.nom ? ', ' : ''}
           {totalPlats} {useRecettesDirect ? 'recette' : 'plat'}{totalPlats > 1 ? 's' : ''}
         </div>
       </div>

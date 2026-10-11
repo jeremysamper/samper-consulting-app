@@ -759,7 +759,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (total) parts.push(`${total} rattachement${total > 1 ? 's' : ''} vers ${cible}`);
     if (deja) parts.push(`${deja} déjà liée${deja > 1 ? 's' : ''}`);
     if (ko) parts.push(`${ko} en erreur`);
-    notifyLegacy(parts.join(' · ') || 'Aucune recette à rattacher.', ko ? 'warning' : 'success');
+    notifyLegacy(parts.join(', ') || 'Aucune recette à rattacher.', ko ? 'warning' : 'success');
   };
 
   // ─── Transfert groupé vers un autre établissement ───
@@ -865,7 +865,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (ignores.size) parts.push(`${ignores.size} déjà présente${ignores.size > 1 ? 's' : ''} ignorée${ignores.size > 1 ? 's' : ''}`);
     if (liensRetires) parts.push(`${liensRetires} lien${liensRetires > 1 ? 's' : ''} plat retiré${liensRetires > 1 ? 's' : ''}`);
     if (ko) parts.push(`${ko} en erreur`);
-    notifyLegacy(parts.join(' · ') || 'Aucune recette transférée.', ko ? 'warning' : 'success');
+    notifyLegacy(parts.join(', ') || 'Aucune recette transférée.', ko ? 'warning' : 'success');
   };
 
   // Applique la sélection de plats du picker à UNE recette : ce qui a été coché
@@ -899,7 +899,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     if (aLier.length) parts.push(`${aLier.length} plat${aLier.length > 1 ? 's' : ''} rattaché${aLier.length > 1 ? 's' : ''}`);
     if (aDelier.length) parts.push(`${aDelier.length} lien${aDelier.length > 1 ? 's' : ''} retiré${aDelier.length > 1 ? 's' : ''}`);
     if (ko) parts.push(`${ko} en erreur`);
-    notifyLegacy(parts.join(' · '), ko ? 'warning' : 'success');
+    notifyLegacy(parts.join(', '), ko ? 'warning' : 'success');
   };
 
   // ═══ Synchronisation carte active ═══
@@ -1145,7 +1145,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setBulkAllergenProgress(null);
     notifyLegacy(
       `Détection terminée : ${done} recette(s) analysée(s), ${totalAdded} allergène(s) ajouté(s)`
-      + `${bulkAllergenCancelRef.current ? ' · interrompu' : ''}.`,
+      + `${bulkAllergenCancelRef.current ? ', interrompu' : ''}.`,
       'success',
     );
   };
@@ -1383,7 +1383,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Détection des allergènes</div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-              {bulkAllergenProgress.done} / {bulkAllergenProgress.total} recette(s) · {bulkAllergenProgress.added} allergène(s) ajouté(s)
+              {bulkAllergenProgress.done} / {bulkAllergenProgress.total} recette(s), {bulkAllergenProgress.added} allergène(s) ajouté(s)
             </div>
             <div style={{ height: 10, background: 'var(--bg)', borderRadius: 6, margin: '12px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
               <div style={{ height: '100%', width: `${bulkAllergenProgress.total ? (bulkAllergenProgress.done / bulkAllergenProgress.total) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
@@ -1513,7 +1513,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   {r.masquee === true && (
                     <span style={cts.tagCachee} title="Invisible dans Cartes & Recettes">Cachée</span>
                   )}
-                  {r.categorie} · {r.portions || '?'} p. · v{r.version || 1}
+                  {r.categorie}, {r.portions || '?'} p., v{r.version || 1}
                   {r.foodCost && (
                     <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 600 }}>
                       {' '}FC {r.foodCost.toFixed(1)}%
@@ -1559,8 +1559,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       <div style={cts.platName}>{plat.nom}</div>
                       <div style={cts.platMeta}>
                         {plat.categorie}
-                        {plat.prixVente != null && ` · CHF ${plat.prixVente.toFixed(2)}`}
-                        {' · '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
+                        {plat.prixVente != null && `, CHF ${plat.prixVente.toFixed(2)}`}
+                        {', '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
                       </div>
                     </div>
                     {inCarte && (
@@ -2184,14 +2184,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         {isLinked && (
                           <span
                             style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 5, fontSize: 11, color: 'var(--success-text)', cursor: 'pointer' }}
-                            title="Lié au catalogue (matching automatique) · clic pour délier"
+                            title="Lié au catalogue (matching automatique), clic pour délier"
                             onClick={() => updateIngredient(idx, 'produitId', null)}
                           ><Link2 size={13} aria-hidden="true" /></span>
                         )}
                         {!isLinked && ing.needsReview && (
                           <span
                             style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 5, fontSize: 11, color: 'var(--warning-text)', cursor: 'pointer' }}
-                            title="Correspondance catalogue incertaine · cliquer pour choisir"
+                            title="Correspondance catalogue incertaine, cliquer pour choisir"
                             onClick={() => { setPickerSearch(ing.nom || ''); setCatalogPicker(ing.id); }}
                           ><AlertTriangle size={13} aria-hidden="true" /></span>
                         )}
@@ -2288,7 +2288,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           type="text"
                           readOnly
                           value={prixInfo.prix.toFixed(3)}
-                          title={`Prix du catalogue (${prixInfo.produit?.nom || ''}) · délier la ligne pour saisir un prix à la main`}
+                          title={`Prix du catalogue (${prixInfo.produit?.nom || ''}). Délier la ligne pour saisir un prix à la main`}
                           style={{ ...cts.ingInput, color: 'var(--text2)', background: 'var(--bg)', cursor: 'not-allowed' }}
                         />
                       ) : (
@@ -2297,7 +2297,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           value={ing.prixUnit}
                           onCommit={v => updateIngredient(idx, 'prixUnit', Number(v))}
                           title={prixInfo.source === 'incompatible'
-                            ? `Unités non convertibles (catalogue en ${prixInfo.produit?.uniteRef}, ligne en ${ing.unite}) · prix saisi à la main`
+                            ? `Unités non convertibles (catalogue en ${prixInfo.produit?.uniteRef}, ligne en ${ing.unite}), prix saisi à la main`
                             : undefined}
                           style={{
                             ...cts.ingInput,
@@ -2767,7 +2767,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</div>
                           <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                            {p.categorie}{p.fournisseurNom ? ` · ${p.fournisseurNom}` : ''}{p.referenceFourn ? ` · réf ${p.referenceFourn}` : ''}
+                            {p.categorie}{p.fournisseurNom ? `, ${p.fournisseurNom}` : ''}{p.referenceFourn ? `, réf ${p.referenceFourn}` : ''}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -2788,7 +2788,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: 'var(--text2)' }}>
                   {filtered.length} produit{filtered.length > 1 ? 's' : ''}
-                  {isMultiMode && pickerSelected.size > 0 && ` · ${pickerSelected.size} sélectionné${pickerSelected.size > 1 ? 's' : ''}`}
+                  {isMultiMode && pickerSelected.size > 0 && `, ${pickerSelected.size} sélectionné${pickerSelected.size > 1 ? 's' : ''}`}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button style={cts.ghostBtn} onClick={() => setCatalogPicker(null)}>Annuler</button>

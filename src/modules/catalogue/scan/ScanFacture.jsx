@@ -23,7 +23,7 @@ const PILES = [
   { id: 'ignorees',  label: 'Ignorées',     hint: 'Frais de port, consigne, TVA : rien à mettre à jour.' },
 ];
 
-const fmt = (n, d = 4) => (Number.isFinite(Number(n)) ? Number(n).toFixed(d) : '—');
+const fmt = (n, d = 4) => (Number.isFinite(Number(n)) ? Number(n).toFixed(d) : '-');
 
 export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB, user, onClose, onDone }) {
   const [etape, setEtape] = React.useState('capture'); // capture | analyse | revue
@@ -300,10 +300,10 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
               {etape === 'revue' && entete && (
                 <>
                   <span data-no-translate>{entete.fournisseur || 'Fournisseur non lu'}</span>
-                  {entete.numeroFacture ? ` · ${entete.numeroFacture}` : ''}
-                  {entete.dateFacture ? ` · ${entete.dateFacture.split('-').reverse().join('.')}` : ''}
-                  {entete.totalHT != null ? ` · total HT ${fmt(entete.totalHT, 2)}` : ''}
-                  {' · '}
+                  {entete.numeroFacture ? `, ${entete.numeroFacture}` : ''}
+                  {entete.dateFacture ? `, ${entete.dateFacture.split('-').reverse().join('.')}` : ''}
+                  {entete.totalHT != null ? `, total HT ${fmt(entete.totalHT, 2)}` : ''}
+                  {', '}
                   {entete.source === 'texte'
                     ? 'texte du PDF'
                     : `${entete.pages} page(s) en image`}
@@ -411,7 +411,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             {entete?.ecartTotal != null && Math.abs(entete.ecartTotal) > 0.05 && (
               <div style={{ margin: '8px 18px 0', padding: '6px 10px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
                 La somme des lignes lues fait {fmt(entete.sommeLignes, 2)}, le document annonce
-                {' '}{fmt(entete.totalHT, 2)} — écart de {fmt(Math.abs(entete.ecartTotal), 2)}.
+                {' '}{fmt(entete.totalHT, 2)}, soit un écart de {fmt(Math.abs(entete.ecartTotal), 2)}.
                 Une ligne est probablement mal lue ou manquante.
               </div>
             )}
@@ -453,13 +453,13 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                         {/* Libellé brut de facture : donnée, pas interface. */}
                         <div data-no-translate style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-word' }}>{l.libelle}</div>
                         <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
-                          {l.referenceFourn ? `réf. ${l.referenceFourn} · ` : ''}
+                          {l.referenceFourn ? `réf. ${l.referenceFourn}, ` : ''}
                           {l.quantite != null ? `${l.quantite} × ` : ''}
-                          {l.conditionnement || '—'}
-                          {l.quantiteTotale != null ? ` · ${l.quantiteTotale} ${l.uniteTotale}` : ''}
+                          {l.conditionnement || 'conditionnement non lu'}
+                          {l.quantiteTotale != null ? `, ${l.quantiteTotale} ${l.uniteTotale}` : ''}
                           {l.montantLigne != null
-                            ? ` · total ${fmt(l.montantLigne, 2)}`
-                            : ' · montant non lu'}
+                            ? `, total ${fmt(l.montantLigne, 2)}`
+                            : ', montant non lu'}
                         </div>
                       </div>
                       {impact && (
@@ -571,7 +571,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', width: 'min(420px,94vw)', padding: 20 }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Mise à jour des prix</div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-              {progress.done}/{progress.total} produit(s){progress.echecs ? ` · ${progress.echecs} échec(s)` : ''}
+              {progress.done}/{progress.total} produit(s){progress.echecs ? `, ${progress.echecs} échec(s)` : ''}
             </div>
             <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--border)', margin: '12px 0' }}>
               <div style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%`, height: '100%', background: 'var(--accent)', transition: 'width .15s linear' }} />

@@ -128,7 +128,7 @@ export default function EtablissementTransferModal({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={ts.rowNom}>{e.nom}</div>
                     {(e.type || e.adresse) && (
-                      <div style={ts.rowMeta}>{[e.type, e.adresse].filter(Boolean).join(' · ')}</div>
+                      <div style={ts.rowMeta}>{[e.type, e.adresse].filter(Boolean).join(', ')}</div>
                     )}
                   </div>
                 </label>

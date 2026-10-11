@@ -166,8 +166,8 @@ function ZonePicker({ etablissementId, selected, onChange }) {
               ? 'Zone désactivée ou supprimée - décochez-la'
               : [z.cible != null ? `cible ${z.cible}${z.unite || ''}` : null,
                  z.min != null || z.max != null
-                   ? `tolérance ${z.min ?? '−∞'} → ${z.max ?? '+∞'}${z.unite || ''}`
-                   : null].filter(Boolean).join(' · ') || null}
+                   ? `tolérance de ${z.min ?? '−∞'} à ${z.max ?? '+∞'}${z.unite || ''}`
+                   : null].filter(Boolean).join(', ') || null}
           />
         ))}
       </div>

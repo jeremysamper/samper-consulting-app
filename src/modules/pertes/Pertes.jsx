@@ -466,8 +466,8 @@ const Pertes = ({ user, etablissement }) => {
                               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.nom}</div>
                               <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
                                 {p.categorie || 'Autres'}
-                                {p.uniteRef && ` · ${p.uniteRef}`}
-                                {p.fournisseurNom && ` · ${p.fournisseurNom}`}
+                                {p.uniteRef && `, ${p.uniteRef}`}
+                                {p.fournisseurNom && `, ${p.fournisseurNom}`}
                               </div>
                             </div>
                             {p.prixUnitaire != null && p.prixUnitaire > 0 && (
@@ -478,7 +478,7 @@ const Pertes = ({ user, etablissement }) => {
                           </div>
                         ))}
                         <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text2)', borderTop: '1px solid var(--border)', background: 'var(--bg)', fontStyle: 'italic' }}>
-                          ↑↓ pour naviguer · Entrée pour valider · Échap pour fermer
+                          ↑↓ pour naviguer, Entrée pour valider, Échap pour fermer
                         </div>
                       </div>
                     );

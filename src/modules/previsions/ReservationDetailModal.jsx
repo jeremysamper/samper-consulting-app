@@ -28,7 +28,7 @@ export default function ReservationDetailModal({
       notify(`Passeport gourmand de ${resa.nom} non enregistré : ${error}`, 'error');
       return;
     }
-    notify(valeur ? `${resa.nom} · Passeport gourmand` : `${resa.nom} · Passeport gourmand retiré`, 'success');
+    notify(valeur ? `Passeport gourmand ajouté pour ${resa.nom}` : `Passeport gourmand retiré pour ${resa.nom}`, 'success');
     onResaUpdated?.();
   }
 

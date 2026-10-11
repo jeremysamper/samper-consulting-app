@@ -210,7 +210,7 @@ function EditeurMenu({ typeGroupe, numero, menu, plats, platsStatus, voirPrix, o
         onClick={(e) => e.stopPropagation()}
       >
         <div style={st.entete}>
-          <div style={st.titre}>{metaType(typeGroupe).label} · Menu n°{numero}</div>
+          <div style={st.titre}>{metaType(typeGroupe).label}, menu n°{numero}</div>
           <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
         </div>
 

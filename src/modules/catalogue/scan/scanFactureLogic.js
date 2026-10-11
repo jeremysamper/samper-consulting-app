@@ -22,7 +22,7 @@ export const SEUIL_ECART_PCT = 15;
 //
 // On divise le TOTAL de la ligne par la quantité TOTALE livrée. C'est le seul
 // calcul robuste : sur les vrais documents, la colonne « Prix » est le prix de
-// l'unité livrée et cette unité change d'une ligne à l'autre — tantôt le kilo,
+// l'unité livrée et cette unité change d'une ligne à l'autre : tantôt le kilo,
 // tantôt la bouteille, tantôt le sac entier. Le total, lui, ne prête pas à
 // confusion et se recoupe avec le total du document.
 export function prixUnitaireDepuisLigne(ligne) {

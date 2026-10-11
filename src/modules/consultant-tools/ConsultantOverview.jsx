@@ -271,7 +271,7 @@ export default function ConsultantOverview({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={S.recentName}>{r.nom}</div>
                   <div style={S.recentMeta}>
-                    {r.categorie || 'Sans catégorie'} · {r.portions || '?'} p.
+                    {r.categorie || 'Sans catégorie'}, {r.portions || '?'} p.
                     {fc != null && <span style={{ marginLeft: 6, fontWeight: 700, color: fcColor(fc) }}>FC {fc.toFixed(1)} %</span>}
                   </div>
                 </div>

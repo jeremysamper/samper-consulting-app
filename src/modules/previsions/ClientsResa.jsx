@@ -178,11 +178,11 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
                   {nomClient(c)}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {[c.telephone, c.email].filter(Boolean).join(' · ') || 'Pas de contact'}
+                  {[c.telephone, c.email].filter(Boolean).join(', ') || 'Pas de contact'}
                 </div>
                 {(c.allergies || c.preferences) && (
                   <div style={{ fontSize: 11, color: c.allergies ? 'var(--danger-text)' : 'var(--text3)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {[c.allergies, c.preferences].filter(Boolean).join(' · ')}
+                    {[c.allergies, c.preferences].filter(Boolean).join(' ; ')}
                   </div>
                 )}
               </div>
@@ -192,7 +192,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>
                   {c.prochaine ? `prochaine ${dateCh(c.prochaine)}` : c.derniereVenue ? `dernière ${dateCh(c.derniereVenue)}` : ''}
-                  {c.nbNoShow ? ` · ${pluriel(c.nbNoShow, 'no-show')}` : ''}
+                  {c.nbNoShow ? `, ${pluriel(c.nbNoShow, 'no-show')}` : ''}
                 </div>
                 {c.consentementMarketing && c.email && (
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-text)' }}>accepte les e-mails</div>

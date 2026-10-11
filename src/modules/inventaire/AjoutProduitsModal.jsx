@@ -204,8 +204,8 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                     <span style={{ width: 14, display: 'inline-block' }}>{estOuverte(cat) ? '▾' : '▸'}</span>
                     <span style={{ fontWeight: 700 }}>{cat}</span>
                     <span style={st.catCompte}>
-                      {nbCat > 0 ? `${nbCat} coché${nbCat > 1 ? 's' : ''} · ` : ''}
-                      {dispo.length} à ajouter{produits.length > dispo.length ? ` · ${produits.length - dispo.length} déjà présent${produits.length - dispo.length > 1 ? 's' : ''}` : ''}
+                      {nbCat > 0 ? `${nbCat} coché${nbCat > 1 ? 's' : ''}, ` : ''}
+                      {dispo.length} à ajouter{produits.length > dispo.length ? `, ${produits.length - dispo.length} déjà présent${produits.length - dispo.length > 1 ? 's' : ''}` : ''}
                     </span>
                   </button>
                   {dispo.length > 0 && (
@@ -229,7 +229,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span data-no-translate style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>{p.nom}</span>
                         <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
-                          {present ? 'déjà dans l\'inventaire' : (p.info || [p.uniteRef, p.fournisseurNom].filter(Boolean).join(' · '))}
+                          {present ? 'déjà dans l\'inventaire' : (p.info || [p.uniteRef, p.fournisseurNom].filter(Boolean).join(', '))}
                         </span>
                       </span>
                     </label>

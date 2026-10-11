@@ -1060,7 +1060,7 @@ const Factures = ({ user, etablissement }) => {
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Notifier le client</div>
                 <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Facture n° {form.numero} · <strong>{emailDraft.etabNom || 'client'}</strong>
+                  Facture n° {form.numero} pour <strong>{emailDraft.etabNom || 'client'}</strong>
                 </div>
               </div>
               <button style={fac.closeBtn} onClick={() => setShowEmailModal(false)} title="Fermer (Échap)">✕</button>

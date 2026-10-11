@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Étiquettes DLC — configuration et référentiel partagé
+// Étiquettes DLC : configuration et référentiel partagé
 //
 // SEULE source des dimensions d'étiquette et du contenu des lignes : ni le
 // module HACCP ni le service PDF n'écrivent une dimension en dur. La surface
@@ -16,7 +16,7 @@ import { addDays, isoDate, parseLocalDate } from './dateHelpers.js';
 import { normalizeSearch } from './searchText.js';
 
 // Consommable en service : rouleau PRÉDÉCOUPÉ DK-11209. Le media fait 62 mm de
-// large et chaque étiquette 29 mm dans le sens du défilement — et non l'inverse,
+// large et chaque étiquette 29 mm dans le sens du défilement, et non l'inverse,
 // contrairement à ce que laissent croire les fiches produit qui l'annoncent
 // « 29 × 62 mm ». C'est d'ailleurs sous ce libellé que la QL-820NWB l'annonce
 // en AirPrint, d'où formatAirPrint ci-dessous : le format à choisir sur l'iPad
@@ -68,7 +68,7 @@ export const ETIQUETTE_MEDIA = {
   // feuille d'impression. Sur un prédécoupé, ce format EXISTE dans la liste
   // (29 × 62 mm) et correspond exactement à l'étiquette : une page = une
   // étiquette, rien à mettre à l'échelle, rien à paver. Le pavage reste codé
-  // dans le service PDF et se réveille dès qu'on renseigne pageHeightMm — c'est
+  // dans le service PDF et se réveille dès qu'on renseigne pageHeightMm : c'est
   // ce qu'il faut pour une bande continue, dont aucune longueur n'est proposée
   // par AirPrint.
   traitCoupeMm: 0.15,
@@ -77,9 +77,9 @@ export const ETIQUETTE_MEDIA = {
 // Échelle de polices (en points), calibrée sur le mode Surgélation : c'est le
 // plus dense, cinq lignes sur 29 mm de hauteur. Si ça tient en surgélation,
 // ça tient partout. Le service PDF réduit en plus tout le bloc d'un même
-// facteur si le media retenu est trop court — la hiérarchie est préservée.
+// facteur si le media retenu est trop court : la hiérarchie est préservée.
 //   nomLadder : paliers de réduction du nom, du plus grand au plancher.
-//               Sous le plancher on tronque — le critère est la lisibilité à
+//               Sous le plancher on tronque : le critère est la lisibilité à
 //               bout de bras dans une chambre froide, pas la complétude.
 //   ligne     : lignes de corps (dates, température, opérateur)
 //   dlc       : ligne « À consommer jusqu'au », en gras et un cran au-dessus
@@ -152,7 +152,7 @@ export const getMode = (modeId) => ETIQUETTE_MODES.find(m => m.id === modeId) ||
 //
 // Le jeu dépend du MODE, parce qu'une durée n'y a pas le même sens : les trois
 // paliers du barème maison (3 / 5 / 7 j) au froid positif et après
-// décongélation, et une seule case à 90 j en surgélation — la durée forfaitaire
+// décongélation, et une seule case à 90 j en surgélation, la durée forfaitaire
 // retenue pour une préparation congelée sans fiche.
 export const ETIQUETTES_DIVERS = [
   {
@@ -188,7 +188,7 @@ export const diversPourMode = (modeId) => ETIQUETTES_DIVERS.filter(d => d.modes.
 // Elles portent les mêmes clés de durée qu'une recette (dureeVie*), donc
 // estEligible / dureeVieMode / calculerDlc / lignesEtiquette les traitent sans
 // un seul cas particulier. Contrairement aux cases Divers, elles vivent en base
-// et se modifient — à partir du responsable cuisine.
+// et se modifient, à partir du responsable cuisine.
 export const ETIQUETTE_PERSO_CATEGORIE = 'Étiquette maison';
 
 // Garde-fou de saisie : au-delà, c'est une faute de frappe, pas une durée de
@@ -230,7 +230,7 @@ export function validerEtiquettePerso(form, { existantes = [], id = null } = {})
 
 // Clé de comparaison des noms : casse, accents et espaces de bord ignorés.
 // Aligné sur lower(btrim(nom)) côté base, en tolérant en plus les accents et
-// les ligatures via normalizeSearch — « Bearnaise » et « Béarnaise » sont la
+// les ligatures via normalizeSearch : « Bearnaise » et « Béarnaise » sont la
 // même préparation pour une brigade. La base, elle, reste plus permissive :
 // elle ne rejettera que le doublon strict, ce message arrive avant.
 export const normaliserNomPerso = (nom) => normalizeSearch(String(nom || '').trim());
@@ -272,7 +272,7 @@ export function estEligible(recette, modeId) {
 export function motifNonEligible(recette) {
   return recette?.congelable === false
     ? 'Non congelable'
-    : 'Non congelable · durée de surgélation non renseignée';
+    : 'Non congelable, durée de surgélation non renseignée';
 }
 
 // Durée de vie applicable au mode courant.

@@ -46,7 +46,7 @@ export function SimulationResults({
         <div style={cs.kpi}>
           <div style={cs.kpiLabel}>Couverts réalisables</div>
           <div style={cs.kpiValue}>
-            {couvertsMin != null ? `${couvertsMin}–${couvertsMax}` : '-'}
+            {couvertsMin != null ? `${couvertsMin} à ${couvertsMax}` : '-'}
           </div>
         </div>
       </div>

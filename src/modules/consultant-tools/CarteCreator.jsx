@@ -402,7 +402,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
             ) : filteredSources.slice(0, 60).map((source) => (
               <button key={source.id} style={mcs.sourceItem} onClick={() => addSource(source)}>
                 <span style={mcs.sourceName}>{source.name}</span>
-                <span style={mcs.sourceMeta}>{source.category}{formatCHF(source.price) ? ` · ${formatCHF(source.price)}` : ''}</span>
+                <span style={mcs.sourceMeta}>{source.category}{formatCHF(source.price) ? `, ${formatCHF(source.price)}` : ''}</span>
               </button>
             ))}
           </div>
@@ -471,7 +471,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                 <div style={mcs.matrixHead}>
                   <div style={mcs.matrixEyebrow}>{etablissement?.nom || 'Samper Consulting'}</div>
                   <h1 style={mcs.matrixTitle}>Tableau des allergènes</h1>
-                  <div style={mcs.matrixMeta}>{title} · {items.length} plat{items.length > 1 ? 's' : ''}</div>
+                  <div style={mcs.matrixMeta}>{title}, {items.length} plat{items.length > 1 ? 's' : ''}</div>
                 </div>
                 {items.length === 0 ? (
                   <div style={mcs.matrixEmpty}>La carte est vide.</div>
@@ -498,7 +498,7 @@ const CarteCreator = ({ plats, recettes, etablissement, legacySB, etabId, user }
                                 <td style={mcs.matrixCellName}>{item.name || 'Ligne sans nom'}</td>
                                 {ALLERGENES_OPTIONS.map((a) => (
                                   <td key={a.id} style={{ ...mcs.matrixCellMark, color: al.includes(a.id) ? BRAND.color.primary : BRAND.color.rule }}>
-                                    {al.includes(a.id) ? '●' : '·'}
+                                    {al.includes(a.id) ? '●' : ''}
                                   </td>
                                 ))}
                               </tr>

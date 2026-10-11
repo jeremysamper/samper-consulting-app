@@ -51,7 +51,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{zone.nom}</div>
-            <div style={{ fontSize: 10, color: 'var(--text2)' }}>Cible {zone.cible}{zone.unite} · de {zone.min ?? '-'} à {zone.max ?? '+∞'}</div>
+            <div style={{ fontSize: 10, color: 'var(--text2)' }}>Cible {zone.cible}{zone.unite}, de {zone.min ?? '-'} à {zone.max ?? '+∞'}</div>
           </div>
         </div>
         {last ? (

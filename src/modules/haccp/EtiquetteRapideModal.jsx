@@ -156,7 +156,7 @@ const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
               </div>
 
               <div style={rs.apercu}>
-                <div>{duree} jour{duree > 1 ? 's' : ''} en {mode.label.toLowerCase()} · {mode.temperature}</div>
+                <div>{duree} jour{duree > 1 ? 's' : ''} en {mode.label.toLowerCase()}, {mode.temperature}</div>
                 <div style={{ fontWeight: 700, color: 'var(--accent)' }}>
                   À consommer jusqu'au {formatDateFr(dlc)}
                 </div>
@@ -170,7 +170,7 @@ const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
           <div style={rs.info}>
             Rouleau {ETIQUETTE_MEDIA.ref}
             {agent && (
-              <> · impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
+              <>, impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
                 {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong></>
             )}
           </div>

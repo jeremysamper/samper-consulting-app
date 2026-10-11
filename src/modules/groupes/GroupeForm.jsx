@@ -157,7 +157,7 @@ export default function GroupeForm({
                 style={{ ...st.champ, flex: '1 1 200px', minHeight: 44 }}
               />
             </div>
-            <div style={st.aide}>{dateComplete(form.dateEvenement)}{form.heure ? ` · ${form.heure}` : " · heure facultative"}</div>
+            <div style={st.aide}>{dateComplete(form.dateEvenement)}{form.heure ? ` à ${form.heure}` : ", heure facultative"}</div>
           </div>
 
           {/* 2. Type de groupe */}

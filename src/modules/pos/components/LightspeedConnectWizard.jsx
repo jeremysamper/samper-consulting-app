@@ -329,7 +329,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{loc.locationName}</div>
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                  {loc.businessName ? `${loc.businessName} · ` : ''}{loc.locationId}
+                  {loc.businessName ? `${loc.businessName}, ` : ''}{loc.locationId}
                 </div>
               </div>
             </label>

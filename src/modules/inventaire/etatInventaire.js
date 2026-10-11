@@ -101,7 +101,7 @@ export function construireEtatInventaire({
     const sources = [];
     if (debutQte > 0) sources.push(`Report ${jjmm(previousInv.date)}`);
     sources.push(...pieces);
-    if (releves.length) sources.push(releves.map(r => `Relevé « ${r} »`).join(' · '));
+    if (releves.length) sources.push(releves.map(r => `Relevé « ${r} »`).join(', '));
 
     let sansPiece = false;
     const maison = estMaison(l);
@@ -146,7 +146,7 @@ export function construireEtatInventaire({
       valeurAchat,
       puMoyen,
       valeurStock,
-      sources: sources.join(' · '),
+      sources: sources.join(', '),
     };
   });
 
@@ -178,8 +178,8 @@ export function construireEtatInventaire({
     perimetre,
     etablissementNom,
     date: inv?.date,
-    titre: `INVENTAIRE ${nomPerimetre} : ${etablissementNom} · état au ${dateCH(inv?.date)}`,
-    titreSynthese: `SYNTHÈSE ${nomPerimetre} · état au ${dateCH(inv?.date)}`,
+    titre: `INVENTAIRE ${nomPerimetre} : ${etablissementNom}, état au ${dateCH(inv?.date)}`,
+    titreSynthese: `SYNTHÈSE ${nomPerimetre}, état au ${dateCH(inv?.date)}`,
     lignes,
     zones,
     categories,

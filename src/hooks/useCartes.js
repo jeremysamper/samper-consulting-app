@@ -49,8 +49,8 @@ export function useCartes(etabId, { role } = {}) {
   const [allCartes, setAllCartes] = React.useState(() =>
     legacySB ? [] : (readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => (c.etablissementId || 'etab-1') === etabId)
   );
-  // 'loading' : aucune lecture n'a encore abouti · 'ready' : on détient des
-  // données valides · 'error' : la première lecture a échoué (rien à afficher).
+  // 'loading' : aucune lecture n'a encore abouti ; 'ready' : on détient des
+  // données valides ; 'error' : la première lecture a échoué (rien à afficher).
   const [status, setStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
   // Rechargement de l'effet courant, exposé aux appelants (bouton « Réessayer »).
   const reloadRef = React.useRef(null);

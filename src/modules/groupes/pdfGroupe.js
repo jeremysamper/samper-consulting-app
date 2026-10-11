@@ -48,7 +48,7 @@ function sectionsPdf(lignes) {
 export function payloadMenuSeul({ typeGroupe, numero, menu }) {
   return {
     payload: {
-      titre: `${metaType(typeGroupe).label} · Menu n°${numero}`,
+      titre: `${metaType(typeGroupe).label}, menu n°${numero}`,
       sousTitre: '',
       menuNom: menu?.nom || '',
       menuDescription: menu?.description || '',
@@ -66,7 +66,7 @@ export function payloadFicheGroupe({ groupe, menu }) {
   if (allergenes.length || groupe.allergiesNote) {
     blocs.push({
       label: 'Allergies et régimes',
-      accroche: allergenes.join('  ·  '),
+      accroche: allergenes.join(', '),
       texte: groupe.allergiesNote || '',
       alerte: true,
     });
@@ -88,7 +88,7 @@ export function payloadFicheGroupe({ groupe, menu }) {
   return {
     payload: {
       titre: groupe.menuNumero
-        ? `${metaType(groupe.typeGroupe).label} · Menu n°${groupe.menuNumero}`
+        ? `${metaType(groupe.typeGroupe).label}, menu n°${groupe.menuNumero}`
         : metaType(groupe.typeGroupe).label,
       sousTitre: '',
       cellules,
@@ -109,7 +109,7 @@ export function enTeteCourses(groupe) {
   const nomCourt = nom.length > 42 ? `${nom.slice(0, 39).trimEnd()}...` : nom;
   return {
     titre: 'Liste de courses',
-    sousTitre: `${libelleGroupe(groupe.typeGroupe, groupe.menuNumero)} · ${nomCourt} · ${groupe.nbPax} pax · ${dateComplete(groupe.dateEvenement)}`,
+    sousTitre: `${libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, ${nomCourt}, ${groupe.nbPax} pax, ${dateComplete(groupe.dateEvenement)}`,
     filename: `courses-${groupe.dateEvenement}-${slugFichier(groupe.nom)}.pdf`,
   };
 }

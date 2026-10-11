@@ -109,7 +109,7 @@ export function useReservationsJour(etablissementId, date, { refreshKey = 0, onC
       notify(err, 'error');
       return;
     }
-    notify(`${resa.nom} · ${metaStatut(statut).label.toLowerCase()}`, 'success');
+    notify(`${resa.nom} : ${metaStatut(statut).label.toLowerCase()}`, 'success');
     // Un no-show sort des couverts prévus (trigger côté base) : la vue
     // semaine doit s'en apercevoir.
     if (statut === 'no_show' || avant === 'no_show') onChangeRef.current?.();

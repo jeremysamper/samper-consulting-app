@@ -3,7 +3,7 @@ import { DUREE_MAX_JOURS, validerEtiquettePerso } from '../../utils/etiquettesDl
 import { hcfg, hs } from './HACCP.styles.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ÉTIQUETTE MAISON — création / modification
+// ÉTIQUETTE MAISON : création / modification
 //
 // Une étiquette maison, c'est une préparation courante qui n'a pas de fiche
 // recette et qui doit quand même sortir du poste avec son nom sur le bac.
@@ -17,7 +17,7 @@ import { hcfg, hs } from './HACCP.styles.js';
 //
 // « Préparation congelable » commande les deux durées de surgélation : décoché,
 // l'étiquette n'existe qu'en froid positif et les modes Surgélation /
-// Décongélation la laisseront grisée dans la liste — même règle que sur une
+// Décongélation la laisseront grisée dans la liste, même règle que sur une
 // fiche recette sans durée de surgélation.
 //
 // Formulaire court → bottom sheet sur mobile (modal-sheet), pas plein écran.
@@ -32,7 +32,7 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
   const [f, setF] = React.useState(() => ({
     nom: etiquette?.nom || '',
     dureeVieJours: champNombre(etiquette?.dureeVieJours ?? 3),
-    // Une étiquette existante est congelable si — et seulement si — elle porte
+    // Une étiquette existante est congelable si, et seulement si, elle porte
     // une durée de surgélation. Même convention qu'une fiche recette.
     congelable: etiquette ? etiquette.dureeVieCongeleJours != null : false,
     dureeVieCongeleJours: champNombre(etiquette?.dureeVieCongeleJours ?? 90),

@@ -60,7 +60,7 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
           return;
         }
         await onResetPassword(email.trim());
-        setInfo("Si ce compte existe, un email de réinitialisation vient d'être envoyé. Le lien est valable une heure et une seule fois — ouvre-le sur cet appareil. Pense à regarder dans les indésirables.");
+        setInfo("Si ce compte existe, un email de réinitialisation vient d'être envoyé. Le lien est valable une heure et une seule fois : ouvre-le sur cet appareil. Pense à regarder dans les indésirables.");
       }
     } catch (err) {
       const fallback = mode === 'signin' ? 'Email ou mot de passe incorrect.' : 'Erreur pendant la demande.';

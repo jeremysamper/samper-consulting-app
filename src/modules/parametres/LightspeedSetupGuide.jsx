@@ -110,7 +110,7 @@ export default function LightspeedSetupGuide({ onClose }) {
               Guide de configuration Lightspeed
             </div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-              K-Series · OAuth2 · ~5 minutes
+              K-Series, OAuth2, environ 5 minutes
             </div>
           </div>
           <button

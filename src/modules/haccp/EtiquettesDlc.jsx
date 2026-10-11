@@ -31,19 +31,19 @@ import { hs } from './HACCP.styles.js';
 //
 // ─── UN LOT, PLUSIEURS MODES ─────────────────────────────────────────────────
 // Un lot portait UN seul mode : changer de mode purgeait la sélection devenue
-// inéligible. En service, l'étiquetage ne se range pas comme ça — on compte
+// inéligible. En service, l'étiquetage ne se range pas comme ça : on compte
 // 3 étiquettes de guacamole frais, puis on passe au congélateur pour 2 abricots
 // confits, et les trois premières ne doivent pas disparaître.
 //
 // La sélection est donc tenue PAR MODE (`lots`), et les dates aussi
 // (`datesParMode`). Changer d'onglet ne retire plus rien : il montre un autre
 // plan de travail. La génération parcourt les modes dans l'ordre et sort un PDF
-// unique, les étiquettes groupées par mode — une pile par destination.
+// unique, les étiquettes groupées par mode, une pile par destination.
 //
 // Les dates sont par mode et NON partagées, même pour un champ de même nom :
 // une préparation fabriquée lundi et surgelée mercredi porte une date de
 // fabrication qui n'est pas celle du lot frais du jour. Partager le champ
-// aurait réécrit en silence la date d'un lot déjà composé — inacceptable sur un
+// aurait réécrit en silence la date d'un lot déjà composé, inacceptable sur un
 // document d'autocontrôle.
 //
 // ─── LA LISTE EST LE MIROIR DE CARTES & RECETTES ─────────────────────────────
@@ -56,14 +56,14 @@ import { hs } from './HACCP.styles.js';
 // Les lectures sont STRICTES : une erreur remonte au lieu de rendre []. Sans
 // ça, le réveil d'une tablette (JWT expiré, réseau pas encore revenu) rendait
 // une liste vide, la purge prenait toutes les lignes cochées pour des fiches
-// supprimées, et la sélection s'effaçait sous les doigts de l'opérateur —
+// supprimées, et la sélection s'effaçait sous les doigts de l'opérateur :
 // « je coche et ça ne coche pas ». On garde désormais la dernière liste valide,
 // on le dit, et on réessaie.
 //
 // En tête de liste, hors recherche, les cases « Divers » : des étiquettes
 // génériques (3 / 5 / 7 jours au froid positif, 90 jours au congélateur) pour
 // un bac qui n'a pas de fiche. Elles vivent dans utils/etiquettesDlc.js, pas en
-// base — elles valent pour tous les établissements, ne polluent aucun
+// base : elles valent pour tous les établissements, ne polluent aucun
 // référentiel, et restent imprimables même quand la base est injoignable.
 //
 // Viennent ensuite les « étiquettes maison » (table etiquettes_perso) : la liste
@@ -74,7 +74,7 @@ import { hs } from './HACCP.styles.js';
 // Modifier ou supprimer, en revanche, s'arrête au responsable cuisine : une
 // durée de vie relève de l'autocontrôle, la corriger alors que la brigade
 // l'utilise déjà est une décision de responsable. La garde d'interface
-// (canGererEtiquettes) est doublée par les politiques RLS de la table — le front
+// (canGererEtiquettes) est doublée par les politiques RLS de la table : le front
 // cache les boutons, la base refuse l'écriture.
 //
 // La sélection est en état de composant : quitter l'onglet la perd, comportement
@@ -119,7 +119,7 @@ const es = {
   dlc: { fontSize: 12, fontWeight: 700, color: 'var(--accent)' },
   // Cible tactile de la case à cocher : 44 px, la case dessinée n'en faisant
   // que 20. Une case de 18 px se rate une fois sur trois sur un iPad tenu d'une
-  // main en service — et un tap raté ressemble exactement à un bug. Les marges
+  // main en service, et un tap raté ressemble exactement à un bug. Les marges
   // négatives absorbent la cible dans la hauteur de ligne existante.
   caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, marginLeft: -8, marginTop: -4, marginBottom: -4, flexShrink: 0, touchAction: 'manipulation' },
   case: { width: 20, height: 20, flexShrink: 0, margin: 0, cursor: 'inherit', accentColor: 'var(--accent)' },
@@ -179,10 +179,10 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   const [recettes, setRecettes] = React.useState([]);
   // Étiquettes maison de l'établissement (table etiquettes_perso).
   const [perso, setPerso] = React.useState([]);
-  // 'loading' = premier chargement · 'ready' = liste à jour · 'error' = la
+  // 'loading' = premier chargement, 'ready' = liste à jour, 'error' = la
   // dernière lecture a échoué (la liste affichée est celle d'avant, conservée).
   const [status, setStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
-  // null = modale fermée · {} = création · étiquette = modification.
+  // null = modale fermée, {} = création, étiquette = modification.
   const [formPerso, setFormPerso] = React.useState(null);
   const [savingPerso, setSavingPerso] = React.useState(false);
   const canGererEtiquettes = ROLES_GESTION_ETIQUETTES.includes(user?.role);
@@ -231,12 +231,12 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
   // L'onglet suit Cartes & Recettes en direct : toute création, modification ou
   // suppression de fiche y déclenche un event Postgres, donc un rechargement de
   // cette liste. `listRecettes` n'est pas mise en cache, il n'y a rien à
-  // invalider — la liste affichée est toujours celle de la base.
+  // invalider : la liste affichée est toujours celle de la base.
   //
   // Les deux tables sont rechargées ENSEMBLE et non par deux effets séparés :
   // la purge ci-dessous compare la sélection à l'ensemble des lignes vivantes,
   // et un rechargement partiel prendrait les lignes de l'autre table pour des
-  // disparues — elle viderait la sélection à chaque event.
+  // disparues : elle viderait la sélection à chaque event.
   const reloadRef = React.useRef(null);
   React.useEffect(() => {
     if (!legacySB) { setRecettes([]); setPerso([]); setStatus('ready'); return; }
@@ -458,7 +458,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     }
 
     // Ordre des pages : les modes dans l'ordre des onglets, et dans chacun
-    // l'ordre de la liste — cases Divers épinglées en tête, puis les étiquettes
+    // l'ordre de la liste : cases Divers épinglées en tête, puis les étiquettes
     // maison, puis les recettes, les deux triées par nom côté DB. La brigade
     // récupère donc une pile par destination, pas un paquet à trier.
     const etiquettes = [];
@@ -496,7 +496,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
 
   // ─── Étiquettes maison : création, modification, suppression ───
   // Créer reste ouvert à qui étiquette : le cuisinier au poste doit pouvoir
-  // nommer son bac sans attendre son responsable. Modifier et supprimer, non —
+  // nommer son bac sans attendre son responsable. Modifier et supprimer, non :
   // une durée déjà en service engage l'autocontrôle. Les deux gardes ci-dessous
   // doublent les politiques RLS de la table, elles ne les remplacent pas.
   const enregistrerPerso = async (valeurs) => {
@@ -562,7 +562,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
 
   // Une seule écriture de la ligne pour les trois blocs : cases Divers et
   // étiquettes maison ne sont pas un affichage à part, ce sont des lignes comme
-  // les autres — mêmes cases à cocher, même stepper, même DLC calculée.
+  // les autres : mêmes cases à cocher, même stepper, même DLC calculée.
   // `actions` : boutons de fin de ligne (Modifier / Supprimer des étiquettes
   // maison). Toujours appeler renderLigne dans une lambda explicite : passé
   // directement à .map(), le second argument serait l'index et s'afficherait.
@@ -590,8 +590,8 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           <div style={es.meta}>
             {r.categorie || 'Sans catégorie'}
             {eligible
-              ? <> · {duree} jour{duree > 1 ? 's' : ''} · <span style={es.dlc}>DLC {formatDateFr(dlc)}</span></>
-              : <> · <strong>{motifNonEligible(r)}</strong></>}
+              ? <>, {duree} jour{duree > 1 ? 's' : ''}, <span style={es.dlc}>DLC {formatDateFr(dlc)}</span></>
+              : <>, <strong>{motifNonEligible(r)}</strong></>}
           </div>
         </div>
         {selected && (
@@ -712,7 +712,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               mise en service, pas de l'écran quotidien de la brigade. */}
           Rouleau {ETIQUETTE_MEDIA.ref}
           {agent && (
-            <> · impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
+            <>, impression <strong style={{ color: 'var(--success-text)' }}>directe</strong> sur
               {' '}<strong style={{ color: 'var(--text)' }}>{agent.imprimante || agent.nom}</strong></>
           )}
         </div>
@@ -726,7 +726,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         {divers.map(d => renderLigne(d))}
 
         {/* Étiquettes maison : le référentiel de l'établissement. Le bouton
-            d'ajout reste affiché liste vide et recherche en cours — c'est par
+            d'ajout reste affiché liste vide et recherche en cours : c'est par
             là qu'on crée la première, et en service on ne cherche pas un
             bouton. */}
         <div style={es.blocTitre}>
@@ -757,7 +757,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         {visibles.length === 0 && (
           <div style={hs.empty}>
             {status !== 'ready'
-              ? 'Liste indisponible pour le moment — nouvel essai en cours.'
+              ? 'Liste indisponible pour le moment, nouvel essai en cours.'
               : recettes.length === 0
                 ? 'Aucune recette dans cet établissement.'
                 : 'Aucune préparation ne correspond à la recherche.'}
@@ -777,9 +777,9 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
             <div key={m.id} style={es.recapLigne}>
               <span style={es.recapInfo}>
                 <strong style={{ color: 'var(--text)' }}>{m.label}</strong>
-                {' · '}{nbLignes} préparation{nbLignes > 1 ? 's' : ''}
-                {' · '}<strong style={{ color: 'var(--text)' }}>{nbEtiquettes}</strong> étiquette{nbEtiquettes > 1 ? 's' : ''}
-                {' · '}DLC dès le {formatDateFr(datesParMode[m.id]?.[m.dlcDepuis])}
+                {', '}{nbLignes} préparation{nbLignes > 1 ? 's' : ''}
+                {', '}<strong style={{ color: 'var(--text)' }}>{nbEtiquettes}</strong> étiquette{nbEtiquettes > 1 ? 's' : ''}
+                {', '}DLC dès le {formatDateFr(datesParMode[m.id]?.[m.dlcDepuis])}
               </span>
               {m.id !== modeId && (
                 <button type="button" style={es.actionBtn} onClick={() => setModeId(m.id)}>Ouvrir</button>
@@ -799,14 +799,14 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
       <div style={es.resume}>
         <span style={es.resumeTotal}>
           <strong style={{ color: 'var(--text)' }}>{compteurs.nbLignes}</strong> préparation{compteurs.nbLignes > 1 ? 's' : ''}
-          {' · '}
+          {', '}
           <strong style={{ color: 'var(--text)' }}>{compteurs.nbEtiquettes}</strong> étiquette{compteurs.nbEtiquettes > 1 ? 's' : ''}
           {lotMultiMode && (
             <span style={{ color: 'var(--text3)' }}>
-              {' · '}dont {nbEtiquettesMode} en {modeCourant.label.toLowerCase()}
+              {', '}dont {nbEtiquettesMode} en {modeCourant.label.toLowerCase()}
             </span>
           )}
-          {progress && <span style={{ marginLeft: 8, color: 'var(--accent)' }}>· génération {progress.done}/{progress.total}</span>}
+          {progress && <span style={{ marginLeft: 8, color: 'var(--accent)' }}>(génération {progress.done}/{progress.total})</span>}
         </span>
         {compteurs.nbLignes > 0 && (
           <button type="button" style={hs.cancelBtn} disabled={busy} onClick={viderLot}>

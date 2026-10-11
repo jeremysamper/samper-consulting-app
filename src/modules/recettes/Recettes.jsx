@@ -226,7 +226,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
       notifyLegacy(`"${recette.nom}" dupliquée vers ${successes.length} établissement${successes.length > 1 ? 's' : ''} : ${list}`, 'success');
     }
     if (failures.length > 0) {
-      const list = failures.map(f => `${f.etabNom} (${f.reason})`).join(' · ');
+      const list = failures.map(f => `${f.etabNom} (${f.reason})`).join(' ; ');
       notifyLegacy(`${failures.length} duplication(s) non effectuée(s) : ${list}`, 'warning');
     }
     if (successes.length > 0) onClose();
@@ -394,7 +394,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
   const ratio = portions > 0 ? portions / basePortions : 1;
   const isScaled = estRecalcule(ratio);
   const facteurAffiche = fmtFacteur(ratio);
-  const rappelBase = `${basePortions > 1 ? 'portions' : 'portion'} · fiche enregistrée inchangée`;
+  const rappelBase = `${basePortions > 1 ? 'portions' : 'portion'}, fiche enregistrée inchangée`;
 
   const revenirBase = () => {
     setPortions(basePortions);
@@ -416,7 +416,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
   };
 
   // Entrée 2 : la quantité réelle d'un ingrédient. Toute la recette se cale
-  // dessus — l'ancienne « méthode 2 » (choisir l'ingrédient dans une liste puis
+  // dessus : l'ancienne « méthode 2 » (choisir l'ingrédient dans une liste puis
   // saisir la cible) tient désormais dans la case qu'on lit déjà.
   const changeQuantite = (idx, base, texte) => {
     setSaisieQte({ idx, texte });
@@ -597,7 +597,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
           <span style={{...rs.badge, ...rs.detailHeroBadge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
           <div style={rs.detailHeroText}>
             <div style={rs.detailHeroTitle}>{recette.nom}</div>
-            <div style={rs.detailHeroSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
+            <div style={rs.detailHeroSub}>v{recette.version}, modifié le {recette.modifie}, {recette.categorie}</div>
             {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
               <div style={rs.detailHeroTimes}>
                 {recette.tempsPreparation != null && <span>Prépa {recette.tempsPreparation} min</span>}
@@ -611,7 +611,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
         <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
           <div style={rs.detailMeta}>
             <div style={rs.detailTitle}>{recette.nom}</div>
-            <div style={rs.detailSub}>v{recette.version} · Modifié le {recette.modifie} · {recette.categorie}</div>
+            <div style={rs.detailSub}>v{recette.version}, modifié le {recette.modifie}, {recette.categorie}</div>
             {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
               <div style={{display:'flex', gap:14, marginTop:8, fontSize:12, color:'var(--text2)', flexWrap:'wrap'}}>
                 {recette.tempsPreparation != null && <span>Prépa : <strong style={{color:'var(--text)'}}>{recette.tempsPreparation} min</strong></span>}
@@ -690,7 +690,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
                         onWheel={e => e.target.blur()}
                         onBlur={() => setSaisieQte(null)}
                         style={{...rs.ingQtyInput, ...(estRef ? rs.ingQtyInputRef : null), ...(isMobile ? { fontSize: 15 } : null)}}
-                        aria-label={`Quantité de ${i.nom || 'l’ingrédient'} — modifier pour recalculer la recette`}
+                        aria-label={`Quantité de ${i.nom || 'l’ingrédient'} : la modifier recalcule la recette`}
                       />
                       {isScaled && <div style={rs.ingQtyBase}>base <span data-no-translate>{fmtQte(base)}</span></div>}
                     </div>
@@ -709,8 +709,8 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
             <div style={rs.cardHeader}><span style={rs.cardTitle}>Congélation</span></div>
             <div style={{padding:'12px 16px', display:'flex', flexDirection:'column', gap:10}}>
               <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-                {congelable === true && <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>Congelable · grosse production</span>}
-                {congelable === false && <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)'}}>Non congelable · urgent</span>}
+                {congelable === true && <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>Congelable, grosse production</span>}
+                {congelable === false && <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)'}}>Non congelable, urgent</span>}
                 {congelable == null && <span style={{...rs.badge, background:'var(--bg)', color:'var(--text2)', border:'1px solid var(--border)'}}>À qualifier</span>}
               </div>
               {canEditCongelable ? (
@@ -1067,7 +1067,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
                           <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggleSet(setSelCartes, c.id)} />
                           <span style={ms.rowName}>{c.nom}</span>
                           <span style={ms.rowMeta}>
-                            {platsC.length} plat{platsC.length > 1 ? 's' : ''} · {nFiches} fiche{nFiches > 1 ? 's' : ''}
+                            {platsC.length} plat{platsC.length > 1 ? 's' : ''}, {nFiches} fiche{nFiches > 1 ? 's' : ''}
                           </span>
                         </label>
                         {platsC.length > 0 && (
@@ -1113,7 +1113,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
                     <div key={cat}>
                       <div style={ms.groupHead}>
                         <span>{cat}</span>
-                        <span style={ms.groupCount}>· {items.length}</span>
+                        <span style={ms.groupCount}>({items.length})</span>
                         {eligibles.length > 0 && (
                           <button type="button" className="mini" style={ms.groupAllBtn} onClick={() => toggleAllPlats(items)}>
                             {allOn ? 'Tout retirer' : 'Tout sélectionner'}
@@ -1146,7 +1146,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
                     <div key={cat}>
                       <div style={ms.groupHead}>
                         <span>{cat}</span>
-                        <span style={ms.groupCount}>· {items.length}</span>
+                        <span style={ms.groupCount}>({items.length})</span>
                         <button type="button" className="mini" style={ms.groupAllBtn} onClick={() => toggleAllRecettes(items)}>
                           {allOn ? 'Tout retirer' : 'Tout sélectionner'}
                         </button>
@@ -1331,11 +1331,11 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
                       <div style={is.rowName}>{recette.nom}</div>
                       <div style={is.rowMeta}>
                         {recette.categorie}
-                        {inPlats.length > 0 && ` · ${inPlats.join(', ')}`}
+                        {inPlats.length > 0 && `, dans ${inPlats.join(', ')}`}
                       </div>
                       <div style={is.matchRow}>
                         {matchedIngs.map(i => (
-                          <span key={i.id} style={is.matchIng}>{i.nom}{i.quantite ? ` · ${i.quantite}${i.unite || ''}` : ''}</span>
+                          <span key={i.id} style={is.matchIng}>{i.nom}{i.quantite ? ` (${i.quantite}${i.unite || ''})` : ''}</span>
                         ))}
                         {matchedAllerg.map(a => (
                           <span key={a} style={is.matchAllerg}>{ALLERGENES_MAP[a] || a}</span>
@@ -1696,7 +1696,7 @@ const Recettes = ({ user, etablissement }) => {
               <div style={rs.carteName}>{activeCarte.nom}</div>
               <div style={{fontSize:13, color:'var(--text2)'}}>
                 {platsCarte.length} plat{platsCarte.length > 1 ? 's' : ''}
-                {activeCarte.dateDebut && ` · Du ${activeCarte.dateDebut}${activeCarte.dateFin ? ` au ${activeCarte.dateFin}` : ''}`}
+                {activeCarte.dateDebut && `, du ${activeCarte.dateDebut}${activeCarte.dateFin ? ` au ${activeCarte.dateFin}` : ''}`}
               </div>
             </div>
             <div style={rs.carteHeaderRight} className="no-print">
@@ -1882,7 +1882,7 @@ const Recettes = ({ user, etablissement }) => {
                 <RecettePhoto src={r.photoUrl} alt={r.nom} style={rs.thumb} />
                 <div style={rs.recetteInfo}>
                   <div style={rs.recetteName}>{r.nom}</div>
-                  <div style={rs.recetteMeta}>{r.categorie} · {r.portions} portions · v{r.version} · modifié {r.modifie}</div>
+                  <div style={rs.recetteMeta}>{r.categorie}, {r.portions} portions, v{r.version}, modifié {r.modifie}</div>
                 </div>
                 {/* Pastilles d'allergènes plafonnées : une recette en cumulant 5
                     occupait 139px et écrasait le nom à 0px de large sur mobile.
@@ -1944,7 +1944,7 @@ const Recettes = ({ user, etablissement }) => {
                           </div>
                           <div style={rs.recetteMeta}>
                             {plat.categorie}
-                            {' · '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
+                            {', '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
                           </div>
                         </div>
                       </div>

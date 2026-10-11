@@ -342,7 +342,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
       setProgress({ done: Math.min(i + 10, toImport.length), total: toImport.length });
     }
     notifyLegacy(
-      `Import terminé : ${saved} produit(s)${errors ? ` · ${errors} en erreur` : ''}.`,
+      `Import terminé : ${saved} produit(s)${errors ? `, ${errors} en erreur` : ''}.`,
       errors ? 'warning' : 'success',
     );
     onClose();
@@ -432,17 +432,17 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
           {step === 'preview' && (
             <>
               <div style={st.banner}>
-                <strong>{produits.length}</strong> produit(s) détecté(s) ·{' '}
-                <strong>{selectedCount}</strong> à importer ·{' '}
+                <strong>{produits.length}</strong> produit(s) détecté(s),{' '}
+                <strong>{selectedCount}</strong> à importer,{' '}
                 {dupCount > 0 && (
-                  <span style={{ color: 'var(--warning-text)' }}><strong>{dupCount}</strong> doublon(s) · </span>
+                  <span style={{ color: 'var(--warning-text)' }}><strong>{dupCount}</strong> doublon(s), </span>
                 )}
                 {flaggedCount > 0
                   ? <span style={{ color: 'var(--warning-text)' }}><strong>{flaggedCount}</strong> ligne(s) à vérifier</span>
                   : <span style={{ color: 'var(--success-text)' }}>aucune anomalie</span>}
-                {fournisseurNom && <span> · Fournisseur : <strong>{fournisseurNom}</strong></span>}
+                {fournisseurNom && <span>, fournisseur : <strong>{fournisseurNom}</strong></span>}
                 {parseErrors > 0 && (
-                  <span style={{ color: 'var(--danger-strong)' }}> · <strong>{parseErrors}</strong> lot(s) en erreur (voir console)</span>
+                  <span style={{ color: 'var(--danger-strong)' }}>, <strong>{parseErrors}</strong> lot(s) en erreur (voir console)</span>
                 )}
               </div>
               {/* Diagnostique par feuille - affiché seulement si plusieurs feuilles */}
@@ -455,7 +455,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                         ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide - ignorée</span>
                         : <>
                             <span style={{ color: 'var(--text2)' }}>
-                              {s.rowsData} ligne{s.rowsData !== 1 ? 's' : ''} · {s.chunks} lot{s.chunks !== 1 ? 's' : ''}
+                              {s.rowsData} ligne{s.rowsData !== 1 ? 's' : ''}, {s.chunks} lot{s.chunks !== 1 ? 's' : ''}
                             </span>
                             {s.catHint && s.catHint !== 'Autres' && (
                               <span style={st.catHintBadge}>{s.catHint}</span>

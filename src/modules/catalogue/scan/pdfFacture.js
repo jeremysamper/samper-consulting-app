@@ -4,12 +4,12 @@
 // Les factures arrivent en PDF bien plus souvent qu'en photo, et de deux
 // natures très différentes :
 //
-//   · PDF natif (confirmation de commande envoyée par mail) : le texte est
+//   - PDF natif (confirmation de commande envoyée par mail) : le texte est
 //     extractible. On l'envoie tel quel, sans vision. C'est plus fidèle sur
-//     les chiffres — une colonne de montants mal alignée à l'oeil reste juste
-//     dans le texte — et bien moins cher.
+//     les chiffres (une colonne de montants mal alignée à l'oeil reste juste
+//     dans le texte) et bien moins cher.
 //
-//   · PDF scanné (facture passée au scanner, souvent en CCITTFax noir et
+//   - PDF scanné (facture passée au scanner, souvent en CCITTFax noir et
 //     blanc) : aucun texte. On rend chaque page en image pour la vision.
 //
 // Module à charger en import dynamique : pdf.js est volumineux.
@@ -64,7 +64,7 @@ export async function preparerPdf(file) {
 
     // OffscreenCanvas de préférence : il rend hors du compositeur, donc le scan
     // continue même si l'onglet passe en arrière-plan. Un canvas du DOM, lui,
-    // se fige dès que la page n'est plus visible — basculer d'application sur
+    // se fige dès que la page n'est plus visible : basculer d'application sur
     // iPad en plein scan suffirait à bloquer la lecture.
     const offscreen = typeof OffscreenCanvas !== 'undefined';
     const canvas = offscreen

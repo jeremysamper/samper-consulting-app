@@ -57,7 +57,7 @@ const ROLES_PRIX = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 const ROLES_SUPPRESSION = ['consultant', 'patron'];
 // Densité des cases du mois, d'après la largeur du calendrier lui-même et non
 // de la fenêtre : sur desktop la barre latérale en mange une partie.
-// < 620 : téléphone (« M4 ») · < 910 : iPad debout (« Apéro n°1 ») · au-delà :
+// < 620 : téléphone (« M4 »), < 910 : iPad debout (« Apéro n°1 »), au-delà :
 // libellé complet et heure.
 const LARGEUR_COMPACTE = 620;
 const LARGEUR_MOYENNE = 910;
@@ -325,7 +325,7 @@ export default function Groupes({ user, etablissement }) {
           <div style={{ marginTop: 18 }}>
             <div style={st.titreListe}>
               {duMoisActifs.length
-                ? `${duMoisActifs.length} groupe${duMoisActifs.length > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()} · ${totalPax} pax`
+                ? `${duMoisActifs.length} groupe${duMoisActifs.length > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${totalPax} pax`
                 : status === 'ready' ? `Aucun groupe en ${MOIS[vue.mois].toLowerCase()}.` : ''}
             </div>
             <div style={st.liste}>
@@ -465,12 +465,12 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
           textDecoration: groupe.annule ? 'line-through' : 'none',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {libelleGroupe(groupe.typeGroupe, groupe.menuNumero)} · {groupe.nom}
+          {libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}
         </span>
         <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>
-          {groupe.nbPax} pax{groupe.heure ? ` · ${groupe.heure}` : ''}
-          {!groupe.menuNumero ? ' · menu à définir' : ''}
-          {groupe.allergenesIds.length || groupe.allergiesNote ? ' · allergies' : ''}
+          {groupe.nbPax} pax{groupe.heure ? `, ${groupe.heure}` : ''}
+          {!groupe.menuNumero ? ', menu à définir' : ''}
+          {groupe.allergenesIds.length || groupe.allergiesNote ? ', allergies' : ''}
         </span>
       </span>
       {!groupe.annule && (

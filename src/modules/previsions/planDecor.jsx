@@ -204,7 +204,7 @@ export function ElementDecor({
       onPointerDown={editable ? (e) => onPointerDown?.(e, el) : undefined}
       onClick={editable ? (e) => { e.stopPropagation(); onClick?.(el); } : undefined}
       onDoubleClick={editable ? (e) => { e.stopPropagation(); onDoubleClick?.(el); } : undefined}
-      title={editable ? `${def?.label ?? ''} · glisser pour déplacer, toucher pour régler` : undefined}
+      title={editable ? `${def?.label ?? ''} : glisser pour déplacer, toucher pour régler` : undefined}
       style={{
         position: 'absolute',
         left:   `${(Number(el.pos_x)   / PLAN_W) * 100}%`,
