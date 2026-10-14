@@ -5,7 +5,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { labelAllergene, sortAllergenes } from '../../utils/allergenes.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
 import ChoixGroupe from './ChoixGroupe.jsx';
-import { choixEstVide, ligneDeSaison, mentionPoste, postesProduction, saisonDeDate } from './choixMenu.js';
+import { choixEstVide, ligneServieLe, mentionPoste, postesProduction } from './choixMenu.js';
 import {
   allergenesEnConflit, computeListeCourses, formatQuantiteCourses, payloadCoursesPdf,
 } from './listeCourses.js';
@@ -36,15 +36,16 @@ function horodatage(iso) {
 export default function GroupeFiche({
   groupe, menu, complements = null, menus = [], menusStatus = 'ready', cuisine, etablissement,
   canEdit = false, voirPrix = false,
-  onStatut, onEnregistrerChoix, onEdit, onAnnuler, onSupprimer, onClose,
+  onStatut, onEnregistrerChoix, onEdit, onAnnuler, onSupprimer, onClose, ongletInitial = 'fiche',
 }) {
-  const [onglet, setOnglet] = useState('fiche');
+  const [onglet, setOnglet] = useState(ongletInitial);
   const [statutEnCours, setStatutEnCours] = useState(false);
 
-  const saison = saisonDeDate(groupe.dateEvenement);
+  // Menu servi à la date du groupe : la saison ET la fenêtre de chaque plat
+  // (une salade de janvier à avril n'apparaît pas pour un groupe de novembre).
   const sections = useMemo(
-    () => lignesParSection((menu?.lignes || []).filter((l) => ligneDeSaison(l, saison))),
-    [menu, saison]
+    () => lignesParSection((menu?.lignes || []).filter((l) => ligneServieLe(l, groupe.dateEvenement))),
+    [menu, groupe.dateEvenement]
   );
   const allergenes = sortAllergenes(groupe.allergenesIds || []);
   const meta = metaStatut(groupe.statut);
@@ -226,6 +227,27 @@ export default function GroupeFiche({
 
           {onglet === 'fiche' && (
             <>
+              {/* Le chemin vers les choix, en tête de fiche : sans lui, l'onglet
+                  passait inaperçu et l'on cherchait les cases dans Menus. */}
+              {canEdit && !groupe.annule && groupe.menuNumero && (
+                choixEstVide(groupe.choix) ? (
+                  <div style={st.appelChoix} data-cadre>
+                    <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+                      <div style={{ fontWeight: 700 }}>Les choix du client ne sont pas encore cochés.</div>
+                      <div style={{ fontSize: 12, marginTop: 2 }}>
+                        Plats, apéritif, gâteau et mignardises se cochent dans « Choix du client ».
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setOnglet('choix')} style={{ ...st.bouton, ...st.boutonPrincipal, flex: '0 0 auto' }}>
+                      Cocher les choix du client
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setOnglet('choix')} style={{ ...st.bouton, alignSelf: 'flex-start', flex: '0 0 auto' }}>
+                    Modifier les choix du client
+                  </button>
+                )
+              )}
               {conflits.length > 0 && (
                 <div style={{ ...st.encart, ...st.encartDanger }}>
                   <strong style={{ fontWeight: 700 }}>Allergènes présents dans le menu.</strong>{' '}
@@ -486,6 +508,11 @@ const st = {
   texte: { fontSize: 14, color: 'var(--text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
   vide: { fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
   aide: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45, marginBottom: 8 },
+  appelChoix: {
+    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+    padding: '12px 14px', borderRadius: 10, fontSize: 13, lineHeight: 1.45,
+    background: 'var(--accent-light)', color: 'var(--text)', border: '1px solid var(--accent-bd)',
+  },
   allergene: {
     padding: '5px 11px', borderRadius: 16, fontSize: 13, fontWeight: 700,
     background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',

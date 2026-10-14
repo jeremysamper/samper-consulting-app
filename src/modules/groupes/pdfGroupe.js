@@ -1,7 +1,7 @@
 import { parseLocalDate } from '../../utils/dateHelpers.js';
 import { labelAllergene, sortAllergenes } from '../../utils/allergenes.js';
 import {
-  labelRegime, libelleFenetre, ligneDeSaison, mentionPoste, metaSaison, saisonDeDate,
+  labelRegime, libelleFenetre, ligneDeSaison, ligneServieLe, mentionPoste, metaSaison, saisonDeDate,
 } from './choixMenu.js';
 import { NUMERO_COMPLEMENTS, libelleGroupe, lignesParSection, metaType } from './typesGroupe.js';
 
@@ -138,7 +138,9 @@ export function payloadFicheGroupe({ groupe, menu, production }) {
       cellules,
       menuNom: menu?.nom || '',
       menuDescription: avecChoix ? '' : (menu?.description || ''),
-      sections: avecChoix ? sectionsProduction(production.postes) : sectionsPdf(menu?.lignes || [], saison),
+      sections: avecChoix
+        ? sectionsProduction(production.postes)
+        : sectionsPdf((menu?.lignes || []).filter((l) => ligneServieLe(l, groupe.dateEvenement)), saison),
       blocs,
     },
     filename: `groupe-${groupe.dateEvenement}-${slugFichier(groupe.nom)}.pdf`,

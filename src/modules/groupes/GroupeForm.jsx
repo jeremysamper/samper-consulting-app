@@ -230,7 +230,8 @@ export default function GroupeForm({
             {apercu.length > 0 && (
               <div style={st.apercu}>
                 <div style={{ minWidth: 0, gridColumn: '1 / -1', fontSize: 12, color: 'var(--text2)' }}>
-                  Carte {saison ? `d'${metaSaison(saison).label.toLowerCase()}` : ''} à la date du groupe : les choix du client se cochent ensuite dans sa fiche.
+                  Carte {saison ? `d'${metaSaison(saison).label.toLowerCase()}` : ''} à la date du groupe. Les plats se cochent
+                  ensuite dans la fiche du groupe, onglet « Choix du client ».
                 </div>
                 {apercu.map(([sid, n]) => (
                   <div key={sid} style={st.apercuLigne}>{plurielSection(sid)} : {n} au choix</div>

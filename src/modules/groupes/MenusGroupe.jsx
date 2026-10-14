@@ -109,6 +109,11 @@ export default function MenusGroupe({
         )}
       </div>
 
+      <div style={{ ...st.aide, marginBottom: 12 }}>
+        Ici se composent les menus. Les choix d'un client se cochent dans la fiche de son groupe :
+        Calendrier, puis le groupe, onglet « Choix du client ».
+      </div>
+
       {/* Tant que les menus ne sont pas LUS, on n'affiche ni « À composer » ni
           bouton « Composer » : l'enregistrement est un upsert, ouvrir un éditeur
           vide sur un menu qui existe en base l'écraserait. */}

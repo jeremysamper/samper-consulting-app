@@ -9,6 +9,7 @@ import { dbService } from '../../services/dbService.js';
 import { formatDateCourte, formatJourSemaine, isoDate } from '../../utils/dateHelpers.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import AlerteAnticipation from './AlerteAnticipation.jsx';
+import { choixEstVide } from './choixMenu.js';
 import CalendrierMois from './CalendrierMois.jsx';
 import GroupeFiche from './GroupeFiche.jsx';
 import GroupeForm from './GroupeForm.jsx';
@@ -144,6 +145,7 @@ export default function Groupes({ user, etablissement }) {
     return { annee: a, mois: m - 1 };
   });
   const [ficheId, setFicheId] = useState(null);
+  const [ongletFiche, setOngletFiche] = useState('fiche'); // onglet à l'ouverture de la fiche
   const [formulaire, setFormulaire] = useState(null); // { groupe?, date? }
   const [jourOuvert, setJourOuvert] = useState(null); // ISO d'un jour à plusieurs groupes
   const [voirAnnules, setVoirAnnules] = useState(false);
@@ -208,7 +210,19 @@ export default function Groupes({ user, etablissement }) {
 
   async function sauver(contenu) {
     const cible = formulaire?.groupe;
-    return cible ? modifier(cible.id, contenu) : creer(contenu);
+    const res = cible ? await modifier(cible.id, contenu) : await creer(contenu);
+    // Un groupe qui a son menu mais pas encore ses choix : sa fiche s'ouvre
+    // directement sur « Choix du client », là où l'on coche les plats.
+    if (!res.error && res.data?.menuNumero && choixEstVide(res.data.choix)) {
+      setOngletFiche('choix');
+      setFicheId(res.data.id);
+    }
+    return res;
+  }
+
+  function fermerFiche() {
+    setFicheId(null);
+    setOngletFiche('fiche');
   }
 
   async function basculerAnnulation(g, annule) {
@@ -219,7 +233,7 @@ export default function Groupes({ user, etablissement }) {
       annule ? 'Groupe annulé : il reste barré dans « groupes annulés ».' : 'Groupe rétabli.',
       'success'
     );
-    if (annule) setFicheId(null);
+    if (annule) fermerFiche();
   }
 
   async function supprimerDefinitivement(g) {
@@ -232,7 +246,7 @@ export default function Groupes({ user, etablissement }) {
     const { error } = await supprimer(g.id);
     if (error) { notify(error, 'error'); reload(); return; }
     notify('Groupe supprimé définitivement.', 'success');
-    setFicheId(null);
+    fermerFiche();
   }
 
   if (!etabId) {
@@ -416,7 +430,8 @@ export default function Groupes({ user, etablissement }) {
           onEdit={(g) => setFormulaire({ groupe: g })}
           onAnnuler={basculerAnnulation}
           onSupprimer={canSupprimer ? supprimerDefinitivement : undefined}
-          onClose={() => setFicheId(null)}
+          ongletInitial={ongletFiche}
+          onClose={fermerFiche}
         />
       )}
 
@@ -482,6 +497,7 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
         <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>
           {groupe.nbPax} pax{groupe.heure ? `, ${groupe.heure}` : ''}
           {!groupe.menuNumero ? ', menu à définir' : ''}
+          {groupe.menuNumero && !groupe.annule && choixEstVide(groupe.choix) ? ', choix à cocher' : ''}
           {groupe.allergenesIds.length || groupe.allergiesNote ? ', allergies' : ''}
         </span>
       </span>
