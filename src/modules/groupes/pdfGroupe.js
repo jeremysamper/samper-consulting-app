@@ -1,6 +1,9 @@
 import { parseLocalDate } from '../../utils/dateHelpers.js';
 import { labelAllergene, sortAllergenes } from '../../utils/allergenes.js';
-import { libelleGroupe, lignesParSection, metaType } from './typesGroupe.js';
+import {
+  labelRegime, libelleFenetre, ligneDeSaison, mentionPoste, metaSaison, saisonDeDate,
+} from './choixMenu.js';
+import { NUMERO_COMPLEMENTS, libelleGroupe, lignesParSection, metaType } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Charges utiles des exports PDF du module Groupes. Construites à partir des
@@ -30,37 +33,63 @@ const slugFichier = (s) => String(s || '')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
   .slice(0, 40);
 
-function sectionsPdf(lignes) {
-  return lignesParSection(lignes).map((s) => ({
+// Lignes d'une saison (celles de toute l'année comprises), par service. La
+// mention dit le régime et la fenêtre : « végétarien, de mai à juin ».
+function sectionsPdf(lignes, saison) {
+  return lignesParSection((lignes || []).filter((l) => ligneDeSaison(l, saison))).map((s) => ({
     label: s.label,
     lignes: s.lignes.map((l) => ({
       libelle: l.libelle,
       description: l.description,
-      // Une pièce servie plusieurs fois se lit sur le menu : « 3 par personne ».
-      mention: Number(l.parPersonne) > 0 && Number(l.parPersonne) !== 1
-        ? `${String(l.parPersonne).replace('.', ',')} par personne`
-        : '',
+      mention: [
+        labelRegime(l.regime).toLowerCase(),
+        libelleFenetre(l),
+        // Une pièce servie plusieurs fois se lit sur le menu : « 3 par personne ».
+        Number(l.parPersonne) > 0 && Number(l.parPersonne) !== 1
+          ? `${String(l.parPersonne).replace('.', ',')} par personne`
+          : '',
+      ].filter(Boolean).join(', '),
     })),
   }));
 }
 
-// Menu seul, imprimé depuis l'onglet Menus : aucun bloc d'événement.
-export function payloadMenuSeul({ typeGroupe, numero, menu }) {
+// Menu seul, imprimé depuis l'onglet Menus pour une saison : aucun bloc
+// d'événement.
+export function payloadMenuSeul({ typeGroupe, numero, menu, saison }) {
+  const s = metaSaison(saison);
   return {
     payload: {
-      titre: `${metaType(typeGroupe).label}, menu n°${numero}`,
-      sousTitre: '',
+      titre: numero === NUMERO_COMPLEMENTS
+        ? `${metaType(typeGroupe).label}, compléments`
+        : `${metaType(typeGroupe).label}, menu n°${numero}`,
+      sousTitre: saison ? `${s.label}, ${s.detail}` : '',
       menuNom: menu?.nom || '',
       menuDescription: menu?.description || '',
-      sections: sectionsPdf(menu?.lignes || []),
+      sections: sectionsPdf(menu?.lignes || [], saison),
       blocs: [],
     },
-    filename: `menu-${slugFichier(metaType(typeGroupe).label)}-${numero}.pdf`,
+    filename: `menu-${slugFichier(metaType(typeGroupe).label)}-${numero}${saison ? `-${saison}` : ''}.pdf`,
   };
 }
 
-// Fiche d'un groupe réservé : menu + tout ce que la brigade doit savoir.
-export function payloadFicheGroupe({ groupe, menu }) {
+// Plats réellement servis, avec leurs quantités : ce que la brigade produit.
+function sectionsProduction(postes) {
+  const parSection = new Map();
+  (postes || []).forEach((p) => {
+    if (!parSection.has(p.sectionLabel)) parSection.set(p.sectionLabel, []);
+    parSection.get(p.sectionLabel).push({
+      libelle: p.libelle,
+      description: p.emprunt ? 'pris dans un autre menu' : '',
+      mention: mentionPoste(p),
+    });
+  });
+  return [...parSection.entries()].map(([label, lignes]) => ({ label, lignes }));
+}
+
+// Fiche d'un groupe réservé : menu + tout ce que la brigade doit savoir. Avec
+// des choix enregistrés, la fiche porte les plats choisis et leurs quantités ;
+// sans, le menu de la saison du groupe.
+export function payloadFicheGroupe({ groupe, menu, production }) {
   const allergenes = sortAllergenes(groupe.allergenesIds || []).map(labelAllergene);
   const blocs = [];
   if (allergenes.length || groupe.allergiesNote) {
@@ -71,6 +100,13 @@ export function payloadFicheGroupe({ groupe, menu }) {
       alerte: true,
     });
   }
+  if (production?.aChoisir?.length) {
+    blocs.push({
+      label: 'Choix à recevoir',
+      texte: `Pas encore choisi : ${production.aChoisir.join(', ')}.`,
+      alerte: true,
+    });
+  }
   if (groupe.modifications) {
     blocs.push({ label: 'Modifications du menu', texte: groupe.modifications });
   }
@@ -78,23 +114,31 @@ export function payloadFicheGroupe({ groupe, menu }) {
     blocs.push({ label: 'Commentaires', texte: groupe.commentaires });
   }
 
+  const vegetariens = Number(groupe.nbVegetariens) || 0;
+  const enfants = Number(groupe.nbEnfants) || 0;
+  const detailConvives = [
+    vegetariens ? `${vegetariens} végé.` : '',
+    enfants ? `${enfants} enf.` : '',
+  ].filter(Boolean).join(', ');
   const cellules = [
     { k: 'Date', v: dateComplete(groupe.dateEvenement) },
     ...(groupe.heure ? [{ k: 'Heure', v: groupe.heure.replace(':', 'h') }] : []),
-    { k: 'Couverts', v: `${groupe.nbPax} pax` },
+    { k: 'Couverts', v: `${groupe.nbPax} pax${detailConvives ? `, ${detailConvives}` : ''}` },
     { k: 'Client', v: groupe.nom },
   ];
 
+  const avecChoix = (production?.postes || []).length > 0;
+  const saison = saisonDeDate(groupe.dateEvenement);
   return {
     payload: {
       titre: groupe.menuNumero
         ? `${metaType(groupe.typeGroupe).label}, menu n°${groupe.menuNumero}`
         : metaType(groupe.typeGroupe).label,
-      sousTitre: '',
+      sousTitre: saison ? `${metaSaison(saison).label}, ${metaSaison(saison).detail}` : '',
       cellules,
       menuNom: menu?.nom || '',
-      menuDescription: menu?.description || '',
-      sections: sectionsPdf(menu?.lignes || []),
+      menuDescription: avecChoix ? '' : (menu?.description || ''),
+      sections: avecChoix ? sectionsProduction(production.postes) : sectionsPdf(menu?.lignes || [], saison),
       blocs,
     },
     filename: `groupe-${groupe.dateEvenement}-${slugFichier(groupe.nom)}.pdf`,

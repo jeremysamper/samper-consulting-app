@@ -4,6 +4,8 @@ import { SegmentedTabs } from '../../components/ui/index.jsx';
 import { pdfUtils } from '../../services/pdf.js';
 import { labelAllergene, sortAllergenes } from '../../utils/allergenes.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
+import ChoixGroupe from './ChoixGroupe.jsx';
+import { choixEstVide, ligneDeSaison, mentionPoste, postesProduction, saisonDeDate } from './choixMenu.js';
 import {
   allergenesEnConflit, computeListeCourses, formatQuantiteCourses, payloadCoursesPdf,
 } from './listeCourses.js';
@@ -18,8 +20,10 @@ import { STATUTS, libelleGroupe, lignesParSection, metaStatut } from './typesGro
 // Prêt), ouvert à TOUS les rôles : c'est la cuisine qui fait passer la case du
 // rouge au vert, pas le patron. « Lu par » et l'heure sont posés par la base.
 //
-// Deux onglets : la fiche, et la liste de courses calculée pour le nombre de
-// couverts du groupe. Les deux s'exportent en PDF dans la DA de la maison.
+// Trois onglets : la fiche (les plats choisis et leurs quantités, ou le menu
+// de la saison tant que rien n'est choisi), le choix du client (cocher), et la
+// liste de courses calculée sur ce qui est choisi. Fiche et courses
+// s'exportent en PDF dans la DA de la maison.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function horodatage(iso) {
@@ -30,30 +34,54 @@ function horodatage(iso) {
 }
 
 export default function GroupeFiche({
-  groupe, menu, menusStatus = 'ready', cuisine, etablissement, canEdit = false,
-  onStatut, onEdit, onAnnuler, onSupprimer, onClose,
+  groupe, menu, complements = null, menus = [], menusStatus = 'ready', cuisine, etablissement,
+  canEdit = false, voirPrix = false,
+  onStatut, onEnregistrerChoix, onEdit, onAnnuler, onSupprimer, onClose,
 }) {
   const [onglet, setOnglet] = useState('fiche');
   const [statutEnCours, setStatutEnCours] = useState(false);
 
-  const sections = useMemo(() => lignesParSection(menu?.lignes || []), [menu]);
+  const saison = saisonDeDate(groupe.dateEvenement);
+  const sections = useMemo(
+    () => lignesParSection((menu?.lignes || []).filter((l) => ligneDeSaison(l, saison))),
+    [menu, saison]
+  );
   const allergenes = sortAllergenes(groupe.allergenesIds || []);
   const meta = metaStatut(groupe.statut);
 
-  const conflits = useMemo(() => allergenesEnConflit({
-    lignes: menu?.lignes || [],
+  // Ce que la cuisine produit : les plats choisis, chacun pour ses couverts.
+  const production = useMemo(
+    () => postesProduction({ groupe, menu, complements, menus }),
+    [groupe, menu, complements, menus]
+  );
+  // Choix saisis, ou menu entièrement servi (apéro dînatoire) : la fiche
+  // montre la production. Sinon, le menu de la saison en attendant.
+  const avecChoix = !choixEstVide(groupe.choix)
+    || (production.postes.length > 0 && production.aChoisir.length === 0);
+  const parSection = useMemo(() => {
+    const map = new Map();
+    production.postes.forEach((p) => {
+      if (!map.has(p.sectionLabel)) map.set(p.sectionLabel, []);
+      map.get(p.sectionLabel).push(p);
+    });
+    return [...map.entries()];
+  }, [production]);
+
+  const allergiesMenu = useMemo(() => allergenesEnConflit({
+    postes: production.postes,
     allergenesGroupe: groupe.allergenesIds,
     plats: cuisine.plats,
     recettes: cuisine.recettes,
-  }), [menu, groupe.allergenesIds, cuisine.plats, cuisine.recettes]);
+  }), [production, groupe.allergenesIds, cuisine.plats, cuisine.recettes]);
+  const conflits = allergiesMenu.conflits;
 
   const liste = useMemo(() => computeListeCourses({
-    lignes: menu?.lignes || [],
-    pax: groupe.nbPax,
+    postes: production.postes,
     plats: cuisine.plats,
     recettes: cuisine.recettes,
     catalogue: cuisine.catalogue,
-  }), [menu, groupe.nbPax, cuisine.plats, cuisine.recettes, cuisine.catalogue]);
+  }), [production, cuisine.plats, cuisine.recettes, cuisine.catalogue]);
+  const estimation = production.postes.some((p) => p.estimation);
 
   async function choisirStatut(statut) {
     if (statut === groupe.statut || statutEnCours) return;
@@ -70,19 +98,31 @@ export default function GroupeFiche({
 
   function exporterFiche() {
     if (menusStatus !== 'ready') { notify('Le menu est encore en cours de chargement.', 'info'); return; }
-    const { payload, filename } = payloadFicheGroupe({ groupe, menu });
+    const { payload, filename } = payloadFicheGroupe({ groupe, menu, production: avecChoix ? production : null });
     pdfUtils.exportGroupeMenuPdf(payload, { etablissement, filename }).catch(() => {});
   }
 
   function exporterCourses() {
     if (!donneesPretes) { notify('La liste est encore en cours de calcul.', 'info'); return; }
-    if (!liste.items.length) { notify('Aucun ingrédient à lister pour ce menu.', 'info'); return; }
+    if (!liste.items.length) { notify('Aucun ingrédient à lister pour ces choix.', 'info'); return; }
     const entete = enTeteCourses(groupe);
     const remarques = [];
+    if (production.aChoisir.length) {
+      remarques.push({
+        label: 'Pas encore choisi',
+        texte: `${production.aChoisir.join(', ')} : absents du calcul.`,
+      });
+    }
+    if (estimation) {
+      remarques.push({
+        label: 'Répartition estimée',
+        texte: 'Les quantités par plat du plan de table ne sont pas encore saisies : convives répartis à parts égales.',
+      });
+    }
     if (liste.nonChiffres.length) {
       remarques.push({
         label: 'À commander à la main',
-        texte: `Plats sans fiche technique, absents du calcul : ${liste.nonChiffres.join(', ')}.`,
+        texte: `Plats sans fiche technique, absents du calcul : ${liste.nonChiffres.join(' ; ')}.`,
       });
     }
     if (liste.aVerifier.length) {
@@ -108,7 +148,7 @@ export default function GroupeFiche({
       <div
         className="modal-full"
         style={{
-          background: 'var(--surface)', width: 640, maxWidth: '100%', maxHeight: '92vh',
+          background: 'var(--surface)', width: 720, maxWidth: '100%', maxHeight: '92vh',
           borderRadius: 14, display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden',
         }}
@@ -122,6 +162,7 @@ export default function GroupeFiche({
             <div style={st.titre}>{libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}</div>
             <div style={st.sousTitre}>
               {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` à ${groupe.heure}` : ''}, {groupe.nbPax} pax
+              {menu?.nom ? `, menu ${menu.nom}` : ''}
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
@@ -174,7 +215,11 @@ export default function GroupeFiche({
           )}
 
           <SegmentedTabs
-            tabs={[{ id: 'fiche', label: 'Fiche' }, { id: 'courses', label: 'Liste de courses' }]}
+            tabs={[
+              { id: 'fiche', label: 'Fiche' },
+              { id: 'choix', label: 'Choix du client' },
+              { id: 'courses', label: 'Liste de courses' },
+            ]}
             active={onglet}
             onChange={setOnglet}
           />
@@ -186,6 +231,16 @@ export default function GroupeFiche({
                   <strong style={{ fontWeight: 700 }}>Allergènes présents dans le menu.</strong>{' '}
                   {conflits.map((c) => `${c.label} (${c.plats.join(', ')})`).join(' ; ')}.
                   {' '}À vérifier sur les fiches techniques.
+                </div>
+              )}
+              {allergenes.length > 0 && allergiesMenu.nonVerifies.length > 0 && (
+                <div style={{ ...st.encart, ...st.encartAttention }}>
+                  Allergènes non vérifiés, plats sans fiche technique : {allergiesMenu.nonVerifies.join(' ; ')}.
+                </div>
+              )}
+              {avecChoix && production.aChoisir.length > 0 && (
+                <div style={{ ...st.encart, ...st.encartAttention }}>
+                  Pas encore choisi : {production.aChoisir.join(', ')}.
                 </div>
               )}
 
@@ -215,14 +270,36 @@ export default function GroupeFiche({
                   {groupe.menuNumero ? `Menu n°${groupe.menuNumero}` : 'Menu'}{menu?.nom ? ` : ${menu.nom}` : ''}
                 </div>
                 {!groupe.menuNumero && <div style={st.vide}>Menu à définir.</div>}
-                {groupe.menuNumero && !sections.length && (
+                {avecChoix && (
+                  <div style={st.menu}>
+                    {parSection.map(([label, postes]) => (
+                      <div key={label}>
+                        <div style={st.menuSection}>{label}</div>
+                        {postes.map((p) => (
+                          <div key={`${p.ligneId}-${p.vege ? 'v' : ''}`} style={{ marginBottom: 4 }}>
+                            <div style={st.menuPlat}>{p.libelle}</div>
+                            <div style={st.menuNote}>
+                              {mentionPoste(p)}{p.emprunt ? ', pris dans un autre menu' : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!avecChoix && groupe.menuNumero && sections.length > 0 && (
+                  <div style={st.aide}>
+                    Choix du client pas encore saisis : voici le menu de la saison (onglet « Choix du client » pour cocher).
+                  </div>
+                )}
+                {!avecChoix && groupe.menuNumero && !sections.length && (
                   <div style={st.vide}>
                     {menusStatus === 'ready'
                       ? "Ce menu n'a pas encore été composé (onglet Menus)."
                       : menusStatus === 'error' ? 'Menu indisponible pour le moment (connexion ?).' : 'Chargement du menu…'}
                   </div>
                 )}
-                {sections.length > 0 && (
+                {!avecChoix && sections.length > 0 && (
                   <div style={st.menu}>
                     {sections.map((sec) => (
                       <div key={sec.id}>
@@ -260,9 +337,21 @@ export default function GroupeFiche({
             </>
           )}
 
+          {onglet === 'choix' && (
+            <ChoixGroupe
+              groupe={groupe}
+              menu={menu}
+              complements={complements}
+              menus={menus}
+              canEdit={canEdit && !groupe.annule}
+              voirPrix={voirPrix}
+              onSave={onEnregistrerChoix}
+            />
+          )}
+
           {onglet === 'courses' && (
             <ListeCourses
-              liste={liste} groupe={groupe} menu={menu}
+              liste={liste} groupe={groupe} menu={menu} production={production} estimation={estimation}
               chargement={cuisine.status === 'loading' || menusStatus === 'loading'}
               indisponible={cuisine.status === 'error' || menusStatus === 'error'}
             />
@@ -301,7 +390,7 @@ export default function GroupeFiche({
   );
 }
 
-function ListeCourses({ liste, groupe, menu, chargement, indisponible }) {
+function ListeCourses({ liste, groupe, menu, production, estimation, chargement, indisponible }) {
   if (chargement) return <div style={st.vide}>Calcul de la liste…</div>;
   // Une liste vide née d'une lecture en échec aurait l'air juste : on le dit.
   if (indisponible) return <div style={st.vide}>Liste indisponible pour le moment (connexion ?).</div>;
@@ -309,17 +398,29 @@ function ListeCourses({ liste, groupe, menu, chargement, indisponible }) {
   if (!(menu?.lignes || []).length) {
     return <div style={st.vide}>Ce menu n'a pas encore été composé : aucune liste à calculer.</div>;
   }
+  const { adultes, enfants } = production.convives;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={st.texte}>
-        Quantités calculées pour <strong style={{ fontWeight: 700 }}>{groupe.nbPax} personnes</strong> à partir
-        des fiches techniques, arrondies au-dessus.
+        Quantités calculées sur les plats choisis, pour <strong style={{ fontWeight: 700 }}>{adultes} convives</strong>
+        {enfants ? ` (les ${enfants} enfants ont leur menu à part)` : ''}, à partir des fiches techniques, arrondies au-dessus.
       </div>
+
+      {production.aChoisir.length > 0 && (
+        <div style={{ ...st.encart, ...st.encartAttention }}>
+          Pas encore choisi, absent du calcul : {production.aChoisir.join(', ')}.
+        </div>
+      )}
+      {estimation && (
+        <div style={{ ...st.encart, ...st.encartAttention }}>
+          Quantités par plat du plan de table pas encore saisies : convives répartis à parts égales en attendant.
+        </div>
+      )}
 
       {liste.nonChiffres.length > 0 && (
         <div style={{ ...st.encart, ...st.encartAttention }}>
-          Plats sans fiche technique, absents du calcul et à commander à la main : {liste.nonChiffres.join(', ')}.
+          Plats sans fiche technique, absents du calcul et à commander à la main : {liste.nonChiffres.join(' ; ')}.
         </div>
       )}
       {liste.aVerifier.length > 0 && (
@@ -384,6 +485,7 @@ const st = {
   },
   texte: { fontSize: 14, color: 'var(--text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
   vide: { fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
+  aide: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45, marginBottom: 8 },
   allergene: {
     padding: '5px 11px', borderRadius: 16, fontSize: 13, fontWeight: 700,
     background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',

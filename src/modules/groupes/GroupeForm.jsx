@@ -4,7 +4,8 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { ALLERGENES, sortAllergenes } from '../../utils/allergenes.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { dateComplete } from './pdfGroupe.js';
-import { NUMEROS_MENU, TYPES_GROUPE, lignesParSection, metaType } from './typesGroupe.js';
+import { choixEstVide, ligneServieLe, metaSaison, saisonDeDate } from './choixMenu.js';
+import { NUMEROS_MENU, TYPES_GROUPE, metaType, plurielSection, rangSection } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Prise de réservation d'un groupe. Pensée pour le patron au téléphone : six
@@ -62,15 +63,31 @@ function valider(form) {
 }
 
 export default function GroupeForm({
-  groupe = null, dateInitiale = null, menuDe, menusStatus = 'ready', voirPrix = false, onSave, onClose,
+  groupe = null, dateInitiale = null, menuDe, menusDuType, menusStatus = 'ready', voirPrix = false, onSave, onClose,
 }) {
   const isMobile = useIsMobile();
   const [form, setForm] = useState(() => etatInitial(groupe, dateInitiale));
   const [enCours, setEnCours] = useState(false);
   const set = (cle, valeur) => setForm((p) => ({ ...p, [cle]: valeur }));
 
+  // Les menus composés du type ; tant qu'aucun ne l'est, les numéros 1 à 5
+  // restent proposés pour réserver « menu n°2 » avant de le composer.
+  const composes = menusDuType ? menusDuType(form.typeGroupe) : [];
+  const numeros = composes.length ? composes.map((m) => m.numero) : NUMEROS_MENU;
   const menuChoisi = form.menuNumero ? menuDe?.(form.typeGroupe, form.menuNumero) : null;
-  const sections = lignesParSection(menuChoisi?.lignes || []);
+  // Aperçu : le nombre de plats proposés à la date du groupe, par rubrique.
+  const apercu = (() => {
+    const parSection = new Map();
+    (menuChoisi?.lignes || []).filter((l) => ligneServieLe(l, form.dateEvenement)).forEach((l) => {
+      parSection.set(l.section, (parSection.get(l.section) || 0) + 1);
+    });
+    return [...parSection.entries()].sort((a, b) => rangSection(a[0]) - rangSection(b[0]));
+  })();
+  const saison = saisonDeDate(form.dateEvenement);
+  // Les choix désignent les plats d'un menu précis : changer de menu ou de
+  // type les rend caducs.
+  const choixCaducs = !!groupe && !choixEstVide(groupe.choix)
+    && (groupe.menuNumero !== form.menuNumero || groupe.typeGroupe !== form.typeGroupe);
   // Modifier le contenu d'un groupe déjà lu le repasse en rouge (trigger en
   // base) : on le dit avant l'enregistrement, pas après.
   const repasseraARelire = !!groupe && groupe.statut !== 'a_lire';
@@ -94,12 +111,16 @@ export default function GroupeForm({
   async function enregistrer() {
     const erreurs = valider(form);
     if (erreurs.length) { erreurs.forEach((e) => notify(e, 'error')); return; }
+    if (choixCaducs && !window.confirm(
+      'Le menu change : les choix déjà cochés pour ce groupe portaient sur l\'ancien menu et seront effacés. Continuer ?'
+    )) return;
     setEnCours(true);
     try {
       const { error } = await onSave({
         ...form,
         nbPax: Number(form.nbPax),
         allergenesIds: sortAllergenes(form.allergenesIds),
+        ...(choixCaducs ? { choix: {} } : {}),
       });
       if (error) { notify(error, 'error'); return; }
       notify(groupe ? 'Groupe modifié.' : 'Groupe enregistré.', 'success');
@@ -183,7 +204,7 @@ export default function GroupeForm({
           <div>
             <span style={st.label}>Menu {metaType(form.typeGroupe).label.toLowerCase()}</span>
             <div style={st.rangee}>
-              {NUMEROS_MENU.map((n) => {
+              {numeros.map((n) => {
                 const actif = form.menuNumero === n;
                 const menu = menuDe?.(form.typeGroupe, n);
                 return (
@@ -203,19 +224,22 @@ export default function GroupeForm({
             </div>
             <div style={st.aide}>
               {!form.menuNumero && 'Menu à définir : tu pourras le choisir plus tard.'}
-              {form.menuNumero && !sections.length && menusStatus === 'ready'
-                && "Ce menu n'a pas encore été composé (onglet Menus)."}
+              {form.menuNumero && !apercu.length && menusStatus === 'ready'
+                && "Ce menu n'a pas encore été composé pour cette saison (onglet Menus)."}
             </div>
-            {sections.length > 0 && (
+            {apercu.length > 0 && (
               <div style={st.apercu}>
-                {sections.map((sec) => (
-                  <div key={sec.id} style={{ minWidth: 0 }}>
-                    <div style={st.apercuSection}>{sec.label}</div>
-                    {sec.lignes.map((l) => (
-                      <div key={l.id} style={st.apercuLigne}>{l.libelle}</div>
-                    ))}
-                  </div>
+                <div style={{ minWidth: 0, gridColumn: '1 / -1', fontSize: 12, color: 'var(--text2)' }}>
+                  Carte {saison ? `d'${metaSaison(saison).label.toLowerCase()}` : ''} à la date du groupe : les choix du client se cochent ensuite dans sa fiche.
+                </div>
+                {apercu.map(([sid, n]) => (
+                  <div key={sid} style={st.apercuLigne}>{plurielSection(sid)} : {n} au choix</div>
                 ))}
+              </div>
+            )}
+            {choixCaducs && (
+              <div style={{ ...st.avertissement, marginTop: 8 }}>
+                Les choix déjà cochés portent sur l'ancien menu : ils seront effacés à l'enregistrement.
               </div>
             )}
           </div>

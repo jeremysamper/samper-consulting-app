@@ -67,6 +67,9 @@ export function mapGroupeFromDB(row) {
     pretAt: row.pret_at || null,
     modifieAt: row.modifie_at || null,
     annule: row.annule === true,
+    choix: row.choix && typeof row.choix === 'object' && !Array.isArray(row.choix) ? row.choix : {},
+    nbVegetariens: row.nb_vegetariens ?? null,
+    nbEnfants: row.nb_enfants ?? null,
     createdBy: row.created_by || null,
     createdAt: row.created_at || null,
   };
@@ -88,8 +91,18 @@ function contenuVersDB(g) {
     allergies_note: texte(g.allergiesNote),
     modifications: texte(g.modifications),
     commentaires: texte(g.commentaires),
+    // Les choix ne partent que s'ils sont fournis : le formulaire du groupe ne
+    // les connaît pas et ne doit pas les effacer. Il les fournit vides quand
+    // le menu change, parce qu'ils désignaient les plats de l'ancien menu.
+    ...('choix' in g ? { choix: g.choix && typeof g.choix === 'object' ? g.choix : {} } : {}),
   };
 }
+
+const entierOuNull = (v) => {
+  if (v === '' || v == null) return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
 
 const plancherParDefaut = () =>
   isoDate(addDays(parseLocalDate(zurichToday()), -JOURS_PASSES_PAR_DEFAUT));
@@ -262,7 +275,31 @@ export function useGroupes(etablissementId) {
       return { error: null };
     }
 
-    return { creer, modifier, changerStatut, annuler, supprimer };
+    // Choix du client, nombre de végétariens et d'enfants : écriture ciblée,
+    // sans toucher au reste du groupe. Le déclencheur repasse le groupe en
+    // rouge : ce que la cuisine produit a changé.
+    async function enregistrerChoix(id, { choix, nbVegetariens, nbEnfants }) {
+      const { data, error } = await supabase
+        .from(TABLE)
+        .update({
+          choix: choix && typeof choix === 'object' ? choix : {},
+          nb_vegetariens: entierOuNull(nbVegetariens),
+          nb_enfants: entierOuNull(nbEnfants),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) {
+        if (String(error.code) === '23514') {
+          return { data: null, error: 'Végétariens et enfants ne peuvent pas dépasser le nombre de convives.' };
+        }
+        return { data: null, error: messageErreur(error) };
+      }
+      remplacer(data);
+      return { data: mapGroupeFromDB(data), error: null };
+    }
+
+    return { creer, modifier, changerStatut, annuler, supprimer, enregistrerChoix };
   }, [etablissementId]);
 
   return { groupes, status, reload, assurerDepuis, ...actions };

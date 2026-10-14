@@ -26,7 +26,13 @@ export const TYPES_GROUPE = [
   { id: 'apero_dinatoire', label: 'Apéro dînatoire', moyen: 'Apéro',     court: 'AD' },
 ];
 
+// Un menu est un palier de prix, numéroté de 1 à 12 par type (migration
+// 20261014). Le n°0 est la carte des compléments du type : apéritif du vin
+// d'honneur, stations, gâteau, mignardises, communs à tous ses menus.
+// NUMEROS_MENU sert de proposition tant qu'aucun menu n'est composé.
 export const NUMEROS_MENU = [1, 2, 3, 4, 5];
+export const NUMERO_MAX = 12;
+export const NUMERO_COMPLEMENTS = 0;
 
 const TYPE_PAR_ID = TYPES_GROUPE.reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
 
@@ -88,22 +94,32 @@ export const rangStatut = (statut) => RANG_STATUT[statut] ?? 0;
 // Une seule liste ordonnée pour les cinq types : un apéro dînatoire n'utilise
 // que les pièces, un mariage que le déroulé classique, et un cocktail suivi
 // d'un dîner prend dans les deux. L'ordre est celui du service, c'est lui qui
-// range les lignes à l'écran et sur le PDF.
+// range les lignes à l'écran et sur le PDF. Les stations tiennent le vin
+// d'honneur avec l'apéritif ; le trou valaisan passe entre les entrées et le
+// plat ; le poisson du menu gastronomique avant le plat.
+// `pluriel` titre une rubrique dans laquelle on choisit (« Entrées »), `label`
+// nomme le service sur un menu imprimé (« Entrée »).
 export const SECTIONS_MENU = [
-  { id: 'aperitif',       label: 'Apéritif' },
-  { id: 'pieces_froides', label: 'Pièces froides' },
-  { id: 'pieces_chaudes', label: 'Pièces chaudes' },
-  { id: 'entree',         label: 'Entrée' },
-  { id: 'plat',           label: 'Plat' },
-  { id: 'fromage',        label: 'Fromage' },
-  { id: 'dessert',        label: 'Dessert' },
-  { id: 'pieces_sucrees', label: 'Pièces sucrées' },
-  { id: 'mignardises',    label: 'Mignardises' },
+  { id: 'aperitif',       label: 'Apéritif',               pluriel: 'Apéritif' },
+  { id: 'stations',       label: 'Stations et animations', pluriel: 'Stations et animations' },
+  { id: 'pieces_froides', label: 'Pièces froides',         pluriel: 'Pièces froides' },
+  { id: 'pieces_chaudes', label: 'Pièces chaudes',         pluriel: 'Pièces chaudes' },
+  { id: 'entree',         label: 'Entrée',                 pluriel: 'Entrées' },
+  { id: 'poisson',        label: 'Poisson',                pluriel: 'Poisson' },
+  { id: 'trou',           label: 'Trou valaisan',          pluriel: 'Trou valaisan' },
+  { id: 'plat',           label: 'Plat',                   pluriel: 'Plats' },
+  { id: 'fromage',        label: 'Fromage',                pluriel: 'Fromages' },
+  { id: 'dessert',        label: 'Dessert',                pluriel: 'Desserts' },
+  { id: 'gateau',         label: 'Gâteau',                 pluriel: 'Gâteau' },
+  { id: 'pieces_sucrees', label: 'Pièces sucrées',         pluriel: 'Pièces sucrées' },
+  { id: 'mignardises',    label: 'Mignardises',            pluriel: 'Mignardises' },
 ];
 
 const SECTION_PAR_ID = SECTIONS_MENU.reduce((acc, s, i) => { acc[s.id] = { ...s, rang: i }; return acc; }, {});
 
 export const labelSection = (id) => SECTION_PAR_ID[id]?.label || 'Autre';
+export const rangSection = (id) => SECTION_PAR_ID[id]?.rang ?? 99;
+export const plurielSection = (id) => SECTION_PAR_ID[id]?.pluriel || labelSection(id);
 
 // Section proposée d'office à l'ajout d'une ligne, selon le type de groupe.
 export function sectionParDefaut(typeId) {

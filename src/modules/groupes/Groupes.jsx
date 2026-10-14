@@ -15,7 +15,7 @@ import GroupeForm from './GroupeForm.jsx';
 import MenusGroupe from './MenusGroupe.jsx';
 import { dateComplete } from './pdfGroupe.js';
 import {
-  STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
+  NUMERO_COMPLEMENTS, STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
 } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,9 +149,12 @@ export default function Groupes({ user, etablissement }) {
   const [voirAnnules, setVoirAnnules] = useState(false);
 
   const {
-    groupes, status, reload, assurerDepuis, creer, modifier, changerStatut, annuler, supprimer,
+    groupes, status, reload, assurerDepuis, creer, modifier, changerStatut, annuler, supprimer, enregistrerChoix,
   } = useGroupes(etabId);
-  const { status: menusStatus, reload: reloadMenus, menuDe, enregistrer: enregistrerMenu } = useGroupeMenus(etabId);
+  const {
+    menus, status: menusStatus, reload: reloadMenus, menuDe, menusDuType,
+    enregistrer: enregistrerMenu, enregistrerPlusieurs: enregistrerMenus, supprimer: supprimerMenu,
+  } = useGroupeMenus(etabId);
   const cuisine = useCuisine(etabId);
   const [refCalendrier, largeurCalendrier] = useLargeur();
   const compact = largeurCalendrier > 0 && largeurCalendrier < LARGEUR_COMPACTE;
@@ -357,10 +360,14 @@ export default function Groupes({ user, etablissement }) {
 
       {onglet === 'menus' && menusStatus !== 'absent' && (
         <MenusGroupe
+          menus={menus}
           menuDe={menuDe}
           menusStatus={menusStatus}
           enregistrer={enregistrerMenu}
+          enregistrerPlusieurs={enregistrerMenus}
+          supprimer={supprimerMenu}
           plats={cuisine.plats}
+          recettes={cuisine.recettes}
           platsStatus={cuisine.status}
           etablissement={etablissement}
           canEditMenus={canEditMenus}
@@ -397,11 +404,15 @@ export default function Groupes({ user, etablissement }) {
         <GroupeFiche
           groupe={fiche}
           menu={fiche.menuNumero ? menuDe(fiche.typeGroupe, fiche.menuNumero) : null}
+          complements={menuDe(fiche.typeGroupe, NUMERO_COMPLEMENTS)}
+          menus={menus}
           menusStatus={menusStatus}
           cuisine={cuisine}
           etablissement={etablissement}
           canEdit={canEdit}
+          voirPrix={voirPrix}
           onStatut={changerStatut}
+          onEnregistrerChoix={enregistrerChoix}
           onEdit={(g) => setFormulaire({ groupe: g })}
           onAnnuler={basculerAnnulation}
           onSupprimer={canSupprimer ? supprimerDefinitivement : undefined}
@@ -414,6 +425,7 @@ export default function Groupes({ user, etablissement }) {
           groupe={formulaire.groupe || null}
           dateInitiale={formulaire.date || null}
           menuDe={menuDe}
+          menusDuType={menusDuType}
           menusStatus={menusStatus}
           voirPrix={voirPrix}
           onSave={sauver}

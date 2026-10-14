@@ -3,9 +3,10 @@ import { supabase } from '../services/supabase.js';
 import { dbService } from '../services/dbService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// useGroupeMenus - menus prédéfinis des groupes (table groupe_menus) : cinq
-// numéros pour chacun des cinq types, soit vingt-cinq lignes au plus par
-// établissement. On les charge donc d'un bloc.
+// useGroupeMenus - menus des groupes (table groupe_menus) : un menu par palier
+// de prix (numéros 1 à 12 par type) et, au n°0, la carte des compléments du
+// type. Quelques dizaines de lignes par établissement : on les charge d'un
+// bloc.
 //
 // Un menu qui n'a pas encore été composé n'existe pas en base : `menuDe` rend
 // alors null et les écrans affichent « menu à composer ». L'enregistrement est
@@ -34,21 +35,99 @@ export function mapMenuFromDB(row) {
     prixPax: row.prix_pax != null ? Number(row.prix_pax) : null,
     description: row.description || '',
     lignes: Array.isArray(row.lignes) ? row.lignes : [],
+    regles: row.regles && typeof row.regles === 'object' && !Array.isArray(row.regles) ? row.regles : {},
   };
 }
 
-// Une ligne ne garde que ses champs connus : ce jsonb est relu par le PDF et
-// par la liste de courses, il ne doit rien transporter d'autre.
+const texte = (v) => String(v ?? '').trim();
+const entierOuNull = (v, min, max) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+};
+const nombreOuNull = (v) => {
+  if (v === '' || v == null) return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+// Une ligne ne garde que ses champs connus : ce jsonb est relu par le PDF, la
+// liste de courses et l'écran de choix, il ne doit rien transporter d'autre.
+// Les champs vides ne sont pas écrits, pour que le jsonb reste lisible.
 function ligneVersDB(l, index) {
   const parPersonne = Number(l.parPersonne);
-  return {
+  const out = {
     id: l.id || `l-${Date.now()}-${index}`,
     section: l.section || 'plat',
     platId: l.platId || null,
-    libelle: String(l.libelle || '').trim(),
-    description: String(l.description || '').trim(),
+    libelle: texte(l.libelle),
+    description: texte(l.description),
     parPersonne: parPersonne > 0 ? parPersonne : 1,
   };
+  const recetteIds = Array.isArray(l.recetteIds) ? l.recetteIds.filter(Boolean) : [];
+  if (recetteIds.length) out.recetteIds = recetteIds;
+  if (texte(l.rubrique)) out.rubrique = texte(l.rubrique);
+  if (['vegetarien', 'poisson', 'viande'].includes(l.regime)) out.regime = l.regime;
+  if (['ete', 'hiver'].includes(l.saison)) out.saison = l.saison;
+  const debut = entierOuNull(l.moisDebut, 1, 12);
+  const fin = entierOuNull(l.moisFin, 1, 12);
+  if (debut && fin) { out.moisDebut = debut; out.moisFin = fin; }
+  if (l.premium) out.premium = true;
+  if (l.chaud) out.chaud = true;
+  if (texte(l.note)) out.note = texte(l.note);
+  if (texte(l.prix)) out.prix = texte(l.prix);
+  if (texte(l.unite)) out.unite = texte(l.unite);
+  const ppu = nombreOuNull(l.portionsParUnite);
+  if (ppu) out.portionsParUnite = ppu;
+  const minimum = nombreOuNull(l.minimum);
+  if (minimum) out.minimum = minimum;
+  return out;
+}
+
+// Règles d'un menu : seules les rubriques et clés connues, valeurs bornées.
+function reglesVersDB(regles) {
+  const src = regles && typeof regles === 'object' ? regles : {};
+  const sections = {};
+  Object.entries(src.sections && typeof src.sections === 'object' ? src.sections : {}).forEach(([id, r]) => {
+    if (!r || typeof r !== 'object' || !['servi', 'table', 'carte', 'quantites'].includes(r.mode)) return;
+    const s = { mode: r.mode };
+    const nombre = entierOuNull(r.nombre, 1, 20);
+    const retenir = entierOuNull(r.retenir, 1, 20);
+    const dontVege = entierOuNull(r.dontVege, 0, 20);
+    const parPersonne = nombreOuNull(r.parPersonne);
+    const auMoinsChaud = entierOuNull(r.auMoinsChaud, 1, 20);
+    if (r.mode === 'table' && nombre) s.nombre = nombre;
+    if (r.mode === 'carte' && retenir) s.retenir = retenir;
+    if (r.mode === 'carte' && dontVege != null) s.dontVege = dontVege;
+    if (r.mode === 'table' && r.versionVege) s.versionVege = true;
+    if (parPersonne) s.parPersonne = parPersonne;
+    if (auMoinsChaud) s.auMoinsChaud = auMoinsChaud;
+    if (Array.isArray(r.puiserDans) && r.puiserDans.length) s.puiserDans = r.puiserDans.filter(Boolean);
+    if (r.facultatif) s.facultatif = true;
+    if (texte(r.label)) s.label = texte(r.label);
+    if (Array.isArray(r.formules) && r.formules.length) {
+      s.formules = r.formules
+        .filter((f) => f && f.id && texte(f.label))
+        .map((f) => ({
+          id: String(f.id),
+          label: texte(f.label),
+          prix: Number(f.prix) >= 0 ? Number(f.prix) : 0,
+          ...(f.premium ? { premium: true } : {}),
+          ...(f.aucunChoix ? { aucunChoix: true } : {}),
+        }));
+    }
+    sections[id] = s;
+  });
+  const out = { sections };
+  const c = src.aperitifConseille;
+  if (c && typeof c === 'object') {
+    const conseille = {};
+    ['ete', 'hiver'].forEach((saison) => {
+      if (Array.isArray(c[saison]) && c[saison].length) conseille[saison] = c[saison].filter(Boolean);
+    });
+    if (c.formule && typeof c.formule === 'object') conseille.formule = { ...c.formule };
+    if (Object.keys(conseille).length) out.aperitifConseille = conseille;
+  }
+  return out;
 }
 
 export function useGroupeMenus(etablissementId) {
@@ -127,6 +206,7 @@ export function useGroupeMenus(etablissementId) {
         lignes: (menu.lignes || [])
           .map(ligneVersDB)
           .filter((l) => l.libelle || l.platId),
+        regles: reglesVersDB(menu.regles),
       };
       const { data, error } = await supabase
         .from(TABLE)
@@ -147,8 +227,47 @@ export function useGroupeMenus(etablissementId) {
       return { data: saved, error: null };
     }
 
-    return { enregistrer };
+    // Plusieurs menus d'un coup (une liaison propagée à tous les menus qui
+    // servent le même plat). L'un après l'autre : la première erreur arrête
+    // la suite et le message dit combien sont passés.
+    async function enregistrerPlusieurs(liste) {
+      let faits = 0;
+      for (const menu of liste) {
+        const { error } = await enregistrer(menu);
+        if (error) {
+          return { faits, error: faits ? `${error} (${faits} menu${faits > 1 ? 's' : ''} déjà enregistré${faits > 1 ? 's' : ''})` : error };
+        }
+        faits += 1;
+      }
+      return { faits, error: null };
+    }
+
+    // Suppression d'un menu : la base la limite au consultant, au patron et
+    // au responsable cuisine ; refusée, elle touche zéro ligne sans erreur,
+    // on relit donc ce qui a été supprimé.
+    async function supprimer(menu) {
+      const { data, error } = await supabase
+        .from(TABLE)
+        .delete()
+        .eq('id', menu.id)
+        .select('id');
+      if (error || !data?.length) {
+        if (error) console.error('[useGroupeMenus] supprimer', error);
+        return { error: "Suppression du menu impossible : ton rôle ne le permet pas ou le menu n'existe plus." };
+      }
+      setMenus((liste) => liste.filter((m) => m.id !== menu.id));
+      return { error: null };
+    }
+
+    return { enregistrer, enregistrerPlusieurs, supprimer };
   }, [etablissementId]);
 
-  return { menus, status, reload, menuDe, ...actions };
+  const menusDuType = useCallback(
+    (typeGroupe) => menus
+      .filter((m) => m.typeGroupe === typeGroupe && m.numero > 0)
+      .sort((a, b) => a.numero - b.numero),
+    [menus]
+  );
+
+  return { menus, status, reload, menuDe, menusDuType, ...actions };
 }
