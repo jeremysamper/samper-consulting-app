@@ -62,7 +62,10 @@ const SECTION_DE_TITRE = {
 // Une page de menu → { titre, sousTitre, tables: [{ titre, plats: [...] }], conseille }
 function lirePageMenu(items, saison) {
   const titre = items.find((i) => i.h >= 18);
-  const sousTitre = items.find((i) => police(i) === 'g_d0_f1' && i.h < 10);
+  // La présentation peut tenir sur deux lignes (séminaires) : on les réunit.
+  const lignesSousTitre = items.filter((i) => police(i) === 'g_d0_f1' && i.h < 10 && titre && i.y < titre.y && i.y > titre.y - 70)
+    .sort((a, b) => b.y - a.y || a.x - b.x);
+  const sousTitre = lignesSousTitre.length ? { s: lignesSousTitre.map((i) => i.s.trim()).join(' ') } : null;
   // Bornes verticales des tableaux : titres de rubrique (f3, 11 pt) et notes
   // de menu (f3, 9,5 pt, à gauche).
   const reperes = items
@@ -218,9 +221,11 @@ function lireComplements() {
         nAp += 1;
         const fen = lireFenetre(a.notes.join(' '));
         const sf = fen.debut ? saisonComplete(fen.debut, fen.fin) : { saison: '', moisDebut: null, moisFin: null };
+        // Une bouchée de la rubrique « Bouchées chaudes » est chaude : la fiche
+        // ne répète pas la marque sur chaque pièce de cette rubrique.
         lignes.push({
           id: id('ap', nAp), section: 'aperitif', rubrique: r.s, libelle: a.textes.join(' ').replace(/\s+/g, ' ').replace(/(\w)- (\w)/g, '$1-$2').trim(),
-          premium: a.premium, chaud: a.chaud, ...sf, note: fen.reste, parPersonne: 2,
+          premium: a.premium, chaud: a.chaud || /chaudes/i.test(r.s), ...sf, note: fen.reste, parPersonne: 2,
         });
       });
     });
