@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Mail, MailCheck, RefreshCw } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { AlertCircle, KeyRound, Mail, MailCheck, RefreshCw } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { appelerMailer } from './spaData.js';
 import { st } from './spaUi.jsx';
@@ -14,12 +14,23 @@ import { st } from './spaUi.jsx';
 // retour /api/spa-oauth prévient cet onglet (BroadcastChannel, ou
 // window.opener) et l'état est relu au retour du focus dans tous les cas.
 // Fenêtre bloquée : la connexion se fait dans cet onglet, puis retour à l'app.
+// Une adresse Infomaniak (ou d'un autre hébergeur) se relie par adresse et mot
+// de passe (spa-mailer boite_smtp) : un e-mail d'essai part vers cette adresse
+// et rien n'est enregistré s'il échoue.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FOURNISSEURS = {
   google: { nom: 'Gmail', detail: 'Adresse Gmail ou Google', editeur: 'Google' },
   microsoft: { nom: 'Outlook', detail: 'Adresse Outlook, Hotmail ou Microsoft', editeur: 'Microsoft' },
 };
+const HOTE_INFOMANIAK = 'mail.infomaniak.com';
+
+// Nom affiché d'une boîte connectée : Gmail, Outlook, Infomaniak, ou le
+// serveur d'envoi d'un autre hébergeur.
+function nomBoite(b) {
+  if (b?.fournisseur !== 'smtp') return FOURNISSEURS[b?.fournisseur]?.nom || '';
+  return !b.hote || b.hote === HOTE_INFOMANIAK ? 'Infomaniak' : b.hote;
+}
 // Textes selon l'endroit où la boîte est réglée. La boîte est celle de
 // l'établissement (une par établissement) : connectée depuis le Spa ou depuis
 // les Réservations, elle sert aux deux.
@@ -45,8 +56,11 @@ function dateCourte(ts) {
 
 export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRecharger, consultant, contexte = 'spa' }) {
   const txt = TEXTES[contexte] || TEXTES.spa;
-  const [enCours, setEnCours] = useState(null); // 'google' | 'microsoft' | 'deconnexion'
+  const [enCours, setEnCours] = useState(null); // 'google' | 'microsoft' | 'smtp' | 'deconnexion'
   const [changer, setChanger] = useState(false);
+  // Formulaire Infomaniak : null = fermé.
+  const [smtp, setSmtp] = useState(null); // { adresse, motDePasse, autre, hote }
+  const idChamp = useId();
   const tentative = useRef(null); // { debut, traitee }
   const fenetre = useRef(null);
   const recharger = useRef(onRecharger);
@@ -121,6 +135,37 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
     window.location.assign(data.url);
   }
 
+  function ouvrirSmtp(b = null) {
+    const hote = b?.fournisseur === 'smtp' && b.hote && b.hote !== HOTE_INFOMANIAK ? b.hote : '';
+    setSmtp({ adresse: b?.fournisseur === 'smtp' ? b.adresse : '', motDePasse: '', autre: Boolean(hote), hote });
+  }
+
+  async function relierSmtp(e) {
+    e.preventDefault();
+    if (!smtp || enCours) return;
+    if (!smtp.adresse.trim() || !smtp.motDePasse) { notify("Saisissez l'adresse e-mail et son mot de passe.", 'warning'); return; }
+    setEnCours('smtp');
+    try {
+      const { data, error } = await appelerMailer('boite_smtp', {
+        etablissementId,
+        adresse: smtp.adresse.trim(),
+        motDePasse: smtp.motDePasse,
+        hote: smtp.autre ? smtp.hote.trim() : '',
+      });
+      if (error || !data?.ok) {
+        setSmtp((p) => (p ? { ...p, motDePasse: '' } : p));
+        notify(error || "L'adresse n'a pas pu être reliée. Réessayez.", 'error');
+        return;
+      }
+      setSmtp(null);
+      setChanger(false);
+      notify(`Adresse reliée : un e-mail d'essai vient de partir vers ${data.adresse}.`, 'success');
+      onRecharger();
+    } finally {
+      setEnCours(null);
+    }
+  }
+
   async function deconnecter() {
     const b = etat?.boite;
     if (!b || enCours) return;
@@ -153,7 +198,7 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
   const connexions = etat.connexions || {};
 
   // ── Boîte connectée ──
-  if (b && b.statut === 'actif' && !changer) {
+  if (b && b.statut === 'actif' && !changer && !smtp) {
     return (
       <div style={{ ...s.carte, background: 'var(--spa-matcha-soft)', borderColor: 'transparent' }}>
         <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-matcha)' }}><MailCheck size={20} strokeWidth={1.8} /></span>
@@ -161,7 +206,7 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
           <div style={s.titre}>Vos e-mails partent de cette adresse</div>
           <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }} data-no-translate>{b.adresse}</div>
           <div style={s.aide}>
-            {FOURNISSEURS[b.fournisseur]?.nom}, connectée le {dateCourte(b.connecteAt)}. Quand un client répond, sa réponse arrive ici.
+            {nomBoite(b)}, connectée le {dateCourte(b.connecteAt)}. Quand un client répond, sa réponse arrive ici.
           </div>
         </div>
         <div style={s.actions}>
@@ -175,8 +220,8 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
   }
 
   // ── Boîte en erreur (accès retiré, mot de passe changé…) ──
-  if (b && b.statut === 'erreur' && !changer) {
-    const f = FOURNISSEURS[b.fournisseur];
+  if (b && b.statut === 'erreur' && !changer && !smtp) {
+    const parMotDePasse = b.fournisseur === 'smtp';
     return (
       <div style={{ ...s.carte, background: 'var(--spa-sakura-soft)', borderColor: 'transparent' }}>
         <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-sakura)' }}><AlertCircle size={20} strokeWidth={1.8} /></span>
@@ -184,15 +229,23 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
           <div style={s.titre}>Votre adresse e-mail n'est plus connectée</div>
           <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }} data-no-translate>{b.adresse}</div>
           <div style={s.aide}>
-            Cliquez sur « Reconnecter », puis acceptez à nouveau.{' '}
+            {parMotDePasse
+              ? 'Le mot de passe de cette adresse a été refusé : il a sans doute changé. Saisissez-le à nouveau.'
+              : 'Cliquez sur « Reconnecter », puis acceptez à nouveau.'}{' '}
             {etat.resend ? 'En attendant, les e-mails partent d\'une adresse de secours, à votre nom.' : 'En attendant, aucun e-mail ne part.'}
             {consultant && b.derniereErreur && <span style={{ display: 'block', marginTop: 4 }}>Détail : {b.derniereErreur}</span>}
           </div>
         </div>
         <div style={s.actions}>
-          <button type="button" onClick={() => connecter(b.fournisseur)} disabled={Boolean(enCours) || !connexions[b.fournisseur]} style={st.principal}>
-            <RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /> {enCours === b.fournisseur ? 'Connexion…' : `Reconnecter ${f?.nom || ''}`}
-          </button>
+          {parMotDePasse ? (
+            <button type="button" onClick={() => ouvrirSmtp(b)} disabled={Boolean(enCours)} style={st.principal}>
+              <KeyRound size={16} strokeWidth={1.8} aria-hidden="true" /> Saisir le mot de passe
+            </button>
+          ) : (
+            <button type="button" onClick={() => connecter(b.fournisseur)} disabled={Boolean(enCours) || !connexions[b.fournisseur]} style={st.principal}>
+              <RefreshCw size={16} strokeWidth={1.8} aria-hidden="true" /> {enCours === b.fournisseur ? 'Connexion…' : `Reconnecter ${nomBoite(b)}`}
+            </button>
+          )}
           <button type="button" onClick={deconnecter} disabled={Boolean(enCours)} style={st.discret}>Déconnecter</button>
         </div>
       </div>
@@ -201,6 +254,9 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
 
   // ── Aucune boîte (ou changement de boîte) ──
   const aucuneConnexion = !connexions.google && !connexions.microsoft;
+  // Annoncé par spa-mailer v11 et suivantes : une version plus ancienne ne
+  // sait pas relier une boîte Infomaniak, le bouton reste alors caché.
+  const smtpDispo = Boolean(connexions.smtp);
   return (
     <div style={s.carte}>
       <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-mizu)' }}><Mail size={20} strokeWidth={1.8} /></span>
@@ -209,11 +265,19 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
         <div style={{ ...s.aide, marginTop: 2 }}>
           {txt.usages} Vos clients vous répondront directement.
         </div>
-        <ol style={s.etapes}>
-          <li>Cliquez sur « Connecter Gmail » ou « Connecter Outlook ».</li>
-          <li>Connectez-vous avec l'adresse e-mail {txt.lieu}.</li>
-          <li>Acceptez. C'est fait, une fois pour toutes.</li>
-        </ol>
+        {smtpDispo ? (
+          <ol style={s.etapes}>
+            <li>Cliquez sur le bouton de votre messagerie : Gmail, Outlook ou Infomaniak.</li>
+            <li>Connectez-vous avec l'adresse e-mail {txt.lieu} (pour Infomaniak : l'adresse et son mot de passe).</li>
+            <li>C'est fait, une fois pour toutes.</li>
+          </ol>
+        ) : (
+          <ol style={s.etapes}>
+            <li>Cliquez sur « Connecter Gmail » ou « Connecter Outlook ».</li>
+            <li>Connectez-vous avec l'adresse e-mail {txt.lieu}.</li>
+            <li>Acceptez. C'est fait, une fois pour toutes.</li>
+          </ol>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           {Object.entries(FOURNISSEURS).map(([id, f]) => {
             const dispo = Boolean(connexions[id]);
@@ -224,16 +288,86 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
                 onClick={() => connecter(id)}
                 disabled={!dispo || Boolean(enCours)}
                 title={f.detail}
-                style={{ ...(id === 'google' ? st.principal : st.secondaire), opacity: dispo && !enCours ? 1 : 0.55 }}
+                style={{ ...(id === 'google' && dispo ? st.principal : st.secondaire), opacity: dispo && !enCours ? 1 : 0.55 }}
               >
                 <Mail size={16} strokeWidth={1.8} aria-hidden="true" /> {enCours === id ? 'Connexion…' : `Connecter ${f.nom}`}
               </button>
             );
           })}
-          {changer && <button type="button" onClick={() => setChanger(false)} style={st.discret}>Annuler</button>}
+          {smtpDispo && (
+            <button
+              type="button"
+              onClick={() => (smtp ? setSmtp(null) : ouvrirSmtp())}
+              disabled={Boolean(enCours)}
+              title="Adresse hébergée chez Infomaniak, ou chez un autre hébergeur"
+              aria-expanded={Boolean(smtp)}
+              style={{ ...(connexions.google ? st.secondaire : st.principal), opacity: enCours ? 0.55 : 1 }}
+            >
+              <Mail size={16} strokeWidth={1.8} aria-hidden="true" /> Connecter Infomaniak
+            </button>
+          )}
+          {(changer || smtp) && (
+            <button type="button" onClick={() => { setChanger(false); setSmtp(null); }} style={st.discret}>Annuler</button>
+          )}
         </div>
+        {smtp && (
+          <form onSubmit={relierSmtp} style={s.formulaire}>
+            <div style={st.grille2}>
+              <div>
+                <label style={st.label} htmlFor={`${idChamp}-adresse`}>Adresse e-mail</label>
+                <input
+                  id={`${idChamp}-adresse`}
+                  type="email"
+                  autoComplete="off"
+                  value={smtp.adresse}
+                  onChange={(e) => setSmtp((p) => ({ ...p, adresse: e.target.value }))}
+                  placeholder="reservation@votre-restaurant.ch"
+                  style={st.champ}
+                />
+              </div>
+              <div>
+                <label style={st.label} htmlFor={`${idChamp}-mdp`}>Mot de passe de l'adresse</label>
+                <input
+                  id={`${idChamp}-mdp`}
+                  type="password"
+                  autoComplete="new-password"
+                  value={smtp.motDePasse}
+                  onChange={(e) => setSmtp((p) => ({ ...p, motDePasse: e.target.value }))}
+                  style={st.champ}
+                />
+              </div>
+            </div>
+            {smtp.autre ? (
+              <div style={{ marginTop: 12 }}>
+                <label style={st.label} htmlFor={`${idChamp}-hote`}>Serveur d'envoi de votre hébergeur</label>
+                <input
+                  id={`${idChamp}-hote`}
+                  type="text"
+                  autoComplete="off"
+                  value={smtp.hote}
+                  onChange={(e) => setSmtp((p) => ({ ...p, hote: e.target.value }))}
+                  placeholder="asmtp.mail.hostpoint.ch"
+                  style={st.champ}
+                />
+                <div style={st.aide}>Connexion sécurisée SSL, port 465 : le serveur doit l'accepter.</div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setSmtp((p) => ({ ...p, autre: true }))} style={{ ...st.lien, marginTop: 6 }}>
+                Adresse chez un autre hébergeur (Hostpoint, Bluewin…) ?
+              </button>
+            )}
+            <div style={{ ...s.aide, marginTop: 8 }}>
+              Le mot de passe est celui de l'adresse e-mail, celui de votre logiciel de messagerie. S'il est refusé alors qu'il est juste, créez un mot de passe d'application chez Infomaniak et saisissez-le ici. Un e-mail d'essai part vers l'adresse pour vérifier que tout fonctionne.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <button type="submit" disabled={Boolean(enCours)} style={{ ...st.principal, opacity: enCours ? 0.55 : 1 }}>
+                {enCours === 'smtp' ? 'Vérification…' : 'Relier l\'adresse'}
+              </button>
+            </div>
+          </form>
+        )}
         <div style={{ ...s.aide, marginTop: 10 }}>
-          Gmail pour une adresse Gmail ou Google, Outlook pour une adresse Outlook, Hotmail ou Microsoft.{' '}
+          Gmail pour une adresse Gmail ou Google, Outlook pour une adresse Outlook, Hotmail ou Microsoft{smtpDispo ? ', Infomaniak pour une adresse hébergée chez Infomaniak' : ''}.{' '}
           {!b && (etat.resend
             ? 'En attendant, les e-mails partent d\'une adresse de secours, à votre nom.'
             : 'Tant qu\'aucune adresse n\'est connectée, aucun e-mail ne part.')}
@@ -243,11 +377,15 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
             {consultant ? (
               <span>
                 Pas encore activé : les accès{' '}
-                {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([id, f]) => f.editeur).join(' et ')}
-                {' '}sont à créer une seule fois, pour {txt.tous}.
+                {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([, f]) => f.editeur).join(' et ')}
+                {' '}sont à créer une seule fois, pour {txt.tous}.{smtpDispo ? ' Infomaniak fonctionne déjà.' : ''}
               </span>
             ) : (
-              <span>{aucuneConnexion ? 'Bientôt disponible.' : 'L\'autre bouton sera bientôt disponible.'}</span>
+              <span>
+                {aucuneConnexion
+                  ? (smtpDispo ? 'Gmail et Outlook : bientôt disponibles. Infomaniak fonctionne déjà.' : 'Bientôt disponible.')
+                  : 'L\'autre bouton sera bientôt disponible.'}
+              </span>
             )}
           </div>
         )}
@@ -270,5 +408,9 @@ const s = {
   titre: { fontFamily: 'var(--font-serif)', fontSize: 19, lineHeight: 1.25, marginBottom: 2 },
   aide: { fontSize: 13, color: 'var(--spa-ink2)', lineHeight: 1.5, marginTop: 4 },
   etapes: { margin: '10px 0 0', paddingLeft: 20, fontSize: 13.5, lineHeight: 1.7, color: 'var(--spa-ink)' },
+  formulaire: {
+    marginTop: 14, padding: '14px 16px', borderRadius: 'var(--spa-r-sm)', background: 'var(--spa-surface2)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--spa-line)',
+  },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', alignSelf: 'center' },
 };

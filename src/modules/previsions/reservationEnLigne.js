@@ -199,9 +199,25 @@ async function appelerMailer(action, charge) {
   }
 }
 
-// Confirme ou refuse une demande, puis prévient le client par e-mail. Le
-// changement de statut est la seule chose qui doit réussir ; l'e-mail est
-// tenté ensuite, et le toast dit s'il est parti.
+// Ce que le client a reçu, d'après la réponse de spa-mailer : envoye / raison
+// pour l'e-mail, sms { envoye, raison } pour le SMS (absent d'un serveur plus
+// ancien). Un SMS non branché ou un numéro fixe ne valent pas un échec : seul
+// un SMS qui aurait dû partir est signalé.
+function bilanEnvoi(data, resa) {
+  const mail = Boolean(data?.envoye);
+  const sms = Boolean(data?.sms?.envoye);
+  const smsEnPanne = ['echec', 'passerelle_en_erreur'].includes(data?.sms?.raison);
+  return {
+    partis: [mail && 'e-mail', sms && 'SMS'].filter(Boolean).join(' et '),
+    mailNonBranche: Boolean(resa.email) && !mail && data?.raison === 'non_configure',
+    mailEnEchec: Boolean(resa.email) && !mail && data?.raison !== 'non_configure',
+    smsEnPanne,
+  };
+}
+
+// Confirme ou refuse une demande, puis prévient le client par e-mail et par
+// SMS. Le changement de statut est la seule chose qui doit réussir ; les
+// envois sont tentés ensuite, et le toast dit ce qui est parti.
 // evenement : 'confirmation' | 'refus'. Renvoie { error, message, ton }.
 export async function traiterDemande(resa, evenement) {
   const statut = evenement === 'confirmation' ? 'confirme' : 'annule';
@@ -217,30 +233,39 @@ export async function traiterDemande(resa, evenement) {
     };
   }
   const base = evenement === 'confirmation' ? `Réservation de ${resa.nom} confirmée.` : `Demande de ${resa.nom} refusée.`;
-  if (!resa.email) return { error: null, message: `${base} Pas d'e-mail laissé : pensez à appeler le client.`, ton: 'warning' };
+  if (!resa.email && !resa.telephone) return { error: null, message: `${base} Ni e-mail ni téléphone laissé : le client ne peut pas être prévenu.`, ton: 'warning' };
   const { data } = await appelerMailer('resa_statut', {
     etablissementId: resa.etablissement_id, reservationId: resa.id, evenement,
   });
-  if (data?.envoye) return { error: null, message: `${base} Le client a reçu un e-mail.`, ton: 'success' };
-  if (data?.raison === 'non_configure') {
-    return { error: null, message: `${base} L'envoi d'e-mails n'est pas encore branché : pensez à prévenir le client.`, ton: 'warning' };
+  const b = bilanEnvoi(data, resa);
+  if (b.partis) {
+    const panne = b.smsEnPanne ? " Le SMS n'est pas parti." : b.mailEnEchec ? " L'e-mail n'est pas parti." : '';
+    return { error: null, message: `${base} Le client a reçu un ${b.partis}.${panne}`, ton: panne ? 'warning' : 'success' };
   }
-  return { error: null, message: `${base} L'e-mail au client n'a pas pu partir : pensez à le prévenir.`, ton: 'warning' };
+  if (!resa.email && data?.sms?.raison === 'sans_mobile') {
+    return { error: null, message: `${base} Pas de numéro de portable laissé : pensez à appeler le client.`, ton: 'warning' };
+  }
+  if (b.mailNonBranche || (!resa.email && !b.smsEnPanne)) {
+    return { error: null, message: `${base} L'envoi d'e-mails et de SMS n'est pas encore branché : pensez à prévenir le client.`, ton: 'warning' };
+  }
+  return { error: null, message: `${base} Le message au client n'a pas pu partir : pensez à le prévenir.`, ton: 'warning' };
 }
 
-// Confirmation par e-mail d'une réservation saisie par l'équipe (téléphone,
-// sur place), avec récapitulatif. evenement : 'creation' | 'modification'.
-// Le serveur prend l'établissement de la réservation elle-même. Ne bloque
-// jamais l'enregistrement : renvoie un texte à ajouter au toast, ou '' si le
-// client n'a pas laissé d'e-mail.
+// Confirmation d'une réservation saisie par l'équipe (téléphone, sur place) :
+// e-mail avec récapitulatif, et SMS si le restaurant a relié son téléphone.
+// evenement : 'creation' | 'modification'. Le serveur prend l'établissement
+// de la réservation elle-même. Ne bloque jamais l'enregistrement : renvoie un
+// texte à ajouter au toast, ou '' quand rien n'avait à partir.
 export async function envoyerConfirmation(resa, evenement = 'creation') {
-  if (!resa?.id || !resa.email) return { suffixe: '', ton: 'success' };
+  if (!resa?.id || (!resa.email && !resa.telephone)) return { suffixe: '', ton: 'success' };
   const { data } = await appelerMailer('resa_confirmation', { reservationId: resa.id, evenement });
-  if (data?.envoye) return { suffixe: ' Confirmation envoyée par e-mail.', ton: 'success' };
-  if (data?.raison === 'non_configure') {
-    return { suffixe: " L'envoi d'e-mails n'est pas encore branché pour cet établissement.", ton: 'warning' };
-  }
-  return { suffixe: " L'e-mail de confirmation n'a pas pu partir.", ton: 'warning' };
+  const b = bilanEnvoi(data, resa);
+  const notes = [];
+  if (b.mailNonBranche) notes.push("L'envoi d'e-mails n'est pas encore branché pour cet établissement.");
+  if (b.mailEnEchec) notes.push("L'e-mail de confirmation n'a pas pu partir.");
+  if (b.smsEnPanne) notes.push("Le SMS de confirmation n'a pas pu partir.");
+  const partis = b.partis ? ` Confirmation envoyée par ${b.partis}.` : '';
+  return { suffixe: `${partis}${notes.map((n) => ` ${n}`).join('')}`, ton: notes.length ? 'warning' : 'success' };
 }
 
 // ── Liens et codes à mettre sur le site du restaurant ──────────────────────

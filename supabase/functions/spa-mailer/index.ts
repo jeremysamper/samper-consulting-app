@@ -7,8 +7,10 @@
 //
 // D'OÙ PARTENT LES E-MAILS (fonction expedier) :
 //   1. de la boîte mail du spa quand il l'a connectée (Gmail ou Outlook,
-//      connexion OAuth, jetons chiffrés dans spa_boites_mail) : l'e-mail
-//      part de son adresse et les réponses y arrivent ;
+//      connexion OAuth, jetons chiffrés dans spa_boites_mail ; ou Infomaniak
+//      et tout hébergeur SMTP, par adresse et mot de passe chiffré, port 465,
+//      _shared/smtp.ts) : l'e-mail part de son adresse et les réponses y
+//      arrivent ;
 //   2. sinon par Resend (adresse d'envoi Samper Consulting), s'il est
 //      configuré ; aussi en repli quand la boîte connectée échoue ;
 //   3. sinon rien ne part, et l'app le dit.
@@ -19,7 +21,14 @@
 //                                   ou Microsoft (state + PKCE)
 //   boite_fin         public      → { etat, code } : fin de connexion (appelée par
 //                                   la route Vercel /api/spa-oauth)
+//   boite_smtp        direction   → { adresse, motDePasse, hote? } : relie une
+//                                   boîte par mot de passe (Infomaniak par
+//                                   défaut) après un e-mail d'essai réussi
 //   boite_deconnexion direction   → retire la boîte (révocation Google)
+//   sms_connexion     direction   → { identifiant, motDePasse } : relie le
+//                                   téléphone Android du restaurant (SMS)
+//   sms_deconnexion   direction   → retire le téléphone
+//   sms_test          direction   → { numero } : SMS d'essai
 //   test              direction   → e-mail d'essai à l'adresse du compte connecté
 //   campagne          direction   → actualité à tous les clients consentants
 //   bon               équipe      → bon cadeau à un client, tout de suite
@@ -58,6 +67,10 @@
 // Tous les e-mails de table portent un encadré « Récapitulatif » et partent au
 // nom de l'établissement DE LA RÉSERVATION (lu sur la ligne reservations),
 // jamais de celui affiché à l'écran.
+// SMS : quand le restaurant a relié son téléphone Android (sms_passerelles,
+// _shared/sms.ts), resa_statut, resa_confirmation et une réservation en ligne
+// confirmée d'office envoient aussi un SMS court au portable du client. La
+// réponse porte alors { sms: { envoye, raison } } à côté de celle de l'e-mail.
 // Mêmes protections anti-abus (journal spa_demandes_en_ligne partagé). Les
 // e-mails partent par le même canal que ceux du spa (boîte connectée de
 // l'établissement, sinon Resend), signés du nom de l'établissement.
@@ -78,6 +91,10 @@
 // boîte.
 // ================================================================
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { ErreurSmtp, HOTE_INFOMANIAK, HOTE_OK, messageSmtp, smtp } from '../_shared/smtp.ts';
+import {
+  ErreurSms, SERVEUR_SMS_DEFAUT, envoyerSms, listerAppareils, messageSms, normaliserMobile, texteSms,
+} from '../_shared/sms.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -390,11 +407,14 @@ async function envoyerLot(cle: string, mails: Mail[]): Promise<{ id?: string; er
   }
 }
 
-// ── Canal 1 : la boîte mail du spa (Gmail ou Outlook) ─────────────
+// ── Canal 1 : la boîte mail du spa (Gmail, Outlook ou SMTP) ───────
+// Boîte SMTP (Infomaniak...) : jeton_chiffre porte le mot de passe chiffré,
+// smtp_hote le serveur d'envoi, et l'adresse sert d'identifiant.
 type Boite = {
-  etablissement_id: string; fournisseur: Fournisseur; adresse: string; nom: string | null;
+  etablissement_id: string; fournisseur: Fournisseur | 'smtp'; adresse: string; nom: string | null;
   jeton_chiffre: string; acces_chiffre: string | null; acces_expire_at: string | null;
   statut: 'actif' | 'erreur'; derniere_erreur: string | null; connecte_at: string;
+  smtp_hote: string | null;
 };
 
 const SCOPES_GOOGLE = 'openid email https://www.googleapis.com/auth/gmail.send';
@@ -428,7 +448,7 @@ async function jetonAcces(sb: Admin, cfg: Cfg, boite: Boite, forcer = false): Pr
     && new Date(boite.acces_expire_at).getTime() - 120000 > Date.now()) {
     return dechiffrer(boite.acces_chiffre);
   }
-  const f = boite.fournisseur;
+  const f = boite.fournisseur as Fournisseur; // jamais 'smtp' : pas de jeton OAuth
   const form = new URLSearchParams({
     client_id: cfg[f].id, client_secret: cfg[f].secret,
     grant_type: 'refresh_token', refresh_token: await dechiffrer(boite.jeton_chiffre),
@@ -459,9 +479,16 @@ async function jetonAcces(sb: Admin, cfg: Cfg, boite: Boite, forcer = false): Pr
 const motEncode = (t: string) => `=?UTF-8?B?${versB64(utf8(t))}?=`;
 const b64Lignes = (t: string) => versB64(utf8(t)).replace(/.{76}/g, '$&\r\n');
 
-function messageMime(m: { de: string; a: string; repondreA?: string; objet: string; html: string; texte: string; entetes?: Record<string, string> }) {
+type Mime = { de: string; a: string; repondreA?: string; objet: string; html: string; texte: string; entetes?: Record<string, string> };
+
+// Message brut. Date et Message-ID sont posés ici : Gmail et Outlook les
+// ajoutent eux-mêmes, un serveur SMTP pas toujours.
+function mimeBrut(m: Mime) {
   const frontiere = `spa-${crypto.randomUUID()}`;
+  const domaine = (m.de.match(/@([^>\s]+)>?\s*$/)?.[1] || 'samperconsulting-app.com').toLowerCase();
   const lignes = [
+    `Date: ${new Date().toUTCString().replace(/GMT$/, '+0000')}`,
+    `Message-ID: <${crypto.randomUUID()}@${domaine}>`,
     `From: ${m.de}`,
     `To: ${m.a}`,
     ...(m.repondreA ? [`Reply-To: ${m.repondreA}`] : []),
@@ -483,12 +510,40 @@ function messageMime(m: { de: string; a: string; repondreA?: string; objet: stri
     `--${frontiere}--`,
     '',
   ];
-  return versB64Url(utf8(lignes.join('\r\n')));
+  return lignes.join('\r\n');
+}
+
+const messageMime = (m: Mime) => versB64Url(utf8(mimeBrut(m)));
+
+const compteSmtp = async (boite: Boite) => ({
+  hote: boite.smtp_hote || HOTE_INFOMANIAK, utilisateur: boite.adresse, motDePasse: await dechiffrer(boite.jeton_chiffre),
+});
+
+async function envoyerViaSmtp(sb: Admin, boite: Boite, e: Envoi, nomExpediteur: string, repondreA?: string) {
+  try {
+    const message = mimeBrut({
+      de: `${motEncode(nomExpediteur)} <${boite.adresse}>`, a: e.to, repondreA,
+      objet: e.subject, html: e.html, texte: e.text, entetes: e.headers,
+    });
+    await smtp(await compteSmtp(boite), { de: boite.adresse, a: e.to, message });
+    return { id: undefined, erreur: undefined };
+  } catch (err) {
+    const message = messageSmtp(err);
+    console.warn('[spa-mailer] envoi SMTP', err instanceof Error ? err.message : err);
+    // Mot de passe changé depuis : la boîte passe en erreur, l'écran demande
+    // de le saisir à nouveau.
+    if (err instanceof ErreurSmtp && err.authentification) {
+      await marquerBoite(sb, boite.etablissement_id, { statut: 'erreur', derniere_erreur: message });
+      boite.statut = 'erreur';
+    }
+    return { erreur: message.slice(0, 300) };
+  }
 }
 
 type Envoi = { to: string; subject: string; html: string; text: string; headers?: Record<string, string> };
 
 async function envoyerViaBoite(sb: Admin, cfg: Cfg, boite: Boite, e: Envoi, nomExpediteur: string, repondreA?: string) {
+  if (boite.fournisseur === 'smtp') return envoyerViaSmtp(sb, boite, e, nomExpediteur, repondreA);
   const tenter = async (jeton: string) => {
     if (boite.fournisseur === 'google') {
       const raw = messageMime({
@@ -537,7 +592,7 @@ async function envoyerViaBoite(sb: Admin, cfg: Cfg, boite: Boite, e: Envoi, nomE
 // (undefined = à lire, null = aucune).
 async function expedier(
   sb: Admin, cfg: Cfg, etab: Etab, params: Params, e: Envoi, boiteConnue?: Boite | null,
-): Promise<{ id?: string; erreur?: string; canal: 'google' | 'microsoft' | 'resend' | null }> {
+): Promise<{ id?: string; erreur?: string; canal: 'google' | 'microsoft' | 'smtp' | 'resend' | null }> {
   const boite = boiteConnue === undefined ? await lireBoite(sb, etab.id) : boiteConnue;
   const nomExpediteur = ((params.nom_expediteur || '').trim() || etab.nom).replace(/["<>]/g, '');
   if (boite && boite.statut === 'actif') {
@@ -1154,6 +1209,69 @@ function recapTable(etab: Etab, r: {
   return recap;
 }
 
+// ── SMS de réservation (téléphone Android du restaurant) ──────────
+type Passerelle = {
+  etablissement_id: string; serveur: string; identifiant: string; secret_chiffre: string;
+  appareil: string | null; statut: 'actif' | 'erreur'; derniere_erreur: string | null;
+  dernier_envoi_at: string | null; connecte_at: string;
+};
+type ResultatSms = { envoye: boolean; raison: 'non_configure' | 'sans_mobile' | 'passerelle_en_erreur' | 'echec' | null };
+
+async function lirePasserelle(sb: Admin, etabId: string): Promise<Passerelle | null> {
+  const { data } = await sb.from('sms_passerelles').select('*').eq('etablissement_id', etabId).maybeSingle();
+  return (data as Passerelle) || null;
+}
+
+const compteSms = async (p: Passerelle) => ({
+  serveur: p.serveur || SERVEUR_SMS_DEFAUT, identifiant: p.identifiant, motDePasse: await dechiffrer(p.secret_chiffre),
+});
+
+async function marquerPasserelle(sb: Admin, etabId: string, maj: Record<string, unknown>) {
+  await sb.from('sms_passerelles').update({ ...maj, updated_at: new Date().toISOString() }).eq('etablissement_id', etabId);
+}
+
+// SMS au portable du client. Ne fait jamais échouer l'action qui l'appelle :
+// le résultat dit si le SMS est parti, et sinon pourquoi.
+async function smsReservation(sb: Admin, etabId: string, telephone: string | null | undefined, texte: string): Promise<ResultatSms> {
+  const p = await lirePasserelle(sb, etabId);
+  if (!p) return { envoye: false, raison: 'non_configure' };
+  const numero = normaliserMobile(telephone);
+  if (!numero) return { envoye: false, raison: 'sans_mobile' };
+  if (p.statut !== 'actif') return { envoye: false, raison: 'passerelle_en_erreur' };
+  try {
+    await envoyerSms(await compteSms(p), numero, texteSms(texte));
+    await marquerPasserelle(sb, etabId, { dernier_envoi_at: new Date().toISOString(), derniere_erreur: null });
+    return { envoye: true, raison: null };
+  } catch (e) {
+    const message = messageSms(e);
+    console.warn('[spa-mailer] SMS', e instanceof Error ? e.message : e);
+    // Identifiants refusés : le téléphone est à relier de nouveau. Une panne
+    // passagère ne change pas le statut.
+    await marquerPasserelle(sb, etabId, {
+      derniere_erreur: message,
+      ...(e instanceof ErreurSms && e.identifiantsRefuses ? { statut: 'erreur' } : {}),
+    });
+    return { envoye: false, raison: 'echec' };
+  }
+}
+
+// Texte court (un SMS de 160 caractères le plus souvent), au nom de
+// l'établissement de la réservation.
+function smsTable(etab: Etab, type: 'confirmation' | 'refus' | 'creation' | 'modification', r: {
+  date_service: string; heure_arrivee: string; nb_couverts: number;
+}) {
+  const nom = etab.nom.trim().slice(0, 40);
+  const quand = `le ${jourLong(r.date_service)} à ${String(r.heure_arrivee).slice(0, 5)}`;
+  const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
+  const imprevu = etab.tel ? ` En cas d'imprévu : ${etab.tel}.` : '';
+  if (type === 'refus') {
+    return `${nom} : désolés, nous ne pouvons pas vous recevoir ${quand}.${etab.tel ? ` Appelez-nous au ${etab.tel} pour trouver un autre moment.` : ''}`;
+  }
+  if (type === 'modification') return `${nom} : votre réservation est modifiée, ${table} ${quand}.${imprevu}`;
+  if (type === 'creation') return `${nom} : votre réservation est notée, ${table} ${quand}.${imprevu}`;
+  return `${nom} : c'est confirmé, ${table} vous attend ${quand}.${imprevu}`;
+}
+
 async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: string, body: Record<string, unknown>) {
   const lu = await lireTableEnLigne(sb, String(body.slug || ''));
   if (!lu) return json({ error: 'La réservation en ligne n\'est pas ouverte pour ce restaurant.' }, 404);
@@ -1276,6 +1394,13 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       sujet: `Votre demande de réservation du ${jourLong(date)}`,
       corps: `Bonjour ${prenom},\n\nNous avons bien reçu votre demande : une table pour ${personnes(couverts)} le ${quand}.\n\nNous vous confirmons la réservation très vite. Pour toute question, répondez simplement à ce message.\n\nÀ bientôt.`,
     });
+  // Confirmée d'office (mode automatique) : le SMS part tout de suite. Une
+  // demande, elle, attend l'accord de l'équipe (resa_statut).
+  if (confirmee) {
+    await smsReservation(sb, etab.id, telephone, smsTable(etab, 'confirmation', {
+      date_service: date, heure_arrivee: heure, nb_couverts: couverts,
+    }));
+  }
   if (etab.email) {
     await mailTable(sb, cfg, etab, {
       email: etab.email,
@@ -1389,16 +1514,129 @@ Deno.serve(async (req: Request) => {
 
   if (action === 'etat') {
     if (!autorise(qui, etabId, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
-    const boite = await lireBoite(sb, etabId);
+    const [boite, passerelle] = await Promise.all([lireBoite(sb, etabId), lirePasserelle(sb, etabId)]);
     return json({
       configure: cfg.resend || Boolean(boite && boite.statut === 'actif'),
       resend: cfg.resend,
       boite: boite ? {
         fournisseur: boite.fournisseur, adresse: boite.adresse, statut: boite.statut,
-        derniereErreur: boite.derniere_erreur, connecteAt: boite.connecte_at,
+        derniereErreur: boite.derniere_erreur, connecteAt: boite.connecte_at, hote: boite.smtp_hote || null,
       } : null,
-      connexions: { google: connexionDispo(cfg, 'google'), microsoft: connexionDispo(cfg, 'microsoft') },
+      // smtp : toujours possible, rien à créer côté Samper Consulting.
+      connexions: { google: connexionDispo(cfg, 'google'), microsoft: connexionDispo(cfg, 'microsoft'), smtp: true },
+      sms: passerelle ? {
+        appareil: passerelle.appareil, statut: passerelle.statut, derniereErreur: passerelle.derniere_erreur,
+        connecteAt: passerelle.connecte_at, dernierEnvoiAt: passerelle.dernier_envoi_at,
+      } : null,
     });
+  }
+
+  // Boîte reliée par adresse et mot de passe (Infomaniak par défaut). Rien
+  // n'est enregistré tant qu'un e-mail d'essai, envoyé à la boîte elle-même,
+  // n'est pas parti : un mot de passe faux est refusé tout de suite.
+  if (action === 'boite_smtp') {
+    if (!autorise(qui, etabId, ROLES_DIRECTION)) return json({ error: 'Accès refusé.' }, 403);
+    const adresse = String(body.adresse || '').trim().toLowerCase();
+    const motDePasse = String(body.motDePasse || '');
+    const hote = String(body.hote || '').trim().toLowerCase() || HOTE_INFOMANIAK;
+    if (!EMAIL_OK.test(adresse) || adresse.length > 200) return json({ error: 'Adresse e-mail invalide.' }, 400);
+    if (!motDePasse || motDePasse.length > 200) return json({ error: 'Saisissez le mot de passe de l\'adresse e-mail.' }, 400);
+    if (!HOTE_OK.test(hote)) return json({ error: 'Serveur d\'envoi invalide (exemple : mail.infomaniak.com).' }, 400);
+    const lu = await lireEtab(sb, etabId);
+    if (!lu) return json({ error: 'Établissement introuvable.' }, 404);
+    const nomEtab = lu.etab.nom.replace(/["<>]/g, '');
+    const corps = `Bonjour,\n\nC'est fait : les e-mails de ${nomEtab} (confirmations de réservation et leur récapitulatif) partiront désormais de cette adresse, et les réponses des clients arriveront ici.\n\nRien d'autre à faire.`;
+    try {
+      await smtp({ hote, utilisateur: adresse, motDePasse }, {
+        de: adresse, a: adresse,
+        message: mimeBrut({
+          de: `${motEncode(nomEtab)} <${adresse}>`, a: adresse,
+          objet: 'Votre adresse est reliée à l\'app Samper Consulting',
+          html: gabarit({ etab: lu.etab, params: PARAMS_TABLE, titre: 'Adresse reliée', corps }),
+          texte: texteBrut(corps),
+        }),
+      });
+    } catch (e) {
+      console.warn('[spa-mailer] essai SMTP', hote, e instanceof Error ? e.message : e);
+      return json({ error: messageSmtp(e) }, 400);
+    }
+    const ancienne = await lireBoite(sb, etabId);
+    if (ancienne?.fournisseur === 'google') {
+      try {
+        await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', body: new URLSearchParams({ token: await dechiffrer(ancienne.jeton_chiffre) }) });
+      } catch { /* révocation au mieux */ }
+    }
+    const maintenant = new Date().toISOString();
+    const { error } = await sb.from('spa_boites_mail').upsert({
+      etablissement_id: etabId, fournisseur: 'smtp', adresse, nom: null, smtp_hote: hote,
+      jeton_chiffre: await chiffrer(motDePasse), acces_chiffre: null, acces_expire_at: null,
+      statut: 'actif', derniere_erreur: null, connecte_par: qui.uid, connecte_at: maintenant, updated_at: maintenant,
+    }, { onConflict: 'etablissement_id' });
+    if (error) {
+      console.error('[spa-mailer] enregistrement de la boîte SMTP', error);
+      return json({ error: 'L\'adresse n\'a pas pu être enregistrée. Réessayez.' }, 500);
+    }
+    return json({ ok: true, adresse });
+  }
+
+  // Téléphone Android du restaurant (SMS) : les identifiants sont essayés
+  // avant d'être enregistrés, et au moins un téléphone doit être relié.
+  if (action === 'sms_connexion') {
+    if (!autorise(qui, etabId, ROLES_DIRECTION)) return json({ error: 'Accès refusé.' }, 403);
+    const identifiant = String(body.identifiant || '').trim();
+    const motDePasse = String(body.motDePasse || '').trim();
+    if (!identifiant || !motDePasse || identifiant.length > 200 || motDePasse.length > 200) {
+      return json({ error: 'Recopiez l\'identifiant et le mot de passe affichés dans l\'appli du téléphone.' }, 400);
+    }
+    let appareils;
+    try {
+      appareils = await listerAppareils({ serveur: SERVEUR_SMS_DEFAUT, identifiant, motDePasse });
+    } catch (e) {
+      console.warn('[spa-mailer] essai passerelle SMS', e instanceof Error ? e.message : e);
+      return json({ error: messageSms(e) }, 400);
+    }
+    if (!appareils.length) {
+      return json({ error: 'Identifiants acceptés, mais aucun téléphone n\'est relié : dans l\'appli, vérifiez que le serveur est « Online ».' }, 400);
+    }
+    const maintenant = new Date().toISOString();
+    const { error } = await sb.from('sms_passerelles').upsert({
+      etablissement_id: etabId, serveur: SERVEUR_SMS_DEFAUT, identifiant, secret_chiffre: await chiffrer(motDePasse),
+      appareil: appareils[0].nom.slice(0, 100), statut: 'actif', derniere_erreur: null,
+      connecte_par: qui.uid, connecte_at: maintenant, updated_at: maintenant,
+    }, { onConflict: 'etablissement_id' });
+    if (error) {
+      console.error('[spa-mailer] enregistrement de la passerelle SMS', error);
+      return json({ error: 'Le téléphone n\'a pas pu être enregistré. Réessayez.' }, 500);
+    }
+    return json({ ok: true, appareil: appareils[0].nom });
+  }
+
+  if (action === 'sms_deconnexion') {
+    if (!autorise(qui, etabId, ROLES_DIRECTION)) return json({ error: 'Accès refusé.' }, 403);
+    await sb.from('sms_passerelles').delete().eq('etablissement_id', etabId);
+    return json({ ok: true });
+  }
+
+  if (action === 'sms_test') {
+    if (!autorise(qui, etabId, ROLES_DIRECTION)) return json({ error: 'Accès refusé.' }, 403);
+    const numero = normaliserMobile(String(body.numero || ''));
+    if (!numero) return json({ error: 'Numéro de portable invalide (exemple : 079 123 45 67).' }, 400);
+    const p = await lirePasserelle(sb, etabId);
+    if (!p) return json({ error: 'Aucun téléphone n\'est relié.' }, 400);
+    const lu = await lireEtab(sb, etabId);
+    if (!lu) return json({ error: 'Établissement introuvable.' }, 404);
+    try {
+      await envoyerSms(await compteSms(p), numero, texteSms(`${lu.etab.nom.trim().slice(0, 40)} : SMS d'essai. Les confirmations de réservation partiront de ce numéro.`));
+    } catch (e) {
+      const message = messageSms(e);
+      await marquerPasserelle(sb, etabId, {
+        derniere_erreur: message,
+        ...(e instanceof ErreurSms && e.identifiantsRefuses ? { statut: 'erreur' } : {}),
+      });
+      return json({ error: message }, 502);
+    }
+    await marquerPasserelle(sb, etabId, { statut: 'actif', derniere_erreur: null, dernier_envoi_at: new Date().toISOString() });
+    return json({ ok: true, numero });
   }
 
   if (action === 'boite_debut') {
@@ -1468,6 +1706,10 @@ Deno.serve(async (req: Request) => {
   // date, d'heure, de service ou de nombre de personnes. L'établissement est
   // celui de la réservation : un client du Woodland reçoit un e-mail du
   // Woodland, quel que soit l'établissement affiché dans l'app.
+  // E-mail si le client en a laissé un, SMS s'il a laissé un portable et que
+  // le restaurant a relié son téléphone : les deux sont tentés, l'un ne
+  // dépend pas de l'autre. envoye / raison décrivent l'e-mail (forme lue par
+  // les fronts déjà en service), sms le SMS.
   if (action === 'resa_confirmation') {
     const { data: r } = await sb.from('reservations')
       .select('id, etablissement_id, nom, email, telephone, date_service, service, heure_arrivee, nb_couverts, notes_libres, statut, origine')
@@ -1476,25 +1718,29 @@ Deno.serve(async (req: Request) => {
     const etabResa = String(r.etablissement_id || '');
     if (!autorise(qui, etabResa, ROLES_EQUIPE)) return json({ error: 'Accès refusé.' }, 403);
     if (r.statut !== 'confirme') return json({ envoye: false, raison: 'statut' });
-    if (!r.email) return json({ envoye: false, raison: 'sans_email' });
-    if (!(await peutEnvoyer(sb, cfg, etabResa))) return json({ envoye: false, raison: 'non_configure' });
     const { data: etab } = await sb.from('etablissements').select('id, nom, adresse, tel, email').eq('id', etabResa).maybeSingle();
     if (!etab) return json({ error: 'Établissement introuvable.' }, 404);
     const modification = String(body.evenement || '') === 'modification';
-    const quand = `${jourLong(r.date_service)} à ${String(r.heure_arrivee).slice(0, 5)}`;
-    const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
-    const contact = `répondant à ce message${(etab as Etab).tel ? ` ou au ${(etab as Etab).tel}` : ''}`;
-    const res = await mailTable(sb, cfg, etab as Etab, {
-      email: r.email,
-      recap: recapTable(etab as Etab, r),
-      sujet: modification
-        ? `Votre réservation du ${jourLong(r.date_service)} a été modifiée`
-        : `Votre réservation du ${jourLong(r.date_service)} est confirmée`,
-      corps: modification
-        ? `Bonjour ${r.nom},\n\nVotre réservation a bien été modifiée : ${table} le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en ${contact}.\n\nÀ très bientôt.`
-        : `Bonjour ${r.nom},\n\nMerci pour votre réservation : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en ${contact}.\n\nÀ très bientôt.`,
-    });
-    return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
+    let mail: { envoye: boolean; raison: string | null } = { envoye: false, raison: 'sans_email' };
+    if (r.email && !(await peutEnvoyer(sb, cfg, etabResa))) mail = { envoye: false, raison: 'non_configure' };
+    else if (r.email) {
+      const quand = `${jourLong(r.date_service)} à ${String(r.heure_arrivee).slice(0, 5)}`;
+      const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
+      const contact = `répondant à ce message${(etab as Etab).tel ? ` ou au ${(etab as Etab).tel}` : ''}`;
+      const res = await mailTable(sb, cfg, etab as Etab, {
+        email: r.email,
+        recap: recapTable(etab as Etab, r),
+        sujet: modification
+          ? `Votre réservation du ${jourLong(r.date_service)} a été modifiée`
+          : `Votre réservation du ${jourLong(r.date_service)} est confirmée`,
+        corps: modification
+          ? `Bonjour ${r.nom},\n\nVotre réservation a bien été modifiée : ${table} le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en ${contact}.\n\nÀ très bientôt.`
+          : `Bonjour ${r.nom},\n\nMerci pour votre réservation : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en ${contact}.\n\nÀ très bientôt.`,
+      });
+      mail = { envoye: res.envoye, raison: res.envoye ? null : 'echec' };
+    }
+    const sms = await smsReservation(sb, etabResa, r.telephone, smsTable(etab as Etab, modification ? 'modification' : 'creation', r));
+    return json({ ...mail, sms });
   }
 
   // Réservation de table venue du site, confirmée ou refusée dans le module
@@ -1509,25 +1755,30 @@ Deno.serve(async (req: Request) => {
     if (r.origine !== 'en_ligne') return json({ envoye: false, raison: 'hors_ligne' });
     const attendu = evenement === 'confirmation' ? 'confirme' : evenement === 'refus' ? 'annule' : null;
     if (!attendu || r.statut !== attendu) return json({ envoye: false, raison: 'statut' });
-    if (!r.email) return json({ envoye: false, raison: 'sans_email' });
-    if (!(await peutEnvoyer(sb, cfg, etabId))) return json({ envoye: false, raison: 'non_configure' });
     const { data: etab } = await sb.from('etablissements').select('id, nom, adresse, tel, email').eq('id', etabId).maybeSingle();
     if (!etab) return json({ error: 'Établissement introuvable.' }, 404);
-    const heure = String(r.heure_arrivee).slice(0, 5);
-    const quand = `${jourLong(r.date_service)} à ${heure}`;
-    const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
-    const res = evenement === 'confirmation'
-      ? await mailTable(sb, cfg, etab as Etab, {
-        email: r.email, recap: recapTable(etab as Etab, r),
-        sujet: `Votre table du ${jourLong(r.date_service)} est confirmée`,
-        corps: `Bonjour ${r.nom},\n\nC'est confirmé : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en répondant à ce message.\n\nÀ très bientôt.`,
-      })
-      : await mailTable(sb, cfg, etab as Etab, {
-        email: r.email,
-        sujet: `Votre demande de réservation du ${jourLong(r.date_service)}`,
-        corps: `Bonjour ${r.nom},\n\nNous sommes désolés : nous ne pouvons pas vous recevoir le ${quand} (${table}).\n\nRépondez à ce message ou appelez-nous pour convenir d'un autre moment.\n\nÀ bientôt.`,
-      });
-    return json({ envoye: res.envoye, raison: res.envoye ? null : 'echec' });
+    // E-mail et SMS tentés l'un après l'autre, comme pour resa_confirmation.
+    let mail: { envoye: boolean; raison: string | null } = { envoye: false, raison: 'sans_email' };
+    if (r.email && !(await peutEnvoyer(sb, cfg, etabId))) mail = { envoye: false, raison: 'non_configure' };
+    else if (r.email) {
+      const heure = String(r.heure_arrivee).slice(0, 5);
+      const quand = `${jourLong(r.date_service)} à ${heure}`;
+      const table = `une table pour ${personnes(Number(r.nb_couverts || 0))}`;
+      const res = evenement === 'confirmation'
+        ? await mailTable(sb, cfg, etab as Etab, {
+          email: r.email, recap: recapTable(etab as Etab, r),
+          sujet: `Votre table du ${jourLong(r.date_service)} est confirmée`,
+          corps: `Bonjour ${r.nom},\n\nC'est confirmé : ${table} vous attend le ${quand}.\n\nEn cas d'empêchement ou de retard, prévenez-nous en répondant à ce message.\n\nÀ très bientôt.`,
+        })
+        : await mailTable(sb, cfg, etab as Etab, {
+          email: r.email,
+          sujet: `Votre demande de réservation du ${jourLong(r.date_service)}`,
+          corps: `Bonjour ${r.nom},\n\nNous sommes désolés : nous ne pouvons pas vous recevoir le ${quand} (${table}).\n\nRépondez à ce message ou appelez-nous pour convenir d'un autre moment.\n\nÀ bientôt.`,
+        });
+      mail = { envoye: res.envoye, raison: res.envoye ? null : 'echec' };
+    }
+    const sms = await smsReservation(sb, etabId, r.telephone, smsTable(etab as Etab, evenement === 'confirmation' ? 'confirmation' : 'refus', r));
+    return json({ ...mail, sms });
   }
 
   if (['anniversaires', 'test', 'campagne', 'bon'].includes(action) && !(await peutEnvoyer(sb, cfg, etabId))) {
@@ -1592,7 +1843,7 @@ Deno.serve(async (req: Request) => {
     const boite = await lireBoite(sb, etabId);
     const parBoite = Boolean(boite && boite.statut === 'actif');
     if (parBoite && dest.length > PLAFOND_BOITE && !cfg.resend) {
-      return json({ error: `Une boîte Gmail ou Outlook limite les envois : ${PLAFOND_BOITE} destinataires au plus par actualité.` }, 400);
+      return json({ error: `Une boîte mail limite les envois : ${PLAFOND_BOITE} destinataires au plus par actualité.` }, 400);
     }
 
     const { data: campagne, error: errC } = await sb.from('spa_campagnes').insert({

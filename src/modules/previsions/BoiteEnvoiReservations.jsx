@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import BoiteEnvoi from '../spa/BoiteEnvoi.jsx';
 import { appelerMailer } from '../spa/spaData.js';
+import PasserelleSms from './PasserelleSms.jsx';
 import '../spa/spa.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -9,7 +10,8 @@ import '../spa/spa.css';
 // C'est la même boîte que celle du Spa (une par établissement, spa-mailer) :
 // les confirmations de réservation et leur récapitulatif en partent. Le
 // composant vient du module Spa ; la classe .spa lui donne ses couleurs, le
-// fond reste celui des réglages.
+// fond reste celui des réglages. Juste en dessous, le téléphone du restaurant
+// qui envoie les mêmes confirmations par SMS (même réponse « etat »).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function BoiteEnvoiReservations({ etablissementId, consultant = false }) {
@@ -44,6 +46,10 @@ export default function BoiteEnvoiReservations({ etablissementId, consultant = f
         consultant={consultant}
         contexte="restaurant"
       />
+      {/* Clé « sms » absente : spa-mailer en ligne trop ancien pour les SMS. */}
+      {etat && !erreurService && 'sms' in etat && (
+        <PasserelleSms etablissementId={etablissementId} sms={etat.sms || null} onRecharger={chargerEtat} consultant={consultant} />
+      )}
     </div>
   );
 }
