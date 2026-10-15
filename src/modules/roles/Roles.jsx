@@ -48,6 +48,7 @@ const DROITS_PAR_MODULE = droitsAction.reduce((acc, d) => {
 // ces rôles, quelle que soit la case.
 const ACCES_RESERVE = {
   kds: ['consultant', 'resp_cuisine', 'cuisinier'],
+  journal: ['consultant', 'patron'],
 };
 
 const aCle = (obj, cle) => Object.prototype.hasOwnProperty.call(obj || {}, cle);

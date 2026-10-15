@@ -17,6 +17,7 @@ const loadFichesSalle = () => import('./fiches-salle/FichesSalle.jsx');
 const loadGroupes = () => import('./groupes/Groupes.jsx');
 const loadHACCP = () => import('./haccp/HACCP.jsx');
 const loadInventaire = () => import('./inventaire/Inventaire.jsx');
+const loadJournal = () => import('./journal/Journal.jsx');
 const loadKds = () => import('./kds/Kds.jsx');
 const loadMep = () => import('./mep/MiseEnPlace.jsx');
 const loadMessages = () => import('./messages/Messages.jsx');
@@ -41,6 +42,7 @@ const FichesSalle = lazy(loadFichesSalle);
 const Groupes = lazy(loadGroupes);
 const HACCP = lazy(loadHACCP);
 const Inventaire = lazy(loadInventaire);
+const Journal = lazy(loadJournal);
 const Kds = lazy(loadKds);
 const Mep = lazy(loadMep);
 const Messages = lazy(loadMessages);
@@ -163,6 +165,12 @@ export default function LegacyModuleHost({
     case 'messages': {
       return permissions.messages !== false
         ? wrap('Messages privés', <Messages user={user} etablissement={etablissement} setPage={setPage} isActive={isActivePage} />)
+        : accessDenied;
+    }
+    case 'journal': {
+      // Garde dure par rôle, miroir de la RLS de journal_activite.
+      return ['consultant', 'patron'].includes(user.role) && permissions.journal !== false
+        ? wrap("Journal d'activité", <Journal user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'cartes': {
