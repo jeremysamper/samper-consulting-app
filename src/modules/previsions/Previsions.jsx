@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { SectionHeader } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -15,6 +15,17 @@ import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
+
+// Rapport chargé à la demande : le planning, ouvert toute la journée sur
+// l'iPad de l'entrée, ne porte pas le poids des statistiques.
+const RapportReservations = lazy(() => import('./rapport/RapportReservations.jsx'));
+
+// Onglet Rapport (statistiques, lecture seule) : la direction, l'hôte et le
+// responsable cuisine (anticipation des couverts). Masqué pour le service, la
+// cuisine et le spa, même quand le module leur est ouvert (décision de Jérémy,
+// 15.10.2026). La base ne filtre que par établissement : c'est un choix
+// d'écran, pas une garde.
+const ROLES_RAPPORT = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 
 // Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
 // L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)
@@ -65,6 +76,7 @@ export default function Previsions({ user, etablissement }) {
   // Créer / modifier / annuler des réservations : droit « gérer » du module
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = canManageModule(user?.role, 'previsions');
+  const voitRapport    = ROLES_RAPPORT.includes(user?.role);
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 
@@ -95,7 +107,11 @@ export default function Previsions({ user, etablissement }) {
       <div className="module-toolbar">
         <SectionHeader
           title="Réservations"
-          sub={onglet === 'clients' ? 'Fichier clients, rempli par les réservations' : selectedDate ? null : 'Planning de la semaine, service par service'}
+          sub={onglet === 'clients'
+            ? 'Fichier clients, rempli par les réservations'
+            : onglet === 'rapport'
+              ? 'Activité des réservations, en lecture seule'
+              : selectedDate ? null : 'Planning de la semaine, service par service'}
         />
         {/* L'action principale d'abord, puis le mode service et la recherche ;
             les réglages (en ligne, e-mails) et les notifications ferment la
@@ -158,7 +174,11 @@ export default function Previsions({ user, etablissement }) {
 
       {etabId && (
         <SegmentedTabs
-          tabs={[{ id: 'planning', label: 'Planning' }, { id: 'clients', label: 'Clients' }]}
+          tabs={[
+            { id: 'planning', label: 'Planning' },
+            { id: 'clients', label: 'Clients' },
+            ...(voitRapport ? [{ id: 'rapport', label: 'Rapport' }] : []),
+          ]}
           active={onglet}
           onChange={(id) => { setOnglet(id); setRecherche(''); }}
           style={{ marginTop: 14 }}
@@ -167,6 +187,12 @@ export default function Previsions({ user, etablissement }) {
 
       {etabId && onglet === 'clients' && (
         <ClientsResa etablissementId={etabId} canEdit={canEdit} refreshKey={refreshKey} />
+      )}
+
+      {etabId && onglet === 'rapport' && voitRapport && (
+        <Suspense fallback={<div style={{ marginTop: 28, fontSize: 14, color: 'var(--text2)' }}>Chargement du rapport…</div>}>
+          <RapportReservations key={etabId} etablissementId={etabId} />
+        </Suspense>
       )}
 
       {/* ── Recherche : elle prend toute la place tant qu'elle est ouverte,

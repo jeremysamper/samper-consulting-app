@@ -138,6 +138,10 @@
   --svc-soir: #1e40af;
   --svc-soir-bg: #eff6ff;
   --svc-soir-bd: #93c5fd;
+  /* Brunch : seulement dans le rapport des réservations, qui le compte à part
+     pour les maisons qui en font. Vert, distinct du midi et du soir y compris
+     pour un daltonien. */
+  --svc-brunch: #047857;
 
   color-scheme: light;
 }
@@ -215,6 +219,7 @@
     --svc-soir: oklch(81% 0.085 250);
     --svc-soir-bg: oklch(22% 0.04 250);
     --svc-soir-bd: oklch(45% 0.10 250);
+    --svc-brunch: oklch(66% 0.14 165);
 
   color-scheme: dark;
   }
@@ -293,6 +298,7 @@ html[data-theme="dark"] {
     --svc-soir: oklch(81% 0.085 250);
     --svc-soir-bg: oklch(22% 0.04 250);
     --svc-soir-bd: oklch(45% 0.10 250);
+    --svc-brunch: oklch(66% 0.14 165);
 
   color-scheme: dark;
 }
