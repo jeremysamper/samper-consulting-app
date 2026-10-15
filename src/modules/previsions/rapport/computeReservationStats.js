@@ -128,9 +128,8 @@ export function preparerLignes(lignes, aujourdhui, avecBrunch) {
 }
 
 // ── Ouverture et capacité, d'après les réglages de la réservation en ligne ──
-// Horaires par jour ISO (« 3 » = mercredi), fermetures datées. Les fermetures
-// de service passées ne sont pas gardées en base : une période passée ne voit
-// que les jours fermés en entier.
+// Horaires par jour ISO (« 3 » = mercredi), fermetures datées : jours fermés
+// en entier et services fermés une date donnée, passées comprises.
 function servicesBrutsOuverts(date, parametres) {
   if ((parametres.jours_fermes || []).includes(date)) return [];
   const h = parametres.horaires?.[String(jourIso(date))] || {};

@@ -89,12 +89,13 @@ function nettoyerRythme(rythme) {
 }
 
 // Services fermés par date : { "2026-10-12": ["soir"] }. On garde les dates
-// à venir qui ont au moins un service, sans doublon.
+// qui ont au moins un service, sans doublon. Les dates passées restent : le
+// rapport les retire de la capacité théorique (l'écran de réglage et la page
+// publique ne montrent que les dates à venir).
 function nettoyerServicesFermes(services) {
-  const aujourdhui = zurichToday();
   const sortie = {};
   Object.entries(services || {}).forEach(([date, liste]) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < aujourdhui || !Array.isArray(liste)) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(liste)) return;
     const gardes = [...new Set(liste.filter((x) => typeof x === 'string' && x))];
     if (gardes.length) sortie[date] = gardes;
   });

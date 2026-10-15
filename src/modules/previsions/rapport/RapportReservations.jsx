@@ -48,7 +48,7 @@ const DEF = {
   jourOuverture: "Couverts du rapport divisés par les jours d'ouverture : jours où au moins un service est ouvert selon les horaires de la réservation en ligne, jours fermés exclus. Sans horaires réglés, les jours avec au moins une réservation.",
   semaine: 'Couverts du rapport divisés par le nombre de jours de la période, multiplié par 7.',
   taille: 'Couverts du rapport divisés par le nombre de réservations comptées (no-show exclus).',
-  occupation: "Couverts du rapport divisés par la capacité théorique : pour chaque service ouvert, la capacité du jour réglée dans la réservation en ligne, sinon la capacité par service. Les fermetures de service passées ne sont pas gardées : une période passée ne retire que les jours fermés en entier.",
+  occupation: "Couverts du rapport divisés par la capacité théorique : pour chaque service ouvert, la capacité du jour réglée dans la réservation en ligne, sinon la capacité par service. Les jours fermés et les services fermés ce jour-là sont retirés.",
   annulation: 'Réservations annulées sur toutes les réservations de la période, en tables (et en couverts).',
   noShow: 'No-show sur les réservations échues (honorées, no-show et non pointées).',
   nonPointe: "Réservations passées restées « attendu » ou « à confirmer », sur les réservations échues. Elles comptent dans les couverts, mais on ne sait pas si les clients sont venus : pointer les arrivées fiabilise le rapport.",
