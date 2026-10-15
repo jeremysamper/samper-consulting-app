@@ -10,6 +10,7 @@ import { useReservationsJour } from './useReservationsJour.js';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import PlanSalle from './PlanSalle.jsx';
+import PassageRapide from './PassageRapide.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Mode service : l'écran de l'hôte pendant le service, en plein écran.
@@ -62,6 +63,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
   const [selectedResa, setSelectedResa] = useState(null);
   const [editingResa,  setEditingResa]  = useState(null);
   const [creating,     setCreating]     = useState(false);
+  const [passage,      setPassage]      = useState(false);
 
   // Le geste retour (Android, glissé depuis le bord, Alt+←) quitte le mode
   // service au lieu de quitter le module.
@@ -146,6 +148,23 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
 
         {aujourdhui && !isMobile && <Horloge />}
 
+        {/* Client entré sans réserver : compté en deux touchers, à l'heure
+            qu'il est. Seulement le jour même : un passage n'a pas de sens
+            sur une autre date. */}
+        {canEdit && aujourdhui && service !== null && (
+          <button
+            type="button"
+            onClick={() => setPassage(true)}
+            style={{
+              minHeight: 44, padding: '9px 16px', borderRadius: 8,
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
+              background: 'var(--surface)', color: 'var(--accent)',
+              fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+            }}
+          >
+            + Passage
+          </button>
+        )}
         {canEdit && (
           <button
             type="button"
@@ -265,6 +284,16 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
           initialDate={date}
           initialService={svc}
           onClose={() => setCreating(false)}
+          onSaved={() => { load(); onChange?.(); }}
+        />
+      )}
+
+      {canEdit && passage && (
+        <PassageRapide
+          etablissementId={etablissementId}
+          date={date}
+          service={svc}
+          onClose={() => setPassage(false)}
           onSaved={() => { load(); onChange?.(); }}
         />
       )}

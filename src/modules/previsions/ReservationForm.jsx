@@ -51,6 +51,14 @@ function heuresProposees(parametres, date, service) {
 // personne ne réserve à 19:00 par défaut, on vise 20:00.
 const HEURE_DEFAUT = { midi: '12:30', soir: '20:00', brunch: '11:00' };
 
+// Canal (reservations.origine) choisi par l'équipe. 'en_ligne' n'en fait pas
+// partie : il n'est posé que par la page publique, et une réservation venue
+// du site garde son origine quoi qu'on modifie.
+const CANAUX = [
+  { id: 'equipe',  label: 'Équipe' },
+  { id: 'passage', label: 'Passage' },
+];
+
 // `zurichToday` et non `new Date()` : l'heure du device peut être n'importe
 // quoi, et .toISOString() bascule la date d'un jour dès qu'on est à l'est de
 // Greenwich en soirée.
@@ -60,7 +68,7 @@ function defaultState(dateInitiale, serviceInitial) {
   return {
     date, service, heure: HEURE_DEFAUT[service], heureCustom: false,
     couverts: 2, nom: '', telephone: '', email: '', accordActus: false,
-    groupe: false, passeport: false, tags: [], notes: '',
+    groupe: false, passeport: false, tags: [], notes: '', canal: 'equipe',
   };
 }
 
@@ -96,6 +104,7 @@ function formFromResa(resa) {
     passeport:   resa.passeport_gourmand || false,
     tags:        Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [],
     notes:       resa.notes_libres  || '',
+    canal:       resa.origine === 'passage' ? 'passage' : 'equipe',
   };
 }
 
@@ -115,6 +124,9 @@ export default function ReservationForm({
   const suggestions = heuresProposees(statutReglages === 'ready' ? parametres : null, form.date, form.service);
   const cleSuggestions = suggestions.join(',');
   const heureInitiale = (initialResa?.heure_arrivee || '').slice(0, 5);
+  // Réservation venue du site : son canal ne se change pas, l'origine n'est
+  // jamais renvoyée.
+  const enLigne = initialResa?.origine === 'en_ligne';
 
   // Clients connus proposés pendant la frappe du nom ou du téléphone, à la
   // création seulement : une résa qu'on modifie a déjà son client.
@@ -284,7 +296,11 @@ export default function ReservationForm({
         est_groupe:    form.groupe,
         passeport_gourmand: form.passeport,
         notes_libres:  form.notes.trim() || null,
+        ...(enLigne ? {} : { origine: form.canal }),
       };
+      // Un client de passage est déjà là : il n'a besoin d'aucune
+      // confirmation (ni e-mail ni SMS), à la création comme à la modification.
+      const passage = !enLigne && form.canal === 'passage';
 
       if (initialResa) {
         // ── MODE ÉDITION ──
@@ -306,7 +322,7 @@ export default function ReservationForm({
           || avant.service !== payload.service
           || Number(avant.nb_couverts) !== Number(payload.nb_couverts)
           || (!avant.email && payload.email);
-        const mail = change && maj?.statut === 'confirme'
+        const mail = change && maj?.statut === 'confirme' && !passage
           ? await envoyerConfirmation(maj, avant.email ? 'modification' : 'creation')
           : { suffixe: '', ton: 'success' };
         notify(`Résa ${form.nom.trim()} (${form.couverts} pax, ${form.heure.slice(0, 5)}) modifiée.${mail.suffixe}`, mail.ton);
@@ -314,7 +330,10 @@ export default function ReservationForm({
         if (ouvertRef.current) onClose();
       } else {
         // ── MODE CRÉATION ──
-        const { data: resa, error: eResa } = await reservations.create({ ...payload, statut: 'confirme' });
+        // Passage du jour (ou rattrapé après coup) : le client est arrivé.
+        // Noté pour une date à venir, il reste attendu comme une réservation.
+        const statut = passage && form.date <= aujourdhui ? 'arrive' : 'confirme';
+        const { data: resa, error: eResa } = await reservations.create({ ...payload, statut });
         if (eResa || !resa) {
           echec(eResa || 'Erreur lors de la création de la réservation.');
           return;
@@ -340,7 +359,7 @@ export default function ReservationForm({
           }
         }
         const h = resa.heure_arrivee?.slice(0, 5) ?? form.heure;
-        const mail = await envoyerConfirmation(resa, 'creation');
+        const mail = passage ? { suffixe: '', ton: 'success' } : await envoyerConfirmation(resa, 'creation');
         notify(`Résa ${resa.nom} (${resa.nb_couverts} pax, ${h}) enregistrée.${mail.suffixe}`, mail.ton);
         onSaved?.(resa);
         if (!ouvertRef.current) return;
@@ -439,7 +458,41 @@ export default function ReservationForm({
     </div>
   );
 
+  // Canal : saisie de l'équipe, ou client de passage. Une réservation venue
+  // du site le dit, sans sélecteur.
+  const blocCanal = enLigne ? (
+    <div>
+      <label style={lbl}>Canal</label>
+      <div style={{ fontSize: 13, color: 'var(--text)' }}>Réservée en ligne</div>
+    </div>
+  ) : (
+    <div>
+      <label style={lbl}>Canal</label>
+      <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+        {CANAUX.map((c) => (
+          <button key={c.id} type="button" aria-pressed={form.canal === c.id} onClick={() => set('canal', c.id)}
+            style={{
+              flex: 1, minHeight: 40, padding: '9px 2px', border: 'none', cursor: 'pointer',
+              fontSize: isMobile ? 14 : 12, fontWeight: 700, fontFamily: 'var(--font)', transition: 'all 0.15s',
+              background: form.canal === c.id ? 'var(--accent)' : 'var(--bg)',
+              color:      form.canal === c.id ? 'var(--on-accent)' : 'var(--text2)',
+            }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+      {form.canal === 'passage' && (
+        <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 5 }}>
+          {initialResa
+            ? 'Client venu sans réserver. Aucune confirmation ne lui est envoyée.'
+            : 'Client venu sans réserver : enregistré arrivé, sans confirmation envoyée.'}
+        </div>
+      )}
+    </div>
+  );
+
   const detailsRenseignes = [
+    !enLigne && form.canal === 'passage' && 'passage',
     form.email.trim() && 'e-mail',
     form.notes.trim() && 'notes',
     form.groupe && 'groupe',
@@ -571,6 +624,11 @@ export default function ReservationForm({
               </div>
             </div>
           </div>
+
+          {/* Ordinateur : le canal sous le service. Téléphone : dans « Plus de
+              détails », la saisie rapide d'une réservation ne s'allonge pas
+              (un passage se compte d'abord par « + Passage » du mode service). */}
+          {!isMobile && blocCanal}
 
           {/* Heure */}
           <div>
@@ -734,7 +792,7 @@ export default function ReservationForm({
                   <span style={{ display: 'block', fontSize: 12, marginTop: 2, color: detailsRenseignes.length ? 'var(--accent)' : 'var(--text3)' }}>
                     {detailsRenseignes.length
                       ? `Renseigné : ${detailsRenseignes.join(', ')}`
-                      : 'E-mail, notes, groupe, passeport gourmand'}
+                      : 'E-mail, notes, canal, groupe, passeport gourmand'}
                   </span>
                 </span>
                 <span aria-hidden="true" style={{
@@ -747,6 +805,7 @@ export default function ReservationForm({
 
               {detailsOuverts && (
                 <>
+                  {blocCanal}
                   {blocEmail}
                   {/* Groupe et passeport en boutons à bascule côte à côte.
                       L'interrupteur de l'ordinateur, étiré à 44 px de haut par

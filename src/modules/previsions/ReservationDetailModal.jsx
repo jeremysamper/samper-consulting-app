@@ -240,6 +240,7 @@ export default function ReservationDetailModal({
             )}
           />
           {resa.origine === 'en_ligne' && <LigneDetail label="Origine" valeur="Réservée en ligne" />}
+          {resa.origine === 'passage' && <LigneDetail label="Origine" valeur="Client de passage" />}
           {resa.est_groupe && <LigneDetail label="Type" valeur="Groupe" />}
           <LigneDetail label="Notes"     valeur={resa.notes_libres} />
           {tags.length > 0 && (

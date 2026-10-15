@@ -1214,6 +1214,7 @@ export default function PlanSalle({
   const relireResas = () => (onResasModifiees || onRelireResas)?.();
 
   // Client de passage : créé « arrivé », à l'heure qu'il est, et assis.
+  // Origine 'passage' : le rapport le compte à part de l'équipe et du site.
   async function clientDePassage(tableId, nbCouverts) {
     const nom = `Passage, ${nomTablee(tableId)}`;
     const { data: resa, error: e } = await reservations.create({
@@ -1224,6 +1225,7 @@ export default function PlanSalle({
       nom:           nom.charAt(0).toUpperCase() + nom.slice(1),
       est_groupe:    false,
       statut:        'arrive',
+      origine:       'passage',
     });
     if (e || !resa) { notify(e || 'Client de passage non enregistré.', 'error'); return; }
     await poserSurTablee(resa, tableId);

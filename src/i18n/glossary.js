@@ -790,6 +790,17 @@ export const UI_GLOSSARY = {
   // Plan de salle en service : fiche d'une table, ajustement de la salle
   'Client de passage': 'Walk-in',
   'Sans réservation, installé maintenant': 'No booking, seated now',
+  // Canal d'une réservation, client de passage du mode service
+  'Passage': 'Walk-in',
+  'Canal': 'Channel',
+  'Origine': 'Source',
+  'optionnel': 'optional',
+  'Installer': 'Seat',
+  'Autre nombre de couverts': 'Other number of covers',
+  'Un toucher sur un nombre enregistre le passage': 'One tap on a number records the walk-in',
+  'Client venu sans réserver. Aucune confirmation ne lui est envoyée': 'Walk-in customer. No confirmation is sent to them',
+  'Client venu sans réserver : enregistré arrivé, sans confirmation envoyée': 'Walk-in customer: recorded as arrived, no confirmation sent',
+  'E-mail, notes, canal, groupe, passeport gourmand': 'E-mail, notes, channel, group, gourmet passport',
   'Réserver la table': 'Book the table',
   'Nouvelle réservation posée sur cette table': 'New booking placed on this table',
   'Assigner la table': 'Assign the table',

@@ -771,6 +771,17 @@ export const UI_GLOSSARY_ES = {
   // Plan de salle en service : fiche d'une table, ajustement de la salle
   'Client de passage': 'Cliente de paso',
   'Sans réservation, installé maintenant': 'Sin reserva, sentado ahora',
+  // Canal d'une réservation, client de passage du mode service
+  'Passage': 'De paso',
+  'Canal': 'Canal',
+  'Origine': 'Origen',
+  'optionnel': 'opcional',
+  'Installer': 'Sentar',
+  'Autre nombre de couverts': 'Otro número de cubiertos',
+  'Un toucher sur un nombre enregistre le passage': 'Un toque en un número registra al cliente de paso',
+  'Client venu sans réserver. Aucune confirmation ne lui est envoyée': 'Cliente sin reserva. No se le envía ninguna confirmación',
+  'Client venu sans réserver : enregistré arrivé, sans confirmation envoyée': 'Cliente sin reserva: registrado como llegado, sin confirmación enviada',
+  'E-mail, notes, canal, groupe, passeport gourmand': 'E-mail, notas, canal, grupo, pasaporte gourmet',
   'Réserver la table': 'Reservar la mesa',
   'Nouvelle réservation posée sur cette table': 'Nueva reserva asignada a esta mesa',
   'Assigner la table': 'Asignar la mesa',
