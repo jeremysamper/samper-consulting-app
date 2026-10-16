@@ -13,12 +13,12 @@ export const authStyles = {
   brandSub: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   title: { fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 18 },
   field: { marginBottom: 14 },
-  label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
-  submitBtn: { width: '100%', padding: '12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 4 },
+  submitBtn: { width: '100%', padding: '12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 4 },
   linkBtn: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font)', padding: 4 },
-  errorBox: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
-  infoBox: { background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
+  errorBox: {  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '10px 0 10px 12px',  fontSize: 12, marginBottom: 14 },
+  infoBox: {  borderLeft: '2px solid var(--info-bd)', color: 'var(--info-text)', padding: '10px 0 10px 12px',  fontSize: 12, marginBottom: 14 },
   rememberLabel: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)', cursor: 'pointer', userSelect: 'none', marginTop: 4, marginBottom: 14 },
   rememberCheckbox: { width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 },
   footer: { marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text2)', textAlign: 'center', lineHeight: 1.5 },
@@ -26,6 +26,6 @@ export const authStyles = {
 
   // Spécifique à l'écran « nouveau mot de passe »
   hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 18 },
-  emailBadge: { display: 'inline-block', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginTop: 4 },
-  toggleReveal: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font)', padding: 0, marginTop: 6 },
+  emailBadge: { display: 'inline-block', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 500, color: 'var(--text)', marginTop: 4 },
+  toggleReveal: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 500, fontFamily: 'var(--font)', padding: 0, marginTop: 6 },
 };

@@ -333,7 +333,7 @@ const Commande = ({ user, etablissement }) => {
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {totalCount === 0 ? (
           <div style={s.empty}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Liste de commande vide</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Liste de commande vide</div>
             <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
               {isConsultant
                 ? 'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.'
@@ -353,7 +353,7 @@ const Commande = ({ user, etablissement }) => {
                   style={s.sectionHead}
                   onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(group.categorie) ? n.delete(group.categorie) : n.add(group.categorie); return n; })}
                 >
-                  <span style={{ fontSize: 10, color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                   <span style={s.sectionTitle}>{group.categorie}</span>
                   <span style={s.sectionCount}>{group.items.length}</span>
                 </button>
@@ -603,10 +603,10 @@ const s = {
   catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' },
   catActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  ghostBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  aiBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: '1px solid var(--ai-bd)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  aiBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: '1px solid var(--ai-bd)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   progress: { display: 'flex', alignItems: 'center', gap: 10 },
-  progressBar: { flex: 1, height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' },
+  progressBar: { flex: 1, height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' },
   progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
   printHeader: { marginBottom: 4 },
   section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
@@ -614,15 +614,15 @@ const s = {
   // que l'ancien div. Le filet bas passe par une ombre intérieure : avec une
   // bordure, la règle « Plus de carrés » le prendrait pour une ligne de liste.
   sectionHead: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', background: 'var(--bg)', border: 'none', boxShadow: 'inset 0 -1px 0 var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'inherit' },
-  sectionTitle: { flex: 1, fontSize: 12, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px' },
+  sectionTitle: { flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionCount: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px' },
   row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)' },
   rowChecked: { background: 'var(--success-bg)' },
-  rowName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
-  nameInput: { width: '100%', padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  manualTag: { marginLeft: 8, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, padding: '1px 6px' },
+  rowName: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
+  nameInput: { width: '100%', padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 'var(--r)', fontSize: 14, fontWeight: 500, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
+  manualTag: { marginLeft: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, padding: '1px 6px' },
   qtyWrap: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
-  qtyInput: { width: 70, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' },
+  qtyInput: { width: 70, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 13, textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' },
   qtyUnit: { fontSize: 12, color: 'var(--text2)', width: 26 },
   delBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', flexDirection: 'column', alignItems: 'center' },
@@ -631,18 +631,19 @@ const s = {
   modalHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
   modalTitle: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  label: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
+  label: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   modalFooter: { display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--border)' },
   primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Modale de generation
   genBody: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
-  genHint: { fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 },
-  selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  genHint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
+  selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   carteList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '46vh', overflowY: 'auto' },
   carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer' },
-  carteRowOn: { borderColor: 'var(--accent)', background: 'var(--success-bg)' },
-  carteName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  // Carte cochée : filet accent, sans fond de couleur.
+  carteRowOn: { borderColor: 'var(--accent)' },
+  carteName: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   carteMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
 };
 

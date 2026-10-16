@@ -57,7 +57,7 @@ const stylePetit = (ton) => {
 function SousTitre({ children }) {
   return (
     <div style={{
-      fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5,
+      fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
       color: 'var(--text3)', margin: '4px 0 8px',
     }}>
       {children}
@@ -178,7 +178,7 @@ export default function TableServiceSheet({
                         borderWidth: actif ? 2 : 1, borderStyle: 'solid',
                         borderColor: actif ? 'var(--accent)' : 'var(--border)',
                         background: actif ? 'var(--ai-bg-soft)' : 'var(--surface)',
-                        color: 'var(--text)', fontSize: 16, fontWeight: 800,
+                        color: 'var(--text)', fontSize: 16, fontWeight: 700,
                         fontFamily: 'var(--font-num)', cursor: actif ? 'default' : 'pointer',
                       }}
                     >
@@ -325,7 +325,7 @@ export default function TableServiceSheet({
                       borderWidth: couverts === n ? 2 : 1, borderStyle: 'solid',
                       borderColor: couverts === n ? 'var(--accent)' : 'var(--border)',
                       background: couverts === n ? 'var(--ai-bg-soft)' : 'var(--surface)',
-                      color: 'var(--text)', fontSize: 18, fontWeight: 800,
+                      color: 'var(--text)', fontSize: 18, fontWeight: 700,
                       fontFamily: 'var(--font-num)', cursor: 'pointer',
                     }}
                   >

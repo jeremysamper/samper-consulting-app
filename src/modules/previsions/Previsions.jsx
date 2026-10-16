@@ -43,8 +43,8 @@ const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 
 // Boutons de la barre d'actions : un plein (l'action principale), les autres
 // en secondaire uniforme.
-const btnPrincipal = { padding: '9px 16px', borderRadius: 8, border: 'none', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)' };
-const btnSecondaire = { padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer' };
+const btnPrincipal = { padding: '9px 16px', borderRadius: 8, border: 'none', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)' };
+const btnSecondaire = { padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer' };
 
 export default function Previsions({ user, etablissement }) {
   const [showForm,     setShowForm]     = useState(false);
@@ -174,8 +174,7 @@ export default function Previsions({ user, etablissement }) {
       {/* Bannière si pas d'établissement */}
       {!etabId && (
         <div style={{
-          marginTop: 12, padding: '10px 14px', borderRadius: 8,
-          background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
+          marginTop: 12, padding: '10px 0 10px 12px',   borderLeft: '2px solid var(--warning-bd)',
           color: 'var(--warning-text)', fontSize: 13, fontFamily: 'var(--font)',
         }}>
           Aucun établissement sélectionné. Sélectionnez un établissement avant de saisir des réservations.
@@ -236,6 +235,7 @@ export default function Previsions({ user, etablissement }) {
               etablissementId={etabId}
               onDayClick={setSelectedDate}
               onOpenResa={setResaTrouvee}
+              onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
               refreshKey={refreshKey}
             />
           )}
@@ -248,6 +248,7 @@ export default function Previsions({ user, etablissement }) {
               refreshKey={refreshKey}
               canEdit={canEdit}
               onModeService={ouvrirModeService}
+              onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
             />
           )}
         </>
@@ -259,7 +260,6 @@ export default function Previsions({ user, etablissement }) {
           marginTop: 48, display: 'flex', flexDirection: 'column',
           alignItems: 'center', gap: 12, textAlign: 'center',
         }}>
-          <div style={{ fontSize: 42, opacity: 0.2 }}>◐</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
             Sélectionnez un établissement
           </div>

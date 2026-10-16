@@ -247,11 +247,11 @@ const s = {
   etiquetteType: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
   etiquetteNumero: { flexShrink: 0, whiteSpace: 'pre' },
   etiquettePax: {
-    fontSize: 10,
-    fontWeight: 600,
+    fontSize: 11,
+    fontWeight: 500,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
-  reste: { fontSize: 10, fontWeight: 700, color: 'var(--text2)', paddingLeft: 4 },
+  reste: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', paddingLeft: 4 },
 };

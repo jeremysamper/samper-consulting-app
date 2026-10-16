@@ -186,7 +186,7 @@ export default function DupliquerModal({ semaine, existants, employees, nomDe, e
                 const actif = joursCibles.has(d);
                 return (
                   <button key={d} type="button" onClick={() => basculerJour(d)} aria-pressed={actif}
-                    style={{ padding: '8px 10px', minHeight: 40, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--accent)' : 'var(--border)', background: actif ? 'var(--accent)' : 'var(--surface)', color: actif ? 'var(--on-accent)' : 'var(--text)' }}>
+                    style={{ padding: '8px 10px', minHeight: 40, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--accent)' : 'var(--border)', background: actif ? 'var(--accent)' : 'var(--surface)', color: actif ? 'var(--on-accent)' : 'var(--text)' }}>
                     {jourCourt(d)}
                   </button>
                 );

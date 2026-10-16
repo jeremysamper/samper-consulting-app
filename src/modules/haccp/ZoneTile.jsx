@@ -52,7 +52,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{zone.nom}</div>
-            <div style={{ fontSize: 10, color: 'var(--text2)' }}>Cible {zone.cible}{zone.unite}, de {zone.min ?? '-'} à {zone.max ?? '+∞'}</div>
+            <div style={{ fontSize: 11, color: 'var(--text2)' }}>Cible {zone.cible}{zone.unite}, de {zone.min ?? '-'} à {zone.max ?? '+∞'}</div>
           </div>
         </div>
         {last ? (
@@ -68,7 +68,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
                 ><TrendIcon size={16} strokeWidth={2.2} aria-hidden="true" /></span>
               )}
             </div>
-            <div style={{ fontSize: 10, color: delaiAlert ? 'var(--danger-strong)' : 'var(--text2)', fontWeight: delaiAlert ? 700 : 400 }}>
+            <div style={{ fontSize: 11, color: delaiAlert ? 'var(--danger-strong)' : 'var(--text2)', fontWeight: delaiAlert ? 700 : 400 }}>
               {delaiLabel}
             </div>
           </div>
@@ -86,7 +86,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
                   {conforme ? 'Conforme' : 'Non conforme'}
                 </span>
               )}
-              {delaiAlert && <div style={{ fontSize: 10, color: 'var(--danger-strong)', marginTop: 4, fontWeight: 600 }}>Relevé en retard !</div>}
+              {delaiAlert && <div style={{ fontSize: 11, color: 'var(--danger-strong)', marginTop: 4, fontWeight: 500 }}>Relevé en retard !</div>}
             </div>
             {canWrite && (
               <button

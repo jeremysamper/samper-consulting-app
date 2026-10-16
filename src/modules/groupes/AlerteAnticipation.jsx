@@ -55,7 +55,7 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
         }}
       >
         <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <span style={{ fontWeight: 800, fontFamily: 'var(--font-serif)' }}>
+          <span style={{ fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
             À anticiper : {n} groupe{n > 1 ? 's' : ''} dans les {JOURS_ANTICIPATION} prochains jours.
           </span>{' '}
           {toutPret

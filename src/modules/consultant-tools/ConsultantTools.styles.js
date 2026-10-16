@@ -1,15 +1,16 @@
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
+import { encadreStyle } from '../../components/ui/index.jsx';
 
 export const cts = {
   tabsBar: { display: 'flex', gap: 4, padding: '0 4px', marginBottom: 12, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' },
   tabBtn: { padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text2)', borderBottom: '2px solid transparent', whiteSpace: 'nowrap' },
-  tabBtnActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
+  tabBtnActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 500 },
   tabsDivider: { width: 1, height: 22, background: 'var(--border)', margin: '0 8px' },
   fallback: { padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 13 },
   root: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, height: 'calc(100vh - 160px)', minHeight: 600 },
   leftCol: { display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', paddingRight: 16, overflow: 'hidden', minWidth: 0 },
   leftHeader: { padding: '0 0 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
-  newBtn: { padding: '9px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  newBtn: { padding: '9px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   search: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none' },
   leftList: { flex: 1, overflowY: 'auto' },
   recetteItem: { padding: '11px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' },
@@ -17,18 +18,19 @@ export const cts = {
   // ─── Hiérarchie cartes > plats ───
   carteHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer' },
   carteFolderName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  carteCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
+  carteCount: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
   platHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 8px 8px 6px', borderBottom: '1px solid var(--border)' },
-  platToggle: { width: 22, height: 22, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, color: 'var(--text2)', flexShrink: 0 },
+  platToggle: { width: 22, height: 22, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--text2)', flexShrink: 0 },
   platName: { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  platMeta: { fontSize: 10, color: 'var(--text2)', marginTop: 2 },
+  platMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   platEditBtn: { width: 24, height: 24, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text2)', borderRadius: 4, flexShrink: 0 },
   orphelinHeader: { padding: '14px 14px 6px', fontSize: 13, fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' },
-  recItemName: { fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 3 },
+  recItemName: { fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 3 },
   recItemMeta: { fontSize: 11, color: 'var(--text2)' },
   // Recette cachée dans Cartes & Recettes (colonne recettes.masquee).
-  tagCachee: { display: 'inline-block', marginRight: 6, padding: '0 6px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: 'var(--warning-bg)', color: 'var(--warning-text)' },
-  bandeauCachee: { margin: '0 0 10px', padding: '8px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.4, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)' },
+  tagCachee: { display: 'inline-block', marginRight: 6, padding: '0 6px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: 'var(--warning-bg)', color: 'var(--warning-text)' },
+  // Encadré de statut (filet gauche au ton, voir Encadre).
+  bandeauCachee: { margin: '0 0 10px', fontSize: 12, lineHeight: 1.4, ...encadreStyle('alerte') },
   rightCol: { display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', paddingRight: 4 },
   emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   actionBar: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
@@ -43,13 +45,13 @@ export const cts = {
   cardTitle: { padding: '4px 0 10px', fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   paramGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px 16px', padding: '4px 0 14px' },
   field: { display: 'flex', flexDirection: 'column', gap: 4 },
-  label: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
+  label: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   input: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box', width: '100%' },
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px 24px', padding: '4px 0 14px' },
   kpiItem: { display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap', fontSize: 17, fontFamily: 'var(--font-num)' },
   kpiLabel: { fontSize: 12, color: 'var(--text2)', fontWeight: 500, whiteSpace: 'normal', fontFamily: 'var(--font)' },
-  smallBtn: { padding: '5px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
+  smallBtn: { padding: '5px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   ingRow: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', alignItems: 'center' },
   ingInput: { padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
   // ─── Barre de recalcul des quantités (carte Ingrédients) ──────────────────
@@ -58,7 +60,7 @@ export const cts = {
   // actif ne surchargeant que sa couleur (cf. npm run lint:borders).
   echelleBar: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 16px', background: 'var(--bg)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
   echelleBarActive: { background: 'var(--warning-bg)', borderBottomColor: 'var(--warning-bd)' },
-  echelleLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
+  echelleLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   echelleTexte: { fontSize: 12, color: 'var(--text2)' },
   // Pas de filet séparateur : la barre passe à la ligne sous 1000px et le trait
   // se retrouvait collé au bord gauche, à séparer de rien.
@@ -66,7 +68,7 @@ export const cts = {
   echelleInput: { width: 72, padding: '5px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 7, fontSize: 13, fontWeight: 700, textAlign: 'center', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none', flexShrink: 0 },
   echelleSelect: { maxWidth: 220, padding: '5px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', cursor: 'pointer' },
   echelleFacteur: { fontSize: 12, fontWeight: 700, color: 'var(--warning-text)' },
-  echelleReset: { marginLeft: 'auto', padding: '5px 12px', background: 'none', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)', borderRadius: 7, color: 'var(--warning-text)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  echelleReset: { marginLeft: 'auto', padding: '5px 12px', background: 'none', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)', borderRadius: 7, color: 'var(--warning-text)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
   // Aperçu recalculé sous la quantité enregistrée : jamais écrit en base.
   ingQteRecalc: { marginTop: 3, fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textAlign: 'right' },
   suggestions: { position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: '0 0 8px 8px', zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxHeight: 200, overflowY: 'auto' },
@@ -74,11 +76,11 @@ export const cts = {
   // Version compacte (autocomplétion discrète)
   suggestionsCompact: { position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', maxHeight: 180, overflowY: 'auto', marginTop: 2 },
   suggItemCompact: { padding: '5px 10px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--text)' },
-  deleteLineBtn: { width: 28, height: 28, border: '1px solid var(--danger-bd)', background: 'none', color: 'var(--danger-strong)', borderRadius: 6, cursor: 'pointer', fontSize: 13, padding: 0 },
+  deleteLineBtn: { width: 28, height: 28, border: '1px solid transparent', background: 'var(--danger-bg-soft)', color: 'var(--danger-strong)', borderRadius: 6, cursor: 'pointer', fontSize: 13, padding: 0 },
   etapeRow: { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
   etapeNum: { width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 2 },
   etapeInput: { flex: 1, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', resize: 'vertical', lineHeight: 1.5 },
-  moveBtn: { width: 22, height: 22, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', borderRadius: 4, cursor: 'pointer', fontSize: 10, padding: 0 },
+  moveBtn: { width: 22, height: 22, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', borderRadius: 4, cursor: 'pointer', fontSize: 11, padding: 0 },
   textarea: { width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   modal: { background: 'var(--surface)', borderRadius: 14, width: 420, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
@@ -88,7 +90,7 @@ export const cts = {
   menuDot: { position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--warning-strong)' },
   menuBackdrop: { position: 'fixed', inset: 0, zIndex: 40 },
   menuPanel: { position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 41, minWidth: 232, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.18)', padding: 4, display: 'flex', flexDirection: 'column', gap: 2 },
-  menuItem: { display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'none', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)', color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap' },
+  menuItem: { display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'none', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, fontFamily: 'var(--font)', color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap' },
 };
 
 if (getBrowserWindow()?.innerWidth < 900) {

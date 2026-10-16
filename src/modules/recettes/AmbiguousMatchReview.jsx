@@ -21,7 +21,7 @@ const panel = {
   boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
 };
 const chip = (conf) => ({
-  fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10,
+  fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
   background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : 'var(--surface2)',
   color: conf >= 85 ? 'var(--success-text)' : conf >= 60 ? 'var(--warning-text)' : 'var(--text2)',
 });
@@ -121,7 +121,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
     <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             Correspondances catalogue à valider ({items.length})
           </div>
           <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>

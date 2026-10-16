@@ -4,7 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
-import { Btn } from '../../components/ui/index.jsx';
+import { Btn, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { useCartes } from '../../hooks/useCartes.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -541,7 +541,7 @@ const FichesSalle = ({ user, etablissement }) => {
       {bulkProgress && (
         <div className="no-print" style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(20,16,12,0.55)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
-            <div style={{fontSize:15,fontWeight:800,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>Génération des fiches salle</div>
+            <div style={{fontSize:15,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>Génération des fiches salle</div>
             <div style={{fontSize:13,color:'var(--text2)'}}>
               {bulkProgress.done} / {bulkProgress.total} plat(s), {bulkProgress.created} fiche(s) créée(s)
             </div>
@@ -588,7 +588,7 @@ const FichesSalle = ({ user, etablissement }) => {
             {/* Placeholder image */}
             <div style={fss.cardImg}>
               <div style={fss.cardImgPlaceholder}>
-                <span style={{fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'var(--font)',marginTop:4}}>photo {f.categorie.toLowerCase()}</span>
+                <span style={{fontSize:11,color:'rgba(255,255,255,0.3)',fontFamily:'var(--font)',marginTop:4}}>photo {f.categorie.toLowerCase()}</span>
               </div>
             </div>
             <div style={fss.cardBody}>
@@ -707,8 +707,8 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
             </div>
           ) : <div style={{fontSize:13,color:'var(--success-text)',marginTop:8}}>Aucun allergène majeur déclaré</div>}
           {fiche.infosService && (
-            <div style={{marginTop:14,padding:'10px 12px',background:'var(--warning-bg-soft)',border:'1px solid var(--warning-bd)',borderRadius:8,fontSize:12,color:'var(--warning-text)',lineHeight:1.5}}>
-              <strong>Info service :</strong> {fiche.infosService}
+            <div style={{marginTop:14,...encadreStyle('alerte'),fontSize:12,lineHeight:1.5}}>
+              <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}
             </div>
           )}
         </div>
@@ -718,7 +718,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
           <div style={fss.detailCardTitle}>Accords mets & boissons</div>
           {fiche.accordsGeneraux?.length > 0 && (
             <div style={{marginTop:10,marginBottom:4}}>
-              <div style={{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3,marginBottom:6}}>
+              <div style={{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3,marginBottom:6}}>
                 Familles recommandées
               </div>
               <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
@@ -850,7 +850,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                       <label key={c.id} className="touch-target"
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 36,
-                          border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                          border: '1.5px solid transparent', borderRadius: 20,
                           background: checked ? 'var(--accent-light)' : 'var(--surface)',
                           color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 400,
                         }}>
@@ -892,7 +892,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                   {recettes.filter(r => r.statut !== 'archivée' || r.id === fiche?.recetteId).map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
                 </select>
                 {fiche?.recetteId && (
-                  <div style={{ fontSize: 11, color: 'var(--success-text)', marginTop: 4, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--success-text)', marginTop: 4, fontWeight: 500 }}>
                     Allergènes importés depuis la recette
                   </div>
                 )}
@@ -918,8 +918,8 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 })}
               </div>
               {inconnus.length > 0 && (
-                <div style={{marginTop:10,padding:'8px 10px',background:'var(--warning-bg-soft)',border:'1px solid var(--warning-bd)',borderRadius:8}}>
-                  <div style={{fontSize:11,color:'var(--warning-text)',fontWeight:700,marginBottom:6}}>
+                <div style={{marginTop:10,...encadreStyle('alerte')}}>
+                  <div style={{fontSize:11,...encadreTitreStyle('alerte'),marginBottom:6}}>
                     {inconnus.length} valeur{inconnus.length>1?'s':''} hors liste (import ancien), à convertir ou à retirer
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
@@ -1035,7 +1035,7 @@ const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
                   <label key={c.id} className="touch-target"
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 36,
-                      border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                      border: '1.5px solid transparent', borderRadius: 20,
                       background: checked ? 'var(--accent-light)' : 'var(--surface)',
                       color: checked ? 'var(--accent)' : 'var(--text2)',
                       fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 400,
@@ -1067,7 +1067,7 @@ const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
           </div>
 
           {mode === 'replace' && ids.length === 0 && (
-            <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 12 }}>
+            <div style={{ marginTop: 12, ...encadreStyle('alerte'), fontSize: 12 }}>
               Aucune carte cochée : les fiches seront retirées de toutes leurs cartes et ne resteront visibles que dans « Toutes ».
             </div>
           )}
@@ -1095,23 +1095,23 @@ const fss = {
   cats:{display:'flex',gap:4,flexWrap:'wrap'},
   catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
-  aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
-  selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   serverBanner:{background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',gap:14},
   grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14},
   card:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden',cursor:'pointer',transition:'box-shadow .15s, transform .15s'},
   cardImg:{height:120,overflow:'hidden'},
   cardImgPlaceholder:{height:'100%',background:'#222',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'},
   cardBody:{padding:'12px 14px',display:'flex',flexDirection:'column',gap:6},
-  cardCat:{fontSize:10,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
+  cardCat:{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
   cardNom:{fontSize:14,fontWeight:700,color:'var(--text)',lineHeight:1.3},
   cardDesc:{fontSize:12,color:'var(--text2)',lineHeight:1.5},
   allergenesRow:{display:'flex',flexWrap:'wrap',gap:4},
-  allergeneBadge:{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:10},
+  allergeneBadge:{fontSize:11,fontWeight:500,padding:'2px 7px',borderRadius:10},
   cardFooter:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'},
   tempBadge:{fontSize:11,color:'var(--text2)'},
-  statutBadge:{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:10},
+  statutBadge:{fontSize:11,fontWeight:500,padding:'2px 8px',borderRadius:10},
   accordCount:{fontSize:11,color:'var(--text2)',marginLeft:'auto'},
   empty:{gridColumn:'1/-1',padding:'24px',color:'var(--text2)',fontSize:13,textAlign:'center'},
   // Detail
@@ -1120,14 +1120,14 @@ const fss = {
   backBtn:{background:'none',border:'1px solid var(--border)',borderRadius:7,padding:'6px 12px',cursor:'pointer',fontSize:12,color:'var(--text2)',fontFamily:'var(--font)',flexShrink:0},
   detailCat:{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
   detailTitre:{fontSize:22,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)',marginTop:2},
-  editBtn:{padding:'6px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'6px 14px',background:'none',border:'1px solid var(--danger-bd)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
+  editBtn:{padding:'6px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{padding:'6px 14px',background: 'var(--danger-bg-soft)',border: '1px solid transparent',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
   detailGrid:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14},
   detailCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'16px 18px'},
   detailCardTitle:{fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'},
   descText:{fontSize:13,color:'var(--text)',lineHeight:1.7},
   infoBlock:{marginTop:10,display:'flex',flexDirection:'column',gap:3},
-  infoLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3},
+  infoLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3},
   infoVal:{fontSize:13,color:'var(--text)',lineHeight:1.5},
   allergeneFull:{padding:'8px 12px',background:'var(--bg)',borderRadius:7,fontSize:13},
   accordTab:{padding:'5px 14px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
@@ -1135,10 +1135,10 @@ const fss = {
   accordCard:{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',display:'flex',gap:10,alignItems:'flex-start'},
   accordIcon:{fontSize:22,flexShrink:0},
   accordNom:{fontSize:13,fontWeight:700,color:'var(--text)'},
-  accordRegion:{fontSize:11,color:'var(--accent)',fontWeight:600,marginTop:1},
+  accordRegion:{fontSize:11,color:'var(--accent)',fontWeight:500,marginTop:1},
   accordAlt:{fontSize:11,color:'var(--text2)',fontStyle:'italic',marginTop:3},
   accordNotes:{fontSize:12,color:'var(--text2)',marginTop:4,lineHeight:1.4},
-  familleBadge:{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:12,background:'var(--accent-light)',color:'var(--accent)',border:'1px solid var(--accent)'},
+  familleBadge:{fontSize:11,fontWeight:500,padding:'3px 10px',borderRadius:12,background:'var(--accent-light)',color:'var(--accent)',border:'1px solid var(--accent)'},
   // Form modal
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
   modal:{background:'var(--surface)',borderRadius:14,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},
@@ -1147,11 +1147,11 @@ const fss = {
   closeBtn:{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'},
   modalBody:{padding:'20px 22px'},
   field:{display:'flex',flexDirection:'column',gap:6},
-  fLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
+  fLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
   fInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
-  smallBtn:{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  smallBtn:{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
+  cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
 };
 
 export default FichesSalle;

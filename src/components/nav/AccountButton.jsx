@@ -45,7 +45,7 @@ const s = {
     color: 'var(--nav-text-active)', fontSize: 11, fontWeight: 700, letterSpacing: 0.3,
   },
   avatarMobile: { width: 32, height: 32, fontSize: 12 },
-  name: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  name: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   nameMobile: { fontSize: 14 },
   chevron: { flexShrink: 0, color: 'var(--nav-text)' },
 };

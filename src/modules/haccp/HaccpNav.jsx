@@ -29,11 +29,11 @@ const ns = {
     boxShadow: 'var(--sh-xs)', minWidth: 0,
   },
   principalActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', boxShadow: 'var(--sh-sm)' },
-  titre: { fontSize: 16, fontWeight: 600, lineHeight: 1.2, overflowWrap: 'break-word' },
+  titre: { fontSize: 16, fontWeight: 700, lineHeight: 1.2, overflowWrap: 'break-word' },
   aide: { fontSize: 12, lineHeight: 1.3, opacity: 0.75 },
   secondaire: {
     minHeight: 44, padding: '8px 2px', cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 14, fontWeight: 600, lineHeight: 1.2,
+    fontSize: 14, fontWeight: 500, lineHeight: 1.2,
     background: 'none', color: 'var(--text2)',
     borderStyle: 'solid', borderWidth: '0 0 2px', borderColor: 'transparent', marginBottom: -1, minWidth: 0,
   },

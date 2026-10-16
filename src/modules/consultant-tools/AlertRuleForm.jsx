@@ -71,7 +71,7 @@ function CheckRow({ checked, onToggle, title, subtitle, disabled }) {
       <span style={{ minWidth: 0 }}>
         <span style={{
           display: 'block', fontSize: 13, lineHeight: 1.3,
-          fontWeight: checked ? 600 : 400,
+          fontWeight: checked ? 500 : 400,
           color: checked ? 'var(--accent)' : 'var(--text)',
         }}>
           {title}
@@ -592,7 +592,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                       key={sev.id}
                       type="button"
                       style={{
-                        padding: '8px 18px', borderRadius: 8, border: `2px solid ${form.severity === sev.id ? sev.color : 'var(--border)'}`,
+                        padding: '8px 18px', borderRadius: 8, border: '2px solid transparent',
                         background: form.severity === sev.id ? 'rgba(0,0,0,0.04)' : 'var(--surface)',
                         color: form.severity === sev.id ? sev.color : 'var(--text2)',
                         fontWeight: form.severity === sev.id ? 700 : 400,
@@ -619,11 +619,11 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 14px', borderRadius: 8, textAlign: 'left',
-                      border: `2px solid ${form.rule_type === rt.id ? 'var(--accent)' : 'var(--border)'}`,
+                      border: '2px solid transparent',
                       background: form.rule_type === rt.id ? 'var(--accent-light)' : 'var(--surface)',
                       color: form.rule_type === rt.id ? 'var(--accent)' : 'var(--text)',
                       cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13,
-                      fontWeight: form.rule_type === rt.id ? 600 : 400, transition: 'all .12s',
+                      fontWeight: form.rule_type === rt.id ? 500 : 400, transition: 'all .12s',
                     }}
                     onClick={() => { set('rule_type', rt.id); set('rule_config', {}); }}
                   >
@@ -659,7 +659,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                       type="button"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-                        borderRadius: 8, border: `2px solid ${form.schedule_type === opt.id ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: 8, border: '2px solid transparent',
                         background: form.schedule_type === opt.id ? 'var(--accent-light)' : 'var(--surface)',
                         cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
                       }}
@@ -667,11 +667,11 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                     >
                       <div style={{
                         width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                        border: `2px solid ${form.schedule_type === opt.id ? 'var(--accent)' : 'var(--border)'}`,
+                        border: '2px solid transparent',
                         background: form.schedule_type === opt.id ? 'var(--accent)' : 'transparent',
                       }} />
                       <div>
-                        <div style={{ fontWeight: 600, color: form.schedule_type === opt.id ? 'var(--accent)' : 'var(--text)', fontSize: 13 }}>
+                        <div style={{ fontWeight: 500, color: form.schedule_type === opt.id ? 'var(--accent)' : 'var(--text)', fontSize: 13 }}>
                           {opt.label}
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--text2)' }}>{opt.sub}</div>
@@ -699,7 +699,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                             borderColor: form.schedule_days.includes(day.id) ? 'var(--accent)' : 'var(--border)',
                             background: form.schedule_days.includes(day.id) ? 'var(--accent)' : 'var(--surface)',
                             color: form.schedule_days.includes(day.id) ? 'var(--on-accent)' : 'var(--text2)',
-                            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600,
+                            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 500,
                           }}
                           onClick={() => toggleDay(day.id)}
                         >
@@ -723,7 +723,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                         background: form.target_roles.includes(role.id) ? 'var(--accent-light)' : 'var(--surface)',
                         color: form.target_roles.includes(role.id) ? 'var(--accent)' : 'var(--text2)',
                         cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12,
-                        fontWeight: form.target_roles.includes(role.id) ? 600 : 400,
+                        fontWeight: form.target_roles.includes(role.id) ? 500 : 400,
                       }}
                       onClick={() => toggleRole(role.id)}
                     >

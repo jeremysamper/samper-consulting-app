@@ -227,7 +227,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                         style={{ width: 20, height: 20, flexShrink: 0, cursor: present ? 'default' : 'pointer' }}
                       />
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span data-no-translate style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>{p.nom}</span>
+                        <span data-no-translate style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word' }}>{p.nom}</span>
                         <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
                           {present ? 'déjà dans l\'inventaire' : (p.info || [p.uniteRef, p.fournisseurNom].filter(Boolean).join(', '))}
                         </span>
@@ -266,7 +266,7 @@ const st = {
   sousTitre: { fontSize: 12, color: 'var(--text2)', marginTop: 3, lineHeight: 1.4 },
   fermer: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0 },
   recherche: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  libre: { marginTop: 8, padding: '9px 14px', borderRadius: 8, border: '1px dashed var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44, width: '100%', textAlign: 'left' },
+  libre: { marginTop: 8, padding: '9px 14px', borderRadius: 8, border: '1px dashed var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44, width: '100%', textAlign: 'left' },
   liste: { overflowY: 'auto', flex: 1, padding: '4px 18px 12px', minHeight: 120 },
   noteFiches: { fontSize: 12, color: 'var(--text2)', padding: '8px 10px', margin: '6px 0', background: 'var(--bg)', borderRadius: 8, lineHeight: 1.45 },
   vide: { padding: '30px 10px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5 },

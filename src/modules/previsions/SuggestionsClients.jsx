@@ -68,7 +68,7 @@ export default function SuggestionsClients({ fiches, onChoisir }) {
   if (!fiches.length) return null;
   return (
     <div role="listbox" aria-label="Clients connus" style={{ marginTop: 6 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>Clients connus</div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)' }}>Clients connus</div>
       {fiches.map((c) => (
         <button
           key={c.id}
@@ -88,7 +88,7 @@ export default function SuggestionsClients({ fiches, onChoisir }) {
           <div style={{ fontSize: 14, fontWeight: 700 }}>{nomClient(c)}</div>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{detailsClient(c)}</div>
           {c.allergies && (
-            <div style={{ fontSize: 12, color: 'var(--danger-text)', fontWeight: 600, marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--danger-text)', fontWeight: 500, marginTop: 2 }}>
               Allergies : {c.allergies}
             </div>
           )}

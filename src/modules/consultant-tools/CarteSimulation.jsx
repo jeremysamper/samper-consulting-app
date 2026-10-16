@@ -199,7 +199,7 @@ const cs = {
     textTransform: 'uppercase', letterSpacing: 0.4,
   },
   foodCostValue: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-num)' },
-  foodCostHint: { fontSize: 10, color: 'var(--text3)', fontStyle: 'italic' },
+  foodCostHint: { fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' },
 
   simGrid: {
     display: 'grid',
@@ -224,8 +224,8 @@ const cs = {
   },
 
   errorBox: {
-    padding: '12px 16px', background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)',
-    color: 'var(--danger-strong)', borderRadius: 10, fontSize: 13, fontWeight: 600, marginBottom: 14,
+    padding: '12px 0 12px 12px',  borderLeft: '2px solid var(--danger-bd)',
+    color: 'var(--danger-strong)',  fontSize: 13, fontWeight: 500, marginBottom: 14,
   },
 };
 

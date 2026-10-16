@@ -240,20 +240,19 @@ const s = {
     fontSize: 14, fontWeight: 700,
   },
   title: { fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
-  sub: { fontSize: 12.5, color: 'var(--text2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  sub: { fontSize: 12, color: 'var(--text2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   close: {
     width: 36, height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'none', border: 'none', borderRadius: 8, color: 'var(--text2)', cursor: 'pointer', padding: 0,
   },
-  errorBox: {
-    background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)',
-    padding: '10px 12px', borderRadius: 8, fontSize: 12.5, marginBottom: 14,
+  errorBox: {  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)',
+    padding: '10px 0 10px 12px',  fontSize: 12, marginBottom: 14,
   },
   // Deux colonnes qui passent l'une sous l'autre quand la feuille est étroite.
   row: { display: 'flex', flexWrap: 'wrap', columnGap: 12 },
   field: { display: 'flex', flexDirection: 'column', flex: '1 1 160px', minWidth: 0, marginBottom: 12 },
   label: {
-    fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6,
+    fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginBottom: 6,
     textTransform: 'uppercase', letterSpacing: 0.4,
   },
   input: {
@@ -261,12 +260,12 @@ const s = {
     color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none',
   },
   inputReadOnly: { color: 'var(--text2)', background: 'var(--surface2)', cursor: 'default' },
-  hint: { fontSize: 11.5, color: 'var(--text3)', marginTop: 5 },
+  hint: { fontSize: 12, color: 'var(--text3)', marginTop: 5 },
   // flexShrink 0 : empilés en colonne sous la règle tactile globale (min-height 44 px).
   primary: {
     width: '100%', minHeight: 44, flexShrink: 0, marginTop: 4, borderRadius: 8,
     background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)',
-    fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font)',
+    fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)',
   },
   divider: { height: 1, background: 'var(--border)', margin: '16px 0 8px' },
   action: {
@@ -277,7 +276,7 @@ const s = {
   chevron: { color: 'var(--text3)', flexShrink: 0 },
   logout: {
     width: '100%', minHeight: 44, flexShrink: 0, marginTop: 4, borderRadius: 8,
-    background: 'transparent', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
-    fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+    background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent',
+    fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
   },
 };

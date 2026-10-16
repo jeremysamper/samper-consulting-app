@@ -46,8 +46,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
     <section
       aria-label="Demandes en ligne à confirmer"
       style={{
-        marginTop: 14, padding: '12px 14px', borderRadius: 10,
-        background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
+        marginTop: 14, padding: '12px 0 12px 12px',   borderLeft: '2px solid var(--warning-bd)',
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
@@ -71,7 +70,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
                 onClick={() => onAllerAuJour?.(r.date_service)}
                 style={{
                   padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
-                  fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 600,
+                  fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 500,
                 }}
               >
                 {formatDateLongue(r.date_service)}, {SERVICES[r.service] || r.service} {(r.heure_arrivee || '').slice(0, 5)}

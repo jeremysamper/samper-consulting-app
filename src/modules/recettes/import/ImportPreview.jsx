@@ -50,7 +50,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
       </div>
 
       {unrecognizedUnits.length > 0 && (
-        <div style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', fontSize: 12, color: 'var(--warning-text)' }}>
+        <div style={{ margin: '0 0 10px', padding: '8px 0 8px 12px',   borderLeft: '2px solid var(--warning-bd)', fontSize: 12, color: 'var(--warning-text)' }}>
           Unités non reconnues rencontrées : {unrecognizedUnits.join(', ')}. Les lignes concernées sont signalées en rouge - corrigez-les avant import.
         </div>
       )}

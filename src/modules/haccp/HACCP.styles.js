@@ -1,37 +1,40 @@
+import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+
 export const hs = {
   root:{display:'flex',flexDirection:'column',gap:14},
   toolbar:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'},
   tab:{padding:'8px 16px',border:'1px solid var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   tabActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   datePicker:{padding:'7px 10px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiRow:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:'12px 32px'},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
-  kpiLbl:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
+  kpiLbl:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
   kpiVal:{fontSize:26,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
   sectionTitle:{fontSize:12,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.5},
   zoneGrid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'4px 40px'},
   zoneTile:{borderRadius:10,padding:'14px 16px',display:'flex',alignItems:'center',gap:12},
   zoneIcon:{fontSize:24,flexShrink:0},
   zoneInfo:{flex:1,minWidth:0},
-  zoneName:{fontSize:13,fontWeight:600,color:'var(--text)',lineHeight:1.3},
-  zoneCible:{fontSize:10,color:'var(--text2)',marginTop:3},
+  zoneName:{fontSize:13,fontWeight:500,color:'var(--text)',lineHeight:1.3},
+  zoneCible:{fontSize:11,color:'var(--text2)',marginTop:3},
   zoneVal:{textAlign:'right',flexShrink:0},
-  confBadge:{display:'inline-block',padding:'2px 8px',borderRadius:10,fontSize:10,fontWeight:600},
-  anomCard:{background:'var(--danger-bg-soft)',border:'1px solid var(--danger-bd)',borderRadius:10,overflow:'hidden'},
-  anomHeader:{padding:'12px 16px',fontWeight:700,fontSize:13,color:'var(--danger-strong)',borderBottom:'1px solid var(--danger-bd)'},
-  anomRow:{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 16px',borderBottom:'1px solid var(--danger-bd)'},
+  confBadge:{display:'inline-block',padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:500},
+  // Encadré de statut (filet gauche au ton, voir Encadre) : la couleur passe du fond au filet et au titre.
+  anomCard:{...encadreStyle('erreur')},
+  anomHeader:{padding:'2px 0 8px',fontSize:13,...encadreTitreStyle('erreur'),borderBottom:'1px solid var(--border)'},
+  anomRow:{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 0',borderBottom:'1px solid var(--border)'},
   anomIcon:{fontSize:20,flexShrink:0,marginTop:2},
   tableCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden'},
   tableCardHeader:{padding:'13px 18px',borderBottom:'1px solid var(--border)',fontSize:13,fontWeight:700,color:'var(--text)',background:'var(--bg)'},
   empty:{padding:'18px',color:'var(--text2)',fontSize:13},
-  relHead:{display:'grid',gridTemplateColumns:'2fr 60px 90px 120px 110px 2fr',padding:'8px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
+  relHead:{display:'grid',gridTemplateColumns:'2fr 60px 90px 120px 110px 2fr',padding:'8px 18px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
   relRow:{display:'grid',gridTemplateColumns:'2fr 60px 90px 120px 110px 2fr',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:10,alignItems:'center'},
   cell:{fontSize:13,color:'var(--text)'},
   ctrlRow:{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:10,marginBottom:4},
   ctrlCheck:{width:26,height:26,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:12,flexShrink:0},
-  doBtn:{padding:'6px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:7,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  doBtn:{padding:'6px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:7,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
   modal:{background:'var(--surface)',borderRadius:14,width:500,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},
   modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)',zIndex:2},
@@ -39,10 +42,10 @@ export const hs = {
   closeBtn:{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'},
   modalBody:{padding:'20px 22px'},
   field:{display:'flex',flexDirection:'column',gap:6},
-  fLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
+  fLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
   fInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
-  cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
 
   // ─── Modale d'export des relevés : options de période (journalier / mensuel) ───
   periodBtn:{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'12px 14px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,cursor:'pointer',fontFamily:'var(--font)',textAlign:'left'},
@@ -51,7 +54,7 @@ export const hs = {
   // (dans hs, PAS hcfg : HACCP.jsx les référence via hs.* ; définis dans hcfg
   // ils valaient undefined et la modale n'était positionnée qu'en mobile via
   // la classe CSS modal-full-overlay)
-  quickBtn: { padding:'8px 14px', background:'var(--success-fill)', color:'var(--on-success)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  quickBtn: { padding:'8px 14px', background:'var(--success-fill)', color:'var(--on-success)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
   qrOverlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:12 },
   qrModal: { background:'var(--surface)', borderRadius:12, width:560, maxWidth:'94vw', maxHeight:'92vh', display:'flex', flexDirection:'column', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' },
   qrHeader: { padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 },
@@ -62,7 +65,7 @@ export const hs = {
   qrZoneRow: { display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'1px solid', borderRadius:8, transition:'background .15s, border-color .15s' },
   qrInput: { width:80, padding:'8px 10px', border:'1px solid var(--border)', borderRadius:7, fontSize:13, color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', outline:'none', textAlign:'right' },
   qrFooter: { padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' },
-  qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-fill)', color:'var(--on-success)', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
+  qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-fill)', color:'var(--on-success)', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:500 },
   qrGhostBtn: { padding:'8px 14px', background:'none', color:'var(--text)', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', fontFamily:'var(--font)', fontSize:13 },
 
   // ─── Créneaux de relevé (grille horaire de l'établissement) ───
@@ -70,10 +73,10 @@ export const hs = {
   creneauStrip: { display:'flex', gap:8, flexWrap:'wrap', padding:'12px 16px' },
   creneauCard: { display:'flex', flexDirection:'column', gap:2, alignItems:'flex-start', minWidth:132, padding:'10px 14px', border:'1px solid var(--border)', borderRadius:10, background:'var(--bg)', fontFamily:'var(--font)', textAlign:'left' },
   creneauHeure: { fontSize:17, fontWeight:700, fontFamily:'var(--font-num)', color:'var(--text)', lineHeight:1.1 },
-  creneauLabel: { fontSize:11, color:'var(--text2)', fontWeight:600 },
-  creneauEtat: { fontSize:10, fontWeight:700, marginTop:2 },
+  creneauLabel: { fontSize:11, color:'var(--text2)', fontWeight:500 },
+  creneauEtat: { fontSize:11, fontWeight:700, marginTop:2 },
   // Puce de sélection de tournée (modales de saisie).
-  creneauChip: { padding:'7px 12px', borderRadius:20, borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', background:'var(--surface)', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)', display:'inline-flex', alignItems:'center', gap:6 },
+  creneauChip: { padding:'7px 12px', borderRadius:20, borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', background:'var(--surface)', color:'var(--text2)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)', display:'inline-flex', alignItems:'center', gap:6 },
   creneauChipOn: { borderColor:'var(--accent)', background:'var(--accent-light)', color:'var(--accent)' },
 };
 
@@ -86,6 +89,7 @@ export const hcfg = {
   rowIcon:{width:36,height:36,borderRadius:8,background:'var(--accent-light)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0},
   toggle:{width:40,height:22,borderRadius:11,position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0},
   toggleThumb:{position:'absolute',top:2,width:18,height:18,borderRadius:9,background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'},
-  editBtn:{padding:'5px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'5px 12px',background:'none',border:'1px solid var(--danger-bd)',borderRadius:7,fontSize:12,fontWeight:600,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
+  editBtn:{padding:'5px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
+  // Supprimer, sur chaque ligne : discret au repos, rouge au survol et au focus (classe btn-suppr-discret, app.css).
+  deleteBtn:{padding:'5px 12px',background:'transparent',border:'1px solid transparent',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--text3)',cursor:'pointer',fontFamily:'var(--font)'},
 };

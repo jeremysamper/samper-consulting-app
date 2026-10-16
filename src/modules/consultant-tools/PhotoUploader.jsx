@@ -108,7 +108,7 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '8px 14px', background: 'var(--surface2)', border: 'none', borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '8px 14px', background: 'var(--surface2)', border: 'none', borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}
         >
           <Camera size={15} aria-hidden="true" />
           {busy ? (busyLabel || 'Envoi…') : 'Ajouter une photo'}

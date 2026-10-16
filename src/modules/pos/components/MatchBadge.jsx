@@ -45,7 +45,7 @@ export function MatchBadge({ status, score }) {
       padding:       '2px 8px',
       borderRadius:  12,
       fontSize:      11,
-      fontWeight:    600,
+      fontWeight:    500,
       whiteSpace:    'nowrap',
       fontFamily:    'var(--font)',
       background:    cfg.bg,

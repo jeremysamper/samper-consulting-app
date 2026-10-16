@@ -199,7 +199,7 @@ const st = {
   supplement: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' },
   bouton: {
     minHeight: 44, padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
   },
   boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },

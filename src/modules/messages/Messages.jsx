@@ -195,7 +195,7 @@ const Messages = ({ user, isActive = true }) => {
   }
 
   const listPanel = (
-    <div style={ms.listPanel}>
+    <div style={{ ...ms.listPanel, ...(isMobile ? null : ms.listPanelBureau) }}>
       <div style={ms.listHead}>
         <span style={ms.listTitle}>Conversations</span>
         <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une personne…" />
@@ -218,10 +218,10 @@ const Messages = ({ user, isActive = true }) => {
               onClick={() => openConversation(id)}
               aria-current={active ? 'true' : undefined}
             >
-              <span style={{ ...ms.avatar, background: role.color }}>{initialsOf(profile)}</span>
+              <span style={ms.avatar}>{initialsOf(profile)}</span>
               <span style={ms.contactBody}>
                 <span style={ms.contactTop}>
-                  <span style={{ ...ms.contactName, fontWeight: unread ? 800 : 700 }}>{fullName(profile)}</span>
+                  <span style={{ ...ms.contactName, fontWeight: unread ? 700 : 700 }}>{fullName(profile)}</span>
                   {last && <span style={ms.contactDate}>{formatListDate(last.createdAt)}</span>}
                 </span>
                 <span style={ms.contactBottom}>
@@ -255,7 +255,7 @@ const Messages = ({ user, isActive = true }) => {
             <ArrowLeft size={18} aria-hidden="true" />
           </button>
         )}
-        <span style={{ ...ms.avatar, background: (roleConfig[selected?.role] || {}).color || 'var(--accent)' }}>
+        <span style={ms.avatar}>
           {initialsOf(selected)}
         </span>
         <div style={{ minWidth: 0 }}>
@@ -347,37 +347,42 @@ const ms = {
   desktopGrid: { display: 'grid', gridTemplateColumns: 'minmax(250px, 330px) minmax(0, 1fr)', gap: 14, alignItems: 'start' },
 
   // Liste des conversations
-  listPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
+  // Deux colonnes posées sur la page (plus de panneaux encadrés), séparées
+  // sur ordinateur par un filet vertical.
+  listPanel: { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
+  listPanelBureau: { borderRight: '1px solid var(--border)', paddingRight: 14 },
   listHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '2px 4px' },
-  listTitle: { fontSize: 12, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  listTitle: { fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   contactList: { display: 'flex', flexDirection: 'column', gap: 2, maxHeight: '64vh', overflowY: 'auto' },
   // flexShrink 0 : dans une colonne flex scrollable, la règle tactile globale
   // (min-height 44px) superposerait sinon les lignes sur iPad.
   contactRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 8px', background: 'transparent', borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56, flexShrink: 0 },
   contactRowActive: { borderColor: 'var(--accent-bd)', background: 'var(--accent-light)' },
-  avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
+  // Initiales sur fond doux (--surface2), sans couleur de rôle.
+  avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', color: 'var(--text2)', fontWeight: 700, fontSize: 12, flexShrink: 0 },
   contactBody: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 },
   contactTop: { display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 },
   contactName: { flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  contactDate: { fontSize: 10.5, color: 'var(--text3)', flexShrink: 0 },
+  contactDate: { fontSize: 11, color: 'var(--text3)', flexShrink: 0 },
   contactBottom: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
   contactPreview: { flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  unreadBadge: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--surface)', fontSize: 10.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  unreadBadge: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--surface)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
   // Fil de discussion
-  threadPanel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', flexDirection: 'column', minWidth: 0 },
+  threadPanel: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   threadEmpty: { background: 'var(--surface)', border: '2px dashed var(--border)', borderRadius: 12, padding: '44px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   threadHead: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' },
   backBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', cursor: 'pointer', flexShrink: 0, fontFamily: 'var(--font)' },
   threadName: { fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   threadSub: { fontSize: 11, color: 'var(--text2)' },
   threadMessages: { display: 'flex', flexDirection: 'column', gap: 8, padding: 14, minHeight: 160, maxHeight: '52vh', overflowY: 'auto', background: 'var(--bg)' },
-  dayDivider: { alignSelf: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text3)', padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', margin: '6px 0' },
+  // Séparateur de jour : du texte, plus une pilule encadrée.
+  dayDivider: { alignSelf: 'center', fontSize: 11, fontWeight: 500, color: 'var(--text3)', padding: '4px 0', margin: '6px 0' },
   bubbleWrap: { display: 'flex', alignItems: 'flex-end', gap: 4 },
   bubbleMine: { background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', maxWidth: '78%', minWidth: 0 },
   bubbleTheirs: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px', padding: '8px 12px', maxWidth: '78%', minWidth: 0 },
   bubbleText: { fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'break-word' },
-  bubbleMeta: { fontSize: 10.5, color: 'var(--text2)', marginTop: 4 },
+  bubbleMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 4 },
   deleteBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, background: 'none', border: 'none', borderRadius: 6, color: 'var(--text3)', cursor: 'pointer', padding: 0, flexShrink: 0, marginBottom: 4 },
   composer: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderTop: '1px solid var(--border)' },
   composerInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 },

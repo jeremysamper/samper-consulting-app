@@ -14,18 +14,18 @@ const S = {
   root: { display: 'flex', flexDirection: 'column', gap: 20 },
   kpiRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px 32px' },
   kpiCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  kpiLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
-  kpiValue: { fontSize: 26, fontWeight: 800, fontFamily: 'var(--font-num)', color: 'var(--text)', lineHeight: 1.1 },
+  kpiLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
+  kpiValue: { fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', lineHeight: 1.1 },
   kpiSub: { fontSize: 11, color: 'var(--text3)' },
   actionsRow: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  ghostBtn: { padding: '9px 16px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { padding: '9px 16px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   twoCols: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px 40px', alignItems: 'start' },
   card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', minWidth: 0 },
   cardTitle: { padding: '4px 0 10px', borderBottom: '1px solid var(--border)', fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   okBanner: { padding: '14px 16px', fontSize: 13, color: 'var(--success-text)', background: 'var(--success-bg)', display: 'flex', alignItems: 'center', gap: 8 },
   alertHead: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
-  alertLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)' },
+  alertLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: 'var(--text)' },
   alertBody: { padding: '10px 16px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' },
   alertHint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, marginBottom: 10 },
   chipWrap: { display: 'flex', flexWrap: 'wrap', gap: 6 },
@@ -34,7 +34,7 @@ const S = {
   chipMore: { alignSelf: 'center', fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' },
   actionBtn: { marginTop: 10, padding: '7px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   recentRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
-  recentName: { fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  recentName: { fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   recentMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   recentDate: { fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 },
   emptyHint: { padding: '14px 16px', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' },
@@ -230,10 +230,10 @@ export default function ConsultantOverview({
                 >
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: sev.dot, flexShrink: 0 }} />
                   <span style={S.alertLabel}>{alert.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 9px', borderRadius: 10, background: sev.badgeBg, border: `1px solid ${sev.badgeBd}`, color: sev.badgeText, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 10, background: sev.badgeBg, border: `1px solid ${sev.badgeBd}`, color: sev.badgeText, flexShrink: 0 }}>
                     {alert.count}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--text3)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
                 </button>
                 {open && (
                   <div style={S.alertBody}>
@@ -246,7 +246,7 @@ export default function ConsultantOverview({
                         </button>
                       ))}
                       {alert.items.length > MAX_CHIPS && (
-                        <span style={S.chipMore}>+ {alert.items.length - MAX_CHIPS} autre{alert.items.length - MAX_CHIPS > 1 ? 's' : ''}</span>
+                        <span style={S.chipMore}>et {alert.items.length - MAX_CHIPS} autre{alert.items.length - MAX_CHIPS > 1 ? 's' : ''}</span>
                       )}
                     </div>
                     {alert.actionLabel && (

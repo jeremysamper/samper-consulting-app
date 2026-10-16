@@ -198,7 +198,7 @@ export default function Journal({ user, etablissement }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flexWrap: 'wrap' }}>
           <Btn small onClick={() => setLundi(zurichAjouterJours(lundi, -7))} ariaLabel="Semaine précédente" title="Semaine précédente">‹</Btn>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
           <Btn small disabled={estCourante} onClick={() => setLundi(zurichAjouterJours(lundi, 7))} ariaLabel="Semaine suivante" title="Semaine suivante">›</Btn>
           {!estCourante && <Btn small onClick={() => setLundi(lundiCourant)}>Cette semaine</Btn>}
         </div>
@@ -233,11 +233,11 @@ export default function Journal({ user, etablissement }) {
               <div style={{ fontFamily: 'var(--font-num)', fontSize: 13, color: 'var(--text2)', flexShrink: 0, width: 44 }}>{l.heure}</div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 14, color: 'var(--text)', overflowWrap: 'anywhere' }}>
-                  <span style={{ fontWeight: 600 }}>{l.libelle || 'Sans nom'}</span>
+                  <span style={{ fontWeight: 500 }}>{l.libelle || 'Sans nom'}</span>
                   <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>{MODULES[l.module] || l.module}</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
-                  <span style={{ color: COULEUR_ACTION[l.operation], fontWeight: 600 }}>{ACTIONS[l.operation] || l.operation}</span>
+                  <span style={{ color: COULEUR_ACTION[l.operation], fontWeight: 500 }}>{ACTIONS[l.operation] || l.operation}</span>
                   {' par '}{libelleActeur(l)}
                   {l.acteur_role ? ` (${libelleRole(l.acteur_role)})` : ''}
                   {libelleChamps(l) ? <>, champs : {libelleChamps(l)}</> : ''}

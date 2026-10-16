@@ -372,7 +372,7 @@ const st = {
   // borderColor, et React avertit à chaque bascule si la base est en raccourci.
   choix: {
     flex: '1 1 auto', minHeight: 44, padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     background: 'var(--bg)', color: 'var(--text)',
   },
@@ -387,7 +387,7 @@ const st = {
   },
   pastille: {
     minHeight: 44, padding: '8px 12px', borderRadius: 22, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     background: 'var(--bg)', color: 'var(--text)',
   },
@@ -405,13 +405,12 @@ const st = {
     display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10,
   },
   apercuSection: {
-    fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+    fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
     color: 'var(--text3)', marginBottom: 2,
   },
   apercuLigne: { fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-serif)', lineHeight: 1.35 },
   avertissement: {
-    padding: '10px 12px', borderRadius: 8, fontSize: 12, lineHeight: 1.5,
-    background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)',
+    padding: '10px 0 10px 12px',  fontSize: 12, lineHeight: 1.5,  borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)',
   },
   principal: {
     minHeight: 44, padding: '10px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -420,6 +419,6 @@ const st = {
   secondaire: {
     minHeight: 44, padding: '10px 18px', borderRadius: 8, cursor: 'pointer',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
-    fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 14, fontWeight: 500, fontFamily: 'var(--font)',
   },
 };

@@ -37,11 +37,14 @@ export function Btn({
   ariaLabel
 }) {
   const variants = {
-    /* Aplat accent (pétrole en light, aqua en dark), sans dégradé ni ombre. */
-    primary: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
+    /* Aplat accent (pétrole en light, aqua en dark), sans dégradé ni ombre.
+       Seul le principal est en 700 : la graisse marque la hiérarchie. */
+    primary: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700 },
     ghost: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
-    danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
-    success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' },
+    /* Danger et succès : fond doux, sans contour (bordure transparente pour
+       garder la hauteur des autres variantes). */
+    danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent' },
+    success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid transparent' },
     tab: { background: 'transparent', color: 'var(--text2)', border: 'none', borderBottom: '2px solid transparent', borderRadius: 0 },
     tabActive: { background: 'transparent', color: 'var(--accent)', border: 'none', borderBottom: '2px solid var(--accent)', borderRadius: 0 }
   };
@@ -69,7 +72,7 @@ export function Btn({
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font)',
         fontSize: small ? 12 : 13,
-        fontWeight: 700,
+        fontWeight: 500,
         opacity: disabled ? 0.6 : 1,
         whiteSpace: 'nowrap',
         ...(variants[variant] || variants.ghost),
@@ -111,13 +114,39 @@ export function TabBar({ tabs, active, onChange, style = {} }) {
   return <SegmentedTabs tabs={tabs} active={active} onChange={onChange} style={style} />;
 }
 
+// Encadré de statut : posé sur la page, sans fond ni coins arrondis. Un filet
+// gauche de 2 px dans la couleur du ton porte l'état, avec le titre éventuel
+// (graisse 500) ; le texte reste en --text. La couleur n'est jamais retirée :
+// elle passe du fond au filet et au titre.
+//   ton : 'info' | 'succes' | 'alerte' | 'erreur'
+const TONS_ENCADRE = { info: 'info', succes: 'success', alerte: 'warning', erreur: 'danger' };
+
+export function encadreStyle(ton = 'info') {
+  const t = TONS_ENCADRE[ton] || 'info';
+  return { borderLeft: `2px solid var(--${t}-bd)`, paddingLeft: 12, color: 'var(--text)' };
+}
+
+export function encadreTitreStyle(ton = 'info') {
+  const t = TONS_ENCADRE[ton] || 'info';
+  return { color: `var(--${t}-text)`, fontWeight: 500 };
+}
+
+export function Encadre({ ton = 'info', titre, children, style = {}, role, className }) {
+  return (
+    <div role={role} className={className} style={{ ...encadreStyle(ton), ...style }}>
+      {titre ? <div style={{ ...encadreTitreStyle(ton), marginBottom: children ? 4 : 0 }}>{titre}</div> : null}
+      {children}
+    </div>
+  );
+}
+
 export function SectionHeader({ title, sub, action, style = {} }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, ...style }}>
       <div>
         {/* Sans titre : le nom du module est déjà le titre de la barre du haut,
             seule la phrase d'explication reste. */}
-        {title ? <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>{title}</div> : null}
+        {title ? <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>{title}</div> : null}
         {sub ? <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: title ? 2 : 0 }}>{sub}</div> : null}
       </div>
       {action}
@@ -134,11 +163,11 @@ export function KpiCard({ label, value, sub, delta, color, chart, glow = false, 
     : {};
   return (
     <Card style={{ display: 'flex', flexDirection: 'column', gap: 9, ...glowStyle, ...style }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0 }}>
         {label}
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-        <div style={{ fontSize: 28, fontWeight: 800, color: color || 'var(--text)', fontFamily: 'var(--font-num)', lineHeight: 1 }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: color || 'var(--text)', fontFamily: 'var(--font-num)', lineHeight: 1 }}>
           {value}
         </div>
         {delta !== undefined ? (

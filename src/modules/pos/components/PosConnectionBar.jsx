@@ -58,17 +58,17 @@ const S = {
   title: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font)' },
   sub:   { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 },
   pill:  (kind) => ({
-    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
     background: `var(--${kind}-bg-soft)`, color: `var(--${kind}-text)`, border: `1px solid var(--${kind}-bd)`,
   }),
   primary: (off) => ({
     padding: '8px 16px', borderRadius: 8, border: 'none',
     background: off ? 'var(--border)' : 'var(--accent)', color: off ? 'var(--text3)' : 'var(--on-accent)',
-    fontSize: 13, fontWeight: 600, cursor: off ? 'wait' : 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
+    fontSize: 13, fontWeight: 500, cursor: off ? 'wait' : 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   }),
   ghost: (busy) => ({
     padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer',
+    color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer',
     fontFamily: 'var(--font)', flexShrink: 0, opacity: busy ? 0.6 : 1,
   }),
   spacer:  { flex: 1, minWidth: 0 },

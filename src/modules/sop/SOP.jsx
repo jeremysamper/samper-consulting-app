@@ -20,10 +20,10 @@ import { messageErreur } from '../../utils/messageErreur.js';
 
 const SOP_CATEGORIES = ['Service', 'Ouverture / Fermeture', 'Hygiène', 'Stock', 'HACCP', 'Sécurité', 'Autre'];
 const SOP_FREQUENCES = [
-  { id: 'quotidienne',   label: 'Quotidienne',   couleur: '#16a34a' },
-  { id: 'hebdomadaire',  label: 'Hebdomadaire',  couleur: '#0ea5e9' },
-  { id: 'mensuelle',     label: 'Mensuelle',     couleur: '#a855f7' },
-  { id: 'ponctuelle',    label: 'Ponctuelle',    couleur: '#64748b' },
+  { id: 'quotidienne',   label: 'Quotidienne' },
+  { id: 'hebdomadaire',  label: 'Hebdomadaire' },
+  { id: 'mensuelle',     label: 'Mensuelle' },
+  { id: 'ponctuelle',    label: 'Ponctuelle' },
 ];
 
 const FREQ_MAP = Object.fromEntries(SOP_FREQUENCES.map(f => [f.id, f]));
@@ -352,8 +352,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
       {/* Bandeau d'info quand mode nouveau cuisinier actif */}
       {onboardingMode && (
         <div style={{
-          padding:'10px 14px', background:'var(--warning-bg)', border:'1px solid var(--warning-bd)',
-          borderRadius:8, marginBottom:12, fontSize:12, color:'var(--warning-text)', lineHeight:1.5,
+          padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--warning-bd)',  marginBottom:12, fontSize:12, color:'var(--warning-text)', lineHeight:1.5,
         }}>
           <strong>Mode "Nouveau cuisinier"</strong> - Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
         </div>
@@ -373,7 +372,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
       {SOP_FREQUENCES.filter(f => byFreq[f.id]?.length > 0).map(freq => (
         <div key={freq.id} style={{ marginBottom: 24 }}>
           <div style={ss.groupHeader}>
-            <span style={{ ...ss.freqDot, background: freq.couleur }} />
+
             <span style={ss.groupTitle}>{freq.label}</span>
             <span style={{ fontSize: 11, color: 'var(--text2)' }}>({byFreq[freq.id].length})</span>
           </div>
@@ -538,16 +537,16 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: progress === 100 ? '#16a34a' : 'var(--accent)', fontFamily: 'var(--font-num)' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: progress === 100 ? 'var(--success-text)' : 'var(--accent)', fontFamily: 'var(--font-num)' }}>
             {checkedSteps}/{totalSteps}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text2)' }}>{progress}%</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{progress}%</div>
         </div>
       </div>
 
       {/* Barre de progression */}
       <div style={ss.progressBarOuter}>
-        <div style={{ ...ss.progressBarInner, width: `${progress}%`, background: progress === 100 ? '#16a34a' : 'var(--accent)' }} />
+        <div style={{ ...ss.progressBarInner, width: `${progress}%`, background: progress === 100 ? 'var(--success-strong)' : 'var(--accent)' }} />
       </div>
 
       {/* Sections + étapes */}
@@ -616,7 +615,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
 
         {/* Notes */}
         <div style={{ marginTop: 20 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Notes (optionnel)</label>
+          <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Notes (optionnel)</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
@@ -770,11 +769,11 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
             const etapesSop = (sop?.sections || []).reduce((n, sec) => n + (sec.etapes || []).length, 0);
             const totalProgress = compteursConnus ? Math.round(exec.etapesCochees / exec.totalEtapes * 100) : 0;
             const couleur = exec.statut === 'terminee'
-              ? (totalProgress === 100 ? '#16a34a' : '#d97706')
-              : exec.statut === 'abandonnee' ? '#dc2626' : '#0ea5e9';
+              ? (totalProgress === 100 ? 'var(--success-text)' : 'var(--warning-text)')
+              : exec.statut === 'abandonnee' ? 'var(--danger-text)' : 'var(--info-text)';
             return (
               <div key={exec.id} style={ss.histRow}>
-                <div style={{ width: 4, height: 36, background: couleur, borderRadius: 2 }} />
+
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                     {sop ? sop.titre : '(SOP supprimée)'}
@@ -794,7 +793,7 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
                       ? <>{exec.etapesCochees}/{exec.totalEtapes}</>
                       : etapesSop > 0 && <>{etapesSop} étape{etapesSop > 1 ? 's' : ''}</>}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                     {libelleStatutExecution(exec)}
                   </div>
                   <Btn
@@ -919,19 +918,19 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
           {tpl.description && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>{tpl.description}</div>}
           <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
             <span style={{ ...ss.miniBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>{tpl.categorie}</span>
-            <span style={{ ...ss.miniBadge, background: FREQ_MAP[tpl.frequence]?.couleur + '22', color: FREQ_MAP[tpl.frequence]?.couleur }}>{FREQ_MAP[tpl.frequence]?.label}</span>
+            <span style={{ ...ss.miniBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>{FREQ_MAP[tpl.frequence]?.label}</span>
             <span style={{ ...ss.miniBadge, background: 'var(--bg)', color: 'var(--text2)' }}>{totalSteps} étapes, {(tpl.sections || []).length} sections</span>
             {(tpl.tags || []).map(t => (
               <span key={t} style={{ ...ss.miniBadge, background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>{t}</span>
             ))}
           </div>
-          {alreadyExists && <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>Déjà dans cet établissement</div>}
+          {alreadyExists && <div style={{ fontSize: 11, color: 'var(--success-text)', fontWeight: 500, marginTop: 4 }}>Déjà dans cet établissement</div>}
         </div>
         {item.source === 'db' && (
           <button
             onClick={(e) => { e.stopPropagation(); removeTemplate(tpl); }}
             title="Retirer de la bibliothèque de templates"
-            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: '#dc2626', fontSize: 13, padding: '4px 8px', display: 'inline-flex' }}
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--danger-text)', fontSize: 13, padding: '4px 8px', display: 'inline-flex' }}
             aria-label="Retirer de la bibliothèque"
           ><Trash2 size={14} aria-hidden="true" /></button>
         )}
@@ -969,7 +968,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
               style={{
                 padding: '8px 14px', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)',
                 cursor: busy ? 'default' : 'pointer', background: 'var(--danger-bg-soft)',
-                border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', opacity: busy ? 0.5 : 1,
+                border: '1px solid transparent', color: 'var(--danger-text)', opacity: busy ? 0.5 : 1,
               }}
               onClick={removeSelected}
               disabled={busy}
@@ -1009,7 +1008,8 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
     setData(prev => ({ ...prev, sections: [...prev.sections, { id: 's-' + Date.now(), titre: '', etapes: [] }] }));
   };
   const removeSection = (idx) => {
-    if ((data.sections || []).length <= 1) { alertLegacy('Au moins une section.'); return; }
+    // La croix est désactivée sur la dernière section : rien à faire ici.
+    if ((data.sections || []).length <= 1) return;
     setData(prev => ({ ...prev, sections: prev.sections.filter((_, i) => i !== idx) }));
   };
   const updateSection = (idx, patch) => {
@@ -1070,7 +1070,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
         <button style={{ ...ss.backBtn, width: 'auto', padding: '0 14px', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }} onClick={onBack}>Retour</button>
         <div style={{ flex: 1 }} />
         {!isNew && (
-          <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: 'var(--danger-bd)' }} onClick={deleteSop}>Supprimer</button>
+          <Btn variant="danger" onClick={deleteSop}>Supprimer</Btn>
         )}
         <button style={ss.primaryBtn} onClick={save} disabled={saving}>
           {saving ? '...' : (isNew ? 'Créer' : 'Enregistrer')}
@@ -1080,19 +1080,23 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
       <div style={ss.editorBody}>
         {/* Métadonnées */}
         <div style={ss.editorCard}>
+          <label style={ss.fieldLabel} htmlFor="sop-titre">Titre</label>
           <input
+            id="sop-titre"
             type="text"
             value={data.titre}
             onChange={e => setField('titre', e.target.value)}
             placeholder="Titre de la SOP"
             style={ss.bigTitle}
           />
+          <label style={{ ...ss.fieldLabel, marginTop: 12 }} htmlFor="sop-description">Description</label>
           <textarea
+            id="sop-description"
             value={data.description}
             onChange={e => setField('description', e.target.value)}
             placeholder="Description courte (optionnelle)"
             rows={2}
-            style={{ ...ss.notesInput, marginTop: 8 }}
+            style={ss.notesInput}
           />
           <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 150 }}>
@@ -1119,10 +1123,19 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                 value={section.titre}
                 onChange={e => updateSection(sIdx, { titre: e.target.value })}
                 placeholder={`Titre section ${sIdx + 1} (optionnel pour SOP simple)`}
-                style={{ ...ss.input, flex: 1, fontWeight: 600 }}
+                style={{ ...ss.input, flex: 1, fontWeight: 500 }}
               />
-              <button type="button" style={ss.iconBtnDanger} onClick={() => removeSection(sIdx)} title="Supprimer la section" aria-label="Supprimer la section">×</button>
+              <button
+                type="button"
+                className="btn-suppr-discret"
+                style={ss.iconBtnDanger}
+                onClick={() => removeSection(sIdx)}
+                disabled={(data.sections || []).length <= 1}
+                title={(data.sections || []).length <= 1 ? 'Une SOP garde au moins une section' : 'Supprimer la section'}
+                aria-label="Supprimer la section"
+              >×</button>
             </div>
+            <div style={ss.fieldLabel}>Étapes</div>
             {(section.etapes || []).map((etape, eIdx) => (
               <div key={etape.id} style={ss.etapeEditRow}>
                 {/* Photo de référence de l'étape (ex. dressage d'une table) :
@@ -1160,10 +1173,10 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                   <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     <input type="checkbox" checked={!!etape.critique}
                       onChange={e => updateEtape(sIdx, eIdx, { critique: e.target.checked })}
-                      style={{ accentColor: '#dc2626' }}/>
+                      style={{ accentColor: 'var(--danger-strong)' }}/>
                     Critique
                   </label>
-                  <button type="button" style={ss.iconBtnDanger} onClick={() => removeEtape(sIdx, eIdx)} aria-label="Supprimer l'étape">×</button>
+                  <button type="button" className="btn-suppr-discret" style={ss.iconBtnDanger} onClick={() => removeEtape(sIdx, eIdx)} title="Supprimer l'étape" aria-label="Supprimer l'étape">×</button>
                 </div>
               </div>
             ))}
@@ -1183,17 +1196,17 @@ const ss = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' },
   title: { fontSize: 24, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', margin: 0 },
   subtitle: { fontSize: 12, color: 'var(--text2)', marginTop: 4 },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 },
   ghostBtn: { padding: '7px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
   tabs: { display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)' },
   tab: { padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text2)', borderBottom: '2px solid transparent' },
-  tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
+  tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 500 },
   filtersBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
   chip: { padding: '5px 12px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text2)' },
   chipActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
-  freqDot: { width: 10, height: 10, borderRadius: '50%' },
+
   groupTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 },
   sopCard: { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: 14, display: 'flex', alignItems: 'flex-start', gap: 10 },
@@ -1201,15 +1214,16 @@ const ss = {
   sopCardDesc: { fontSize: 12, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
   sopCardMeta: { display: 'flex', gap: '4px 10px', marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
   sopCardSteps: { fontSize: 11, color: 'var(--text2)' },
-  sopCardCat: { fontSize: 11, fontWeight: 600, color: 'var(--text2)' },
-  sopCardTag: { fontSize: 11, fontWeight: 600, color: 'var(--warning-text)' },
-  sopCardFait: { fontSize: 11, fontWeight: 600, color: 'var(--success-text)' },
+  sopCardCat: { fontSize: 11, fontWeight: 500, color: 'var(--text2)' },
+  sopCardTag: { fontSize: 11, fontWeight: 500, color: 'var(--text2)' },
+  sopCardFait: { fontSize: 11, fontWeight: 500, color: 'var(--success-text)' },
   sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
   gererBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, whiteSpace: 'nowrap' },
   startBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' },
   iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text2)' },
-  iconBtnDanger: { width: 28, height: 28, padding: 0, background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 6, cursor: 'pointer', fontSize: 11, color: '#dc2626', flexShrink: 0 },
-  miniBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4 },
+  // « × » discret : texte --text3, rouge au survol et au focus (classe btn-suppr-discret).
+  iconBtnDanger: { width: 40, height: 40, padding: 0, background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', fontSize: 22, lineHeight: 1, color: 'var(--text3)', flexShrink: 0 },
+  miniBadge: { fontSize: 11, fontWeight: 500, padding: '2px 6px', borderRadius: 4 },
 
   // Checklist
   checklistRoot: { background: 'var(--bg)', minHeight: '100vh', position: 'relative' },
@@ -1220,16 +1234,16 @@ const ss = {
   sectionBlock: { marginBottom: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 6, overflow: 'hidden' },
   sectionHeader: { padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' },
   sectionTitle: { fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  sectionCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 600 },
+  sectionCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 500 },
   etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
   etapeRowChecked: { background: 'var(--success-bg-soft)' },
   checkbox: { width: 26, height: 26, borderRadius: 6, borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
   checkboxChecked: { background: 'var(--success-fill)', borderColor: 'var(--success-fill)' },
   etapeLabel: { fontSize: 14, color: 'var(--text)', lineHeight: 1.4 },
   etapeLabelChecked: { textDecoration: 'line-through', color: 'var(--text2)' },
-  criticalDot: { color: '#dc2626', marginRight: 6, fontSize: 8 },
+  criticalDot: { color: 'var(--danger-text)', marginRight: 6, fontSize: 11 },
   etapeInfo: { fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', marginTop: 4, paddingLeft: 4 },
-  photoToggle: { marginTop: 6, padding: '4px 10px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 11, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  photoToggle: { marginTop: 6, padding: '4px 10px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 11, fontWeight: 500, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   photoToggleOpen: { background: 'var(--surface)', borderColor: 'var(--accent)', color: 'var(--accent)' },
   etapePhoto: { display: 'block', width: '100%', maxWidth: 420, height: 'auto', maxHeight: 340, objectFit: 'contain', marginTop: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'zoom-in' },
   zoomOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16, cursor: 'zoom-out' },
@@ -1237,7 +1251,7 @@ const ss = {
   zoomClose: { position: 'absolute', top: 12, right: 12, width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', fontSize: 18, cursor: 'pointer' },
   notesInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', resize: 'vertical', marginTop: 4 },
   checklistFooter: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', gap: 10, zIndex: 10 },
-  abandonBtn: { flex: 1, padding: '12px', background: 'none', color: '#dc2626', border: '1px solid var(--danger-bd)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  abandonBtn: { flex: 1, padding: '12px', background: 'var(--danger-bg-soft)', color: '#dc2626', border: '1px solid transparent', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 },
   validateBtn: { flex: 2, padding: '12px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700 },
 
   // Historique
@@ -1250,13 +1264,13 @@ const ss = {
   editorBody: { padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 800, margin: '0 auto' },
   editorCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 14 },
   bigTitle: { width: '100%', padding: '10px 0', border: 'none', borderBottom: '2px solid var(--border)', fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 700, color: 'var(--text)', background: 'transparent', outline: 'none' },
-  fieldLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
+  fieldLabel: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
   input: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' },
   select: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', width: '100%', cursor: 'pointer', boxSizing: 'border-box' },
   // flexWrap : sur mobile le bloc « Critique + ✕ » passe à la ligne plutôt que
   // d'écraser les champs texte une fois la vignette photo ajoutée à gauche.
-  etapeEditRow: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px dashed var(--border)', flexWrap: 'wrap' },
-  addStepBtn: { width: '100%', padding: '8px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 6 },
+  etapeEditRow: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--rule-soft)', flexWrap: 'wrap' },
+  addStepBtn: { alignSelf: 'flex-start', minHeight: 38, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 13, fontWeight: 500, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 6 },
 
   // Modale
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },

@@ -182,7 +182,7 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
               <span style={{ fontSize:13, color:'var(--text)', fontWeight:500 }}>Établissement actif (visible dans l'application)</span>
             </div>
             {estTypeSpa(f.type) && (
-              <div style={{ fontSize:12.5, lineHeight:1.5, padding:'10px 12px', borderRadius:8, background:'var(--info-bg-soft)', color:'var(--info-text)', border:'1px solid var(--info-bd)' }}>
+              <div style={{ fontSize:12, lineHeight:1.5, padding: '10px 0 10px 12px',   color:'var(--info-text)', borderLeft: '2px solid var(--info-bd)' }}>
                 Spa : seuls « Spa & clients » et « Planning & Pointage » sont activés, et il n'y a pas de tableau de bord. L'équipe arrive directement sur le spa.
               </div>
             )}
@@ -414,7 +414,7 @@ const Parametres = ({ user, etablissement }) => {
               <div style={ps.readField}>{user.poste}</div>
             </div>
           </div>
-          <div style={{ background:'var(--warning-bg-soft)', border:'1px solid var(--warning-bd)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--warning-text)' }}>
+          <div style={{  borderLeft: '2px solid var(--warning-bd)',  padding: '10px 0 10px 12px', fontSize:12, color:'var(--warning-text)' }}>
             Mot de passe et identifiants gérés par l'administrateur Samper Consulting.
           </div>
         </div>
@@ -466,9 +466,9 @@ const Parametres = ({ user, etablissement }) => {
                     </div>
                   ) : (
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{displayLabel}</span>
+                      <span style={{ fontSize:13, fontWeight:500, color:'var(--text)' }}>{displayLabel}</span>
                       {isCustomised && (
-                        <span style={{ fontSize:11, fontWeight:600, color:'var(--info-text)' }}>
+                        <span style={{ fontSize:11, fontWeight:500, color:'var(--info-text)' }}>
                           personnalisé
                         </span>
                       )}
@@ -479,7 +479,7 @@ const Parametres = ({ user, etablissement }) => {
                   )}
                   {!isEditing && (
                     <div style={{ fontSize:11, color:'var(--text3)', marginTop:1 }}>
-                      clé : <code style={{ fontSize:10 }}>{item.id}</code>
+                      clé : <code style={{ fontSize:11 }}>{item.id}</code>
                     </div>
                   )}
                 </div>
@@ -515,7 +515,7 @@ const Parametres = ({ user, etablissement }) => {
           <div style={{ fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
             Réinitialiser toutes les données de l'application aux valeurs de démonstration : planning, recettes, inventaires, pertes, utilisateurs, établissements, permissions, HACCP, fiches salle. Le logo personnalisé sera également supprimé.
           </div>
-          <div style={{ background:'var(--danger-bg-soft)', border:'1px solid var(--danger-bd)', borderRadius:8, padding:'10px 14px', fontSize:12, color:'var(--danger-text)' }}>
+          <div style={{  borderLeft: '2px solid var(--danger-bd)',  padding: '10px 0 10px 12px', fontSize:12, color:'var(--danger-text)' }}>
             <strong>Action irréversible.</strong> Toutes les données saisies seront effacées. Exportez vos documents importants avant de continuer.
           </div>
           <div>
@@ -557,10 +557,10 @@ const ps = {
   banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'4px 0', flexWrap:'wrap' },
   bannerTitle: { fontSize:20, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)' },
   bannerSub: { fontSize:13, color:'var(--text2)', marginTop:4 },
-  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
   statsRow: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 },
   statCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', padding:'14px 18px' },
-  statLabel: { fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4, marginBottom:6 },
+  statLabel: { fontSize:11, fontWeight:500, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4, marginBottom:6 },
   statVal: { fontSize:22, fontWeight:700, fontFamily:'var(--font-num)', color:'var(--text)' },
   listCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', overflow:'hidden' },
   listHeader: { padding:'14px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg)' },
@@ -568,12 +568,12 @@ const ps = {
   etabRow: { display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid var(--border)', flexWrap:'wrap' },
   etabColor: { width:6, height:38, borderRadius:3, flexShrink:0 },
   etabInfo: { flex:1, minWidth:200 },
-  etabNom: { fontSize:14, fontWeight:600, color:'var(--text)', display:'flex', alignItems:'center', gap:8 },
+  etabNom: { fontSize:14, fontWeight:500, color:'var(--text)', display:'flex', alignItems:'center', gap:8 },
   etabMeta: { fontSize:12, color:'var(--text2)', marginTop:2 },
-  inactifBadge: { fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10, background:'var(--surface2)', color:'var(--text2)' },
+  inactifBadge: { fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:10, background:'var(--surface2)', color:'var(--text2)' },
   ghostBtn: { padding:'7px 14px', background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'var(--font)' },
   field: { display:'flex', flexDirection:'column', gap:4 },
-  fLabel: { fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4 },
+  fLabel: { fontSize:11, fontWeight:500, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4 },
   fInput: { padding:'9px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', boxSizing:'border-box', outline:'none', width:'100%' },
   readField: { padding:'9px 12px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, fontSize:13, color:'var(--text)' },
   toggle: { width:40, height:22, borderRadius:11, position:'relative', cursor:'pointer', transition:'background .15s' },
@@ -585,12 +585,12 @@ const ps = {
   closeBtn: { background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text2)' },
   modalBody: { padding:'22px' },
   cancelBtn: { padding:'9px 16px', background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, fontSize:13, cursor:'pointer', fontFamily:'var(--font)' },
-  linkBtn: { padding:'6px 10px', background:'none', border:'none', color:'var(--accent)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  linkBtn: { padding:'6px 10px', background:'none', border:'none', color:'var(--accent)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
   moduleGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:8 },
   // Base en borderWidth/Style/Color : l'état coché ne surcharge que borderColor.
   moduleChip: { display:'flex', alignItems:'center', gap:8, minHeight:44, padding:'8px 12px', borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', borderRadius:8, background:'var(--bg)', fontSize:13, color:'var(--text2)', cursor:'pointer', boxSizing:'border-box', minWidth:0 },
   moduleChipOn: { borderColor:'var(--accent)', background:'var(--surface)', color:'var(--text)' },
-  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
 };
 
 export default Parametres;

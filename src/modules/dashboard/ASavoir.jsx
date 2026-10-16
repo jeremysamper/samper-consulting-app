@@ -62,7 +62,7 @@ function CarteJour({
   const equipeVisible = toute ? equipe : equipe.slice(0, EQUIPE_MAX);
 
   return (
-    <Carte titre={titre} sousTitre={dateLongue(date)} style={{ display: 'flex', flexDirection: 'column' }}>
+    <Carte niveau={3} titre={titre} sousTitre={dateLongue(date)} style={{ display: 'flex', flexDirection: 'column' }}>
       {avecCouverts && (
         <BlocCouverts c={c} onClick={vers('previsions')} />
       )}
@@ -153,7 +153,7 @@ function LigneGroupe({ g, onClick, quand, premier }) {
     <Ligne onClick={onClick} label={`${g.nom}, ${phraseGroupe(g)}. ${statut.label}`} style={{ alignItems: 'flex-start', borderRadius: 0, paddingInline: 2, ...(premier ? null : { borderTop: '1px solid var(--border)' }) }}>
       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
         <span style={{ ...t.nom, whiteSpace: 'normal' }}>
-          {quand ? <span style={{ color: 'var(--text2)', fontWeight: 600 }}>{quand.charAt(0).toUpperCase() + quand.slice(1)} : </span> : null}
+          {quand ? <span style={{ color: 'var(--text2)', fontWeight: 500 }}>{quand.charAt(0).toUpperCase() + quand.slice(1)} : </span> : null}
           <span data-no-translate>{g.nom}</span>
         </span>
         <span style={{ ...t.texte2, display: 'block' }}>
@@ -218,9 +218,9 @@ function CarteSemaine({
         const initiale = jourRelatif(d, aujourdhui) === "aujourd'hui" ? 'Auj.' : jourRelatif(d, aujourdhui) === 'demain' ? 'Dem.' : `${jourRelatif(d, aujourdhui).slice(0, 3)}.`;
         return (
           <div key={d} style={s.barreCol}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: totaux[i] ? 'var(--text)' : 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>{totaux[i] || ''}</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: totaux[i] ? 'var(--text)' : 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>{totaux[i] || ''}</span>
             <span style={{ ...s.barre, height: `${Math.max(4, (totaux[i] / max) * 64)}px`, background: i === 0 ? 'var(--accent)' : 'var(--accent-bd)', opacity: totaux[i] ? 1 : 0.35 }} />
-            <span style={{ fontSize: 10.5, color: i === 0 ? 'var(--accent)' : 'var(--text2)', fontWeight: i === 0 ? 700 : 500, textTransform: 'capitalize' }}>{initiale}</span>
+            <span style={{ fontSize: 11, color: i === 0 ? 'var(--accent)' : 'var(--text2)', fontWeight: i === 0 ? 700 : 500, textTransform: 'capitalize' }}>{initiale}</span>
           </div>
         );
       })}
@@ -228,7 +228,7 @@ function CarteSemaine({
   );
 
   return (
-    <Carte titre="Cette semaine" sousTitre="Les sept prochains jours">
+    <Carte niveau={3} titre="Cette semaine" sousTitre="Les sept prochains jours">
       {avecCouverts && (
         <>
           <SousTitre droite={`${totaux.reduce((a, b) => a + b, 0)} au total`}>Couverts réservés</SousTitre>
@@ -280,7 +280,8 @@ function CarteSemaine({
 
 const s = {
   entete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12, minWidth: 0 },
-  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 22, color: 'var(--text)' },
+  // Même niveau que les autres titres de section du tableau de bord.
+  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.2, color: 'var(--text)' },
   couvertsBouton: {
     display: 'block', width: '100%', padding: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)',
@@ -290,20 +291,20 @@ const s = {
     padding: '4px 12px 4px 0',
   },
   couvertSuivant: { paddingLeft: 12, borderLeft: '1px solid var(--border)' },
-  couvertLabel: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)', fontWeight: 600 },
+  couvertLabel: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)', fontWeight: 500 },
   couvertValeur: { fontFamily: 'var(--font-num)', fontSize: 28, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
   equipier: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', minHeight: 44, minWidth: 0 },
   // Cible de tap confortable sans alourdir la ligne.
-  tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 12.5 },
+  tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 12 },
   etatEnPoste: {
     display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap',
-    fontSize: 11.5, fontWeight: 700, color: 'var(--success-text)', padding: '2px 7px', borderRadius: 4, background: 'var(--success-bg-soft)',
+    fontSize: 12, fontWeight: 700, color: 'var(--success-text)', padding: '2px 7px', borderRadius: 4, background: 'var(--success-bg-soft)',
   },
   absent: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', minHeight: 44, minWidth: 0 },
-  motif: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 11.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
+  motif: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 12, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   plus: {
     alignSelf: 'flex-start', marginTop: 2, minHeight: 36, padding: '6px 10px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
   },
   barres: { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, alignItems: 'end', padding: '6px 4px 2px' },
   barreCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 },

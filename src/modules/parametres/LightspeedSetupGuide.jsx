@@ -32,10 +32,10 @@ function CopyBtn({ value }) {
       onClick={copy}
       style={{
         padding: '3px 10px', borderRadius: 6,
-        border: `1px solid ${copied ? 'var(--success-bd)' : 'var(--border)'}`,
+        border: '1px solid transparent',
         background: copied ? 'var(--success-bg-soft)' : 'var(--surface)',
         color: copied ? 'var(--success-text)' : 'var(--text2)',
-        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+        fontSize: 11, fontWeight: 500, cursor: 'pointer',
         fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0,
         transition: 'all 0.15s',
       }}
@@ -137,7 +137,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 <li>
                   Allez sur{' '}
                   <a href={DEV_PORTAL_URL} target="_blank" rel="noreferrer"
-                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
                     developers.lightspeedhq.com
                   </a>
                 </li>
@@ -153,9 +153,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 <CodeLine value={SCOPES} />
               </div>
               <div style={{
-                fontSize: 12, color: 'var(--warning-text)',
-                background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
-                borderRadius: 7, padding: '7px 11px', marginTop: 2,
+                fontSize: 12, color: 'var(--warning-text)',  borderLeft: '2px solid var(--warning-bd)',  padding: '7px 0 7px 12px', marginTop: 2,
               }}>
                 Notez le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création :
                 vous en aurez besoin à l'étape&nbsp;2.
@@ -200,9 +198,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 ))}
               </div>
               <div style={{
-                fontSize: 12, color: 'var(--info-text)',
-                background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)',
-                borderRadius: 7, padding: '7px 11px', marginTop: 2,
+                fontSize: 12, color: 'var(--info-text)',  borderLeft: '2px solid var(--info-bd)',  padding: '7px 0 7px 12px', marginTop: 2,
               }}>
                 Une fois les secrets ajoutés, rechargez cette page : le bouton
                 "Connecter" s'activera automatiquement.
@@ -240,7 +236,7 @@ export default function LightspeedSetupGuide({ onClose }) {
             style={{
               padding: '8px 22px', borderRadius: 8,
               border: '1px solid var(--border)', background: 'var(--surface)',
-              color: 'var(--text)', fontSize: 13, fontWeight: 600,
+              color: 'var(--text)', fontSize: 13, fontWeight: 500,
               cursor: 'pointer', fontFamily: 'var(--font)',
             }}
           >

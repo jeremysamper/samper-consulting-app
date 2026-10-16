@@ -150,10 +150,10 @@ const s = {
   title: { fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   sub: { fontSize: 12, color: 'var(--text2)', marginTop: 3, marginBottom: 16, wordBreak: 'break-all' },
   field: { marginBottom: 13 },
-  label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: { width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
-  toggleReveal: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font)', padding: 0, marginTop: 6 },
-  errorBox: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 14 },
+  toggleReveal: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 500, fontFamily: 'var(--font)', padding: 0, marginTop: 6 },
+  errorBox: {  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', padding: '10px 0 10px 12px',  fontSize: 12, marginBottom: 14 },
   actions: { display: 'flex', gap: 10, marginTop: 18 },
   // minHeight 44 et non 42 : posé en inline, il prendrait le pas sur la règle
   // tactile globale (button:not(.mini) { min-height: 44px }) sur mobile.

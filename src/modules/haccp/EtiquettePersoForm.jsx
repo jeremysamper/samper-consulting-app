@@ -141,7 +141,7 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
             )}
 
             {erreur && (
-              <div style={{ padding: '10px 12px', background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', borderRadius: 8, fontSize: 12, color: 'var(--danger-strong)', lineHeight: 1.4 }}>
+              <div style={{ padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--danger-bd)',  fontSize: 12, color: 'var(--danger-strong)', lineHeight: 1.4 }}>
                 {erreur}
               </div>
             )}

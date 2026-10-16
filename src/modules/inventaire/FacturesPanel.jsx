@@ -383,7 +383,7 @@ export default function FacturesPanel({
 
       {factures.length === 0 && (
         <div style={st.info}>
-          Aucune facture « <span data-no-translate>{perimetreActif}</span> » pour l'instant. Importez-les avec « + Importer des factures » :
+          Aucune facture « <span data-no-translate>{perimetreActif}</span> » pour l'instant. Importez-les avec « Importer des factures » :
           elles seront rangées par période d'inventaire.
           {nbBons > 0 && ` ${nbBons} bon${nbBons > 1 ? 's' : ''} de livraison ou de commande ${nbBons > 1 ? 'sont' : 'est'} dans l'onglet Achats & consommation.`}
         </div>
@@ -793,13 +793,13 @@ const st = {
   titre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   sousTitre: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
   info: { fontSize: 13, color: 'var(--text2)', padding: '12px 14px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 10, lineHeight: 1.45 },
-  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 0 10px 12px',   color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   btn: { padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))', gap: 10 },
   kpi: { background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '10px 12px', minWidth: 0 },
   kpiFort: { borderColor: 'var(--accent)' },
   kpiAlerte: { borderColor: 'var(--danger-bd)' },
-  kpiLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', letterSpacing: 0.2 },
+  kpiLabel: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', letterSpacing: 0.2 },
   kpiVal: { fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 4 },
   kpiNote: { fontSize: 11, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
   avertissements: { margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.55 },
@@ -812,7 +812,7 @@ const st = {
   periodeTitre: { display: 'block', fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   periodeDetail: { display: 'block', fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
   periodeTotaux: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font-num)' },
-  pastille: { display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text2)', whiteSpace: 'nowrap' },
+  pastille: { display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text2)', whiteSpace: 'nowrap' },
   pastilleOk: { background: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-bd)' },
   pastilleARegler: { background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)' },
   pastilleRetard: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', borderColor: 'var(--danger-bd)' },
@@ -826,15 +826,15 @@ const st = {
   factureFournisseur: { fontSize: 14, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-word' },
   factureNumero: { fontWeight: 400, color: 'var(--text2)' },
   factureMeta: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
-  retard: { color: 'var(--danger-text)', fontWeight: 600 },
+  retard: { color: 'var(--danger-text)', fontWeight: 500 },
   factureMontant: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: '0 0 auto', minWidth: 110 },
   montant: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', whiteSpace: 'nowrap' },
-  montantNote: { fontSize: 10, color: 'var(--text2)', whiteSpace: 'nowrap' },
+  montantNote: { fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap' },
   factureStatut: { flex: '0 0 auto', display: 'flex', justifyContent: 'flex-end', minWidth: 120 },
   detail: { margin: '6px 0 4px', padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 10 },
   champs: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 10 },
   champ: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  champLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
+  champLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   input: { padding: '9px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', minHeight: 44, boxSizing: 'border-box', width: '100%', minWidth: 0 },
   detailTexte: { fontSize: 12, color: 'var(--text)', lineHeight: 1.5 },
   detailActions: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },

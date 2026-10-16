@@ -177,7 +177,7 @@ export default function PasserelleSms({ etablissementId, sms, onRecharger, consu
       <span aria-hidden="true" style={{ ...s.icone, color: 'var(--spa-matcha)' }}><MessageSquareText size={20} strokeWidth={1.8} /></span>
       <div style={s.texte}>
         <div style={s.titre}>Les SMS partent du téléphone du restaurant</div>
-        <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: 'anywhere' }} data-no-translate>{sms.appareil || 'Téléphone Android'}</div>
+        <div style={{ fontSize: 15, fontWeight: 500, overflowWrap: 'anywhere' }} data-no-translate>{sms.appareil || 'Téléphone Android'}</div>
         <div style={s.aide}>
           Relié le {dateCourte(sms.connecteAt)}.{sms.dernierEnvoiAt ? ` Dernier SMS le ${dateCourte(sms.dernierEnvoiAt)}.` : ''} Gardez-le allumé, branché et connecté (wifi ou données mobiles).
           {consultant && sms.derniereErreur && <span style={{ display: 'block', marginTop: 4 }}>Dernier problème : {sms.derniereErreur}</span>}
@@ -228,7 +228,7 @@ const s = {
   texte: { flex: '1 1 260px', minWidth: 0 },
   titre: { fontFamily: 'var(--font-serif)', fontSize: 19, lineHeight: 1.25, marginBottom: 2 },
   aide: { fontSize: 13, color: 'var(--spa-ink2)', lineHeight: 1.5, marginTop: 4 },
-  etapes: { margin: 0, paddingLeft: 20, fontSize: 13.5, lineHeight: 1.7, color: 'var(--spa-ink)' },
+  etapes: { margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.7, color: 'var(--spa-ink)' },
   formulaire: {
     marginTop: 14, padding: '14px 16px', borderRadius: 'var(--spa-r-sm)', background: 'var(--spa-surface2)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--spa-line)',

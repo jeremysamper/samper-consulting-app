@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import { getRoleInfo } from '../../data/demoData.js';
+
 import { userDisplay } from '../../utils/userDisplay.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,16 +18,19 @@ export const TONS = {
 
 // Carte de section : titre et sous-titre, sans pastille d'icône (la pastille
 // colorée en tête de chaque carte fait gabarit). `ton` colore le sous-titre
-// quand il porte une alerte (danger, warning).
-export function Carte({ titre, sousTitre, action, children, style, corpsStyle, ton }) {
+// quand il porte une alerte (danger, warning). `niveau` 3 : carte rangée dans
+// une section (« Aujourd'hui », « Demain », « Cette semaine » sous « À savoir »),
+// titre un cran plus bas.
+export function Carte({ titre, sousTitre, action, children, style, corpsStyle, ton, niveau = 2 }) {
+  const Titre = niveau === 3 ? 'h3' : 'h2';
   const alerte = ton === 'danger' || ton === 'warning';
   return (
     <section style={{ ...t.carte, ...style }}>
       {(titre || action) && (
         <header style={t.carteTete}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-            {titre && <h2 style={t.carteTitre}>{titre}</h2>}
-            {sousTitre && <div style={{ ...t.carteSousTitre, ...(alerte ? { color: TONS[ton].texte, fontWeight: 600 } : null) }}>{sousTitre}</div>}
+            {titre && <Titre style={niveau === 3 ? t.carteTitreSecondaire : t.carteTitre}>{titre}</Titre>}
+            {sousTitre && <div style={{ ...t.carteSousTitre, ...(alerte ? { color: TONS[ton].texte, fontWeight: 500 } : null) }}>{sousTitre}</div>}
           </div>
           {action}
         </header>
@@ -44,7 +47,7 @@ export function Puce({ ton = 'neutre', children, style }) {
 
 export function Avatar({ userId, taille = 30 }) {
   const u = userDisplay(userId);
-  const couleur = getRoleInfo(u.role).couleur || 'var(--accent)';
+  // Initiales sur fond doux, sans couleur de rôle : un repère, pas une pastille.
   const initiales = (u.avatar && u.avatar !== '?' ? u.avatar : `${u.prenom?.[0] || ''}${u.nom?.[0] || ''}`) || '?';
   return (
     <span
@@ -52,7 +55,7 @@ export function Avatar({ userId, taille = 30 }) {
       style={{
         width: taille, height: taille, borderRadius: taille / 2, flexShrink: 0,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: couleur, color: '#fff', fontSize: Math.round(taille * 0.38), fontWeight: 700, letterSpacing: 0.2,
+        background: 'var(--surface2)', color: 'var(--text2)', fontSize: Math.round(taille * 0.38), fontWeight: 700, letterSpacing: 0.2,
       }}
       data-no-translate
     >
@@ -89,10 +92,11 @@ export const t = {
   },
   carteTete: { display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
   carteTitre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.2, color: 'var(--text)' },
-  carteSousTitre: { fontSize: 12.5, color: 'var(--text2)', marginTop: 2 },
+  carteTitreSecondaire: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 16, lineHeight: 1.25, color: 'var(--text)' },
+  carteSousTitre: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
   puce: {
     display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',
-    fontSize: 11.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+    fontSize: 12, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
   },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minWidth: 0, boxSizing: 'border-box',
@@ -102,10 +106,10 @@ export const t = {
   ligneBouton: { cursor: 'pointer', border: 'none' },
   sousTitre: {
     display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline',
-    fontSize: 13, fontWeight: 600, color: 'var(--text2)',
+    fontSize: 13, fontWeight: 500, color: 'var(--text2)',
     margin: '16px 0 6px',
   },
-  texte2: { fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 },
-  nom: { display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  texte2: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
+  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   vide: { fontSize: 13, color: 'var(--text2)', padding: '6px 2px' },
 };

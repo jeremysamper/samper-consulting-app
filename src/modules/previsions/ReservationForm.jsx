@@ -583,7 +583,7 @@ export default function ReservationForm({
                   <button key={r.id} type="button" onClick={() => changeDate(r.id)}
                     style={{
                       padding: '9px 14px', borderRadius: 8, cursor: 'pointer', minHeight: 44,
-                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 600,
+                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500,
                       borderWidth: 1, borderStyle: 'solid',
                       borderColor: actif ? 'var(--accent)' : 'var(--border)',
                       background:  actif ? 'var(--accent)' : 'var(--bg)',
@@ -601,7 +601,7 @@ export default function ReservationForm({
               />
             </div>
             )}
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600, marginTop: isMobile ? 6 : 0 }}>
+            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500, marginTop: isMobile ? 6 : 0 }}>
               {formatDateLongue(form.date)}{anneeAutre}
             </div>
           </div>
@@ -643,8 +643,8 @@ export default function ReservationForm({
                   <button key={h} type="button" aria-pressed={form.heure === h} onClick={() => set('heure', h)}
                     style={isMobile ? caseStyle(form.heure === h, { fontFamily: 'var(--font-num)' }) : {
                       padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 600, transition: 'all 0.15s',
-                      border:      `1px solid ${form.heure === h ? 'var(--accent)' : 'var(--border)'}`,
+                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500, transition: 'all 0.15s',
+                      border: '1px solid transparent',
                       background:  form.heure === h ? 'var(--accent)' : 'var(--bg)',
                       color:       form.heure === h ? 'var(--on-accent)' : 'var(--text)',
                     }}>
@@ -700,7 +700,7 @@ export default function ReservationForm({
                 }}
                 onBlur={() => { if (form.couverts === '' || form.couverts < 1) set('couverts', 1); }}
                 style={{
-                  width: 52, height: 44, textAlign: 'center', fontWeight: 800, fontSize: 17,
+                  width: 52, height: 44, textAlign: 'center', fontWeight: 700, fontSize: 17,
                   color: 'var(--text)', fontFamily: 'var(--font-num)',
                   background: 'transparent', border: 'none', padding: 0, minWidth: 0,
                 }}
@@ -760,7 +760,7 @@ export default function ReservationForm({
             <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, marginTop: -6 }}>
               <div>Fiche client : {detailsClient(clientChoisi)}</div>
               {clientChoisi.allergies && (
-                <div style={{ color: 'var(--danger-text)', fontWeight: 600 }}>
+                <div style={{ color: 'var(--danger-text)', fontWeight: 500 }}>
                   Allergies notées sur la fiche : {clientChoisi.allergies}
                 </div>
               )}
@@ -875,13 +875,13 @@ export default function ReservationForm({
             padding: '10px 16px', paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
             borderTop: '1px solid var(--border)', background: 'var(--surface)',
           }}>
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600, marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500, marginBottom: 8 }}>
               {resume}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {initialResa ? (
                 <button type="button" onClick={onClose}
-                  style={{ flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600 }}>
+                  style={{ flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500 }}>
                   {loading ? 'Fermer' : 'Annuler'}
                 </button>
               ) : (
@@ -903,7 +903,7 @@ export default function ReservationForm({
         }}>
           {!initialResa && (
             <button type="button" disabled={loading} onClick={() => submit(true)}
-              style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 600, padding: 0, opacity: loading ? 0.5 : 1 }}>
+              style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 500, padding: 0, opacity: loading ? 0.5 : 1 }}>
               Saisir une autre
             </button>
           )}
@@ -912,7 +912,7 @@ export default function ReservationForm({
                 L'écriture partie ne s'arrête pas : le bouton dit alors
                 « Fermer », « Annuler » ferait croire la résa abandonnée. */}
             <button type="button" onClick={onClose}
-              style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>
+              style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 }}>
               {loading ? 'Fermer' : 'Annuler'}
             </button>
             <button type="button" disabled={loading} onClick={() => submit(false)}

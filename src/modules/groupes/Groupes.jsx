@@ -479,7 +479,7 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
     >
       <span aria-hidden="true" style={{ ...st.ligneBarre, background: groupe.annule ? 'var(--border)' : m.barre }} />
       <span style={st.ligneDate}>
-        <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>{formatJourSemaine(groupe.dateEvenement)}</span>
+        <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>{formatJourSemaine(groupe.dateEvenement)}</span>
         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-num)' }} data-no-translate>
           {formatDateCourte(groupe.dateEvenement)}
         </span>
@@ -515,19 +515,17 @@ const st = {
   page: { padding: '20px 24px', position: 'relative', minHeight: '100%', minWidth: 0 },
   nouveau: {
     minHeight: 38, padding: '9px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
   },
   encartAttention: {
-    marginBottom: 14, padding: '10px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.5,
-    background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)',
+    marginBottom: 14, padding: '10px 0 10px 12px',  fontSize: 13, lineHeight: 1.5,  borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)',
   },
   encartDanger: {
-    marginBottom: 14, padding: '10px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.5,
-    background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)',
+    marginBottom: 14, padding: '10px 0 10px 12px',  fontSize: 13, lineHeight: 1.5,  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)',
   },
   lien: {
     background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
-    color: 'var(--accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     textDecoration: 'underline',
   },
   barreMois: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 },
@@ -543,7 +541,7 @@ const st = {
   aujourdhui: {
     minHeight: 44, flexShrink: 0, padding: '0 14px', borderRadius: 10, cursor: 'pointer',
     border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
   },
   legende: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 },
   legendeItem: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' },
@@ -563,8 +561,8 @@ const st = {
   boutonSupprimer: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     flexShrink: 0, minHeight: 56, padding: '0 12px', borderRadius: 10, cursor: 'pointer',
-    background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
   },
   ligneDate: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

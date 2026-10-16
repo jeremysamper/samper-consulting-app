@@ -96,7 +96,7 @@ function ResaPuce({ resa, svc, onOpen }) {
         }} />
       )}
       <span style={{
-        fontWeight: resa.est_groupe ? 700 : 600,
+        fontWeight: resa.est_groupe ? 700 : 500,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
         textDecoration: noShow ? 'line-through' : 'none',
       }}>
@@ -133,7 +133,7 @@ function couvertsService(jour, svc) {
 function Allergenes({ tags, max = 3 }) {
   if (!tags.length) return null;
   return (
-    <div style={{ fontSize: 10, color: 'var(--danger-text)', marginTop: 4, lineHeight: 1.35, fontWeight: 600 }}>
+    <div style={{ fontSize: 11, color: 'var(--danger-text)', marginTop: 4, lineHeight: 1.35, fontWeight: 500 }}>
       {tags.slice(0, max).join(', ')}{tags.length > max ? ` +${tags.length - max}` : ''}
     </div>
   );
@@ -162,7 +162,7 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
           cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 0,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 800, color: auj ? 'var(--accent)' : 'var(--text)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: auj ? 'var(--accent)' : 'var(--text)' }}>
           {formatJourSemaine(jour.date_service)}
           <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', marginLeft: 6 }}>
             {formatDateCourte(jour.date_service)}
@@ -188,7 +188,7 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
           >
             <ListeService resas={resas} svc={svc} onOpen={onOpen} />
             {n > 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text3)' }}>{pluriel(n, 'couvert')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)' }}>{pluriel(n, 'couvert')}</div>
             )}
           </div>
         );
@@ -218,7 +218,7 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
         }}
       >
         <span>
-          <span style={{ fontWeight: 800, fontSize: 14, color: auj ? 'var(--accent)' : 'var(--text)' }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: auj ? 'var(--accent)' : 'var(--text)' }}>
             {formatJourSemaine(jour.date_service)}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 7 }}>
@@ -236,7 +236,7 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
         {avecResas.map((svc) => (
           <div key={svc}>
             <div style={{
-              fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5,
+              fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
               color: SERVICE_META[svc].couleur, marginBottom: 4,
             }}>
               {SERVICE_META[svc].label} : {pluriel(couvertsService(jour, svc), 'couvert')}
@@ -251,7 +251,7 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
 }
 
 // ── Composant principal ────────────────────────────────────
-export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, refreshKey }) {
+export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, refreshKey, onNouvelle = null }) {
   const isMobile = useIsMobile();
   const [dateDebut, setDateDebut] = useState(() => getLundiSemaine(new Date()));
   const { semaine, loading, error, nonActualise, fetchSemaine } = usePrevisionsSemaine(etablissementId);
@@ -300,8 +300,8 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
       {/* ── Erreur ── */}
       {error && (
         <div style={{
-          padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
-          border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
+          padding: '10px 0 10px 12px',  
+          borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>
@@ -326,12 +326,13 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
       {/* ── État vide ── */}
       {!loading && semaineVide && (
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 36, opacity: 0.18, marginBottom: 10 }}>◐</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 6 }}>
             Aucune réservation cette semaine
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-            Saisissez votre première réservation avec le bouton +
+            {onNouvelle
+              ? <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
+              : 'Les réservations de la semaine apparaîtront ici.'}
           </div>
         </div>
       )}
@@ -352,7 +353,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
               </div>
               {services.map((svc) => (
                 <div key={svc} style={{
-                  padding: '8px 10px', fontSize: 11, fontWeight: 800,
+                  padding: '8px 10px', fontSize: 11, fontWeight: 700,
                   textTransform: 'uppercase', letterSpacing: 0.5,
                   color: SERVICE_META[svc].couleur,
                   borderLeft: `3px solid ${SERVICE_META[svc].bordure}`,

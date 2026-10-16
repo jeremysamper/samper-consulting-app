@@ -41,7 +41,7 @@ export default function ReservationDetailModal({
       }}>
         <div style={{
           fontSize: 12, color: 'var(--text3)', minWidth: 110,
-          fontWeight: 600, flexShrink: 0,
+          fontWeight: 500, flexShrink: 0,
         }}>
           {label}
         </div>
@@ -131,8 +131,7 @@ export default function ReservationDetailModal({
           {/* Demande venue du site : on y répond avant tout suivi de service. */}
           {demande && (
             <div style={{
-              padding: '10px 12px', marginBottom: 10, borderRadius: 10,
-              background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
+              padding: '10px 0 10px 12px', marginBottom: 10,   borderLeft: '2px solid var(--warning-bd)',
             }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: canEdit && onTraiter ? 8 : 0 }}>
                 Demande en ligne à confirmer
@@ -166,7 +165,7 @@ export default function ReservationDetailModal({
 
           {canEdit && onStatut && !demande && (
             <div style={{ paddingBottom: 12, marginBottom: 4 }}>
-              <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, marginBottom: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginBottom: 6 }}>
                 Statut
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -226,7 +225,7 @@ export default function ReservationDetailModal({
             label="Téléphone"
             valeur={resa.telephone && (
               <a href={`tel:${String(resa.telephone).replace(/\s/g, '')}`}
-                 style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+                 style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>
                 {resa.telephone}
               </a>
             )}
@@ -234,7 +233,7 @@ export default function ReservationDetailModal({
           <LigneDetail
             label="E-mail"
             valeur={resa.email && (
-              <a href={`mailto:${resa.email}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', overflowWrap: 'anywhere' }}>
+              <a href={`mailto:${resa.email}`} style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none', overflowWrap: 'anywhere' }}>
                 {resa.email}
               </a>
             )}
@@ -250,7 +249,7 @@ export default function ReservationDetailModal({
             }}>
               <div style={{
                 fontSize: 12, color: 'var(--text3)', minWidth: 110,
-                fontWeight: 600, flexShrink: 0,
+                fontWeight: 500, flexShrink: 0,
               }}>
                 Tags
               </div>
@@ -259,7 +258,7 @@ export default function ReservationDetailModal({
                   <span
                     key={`${t.type_tag}-${t.valeur}`}
                     style={{
-                      padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                      padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500,
                       background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
                       fontFamily: 'var(--font)',
                     }}
@@ -281,7 +280,7 @@ export default function ReservationDetailModal({
                 marginTop: 10, width: '100%', minHeight: 44, padding: '8px 12px', borderRadius: 8,
                 borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
                 background: 'var(--surface)', color: 'var(--accent)',
-                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}
             >
@@ -314,7 +313,7 @@ export default function ReservationDetailModal({
                     padding: '9px 18px', borderRadius: 8,
                     border: '1px solid var(--border)', background: 'var(--surface)',
                     color: 'var(--text)', cursor: 'pointer',
-                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
                   }}
                 >
                   Modifier
@@ -330,7 +329,7 @@ export default function ReservationDetailModal({
                     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
                     background: 'var(--danger-bg-soft)',
                     color: 'var(--danger-text)', cursor: 'pointer',
-                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
                   }}
                 >
                   Annuler la résa
@@ -343,7 +342,7 @@ export default function ReservationDetailModal({
                 padding: '9px 18px', borderRadius: 8,
                 border: '1px solid var(--border)', background: 'var(--surface)',
                 color: 'var(--text)', cursor: 'pointer',
-                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
                 marginLeft: canEdit ? 0 : 'auto',
               }}
             >
@@ -359,7 +358,7 @@ export default function ReservationDetailModal({
             background: 'var(--danger-bg-soft)', display: 'flex', flexDirection: 'column', gap: 10,
             borderRadius: '0 0 14px 14px',
           }}>
-            <div style={{ fontSize: 13, color: 'var(--danger-text)', fontWeight: 600, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 13, color: 'var(--danger-text)', fontWeight: 500, lineHeight: 1.4 }}>
               Annuler la réservation de {resa.nom}
               {resa.date_service ? ` du ${formatDateLongue(resa.date_service).toLowerCase()}` : ''}
               {resa.heure_arrivee ? ` à ${(resa.heure_arrivee).slice(0, 5)}` : ''} ?
@@ -374,7 +373,7 @@ export default function ReservationDetailModal({
                   padding: '8px 16px', borderRadius: 8,
                   border: '1px solid var(--border)', background: 'var(--surface)',
                   color: 'var(--text)', cursor: 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
                 }}
               >
                 {deleting ? 'Fermer' : 'Annuler'}
@@ -383,10 +382,10 @@ export default function ReservationDetailModal({
                 type="button" onClick={handleDelete} disabled={deleting}
                 style={{
                   padding: '8px 16px', borderRadius: 8,
-                  border: '1px solid var(--danger-text)',
+                  border: '1px solid transparent',
                   background: deleting ? 'var(--danger-bd)' : 'var(--danger-fill)',
                   color: deleting ? 'var(--danger-text)' : 'var(--on-danger)', cursor: deleting ? 'not-allowed' : 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
                   opacity: deleting ? 0.7 : 1,
                 }}
               >

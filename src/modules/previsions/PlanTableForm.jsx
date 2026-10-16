@@ -195,7 +195,7 @@ export default function PlanTableForm({
                 −
               </button>
               <div style={{
-                width: 52, textAlign: 'center', fontWeight: 800, fontSize: 17,
+                width: 52, textAlign: 'center', fontWeight: 700, fontSize: 17,
                 color: 'var(--text)', fontFamily: 'var(--font-num)',
               }}>
                 {places}
@@ -293,7 +293,7 @@ export default function PlanTableForm({
           {!confirmSuppr ? (
             <button type="button" disabled={loading} onClick={() => setConfirmSuppr(true)} style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-              fontSize: 12, color: 'var(--danger-text)', fontWeight: 600, fontFamily: 'var(--font)',
+              fontSize: 12, color: 'var(--danger-text)', fontWeight: 500, fontFamily: 'var(--font)',
             }}>
               Supprimer
             </button>
@@ -327,7 +327,7 @@ export default function PlanTableForm({
               padding: '10px 16px', borderRadius: 8,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
               background: 'var(--surface)', color: 'var(--text)',
-              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
             }}>
               Dupliquer
             </button>
@@ -338,7 +338,7 @@ export default function PlanTableForm({
               padding: '10px 18px', borderRadius: 8,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
               background: 'var(--surface)', color: 'var(--text)',
-              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
             }}>
               {loading ? 'Fermer' : 'Annuler'}
             </button>

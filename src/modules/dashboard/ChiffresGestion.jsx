@@ -71,7 +71,7 @@ const s = {
     padding: '4px 16px', background: 'transparent', borderLeft: '1px solid var(--border)',
   },
   tuileBouton: { borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)' },
-  label: { fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
+  label: { fontSize: 13, fontWeight: 500, color: 'var(--text2)' },
   valeur: { fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   // Phrase à la place d'un montant : même place, taille de texte.
   valeurTexte: { fontSize: 16, lineHeight: 1.6, fontWeight: 500, color: 'var(--text2)' },

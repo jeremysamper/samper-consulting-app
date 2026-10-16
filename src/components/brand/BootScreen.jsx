@@ -316,7 +316,7 @@ const s = {
     justifyContent: 'space-between',
     gap: 16,
     fontFamily: FONT,
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: '0.14em',
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.8)',

@@ -108,7 +108,7 @@ function LigneResa({
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
           <span style={{
-            fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-num)', flexShrink: 0,
+            fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-num)', flexShrink: 0,
             color: enRetard ? 'var(--danger-text)' : 'var(--accent)',
           }}>
             {(resa.heure_arrivee || '').slice(0, 5)}
@@ -136,7 +136,7 @@ function LigneResa({
               retard {duree(retard)}
             </span>
           )}
-          {resa.est_groupe && <span style={{ color: 'var(--info-text)', fontWeight: 600 }}>groupe</span>}
+          {resa.est_groupe && <span style={{ color: 'var(--info-text)', fontWeight: 500 }}>groupe</span>}
           {passeport && <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>Passeport gourmand</span>}
           {allergies.length > 0 && (
             <span style={{ color: 'var(--danger-text)', fontWeight: 700 }}>{allergies.join(', ')}</span>
@@ -171,11 +171,11 @@ function Section({ titre, detail, children, ton }) {
     <section style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
-        fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5,
+        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
         color: ton === 'alerte' ? 'var(--warning-text)' : ton === 'succes' ? 'var(--success-text)' : 'var(--text2)',
       }}>
         <span>{titre}</span>
-        {detail && <span style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: 'var(--text3)' }}>{detail}</span>}
+        {detail && <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text3)' }}>{detail}</span>}
       </div>
       {children}
     </section>
@@ -257,7 +257,7 @@ export default function ServicePanneau({
             style={{
               width: '100%', minHeight: 40, padding: '6px 2px', textAlign: 'left',
               background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-              fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5,
+              fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
               color: 'var(--text3)',
             }}
           >

@@ -35,7 +35,7 @@ function Horloge() {
     return () => clearInterval(id);
   }, []);
   return (
-    <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-num)', color: 'var(--text)' }}>
+    <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)' }}>
       {heure}
     </span>
   );
@@ -44,10 +44,10 @@ function Horloge() {
 function Compteur({ valeur, label, couleur }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
-      <span style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-num)', color: couleur || 'var(--text)' }}>
+      <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-num)', color: couleur || 'var(--text)' }}>
         {valeur}
       </span>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text3)' }}>
+      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text3)' }}>
         {label}
       </span>
     </div>
@@ -117,7 +117,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
         borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
       }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             Mode service
           </div>
           <div style={{ fontSize: 12, color: 'var(--text2)' }}>

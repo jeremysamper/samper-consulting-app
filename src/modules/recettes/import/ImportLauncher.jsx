@@ -258,7 +258,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
 
   const headerBar = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
         Import multiple de recettes
       </div>
       <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
@@ -297,7 +297,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   style={{ display: 'none' }}
                   onChange={onInputChange}
                 />
-                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
                   Glissez vos fiches ici, ou cliquez pour parcourir
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>
@@ -408,7 +408,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Terminé ── */}
           {step === 'done' && (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '8px 0' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '8px 0' }}>
                 Import terminé
               </div>
               <div style={{ fontSize: 13, color: 'var(--text2)' }}>
@@ -442,6 +442,5 @@ const dropZoneActive = {
   borderColor: 'var(--accent)', background: 'var(--surface)',
 };
 const errBox = {
-  marginTop: 12, padding: '8px 12px', borderRadius: 6, fontSize: 12,
-  background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)',
+  marginTop: 12, padding: '8px 0 8px 12px',  fontSize: 12,  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)',
 };

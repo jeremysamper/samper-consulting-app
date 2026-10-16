@@ -312,10 +312,10 @@ export function EnTete({ date, salutation, prenom, resume, onAssistant }) {
 const s = {
   entete: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: '4px 2px 2px' },
   titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 30, lineHeight: 1.15, color: 'var(--text)' },
-  resume: { margin: '6px 0 0', fontSize: 15.5, lineHeight: 1.55, color: 'var(--text2)', maxWidth: 760 },
+  resume: { margin: '6px 0 0', fontSize: 16, lineHeight: 1.55, color: 'var(--text2)', maxWidth: 760 },
   assistant: {
     display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '10px 16px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, background: 'var(--surface)', color: 'var(--text)',
+    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, background: 'var(--surface)', color: 'var(--text)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
 };

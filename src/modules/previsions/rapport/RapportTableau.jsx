@@ -40,7 +40,7 @@ function valeurCellule(r, cle, granularite) {
 }
 
 const thStyle = {
-  textAlign: 'right', fontWeight: 600, fontSize: 12, color: 'var(--text2)', padding: '6px 8px',
+  textAlign: 'right', fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '6px 8px',
   borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', whiteSpace: 'nowrap',
 };
 const tdStyle = {

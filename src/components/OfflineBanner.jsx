@@ -79,8 +79,8 @@ function Band({ kind, text, action }) {
     >
       <span
         style={{
-          fontSize: 12.5,
-          fontWeight: 600,
+          fontSize: 12,
+          fontWeight: 500,
           color: `var(--${kind}-text)`,
           fontFamily: 'var(--font)',
           lineHeight: 1.4,

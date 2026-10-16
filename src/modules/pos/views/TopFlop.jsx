@@ -101,7 +101,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
                 fontWeight: periodDays === p.value ? 700 : 500,
                 fontFamily: 'var(--font)',
                 cursor:     'pointer',
-                border:     `1px solid ${periodDays === p.value ? 'var(--accent)' : 'var(--border)'}`,
+                border: '1px solid transparent',
                 background: periodDays === p.value ? 'var(--accent)' : 'var(--surface)',
                 color:      periodDays === p.value ? 'var(--on-accent)' : 'var(--text2)',
                 transition: 'all 0.15s',
@@ -128,7 +128,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
                 fontWeight: filter === f.value ? 700 : 500,
                 fontFamily: 'var(--font)',
                 cursor:     'pointer',
-                border:     `1px solid ${filter === f.value ? 'var(--nav)' : 'var(--border)'}`,
+                border: '1px solid transparent',
                 background: filter === f.value ? 'var(--nav)' : 'var(--surface)',
                 color:      filter === f.value ? '#fff' : 'var(--text2)',
                 transition: 'all 0.15s',
@@ -222,7 +222,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
 
               {/* Nom */}
               <div style={{
-                fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                fontSize: 14, fontWeight: 500, color: 'var(--text)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {item.name}

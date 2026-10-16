@@ -406,7 +406,7 @@ export default function AchatsPanel({
                         <>
                           {chf(r.prixFacture)}/{r.unite}
                           {r.ecartPrixPct != null && Math.abs(r.ecartPrixPct) >= SEUIL_ECART_PRIX_PCT && (
-                            <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: r.ecartPrixPct > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}>
+                            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: r.ecartPrixPct > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}>
                               {r.ecartPrixPct > 0 ? '+' : ''}{r.ecartPrixPct.toFixed(0)} % vs inventaire
                             </span>
                           )}
@@ -553,38 +553,38 @@ const st = {
   titre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   sousTitre: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
   info: { fontSize: 13, color: 'var(--text2)', padding: '12px 14px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 10, lineHeight: 1.45 },
-  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 0 10px 12px',   color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   periode: { fontSize: 13, color: 'var(--text)', lineHeight: 1.5 },
   kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))', gap: 10 },
   kpi: { background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '10px 12px', minWidth: 0 },
   kpiFort: { borderColor: 'var(--accent)' },
-  kpiLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  kpiLabel: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   kpiVal: { fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 4 },
   kpiNote: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   avertissements: { margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.55 },
   btn: { padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
-  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 40 },
   aRattacher: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' },
   actionsLigne: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', flex: '2 1 300px', minWidth: 0 },
-  suggestion: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--accent)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
+  suggestion: { padding: '6px 10px', borderRadius: 7, border: '1px solid transparent', background: 'var(--accent-light)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
   inputRattacher: { flex: '1 1 160px', minWidth: 0, padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--bg)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)', minHeight: 36, boxSizing: 'border-box' },
   tableWrap: { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10, maxWidth: '100%' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 640 },
-  th: { textAlign: 'left', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)' },
-  thNum: { textAlign: 'right', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
-  td: { padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600 },
+  th: { textAlign: 'left', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)' },
+  thNum: { textAlign: 'right', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
+  td: { padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontWeight: 500 },
   tdNum: { padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap' },
-  puce: { marginLeft: 6, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)', textTransform: 'uppercase' },
+  puce: { marginLeft: 6, fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)', textTransform: 'uppercase' },
   doc: { borderTop: '1px solid var(--border)', padding: '8px 0' },
   docLigne: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   docToggle: { flex: '1 1 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer', fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 44 },
   docChamps: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  statut: { fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10, background: 'var(--bg)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', maxWidth: 260 },
+  statut: { fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 10, background: 'var(--bg)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', maxWidth: 260 },
   statutOk: { background: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-bd)' },
   docAlerte: { fontSize: 11, color: 'var(--warning-text)', marginTop: 4 },
   docDetail: { marginTop: 6, padding: '8px 10px', background: 'var(--bg)', borderRadius: 8 },
   docDetailLigne: { display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
-  btnVoir: { padding: '6px 12px', borderRadius: 7, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
+  btnVoir: { padding: '6px 12px', borderRadius: 7, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
 };

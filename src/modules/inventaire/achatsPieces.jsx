@@ -147,7 +147,7 @@ const st = {
   tete: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(0,0,0,0.55)', color: '#fff', flexShrink: 0 },
   nom: { fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   meta: { fontSize: 11, opacity: 0.75, marginTop: 2 },
-  btn: { display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, textDecoration: 'none', flexShrink: 0 },
+  btn: { display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, textDecoration: 'none', flexShrink: 0 },
   corps: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 },
   piece: { width: '100%', maxWidth: 1000, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 },
   barre: { display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontSize: 12, flexWrap: 'wrap' },

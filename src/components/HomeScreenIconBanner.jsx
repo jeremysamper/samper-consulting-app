@@ -73,8 +73,8 @@ const s = {
     flexShrink: 0,
   },
   text: {
-    fontSize: 12.5,
-    fontWeight: 600,
+    fontSize: 12,
+    fontWeight: 500,
     color: 'var(--info-text)',
     fontFamily: 'var(--font)',
     lineHeight: 1.4,
@@ -83,8 +83,8 @@ const s = {
   button: {
     padding: '4px 12px',
     borderRadius: 6,
-    border: '1.5px solid var(--info-text)',
-    background: 'transparent',
+    border: '1px solid transparent',
+    background: 'var(--info-bg-soft)',
     color: 'var(--info-text)',
     fontSize: 12,
     fontWeight: 700,

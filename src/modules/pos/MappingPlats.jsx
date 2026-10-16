@@ -84,11 +84,9 @@ function EmptyState({ type, onNavigate }) {
 
 function AllMappedState({ total }) {
   return (
+    // Posé sur la page, sans encadré : la couleur du titre porte la réussite.
     <div style={{
-      background:    'var(--success-bg-soft)',
-      border:        '1px solid var(--success-bd)',
-      borderRadius:  12,
-      padding:       '40px 32px',
+      padding:       '32px 0',
       display:       'flex',
       flexDirection: 'column',
       alignItems:    'center',
@@ -127,11 +125,9 @@ function LoadingState() {
 
 function ErrorState({ message, onRetry }) {
   return (
-    <div style={{
-      background:    'var(--danger-bg-soft)',
-      border:        '1px solid var(--danger-bd)',
-      borderRadius:  10,
-      padding:       '20px 24px',
+    <div style={{ 
+      borderLeft: '2px solid var(--danger-bd)', 
+      padding: '20px 0 20px 12px',
       display:       'flex',
       alignItems:    'center',
       justifyContent:'space-between',

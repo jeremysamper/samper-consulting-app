@@ -90,12 +90,12 @@ const s = {
   },
   modifier: {
     display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, background: 'var(--surface)', color: 'var(--text)',
+    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, background: 'var(--surface)', color: 'var(--text)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', flexShrink: 0,
   },
   bouton: {
     minHeight: 44, padding: '10px 18px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, borderWidth: 1, borderStyle: 'solid',
+    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, borderWidth: 1, borderStyle: 'solid',
   },
   principal: { background: 'var(--accent)', color: 'var(--tdb-on-stop)', borderColor: 'var(--accent)' },
   secondaire: { background: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' },

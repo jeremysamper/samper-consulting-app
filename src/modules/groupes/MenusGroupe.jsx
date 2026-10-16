@@ -788,7 +788,7 @@ const st = {
   ligneBas: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
   lien: {
     background: 'none', border: 'none', padding: 0, cursor: 'pointer', minHeight: 44, textAlign: 'left',
-    color: 'var(--accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
   },
   icone: {
     width: 44, minHeight: 44, flexShrink: 0, borderRadius: 8, cursor: 'pointer',
@@ -798,9 +798,9 @@ const st = {
   avis: { fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.45 },
   bouton: {
     flex: '1 1 auto', minHeight: 44, padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
   },
   boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
-  boutonDanger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
+  boutonDanger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent' },
 };

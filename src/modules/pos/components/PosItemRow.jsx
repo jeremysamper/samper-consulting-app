@@ -101,7 +101,7 @@ export function PosItemRow({
             <MatchBadge status={status} score={displayedScore} />
             {item.accounting_group && (
               <span style={{
-                fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font)',
+                fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font)',
                 background: 'var(--bg)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '1px 6px',
               }}>
@@ -111,7 +111,7 @@ export function PosItemRow({
           </div>
           <div style={{
             fontSize:   14,
-            fontWeight: 600,
+            fontWeight: 500,
             color:      'var(--text)',
             fontFamily: 'var(--font)',
             overflow:   'hidden',

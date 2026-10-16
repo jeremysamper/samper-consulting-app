@@ -607,15 +607,14 @@ function LigneOption({ ligne, mode, actif, canEdit, quantite, premiumBloque, onB
 const st = {
   vide: { fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
   saison: {
-    padding: '8px 12px', borderRadius: 8, fontSize: 13, lineHeight: 1.45,
-    background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)',
+    padding: '8px 0 8px 12px',  fontSize: 13, lineHeight: 1.45,  color: 'var(--success-text)', borderLeft: '2px solid var(--success-bd)',
   },
   convives: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 14px' },
   champConvives: { display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text)' },
   aide: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45, marginTop: 6 },
   rubriqueEntete: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
   rubriqueTitre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  etat: { fontSize: 12, fontWeight: 600 },
+  etat: { fontSize: 12, fontWeight: 500 },
   regle: { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
   sousTitre: { fontSize: 12, fontWeight: 700, color: 'var(--text2)', margin: '8px 0 2px' },
   rangee: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 },
@@ -623,7 +622,7 @@ const st = {
   // borderColor, React avertirait à chaque bascule sur un raccourci `border`.
   choixFormule: {
     flex: '1 1 auto', minHeight: 44, padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     background: 'var(--bg)', color: 'var(--text)',
   },
@@ -637,8 +636,7 @@ const st = {
     background: 'var(--surface2)', border: '1px solid var(--accent-bd)',
   },
   optionAncienne: {
-    flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, marginTop: 6,
-    background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
+    flexWrap: 'wrap', padding: '8px 0 8px 12px',  marginTop: 6,  borderLeft: '2px solid var(--warning-bd)',
   },
   cible: {
     width: 44, height: 44, flexShrink: 0, margin: '-4px 0',
@@ -658,12 +656,12 @@ const st = {
   supplement: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' },
   retirer: {
     minHeight: 44, padding: '0 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0,
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--danger-text)', border: '1px solid var(--border)',
   },
   lien: {
     background: 'none', border: 'none', padding: '10px 0 0', cursor: 'pointer', minHeight: 44,
-    color: 'var(--accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', textAlign: 'left',
+    color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', textAlign: 'left',
   },
   messages: { fontSize: 12, color: 'var(--warning-text)', marginTop: 6, lineHeight: 1.45 },
   ligneTarif: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, color: 'var(--text)' },
@@ -674,7 +672,7 @@ const st = {
   },
   bouton: {
     minHeight: 44, padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
   },
   boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },

@@ -217,11 +217,11 @@ const ts = {
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0, lineHeight: 1 },
   body: { flex: 1, overflowY: 'auto', minHeight: 120, padding: '4px 20px 16px' },
   empty: { padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5 },
-  sectionLabel: { fontSize: 10, fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.6, margin: '14px 0 6px' },
+  sectionLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.6, margin: '14px 0 6px' },
   // flexShrink 0 : sans lui les lignes se superposent sur mobile (min-height
   // global 44px sur les contrôles vs hauteur calculée par flex).
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 6, flexShrink: 0 },
-  rowNom: { fontSize: 13, fontWeight: 600, color: 'var(--text)' },
+  rowNom: { fontSize: 13, fontWeight: 500, color: 'var(--text)' },
   rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 1, lineHeight: 1.4 },
   doublonRow: { marginTop: 10, background: 'var(--surface2)' },
   info: { marginTop: 10, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 },

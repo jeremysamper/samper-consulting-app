@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import BoiteEnvoiReservations from './BoiteEnvoiReservations.jsx';
+import { encadreStyle } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
@@ -211,9 +212,9 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
         <BoiteEnvoiReservations etablissementId={etablissement?.id} consultant={consultant} />
 
         {/* ── État ── */}
-        <div style={{ ...s.carte, ...(publie ? { background: 'var(--success-bg-soft)', borderColor: 'var(--success-bd)' } : null), display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ ...s.carte, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: publie ? 'var(--success-text)' : 'var(--text)', fontFamily: 'var(--font-serif)' }}>
               {publie ? 'La réservation en ligne est ouverte' : 'La réservation en ligne est fermée'}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 }}>
@@ -259,7 +260,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
                 <label key={id} style={s.option}>
                   <input type="radio" name="mode-en-ligne" checked={form.mode === id} onChange={() => set('mode', id)} style={{ margin: '3px 0 0' }} />
                   <span>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{titre}</span>
+                    <span style={{ fontWeight: 500, fontSize: 13, color: 'var(--text)' }}>{titre}</span>
                     <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{texte}</span>
                   </span>
                 </label>
@@ -497,7 +498,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
             </div>
             <button type="button" onClick={telechargerQr} disabled={!qr} style={s.qr} aria-label="Télécharger le QR code de réservation">
               {qr ? <img src={qr} alt="" width={84} height={84} style={{ display: 'block', borderRadius: 6 }} /> : <span style={{ fontSize: 12 }}>QR code</span>}
-              <span style={{ fontSize: 12, fontWeight: 600 }}>Télécharger</span>
+              <span style={{ fontSize: 12, fontWeight: 500 }}>Télécharger</span>
             </button>
           </div>
 
@@ -506,7 +507,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
             <div style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 8px', lineHeight: 1.5 }}>Envoyez-lui cet e-mail tout prêt, avec le lien et le code à coller.</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <a href={lienGmail(mailWebmaster)} target="_blank" rel="noreferrer" style={{ ...s.secondaire, textDecoration: 'none', boxSizing: 'border-box' }}>Préparer l'e-mail dans Gmail</a>
-              <a href={lienMailto(mailWebmaster)} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>Autre messagerie</a>
+              <a href={lienMailto(mailWebmaster)} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 500 }}>Autre messagerie</a>
             </div>
           </div>
 
@@ -544,7 +545,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
 function Champ({ label, aide, children }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>{label}</span>
       {children}
       {aide && <span style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.4 }}>{aide}</span>}
     </label>
@@ -612,26 +613,19 @@ const s = {
   option: { display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', cursor: 'pointer' },
   principal: {
     padding: '9px 16px', minHeight: 42, borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   secondaire: {
     padding: '9px 16px', minHeight: 42, borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer',
-    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
-  info: {
-    padding: '10px 12px', borderRadius: 8, fontSize: 12, lineHeight: 1.5,
-    background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)',
-  },
-  attention: {
-    padding: '10px 12px', borderRadius: 8, fontSize: 12, lineHeight: 1.5,
-    background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)',
-  },
-  erreur: {
-    padding: '10px 12px', borderRadius: 8, fontSize: 13,
-    background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)',
-  },
+  // Encadrés de statut : filet gauche au ton (Encadre), texte en --text ; une
+  // erreur seule garde sa couleur sur le texte, faute de titre.
+  info: { ...encadreStyle('info'), fontSize: 12, lineHeight: 1.5 },
+  attention: { ...encadreStyle('alerte'), fontSize: 12, lineHeight: 1.5 },
+  erreur: { ...encadreStyle('erreur'), color: 'var(--danger-text)', fontSize: 13 },
   puce: {
     display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 10px', borderRadius: 20,
     fontSize: 12, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
@@ -641,7 +635,7 @@ const s = {
   },
   lienDirect: {
     padding: '9px 12px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)',
-    fontSize: 13, fontWeight: 600, color: 'var(--text)', overflowWrap: 'anywhere',
+    fontSize: 13, fontWeight: 500, color: 'var(--text)', overflowWrap: 'anywhere',
   },
   // Fond blanc dans les deux thèmes : un QR code se lit sur fond clair.
   qr: {
@@ -658,6 +652,6 @@ const s = {
   copier: {
     position: 'absolute', top: 6, right: 6, minHeight: 32, padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
     background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)',
-    fontSize: 11, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 11, fontWeight: 500, fontFamily: 'var(--font)',
   },
 };

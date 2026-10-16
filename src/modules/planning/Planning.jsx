@@ -9,6 +9,7 @@ import { dbService } from '../../services/dbService.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
@@ -1237,19 +1238,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
           return (
             <div key={shift.id} style={{ ...pls.mobileShiftCard, flexDirection: 'column', alignItems: 'stretch' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ ...pls.empAvatar, background: role?.couleur || 'var(--text3)' }}>{emp.avatar}</div>
+                <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{emp.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{emp.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
                 </div>
-                <div style={{ ...pls.mobileBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
+                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 11, color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
                   {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 11 }}>
-                <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 600 }}>{shift.pointageDebut || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 600 }}>{shift.pointageFin || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 600 }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 500 }}>{shift.pointageDebut || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 500 }}>{shift.pointageFin || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 500 }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
               </div>
               {canPointShift(shift) && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }} className="no-print">
@@ -1410,7 +1411,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   return (
                     <React.Fragment key={emp.id}>
                       <div style={pls.empCol}>
-                        <div style={{ ...pls.empAvatar, background: role?.couleur }}>{emp.avatar}</div>
+                        <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={pls.empName}>{emp.prenom} {emp.nom}</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginTop: 2 }}>
@@ -1460,7 +1461,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
-                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: role?.couleur }}>{emp.avatar}</div><div><div style={pls.ptName}>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
+                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div><div><div style={pls.ptName}>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
                     <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
@@ -1517,8 +1518,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   )}
                 </>
               ) : (
-                <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)' }}>
+                <div style={{ ...encadreStyle('alerte'), marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, ...encadreTitreStyle('alerte') }}>
                     Correction manuelle du pointage
                   </div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1581,7 +1582,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           borderWidth: 1, borderStyle: 'solid',
                           borderColor: actif ? 'var(--accent)' : 'var(--border)',
                           color: actif ? t.texte : 'var(--text2)',
-                          fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
+                          fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
                         }}>
                         {t.label}
                       </button>
@@ -1627,7 +1628,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => setShowCCNTModal(false)}>×</button>
             </div>
             <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--warning-text)', lineHeight: 1.5 }}>
+              <div style={{ ...encadreStyle('alerte'), fontSize: 11, lineHeight: 1.5 }}>
                 Document conforme aux <strong>articles 15 &amp; 21 CCNT</strong> hôtellerie-restauration suisse. À signer <strong>chaque mois</strong> par le collaborateur et l'employeur, à conserver <strong>5 ans</strong>.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
@@ -1742,7 +1743,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </table>
 
             {/* Bloc 3 : récapitulatif hebdomadaire (détection dépassement 42h/sem) */}
-            <div style={{ ...ccnt.bloc, fontSize: 9 }}>
+            <div style={{ ...ccnt.bloc, fontSize: 11 }}>
               <div style={ccnt.titreBloc}>Récapitulatif hebdomadaire</div>
               <table style={ccnt.tableInterne}>
                 <thead>
@@ -1765,7 +1766,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
 
             {/* Bloc 4 : soldes */}
-            <div style={{ ...ccnt.bloc, fontSize: 10 }}>
+            <div style={{ ...ccnt.bloc, fontSize: 11 }}>
               <div style={ccnt.titreBloc}>Communication mensuelle des soldes (art. 15 ch. 5 CCNT)</div>
               <table style={ccnt.tableInterne}>
                 <tbody>
@@ -1792,19 +1793,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
             {/* Bloc 5 : zone signatures */}
             <div style={ccnt.bloc}>
               <div style={ccnt.titreBloc}>Attestation et signatures</div>
-              <div style={{ marginBottom: 10, fontSize: 9, lineHeight: 1.5 }}>
+              <div style={{ marginBottom: 10, fontSize: 11, lineHeight: 1.5 }}>
                 Le/la soussigné(e) atteste avoir pris connaissance du présent décompte et confirme l'exactitude des heures enregistrées ci-dessus. Conformément à l'art. 21 ch. 4 CCNT, à défaut de signature mensuelle, les enregistrements personnels du collaborateur feront foi.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 14 }}>
                 <div>
                   <div style={ccnt.signatureLigne}></div>
                   <div style={{ ...ccnt.etiquette, marginTop: 5 }}>Signature du collaborateur</div>
-                  <div style={{ fontSize: 9, marginTop: 8 }}>Date : _____________________</div>
+                  <div style={{ fontSize: 11, marginTop: 8 }}>Date : _____________________</div>
                 </div>
                 <div>
                   <div style={ccnt.signatureLigne}></div>
                   <div style={{ ...ccnt.etiquette, marginTop: 5 }}>Signature et timbre de l'employeur</div>
-                  <div style={{ fontSize: 9, marginTop: 8 }}>Date : _____________________</div>
+                  <div style={{ fontSize: 11, marginTop: 8 }}>Date : _____________________</div>
                 </div>
               </div>
             </div>
@@ -1882,7 +1883,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           key={d.date}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px',
-                            border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                            border: '1px solid transparent',
                             borderRadius: 6, fontSize: 11, cursor: 'pointer',
                             background: checked ? 'var(--accent-light)' : 'var(--surface)',
                           }}
@@ -1894,7 +1895,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           />
                           <span style={{ flex: 1 }}>
                             {d.label}
-                            {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
+                            {isSrc && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
                           </span>
                         </label>
                       );
@@ -1924,7 +1925,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           key={emp.id}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
-                            border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                            border: '1px solid transparent',
                             borderRadius: 6, fontSize: 12, cursor: 'pointer',
                             background: checked ? 'var(--accent-light)' : 'var(--surface)',
                           }}
@@ -1934,10 +1935,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
                             checked={checked}
                             onChange={() => toggleUser(emp.id)}
                           />
-                          <div style={{ ...pls.empAvatar, background: role?.couleur, width: 22, height: 22, fontSize: 9 }}>{emp.avatar}</div>
+                          <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {emp.prenom} {emp.nom}
-                            {isSrc && <span style={{ fontSize: 9, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
+                            {isSrc && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
                           </span>
                         </label>
                       );
@@ -1946,7 +1947,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </div>
 
                 {/* Avertissement */}
-                <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: 10, fontSize: 11, color: 'var(--warning-text)' }}>
+                <div style={{ ...encadreStyle('alerte'), fontSize: 11 }}>
                   Un horaire qui chevauche la copie est <strong>remplacé</strong> ; un horaire qui ne la chevauche pas (un midi quand on copie un soir) est gardé.
                 </div>
 
@@ -2177,12 +2178,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       const role = demoData.roles[emp.role];
                       const checked = batchUserIds.has(emp.id);
                       return (
-                        <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 6, fontSize: 12, cursor: 'pointer', background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                        <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', border: '1px solid transparent', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
                           <input type="checkbox" checked={checked} onChange={() => toggleBatchUser(emp.id)} />
-                          <div style={{ ...pls.empAvatar, background: role?.couleur, width: 22, height: 22, fontSize: 9 }}>{emp.avatar}</div>
+                          <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {emp.prenom} {emp.nom}
-                            <span style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
                           </span>
                         </label>
                       );
@@ -2197,22 +2198,22 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       qu'une colonne trop etroite provoque le passage a la ligne */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                      <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Du</label>
+                      <label style={{ ...pls.fieldLabel, fontSize: 11 }}>Du</label>
                       <input type="date" style={pls.fieldInput} value={batchStart} onChange={e => setBatchStart(e.target.value)} />
                     </div>
                     <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                      <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Au</label>
+                      <label style={{ ...pls.fieldLabel, fontSize: 11 }}>Au</label>
                       <input type="date" style={pls.fieldInput} value={batchEnd} onChange={e => setBatchEnd(e.target.value)} />
                     </div>
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Jours concernés :</div>
+                    <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Jours concernés :</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {WEEKDAY_LABELS.map((lbl, idx) => {
                         const checked = batchWeekdays.has(idx);
                         return (
                           <button key={lbl} type="button" onClick={() => toggleBatchWeekday(idx)}
-                            style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, background: checked ? 'var(--accent-light)' : 'var(--surface)', color: checked ? 'var(--accent)' : 'var(--text2)', borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                            style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, border: '1px solid transparent', background: checked ? 'var(--accent-light)' : 'var(--surface)', color: checked ? 'var(--accent)' : 'var(--text2)', borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)' }}>
                             {lbl}
                           </button>
                         );
@@ -2236,7 +2237,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                             if (m.segments.length > 1) { setBatchModele(m); return; }
                             setBatchModele(null); setBatchTypeShift(seg.typeShift); setBatchDebut(seg.debut); setBatchFin(seg.fin); setBatchPause(seg.pause || 0);
                           }}
-                          style={{ flex: '1 1 110px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13, background: active ? 'var(--accent-light)' : 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: active ? 'var(--accent)' : 'var(--border)', color: active ? 'var(--accent)' : 'var(--text2)', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                          style={{ flex: '1 1 110px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13, background: active ? 'var(--accent-light)' : 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: active ? 'var(--accent)' : 'var(--border)', color: active ? 'var(--accent)' : 'var(--text2)', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' }}>
                           {m.nom}
                         </button>
                       );
@@ -2245,27 +2246,27 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   {batchModele ? (
                     <div style={{ fontSize: 13, color: 'var(--text)' }}>
                       {libelleModele(batchModele)} : deux horaires par jour.{' '}
-                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: 'var(--font)' }} onClick={() => setBatchModele(null)}>Saisir d'autres heures</button>
+                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, fontFamily: 'var(--font)' }} onClick={() => setBatchModele(null)}>Saisir d'autres heures</button>
                     </div>
                   ) : (
                     <>
                       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                         {Object.entries(TYPES_HORAIRE).map(([id, t]) => (
                           <button key={id} type="button" aria-pressed={batchTypeShift === id} onClick={() => setBatchTypeShift(id)}
-                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--accent)' : 'transparent', background: batchTypeShift === id ? t.fond : 'transparent', color: batchTypeShift === id ? t.texte : 'var(--text2)' }}>
+                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--accent)' : 'transparent', background: batchTypeShift === id ? t.fond : 'transparent', color: batchTypeShift === id ? t.texte : 'var(--text2)' }}>
                             {t.label}
                           </button>
                         ))}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                        <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
-                        <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
-                        <div><label style={{ ...pls.fieldLabel, fontSize: 10 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 11 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 11 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 11 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
                       </div>
                     </>
                   )}
                   <div style={{ marginTop: 10 }}>
-                    <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Poste / Tâche (optionnel)</label>
+                    <label style={{ ...pls.fieldLabel, fontSize: 11 }}>Poste / Tâche (optionnel)</label>
                     <input type="text" style={pls.fieldInput} value={batchPoste} placeholder="Ex : Cuisine, Salle…" onChange={e => setBatchPoste(e.target.value)} />
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau ? dureeLisible(heuresCreneau) : '-'}</strong></div>
@@ -2273,8 +2274,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
                 {/* ── Gestion des conflits ── */}
                 {conflictCount > 0 && (
-                  <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
+                  <div style={{ ...encadreStyle('alerte') }}>
+                    <div style={{ fontSize: 12, ...encadreTitreStyle('alerte'), marginBottom: 8 }}>
                       {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (créneau qui en chevauche un autre)
                     </div>
                     <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>

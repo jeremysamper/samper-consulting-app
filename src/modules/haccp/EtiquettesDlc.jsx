@@ -109,12 +109,12 @@ const datesInitiales = (jour) => Object.fromEntries(
 );
 
 const es = {
-  banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 10, color: 'var(--warning-text)', fontSize: 12, lineHeight: 1.5 },
+  banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 0 11px 12px',  borderLeft: '2px solid var(--warning-bd)',  color: 'var(--warning-text)', fontSize: 12, lineHeight: 1.5 },
   bloc: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
   champsDates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 },
   ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' },
   ligneInfo: { flex: 1, minWidth: 140, maxWidth: '100%' },
-  nom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 },
+  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', lineHeight: 1.3 },
   meta: { fontSize: 11, color: 'var(--text2)', marginTop: 3 },
   dlc: { fontSize: 12, fontWeight: 700, color: 'var(--accent)' },
   // Cible tactile de la case à cocher : 44 px, la case dessinée n'en faisant
@@ -133,17 +133,17 @@ const es = {
   resumeTotal: { fontSize: 13, color: 'var(--text2)', flex: 1, minWidth: 160 },
   // Compteur porté par l'onglet de mode : c'est ce qui rend visible, sans
   // quitter l'écran courant, qu'un autre mode contient déjà des étiquettes.
-  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 999, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 10.5, fontWeight: 700, verticalAlign: 'middle' },
+  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 999, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 11, fontWeight: 700, verticalAlign: 'middle' },
   // Récapitulatif du lot multi-mode : affiché uniquement quand le lot porte
   // plusieurs modes, seul cas où l'onglet courant ne dit pas tout.
   recap: { background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 10, overflow: 'hidden' },
-  recapTitre: { padding: '10px 14px 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  recapTitre: { padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   recapLigne: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
-  recapInfo: { flex: 1, minWidth: 160, fontSize: 12.5, color: 'var(--text2)' },
+  recapInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)' },
   rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8 },
   // Bloc épinglé des cases Divers : jamais filtré par la recherche, il reste
   // visible quel que soit le filtre saisi.
-  diversTitre: { padding: '10px 14px 5px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  diversTitre: { padding: '10px 14px 5px', fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   // 16 px : en dessous, Safari iOS zoome la page au focus du champ.
   // Contour accent permanent (comme « + Ajouter une étiquette ») et loupe à
   // gauche : le champ se repère d'un coup d'œil, plus seulement au focus.
@@ -153,12 +153,12 @@ const es = {
   // En-tête du bloc « Étiquettes maison » : titre + bouton d'ajout, toujours
   // présent même quand la liste est vide (c'est par là qu'on crée la première).
   blocTitre: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 5px', flexWrap: 'wrap' },
-  blocLabel: { flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  blocLabel: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   // flexShrink 0 comme les steppers : le min-height global de 44px sur les
   // <button> écrase le flex et fait se superposer les boutons sur mobile.
-  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, fontWeight: 500, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'var(--danger-bg-soft)', border: '1px solid transparent', borderRadius: 7, fontSize: 12, fontWeight: 500, color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
   vide: { padding: '4px 14px 12px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
 };
 

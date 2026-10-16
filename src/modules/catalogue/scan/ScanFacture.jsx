@@ -8,6 +8,7 @@ import {
 } from './scanFactureLogic.js';
 import { estPdf } from './pdfFacture.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
+import { encadreStyle, encadreTitreStyle } from '../../../components/ui/index.jsx';
 
 // Écran de lecture d'une facture fournisseur par photo.
 //
@@ -292,7 +293,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
       <div className="modal-full" style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
               Scanner une facture
             </div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
@@ -317,7 +318,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
         </div>
 
         {erreur && (
-          <div style={{ margin: '10px 18px 0', padding: '8px 10px', borderRadius: 6, background: 'var(--danger-bg)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 12 }}>
+          <div style={{ margin: '10px 18px 0', ...encadreStyle('erreur'), ...encadreTitreStyle('erreur'), fontSize: 12 }}>
             {erreur}
           </div>
         )}
@@ -369,7 +370,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                   <div key={a.nom + i} style={{ position: 'relative' }}>
                     {a.pdf ? (
                       <div style={{ width: 110, height: 140, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8 }}>
-                        <span data-no-translate style={{ fontSize: 9, color: 'var(--text2)', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>{a.nom}</span>
+                        <span data-no-translate style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>{a.nom}</span>
                       </div>
                     ) : (
                       <img src={a.url} alt={a.nom} style={{ width: 110, height: 140, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
@@ -401,7 +402,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                 const actif = pile === p.id;
                 return (
                   <button key={p.id} onClick={() => setPile(p.id)}
-                    style={{ padding: '7px 12px', fontSize: 12, fontWeight: actif ? 800 : 600, whiteSpace: 'nowrap', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', color: actif ? 'var(--accent)' : 'var(--text2)', borderBottom: `2px solid ${actif ? 'var(--accent)' : 'transparent'}` }}
+                    style={{ padding: '7px 12px', fontSize: 12, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', color: actif ? 'var(--accent)' : 'var(--text2)', borderBottom: `2px solid ${actif ? 'var(--accent)' : 'transparent'}` }}
                   >{p.label} ({n})</button>
                 );
               })}
@@ -410,7 +411,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             {/* Recoupement le moins cher qui existe, et le seul qui détecte une
                 ligne entière oubliée par la lecture. */}
             {entete?.ecartTotal != null && Math.abs(entete.ecartTotal) > 0.05 && (
-              <div style={{ margin: '8px 18px 0', padding: '6px 10px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+              <div style={{ margin: '8px 18px 0', ...encadreStyle('alerte'), fontSize: 11 }}>
                 La somme des lignes lues fait {fmt(entete.sommeLignes, 2)}, le document annonce
                 {' '}{fmt(entete.totalHT, 2)}, soit un écart de {fmt(Math.abs(entete.ecartTotal), 2)}.
                 Une ligne est probablement mal lue ou manquante.
@@ -438,7 +439,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                 const applicable = estApplicable(l);
                 return (
                   <div key={l.id} style={{
-                    border: `1px solid ${l.applique ? 'var(--success-bd)' : 'var(--border)'}`,
+                    border: '1px solid transparent',
                     background: l.applique ? 'var(--success-bg)' : 'var(--bg)',
                     borderRadius: 8, padding: '9px 12px', marginBottom: 7,
                   }}>
@@ -479,7 +480,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                     </div>
 
                     {impact?.alerte && (
-                      <div style={{ marginTop: 7, padding: '5px 8px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+                      <div style={{ marginTop: 7, ...encadreStyle('alerte'), fontSize: 11 }}>
                         Écart de plus de {SEUIL_ECART_PCT} % avec le prix actuel. Vraie variation, ou chiffre mal lu ? Vérifiez sur la facture avant d'appliquer.
                       </div>
                     )}
@@ -489,14 +490,14 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                       </div>
                     )}
                     {impact?.uniteDivergente && (
-                      <div style={{ marginTop: 7, padding: '5px 8px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+                      <div style={{ marginTop: 7, ...encadreStyle('alerte'), fontSize: 11 }}>
                         Le document compte en {impact.uniteDivergente.document}, le produit
                         en {impact.uniteDivergente.produit}. Comparer les deux donnerait un prix
                         faux : corrigez l'unité de référence du produit, ou choisissez-en un autre.
                       </div>
                     )}
                     {l.applique && l.produit && doublons.ids.has(l.produit.id) && (
-                      <div style={{ marginTop: 7, padding: '5px 8px', borderRadius: 6, background: 'var(--danger-bg)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 11 }}>
+                      <div style={{ marginTop: 7, ...encadreStyle('erreur'), fontSize: 11 }}>
                         Une autre ligne cochée vise déjà « {l.produit.nom} ». Un fournisseur n'a qu'un prix
                         par produit : décochez celle qui ne doit pas faire foi.
                       </div>
@@ -504,7 +505,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                     {(l.issues || []).length > 0 && (
                       <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {l.issues.map(x => (
-                          <span key={x} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>{x}</span>
+                          <span key={x} style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>{x}</span>
                         ))}
                       </div>
                     )}
@@ -540,7 +541,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0 }}>
                 {doublons.noms.length > 0 ? (
-                  <span style={{ color: 'var(--danger-text)', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--danger-text)', fontWeight: 500 }}>
                     Plusieurs lignes visent {doublons.noms.map(n => `« ${n} »`).join(', ')}. Décochez les doublons.
                   </span>
                 ) : nbApplique === 0 ? 'Aucune ligne sélectionnée.' : (
@@ -570,7 +571,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
       {progress && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9100, background: 'rgba(20,16,12,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', width: 'min(420px,94vw)', padding: 20 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Mise à jour des prix</div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Mise à jour des prix</div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
               {progress.done}/{progress.total} produit(s){progress.echecs ? `, ${progress.echecs} échec(s)` : ''}
             </div>
@@ -579,7 +580,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button onClick={() => { abortRef.current = true; }}
-                style={{ ...inp, cursor: 'pointer', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' }}>Interrompre</button>
+                style={{ ...inp, cursor: 'pointer', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent' }}>Interrompre</button>
             </div>
           </div>
         </div>

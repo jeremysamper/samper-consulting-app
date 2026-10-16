@@ -74,8 +74,8 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
           {TYPE_OPTIONS.map((t) => (
             <button key={t} type="button" onClick={() => setCustomType(t)}
               style={{
-                padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
-                border: `1px solid ${customType === t ? 'var(--accent)' : 'var(--border)'}`,
+                padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
+                border: '1px solid transparent',
                 background: customType === t ? 'var(--accent)' : 'var(--surface)',
                 color:      customType === t ? 'var(--on-accent)' : 'var(--text)',
               }}>
@@ -103,7 +103,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
       <button key={key} type="button" aria-pressed={on} onClick={onClick}
         style={{
           minHeight: 44, padding: '0 14px', borderRadius: 22, cursor: 'pointer',
-          fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)',
+          fontSize: 14, fontWeight: 500, fontFamily: 'var(--font)',
           borderWidth: 1, borderStyle: libre ? 'dashed' : 'solid',
           borderColor: on ? couleurs.on.border : couleurs.off.border,
           background:  on ? couleurs.on.bg : couleurs.off.bg,
@@ -129,7 +129,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
             t.valeur, () => toggleTag('autre', t.valeur, true),
           ))}
           <button type="button" onClick={() => setShowDialog(true)}
-            style={{ minHeight: 44, padding: '0 14px', borderRadius: 22, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--accent)' }}>
+            style={{ minHeight: 44, padding: '0 14px', borderRadius: 22, cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--accent)' }}>
             Autre
           </button>
         </div>
@@ -157,7 +157,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
                 return (
                   <button key={valeur} type="button" onClick={() => toggleTag(group.type_tag, valeur, libre)}
                     style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                      padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                       cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'var(--font)',
                       border: `1px ${libre ? 'dashed' : 'solid'} ${on ? group.colorActive.border : group.color.border}`,
                       background: on ? group.colorActive.bg : group.color.bg,
@@ -181,7 +181,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {value.filter((t) => t.type_tag === 'autre').map(({ valeur }) => (
               <button key={valeur} type="button" onClick={() => toggleTag('autre', valeur, true)}
-                style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px dashed var(--border)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
+                style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: '1px dashed var(--border)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
                 {valeur} ×
               </button>
             ))}
@@ -190,7 +190,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
       )}
 
       <button type="button" onClick={() => setShowDialog(true)}
-        style={{ marginTop: 4, fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: 'var(--font)', fontWeight: 600 }}>
+        style={{ marginTop: 4, fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: 'var(--font)', fontWeight: 500 }}>
         Tag personnalisé
       </button>
 

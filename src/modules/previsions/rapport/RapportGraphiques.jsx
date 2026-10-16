@@ -76,7 +76,7 @@ function Echelle({ max, unite }) {
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 0, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)', pointerEvents: 'none' }}>
       {/* Au-dessus du tracé : posé dedans, la barre la plus haute le cachait. */}
-      <span style={{ position: 'absolute', right: 0, bottom: 2, fontSize: 10, lineHeight: '12px', color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ position: 'absolute', right: 0, bottom: 2, fontSize: 11, lineHeight: '12px', color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
         {nf.format(max)} {unite}
       </span>
     </div>
@@ -153,7 +153,7 @@ export function BarresMoyenne({ points, moyenne, libelleMoyenne, couleur = 'var(
         </div>
         {moyenne > 0 && (
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${(moyenne / max) * 100}%`, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--text2)', pointerEvents: 'none' }}>
-            <span style={{ position: 'absolute', left: 0, bottom: 2, fontSize: 10, color: 'var(--text2)', background: 'var(--bg)', paddingRight: 4 }}>
+            <span style={{ position: 'absolute', left: 0, bottom: 2, fontSize: 11, color: 'var(--text2)', background: 'var(--bg)', paddingRight: 4 }}>
               {libelleMoyenne} {format(moyenne)}
             </span>
           </div>

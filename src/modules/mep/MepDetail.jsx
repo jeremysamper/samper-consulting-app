@@ -4,6 +4,7 @@ import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { s, formatDateService, formatFaitAt } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 
 // Detail d'une liste : deux sections (Urgent non congelable en premier, puis
 // Grosse production congelable), case a cocher en temps reel, barre d'avancement
@@ -133,9 +134,29 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
     <div style={s.root}>
       <div className="module-actions no-print" style={s.moduleActions}>
         <button style={s.backBtn} onClick={onBack}>Retour</button>
-        <button style={s.ghostBtn} onClick={exportPdf}>Export PDF</button>
-        {canEdit && <button style={s.ghostBtn} onClick={onEdit}>Modifier</button>}
-        {canEdit && <button style={s.dangerBtn} onClick={onDelete}>Supprimer</button>}
+        {/* Deux boutons nommés : « Exporter » (le PDF) et « Gérer » (modifier, supprimer). */}
+        <BoutonActions
+          id="mep-exporter"
+          label="Exporter"
+          style={s.ghostBtn}
+          titre="Exporter la liste"
+          sections={[{ items: [
+            { titre: 'Télécharger le PDF', detail: 'La liste de mise en place, prête à imprimer.', onClick: exportPdf },
+          ] }]}
+        />
+        {canEdit && (
+          <BoutonActions
+            id="mep-gerer"
+            label="Gérer"
+            style={s.ghostBtn}
+            titre="Gérer la liste"
+            sections={[{ items: [
+              { titre: 'Modifier', detail: 'Le nom, la date, la carte et les préparations.', onClick: onEdit },
+              { titre: 'Supprimer', detail: 'La liste et ses cases cochées, sans retour possible.', onClick: onDelete, danger: true },
+            ] }]}
+          />
+        )}
+
       </div>
 
       <div>

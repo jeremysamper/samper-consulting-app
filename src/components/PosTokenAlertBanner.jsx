@@ -70,7 +70,7 @@ export default function PosTokenAlertBanner({ unhealthy = [], onReconnect, varia
     >
       <span style={{
         fontSize: 13,
-        fontWeight: 600,
+        fontWeight: 500,
         color: 'var(--danger-strong, var(--danger-text))',
         fontFamily: 'var(--font)',
         lineHeight: 1.4,

@@ -106,7 +106,7 @@ const cs = {
     fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-num)',
     color: 'var(--text)', minWidth: 32, textAlign: 'center',
   },
-  sliderHint: { fontSize: 10, color: 'var(--text3)', fontStyle: 'italic' },
+  sliderHint: { fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' },
   radioGroup: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   radio: {
     padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
@@ -115,7 +115,7 @@ const cs = {
   },
   radioActive: {
     background: 'var(--accent)', color: 'var(--on-accent)',
-    border: '1px solid var(--accent)', fontWeight: 600,
+    border: '1px solid var(--accent)', fontWeight: 500,
   },
   btn: {
     marginTop: 4, padding: '12px 0', borderRadius: 10, border: 'none',

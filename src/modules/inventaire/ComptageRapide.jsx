@@ -200,8 +200,8 @@ export default function ComptageRapide({
 
       {canEdit && onChangerZone && !avecZones && total > 0 && !rangement && (
         <div style={st.astuceZones}>
-          Rangez les produits par zone (chambre froide, congélateur, économat) pour compter une zone après l'autre.
-          <button type="button" style={st.lienBtn} onClick={() => setRangement(true)}>Ranger par zone</button>
+          Rangez les produits par zone (chambre froide, congélateur, économat) avec le bouton « Ranger par zone », pour compter une zone après l'autre.
+
         </div>
       )}
 
@@ -322,25 +322,27 @@ const st = {
   progression: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 },
   barre: { height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' },
   barreRemplie: { height: '100%', background: 'var(--success-strong, var(--accent))', transition: 'width .2s ease' },
-  lienBtn: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 36 },
+  lienBtn: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 36 },
   outils: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 },
   recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   ajoutRapide: { display: 'flex', gap: 8, minWidth: 0 },
   ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  // Même hauteur que le champ d'ajout qu'il prolonge (44 px).
+  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   vide: { padding: '30px 16px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5, background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12 },
   groupeZone: { display: 'flex', flexDirection: 'column', gap: 4 },
   zoneTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: '10px 2px 0', paddingBottom: 4, borderBottom: '2px solid var(--border)' },
   zoneSelect: { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)', padding: '4px 8px', cursor: 'pointer', maxWidth: 180 },
-  rangerBtn: { padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40, whiteSpace: 'nowrap' },
+  // Gabarit du bouton secondaire de Btn (38 px, rayon --r-sm, graisse 500).
+  rangerBtn: { padding: '8px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 38, whiteSpace: 'nowrap' },
   rangerBtnActif: { borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 },
   astuceZones: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text2)', padding: '8px 12px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 8, lineHeight: 1.45 },
   catTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '6px 2px 6px' },
-  catCompte: { fontWeight: 600, color: 'var(--text3, var(--text2))', letterSpacing: 0 },
+  catCompte: { fontWeight: 500, color: 'var(--text3, var(--text2))', letterSpacing: 0 },
   cartes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 8 },
   carte: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, minWidth: 0 },
   carteComptee: { borderColor: 'var(--success-bd)' },
-  nom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
+  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
   indication: { fontSize: 11, color: 'var(--text2)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' },
   egal: { width: 40, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text2)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },

@@ -57,6 +57,6 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
 const s = {
   plus: {
     marginTop: 8, minHeight: 40, padding: '8px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
   },
 };

@@ -264,7 +264,7 @@ function TableShape({
       <>
       {/* Nom + capacité (le seul numéro, pour une tablée) */}
       <div style={{
-        fontSize: tabouret ? 10 : sobre ? 13 : 11, fontWeight: 800, lineHeight: 1.1,
+        fontSize: tabouret ? 10 : sobre ? 13 : 11, fontWeight: 700, lineHeight: 1.1,
         color: 'var(--text)', fontFamily: 'var(--font-serif)',
         maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
@@ -2061,7 +2061,7 @@ export default function PlanSalle({
           {elementChoisi ? (
             <>
               <span style={{
-                flexShrink: 0, fontSize: 12, fontWeight: 800, color: 'var(--text)',
+                flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--text)',
                 fontFamily: 'var(--font-serif)', marginRight: 4, whiteSpace: 'nowrap',
               }}>
                 {defChoisi?.label}
@@ -2299,7 +2299,7 @@ export default function PlanSalle({
               ) : (
               <>
               <div style={{
-                fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: 0.5, color: 'var(--text3)', marginBottom: 8,
               }}>
                 {nbAPlacer > 0

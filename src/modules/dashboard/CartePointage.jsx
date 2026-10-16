@@ -53,7 +53,7 @@ export default function CartePointage({
         <div style={s.repos}>
           <CalendarClock size={22} strokeWidth={1.7} aria-hidden="true" style={{ color: 'var(--text3)', flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>
               {prenom ? `Bonne journée, ${prenom}.` : 'Bonne journée.'}
             </div>
             <div style={t.texte2}>
@@ -122,7 +122,7 @@ export default function CartePointage({
                 <>
                   <div style={s.direct}>
                     <span className="tdb-live" aria-hidden="true" />
-                    <span style={{ fontSize: 13, color: 'var(--success-text)', fontWeight: 600 }}>En poste depuis {shift.pointageDebut}</span>
+                    <span style={{ fontSize: 13, color: 'var(--success-text)', fontWeight: 500 }}>En poste depuis {shift.pointageDebut}</span>
                     <span style={s.compteur} aria-label={`Durée : ${duree(travaille)}`}>{duree(travaille)}</span>
                   </div>
                   <button
@@ -152,8 +152,7 @@ export default function CartePointage({
 
 const s = {
   erreur: {
-    fontSize: 13, padding: '8px 12px', marginBottom: 12, borderRadius: 'var(--r-sm)',
-    background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
+    fontSize: 13, padding: '8px 0 8px 12px', marginBottom: 12,   color: 'var(--danger-text)', borderLeft: '2px solid var(--danger-bd)',
   },
   repos: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '4px 2px' },
   service: {
@@ -163,7 +162,7 @@ const s = {
   serviceTermine: { background: 'var(--surface2)' },
   serviceTete: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' },
   serviceNom: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: 'var(--text)' },
-  serviceHeures: { fontSize: 15, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  serviceHeures: { fontSize: 15, fontWeight: 500, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   direct: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   compteur: {
     marginLeft: 'auto', fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1, color: 'var(--text)',

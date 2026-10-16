@@ -50,7 +50,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
     >
       {/* Heure */}
       <div style={{
-        fontSize: isMobile ? 12 : 15, fontWeight: 800,
+        fontSize: isMobile ? 12 : 15, fontWeight: 700,
         color: 'var(--accent)', fontFamily: 'var(--font-num)',
       }}>
         {(resa.heure_arrivee || '').slice(0, 5)}
@@ -67,7 +67,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
           </span>
           {resa.est_groupe && (
             <span style={{
-              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+              fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
               background: 'var(--info-bg-soft)', color: 'var(--info-text)', border: '1px solid #bfdbfe',
             }}>
               Groupe
@@ -75,7 +75,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
           )}
           {passeport && (
             <span style={{
-              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+              fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
               background: 'var(--success-bg-soft)', color: 'var(--success-text)',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
             }}>
@@ -91,7 +91,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
                 <span
                   key={`${t.type_tag}-${t.valeur}`}
                   style={{
-                    padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 600,
+                    padding: '1px 7px', borderRadius: 20, fontSize: 11, fontWeight: 500,
                     background: c.bg, color: c.color, border: `1px solid ${c.border}`,
                     fontFamily: 'var(--font)',
                   }}
@@ -153,7 +153,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
         )}
         {traite && (
           <span style={{
-            padding: '3px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+            padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700,
             borderWidth: 1, borderStyle: 'solid', borderColor: meta.bordure,
             background: meta.bg, color: meta.texte, fontFamily: 'var(--font)',
             whiteSpace: 'nowrap',
@@ -169,7 +169,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
 
 // ── Composant principal ────────────────────────────────────
 export default function VueJour({
-  etablissementId, date, onBack, onResaUpdated, refreshKey, canEdit = true, onModeService,
+  etablissementId, date, onBack, onResaUpdated, refreshKey, canEdit = true, onModeService, onNouvelle = null,
 }) {
   const isMobile    = useIsMobile();
   const {
@@ -210,7 +210,7 @@ export default function VueJour({
       }}>
         <Btn small onClick={onBack}>Retour à la semaine</Btn>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
             {formatDateLongue(date)}
           </div>
           {!loading && actives.length > 0 && (
@@ -240,7 +240,7 @@ export default function VueJour({
               padding: '9px 16px', borderRadius: 8, minHeight: 44,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
               background: 'var(--surface)', color: 'var(--accent)',
-              fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+              fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
               cursor: 'pointer', flexShrink: 0,
             }}>
             Mode service
@@ -256,7 +256,7 @@ export default function VueJour({
             style={{
               padding: '9px 16px', borderRadius: 8, border: 'none', minHeight: 44,
               background: 'var(--accent)', color: 'var(--on-accent)',
-              fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+              fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
               cursor: 'pointer', flexShrink: 0,
             }}>
             Nouvelle réservation
@@ -279,8 +279,8 @@ export default function VueJour({
       {/* ── Erreur ── */}
       {error && (
         <div style={{
-          padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
-          border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
+          padding: '10px 0 10px 12px',  
+          borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>
@@ -319,12 +319,13 @@ export default function VueJour({
       {/* ── État vide ── */}
       {vue === 'liste' && !loading && !error && actives.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 36, opacity: 0.18, marginBottom: 10 }}>◐</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 6 }}>
             Aucune réservation ce jour
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-            Revenez à la semaine ou ajoutez-en une avec le bouton +
+            {onNouvelle
+              ? <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
+              : 'Revenez à la semaine pour voir les autres jours.'}
           </div>
         </div>
       )}
@@ -350,7 +351,7 @@ export default function VueJour({
               borderBottom: `2px solid ${meta.bordure}`,
             }}>
               <span style={{
-                fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: 0.5, color: meta.couleur,
               }}>
                 {meta.label}

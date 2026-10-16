@@ -111,7 +111,7 @@ export default function PlanElementForm({ element, onClose, onSave }) {
             padding: '10px 18px', borderRadius: 8,
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
             background: 'var(--surface)', color: 'var(--text)',
-            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
           }}>
             {loading ? 'Fermer' : 'Annuler'}
           </button>

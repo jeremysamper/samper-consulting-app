@@ -97,7 +97,7 @@ export function SelectionToolbar({
 const s = {
   stackWrap: { display: 'flex', flexDirection: 'column', gap: 6, padding: 8, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--accent-bd)' },
   stackHead: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 24 },
-  count: { fontSize: 13, fontWeight: 800, color: 'var(--text)' },
+  count: { fontSize: 13, fontWeight: 700, color: 'var(--text)' },
   countTotal: { fontWeight: 400, color: 'var(--text2)' },
   linkBtn: { background: 'none', border: 'none', padding: '2px 4px', color: 'var(--accent)', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer' },
   closeBtn: { background: 'none', border: 'none', padding: '2px 4px', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer', lineHeight: 1 },

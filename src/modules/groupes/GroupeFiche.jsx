@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { notify } from '../../components/toast/index.js';
-import { SegmentedTabs } from '../../components/ui/index.jsx';
+import { SegmentedTabs, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { pdfUtils } from '../../services/pdf.js';
 import { labelAllergene, sortAllergenes } from '../../utils/allergenes.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
@@ -250,7 +250,7 @@ export default function GroupeFiche({
               )}
               {conflits.length > 0 && (
                 <div style={{ ...st.encart, ...st.encartDanger }}>
-                  <strong style={{ fontWeight: 700 }}>Allergènes présents dans le menu.</strong>{' '}
+                  <strong style={encadreTitreStyle('erreur')}>Allergènes présents dans le menu.</strong>{' '}
                   {conflits.map((c) => `${c.label} (${c.plats.join(', ')})`).join(' ; ')}.
                   {' '}À vérifier sur les fiches techniques.
                 </div>
@@ -282,8 +282,8 @@ export default function GroupeFiche({
 
               {groupe.modifications && (
                 <div style={{ ...st.encart, ...st.encartAttention }}>
-                  <div style={{ ...st.rubrique, color: 'var(--warning-text)' }}>Modifications du menu</div>
-                  <div style={{ ...st.texte, color: 'var(--warning-text)' }}>{groupe.modifications}</div>
+                  <div style={{ ...st.rubrique, ...encadreTitreStyle('alerte') }}>Modifications du menu</div>
+                  <div style={st.texte}>{groupe.modifications}</div>
                 </div>
               )}
 
@@ -517,15 +517,16 @@ const st = {
     padding: '5px 11px', borderRadius: 16, fontSize: 13, fontWeight: 700,
     background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
   },
-  encart: { padding: '10px 12px', borderRadius: 8, fontSize: 13, lineHeight: 1.5 },
-  encartDanger: { background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)' },
-  encartAttention: { background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)' },
+  // Encadrés de statut : filet gauche au ton, sans fond ni coins (Encadre).
+  encart: { paddingTop: 2, paddingBottom: 2, fontSize: 13, lineHeight: 1.5 },
+  encartDanger: encadreStyle('erreur'),
+  encartAttention: encadreStyle('alerte'),
   menu: {
     padding: '14px 16px', borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)',
     display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'center',
   },
   menuSection: {
-    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+    fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
     color: 'var(--text3)', marginBottom: 4,
   },
   menuPlat: { fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.35 },
@@ -540,9 +541,9 @@ const st = {
   quantite: { flexShrink: 0, fontFamily: 'var(--font-num)', fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' },
   bouton: {
     flex: '1 1 auto', minHeight: 44, padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
   },
   boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
-  boutonDanger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
+  boutonDanger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent' },
 };

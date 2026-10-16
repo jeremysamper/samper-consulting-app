@@ -65,18 +65,18 @@ const s = {
   boutons: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   btn: {
     padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer',
+    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer',
   },
   attente: { marginTop: 28, fontSize: 14, color: 'var(--text2)' },
   vide: { marginTop: 24, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))', gap: '22px 18px', marginTop: 22 },
   titreSection: { margin: '0 0 4px', fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 22, lineHeight: 1.2, color: 'var(--text)' },
   sousTitreSection: { margin: '0 0 12px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 },
-  titreBloc: { margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--text2)', fontFamily: 'var(--font)' },
+  titreBloc: { margin: '0 0 10px', fontSize: 13, fontWeight: 500, color: 'var(--text2)', fontFamily: 'var(--font)' },
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '26px 36px' },
   note: { margin: '8px 0 0', fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 },
   alerte: { marginTop: 16, fontSize: 13, color: 'var(--warning-text)', lineHeight: 1.5 },
-  th: { fontWeight: 600, fontSize: 12, color: 'var(--text2)', padding: '5px 6px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
+  th: { fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '5px 6px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
   td: { padding: '6px', fontSize: 13, color: 'var(--text)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
 };
 
@@ -148,7 +148,7 @@ function Kpi({ label, valeur, variation, unite, sens, aide, definition, alerte, 
   return (
     <div title={definition} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
       <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.3 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--font-num)', lineHeight: 1.1, color: alerte ? 'var(--warning-text)' : 'var(--text)' }}>
+      <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-num)', lineHeight: 1.1, color: alerte ? 'var(--warning-text)' : 'var(--text)' }}>
         {valeur}
       </div>
       <div style={{ fontSize: 12, color: couleur, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>

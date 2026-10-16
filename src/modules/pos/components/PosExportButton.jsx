@@ -75,7 +75,7 @@ export function PosExportButton({ printId, title, etablissement, fileName, label
         border:      '1px solid var(--border)',
         borderRadius: 8,
         fontSize:    13,
-        fontWeight:  600,
+        fontWeight:  500,
         color:       (disabled || busy) ? 'var(--text3)' : 'var(--text)',
         cursor:      (disabled || busy) ? 'not-allowed' : 'pointer',
         fontFamily:  'var(--font)',

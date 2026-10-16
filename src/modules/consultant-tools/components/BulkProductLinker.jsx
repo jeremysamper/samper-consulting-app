@@ -28,7 +28,7 @@ const PILES = [
 ];
 
 const chipStyle = (conf) => ({
-  fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, whiteSpace: 'nowrap',
+  fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10, whiteSpace: 'nowrap',
   background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : 'var(--surface2)',
   color: conf >= 85 ? 'var(--success-text)' : conf >= 60 ? 'var(--warning-text)' : 'var(--text2)',
 });
@@ -239,7 +239,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
               Lier les ingrédients au catalogue
             </div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
@@ -278,7 +278,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                     key={p.id}
                     onClick={() => setPile(p.id)}
                     style={{
-                      padding: '7px 12px', fontSize: 12, fontWeight: actif ? 800 : 600, whiteSpace: 'nowrap',
+                      padding: '7px 12px', fontSize: 12, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap',
                       background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
                       color: actif ? 'var(--accent)' : 'var(--text2)',
                       borderBottom: `2px solid ${actif ? 'var(--accent)' : 'transparent'}`,
@@ -325,7 +325,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                   <div
                     key={g.key}
                     style={{
-                      border: `1px solid ${choisi ? 'var(--success-bd)' : 'var(--border)'}`,
+                      border: '1px solid transparent',
                       background: choisi ? 'var(--success-bg)' : 'var(--bg)',
                       borderRadius: 8, padding: '9px 12px', marginBottom: 7,
                     }}
@@ -361,7 +361,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                     </div>
 
                     {perteDePrix && (
-                      <div style={{ marginTop: 7, padding: '5px 8px', borderRadius: 6, background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+                      <div style={{ marginTop: 7, padding: '5px 0 5px 12px',   borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
                         Ce produit est à 0 au catalogue alors que les recettes portent un prix saisi. Lier ferait tomber leur coût à zéro : renseignez d'abord le prix du produit.
                       </div>
                     )}
@@ -380,7 +380,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                                 padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
                                 background: actif ? 'var(--accent)' : 'var(--surface)',
                                 color: actif ? 'var(--on-accent)' : 'var(--text)',
-                                border: `1px solid ${actif ? 'var(--accent)' : 'var(--border)'}`,
+                                border: '1px solid transparent',
                               }}
                             >
                               {s.product?.nom || s.nom}
@@ -453,7 +453,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
       {progress && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9100, background: 'rgba(20,16,12,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>
               Liaison en cours
             </div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>

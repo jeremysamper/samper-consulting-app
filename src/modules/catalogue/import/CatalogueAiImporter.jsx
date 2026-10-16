@@ -451,7 +451,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 <div style={st.sheetStats}>
                   {fileStats.map(s => (
                     <div key={s.sheet} style={{ ...st.sheetItem, ...(s.skipped ? st.sheetItemSkipped : {}) }}>
-                      <span style={{ fontWeight: 600 }}>{s.sheet}</span>
+                      <span style={{ fontWeight: 500 }}>{s.sheet}</span>
                       {s.skipped
                         ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide, ignorée</span>
                         : <>
@@ -517,10 +517,10 @@ const st = {
   body: { padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
   foot: { padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' },
   pickZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 20px' },
-  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
+  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
   select: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  primaryBtn: { padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-block' },
-  ghostBtn: { padding: '9px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)' },
+  primaryBtn: { padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-block' },
+  ghostBtn: { padding: '9px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)' },
   banner: { padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' },
   progressTrack: { width: 'min(360px,80vw)', height: 10, background: 'var(--bg)', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' },
   progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
@@ -528,7 +528,7 @@ const st = {
   sheetStats: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   sheetItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: 'var(--text)' },
   sheetItemSkipped: { opacity: 0.55 },
-  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 8, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', fontSize: 10, fontWeight: 600 },
+  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 8, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', fontSize: 11, fontWeight: 500 },
 };
 
 export default CatalogueAiImporter;

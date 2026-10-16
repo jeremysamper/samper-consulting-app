@@ -173,7 +173,7 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
                   onClick={() => installer(n)}
                   aria-label={`${n} couvert${n > 1 ? 's' : ''}`}
                   style={caseStyle(false, {
-                    minHeight: 52, fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 800,
+                    minHeight: 52, fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 700,
                     cursor: envoi ? 'not-allowed' : 'pointer', opacity: envoi ? 0.5 : 1,
                   })}
                 >

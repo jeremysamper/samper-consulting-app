@@ -190,7 +190,7 @@ export const CreneauForm = ({ creneau, creneaux = [], onSave, onCancel }) => {
                   <button key={l} onClick={() => setF({ ...f, label: l })}
                     style={{
                       padding: '5px 10px', fontSize: 11, borderRadius: 20, cursor: 'pointer', fontFamily: 'var(--font)',
-                      border: `1px solid ${f.label === l ? 'var(--accent)' : 'var(--border)'}`,
+                      border: '1px solid transparent',
                       background: f.label === l ? 'var(--accent-light)' : 'var(--surface)',
                       color: f.label === l ? 'var(--accent)' : 'var(--text2)',
                     }}>{l}</button>

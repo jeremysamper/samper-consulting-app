@@ -119,15 +119,15 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
                 style={{ accentColor: 'var(--accent)' }}
               />
               <div>
-                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{loc.locationName}</div>
+                <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text)' }}>{loc.locationName}</div>
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>{loc.businessName}, {loc.locationId}</div>
               </div>
             </label>
           ))}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>Annuler</button>
-          <button type="button" onClick={handleSave} disabled={!selected || saving} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: selected ? 'var(--accent)' : 'var(--border)', color: selected ? 'var(--on-accent)' : 'var(--text3)', fontSize: 13, fontWeight: 600, cursor: selected ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', opacity: saving ? 0.7 : 1 }}>
+          <button type="button" onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' }}>Annuler</button>
+          <button type="button" onClick={handleSave} disabled={!selected || saving} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: selected ? 'var(--accent)' : 'var(--border)', color: selected ? 'var(--on-accent)' : 'var(--text3)', fontSize: 13, fontWeight: 500, cursor: selected ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Enregistrement…' : 'Confirmer'}
           </button>
         </div>
@@ -206,7 +206,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
             padding: '8px 16px', borderRadius: 8,
             background: running ? 'var(--border)' : 'var(--accent)',
             color: running ? 'var(--text2)' : 'var(--on-accent)', border: 'none',
-            fontSize: 13, fontWeight: 600,
+            fontSize: 13, fontWeight: 500,
             cursor: running ? 'wait' : 'pointer',
             fontFamily: 'var(--font)', flexShrink: 0,
           }}
@@ -271,9 +271,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
       {/* Alerte si secrets absents */}
       {secretsConfigured === false && (
         <div style={{
-          fontSize: 12, color: 'var(--warning-text)',
-          background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
-          borderRadius: 8, padding: '8px 12px',
+          fontSize: 12, color: 'var(--warning-text)',  borderLeft: '2px solid var(--warning-bd)',  padding: '8px 0 8px 12px',
         }}>
           Configure d'abord les secrets Supabase (étape 2) avant de connecter.
           Cliquez sur « Voir le guide » pour les instructions détaillées.
@@ -288,7 +286,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
           style={{
             padding: '8px 16px', borderRadius: 8,
             border: '1px solid var(--border)', background: 'var(--surface)',
-            color: 'var(--text)', fontSize: 13, fontWeight: 600,
+            color: 'var(--text)', fontSize: 13, fontWeight: 500,
             cursor: 'pointer', fontFamily: 'var(--font)',
           }}
         >
@@ -303,7 +301,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
             padding: '8px 20px', borderRadius: 8, border: 'none',
             background: (!configured || busy) ? 'var(--border)' : 'var(--accent)',
             color: (!configured || busy) ? 'var(--text3)' : 'var(--on-accent)',
-            fontSize: 13, fontWeight: 600,
+            fontSize: 13, fontWeight: 500,
             cursor: (!configured || busy) ? 'not-allowed' : 'pointer',
             fontFamily: 'var(--font)', transition: 'background 0.15s',
           }}
@@ -480,9 +478,9 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{provider.label}</span>
               {loading && <span style={{ fontSize: 11, color: 'var(--text3)' }}>Chargement…</span>}
-              {!loading && isConnected    && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' }}>Connecté</span>}
-              {!loading && isError        && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' }}>Erreur</span>}
-              {!loading && needsLocation  && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--warning-bg-soft)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}>Sélection requise</span>}
+              {!loading && isConnected    && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' }}>Connecté</span>}
+              {!loading && isError        && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' }}>Erreur</span>}
+              {!loading && needsLocation  && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--warning-bg-soft)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}>Sélection requise</span>}
             </div>
             {isConnected && (
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
@@ -505,7 +503,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {needsLocation && (
                 <button type="button" onClick={handleConnect} disabled={busy}
-                  style={{ padding: '8px 16px', borderRadius: 8, background: busy ? 'var(--warning-bd)' : 'var(--accent)', color: busy ? 'var(--text)' : 'var(--on-accent)', border: 'none', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
+                  style={{ padding: '8px 16px', borderRadius: 8, background: busy ? 'var(--warning-bd)' : 'var(--accent)', color: busy ? 'var(--text)' : 'var(--on-accent)', border: 'none', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
                   {action === 'connecting' ? 'Connexion…' : 'Reconnecter'}
                 </button>
               )}
@@ -513,18 +511,18 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
                 <>
                   {isConnected && (
                     <button type="button" onClick={handleTest} disabled={busy}
-                      style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                      style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
                       {action === 'testing' ? 'Test…' : 'Tester'}
                     </button>
                   )}
                   {isError && (
                     <button type="button" onClick={handleConnect} disabled={busy}
-                      style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
+                      style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--warning-bg-soft)', border: '1px solid transparent', color: 'var(--warning-text)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
                       Reconnecter
                     </button>
                   )}
                   <button type="button" onClick={handleDisconnect} disabled={busy}
-                    style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                    style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)', border: '1px solid transparent', color: 'var(--danger-text)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
                     {action === 'disconnecting' ? 'Déconnexion…' : 'Déconnecter'}
                   </button>
                 </>

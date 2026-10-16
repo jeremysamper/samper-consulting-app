@@ -207,7 +207,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                       onChange={basculerConsentement}
                       style={{ width: 20, height: 20, accentColor: 'var(--accent)', flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                    <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
                       Accepte de recevoir les actualités et les bons cadeaux par e-mail
                     </span>
                   </label>
@@ -242,7 +242,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
               {/* Historique */}
               {!nouveau && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 8 }}>
                     Historique ({pluriel((historique || []).length, 'réservation')})
                   </div>
                   {(historique || []).length === 0 && (
@@ -264,7 +264,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
                               {dateCh(r.date_service)}
                             </span>
-                            <span style={{ fontSize: 12, color: svc?.couleur || 'var(--text2)', fontWeight: 600 }}>
+                            <span style={{ fontSize: 12, color: svc?.couleur || 'var(--text2)', fontWeight: 500 }}>
                               {svc?.label || r.service} {(r.heure_arrivee || '').slice(0, 5)}
                             </span>
                             <span style={{ fontSize: 12, color: 'var(--text2)' }}>{pluriel(r.nb_couverts || 0, 'couvert')}</span>
@@ -311,7 +311,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
           <button type="button" onClick={onClose} style={{
             minHeight: 44, padding: '8px 16px', borderRadius: 8,
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-            background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer',
+            background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer',
           }}>
             {enCours ? 'Fermer' : canEdit ? 'Annuler' : 'Fermer'}
           </button>

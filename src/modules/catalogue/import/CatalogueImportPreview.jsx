@@ -146,17 +146,17 @@ const CatalogueImportPreview = ({ produits, onChange }) => {
 const s = {
   wrap: { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
-  th: { padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid var(--border)', background: 'var(--bg)', whiteSpace: 'nowrap' },
+  th: { padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid var(--border)', background: 'var(--bg)', whiteSpace: 'nowrap' },
   tr: { borderBottom: '1px solid var(--border)' },
   trFlag: { background: 'var(--warning-bg-soft)' },
   trOff: { opacity: 0.5 },
   td: { padding: '6px 10px', verticalAlign: 'middle' },
   inp: { padding: '5px 7px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
-  issueBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)' },
-  confBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 8, background: 'var(--danger-bg)', color: 'var(--danger-text)' },
-  okBadge: { fontSize: 11, fontWeight: 600, color: 'var(--success-text)' },
-  dupBox: { display: 'flex', flexDirection: 'column', gap: 3, padding: '5px 7px', background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', borderRadius: 7 },
-  dupInfo: { fontSize: 10, color: 'var(--warning-text)', lineHeight: 1.35 },
+  issueBadge: { fontSize: 11, fontWeight: 500, padding: '2px 6px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)' },
+  confBadge: { fontSize: 11, fontWeight: 500, padding: '2px 6px', borderRadius: 8, background: 'var(--danger-bg)', color: 'var(--danger-text)' },
+  okBadge: { fontSize: 11, fontWeight: 500, color: 'var(--success-text)' },
+  dupBox: { display: 'flex', flexDirection: 'column', gap: 3, padding: '5px 0 5px 12px',  borderLeft: '2px solid var(--warning-bd)',},
+  dupInfo: { fontSize: 11, color: 'var(--warning-text)', lineHeight: 1.35 },
 };
 
 export default CatalogueImportPreview;

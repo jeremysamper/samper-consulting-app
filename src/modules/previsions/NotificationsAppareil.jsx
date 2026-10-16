@@ -126,7 +126,7 @@ export default function NotificationsAppareil({ etablissementId, user }) {
 const s = {
   bouton: {
     padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600,
+    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500,
     fontFamily: 'var(--font)', cursor: 'pointer',
   },
   voile: {
@@ -150,7 +150,7 @@ const s = {
   },
   secondaire: {
     padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40,
+    color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40,
   },
   discret: {
     padding: '9px 12px', borderRadius: 8, border: 'none', background: 'transparent',

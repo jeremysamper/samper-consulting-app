@@ -140,7 +140,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
                 fontWeight: selectedPeriod === opt.id ? 700 : 500,
                 fontFamily: 'var(--font)',
                 cursor:     'pointer',
-                border:     `1px solid ${selectedPeriod === opt.id ? 'var(--accent)' : 'var(--border)'}`,
+                border: '1px solid transparent',
                 background: selectedPeriod === opt.id ? 'var(--accent)' : 'var(--surface)',
                 color:      selectedPeriod === opt.id ? 'var(--on-accent)' : 'var(--text2)',
                 transition: 'all 0.15s',
@@ -279,7 +279,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
                   </div>
                   <div style={{
                     paddingLeft: 8,
-                    fontSize: 12, color: 'var(--text2)', fontWeight: 600,
+                    fontSize: 12, color: 'var(--text2)', fontWeight: 500,
                   }}>
                     {ing.unite}
                   </div>

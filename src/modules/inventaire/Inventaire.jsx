@@ -34,6 +34,7 @@ import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
 import { useAchatsDocuments } from './useAchatsDocuments.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { Btn } from '../../components/ui/index.jsx';
 
 // L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
 // seulement quand on l'ouvre, le comptage reste léger sur la tablette.
@@ -696,7 +697,7 @@ const Inventaire = ({ user, etablissement }) => {
   if (!inv) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
           Créez un inventaire par périmètre : cuisine, boissons, matériel… chacun avec son propre rythme de comptage.
         </div>
@@ -1385,8 +1386,8 @@ const Inventaire = ({ user, etablissement }) => {
           </span>
         </div>
         <div className="module-actions">
-          {canEditLignes && <button style={invs.addBtn} onClick={() => setShowAjout(true)}>Ajouter des produits</button>}
-          {/* Juste après « + Produits » : visible sur téléphone sans faire défiler la barre. */}
+          {canEditLignes && <Btn onClick={() => setShowAjout(true)}>Ajouter des produits</Btn>}
+          {/* Juste après « Ajouter des produits » : visible sur téléphone sans faire défiler la barre. */}
           <BoutonActions
             id="inventaire-exporter"
             label={exportEnCours ? 'Export en cours…' : 'Exporter'}
@@ -1402,8 +1403,9 @@ const Inventaire = ({ user, etablissement }) => {
               ],
             }]}
           />
-          {canManage && !estValide && <button style={invs.validateBtn} onClick={validerInventaire}>Valider</button>}
-          {canManage && estValide && <button style={invs.exportBtn} onClick={rouvrirInventaire}>Rouvrir</button>}
+          {/* Valider : le seul bouton principal de l'en-tête (plus de vert). */}
+          {canManage && !estValide && <Btn variant="primary" onClick={validerInventaire}>Valider</Btn>}
+          {canManage && estValide && <Btn onClick={rouvrirInventaire}>Rouvrir</Btn>}
           <BoutonActions
             id="inventaire-gerer"
             label="Gérer"
@@ -1548,7 +1550,7 @@ const Inventaire = ({ user, etablissement }) => {
               }}>
                 <span style={{ whiteSpace: 'nowrap' }}>{deltaValeur > 0 ? '+' : ''}CHF {deltaValeur.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 {deltaPct != null && (
-                  <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 6, opacity: 0.85 }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, marginLeft: 6, opacity: 0.85 }}>
                     ({deltaPct > 0 ? '+' : ''}{deltaPct.toLocaleString('fr-CH', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %)
                   </span>
                 )}
@@ -1592,7 +1594,7 @@ const Inventaire = ({ user, etablissement }) => {
           />
           {hasTypes && (
             <div style={{display:'flex', gap:6, alignItems:'center'}}>
-              <span style={{fontSize:11, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', letterSpacing:0.4}}>Type :</span>
+              <span style={{fontSize:11, color:'var(--text2)', fontWeight:500, textTransform:'uppercase', letterSpacing:0.4}}>Type :</span>
               <SegmentedTabs
                 size="sm"
                 active={typeFilter}
@@ -1707,13 +1709,13 @@ const Inventaire = ({ user, etablissement }) => {
                     <>{estCompte(l) ? `${l.stockReel} ${l.unite}` : '-'}</>
                   )}
                 </span>
-                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecart == null ? '-' : <>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</>}</span>
+                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:500}}>{l.ecart == null ? '-' : <>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</>}</span>
                 {/* Number(...) || 0 : une ligne relue de la base n'est pas
                     recalculée au chargement, un champ absent ne doit pas faire
                     tomber tout le module. */}
                 <span style={{...invs.cellBold, textAlign:'right'}}>{(Number(l.valeur) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</span>
-                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:600}}>{l.ecart == null ? '-' : <>{l.ecartValeur > 0 ? '+' : ''}{(Number(l.ecartValeur) || 0).toFixed(2)}</>}</span>
-                {canManage && <span className="no-print">{canEditLignes && <button style={invs.deleteBtn} onClick={() => deleteLine(l.id)}>Supprimer</button>}</span>}
+                <span style={{...invs.cell, textAlign:'right', color:ecartColor, fontWeight:500}}>{l.ecart == null ? '-' : <>{l.ecartValeur > 0 ? '+' : ''}{(Number(l.ecartValeur) || 0).toFixed(2)}</>}</span>
+                {canManage && <span className="no-print">{canEditLignes && <button className="btn-suppr-discret" style={invs.deleteBtn} onClick={() => deleteLine(l.id)}>Supprimer</button>}</span>}
               </div>
             );
           })}
@@ -1760,16 +1762,16 @@ const invs = {
   docTitle: {display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:4},
   docTitlePerimetre: {fontSize:17,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   docTitleDate: {fontSize:12,color:'var(--text2)'},
-  loadError: {background:'var(--warning-bg)',color:'var(--warning-text)',border:'1px solid var(--warning-bd)',borderRadius:8,padding:'10px 14px',fontSize:12,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
+  loadError: { color:'var(--warning-text)',borderLeft: '2px solid var(--warning-bd)', padding: '10px 0 10px 12px',fontSize:12,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
   fieldHint: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.45},
   saisieHint: {fontSize:11,color:'var(--text2)',lineHeight:1.5,padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
   saisiesAttente: {fontSize:12,lineHeight:1.5,padding:'10px 14px',borderRadius:8,background:'var(--info-bg, var(--warning-bg))',color:'var(--info-text, var(--warning-text))',border:'1px solid var(--info-bd, var(--warning-bd))'},
   // Le champ prend la largeur de sa cellule ; l'unité reste collée à droite et
   // ne se comprime jamais (flexShrink 0), sinon « pcs » se coupe en « p… ».
   stockSaisie: {display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,width:'100%',minWidth:0},
-  stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:600,fontFamily:'var(--font)',boxSizing:'border-box'},
+  stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:500,fontFamily:'var(--font)',boxSizing:'border-box'},
   stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
-  zoneTag: {display:'inline-block',marginLeft:4,fontSize:10,color:'var(--text2)'},
+  zoneTag: {display:'inline-block',marginLeft:4,fontSize:11,color:'var(--text2)'},
   rangement: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize:13,color:'var(--text2)',padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
   // Fenêtre d'actions (Exporter, Gérer) : centrée, tiroir du bas sur téléphone.
   voile: {position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
@@ -1780,21 +1782,23 @@ const invs = {
   // flexShrink 0 : dans une colonne qui défile, le min-height global des boutons
   // sur tactile écraserait sinon la hauteur et les choix se chevaucheraient.
   fenetreSection: {display:'flex',flexDirection:'column',gap:8,flexShrink:0},
-  fenetreSectionTitre: {fontSize:12,fontWeight:600,color:'var(--text2)',marginTop:2},
+  fenetreSectionTitre: {fontSize:12,fontWeight:500,color:'var(--text2)',marginTop:2},
   choix: {display:'flex',flexDirection:'column',alignItems:'flex-start',gap:3,width:'100%',textAlign:'left',padding:'12px 14px',minHeight:52,background:'var(--bg)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:10,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0,boxSizing:'border-box'},
   choixDanger: {background:'var(--surface)',borderColor:'var(--danger-bd)'},
   choixTitre: {fontSize:14,fontWeight:700,color:'var(--text)'},
   choixDetail: {fontSize:12,color:'var(--text2)',lineHeight:1.4,whiteSpace:'normal'},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',fontSize:13,fontWeight:500,whiteSpace:'nowrap'},
-  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  validateBtn: {padding:'8px 16px',background:'var(--success-bg)',border:'1px solid var(--success-bd)',color:'var(--success-text)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  exportBtn: {padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
-  kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
+  // Gabarit des boutons de Btn (38 px sur ordinateur, 44 au toucher par la règle globale) : principal et secondaire.
+  addBtn: {minHeight:38,padding:'8px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'1px solid var(--accent)',borderRadius:'var(--r-sm)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)'},
+
+  exportBtn: {minHeight:38,padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:'var(--r-sm)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6},
+  // Supprimer, sur chaque ligne : discret au repos, rouge au survol et au focus (classe btn-suppr-discret, app.css).
+  deleteBtn:{padding:'6px 10px',background:'transparent',border:'1px solid transparent',color:'var(--text3)',borderRadius:8,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
   kpiNote: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.4},
   filters: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',minWidth:0}, catTabs: {display:'flex',gap:4,flexWrap:'wrap'}, catBtn: {padding:'5px 14px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}, catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
-  tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:600,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:600,color:'var(--text)'}, catTag: {fontSize:10,fontWeight:600,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
-  overlay: {position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}, modal: {background:'var(--surface)',borderRadius:14,width:420,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}, modalHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'}, closeBtn: {background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}, fieldLabel: {display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
+  tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:12,fontWeight:700,color:'var(--text2)',borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:500,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:500,color:'var(--text)'}, catTag: {fontSize:11,fontWeight:500,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
+  overlay: {position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}, modal: {background:'var(--surface)',borderRadius:14,width:420,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}, modalHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'}, closeBtn: {background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}, fieldLabel: {display:'block',fontSize:12,fontWeight:500,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
 };
 
 export default Inventaire;

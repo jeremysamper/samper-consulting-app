@@ -21,11 +21,9 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
   // ── Error ────────────────────────────────────────────────────────
   if (type === 'error') {
     return (
-      <div style={{
-        background:   'var(--danger-bg-soft)',
-        border:       '1px solid var(--danger-bd)',
-        borderRadius: 10,
-        padding:      '20px 24px',
+      <div style={{ 
+        borderLeft: '2px solid var(--danger-bd)', 
+        padding: '20px 0 20px 12px',
         display:      'flex',
         alignItems:   'center',
         justifyContent: 'space-between',
@@ -46,7 +44,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
               border:     '1px solid var(--border)',
               borderRadius: 7,
               fontSize:   12,
-              fontWeight: 600,
+              fontWeight: 500,
               color:      'var(--text)',
               cursor:     'pointer',
               fontFamily: 'var(--font)',
@@ -122,7 +120,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
             border:     'none',
             borderRadius: 8,
             fontSize:   13,
-            fontWeight: 600,
+            fontWeight: 500,
             cursor:     'pointer',
             fontFamily: 'var(--font)',
           }}

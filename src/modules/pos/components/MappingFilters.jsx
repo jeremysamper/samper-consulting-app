@@ -38,7 +38,7 @@ export function MappingFilters({ filter, onFilter, search, onSearch, counts }) {
                 fontWeight:   active ? 700 : 500,
                 fontFamily:   'var(--font)',
                 cursor:       'pointer',
-                border:       `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                border: '1px solid transparent',
                 background:   active ? 'var(--accent)' : 'var(--surface)',
                 color:        active ? 'var(--on-accent)' : 'var(--text2)',
                 transition:   'all 0.15s',

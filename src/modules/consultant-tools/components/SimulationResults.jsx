@@ -89,9 +89,8 @@ const cs = {
   },
   emptyText: { fontSize: 12, color: 'var(--text3)', textAlign: 'center' },
   alerte: {
-    padding: '10px 14px', borderRadius: 8,
-    background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)',
-    color: 'var(--danger-strong)', fontSize: 13, fontWeight: 600,
+    padding: '10px 0 10px 12px',   borderLeft: '2px solid var(--danger-bd)',
+    color: 'var(--danger-strong)', fontSize: 13, fontWeight: 500,
   },
   kpisGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   kpi: {
@@ -99,7 +98,7 @@ const cs = {
     padding: '12px 14px', border: '1px solid var(--border)',
   },
   kpiLabel: {
-    fontSize: 10, fontWeight: 700, color: 'var(--text2)',
+    fontSize: 11, fontWeight: 700, color: 'var(--text2)',
     textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4,
   },
   kpiValue: {
@@ -126,7 +125,7 @@ const cs = {
     padding: '12px 14px', border: '1px solid var(--border)',
   },
   syntheseTitle: {
-    fontSize: 10, fontWeight: 700, color: 'var(--text2)',
+    fontSize: 11, fontWeight: 700, color: 'var(--text2)',
     textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
   },
   syntheseText: { fontSize: 13, color: 'var(--text)', lineHeight: 1.65 },

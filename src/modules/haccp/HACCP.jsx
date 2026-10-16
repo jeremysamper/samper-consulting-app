@@ -19,6 +19,7 @@ import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -693,7 +694,7 @@ const HACCP = ({ user, etablissement }) => {
                 return(
                   <div key={a.id} style={hs.anomRow}>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{zone?.nom}</div>
+                      <div style={{fontSize:13,fontWeight:500,color:'var(--text)'}}>{zone?.nom}</div>
                       <div style={{fontSize:11,color:'var(--text2)'}}>{a.date} à {a.heure}, {op.name}</div>
                       {a.commentaire&&<div style={{fontSize:12,color:'var(--danger-strong)',marginTop:2}}>{a.commentaire}</div>}
                     </div>
@@ -754,13 +755,13 @@ const HACCP = ({ user, etablissement }) => {
                       <input type="checkbox" checked={sel.isSelected(r.id)} onChange={() => sel.toggle(r.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                     </span>
                   )}
-                  <span style={{fontSize:13,fontWeight:600}}>{zone?.nom}</span>
+                  <span style={{fontSize:13,fontWeight:500}}>{zone?.nom}</span>
                   <span style={hs.cell}>{r.heure}</span>
                   <span style={{...hs.cell,textAlign:'right',fontWeight:700,color:r.conforme?'var(--success-text)':'var(--danger-strong)',fontSize:15,fontFamily:'var(--font-num)'}}>{r.valeur}{zone?.unite}</span>
                   <span style={hs.cell}>{op.name}</span>
                   <span><span style={{...hs.confBadge,background:r.conforme?'var(--success-bg)':'var(--danger-bg)',color:r.conforme?'var(--success-text)':'var(--danger-strong)'}}>{r.conforme?'OK':'Anomalie'}</span></span>
                   <span style={{...hs.cell,color:r.commentaire?'var(--danger-strong)':'var(--text2)',fontSize:12}}>{r.commentaire||'-'}</span>
-                  {canManage && <span className="no-print"><button style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
+                  {canManage && <span className="no-print"><button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteReleve(r.id)}>Supprimer</button></span>}
                 </div>
               );
             })}
@@ -777,18 +778,18 @@ const HACCP = ({ user, etablissement }) => {
               {(activeTpls || []).map(tpl=>{
                 const done=todayControls.find(c=>c.templateId===tpl.id);
                 return(
-                  <div key={tpl.id} style={{...hs.ctrlRow,background:done?(done.statut==='conforme'?'var(--success-bg-soft)':'var(--danger-bg-soft)'):'var(--bg)',border:`1px solid ${done?(done.statut==='conforme'?'var(--success-bd)':'var(--danger-bd)'):'var(--border)'}`}}>
+                  <div key={tpl.id} style={{...hs.ctrlRow,background:'var(--bg)',border:'1px solid var(--border)'}}>
                     <div style={{...hs.ctrlCheck,background:done?(done.statut==='conforme'?'var(--success-fill)':'var(--danger-fill)'):'var(--border)',color:done?(done.statut==='conforme'?'var(--on-success)':'var(--on-danger)'):'var(--text3)'}}>{done?(done.statut==='conforme'?'✓':'✕'):''}</div>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{tpl.label}</div>
+                      <div style={{fontSize:13,fontWeight:500,color:'var(--text)'}}>{tpl.label}</div>
                       <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>{tpl.frequence}, {CTRL_TYPES.find(t=>t.id===tpl.type)?.label}</div>
                       {tpl.description&&<div style={{fontSize:11,color:'var(--text2)',marginTop:2,fontStyle:'italic'}}>{tpl.description}</div>}
                       {done?.notes&&<div style={{fontSize:11,color:done.statut==='conforme'?'var(--text2)':'var(--danger-strong)',marginTop:3,fontStyle:'italic'}}>{done.notes}</div>}
                     </div>
                     {done?(
                       <div style={{textAlign:'right'}}>
-                        <div style={{...hs.confBadge,background:done.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:done.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{done.statut==='conforme'?'Conforme':'Non conforme'}</div>
-                        <div style={{fontSize:10,color:'var(--text2)',marginTop:3}}>{done.heure}</div>
+                        <span style={{...hs.confBadge,background:done.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:done.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{done.statut==='conforme'?'Conforme':'Non conforme'}</span>
+                        <div style={{fontSize:11,color:'var(--text2)',marginTop:3}}>{done.heure}</div>
                       </div>
                     ):(
                       <button style={hs.doBtn} onClick={()=>{setFormCtrl({...formCtrl,templateId:tpl.id});setShowControl(true);}}>Enregistrer</button>
@@ -806,13 +807,13 @@ const HACCP = ({ user, etablissement }) => {
               const op=userDisplay(c.operateur);
               return(
                 <div key={c.id} className="grid-table-row" style={{...hs.relRow, gridTemplateColumns: '2fr 80px 60px 120px 110px 2fr' + (canManage ? ' 90px' : '')}}>
-                  <span style={{...hs.cell,fontWeight:600}}>{tpl?.label}</span>
+                  <span style={{...hs.cell,fontWeight:500}}>{tpl?.label}</span>
                   <span style={hs.cell}>{c.date}</span>
                   <span style={hs.cell}>{c.heure}</span>
                   <span style={hs.cell}>{op.name}</span>
                   <span><span style={{...hs.confBadge,background:c.statut==='conforme'?'var(--success-bg)':'var(--danger-bg)',color:c.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'}}>{c.statut==='conforme'?'Conforme':'Non conforme'}</span></span>
                   <span style={{...hs.cell,fontSize:12,color:'var(--text2)'}}>{c.notes||'-'}</span>
-                  {canManage && <span className='no-print'><button style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
+                  {canManage && <span className='no-print'><button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
                 </div>
               );
             })}
@@ -878,7 +879,7 @@ const HACCP = ({ user, etablissement }) => {
                       <span style={{flex:1,minWidth:0}}>
                         <span style={{display:'block',fontSize:13,fontWeight:700,color:'var(--text)'}}>{p.label}</span>
                         <span style={{display:'block',fontSize:11,color:'var(--text2)',marginTop:2}}>{p.sub}</span>
-                        <span style={{display:'block',fontSize:11,color:'var(--accent)',marginTop:3,fontWeight:600}}>{p.creneaux.map(c=>c.heure).join(', ')}</span>
+                        <span style={{display:'block',fontSize:11,color:'var(--accent)',marginTop:3,fontWeight:500}}>{p.creneaux.map(c=>c.heure).join(', ')}</span>
                       </span>
                     </button>
                   ))}
@@ -890,9 +891,9 @@ const HACCP = ({ user, etablissement }) => {
                   <div key={c.id} style={{...hcfg.row, opacity:c.actif?1:0.5}}>
                     <div style={{...hcfg.rowIcon,width:58,fontSize:14,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--accent)'}}>{c.heure}</div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{fontSize:13,fontWeight:500,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                         {c.label}
-                        {!c.actif && <span style={{fontSize:10,fontWeight:600,background:'var(--bg)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                        {!c.actif && <span style={{fontSize:11,fontWeight:500,background:'var(--bg)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                       </div>
                       <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
                         Tournée de {activeZones.length} zone{activeZones.length>1?'s':''}, heure locale
@@ -902,7 +903,7 @@ const HACCP = ({ user, etablissement }) => {
                       <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                     </div>
                     <button style={hcfg.editBtn} onClick={()=>setCreneauModal(c)}>Modifier</button>
-                    <button style={hcfg.deleteBtn} onClick={()=>deleteCreneau(c.id)}>Supprimer</button>
+                    <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteCreneau(c.id)}>Supprimer</button>
                   </div>
                 ))}
               </div>
@@ -922,9 +923,9 @@ const HACCP = ({ user, etablissement }) => {
               {zones.map(z=>(
                 <div key={z.id} style={{...hcfg.row, opacity:z.actif?1:0.5}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{fontSize:13,fontWeight:500,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {z.nom}
-                      {!z.actif && <span style={{fontSize:10,fontWeight:600,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      {!z.actif && <span style={{fontSize:11,fontWeight:500,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
                       {ZONE_TYPES.find(t=>t.id===z.type)?.label}, cible : {z.cible}{z.unite}, plage : [{z.min??'-'} ; {z.max??'+∞'}]{z.unite}
@@ -936,7 +937,7 @@ const HACCP = ({ user, etablissement }) => {
                     <div style={{...hcfg.toggleThumb,left:z.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
                   <button style={hcfg.editBtn} onClick={()=>setZoneModal(z)}>Modifier</button>
-                  <button style={hcfg.deleteBtn} onClick={()=>deleteZone(z.id)}>Supprimer</button>
+                  <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteZone(z.id)}>Supprimer</button>
                 </div>
               ))}
             </div>
@@ -956,9 +957,9 @@ const HACCP = ({ user, etablissement }) => {
                 <div key={c.id} style={{...hcfg.row,opacity:c.actif?1:0.5}}>
                   <div style={{...hcfg.rowIcon,fontSize:16,background:'var(--bg)',color:'var(--text2)'}}>{CTRL_TYPES.find(t=>t.id===c.type)?.label.slice(0,1)||'?'}</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{fontSize:13,fontWeight:500,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {c.label}
-                      {!c.actif&&<span style={{fontSize:10,fontWeight:600,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      {!c.actif&&<span style={{fontSize:11,fontWeight:500,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
                       {CTRL_TYPES.find(t=>t.id===c.type)?.label}, {c.frequence}
@@ -970,7 +971,7 @@ const HACCP = ({ user, etablissement }) => {
                     <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
                   <button style={hcfg.editBtn} onClick={()=>setCtrlModal(c)}>Modifier</button>
-                  <button style={hcfg.deleteBtn} onClick={()=>deleteCtrl(c.id)}>Supprimer</button>
+                  <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteCtrl(c.id)}>Supprimer</button>
                 </div>
               ))}
             </div>
@@ -1017,7 +1018,7 @@ const HACCP = ({ user, etablissement }) => {
                   {formRel.valeur!==''&&(()=>{
                     const zone=zones.find(z=>z.id===formRel.zoneId);
                     const ok=isConforme(zone,formRel.valeur);
-                    return<div style={{marginTop:8,padding:'8px 12px',borderRadius:8,background:ok?'var(--success-bg)':'var(--danger-bg)',color:ok?'var(--success-text)':'var(--danger-strong)',fontSize:13,fontWeight:600,textAlign:'center'}}>
+                    return<div style={{marginTop:8,...encadreStyle(ok?'succes':'erreur'),...encadreTitreStyle(ok?'succes':'erreur'),fontSize:13}}>
                       {ok?`Conforme, plage autorisée : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`:`Hors plage : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`}
                     </div>;
                   })()}
@@ -1162,7 +1163,7 @@ const HACCP = ({ user, etablissement }) => {
                                : 'var(--danger-bd)',
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>{zone.nom}</div>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{zone.nom}</div>
                       <div style={{ fontSize: 11, color: 'var(--text2)' }}>
                         Cible : {zone.cible}{zone.unite || '°C'}
                         {(zone.min != null && zone.max != null) && `, plage de ${zone.min} à ${zone.max}${zone.unite || '°C'}`}

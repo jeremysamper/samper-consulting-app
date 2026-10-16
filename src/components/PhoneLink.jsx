@@ -18,5 +18,5 @@ export default function PhoneLink({ tel, style }) {
 }
 
 const s = {
-  link: { color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' },
+  link: { color: 'var(--accent)', fontWeight: 500, textDecoration: 'none', whiteSpace: 'nowrap' },
 };

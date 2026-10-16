@@ -28,7 +28,7 @@ export function caseStyle(actif, extra = {}) {
     borderColor: actif ? 'var(--accent)' : 'var(--border)',
     background: actif ? 'var(--accent)' : 'var(--bg)',
     color: actif ? 'var(--on-accent)' : 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 15, fontWeight: actif ? 700 : 600,
+    fontFamily: 'var(--font)', fontSize: 15, fontWeight: actif ? 700 : 500,
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     padding: '4px 2px', minWidth: 0,
     ...extra,
@@ -110,7 +110,7 @@ export function CalendrierMois({ date, aujourdhui, passeAutorise = false, onChoi
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
         {['lu', 'ma', 'me', 'je', 've', 'sa', 'di'].map((j) => (
-          <div key={j} style={{ textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontWeight: 600, paddingBottom: 2 }}>{j}</div>
+          <div key={j} style={{ textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontWeight: 500, paddingBottom: 2 }}>{j}</div>
         ))}
         {cases.map((iso, i) => {
           if (!iso) return <div key={`vide-${i}`} />;
@@ -162,7 +162,7 @@ export function BandeJours({ date, aujourdhui, passeAutorise = false, onChange }
     if (bandeRef.current) bandeRef.current.scrollLeft = 0;
   }
 
-  const petit = (actif) => ({ fontSize: 11, fontWeight: 600, color: actif ? 'var(--on-accent)' : 'var(--text2)', lineHeight: 1.2 });
+  const petit = (actif) => ({ fontSize: 11, fontWeight: 500, color: actif ? 'var(--on-accent)' : 'var(--text2)', lineHeight: 1.2 });
 
   return (
     <div>
@@ -232,7 +232,7 @@ export function GrilleCouverts({ value, onChange }) {
           borderWidth: grand ? 2 : 1, borderStyle: 'solid',
           borderColor: grand ? 'var(--accent)' : 'var(--border)',
           background: 'var(--bg)', color: 'var(--text)',
-          fontFamily: 'var(--font-num)', fontSize: 17, fontWeight: grand ? 800 : 600,
+          fontFamily: 'var(--font-num)', fontSize: 17, fontWeight: grand ? 700 : 700,
         }}
       />
     </div>

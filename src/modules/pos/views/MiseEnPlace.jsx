@@ -22,7 +22,7 @@ function ReliableBadge({ reliable, occurrences }) {
     return (
       <span style={{
         fontSize:     11,
-        fontWeight:   600,
+        fontWeight:   500,
         padding:      '2px 8px',
         borderRadius: 12,
         background:   'var(--success-bg)',
@@ -37,7 +37,7 @@ function ReliableBadge({ reliable, occurrences }) {
   return (
     <span style={{
       fontSize:     11,
-      fontWeight:   600,
+      fontWeight:   500,
       padding:      '2px 8px',
       borderRadius: 12,
       background:   'var(--warning-bg)',
@@ -68,7 +68,7 @@ function ItemRow({ item }) {
       <div style={{
         flex:         '1 1 160px',
         fontSize:     14,
-        fontWeight:   600,
+        fontWeight:   500,
         color:        'var(--text)',
         fontFamily:   'var(--font)',
         overflow:     'hidden',

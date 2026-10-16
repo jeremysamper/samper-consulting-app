@@ -20,6 +20,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { navigateToPage } from '../../services/navigationService.js';
+import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 
 
 // CARTES & RECETTES
@@ -55,11 +56,11 @@ const nomsAllergenes = (ids) => (ids || []).map((a) => ALLERGENES_MAP[a] || a).j
 // réveil de la tablette.
 const PanneauEtat = ({ titre, texte, onRetry }) => (
   <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)'}}>
-    <div style={{fontSize:16, fontWeight:600, marginTop:10, fontFamily:'var(--font-serif)'}}>{titre}</div>
+    <div style={{fontSize:16, fontWeight:700, marginTop:10, fontFamily:'var(--font-serif)'}}>{titre}</div>
     <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>{texte}</div>
     {onRetry && (
       <button
-        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)'}}
+        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)'}}
         onClick={onRetry}
       >
         Réessayer
@@ -278,7 +279,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                     Établissements cibles ({selectedEtabIds.size} sélectionné{selectedEtabIds.size > 1 ? 's' : ''})
                   </label>
                   <button type="button"
-                    style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' }}
+                    style={{ padding: '4px 8px', fontSize: 11, fontWeight: 500, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' }}
                     onClick={() => {
                       if (allSelected) setSelectedEtabIds(new Set());
                       else setSelectedEtabIds(new Set(accessibleEtabs.map(e => e.id)));
@@ -294,14 +295,14 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                       <label key={e.id}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-                          border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                          border: '1px solid transparent',
                           borderRadius: 6, fontSize: 12, cursor: 'pointer',
                           background: checked ? 'var(--accent-light)' : 'var(--surface)',
                         }}>
                         <input type="checkbox" checked={checked} onChange={() => toggleEtab(e.id)} />
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.couleur || 'var(--accent)', flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.nom}</span>
-                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 10, color: 'var(--warning-text)', fontWeight: 700 }}>déjà présente</span>}
+                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 11, color: 'var(--warning-text)', fontWeight: 700 }}>déjà présente</span>}
                       </label>
                     );
                   })}
@@ -329,7 +330,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                         onChange={e => setOpts(prev => ({ ...prev, [o.key]: e.target.checked }))} />
                       <span>
                         {o.label}
-                        {o.warn && <span style={{ fontSize: 10, color: 'var(--text3)', display: 'block', lineHeight: 1.2 }}>{o.warn}</span>}
+                        {o.warn && <span style={{ fontSize: 11, color: 'var(--text3)', display: 'block', lineHeight: 1.2 }}>{o.warn}</span>}
                       </span>
                     </label>
                   ))}
@@ -338,8 +339,8 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 
               {/* ── Gestion des doublons (si conflit détecté parmi les sélectionnés) ── */}
               {Array.from(selectedEtabIds).some(id => existingByEtab[id]) && (
-                <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
+                <div style={{ ...encadreStyle('alerte') }}>
+                  <div style={{ fontSize: 12, ...encadreTitreStyle('alerte'), marginBottom: 8 }}>
                     Cette recette existe déjà dans certains établissements sélectionnés
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text)' }}>
@@ -1218,7 +1219,7 @@ const ms = {
   hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
   list: { padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', minHeight: 160 },
   groupHead: { display: 'flex', alignItems: 'center', gap: 6, padding: '14px 6px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  groupCount: { fontWeight: 600, color: 'var(--text3)' },
+  groupCount: { fontWeight: 500, color: 'var(--text3)' },
   groupAllBtn: { marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', textTransform: 'none', letterSpacing: 0, flexShrink: 0 },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', marginBottom: 6, flexShrink: 0 },
   // Shorthand `border` complet (pas `borderColor`) : ms.row pose déjà le
@@ -1226,19 +1227,19 @@ const ms = {
   rowChecked: { border: '1px solid var(--accent)', background: 'var(--accent-light)' },
   rowDisabled: { opacity: 0.45, cursor: 'not-allowed' },
   rowMain: { display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' },
-  rowName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: 'var(--text)', overflowWrap: 'anywhere' },
+  rowName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: 'var(--text)', overflowWrap: 'anywhere' },
   rowMeta: { fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0 },
-  tagInclus: { fontSize: 10, fontWeight: 700, background: 'var(--success-bg)', color: 'var(--success-text)', padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
+  tagInclus: { fontSize: 11, fontWeight: 700, background: 'var(--success-bg)', color: 'var(--success-text)', padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
   expandBtn: { background: 'none', border: 'none', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', padding: '4px 6px', fontFamily: 'var(--font)', flexShrink: 0 },
   cartePreview: { margin: '-2px 0 8px 14px', padding: '6px 12px 8px', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 },
-  previewCat: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  previewCat: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
   previewLine: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
   empty: { padding: '28px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)' },
   footer: { position: 'sticky', bottom: 0, zIndex: 3, background: 'var(--surface)', borderTop: '1px solid var(--border)', borderRadius: '0 0 12px 12px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   footerInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
+  clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
   btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
 };
 
@@ -1369,7 +1370,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
 const is = {
   input: { width: '100%', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  chip: { padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 99, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  chip: { padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 99, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   results: { flex: 1, overflowY: 'auto', padding: '6px 12px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 120 },
   hint: { padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
   countLine: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
@@ -1381,8 +1382,8 @@ const is = {
   rowName: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
   rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   matchRow: { display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  matchIng: { fontSize: 11, fontWeight: 600, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', padding: '2px 7px', borderRadius: 99 },
-  matchAllerg: { fontSize: 11, fontWeight: 600, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', padding: '2px 7px', borderRadius: 99 },
+  matchIng: { fontSize: 11, fontWeight: 500, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', padding: '2px 7px', borderRadius: 99 },
+  matchAllerg: { fontSize: 11, fontWeight: 500, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', padding: '2px 7px', borderRadius: 99 },
 };
 
 const Recettes = ({ user, etablissement }) => {
@@ -1727,9 +1728,9 @@ const Recettes = ({ user, etablissement }) => {
                   explicitement que la brigade ne la voit pas, sinon rien ne
                   distingue à l'écran une carte publiée d'une carte masquée. */}
               {activeCarte.masquee === true ? (
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
               ) : (
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--success-text)' }}>Carte active</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--success-text)' }}>Carte active</span>
               )}
             </div>
           </div>
@@ -1997,17 +1998,17 @@ const Recettes = ({ user, etablissement }) => {
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
   searchEmpty: {display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'28px 16px',textAlign:'center',color:'var(--text2)',fontSize:13,background:'var(--surface)',border:'1px dashed var(--border)',borderRadius:'var(--r)'},
-  searchElsewhereBtn: {alignSelf:'flex-start',padding:'8px 12px',borderRadius:8,border:'1px solid var(--accent-bd)',background:'var(--accent-light)',color:'var(--accent)',fontFamily:'var(--font)',fontSize:12.5,fontWeight:600,cursor:'pointer',textAlign:'left'},
+  searchElsewhereBtn: {alignSelf:'flex-start',padding:'8px 12px',borderRadius:8,border: '1px solid transparent',background:'var(--accent-light)',color:'var(--accent)',fontFamily:'var(--font)',fontSize:12,fontWeight:500,cursor:'pointer',textAlign:'left'},
   toolbar: {display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'},
   tabsWrap: {minWidth:0},
   tabsWrapMobile: {width:'100%',minWidth:0},
   toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
   toolbarActionsMobile: {width:'100%',marginLeft:0},
-  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',boxShadow:'var(--sh-xs)'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
-  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
   carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
   catFilter: {display:'flex',gap:6,flexWrap:'wrap'},
@@ -2020,13 +2021,13 @@ const rs = {
   platImg: {position:'absolute',inset:0,width:'100%',height:'100%'},
   platScrim: {position:'absolute',inset:0,background:'var(--grad-scrim)',pointerEvents:'none'},
   platOverlay: {position:'absolute',left:12,right:12,bottom:10,pointerEvents:'none'},
-  platOverlayMeta: {fontSize:11,fontWeight:600,color:'rgba(241,235,225,0.82)',marginTop:3},
+  platOverlayMeta: {fontSize:11,fontWeight:500,color:'rgba(241,235,225,0.82)',marginTop:3},
   platBody: {padding:'12px'},
   // Crème de marque sur voile sombre : identique quel que soit le thème.
   platCardName: {fontSize:15,fontWeight:700,color:'#f1ebe1',fontFamily:'var(--font-serif)',lineHeight:1.25,letterSpacing:'-0.01em'},
   platAllergenes: {display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'},
-  allergeneDot: {fontSize:10,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
-  lienAction: {background:'none',border:'none',padding:0,color:'var(--accent)',fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
+  allergeneDot: {fontSize:11,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
+  lienAction: {background:'none',border:'none',padding:0,color:'var(--accent)',fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
   // Allergènes en texte simple, noms complets séparés par des virgules.
   allergenesTexte: {fontSize:12,fontWeight:400,color:'var(--text2)',lineHeight:1.4},
   // Dans une ligne de liste : une seule ligne, le reste au survol (title).
@@ -2040,14 +2041,14 @@ const rs = {
   // donc elle ne protégeait justement pas la tablette en paysage.
   // Vraies lignes tactiles : 44px de haut, fond distinct, séparées de 6px.
   recetteLinkListe: {marginTop:8,paddingTop:8,borderTop:'1px dashed var(--border)',display:'flex',flexDirection:'column',gap:6},
-  recetteLink: {display:'flex',alignItems:'center',gap:8,width:'100%',minHeight:44,padding:'8px 10px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,color:'var(--accent)',fontSize:12,fontWeight:600,textAlign:'left',cursor:'pointer',fontFamily:'var(--font)',transition:'background .12s'},
+  recetteLink: {display:'flex',alignItems:'center',gap:8,width:'100%',minHeight:44,padding:'8px 10px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,color:'var(--accent)',fontSize:12,fontWeight:500,textAlign:'left',cursor:'pointer',fontFamily:'var(--font)',transition:'background .12s'},
   recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
-  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
-  congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:500},
+  congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'var(--on-accent)'},
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
@@ -2087,7 +2088,7 @@ const rs = {
   platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' },
   platName: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
   orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
-  recetteName: {fontSize:14,fontWeight:600,color:'var(--text)'},
+  recetteName: {fontSize:14,fontWeight:500,color:'var(--text)'},
   recetteMeta: {fontSize:11,color:'var(--text2)',marginTop:2},
   recetteBadges: {display:'flex',gap:4,flexShrink:0},
   // Detail
@@ -2101,7 +2102,7 @@ const rs = {
   detailHeroText: {position:'absolute',left:20,right:20,bottom:16},
   detailHeroTitle: {fontSize:26,fontWeight:700,fontFamily:'var(--font-serif)',color:'#f1ebe1',letterSpacing:'-0.02em',lineHeight:1.12},
   detailHeroSub: {fontSize:12,color:'rgba(241,235,225,0.75)',marginTop:4},
-  detailHeroTimes: {display:'flex',gap:12,marginTop:9,fontSize:12,fontWeight:600,color:'rgba(241,235,225,0.9)',flexWrap:'wrap'},
+  detailHeroTimes: {display:'flex',gap:12,marginTop:9,fontSize:12,fontWeight:500,color:'rgba(241,235,225,0.9)',flexWrap:'wrap'},
   backBtn: {background:'none',border:'1px solid var(--border)',borderRadius:7,padding:'6px 12px',cursor:'pointer',fontSize:12,color:'var(--text2)',fontFamily:'var(--font)',flexShrink:0},
   detailMeta: {flex:1},
   detailTitle: {fontSize:20,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
@@ -2119,20 +2120,20 @@ const rs = {
   // Active : d'où l'on part, de combien, et le retour en arrière.
   echelleBar: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 16px',background:'var(--bg)',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--border)',fontSize:11,color:'var(--text2)',lineHeight:1.4},
   echelleBarActive: {background:'var(--warning-bg)',borderBottomColor:'var(--warning-bd)'},
-  echelleReset: {marginLeft:'auto',padding:'5px 12px',background:'none',borderWidth:1,borderStyle:'solid',borderColor:'var(--warning-bd)',borderRadius:7,color:'var(--warning-text)',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  echelleReset: {marginLeft:'auto',padding:'5px 12px',background:'none',borderWidth:1,borderStyle:'solid',borderColor:'var(--warning-bd)',borderRadius:7,color:'var(--warning-text)',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   ingTable: {display:'flex',flexDirection:'column'},
-  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 16px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
+  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 16px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
   ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'9px 16px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
   ingRowRef: {background:'var(--warning-bg-soft)'},
   ingName: {fontSize:13,color:'var(--text)'},
   // Ligne sans quantité chiffrée (« 1 feuille de laurier ») : pas de champ,
   // mais le même alignement à droite que les champs voisins.
-  ingQty: {fontSize:13,fontWeight:600,color:'var(--text)',textAlign:'right'},
+  ingQty: {fontSize:13,fontWeight:500,color:'var(--text)',textAlign:'right'},
   // Le champ porte le recalcul : il reste discret (fond de carte, bord léger)
   // pour ne pas se lire comme une modification de la fiche enregistrée.
-  ingQtyInput: {width:'100%',minWidth:0,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:7,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:600,textAlign:'right',fontFamily:'var(--font)'},
+  ingQtyInput: {width:'100%',minWidth:0,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:7,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:500,textAlign:'right',fontFamily:'var(--font)'},
   ingQtyInputRef: {borderColor:'var(--warning-bd)',background:'var(--warning-bg)',color:'var(--warning-text)'},
-  ingQtyBase: {fontSize:10,color:'var(--text3)',textAlign:'right',marginTop:2},
+  ingQtyBase: {fontSize:11,color:'var(--text3)',textAlign:'right',marginTop:2},
   etapeRow: {display:'flex',gap:14,marginBottom:12,alignItems:'flex-start'},
   etapeNum: {width:24,height:24,borderRadius:'50%',background:'var(--accent)',color:'var(--on-accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1},
   etapeTxt: {fontSize:13,color:'var(--text)',lineHeight:1.6},

@@ -160,7 +160,7 @@ const s = {
   },
   dates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 },
   choix: {
-    minHeight: 40, padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
+    minHeight: 40, padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
     background: 'var(--surface)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   aide: { fontSize: 12, color: 'var(--text2)', marginTop: 6 },
@@ -174,11 +174,11 @@ const s = {
     flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
     borderWidth: 1, borderStyle: 'solid',
   },
-  nom: { display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   periode: { display: 'block', fontSize: 12, color: 'var(--text2)' },
   retirer: {
     flexShrink: 0, width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     background: 'none', border: 'none', borderRadius: 10, color: 'var(--danger-text)', cursor: 'pointer',
   },
-  info: { fontSize: 13, padding: '10px 12px', borderRadius: 10, background: 'var(--info-bg-soft)', color: 'var(--info-text)', border: '1px solid var(--info-bd)' },
+  info: { fontSize: 13, padding: '10px 0 10px 12px',   color: 'var(--info-text)', borderLeft: '2px solid var(--info-bd)' },
 };

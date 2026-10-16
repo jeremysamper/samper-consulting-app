@@ -85,18 +85,18 @@ const S = {
   // Étapes numérotées (langage visuel de l'onboarding KDS)
   stepRow:  { display: 'flex', alignItems: 'flex-start', gap: 11 },
   stepNum:  { flex: '0 0 auto', width: 24, height: 24, borderRadius: '50%', background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', color: 'var(--accent)', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  stepText: { fontSize: 13.5, color: 'var(--text)', lineHeight: 1.45 },
+  stepText: { fontSize: 14, color: 'var(--text)', lineHeight: 1.45 },
   stepHint: { fontSize: 12, color: 'var(--text3)', marginTop: 2, lineHeight: 1.45 },
   box:      { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 11 },
-  infoBox:  { fontSize: 12.5, color: 'var(--info-text)', background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.5 },
-  errorBox: { fontSize: 12.5, color: 'var(--danger-text)', background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.5 },
+  infoBox:  { fontSize: 12, color: 'var(--info-text)',  borderLeft: '2px solid var(--info-bd)',  padding: '9px 0 9px 12px', lineHeight: 1.5 },
+  errorBox: { fontSize: 12, color: 'var(--danger-text)',  borderLeft: '2px solid var(--danger-bd)',  padding: '9px 0 9px 12px', lineHeight: 1.5 },
   waitBox:  { display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '13px 15px' },
   spinner:  { width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'spin 0.9s linear infinite', flexShrink: 0 },
   actions:  { display: 'flex', gap: 8, flexWrap: 'wrap' },
   locRow: (selected) => ({
     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 13px',
     borderRadius: 8, cursor: 'pointer',
-    border: `2px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
+    border: '2px solid transparent',
     background: selected ? 'var(--accent-light)' : 'var(--bg)',
   }),
 };
@@ -125,7 +125,7 @@ function Stepper({ current }) {
               }}>
                 {done ? '✓' : i + 1}
               </span>
-              <span style={{ fontSize: 11.5, fontWeight: active ? 700 : 600, color: active ? 'var(--text)' : 'var(--text3)' }}>
+              <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? 'var(--text)' : 'var(--text3)' }}>
                 {s.label}
               </span>
             </div>
@@ -281,7 +281,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
         <div style={S.waitBox}>
           <span style={S.spinner} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
               En attente de l'autorisation...
             </div>
             <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
@@ -328,7 +328,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
                 style={{ accentColor: 'var(--accent)' }}
               />
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{loc.locationName}</div>
+                <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--text)' }}>{loc.locationName}</div>
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>
                   {loc.businessName ? `${loc.businessName}, ` : ''}{loc.locationId}
                 </div>
@@ -366,7 +366,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
         <div style={S.waitBox}>
           <span style={S.spinner} />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Import en cours...</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Import en cours...</div>
             <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
               Jusqu'à une minute selon le volume de ventes.
             </div>

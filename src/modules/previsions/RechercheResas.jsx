@@ -40,7 +40,7 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
           </span>
           {traite && (
             <span style={{
-              padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+              padding: '1px 7px', borderRadius: 20, fontSize: 11, fontWeight: 700,
               borderWidth: 1, borderStyle: 'solid', borderColor: meta.bordure,
               background: meta.bg, color: meta.texte,
             }}>
@@ -60,7 +60,7 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
           flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 8,
           borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
           background: 'var(--surface)', color: 'var(--text2)',
-          fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
+          fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
         }}>
         Voir le jour
       </button>
@@ -159,7 +159,7 @@ export default function RechercheResas({
             <div key={titre}>
               <div style={{
                 padding: '7px 12px', background: 'var(--bg)',
-                fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: 0.5, color: 'var(--text3)',
               }}>
                 {titre} ({liste.length})

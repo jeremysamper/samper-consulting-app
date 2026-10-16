@@ -89,7 +89,7 @@ const s = {
     borderRadius: 10, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   ligneMasquee: { background: 'var(--surface2)', borderStyle: 'dashed' },
-  boutonAfficher: { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)', fontWeight: 600 },
-  nom: { display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  boutonAfficher: { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)', fontWeight: 500 },
+  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   role: { display: 'block', fontSize: 12, color: 'var(--text2)' },
 };

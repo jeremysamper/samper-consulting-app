@@ -32,7 +32,7 @@ const rs = {
   qteInput: { width: 64, padding: '10px 6px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, fontWeight: 700, textAlign: 'center', color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none' },
   apercu: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text)', lineHeight: 1.55 },
   info: { fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 },
-  avert: { padding: '10px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.45 },
+  avert: { padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--warning-bd)',  fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.45 },
 };
 
 const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {

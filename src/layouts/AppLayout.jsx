@@ -239,7 +239,7 @@ export default function AppLayout({
     enabled: visibleNav.some((item) => item.id === 'groupes'),
   });
   const navBadgeStyle = {
-    fontSize: 10, fontWeight: 700,
+    fontSize: 11, fontWeight: 700,
     padding: '2px 7px', borderRadius: 99, minWidth: 14, textAlign: 'center',
     lineHeight: 1.4, flexShrink: 0,
   };
@@ -573,7 +573,7 @@ export default function AppLayout({
           <div style={{
             position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: size > 30 ? 14 : 10, color: '#fff',
+            fontSize: size > 30 ? 14 : 11, color: '#fff',
           }}>
             <Pencil size={size > 30 ? 16 : 12} aria-hidden="true" />
           </div>
@@ -600,7 +600,7 @@ export default function AppLayout({
             Retirer le logo
           </button>
         )}
-        <div style={{ fontSize: 10, color: 'var(--text2)', padding: '8px 12px 4px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 11, color: 'var(--text2)', padding: '8px 12px 4px', borderTop: '1px solid var(--border)' }}>
           Max 500 Ko. PNG, JPG ou SVG.
         </div>
       </div>
@@ -639,7 +639,7 @@ export default function AppLayout({
         )}
         {/* État vide */}
         {!alertsLoading && alerts.length === 0 && (
-          <div style={{ ...itemStyle, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '3px solid var(--success-strong)' }}>
+          <div style={{ ...itemStyle, color: 'var(--text2)', fontStyle: 'italic', borderLeft: '2px solid var(--success-bd)' }}>
             Aucune alerte active
           </div>
         )}
@@ -647,7 +647,7 @@ export default function AppLayout({
         {alerts.map((alert) => (
           <div
             key={alert.id}
-            style={{ ...itemStyle, borderLeft: `3px solid ${severityColor(alert.severity)}`, cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'flex-start' }}
+            style={{ ...itemStyle, borderLeft: `2px solid ${severityColor(alert.severity)}`, cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'flex-start' }}
             className="mini"
             role="button"
             tabIndex={0}
@@ -779,7 +779,8 @@ export default function AppLayout({
               itemStyle: mls.drawerItem,
               activeStyle: mls.drawerItemActive,
               dividerStyle: mls.navDivider,
-              activeMarker: <span style={{ color: 'var(--nav-accent)', fontSize: 16 }} aria-hidden="true">●</span>,
+              // Même trait que sur ordinateur (et plus un rond) pour la rubrique active.
+              activeMarker: <span style={ls.navActiveLine} aria-hidden="true" />,
             })}
           </nav>
 
@@ -958,7 +959,7 @@ const ls = {
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
   navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 8, border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
-  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 600, boxShadow: 'var(--nav-glow)' },
+  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 500, boxShadow: 'var(--nav-glow)' },
   navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 16, background: 'var(--nav-accent)', borderRadius: 2, opacity: 0.85 },
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
@@ -978,7 +979,9 @@ const ls = {
   // Les quatre boutons du header : même carré de 44 px, sans bordure (survol :
   // .app-bar-btn dans app.css), comme le sélecteur de langue compact.
   iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
-  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  // Compteur d'alertes : une seule forme, ordinateur et téléphone (pilule qui
+  // s'élargit au-delà de 9).
+  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 11, fontWeight: 700, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
@@ -1037,7 +1040,7 @@ const mls = {
   },
   hamLine: { width: 22, height: 2, background: 'var(--text)', borderRadius: 2, transition: 'all 0.15s' },
   iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
-  notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
+  notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 11, fontWeight: 700, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
@@ -1073,10 +1076,10 @@ const mls = {
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '8px 12px' },
   drawerItem: {
     display: 'flex', alignItems: 'center', gap: 12,
-    padding: '13px 14px', borderRadius: 8,
+    padding: '13px 14px', borderRadius: 8, position: 'relative',
     background: 'none', border: 'none', width: '100%',
     cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 14, fontWeight: 600, color: 'var(--nav-text)',
+    fontSize: 14, fontWeight: 500, color: 'var(--nav-text)',
     textAlign: 'left',
   },
   drawerItemActive: {

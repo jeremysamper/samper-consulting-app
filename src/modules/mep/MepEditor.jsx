@@ -269,7 +269,10 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
       {/* Recettes de l'etablissement */}
       <div style={s.editorCard}>
         <label htmlFor="mep-recherche" style={s.fieldLabel}>Recettes de l'établissement</label>
-        <input id="mep-recherche" style={s.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette…" />
+        {/* Champ enveloppé : enfant direct, il gardait le cadre de la carte (exception :has(> input) de « Plus de carrés »). */}
+        <div>
+          <input id="mep-recherche" style={s.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette…" />
+        </div>
         {loading ? (
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>Chargement des recettes…</div>
         ) : recettesFiltered.length === 0 ? (

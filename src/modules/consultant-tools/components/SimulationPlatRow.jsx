@@ -58,7 +58,7 @@ const cs = {
     display: 'flex', alignItems: 'center',
     justifyContent: 'space-between', gap: 12,
   },
-  nom: { fontSize: 13, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0 },
+  nom: { fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1, minWidth: 0 },
   scoreArea: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   scoreBars: { display: 'flex', gap: 3 },
   bar: { width: 14, height: 14, borderRadius: 3 },

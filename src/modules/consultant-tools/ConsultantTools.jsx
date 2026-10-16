@@ -27,7 +27,7 @@ import PlatPicker from './components/PlatPicker.jsx';
 import EtablissementTransferModal from './components/EtablissementTransferModal.jsx';
 import { cts } from './ConsultantTools.styles.js';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Link2, Loader2, Pencil, Search } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Link2, Loader2, Pencil, Search } from 'lucide-react';
 import DebouncedField from '../../components/ui/DebouncedField.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { matchIngredient } from '../../services/recipeProductMatching.js';
@@ -40,7 +40,7 @@ import {
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
 import BulkProductLinker from './components/BulkProductLinker.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
-import { Btn } from '../../components/ui/index.jsx';
+import { Btn, Encadre, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
@@ -1382,7 +1382,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {bulkAllergenProgress && (
         <div className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Détection des allergènes</div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Détection des allergènes</div>
             <div style={{ fontSize: 13, color: 'var(--text2)' }}>
               {bulkAllergenProgress.done} / {bulkAllergenProgress.total} recette(s), {bulkAllergenProgress.added} allergène(s) ajouté(s)
             </div>
@@ -1516,7 +1516,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   )}
                   {r.categorie}, {r.portions || '?'} p., v{r.version || 1}
                   {r.foodCost && (
-                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 600 }}>
+                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 500 }}>
                       {' '}FC {r.foodCost.toFixed(1)}%
                     </span>
                   )}
@@ -1605,7 +1605,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <>
                 {plats.length === 0 && (
                   <div style={{ padding: '12px 14px', fontSize: 11, color: 'var(--text2)', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
-                    Aucun plat. Cliquez "+ Plat" pour créer une hiérarchie.
+                    Aucun plat. Créez-en un avec « Ajouter », puis « Un plat ».
                   </div>
                 )}
 
@@ -1627,7 +1627,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         }}
                         title={collapsed ? 'Développer' : 'Réduire'}
                       >
-                        <span style={{ fontSize: 10, color: 'var(--text2)' }}>{!collapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text2)' }}>{!collapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                         <span style={cts.carteFolderName}>{folder.nom}</span>
                         <span style={cts.carteCount}>{folder.plats.length}</span>
                       </div>
@@ -1661,7 +1661,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       onClick={() => setShowArchivees(v => !v)}
                       title={showArchivees ? 'Réduire' : 'Développer'}
                     >
-                      <span style={{ fontSize: 10 }}>{showArchivees ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                      <span style={{ fontSize: 11 }}>{showArchivees ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                       <span>Archivées ({archiveesFiltrees.length})</span>
                     </div>
                     {showArchivees && archiveesFiltrees.map(r => (
@@ -1684,7 +1684,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {/* Colonne droite : éditeur */}
       {!selected ? (
         <div style={cts.emptyState}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Aucune recette sélectionnée</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Aucune recette sélectionnée</div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>Créez une nouvelle recette ou sélectionnez-en une dans la liste.</div>
           <button style={cts.newBtn} onClick={createNew}>Nouvelle recette</button>
         </div>
@@ -1693,15 +1693,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           {/* Bannière de restauration de brouillons non sauvegardés */}
           {pendingDrafts.length > 0 && (
             <div className="no-print" style={{
-              margin: '0 0 10px', padding: '10px 14px', borderRadius: 8,
-              background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)',
+              margin: '0 0 10px', ...encadreStyle('alerte'),
               display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
-              <span style={{ fontSize: 13, color: 'var(--warning-text)', flex: 1, minWidth: 200 }}>
-                {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) - des modifications locales n'ont pas été synchronisées.
+              <span style={{ fontSize: 13, ...encadreTitreStyle('alerte'), flex: 1, minWidth: 200 }}>
+                {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) : des modifications locales n'ont pas été synchronisées.
               </span>
               <button
-                style={{ ...cts.ghostBtn, background: 'var(--success-fill)', color: 'var(--on-success)', borderColor: 'var(--success-text)' }}
+                style={{ ...cts.ghostBtn, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: 'none' }}
                 onClick={restoreDrafts}
               >Restaurer</button>
               <button style={cts.ghostBtn} onClick={dismissDrafts}>Ignorer</button>
@@ -1761,8 +1760,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             })()}
             <div style={{ flex: 1 }} />
             {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
-            {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--success-text)', fontWeight: 600 }}><Check size={12} /> Sauvegardé</span>}
-            {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--danger-strong)', fontWeight: 600 }} title={saveError}><AlertTriangle size={12} /> Erreur sync</span>}
+            {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--success-text)', fontWeight: 500 }}>Sauvegardé</span>}
+            {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--danger-strong)', fontWeight: 500 }} title={saveError}>Enregistrement échoué</span>}
           </div>
 
           {/* Une recette cachée ne se distingue pas à l'édition : le bandeau dit
@@ -1782,13 +1781,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(760px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Analyse HACCP : {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Analyse HACCP : {selected.nom}</div>
                   <button type="button" className="ui-fermer" aria-label="Fermer" onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
-                  <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
+                  <Encadre ton="alerte" style={{ fontSize: 11, marginBottom: 12 }}>
                     Généré automatiquement, à valider par un responsable avant utilisation.
-                  </div>
+                  </Encadre>
                   {(haccpResult.points || []).length === 0 && (
                     <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucun point de maîtrise identifié.</div>
                   )}
@@ -1796,8 +1795,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8, background: 'var(--bg)' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '-'}</span>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--info-bg)', color: 'var(--info-text)' }}>{p.type || '-'}</span>
-                        {p.ccp && <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>CCP</span>}
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'var(--info-bg)', color: 'var(--info-text)' }}>{p.type || '-'}</span>
+                        {p.ccp && <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'var(--danger-bg)', color: 'var(--danger-text)' }}>CCP</span>}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 4 }}>{p.danger || '-'}</div>
                       {p.mesure && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Maîtrise : {p.mesure}</div>}
@@ -1832,12 +1831,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(680px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Suggestions pour {selected.nom}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Suggestions pour {selected.nom}</div>
                   <button type="button" className="ui-fermer" aria-label="Fermer" onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)' }}>Ingrédients suggérés ({suggestResult.ingredients.length})</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text2)' }}>Ingrédients suggérés ({suggestResult.ingredients.length})</div>
                     {suggestResult.ingredients.length > 0 && <button style={cts.smallBtn} onClick={ajouterTousIngredientsSuggere}>Tout ajouter</button>}
                   </div>
                   {suggestResult.ingredients.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 10 }}>Aucune suggestion d'ingrédient.</div>}
@@ -1849,7 +1848,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     </div>
                   ))}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 0 6px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)' }}>Étapes suggérées ({suggestResult.etapes.length})</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text2)' }}>Étapes suggérées ({suggestResult.etapes.length})</div>
                     {suggestResult.etapes.length > 0 && <button style={cts.smallBtn} onClick={ajouterToutesEtapesSuggere}>Tout ajouter</button>}
                   </div>
                   {suggestResult.etapes.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucune suggestion d'étape.</div>}
@@ -1909,13 +1908,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <DebouncedField type="number" min="1" value={selected.version || 1} onCommit={v => updateSelected({ version: Number(v) || 1 })} style={{...cts.inlineInput, width: 60}} />
                   </div>
                   <div style={{...cts.inlineField, marginLeft:'auto'}}>
-                    <label style={{fontSize:11, fontWeight:600, color:'var(--success-text)'}}>Publier sur la carte active</label>
+                    <label style={{fontSize:11, fontWeight:500, color:'var(--success-text)'}}>Publier sur la carte active</label>
                     <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'6px 10px', background: isRecetteActive(selected) ? 'var(--success-bg)' : 'var(--surface2)', border:'1px solid', borderColor: isRecetteActive(selected) ? 'var(--success-bd)' : 'var(--border)', borderRadius:8}}>
                       <input type="checkbox"
                         checked={isRecetteActive(selected)}
                         onChange={e => toggleActifSurCarte(selected, e.target.checked)}
                         style={{accentColor:'var(--success-text)'}}/>
-                      <span style={{fontSize:12, fontWeight:600, color: isRecetteActive(selected) ? 'var(--success-text)' : 'var(--text2)'}}>
+                      <span style={{fontSize:12, fontWeight:500, color: isRecetteActive(selected) ? 'var(--success-text)' : 'var(--text2)'}}>
                         {isRecetteActive(selected) ? 'Visible sur la carte' : 'Non publiée'}
                       </span>
                     </label>
@@ -1987,7 +1986,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     disabled={allergenAiBusy}
                     title="Détecter les allergènes à partir des ingrédients"
                     style={{
-                      ...cts.ghostBtn, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                      ...cts.ghostBtn, padding: '6px 12px', fontSize: 12, fontWeight: 500,
                       cursor: allergenAiBusy ? 'wait' : 'pointer', opacity: allergenAiBusy ? 0.6 : 1,
                     }}
                   >{allergenAiBusy ? 'Analyse…' : 'Détecter'}</button>
@@ -2022,9 +2021,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   })}
                 </div>
                 {allergenesInconnus.length > 0 && (
-                  <div style={{ margin: '0 14px 14px', padding: '8px 10px', background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 6 }}>
-                      {allergenesInconnus.length} valeur{allergenesInconnus.length > 1 ? 's' : ''} hors liste (import ancien) - à convertir ou retirer
+                  <div style={{ margin: '0 14px 14px', ...encadreStyle('alerte') }}>
+                    <div style={{ fontSize: 11, ...encadreTitreStyle('alerte'), marginBottom: 6 }}>
+                      {allergenesInconnus.length} valeur{allergenesInconnus.length > 1 ? 's' : ''} hors liste (import ancien), à convertir ou à retirer
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {allergenesInconnus.map(v => {
@@ -2062,7 +2061,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {catalogue.length > 0 && (
                       <button
-                        style={{ padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}
+                        style={{ padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' }}
                         onClick={() => setCatalogPicker('multi')}
                       >
                         Depuis catalogue
@@ -2145,7 +2144,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <span>
                       Qté
                       {estEchelle && (
-                        <span style={{ fontSize: 10, color: 'var(--warning-text)', marginLeft: 4 }}>+ recalcul</span>
+                        <span style={{ fontSize: 11, color: 'var(--warning-text)', marginLeft: 4 }}>+ recalcul</span>
                       )}
                     </span>
                     <span>Unité</span>
@@ -2185,14 +2184,14 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       <div style={{ position: 'relative', flex: 2, display: 'flex', alignItems: 'stretch', gap: 4 }}>
                         {isLinked && (
                           <span
-                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 5, fontSize: 11, color: 'var(--success-text)', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--success-bg)', border: '1px solid transparent', borderRadius: 5, fontSize: 11, color: 'var(--success-text)', cursor: 'pointer' }}
                             title="Lié au catalogue (matching automatique), clic pour délier"
                             onClick={() => updateIngredient(idx, 'produitId', null)}
                           ><Link2 size={13} aria-hidden="true" /></span>
                         )}
                         {!isLinked && ing.needsReview && (
                           <span
-                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 5, fontSize: 11, color: 'var(--warning-text)', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'var(--warning-bg)', border: '1px solid transparent', borderRadius: 5, fontSize: 11, color: 'var(--warning-text)', cursor: 'pointer' }}
                             title="Correspondance catalogue incertaine, cliquer pour choisir"
                             onClick={() => { setPickerSearch(ing.nom || ''); setCatalogPicker(ing.id); }}
                           ><AlertTriangle size={13} aria-hidden="true" /></span>
@@ -2239,7 +2238,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                                 onMouseDown={() => linkProductToIngredient(idx, p)}
                               >
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
-                                {p.prixUnitaire > 0 && <span style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', marginLeft: 6 }}>{p.prixUnitaire.toFixed(3)}/{p.uniteRef}</span>}
+                                {p.prixUnitaire > 0 && <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', marginLeft: 6 }}>{p.prixUnitaire.toFixed(3)}/{p.uniteRef}</span>}
                               </div>
                             ))}
                           </div>
@@ -2309,7 +2308,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           }}
                         />
                       )}
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
                         {((Number(ing.quantite) || 0) * prixInfo.prix).toFixed(2)}
                       </span>
                       <button type="button" onClick={() => removeIngredient(idx)} style={cts.deleteLineBtn} title="Supprimer" aria-label="Supprimer l'ingrédient">×</button>
@@ -2417,21 +2416,18 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
                 {/* Avertissement plats impactés */}
                 {platsImpactes.length > 0 && (
-                  <div style={{
-                    background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8,
-                    padding: 12, marginBottom: 14,
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 6 }}>
+                  <div style={{ ...encadreStyle('alerte'), marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, ...encadreTitreStyle('alerte'), marginBottom: 6 }}>
                       Cette recette est utilisée dans {platsImpactes.length} plat{platsImpactes.length > 1 ? 's' : ''}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--warning-text)', marginBottom: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 11, marginBottom: 8, lineHeight: 1.5 }}>
                       Si vous supprimez la recette, ces plats perdront leur composante (les autres recettes liées resteront en place) :
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)' }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
                       {platsImpactes.slice(0, 8).map(p => (
                         <li key={p.id} style={{ marginBottom: 2 }}>
                           <strong>{p.nom}</strong>
-                          <span style={{ color: 'var(--warning-text)', fontSize: 11 }}> - {p.categorie}</span>
+                          {p.categorie && <span style={{ color: 'var(--text2)', fontSize: 11 }}> ({p.categorie})</span>}
                         </li>
                       ))}
                       {platsImpactes.length > 8 && (
@@ -2509,7 +2505,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     onRemove={() => setP({ photoUrl: null })}
                   />
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Nom du plat *</label>
+                    <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Nom du plat *</label>
                     <input
                       autoFocus
                       type="text"
@@ -2522,7 +2518,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Catégorie</label>
+                    <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Catégorie</label>
                     <select
                       value={p.categorie || 'Plats'}
                       onChange={e => setP({ categorie: e.target.value })}
@@ -2532,7 +2528,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     </select>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Prix de vente (CHF)</label>
+                    <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Prix de vente (CHF)</label>
                     <input
                       type="number" min="0" step="0.50"
                       value={p.prixVente ?? ''}
@@ -2543,7 +2539,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Description (optionnelle)</label>
+                  <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Description (optionnelle)</label>
                   <textarea
                     value={p.description || ''}
                     onChange={e => setP({ description: e.target.value })}
@@ -2554,7 +2550,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 </div>
                 {/* ─── Cartes (menus) où figure ce plat ─── */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Cartes (menus)</label>
+                  <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Cartes (menus)</label>
                   {cartesActivesLocal.length === 0 ? (
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, fontStyle: 'italic' }}>
                       Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher ce plat.
@@ -2567,7 +2563,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           <label key={c.id}
                             style={{
                               display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px',
-                              border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 20,
+                              border: '1px solid transparent', borderRadius: 20,
                               background: checked ? 'var(--accent-light)' : 'var(--surface)',
                               color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 500,
                             }}>
@@ -2610,7 +2606,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           cartes={cartesActivesLocal}
           initialSelected={plats.filter(p => (p.recettes || []).some(pr => pr.recetteId === selected.id)).map(p => p.id)}
           confirmLabel={(n) => `Enregistrer (${n})`}
-          emptyHint={'Aucun plat. Créez-en un d\'abord avec « + Plat ».'}
+          emptyHint={'Aucun plat. Créez-en un d\'abord avec « Ajouter », puis « Un plat ».'}
           busy={recBulkBusy}
           onConfirm={(ids) => appliquerPlatsPourRecette(selected, ids)}
           onClose={() => setLinkPlatPickerForRecette(null)}
@@ -2637,13 +2633,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               const n = dejaCount(p);
               if (!n) return null;
               return (
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-text)', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-text)', background: 'var(--success-bg)', border: '1px solid var(--success-bd)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
                   {n === selIds.length ? 'déjà toutes liées' : `${n}/${selIds.length} déjà liée${n > 1 ? 's' : ''}`}
                 </span>
               );
             }}
             confirmLabel={(n) => `Rattacher à ${n} plat${n > 1 ? 's' : ''}`}
-            emptyHint={'Aucun plat. Créez-en un d\'abord avec « + Nouveau plat ».'}
+            emptyHint={'Aucun plat. Créez-en un d\'abord avec « Nouveau plat ».'}
             busy={recBulkBusy}
             onConfirm={(ids) => rattacherSelectionAuxPlats(plats.filter(p => ids.includes(p.id) && !complets.includes(p.id)))}
             onClose={() => setBulkLinkPlatOpen(false)}
@@ -2767,7 +2763,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           <input type="checkbox" checked={isPickerChecked} readOnly style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</div>
                           <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
                             {p.categorie}{p.fournisseurNom ? `, ${p.fournisseurNom}` : ''}{p.referenceFourn ? `, réf ${p.referenceFourn}` : ''}
                           </div>
@@ -2778,7 +2774,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                               CHF {p.prixUnitaire.toFixed(4)}
                             </div>
                           ) : <span style={{ color: 'var(--text2)', fontSize: 12 }}>-</span>}
-                          <div style={{ fontSize: 10, color: 'var(--text2)' }}>/{p.uniteRef}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text2)' }}>/{p.uniteRef}</div>
                         </div>
                       </div>
                     );

@@ -381,21 +381,21 @@ const s = {
   editBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, background: 'transparent', border: 'none', borderRadius: 6, color: 'var(--accent)', cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' },
   // Sans pointillés : des actions de la barre, pas des onglets à remplir.
   addBtn: { color: 'var(--accent)', border: 'none', fontWeight: 700 },
-  ordreBtn: { color: 'var(--text2)', border: 'none', fontWeight: 600 },
-  archivesBtn: { color: 'var(--text2)', border: 'none', fontWeight: 600 },
+  ordreBtn: { color: 'var(--text2)', border: 'none', fontWeight: 500 },
+  archivesBtn: { color: 'var(--text2)', border: 'none', fontWeight: 500 },
   // flexShrink 0 : sans lui les lignes se superposent sur mobile (min-height
   // global 44px sur les contrôles vs hauteur calculée par flex).
   ordreRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', flexShrink: 0 },
-  ordreRang: { width: 22, flexShrink: 0, fontSize: 11, fontWeight: 800, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' },
-  ordreNom: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  ordreRang: { width: 22, flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' },
+  ordreNom: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   // 44px : cible tactile iPad. Une flèche nue de 16px se rate une fois sur deux
   // et passe pour un bug d'enregistrement.
   ordreArrow: { width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--accent)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   archiveRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)' },
-  archiveName: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  archiveName: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   archiveMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
   archiveEmpty: { padding: '18px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
-  restoreBtn: { padding: '7px 12px', background: 'var(--surface)', border: '1px solid var(--accent-bd)', color: 'var(--accent)', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0 },
+  restoreBtn: { padding: '7px 12px', background: 'var(--accent-light)', border: '1px solid transparent', color: 'var(--accent)', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0 },
   divider: { width: 1, height: 24, background: 'var(--border)', margin: '0 4px' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
   modal: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 460, maxWidth: '94vw', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
@@ -404,7 +404,7 @@ const s = {
   modalHint: { fontSize: 11, color: 'var(--text2)', marginTop: 3, lineHeight: 1.4 },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
   modalBody: { padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
-  label: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
+  label: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   // minWidth:0 : les input[type=date] ont une largeur intrinsèque (~170px) qui
   // ferait déborder la rangée hors de la modale sur mobile (375px).
@@ -414,7 +414,7 @@ const s = {
   // Bordure en propriétés longues (pas le raccourci `border`) : « Supprimer » et
   // « Cacher » surchargent borderColor, et mélanger les deux fait warner React
   // à chaque bascule (cf. npm run lint:borders).
-  ghostBtn: { padding: '8px 14px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { padding: '8px 14px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Carte actuellement cachée : le bouton porte l'état, pas seulement l'action.
   hideBtnActive: { background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' },
   primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },

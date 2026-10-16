@@ -242,7 +242,7 @@ const Pertes = ({ user, etablissement }) => {
           <div key={k} style={pts.kpiCard}>
             <div style={pts.kpiLabel}>Première catégorie de perte</div>
             <div style={pts.kpiVal}>{k}</div>
-            <div style={{fontSize:12,color:'var(--danger-strong)',fontWeight:600,marginTop:2}}>CHF {v.toFixed(2)}</div>
+            <div style={{fontSize:12,color:'var(--danger-strong)',fontWeight:500,marginTop:2}}>CHF {v.toFixed(2)}</div>
           </div>
         ))}
       </div>
@@ -309,7 +309,7 @@ const Pertes = ({ user, etablissement }) => {
               <span style={pts.cell}><span style={pts.motifTag}>{p.motif}</span></span>
               <span style={pts.cell}>{p.categorie}</span>
               <span style={{...pts.cell,textAlign:'right'}}>{p.quantite} {p.unite}</span>
-              <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight:600}}>−CHF {valeur}</span>
+              <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight:500}}>−CHF {valeur}</span>
               <span style={pts.cell}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
                   <div style={{...pts.empDot, background:role?.couleur}}>{emp.avatar}</div>
@@ -382,7 +382,7 @@ const Pertes = ({ user, etablissement }) => {
                   <label style={pts.fieldLabel}>
                     Produit *
                     {catalogue.length > 0 && (
-                      <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text2)', fontWeight: 400, fontStyle: 'italic' }}>
+                      <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text2)', fontWeight: 400, fontStyle: 'italic' }}>
                         ({catalogue.length} produits dans le catalogue - tapez pour rechercher)
                       </span>
                     )}
@@ -468,7 +468,7 @@ const Pertes = ({ user, etablissement }) => {
                             }}
                           >
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.nom}</div>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{p.nom}</div>
                               <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
                                 {p.categorie || 'Autres'}
                                 {p.uniteRef && `, ${p.uniteRef}`}
@@ -482,7 +482,7 @@ const Pertes = ({ user, etablissement }) => {
                             )}
                           </div>
                         ))}
-                        <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text2)', borderTop: '1px solid var(--border)', background: 'var(--bg)', fontStyle: 'italic' }}>
+                        <div style={{ padding: '6px 12px', fontSize: 11, color: 'var(--text2)', borderTop: '1px solid var(--border)', background: 'var(--bg)', fontStyle: 'italic' }}>
                           ↑↓ pour naviguer, Entrée pour valider, Échap pour fermer
                         </div>
                       </div>
@@ -540,22 +540,22 @@ const pts = {
   motifTabs:{display:'flex',gap:4,flexWrap:'wrap'},
   motifBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   motifActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   kpiBar:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:'12px 32px'},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
-  kpiLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
+  kpiLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
   kpiVal:{fontSize:22,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
   tableWrap:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden'},
-  tableHead:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'9px 18px',background:'var(--bg)',fontSize:10,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
+  tableHead:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'9px 18px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
   tableRow:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'12px 18px',borderBottom:'1px solid var(--border)',gap:10,alignItems:'center'},
   cell:{fontSize:13,color:'var(--text)'},
-  cellBold:{fontSize:13,fontWeight:600,color:'var(--text)'},
-  badge:{display:'inline-block',padding:'3px 9px',borderRadius:12,fontSize:11,fontWeight:600},
+  cellBold:{fontSize:13,fontWeight:500,color:'var(--text)'},
+  badge:{display:'inline-block',padding:'3px 9px',borderRadius:12,fontSize:11,fontWeight:500},
   motifTag:{fontSize:11,background:'var(--surface2)',color:'var(--text2)',padding:'2px 8px',borderRadius:8,fontWeight:500},
-  empDot:{width:22,height:22,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:9,flexShrink:0},
-  valBtn:{background:'none',border:'1px solid var(--success-text)',color:'var(--success-text)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  empDot:{width:22,height:22,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:11,flexShrink:0},
+  valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   chartCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'18px 20px'},
   chartTitle:{fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:14},
   chartBars:{display:'flex',flexDirection:'column',gap:10},
@@ -563,7 +563,7 @@ const pts = {
   barLabel:{fontSize:12,color:'var(--text)',fontWeight:500},
   barTrack:{height:8,background:'var(--bg)',borderRadius:4,overflow:'hidden',border:'1px solid var(--border)'},
   barFill:{height:'100%',background:'var(--accent)',borderRadius:4,transition:'width .4s'},
-  barVal:{fontSize:12,color:'var(--danger-strong)',fontWeight:600,textAlign:'right'},
+  barVal:{fontSize:12,color:'var(--danger-strong)',fontWeight:500,textAlign:'right'},
   barPct:{fontSize:11,color:'var(--text2)',textAlign:'right'},
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000},
   modal:{background:'var(--surface)',borderRadius:14,width:520,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'},
@@ -577,9 +577,9 @@ const pts = {
   // en dessous elles s'empilent.
   formGrid:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:14},
   field:{display:'flex',flexDirection:'column',gap:6},
-  fieldLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
+  fieldLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
   fieldInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none'},
-  previewVal:{background:'var(--danger-bg-soft)',border:'1px solid var(--danger-bd)',borderRadius:8,padding:'10px 14px',fontSize:13,color:'var(--text)',marginTop:8},
+  previewVal:{ borderLeft: '2px solid var(--danger-bd)', padding: '10px 0 10px 12px',fontSize:13,color:'var(--text)',marginTop:8},
 };
 
 export default Pertes;

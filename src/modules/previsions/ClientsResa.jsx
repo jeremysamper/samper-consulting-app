@@ -113,7 +113,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
           <button type="button" onClick={() => setOuverte('nouveau')} style={{
             minHeight: 44, padding: '9px 16px', borderRadius: 8,
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-            background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 600,
+            background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 500,
             fontFamily: 'var(--font)', cursor: 'pointer',
           }}>
             Nouveau client
@@ -129,7 +129,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
               flexShrink: 0, minHeight: 36, padding: '6px 12px', borderRadius: 999,
               borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--accent)' : 'var(--border)',
               background: actif ? 'var(--accent-light)' : 'var(--surface)',
-              color: actif ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: 600,
+              color: actif ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: 500,
               fontFamily: 'var(--font)', cursor: 'pointer', whiteSpace: 'nowrap',
             }}>
               {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{compte[f.id]}</span>
@@ -195,7 +195,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
                   {c.nbNoShow ? `, ${pluriel(c.nbNoShow, 'no-show')}` : ''}
                 </div>
                 {c.consentementMarketing && c.email && (
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-text)' }}>accepte les e-mails</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-text)' }}>accepte les e-mails</div>
                 )}
               </div>
             </button>

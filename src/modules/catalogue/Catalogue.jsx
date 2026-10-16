@@ -500,7 +500,7 @@ const Catalogue = ({ user, etablissement }) => {
               {/* Barre sélection de masse */}
               {canWrite && (
                 <div style={cat.selectBar}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
                     <input
                       type="checkbox"
                       checked={selected.size === filtered.length && filtered.length > 0}
@@ -610,7 +610,7 @@ const Catalogue = ({ user, etablissement }) => {
                             />
                           </td>
                         )}
-                        <td style={{ ...cat.td, fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
+                        <td style={{ ...cat.td, fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
                         <td style={{ ...cat.td, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
                         <td style={cat.td}><span style={cat.catBadge}>{categorieAffichee(p)}</span></td>
                         {/* Sélecteur fournisseur inline */}
@@ -675,7 +675,7 @@ const Catalogue = ({ user, etablissement }) => {
                   const nbProd = produits.filter(p => p.fournisseurId === f.id || p.fournisseurs?.some(pf => pf.fournisseurId === f.id)).length;
                   return (
                     <tr key={f.id} style={cat.tr}>
-                      <td style={{ ...cat.td, fontWeight: 600 }}>{f.nom}</td>
+                      <td style={{ ...cat.td, fontWeight: 500 }}>{f.nom}</td>
                       <td style={cat.td}>{f.contact || '-'}</td>
                       <td style={cat.td}>{f.tel || '-'}</td>
                       <td style={cat.td}>{f.email || '-'}</td>
@@ -916,7 +916,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               <label style={cat.lbl}>Prix unitaire saisi (CHF / unité)</label>
               <input style={cat.inp} type="number" step="0.0001" value={form.prixUnitaire} onChange={e => up('prixUnitaire', e.target.value)} placeholder="ex: 0.0285 CHF/g" />
               {pfRows.length > 0 && (
-                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
                   Sert de repli. Les références fournisseurs priment, sauf stratégie « manuel ».
                 </div>
               )}
@@ -1000,7 +1000,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     key={a.id}
                     type="button"
                     style={{
-                      padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600,
+                      padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 500,
                       cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid',
                       background: active ? 'var(--warning-bg)' : 'var(--bg)',
                       borderColor: active ? 'var(--warning-strong)' : 'var(--border)',
@@ -1017,7 +1017,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               })}
             </div>
             {(form.allergenes || []).length > 0 && (
-              <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6, fontWeight: 600 }}>
+              <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6, fontWeight: 500 }}>
                 {(form.allergenes || []).length} allergène{(form.allergenes || []).length > 1 ? 's' : ''} sélectionné{(form.allergenes || []).length > 1 ? 's' : ''}
               </div>
             )}
@@ -1046,7 +1046,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <td style={cat.td}>{pf.fournisseurNom}</td>
                         <td style={cat.td}>CHF {pf.prixAchat}</td>
                         <td style={cat.td}>{pf.conditionnement || '-'}</td>
-                        <td style={{ ...cat.td, fontWeight: 600, color: 'var(--accent)' }}>
+                        <td style={{ ...cat.td, fontWeight: 500, color: 'var(--accent)' }}>
                           {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '-'}
                         </td>
                         <td style={cat.td}>{pf.estPrincipal ? 'Principal' : ''}</td>
@@ -1129,11 +1129,11 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <tr key={h.id} style={cat.tr}>
                           <td style={cat.td}>{(h.releveLe || '').split('-').reverse().join('.')}</td>
                           <td style={cat.td}>{h.fournisseurNom || '-'}</td>
-                          <td style={{ ...cat.td, fontWeight: 600 }}>
+                          <td style={{ ...cat.td, fontWeight: 500 }}>
                             {Number(h.prixUnitaire).toFixed(4)}
                             {delta !== null && Math.abs(delta) >= 0.5 && (
                               <span style={{
-                                marginLeft: 6, fontSize: 10, fontWeight: 700,
+                                marginLeft: 6, fontSize: 11, fontWeight: 700,
                                 color: delta > 0 ? 'var(--danger-text)' : 'var(--success-text)',
                               }}>
                                 {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
@@ -1208,25 +1208,25 @@ const cat = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 },
   title: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   sub: { fontSize: 13, color: 'var(--text2)', marginTop: 4 },
-  btn: { padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' },
-  ghostBtn: { padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' },
+  btn: { padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' },
+  ghostBtn: { padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' },
   tabs: { display: 'flex', gap: 6, borderBottom: '2px solid var(--border)', paddingBottom: 0 },
-  tab: { padding: '8px 16px', background: 'none', border: 'none', borderBottom: '2px solid transparent', marginBottom: -2, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
+  tab: { padding: '8px 16px', background: 'none', border: 'none', borderBottom: '2px solid transparent', marginBottom: -2, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text2)' },
   tabActive: { borderBottomColor: 'var(--accent)', color: 'var(--accent)' },
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   filters: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
-  filterBtn: { padding: '5px 12px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  filterBtn: { padding: '5px 12px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
   tableWrap: { overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   selectBar: { padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-  th: { padding: '10px 14px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
+  th: { padding: '10px 14px', textAlign: 'left', fontWeight: 500, fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
   tr: { borderBottom: '1px solid var(--border)' },
   td: { padding: '9px 14px', verticalAlign: 'middle' },
   tdAction: { padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' },
-  catBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 10, fontWeight: 600 },
+  catBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 11, fontWeight: 500 },
   miniBtn: { width: 26, height: 26, border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg)', cursor: 'pointer', fontSize: 12 },
-  miniLink: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600 },
+  miniLink: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 500 },
   empty: { padding: 60, textAlign: 'center', color: 'var(--text2)' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
   modal: { background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
@@ -1234,7 +1234,7 @@ const cat = {
   modalBody: { padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 },
   modalFoot: { padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  lbl: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 4 },
+  lbl: { display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text2)', marginBottom: 4 },
   inp: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
   row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 },
@@ -1331,13 +1331,13 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                       {p.intraDup ? (
                         <span style={{ color: 'var(--warning-strong)' }}>Présent 2× dans le fichier</span>
                       ) : (
-                        <>Doublon (par {p._matchReason}) - existant : <strong>{p._existing?.nom}</strong>{p._existing?.prixUnitaire ? `, ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
+                        <>Doublon (par {p._matchReason}), existant : <strong>{p._existing?.nom}</strong>{p._existing?.prixUnitaire ? `, ${p._existing.prixUnitaire.toFixed(4)} CHF/${p._existing.uniteRef}` : ''}</>
                       )}
                     </div>
                     <div style={ipm.rowMeta}>
                       Nouveau prix : <strong>{p.prixUnitaire?.toFixed(4)} CHF/{p.uniteRef}</strong>
                       {p._existing?.prixUnitaire && p.prixUnitaire !== p._existing.prixUnitaire && (
-                        <span style={{ marginLeft: 6, color: p.prixUnitaire > p._existing.prixUnitaire ? 'var(--danger-strong)' : 'var(--success-strong)', fontWeight: 600 }}>
+                        <span style={{ marginLeft: 6, color: p.prixUnitaire > p._existing.prixUnitaire ? 'var(--danger-strong)' : 'var(--success-strong)', fontWeight: 500 }}>
                           {p.prixUnitaire > p._existing.prixUnitaire ? '↑' : '↓'} {Math.abs((p.prixUnitaire / p._existing.prixUnitaire - 1) * 100).toFixed(1)}%
                         </span>
                       )}
@@ -1406,20 +1406,20 @@ const ipm = {
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
   kpisRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '14px 20px' },
   kpiBox: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', textAlign: 'center' },
-  kpiLabel: { fontSize: 12, fontWeight: 600, color: 'var(--text2)' },
+  kpiLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-num)', marginTop: 4 },
   tabsBar: { display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid var(--border)' },
   tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent' },
-  tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
+  tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 500 },
   body: { flex: 1, overflowY: 'auto', padding: '6px 20px' },
-  summaryItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, marginBottom: 8, background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', borderRadius: 8 },
+  summaryItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0 12px 12px', marginBottom: 8,  borderLeft: '2px solid var(--success-bd)',},
   summaryHint: { fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 },
   list: { paddingTop: 4 },
   row: { padding: '10px 12px', borderBottom: '1px solid var(--border)' },
-  rowName: { fontSize: 13, fontWeight: 600, color: 'var(--text)' },
+  rowName: { fontSize: 13, fontWeight: 500, color: 'var(--text)' },
   rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 3 },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 },
   ghostBtn: { padding: '8px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
 };
 
