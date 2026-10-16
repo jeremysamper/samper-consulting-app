@@ -94,7 +94,7 @@ function AllMappedState({ total }) {
       textAlign:     'center',
     }}>
       <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--success-text)' }}>
-        Tous les plats sont mappés !
+        Tous les plats ont leur correspondance !
       </div>
       <div style={{ fontSize: 13, color: 'var(--success-text)', lineHeight: 1.6 }}>
         {total} {total > 1 ? 'plats reliés' : 'plat relié'} à une recette.
@@ -201,7 +201,7 @@ export default function MappingPlats({ user, etablissement }) {
       } else if (suggestion) {
         await changeMapping(posItemId, suggestion.recipeId, suggestion.score);
       }
-      notify('Mapping validé', 'success');
+      notify('Correspondance validée', 'success');
     } catch (e) {
       notify(messageErreur(e, 'ventes caisse', 'Validation impossible.'), 'error');
     }
@@ -231,7 +231,7 @@ export default function MappingPlats({ user, etablissement }) {
   if (!loading && posItems.length === 0 && !error) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
+        <SectionHeader title="Correspondance des plats POS et des recettes" subtitle={etabNom} />
         {/* Paramètres est réservé au consultant : lui seul y est envoyé. */}
         <EmptyState type="no_pos" onNavigate={user?.role === 'consultant' ? () => navigateToPage('parametres') : null} />
       </div>
@@ -241,7 +241,7 @@ export default function MappingPlats({ user, etablissement }) {
   if (!loading && recettes.length === 0 && !error) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
+        <SectionHeader title="Correspondance des plats POS et des recettes" subtitle={etabNom} />
         <EmptyState type="no_recettes" />
       </div>
     );
@@ -250,7 +250,7 @@ export default function MappingPlats({ user, etablissement }) {
   if (!loading && !error && posItems.length > 0 && mappedCount === posItems.length) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
+        <SectionHeader title="Correspondance des plats POS et des recettes" subtitle={etabNom} />
         <MappingStats
           total={posItems.length} mapped={mappedCount}
           auto={counts.auto} suggested={counts.suggested} manual={counts.manual}
@@ -264,7 +264,7 @@ export default function MappingPlats({ user, etablissement }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
-        title="Mapping plats POS et recettes"
+        title="Correspondance des plats POS et des recettes"
         subtitle={etabNom ? `${etabNom}, Lightspeed` : 'Lightspeed'}
       />
 

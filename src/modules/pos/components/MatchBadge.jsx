@@ -24,7 +24,7 @@ const BADGE_CONFIG = {
   },
   manual: {
     dot:    '⚪',
-    label:  'à mapper',
+    label:  'sans correspondance',
     color:  'var(--text2)',
     bg:     'var(--surface2)',
     border: 'var(--border)',

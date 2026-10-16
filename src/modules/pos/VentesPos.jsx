@@ -18,9 +18,9 @@ import ConsoIngredients   from './views/ConsoIngredients.jsx';
 
 const ALL_TABS = [
   { id: 'mise_en_place', label: 'Mise en place J+1', icon: '◷' },
-  { id: 'top_flop',      label: 'Top / Flop',        icon: '↑↓' },
+  { id: 'top_flop',      label: 'Meilleures et moins bonnes ventes', icon: '↑↓' },
   { id: 'conso',         label: 'Conso ingrédients', icon: '◈' },
-  { id: 'mapping',       label: 'Mapping plats',     icon: '⇄' },
+  { id: 'mapping',       label: 'Correspondance des plats', icon: '⇄' },
 ];
 
 export default function VentesPos({ user, etablissement }) {

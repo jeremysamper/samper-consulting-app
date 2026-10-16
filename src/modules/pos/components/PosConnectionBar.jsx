@@ -316,7 +316,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
             <span style={S.title}>Aucune caisse connectée</span>
             <div style={S.sub}>
               {canConnect
-                ? 'Connectez votre caisse Lightspeed en 3 étapes guidées pour synchroniser les ventes et activer les vues cuisine (mise en place, top/flop, conso ingrédients).'
+                ? 'Connectez votre caisse Lightspeed en 3 étapes guidées pour synchroniser les ventes et activer les vues cuisine (mise en place, meilleures ventes et ventes faibles, conso ingrédients).'
                 : "La caisse Lightspeed n'est pas connectée. Demandez à un responsable de la connecter."}
             </div>
           </div>

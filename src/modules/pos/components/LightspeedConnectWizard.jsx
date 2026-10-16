@@ -354,7 +354,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
       <p style={S.intro}>
         {locationName ? `Caisse connectée : ${locationName}. ` : 'Caisse connectée. '}
         Importez maintenant les {HISTORY_DAYS} derniers jours de ventes pour activer les vues
-        cuisine (mise en place, top/flop, conso ingrédients).
+        cuisine (mise en place, meilleures ventes et ventes faibles, conso ingrédients).
       </p>
       <div style={S.infoBox}>
         Ensuite, plus rien à faire : la synchronisation tourne automatiquement chaque nuit.
@@ -405,7 +405,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
         </div>
       </div>
       <div style={S.infoBox}>
-        Prochaine étape : associez vos plats aux recettes dans l'onglet « Mapping plats » pour
+        Prochaine étape : associez vos plats aux recettes dans l'onglet « Correspondance des plats » pour
         alimenter la mise en place et la conso ingrédients.
       </div>
       <div style={{ ...S.actions, justifyContent: 'center' }}>

@@ -68,10 +68,10 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
     },
     no_mapping: {
       icon:   '⇄',
-      title:  'Aucun plat mappé',
-      desc:   'Les vues cuisine nécessitent que vos plats POS soient liés à leurs recettes. Commencez par le mapping.',
+      title:  'Aucun plat avec correspondance',
+      desc:   'Les vues cuisine nécessitent que vos plats POS soient liés à leurs recettes. Commencez par la correspondance des plats.',
       action: onNavigateToMapping
-        ? { label: 'Aller au mapping', onClick: onNavigateToMapping }
+        ? { label: 'Aller à la correspondance des plats', onClick: onNavigateToMapping }
         : null,
     },
     no_sales: {

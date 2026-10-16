@@ -137,10 +137,10 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
         flexWrap:       'wrap',
       }}>
         <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-          {mappedCount} plat{mappedCount !== 1 ? 's' : ''} mappé{mappedCount !== 1 ? 's' : ''}
+          {mappedCount} plat{mappedCount !== 1 ? 's' : ''} avec correspondance
           {unmappedCount > 0 && (
             <>, <span style={{ color: 'var(--text3)' }}>
-              {unmappedCount} non mappé{unmappedCount !== 1 ? 's' : ''} exclus
+              {unmappedCount} sans correspondance exclu{unmappedCount !== 1 ? 's' : ''}
             </span></>
           )}
         </div>
@@ -191,7 +191,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
             fontSize:   12,
             color:      'var(--text3)',
           }}>
-            {unmappedCount} plat{unmappedCount !== 1 ? 's' : ''} non mappé{unmappedCount !== 1 ? 's' : ''} exclu{unmappedCount !== 1 ? 's' : ''} de ce calcul
+            {unmappedCount} plat{unmappedCount !== 1 ? 's' : ''} sans correspondance exclu{unmappedCount !== 1 ? 's' : ''} de ce calcul
             {onNavigateToMapping && (
               <button
                 onClick={onNavigateToMapping}
@@ -208,7 +208,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
                   textDecoration: 'underline',
                 }}
               >
-                Aller au mapping
+                Aller à la correspondance des plats
               </button>
             )}
           </div>

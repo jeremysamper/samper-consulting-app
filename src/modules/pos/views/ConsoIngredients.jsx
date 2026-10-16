@@ -189,7 +189,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
         justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
       }}>
         <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-          Basé sur {mappedWithSalesCount} / {totalMappedCount} plat{totalMappedCount !== 1 ? 's' : ''} mappé{totalMappedCount !== 1 ? 's' : ''}
+          Basé sur {mappedWithSalesCount} / {totalMappedCount} plat{totalMappedCount !== 1 ? 's' : ''} avec correspondance
           {excludedNoPortions > 0 && (
             <span style={{ color: 'var(--warning-text)', marginLeft: 6 }}>
               ({excludedNoPortions} exclu{excludedNoPortions !== 1 ? 's' : ''}, sans portions définies)
@@ -228,7 +228,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
         {!hasData ? (
           <PosEmptyState
             type="no_sales"
-            message="Aucune vente sur cette période pour les plats mappés."
+            message="Aucune vente sur cette période pour les plats avec correspondance."
           />
         ) : (
           <>
@@ -293,7 +293,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
               borderTop: '1px solid var(--border)',
               fontSize: 12, color: 'var(--text3)',
             }}>
-              Consommation théorique basée sur {mappedWithSalesCount} plat{mappedWithSalesCount !== 1 ? 's' : ''} sur {totalMappedCount} mappé{totalMappedCount !== 1 ? 's' : ''}.
+              Consommation théorique basée sur {mappedWithSalesCount} plat{mappedWithSalesCount !== 1 ? 's' : ''} sur {totalMappedCount} avec correspondance.
               {excludedNoPortions > 0 && (
                 <> {excludedNoPortions} recette{excludedNoPortions !== 1 ? 's' : ''} sans portions définies exclue{excludedNoPortions !== 1 ? 's' : ''}.</>
               )}
@@ -308,7 +308,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
                       fontFamily: 'var(--font)', textDecoration: 'underline',
                     }}
                   >
-                    Mapping
+                    Correspondance des plats
                   </button></>
                 )
               )}

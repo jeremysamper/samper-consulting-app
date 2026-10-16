@@ -18,7 +18,7 @@ export function MappingFilters({ filter, onFilter, search, onSearch, counts }) {
     { id: 'all',       label: `Tous (${counts.all})` },
     { id: 'auto',      label: `Auto (${counts.auto})` },
     { id: 'suggested', label: `Suggestions (${counts.suggested})` },
-    { id: 'manual',    label: `À mapper (${counts.manual})` },
+    { id: 'manual',    label: `Sans correspondance (${counts.manual})` },
   ];
 
   return (

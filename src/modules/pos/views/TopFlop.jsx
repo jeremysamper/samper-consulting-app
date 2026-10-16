@@ -23,9 +23,16 @@ const PERIODS = [
 
 const FILTERS = [
   { value: 'all',   label: 'Tous' },
-  { value: 'top10', label: 'Top 10' },
-  { value: 'flop10', label: 'Flop 10' },
+  { value: 'top10', label: 'Meilleures ventes' },
+  { value: 'flop10', label: 'Ventes faibles' },
 ];
+
+// En-tête de la liste (écran et titre du PDF) selon le filtre choisi.
+const ENTETES = {
+  top10: 'Meilleures ventes de la semaine',
+  flop10: 'Ventes faibles de la semaine',
+  all: 'Ventes de la semaine',
+};
 
 // ── Delta badge ───────────────────────────────────────────────────
 
@@ -150,7 +157,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
         </div>
         <PosExportButton
           printId={PRINT_ID}
-          title={`Top/Flop - ${filter === 'top10' ? 'Top 10 de la semaine ' : filter === 'flop10' ? 'Flop 10 de la semaine ' : 'Semaine '}${periodLabel}`}
+          title={`${ENTETES[filter] ?? ENTETES.all} ${periodLabel}`}
           etablissement={etablissement}
         />
       </div>
@@ -166,7 +173,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
           paddingBottom: 4,
           borderBottom:  '1px solid var(--border)',
         }}>
-          {filter === 'top10' ? 'Top 10 de la semaine ' : filter === 'flop10' ? 'Flop 10 de la semaine ' : 'Semaine '}
+          {ENTETES[filter] ?? ENTETES.all}{' '}
           {periodLabel}
         </div>
 
@@ -260,7 +267,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
               fontFamily: 'var(--font)', textDecoration: 'underline',
             }}
           >
-            Mapping plats
+            Correspondance des plats
           </button>
         </div>
       )}
