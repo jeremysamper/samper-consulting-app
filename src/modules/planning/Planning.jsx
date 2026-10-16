@@ -24,7 +24,7 @@ import ExportModal from './ExportModal.jsx';
 import MonPlanning from './MonPlanning.jsx';
 import ModelesModal from './ModelesModal.jsx';
 import { BoutonActions, Fenetre } from './planningUi.jsx';
-import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, formatDuree, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
+import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, filetType, formatDuree, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 import { usePlanningModeles } from '../../hooks/usePlanningModeles.js';
@@ -1580,10 +1580,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         }}
                         style={{
                           flex: '1 1 90px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13,
-                          background: actif ? t.fond : 'var(--surface)',
+                          background: actif ? 'var(--surface2)' : 'var(--surface)',
+                          boxShadow: filetType(t),
                           borderWidth: 1, borderStyle: 'solid',
                           borderColor: actif ? 'var(--accent)' : 'var(--border)',
-                          color: actif ? t.texte : 'var(--text2)',
+                          color: actif ? 'var(--text)' : 'var(--text2)',
                           fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
                         }}>
                         {t.label}
@@ -2231,7 +2232,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                         {Object.entries(TYPES_HORAIRE).map(([id, t]) => (
                           <button key={id} type="button" aria-pressed={batchTypeShift === id} onClick={() => setBatchTypeShift(id)}
-                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--accent)' : 'transparent', background: batchTypeShift === id ? t.fond : 'transparent', color: batchTypeShift === id ? t.texte : 'var(--text2)' }}>
+                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--accent)' : 'transparent', background: batchTypeShift === id ? 'var(--surface2)' : 'transparent', boxShadow: filetType(t), color: batchTypeShift === id ? 'var(--text)' : 'var(--text2)' }}>
                             {t.label}
                           </button>
                         ))}

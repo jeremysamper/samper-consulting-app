@@ -59,7 +59,7 @@ const pls = {
   // Mobile : cible de tap confortable sans agrandir la carte.
   mobilePhone: { alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 13 },
   dayCell: { minHeight: 72, padding: 6, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
-  // Sans filet : la teinte du type (midi, soir, longue) suffit à détacher l'horaire.
+  // Fond neutre : le type (midi, soir, longue) se lit au filet gauche (ShiftCell).
   shiftCell: { borderRadius: 6, padding: '8px 6px', position: 'relative' },
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   addHint: { fontSize: 18, color: 'var(--text2)' },

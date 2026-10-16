@@ -10,13 +10,20 @@
 // servent tant que l'établissement n'a rien réglé.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Libellé et teinte de chaque type d'horaire, partout dans le module.
+// Libellé et couleur de chaque type d'horaire, partout dans le module. Les
+// cases restent sur un fond neutre : le type se lit au filet gauche de 2 px
+// (`filet`), dans des teintes *-text qui gardent un contraste d'au moins 3:1
+// sur --surface2 dans les deux thèmes.
 export const TYPES_HORAIRE = {
-  midi: { label: 'Midi', fond: 'var(--warning-bg)', texte: 'var(--warning-text)' },
-  soir: { label: 'Soir', fond: 'var(--info-bg)', texte: 'var(--info-text)' },
-  longue: { label: 'Longue', fond: 'var(--success-bg)', texte: 'var(--success-text)' },
-  simple: { label: 'Continue', fond: 'var(--surface2)', texte: 'var(--text)' },
+  midi: { label: 'Midi', filet: 'var(--warning-text)' },
+  soir: { label: 'Soir', filet: 'var(--info-text)' },
+  longue: { label: 'Longue', filet: 'var(--success-text)' },
+  simple: { label: 'Continue', filet: 'var(--text3)' },
 };
+
+// Filet gauche du type, en ombre portée interne : il ne touche ni à la bordure
+// (sélection) ni à la taille de la case.
+export const filetType = (t) => `inset 2px 0 0 ${t.filet}`;
 
 export const typeHoraire = (typeShift) => TYPES_HORAIRE[typeShift] || TYPES_HORAIRE.simple;
 

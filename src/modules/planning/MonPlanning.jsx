@@ -1,5 +1,5 @@
 import React from 'react';
-import { ajouterJours, formatDuree, heuresSegment, typeHoraire } from './planningModeles.js';
+import { ajouterJours, filetType, formatDuree, heuresSegment, typeHoraire } from './planningModeles.js';
 import { jourLong, libellePeriode } from './planningExport.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
                   const t = typeHoraire(x.typeShift);
                   return (
                     <div key={x.id} style={s.horaire}>
-                      <span style={{ ...s.type, color: t.texte }}>{t.label}</span>
+                      <span style={{ ...s.type, color: 'var(--text2)', boxShadow: filetType(t), paddingLeft: 8 }}>{t.label}</span>
                       <span style={s.heures}>{x.debut} à {x.fin}</span>
                       <span style={s.duree}>{formatDuree(heuresSegment(x))}</span>
                     </div>

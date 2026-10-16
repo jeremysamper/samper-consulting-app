@@ -1,7 +1,7 @@
 import React from 'react';
 import { pls } from './Planning.styles.js';
 import { metaMotif } from '../../utils/absences.js';
-import { formatDuree, typeHoraire } from './planningModeles.js';
+import { filetType, formatDuree, typeHoraire } from './planningModeles.js';
 
 // Absence (congé, formation, absence) posée en tête de case.
 const PuceAbsence = ({ absence }) => {
@@ -23,7 +23,7 @@ const activable = (agir) => ({
 });
 
 // Case de la grille : les horaires du jour écrits en clair (« Midi », puis les
-// heures), teintés par type. En mode remplissage, toucher la case pose le
+// heures), sur fond neutre avec le filet gauche du type. En mode remplissage, toucher la case pose le
 // modèle choisi au lieu d'ouvrir la saisie.
 const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected, absence = null, onRemplir = null }) => {
   const shifts = getShiftsDay(userId, date);
@@ -52,7 +52,9 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
         const enPoste = shift.pointageDebut && !shift.pointageFin;
         const selected = selectionMode && selectedIds?.has(shift.id);
         const t = typeHoraire(shift.typeShift);
-        const bg = selected ? 'var(--accent-light)' : enPoste ? 'var(--success-bg)' : t.fond;
+        // Fond neutre pour tous les types ; seuls la sélection et le pointage en
+        // cours teintent la case. Le type se lit au filet gauche.
+        const bg = selected ? 'var(--accent-light)' : enPoste ? 'var(--success-bg)' : 'var(--surface2)';
         const etat = enPoste ? 'en poste' : shift.pointageFin ? 'pointé' : null;
         const onClick = (e) => {
           e.stopPropagation();
@@ -67,7 +69,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
         return (
           <div
             key={shift.id}
-            style={{ ...pls.shiftCell, background: bg, cursor: 'pointer', padding: '4px 6px', border: selected ? '1px solid var(--accent)' : 'none', display: 'flex', alignItems: 'flex-start', gap: 4 }}
+            style={{ ...pls.shiftCell, background: bg, boxShadow: filetType(t), cursor: 'pointer', padding: '4px 6px 4px 8px', border: selected ? '1px solid var(--accent)' : 'none', display: 'flex', alignItems: 'flex-start', gap: 4 }}
             onClick={onClick}
             {...(modifiable ? { ...activable(onClick), 'aria-labelledby': `shift-lbl-${shift.id} shift-h-${shift.id}` } : null)}
           >
@@ -76,7 +78,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
               <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected?.(shift.id)} onClick={(e) => e.stopPropagation()} style={{ marginTop: 1 }} aria-label="Sélectionner cet horaire" />
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: t.texte }}>{t.label}{etat ? `, ${etat}` : ''}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)' }}>{t.label}{etat ? `, ${etat}` : ''}</div>
               <div id={`shift-h-${shift.id}`} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>{shift.debut}-{shift.fin}</div>
               {(shift.poste || heures) && (
                 <div style={{ fontSize: 11, color: 'var(--text2)' }}>{[heures > 0 && formatDuree(heures), shift.poste].filter(Boolean).join(', ')}</div>
