@@ -115,6 +115,8 @@ export function useGroupes(etablissementId) {
   // Dernière liste connue, lue de façon synchrone par l'affichage optimiste.
   const groupesRef = useRef(groupes);
   groupesRef.current = groupes;
+  // Suppressions en vol, par id : un double tap ne part qu'une fois.
+  const suppressionsEnCours = useRef(new Map());
 
   useEffect(() => {
     if (!etablissementId) {
@@ -260,7 +262,26 @@ export function useGroupes(etablissementId) {
     // Une suppression refusée par la RLS ne lève AUCUNE erreur : elle touche
     // simplement zéro ligne. On relit donc ce qui a été supprimé pour ne pas
     // annoncer une suppression qui n'a pas eu lieu.
+    //
+    // Un double tap (vu le 14.10 sur iPhone : deux DELETE à 6 ms d'écart)
+    // envoyait deux requêtes : la première effaçait le groupe, la seconde ne
+    // touchait plus rien et affichait « Suppression impossible » alors que le
+    // groupe était bien supprimé. Une suppression déjà en cours pour cet id
+    // est donc partagée, et zéro ligne sur un groupe qui n'existe plus compte
+    // comme un succès.
     async function supprimer(id) {
+      const enCours = suppressionsEnCours.current.get(id);
+      if (enCours) return enCours;
+      const promesse = supprimerUneFois(id);
+      suppressionsEnCours.current.set(id, promesse);
+      try {
+        return await promesse;
+      } finally {
+        suppressionsEnCours.current.delete(id);
+      }
+    }
+
+    async function supprimerUneFois(id) {
       const { data, error } = await supabase
         .from(TABLE)
         .delete()
@@ -269,7 +290,14 @@ export function useGroupes(etablissementId) {
         .select('id');
       if (error) return { error: messageErreur(error) };
       if (!data || !data.length) {
-        return { error: "Suppression impossible : ce groupe n'est plus annulé, a déjà été supprimé, ou votre rôle ne le permet pas." };
+        const { data: reste, error: errLecture } = await supabase
+          .from(TABLE)
+          .select('id')
+          .eq('id', id)
+          .maybeSingle();
+        if (errLecture || reste) {
+          return { error: "Suppression impossible : ce groupe n'est plus annulé, a déjà été supprimé, ou votre rôle ne le permet pas." };
+        }
       }
       setGroupes((liste) => liste.filter((g) => g.id !== id));
       return { error: null };
