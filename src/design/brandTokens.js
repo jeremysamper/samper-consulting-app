@@ -25,14 +25,14 @@ export const BRAND = {
   font: {
     serif:       'Lora',          // voice: titles, block titles, amounts
     serifItalic: 'LoraItalic',    // italic notes
-    label:       'PoppinsMedium', // letterspaced caps labels
+    label:       'PoppinsMedium', // labels, sentence case
     body:        'PoppinsLight',  // body copy and cells
   },
   size: {
     title: 14.5, sectionLabel: 7.2, blockTitle: 9.2,
     body: 8, cell: 7.2, amount: 8, amountLarge: 11, note: 7,
   },
-  charSpace: { sectionLabel: 1.3, label: 0.9, title: 0.9 },
+  charSpace: { sectionLabel: 0, label: 0, title: 0.9 },
   page: { marginMm: 18 },
 };
 
@@ -200,8 +200,6 @@ export const BROWSER_PRINT_CSS = `
       color: ${BRAND.color.white} !important;
       font-family: 'Poppins', sans-serif;
       font-weight: 500 !important;
-      text-transform: uppercase;
-      letter-spacing: 0.13em;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -225,7 +223,7 @@ export const WEB_TYPE = {
   voice: { fontFamily: WEB_FONT.serif, fontWeight: 400 },
   voiceItalic: { fontFamily: WEB_FONT.serif, fontWeight: 400, fontStyle: 'italic' },
   // Label: section titles, table headers, row labels.
-  label: { fontFamily: WEB_FONT.body, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.09em' },
+  label: { fontFamily: WEB_FONT.body, fontWeight: 500, letterSpacing: 0 },
   // Data: body copy, cells, lists.
   data: { fontFamily: WEB_FONT.body, fontWeight: 300 },
 };

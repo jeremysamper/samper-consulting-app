@@ -15,8 +15,8 @@ import {
 // ─────────────────────────────────────────────────────
 // Direction artistique unique : toute couleur et toute police viennent de
 // src/design/brandTokens.js, aucune valeur en dur ici. Trois niveaux
-// typographiques et rien d'autre - voix (Lora), etiquette (Poppins Medium
-// capitales interlettrees), donnee (Poppins Light) - et AUCUN gras : la
+// typographiques et rien d'autre - voix (Lora), etiquette (Poppins Medium,
+// casse normale), donnee (Poppins Light) - et AUCUN gras : la
 // hierarchie passe par le corps, la couleur et le changement de famille.
 
 // ─── Encodage des captures html2canvas ──────────────────────────────────────
@@ -26,7 +26,7 @@ import {
 // En JPEG le meme document tombe sous les 300 Ko.
 //
 // Qualite 0,94 : le document est du texte fin sur blanc, c'est le pire cas pour
-// un JPEG. En dessous, un halo apparait autour des capitales interlettrees et
+// un JPEG. En dessous, un halo apparait autour des petits libelles et
 // les filets de 0,5 pt se salissent. Au-dessus, le fichier grossit sans gain
 // visible a l'impression. Verifie a l'oeil sur la facture et sur la carte.
 //
@@ -653,14 +653,13 @@ export const pdfUtils = {
       .pdf-brand-name {
         font-family: ${WEB_FONT.body}; font-weight: 500 !important;
         font-size: 8pt; color: ${C.primary};
-        text-transform: uppercase; letter-spacing: 0.13em;
       }
       .pdf-identity-meta {
         text-align: right; font-size: 8pt; color: ${C.stone}; line-height: 1.45;
       }
       .pdf-identity-etab {
         font-family: ${WEB_FONT.body}; font-weight: 500 !important;
-        color: ${C.primary}; text-transform: uppercase; letter-spacing: 0.09em;
+        color: ${C.primary};
       }
       .pdf-doc-title {
         font-family: ${WEB_FONT.serif}; font-weight: 400 !important;
@@ -675,7 +674,6 @@ export const pdfUtils = {
       h2 {
         font-family: ${WEB_FONT.body}; font-weight: 500 !important;
         font-size: 8pt; margin-top: 18px;
-        text-transform: uppercase; letter-spacing: 0.13em;
         color: ${C.primary};
         border-bottom: 0.5pt solid ${C.rule};
         padding-bottom: 5px;
@@ -693,7 +691,6 @@ export const pdfUtils = {
         text-align: left; font-size: 7.2pt;
         font-family: ${WEB_FONT.body}; font-weight: 500 !important;
         background: ${C.primary}; color: ${C.white};
-        text-transform: uppercase; letter-spacing: 0.13em;
         padding: 7px 8px;
       }
       td { padding: 6px 8px; font-size: 9pt; border-bottom: 0.5pt solid ${C.ruleLight}; color: ${C.ink}; }
@@ -712,13 +709,13 @@ export const pdfUtils = {
       .kpi-label {
         font-family: ${WEB_FONT.body}; font-weight: 500 !important;
         font-size: 7.2pt; color: ${C.stone};
-        text-transform: uppercase; letter-spacing: 0.13em; margin-bottom: 5px;
+        margin-bottom: 5px;
       }
       .kpi-value { font-family: ${WEB_FONT.serif}; font-size: 13pt; color: ${C.primary}; }
       .badge {
         display: inline-block; padding: 2px 9px;
         font-family: ${WEB_FONT.body}; font-weight: 500 !important;
-        font-size: 7.2pt; text-transform: uppercase; letter-spacing: 0.09em;
+        font-size: 7.2pt;
         background: ${C.tint}; color: ${C.primary}; border: 0.5pt solid ${C.rule};
       }
       .section { margin-bottom: 20px; page-break-inside: avoid; }
@@ -1032,7 +1029,7 @@ export const pdfUtils = {
       setBrandFont(doc, 'label');
       doc.setFontSize(BRAND.size.sectionLabel);
       doc.setTextColor(...PDF.primary);
-      this._texteDroite(doc, etab.toUpperCase(), PAGE_W - M, M + 5, BRAND.charSpace.label);
+      this._texteDroite(doc, etab, PAGE_W - M, M + 5, BRAND.charSpace.label);
     }
 
     let y = M + headerH + 4;
@@ -1072,7 +1069,7 @@ export const pdfUtils = {
   },
 
   // Titre de section : barre laterale d'accent de 2,2 pt, etiquette en
-  // capitales interlettrees, filet fin sous le bloc.
+  // casse normale, filet fin sous le bloc.
   _titreSection(doc, label, x, y, w) {
     doc.setDrawColor(...PDF.accent);
     doc.setLineWidth(RULE.accentBar);
@@ -1080,7 +1077,7 @@ export const pdfUtils = {
     setBrandFont(doc, 'label');
     doc.setFontSize(BRAND.size.sectionLabel);
     doc.setTextColor(...PDF.primary);
-    doc.text(String(label || '').toUpperCase(), x + 3.2, y, { charSpace: BRAND.charSpace.sectionLabel });
+    doc.text(String(label || ''), x + 3.2, y, { charSpace: BRAND.charSpace.sectionLabel });
     doc.setDrawColor(...PDF.rule);
     doc.setLineWidth(RULE.medium);
     doc.line(x, y + 2.4, x + w, y + 2.4);
@@ -1104,7 +1101,7 @@ export const pdfUtils = {
   },
 
   // Bande d'en-tete de tableau : fond plein en couleur de marque, libelles
-  // blancs en capitales interlettrees. `colonnes` = [{ label, x, align? }].
+  // blancs en casse normale. `colonnes` = [{ label, x, align? }].
   _bandeTableau(doc, colonnes, x, y, w, h = 6) {
     doc.setFillColor(...PDF.primary);
     doc.rect(x, y, w, h, 'F');
@@ -1113,7 +1110,7 @@ export const pdfUtils = {
     doc.setTextColor(...PDF.white);
     const baseline = y + h / 2 + BRAND.size.sectionLabel * 0.3528 * 0.36;
     colonnes.forEach((c) => {
-      const label = String(c.label || '').toUpperCase();
+      const label = String(c.label || '');
       if (c.align === 'right') {
         this._texteDroite(doc, label, c.x, baseline, BRAND.charSpace.label);
       } else {
@@ -1192,7 +1189,7 @@ export const pdfUtils = {
     setBrandFont(doc, 'label');
     doc.setFontSize(BRAND.size.note);
     doc.setTextColor(...PDF.stone);
-    this._texteDroite(doc, 'DATE ET VISA DU RESPONSABLE', PAGE_W - M, y + 4, BRAND.charSpace.label);
+    this._texteDroite(doc, 'Date et visa du responsable', PAGE_W - M, y + 4, BRAND.charSpace.label);
   },
 
   // ─── Préchargement de jsPDF ───────────────────────────────────────────────
@@ -1707,7 +1704,7 @@ export const pdfUtils = {
           doc.line(M + i * cellW, metaTop + 1.5, M + i * cellW, metaTop + metaH - 1.5);
         }
         setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
-        doc.text(String(c.k).toUpperCase(), cx, metaTop + 4.3, { charSpace: BRAND.charSpace.label });
+        doc.text(String(c.k), cx, metaTop + 4.3, { charSpace: BRAND.charSpace.label });
         setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.ink);
         doc.text(String(c.v), cx, metaTop + 9, { maxWidth: cellW - 5 });
       });
@@ -1762,8 +1759,8 @@ export const pdfUtils = {
     // sur fond teinte, filet superieur en couleur de marque.
     this._fondTotal(doc, M, allergY - 4.6, contentW, 8);
     setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
-    doc.text('ALLERGÈNES', M + 2.5, allergY, { charSpace: BRAND.charSpace.label });
-    const largeurLabel = this._largeurTexte(doc, 'ALLERGÈNES', BRAND.charSpace.label) + 7;
+    doc.text('Allergènes', M + 2.5, allergY, { charSpace: BRAND.charSpace.label });
+    const largeurLabel = this._largeurTexte(doc, 'Allergènes', BRAND.charSpace.label) + 7;
     setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
     doc.text(allergenes, M + largeurLabel, allergY, { maxWidth: contentW - largeurLabel - 4 });
   },
@@ -2113,7 +2110,7 @@ export const pdfUtils = {
           doc.line(M + i * cellW, top + 1.5, M + i * cellW, top + bandeH - 1.5);
         }
         setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
-        doc.text(c.k.toUpperCase(), cx, top + 4.3, { charSpace: BRAND.charSpace.label });
+        doc.text(c.k, cx, top + 4.3, { charSpace: BRAND.charSpace.label });
         setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.ink);
         // Une valeur trop longue (nom de societe) est raccourcie plutot que de
         // deborder sur la cellule voisine. '...' ASCII : jsPDF ne rend pas l'ellipse.
@@ -2181,7 +2178,7 @@ export const pdfUtils = {
         y += 4;
       }
       setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.accent);
-      this._texteCentre(doc, section.label.toUpperCase(), centreX, y, BRAND.charSpace.sectionLabel);
+      this._texteCentre(doc, section.label, centreX, y, BRAND.charSpace.sectionLabel);
       y += 7;
 
       mesures.forEach((m) => {
@@ -2359,7 +2356,7 @@ export const pdfUtils = {
         setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.stone);
         opLines.forEach((l, k) => doc.text(l, opX, y + k * LINE_H));
         setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...statutColor);
-        doc.text(r.conforme ? 'CONFORME' : 'ANOMALIE', statutX, y, { charSpace: BRAND.charSpace.label });
+        doc.text(r.conforme ? 'Conforme' : 'Anomalie', statutX, y, { charSpace: BRAND.charSpace.label });
         setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
         doc.setTextColor(...(r.commentaire ? (r.conforme ? PDF.ink : PDF.alert) : PDF.stone));
         commLines.forEach((l, k) => doc.text(l, commX, y + k * LINE_H));
@@ -2710,8 +2707,8 @@ export const pdfUtils = {
       doc.setLineWidth(RULE.accentBar);
       doc.line(M + RULE.accentBar / 2, ty - 4, M + RULE.accentBar / 2, ty - 4 + h);
       setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...statutColor);
-      doc.text(statutLabel.toUpperCase(), M + 4, ty + 0.6, { charSpace: BRAND.charSpace.label });
-      const statutW = this._largeurTexte(doc, statutLabel.toUpperCase(), BRAND.charSpace.label);
+      doc.text(statutLabel, M + 4, ty + 0.6, { charSpace: BRAND.charSpace.label });
+      const statutW = this._largeurTexte(doc, statutLabel, BRAND.charSpace.label);
       setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
       doc.text(`   ${cochees}/${total} étape${total > 1 ? 's' : ''} validée${cochees > 1 ? 's' : ''} (${taux}%)`, M + 4 + statutW, ty + 0.6);
       return ty + h + 3;
@@ -2760,7 +2757,7 @@ export const pdfUtils = {
 
         if (et.critique) {
           setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.alert);
-          this._texteDroite(doc, 'CRITIQUE', critiqueRight, y, BRAND.charSpace.label);
+          this._texteDroite(doc, 'Critique', critiqueRight, y, BRAND.charSpace.label);
         }
         if (et.cochee && et.heure) {
           setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
