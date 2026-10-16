@@ -118,7 +118,7 @@ export default function PlanElementForm({ element, onClose, onSave }) {
           <button type="submit" disabled={loading} style={{
             padding: '10px 20px', borderRadius: 8,
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-            background: 'var(--accent)', color: '#fff',
+            background: 'var(--accent)', color: 'var(--on-accent)',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
             opacity: loading ? 0.7 : 1,

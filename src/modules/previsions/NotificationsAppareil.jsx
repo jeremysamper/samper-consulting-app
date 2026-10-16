@@ -145,7 +145,7 @@ const s = {
   titre: { fontSize: 16, fontWeight: 700, paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   texte: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 },
   principal: {
-    padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff',
+    padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)',
     fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44,
   },
   secondaire: {

@@ -517,7 +517,7 @@ const st = {
   page: { padding: '20px 24px', position: 'relative', minHeight: '100%', minWidth: 0 },
   nouveau: {
     minHeight: 38, padding: '9px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
   },
   encartAttention: {
     marginBottom: 14, padding: '10px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.5,

@@ -32,7 +32,7 @@
   --rule-soft: oklch(87% 0.008 230 / 0.8);
   --text: oklch(19% 0.012 235);
   --text2: oklch(47% 0.012 235);
-  --text3: oklch(59% 0.010 235);
+  --text3: oklch(53% 0.010 235);
   --accent: #003042;
   --accent2: #2e6d84;
   --accent-light: #e4eef3;
@@ -117,6 +117,15 @@
   --danger-text: #991b1b;
   --danger-bd: #fca5a5;
   --danger-strong: #dc2626;
+
+  /* Aplats pleins de statut (bouton, pastille) et leur texte, qui suit le
+     thème : blanc en clair, encre en sombre où l'aplat s'éclaircit (WCAG 2 :
+     4,83 et 5,02 en clair, 5,45 et 6,64 en sombre). Jamais de texte blanc
+     littéral sur un aplat : npm run lint:on-color. */
+  --danger-fill: #dc2626;
+  --on-danger: #ffffff;
+  --success-fill: #15803d;
+  --on-success: #ffffff;
 
   --warning-bg: #fef3c7;
   --warning-bg-soft: #fffbeb;
@@ -206,6 +215,10 @@
     --danger-text: oklch(79% 0.125 25);
     --danger-bd: oklch(40% 0.12 25);
     --danger-strong: oklch(68% 0.15 25);
+    --danger-fill: oklch(68% 0.15 25);
+    --on-danger: #06202b;
+    --success-fill: oklch(70% 0.13 152);
+    --on-success: #06202b;
     --warning-bg: oklch(28% 0.06 75);
     --warning-bg-soft: oklch(22% 0.04 75);
     --warning-text: oklch(83% 0.105 82);
@@ -283,6 +296,10 @@ html[data-theme="dark"] {
   --danger-text: oklch(79% 0.125 25);
   --danger-bd: oklch(40% 0.12 25);
   --danger-strong: oklch(68% 0.15 25);
+  --danger-fill: oklch(68% 0.15 25);
+  --on-danger: #06202b;
+  --success-fill: oklch(70% 0.13 152);
+  --on-success: #06202b;
 
   --warning-bg: oklch(28% 0.06 75);
   --warning-bg-soft: oklch(22% 0.04 75);
@@ -1097,7 +1114,7 @@ h1 {
 .primary-action {
   border: 0;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 800;
   padding: 0 16px;
 }
@@ -1839,7 +1856,7 @@ html[data-theme="dark"] button:not(:disabled):active {
    menus, les jauges et pastilles à hauteur fixe, les aplats à texte blanc, et
    tout élément marqué `data-cadre`. Sans :has() (navigateur ancien), la règle
    entière est ignorée et l'écran garde ses cadres. */
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea)) {
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea)) {
   background: transparent !important;
   border-color: transparent !important;
   border-bottom-color: transparent !important;
@@ -1848,8 +1865,8 @@ html[data-theme="dark"] button:not(:disabled):active {
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea))
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea)) {
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea))
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea)) {
   border-bottom-color: var(--rule-soft) !important;
 }
 /* Les éléments d'une même liste (frères aplatis : lignes de produits, tuiles
@@ -1857,16 +1874,22 @@ html[data-theme="dark"] button:not(:disabled):active {
    le texte flotte. Tous les membres du groupe le reçoivent, le premier compris.
    (Sans :has() imbriqué : la variante du sélecteur sans l'exclusion des champs
    sert ici ; un groupe de champ garde de toute façon son cadre.) */
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):has(~ :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *)),
-:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *) ~ :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *) {
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):has(~ :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *)),
+:is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *) ~ :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *) {
   border-bottom-color: var(--rule-soft) !important;
 }
 /* Vue capturée en PDF (pdf.js monte la zone dans .pdf-render-root) : le filet
-   doux suit --border2, que THEME_VAR_OVERRIDES (src/design/brandTokens.js)
-   redéclare en hex sur chaque élément. html2canvas ne lit ni oklch() ni
-   color-mix() : sans cette ligne, l'export s'arrête sur la première liste. */
+   doux et les aplats de statut suivent des jetons que THEME_VAR_OVERRIDES
+   (src/design/brandTokens.js) redéclare en hex sur chaque élément (--border2,
+   --danger-strong, --success-strong, --on-accent). html2canvas ne lit ni
+   oklch() ni color-mix() : sans ces lignes, l'export s'arrête sur la première
+   liste. */
 .pdf-render-root, .pdf-render-root * {
   --rule-soft: var(--border2);
+  --danger-fill: var(--danger-strong);
+  --success-fill: var(--success-strong);
+  --on-danger: var(--on-accent);
+  --on-success: var(--on-accent);
 }
 
 /* Barre de sélection du Planning (fixe en bas d'écran) : sur ordinateur, elle
@@ -1936,7 +1959,7 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
    tombent, la couleur du texte porte le statut. Restent des pastilles : les
    compteurs en texte blanc sur aplat, les éléments positionnés (bulles de
    notification), les éléments cliquables et tout élément marqué `data-cadre`. */
-span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2px "], [style*="padding: 3px "], [style*="padding: 4px "])[style*="border-radius"][style*="background"]:not([style*="color: rgb(255, 255, 255)"]):not([style*="color: white"]):not([style*="color: var(--on-accent)"]):not([style*="position: absolute"]):not([style*="cursor: pointer"]):not([data-cadre]) {
+span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2px "], [style*="padding: 3px "], [style*="padding: 4px "])[style*="border-radius"][style*="background"]:not([style*="color: rgb(255, 255, 255)"]):not([style*="color: var(--on-"]):not([style*="color: white"]):not([style*="color: var(--on-accent)"]):not([style*="position: absolute"]):not([style*="cursor: pointer"]):not([data-cadre]) {
   background: transparent !important;
   border-color: transparent !important;
   padding-left: 0 !important;

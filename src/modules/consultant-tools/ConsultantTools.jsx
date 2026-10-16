@@ -1700,7 +1700,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 {pendingDrafts.length} brouillon(s) non sauvegardé(s) détecté(s) - des modifications locales n'ont pas été synchronisées.
               </span>
               <button
-                style={{ ...cts.ghostBtn, background: 'var(--success-text)', color: '#fff', borderColor: 'var(--success-text)' }}
+                style={{ ...cts.ghostBtn, background: 'var(--success-fill)', color: 'var(--on-success)', borderColor: 'var(--success-text)' }}
                 onClick={restoreDrafts}
               >Restaurer</button>
               <button style={cts.ghostBtn} onClick={dismissDrafts}>Ignorer</button>
@@ -1814,7 +1814,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                   <button style={cts.ghostBtn} onClick={() => setHaccpResult(null)}>Fermer</button>
                   <button
-                    style={{ ...cts.ghostBtn, background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }}
+                    style={{ ...cts.ghostBtn, background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' }}
                     onClick={insererHaccpDansNotes}
                   >Insérer dans les notes</button>
                 </div>
@@ -2794,7 +2794,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   <button style={cts.ghostBtn} onClick={() => setCatalogPicker(null)}>Annuler</button>
                   {isMultiMode && (
                     <button
-                      style={{ ...cts.smallBtn, background: 'var(--accent)', color: '#fff', border: 'none', padding: '8px 16px', opacity: pickerSelected.size === 0 ? 0.5 : 1 }}
+                      style={{ ...cts.smallBtn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', padding: '8px 16px', opacity: pickerSelected.size === 0 ? 0.5 : 1 }}
                       onClick={addMultiple}
                       disabled={pickerSelected.size === 0}
                     >

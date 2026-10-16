@@ -351,7 +351,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 onClick={() => fileRef.current?.click()}
-                style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontWeight: 700, padding: '10px 16px', minHeight: 44 }}
+                style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700, padding: '10px 16px', minHeight: 44 }}
               >Choisir un PDF ou une image</button>
               <button
                 onClick={() => cameraRef.current?.click()}
@@ -548,7 +548,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
               </div>
               <button onClick={onClose} disabled={!!progress} style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', minHeight: 44 }}>Annuler</button>
               <button onClick={valider} disabled={!nbApplique || !!progress || doublons.noms.length > 0}
-                style={{ ...inp, cursor: nbApplique && !doublons.noms.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontWeight: 700, opacity: nbApplique && !doublons.noms.length ? 1 : 0.5, minHeight: 44 }}>
+                style={{ ...inp, cursor: nbApplique && !doublons.noms.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700, opacity: nbApplique && !doublons.noms.length ? 1 : 0.5, minHeight: 44 }}>
                 Appliquer {nbApplique || ''}
               </button>
             </div>
@@ -559,7 +559,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
           <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button onClick={onClose} style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', minHeight: 44 }}>Annuler</button>
             <button onClick={analyser} disabled={!fichiers.length}
-              style={{ ...inp, cursor: fichiers.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)', fontWeight: 700, opacity: fichiers.length ? 1 : 0.5, minHeight: 44 }}>
+              style={{ ...inp, cursor: fichiers.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700, opacity: fichiers.length ? 1 : 0.5, minHeight: 44 }}>
               Analyser {fichiers.length || ''}
             </button>
           </div>

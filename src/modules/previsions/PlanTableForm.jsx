@@ -223,7 +223,7 @@ export default function PlanTableForm({
                   flex: 1, padding: '10px 2px', border: 'none', cursor: 'pointer',
                   fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
                   background: forme === f.id ? 'var(--accent)' : 'var(--bg)',
-                  color:      forme === f.id ? '#fff' : 'var(--text2)',
+                  color:      forme === f.id ? 'var(--on-accent)' : 'var(--text2)',
                 }}>
                   {f.label}
                 </button>
@@ -235,7 +235,7 @@ export default function PlanTableForm({
                 borderWidth: 1, borderStyle: 'solid',
                 borderColor: pivotee ? 'var(--accent)' : 'var(--border)',
                 background: pivotee ? 'var(--accent)' : 'var(--bg)',
-                color: pivotee ? '#fff' : 'var(--text2)',
+                color: pivotee ? 'var(--on-accent)' : 'var(--text2)',
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 ⟳ {pivotee ? 'Dans le sens de la hauteur' : 'Dans le sens de la largeur'}
@@ -306,7 +306,7 @@ export default function PlanTableForm({
               </span>
               <button type="button" disabled={loading} onClick={supprimer} style={{
                 padding: '6px 12px', borderRadius: 6, border: 'none',
-                background: 'var(--danger-text)', color: '#fff',
+                background: 'var(--danger-fill)', color: 'var(--on-danger)',
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 Oui
@@ -345,7 +345,7 @@ export default function PlanTableForm({
             <button type="button" disabled={loading} onClick={enregistrer} style={{
               padding: '10px 20px', borderRadius: 8,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-              background: 'var(--accent)', color: '#fff',
+              background: 'var(--accent)', color: 'var(--on-accent)',
               cursor: loading ? 'not-allowed' : 'pointer',
               fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
               opacity: loading ? 0.7 : 1,

@@ -572,7 +572,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
                     onClick={() => toggleStep(section.id, etape.id)}
                   >
                     <div style={{ ...ss.checkbox, ...(state.cochee ? ss.checkboxChecked : {}) }}>
-                      {state.cochee && <span style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>✓</span>}
+                      {state.cochee && <span style={{ color: 'var(--on-success)', fontSize: 16, fontWeight: 700 }}>✓</span>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ ...ss.etapeLabel, ...(state.cochee ? ss.etapeLabelChecked : {}) }}>
@@ -1171,14 +1171,14 @@ const ss = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' },
   title: { fontSize: 24, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', margin: 0 },
   subtitle: { fontSize: 12, color: 'var(--text2)', marginTop: 4 },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
   ghostBtn: { padding: '7px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
   tabs: { display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)' },
   tab: { padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text2)', borderBottom: '2px solid transparent' },
   tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 600 },
   filtersBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
   chip: { padding: '5px 12px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text2)' },
-  chipActive: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' },
+  chipActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
   freqDot: { width: 10, height: 10, borderRadius: '50%' },
@@ -1194,7 +1194,7 @@ const ss = {
   sopCardFait: { fontSize: 11, fontWeight: 600, color: 'var(--success-text)' },
   sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
   gererBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, whiteSpace: 'nowrap' },
-  startBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' },
+  startBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' },
   iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text2)' },
   iconBtnDanger: { width: 28, height: 28, padding: 0, background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 6, cursor: 'pointer', fontSize: 11, color: '#dc2626', flexShrink: 0 },
   miniBadge: { fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4 },
@@ -1212,7 +1212,7 @@ const ss = {
   etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
   etapeRowChecked: { background: 'var(--success-bg-soft)' },
   checkbox: { width: 26, height: 26, borderRadius: 6, borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
-  checkboxChecked: { background: '#16a34a', borderColor: '#16a34a' },
+  checkboxChecked: { background: 'var(--success-fill)', borderColor: 'var(--success-fill)' },
   etapeLabel: { fontSize: 14, color: 'var(--text)', lineHeight: 1.4 },
   etapeLabelChecked: { textDecoration: 'line-through', color: 'var(--text2)' },
   criticalDot: { color: '#dc2626', marginRight: 6, fontSize: 8 },
@@ -1226,7 +1226,7 @@ const ss = {
   notesInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', resize: 'vertical', marginTop: 4 },
   checklistFooter: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', gap: 10, zIndex: 10 },
   abandonBtn: { flex: 1, padding: '12px', background: 'none', color: '#dc2626', border: '1px solid var(--danger-bd)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
-  validateBtn: { flex: 2, padding: '12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700 },
+  validateBtn: { flex: 2, padding: '12px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700 },
 
   // Historique
   histDate: { fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },

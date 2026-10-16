@@ -69,7 +69,7 @@ function StepBadge({ n }) {
   return (
     <div style={{
       width: 26, height: 26, borderRadius: '50%',
-      background: 'var(--accent)', color: '#fff',
+      background: 'var(--accent)', color: 'var(--on-accent)',
       fontSize: 13, fontWeight: 700, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>

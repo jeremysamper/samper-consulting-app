@@ -9,7 +9,7 @@ export const s = {
   title: { fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: 0 },
   sub: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
 
-  addBtn: { padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  addBtn: { padding: '10px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   ghostBtn: { padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
   backBtn: { background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text2)', fontFamily: 'var(--font)', flexShrink: 0 },
   dangerBtn: { padding: '9px 14px', background: 'none', border: '1px solid var(--danger-bd)', color: 'var(--danger-strong)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
@@ -73,7 +73,7 @@ export const s = {
 
   toggleGroup: { display: 'flex', gap: 6 },
   toggleBtn: { padding: '8px 12px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  toggleActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
+  toggleActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
 
   actionsRow: { display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' },
   moduleActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },

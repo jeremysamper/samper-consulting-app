@@ -269,6 +269,10 @@ const Commande = ({ user, etablissement }) => {
 
   return (
     <div style={s.root}>
+      {/* Libellés lus par les lecteurs d'écran devant le nom de chaque produit
+          (aria-labelledby de la case et de la quantité). */}
+      <span id="commande-lbl-coche" hidden>Commandé :</span>
+      <span id="commande-lbl-qte" hidden>Quantité</span>
       {/* Barre d'actions */}
       <div className="module-toolbar no-print">
         <div style={s.left}>
@@ -342,20 +346,26 @@ const Commande = ({ user, etablissement }) => {
             const isCollapsed = collapsed.has(group.categorie);
             return (
               <div key={group.categorie} style={s.section}>
-                <div
+                <button
+                  type="button"
+                  aria-expanded={!isCollapsed}
                   style={s.sectionHead}
                   onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(group.categorie) ? n.delete(group.categorie) : n.add(group.categorie); return n; })}
                 >
                   <span style={{ fontSize: 10, color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                   <span style={s.sectionTitle}>{group.categorie}</span>
                   <span style={s.sectionCount}>{group.items.length}</span>
-                </div>
+                </button>
                 {!isCollapsed && group.items.map(item => (
                   <div key={item.id} style={{ ...s.row, ...(item.coche ? s.rowChecked : {}) }}>
+                    {/* Nom accessible « Commandé : <produit> », assemblé par
+                        aria-labelledby : un seul libellé à traduire, pas un
+                        par produit. */}
                     <input
                       type="checkbox"
                       checked={item.coche}
                       onChange={() => toggleCoche(item)}
+                      aria-labelledby={`commande-lbl-coche commande-nom-${item.id}`}
                       style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -370,6 +380,7 @@ const Commande = ({ user, etablissement }) => {
                         />
                       ) : (
                         <div
+                          id={`commande-nom-${item.id}`}
                           style={{ ...s.rowName, ...(item.coche ? { textDecoration: 'line-through', color: 'var(--text2)' } : {}) }}
                           onDoubleClick={() => startRename(item)}
                           title="Double-cliquer pour renommer"
@@ -384,6 +395,7 @@ const Commande = ({ user, etablissement }) => {
                         type="number" min="0" step="any"
                         value={draftQty[item.id] !== undefined ? draftQty[item.id] : (item.quantite ?? '')}
                         placeholder="Qté"
+                        aria-labelledby={`commande-lbl-qte commande-nom-${item.id}`}
                         onChange={e => setDraftQty(prev => ({ ...prev, [item.id]: e.target.value }))}
                         onBlur={() => persistQuantite(item)}
                         onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
@@ -597,7 +609,10 @@ const s = {
   progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
   printHeader: { marginBottom: 4 },
   section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
-  sectionHead: { display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
+  // En-tête de rayon repliable : un bouton (clavier, aria-expanded), même rendu
+  // que l'ancien div. Le filet bas passe par une ombre intérieure : avec une
+  // bordure, la règle « Plus de carrés » le prendrait pour une ligne de liste.
+  sectionHead: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', background: 'var(--bg)', border: 'none', boxShadow: 'inset 0 -1px 0 var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'inherit' },
   sectionTitle: { flex: 1, fontSize: 12, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   sectionCount: { fontSize: 10, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px' },
   row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)' },
@@ -618,7 +633,7 @@ const s = {
   label: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   modalFooter: { display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--border)' },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
+  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Modale de generation
   genBody: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
   genHint: { fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 },

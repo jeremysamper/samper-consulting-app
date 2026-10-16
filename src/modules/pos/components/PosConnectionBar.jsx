@@ -62,7 +62,7 @@ const S = {
   }),
   primary: (off) => ({
     padding: '8px 16px', borderRadius: 8, border: 'none',
-    background: off ? 'var(--border)' : 'var(--accent)', color: off ? 'var(--text3)' : '#fff',
+    background: off ? 'var(--border)' : 'var(--accent)', color: off ? 'var(--text3)' : 'var(--on-accent)',
     fontSize: 13, fontWeight: 600, cursor: off ? 'wait' : 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   }),
   ghost: (busy) => ({

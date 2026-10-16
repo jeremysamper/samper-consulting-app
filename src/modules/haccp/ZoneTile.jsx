@@ -87,7 +87,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
             </div>
             {canWrite && (
               <button
-                style={{ padding: '7px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700 }}
+                style={{ padding: '7px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700 }}
                 onClick={() => { setInlineReleve(zone.id); setInlineTempInput(''); }}
               >+ Relever</button>
             )}
@@ -106,7 +106,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
               }}
             />
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>{zone.unite}</span>
-            <button style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--success-strong)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+            <button style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               onClick={() => submitInlineReleve(zone, inlineTempInput)}>✓</button>
             <button style={{ flexShrink: 0, padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}
               onClick={() => setInlineReleve(null)}>✕</button>

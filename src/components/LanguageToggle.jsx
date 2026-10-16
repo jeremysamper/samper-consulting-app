@@ -169,7 +169,7 @@ const s = {
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
-  segActive: { background: 'var(--accent)', color: '#fff' },
+  segActive: { background: 'var(--accent)', color: 'var(--on-accent)' },
   // Traduction dégradée : l'ambre dit « ça marche, mais pas complètement ».
   segDegraded: { background: 'var(--warning-bg-soft)', color: 'var(--warning-text)' },
   compactWrap: { position: 'relative', flexShrink: 0 },
@@ -196,7 +196,7 @@ const s = {
     letterSpacing: '0.02em',
     cursor: 'pointer',
   },
-  compactActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
+  compactActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
   compactDegraded: {
     background: 'var(--warning-bg-soft)',
     borderColor: 'var(--warning-bd)',

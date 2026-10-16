@@ -103,7 +103,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
                 cursor:     'pointer',
                 border:     `1px solid ${periodDays === p.value ? 'var(--accent)' : 'var(--border)'}`,
                 background: periodDays === p.value ? 'var(--accent)' : 'var(--surface)',
-                color:      periodDays === p.value ? '#fff' : 'var(--text2)',
+                color:      periodDays === p.value ? 'var(--on-accent)' : 'var(--text2)',
                 transition: 'all 0.15s',
               }}
             >

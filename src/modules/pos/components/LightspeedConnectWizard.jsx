@@ -119,7 +119,7 @@ function Stepper({ current }) {
                 width: 24, height: 24, borderRadius: '50%', fontSize: 12, fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: filled ? 'var(--accent)' : 'var(--accent-light)',
-                color: filled ? '#fff' : 'var(--accent)',
+                color: filled ? 'var(--on-accent)' : 'var(--accent)',
                 border: `1px solid ${filled ? 'var(--accent)' : 'var(--accent-bd)'}`,
               }}>
                 {done ? '✓' : i + 1}

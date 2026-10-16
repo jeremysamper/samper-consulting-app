@@ -126,7 +126,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>Annuler</button>
-          <button type="button" onClick={handleSave} disabled={!selected || saving} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: selected ? 'var(--accent)' : 'var(--border)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: selected ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', opacity: saving ? 0.7 : 1 }}>
+          <button type="button" onClick={handleSave} disabled={!selected || saving} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: selected ? 'var(--accent)' : 'var(--border)', color: selected ? 'var(--on-accent)' : 'var(--text3)', fontSize: 13, fontWeight: 600, cursor: selected ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Enregistrement…' : 'Confirmer'}
           </button>
         </div>
@@ -203,8 +203,8 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
           disabled={running}
           style={{
             padding: '8px 16px', borderRadius: 8,
-            background: running ? 'var(--info-bd)' : 'var(--info-strong)',
-            color: '#fff', border: 'none',
+            background: running ? 'var(--border)' : 'var(--accent)',
+            color: running ? 'var(--text2)' : 'var(--on-accent)', border: 'none',
             fontSize: 13, fontWeight: 600,
             cursor: running ? 'wait' : 'pointer',
             fontFamily: 'var(--font)', flexShrink: 0,
@@ -301,7 +301,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
           style={{
             padding: '8px 20px', borderRadius: 8, border: 'none',
             background: (!configured || busy) ? 'var(--border)' : 'var(--accent)',
-            color: (!configured || busy) ? 'var(--text3)' : '#fff',
+            color: (!configured || busy) ? 'var(--text3)' : 'var(--on-accent)',
             fontSize: 13, fontWeight: 600,
             cursor: (!configured || busy) ? 'not-allowed' : 'pointer',
             fontFamily: 'var(--font)', transition: 'background 0.15s',
@@ -504,7 +504,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {needsLocation && (
                 <button type="button" onClick={handleConnect} disabled={busy}
-                  style={{ padding: '8px 16px', borderRadius: 8, background: busy ? 'var(--warning-bd)' : 'var(--accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
+                  style={{ padding: '8px 16px', borderRadius: 8, background: busy ? 'var(--warning-bd)' : 'var(--accent)', color: busy ? 'var(--text)' : 'var(--on-accent)', border: 'none', fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
                   {action === 'connecting' ? 'Connexion…' : 'Reconnecter'}
                 </button>
               )}

@@ -1060,6 +1060,16 @@ export const UI_GLOSSARY = {
   'Déjà dans la bibliothèque': 'Already in the library',
   'étapes': 'steps',
   'étape': 'step',
+
+  // ── Finitions UI : noms accessibles (16.10.2026) ──
+  'Commandé :': 'Ordered:',
+  'Semaine affichée': 'Week shown',
+  'Jour affiché': 'Day shown',
+  "Modifier l'horaire de": 'Edit the shift',
+  'Ajouter un horaire': 'Add a shift',
+  'Ajouter un second horaire': 'Add a second shift',
+  'Modifier la carte': 'Edit the menu',
+  'Ajouter un produit': 'Add a product',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

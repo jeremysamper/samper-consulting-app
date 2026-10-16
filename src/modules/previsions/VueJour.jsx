@@ -255,7 +255,7 @@ export default function VueJour({
             onClick={() => setCreating(true)}
             style={{
               padding: '9px 16px', borderRadius: 8, border: 'none', minHeight: 44,
-              background: 'var(--accent)', color: '#fff',
+              background: 'var(--accent)', color: 'var(--on-accent)',
               fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
               cursor: 'pointer', flexShrink: 0,
             }}>

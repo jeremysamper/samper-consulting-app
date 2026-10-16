@@ -9,9 +9,10 @@
     "build": "vite build",
     "brand:icons": "node scripts/gen-icons.mjs",
     "brand:fonts": "node scripts/build-pdf-fonts.mjs",
-    "lint": "eslint src && npm run lint:borders && npm run lint:glossary && npm run lint:capture",
+    "lint": "eslint src && npm run lint:borders && npm run lint:glossary && npm run lint:capture && npm run lint:on-color",
     "lint:borders": "node scripts/check-border-shorthand.mjs",
     "lint:capture": "node scripts/check-capture-colors.mjs",
+    "lint:on-color": "node scripts/check-on-color.mjs",
     "lint:glossary": "node scripts/check-glossary-parity.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },

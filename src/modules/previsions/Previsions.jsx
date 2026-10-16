@@ -43,7 +43,7 @@ const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 
 // Boutons de la barre d'actions : un plein (l'action principale), les autres
 // en secondaire uniforme.
-const btnPrincipal = { padding: '9px 16px', borderRadius: 8, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)' };
+const btnPrincipal = { padding: '9px 16px', borderRadius: 8, border: 'none', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)' };
 const btnSecondaire = { padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer' };
 
 export default function Previsions({ user, etablissement }) {
@@ -136,7 +136,7 @@ export default function Previsions({ user, etablissement }) {
               onClick={() => etabId ? setShowForm(true) : null}
               disabled={!etabId}
               title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
-              style={{ ...btnPrincipal, background: etabId ? 'var(--accent)' : 'var(--border)', cursor: etabId ? 'pointer' : 'not-allowed', opacity: etabId ? 1 : 0.6 }}>
+              style={{ ...btnPrincipal, background: etabId ? 'var(--accent)' : 'var(--border)', color: etabId ? 'var(--on-accent)' : 'var(--text3)', cursor: etabId ? 'pointer' : 'not-allowed', opacity: etabId ? 1 : 0.6 }}>
               + Nouvelle réservation
             </button>
           )}

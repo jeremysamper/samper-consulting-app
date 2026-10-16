@@ -225,7 +225,7 @@ const s = {
     color: 'var(--text2)',
     flexShrink: 0,
   },
-  numeroAujourdhui: { background: 'var(--accent)', color: '#fff' },
+  numeroAujourdhui: { background: 'var(--accent)', color: 'var(--on-accent)' },
   numeroHorsMois: { color: 'var(--text3)', fontWeight: 500 },
   // Deux lignes : le groupe, puis ses couverts. Sur fond de surface, pour se
   // détacher de la case teintée ; le liseré porte l'état propre à CE groupe.

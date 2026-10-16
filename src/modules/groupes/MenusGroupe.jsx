@@ -801,6 +801,6 @@ const st = {
     fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
   },
-  boutonPrincipal: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
+  boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
   boutonDanger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' },
 };

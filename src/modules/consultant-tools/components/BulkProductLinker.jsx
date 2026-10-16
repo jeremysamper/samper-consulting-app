@@ -377,7 +377,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                                 display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
                                 padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
                                 background: actif ? 'var(--accent)' : 'var(--surface)',
-                                color: actif ? '#fff' : 'var(--text)',
+                                color: actif ? 'var(--on-accent)' : 'var(--text)',
                                 border: `1px solid ${actif ? 'var(--accent)' : 'var(--border)'}`,
                               }}
                             >

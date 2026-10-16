@@ -133,7 +133,7 @@ const es = {
   resumeTotal: { fontSize: 13, color: 'var(--text2)', flex: 1, minWidth: 160 },
   // Compteur porté par l'onglet de mode : c'est ce qui rend visible, sans
   // quitter l'écran courant, qu'un autre mode contient déjà des étiquettes.
-  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 999, background: 'var(--accent)', color: '#fff', fontSize: 10.5, fontWeight: 700, verticalAlign: 'middle' },
+  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 999, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 10.5, fontWeight: 700, verticalAlign: 'middle' },
   // Récapitulatif du lot multi-mode : affiché uniquement quand le lot porte
   // plusieurs modes, seul cas où l'onglet courant ne dit pas tout.
   recap: { background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 10, overflow: 'hidden' },
@@ -156,7 +156,7 @@ const es = {
   blocLabel: { flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
   // flexShrink 0 comme les steppers : le min-height global de 44px sur les
   // <button> écrase le flex et fait se superposer les boutons sur mobile.
-  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'none', border: '1px solid var(--danger-bd)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
   vide: { padding: '4px 14px 12px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },

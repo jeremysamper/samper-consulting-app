@@ -1282,11 +1282,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <button style={pls.navArrow} onClick={() => shiftWeek(1)} title="Semaine suivante" aria-label="Semaine suivante">›</button>
             </div>
             <button style={pls.smallBtn} onClick={goToCurrentWeek}>Aujourd'hui</button>
-            <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={pls.datePicker} />
+            <input type="date" aria-label="Semaine affichée" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={pls.datePicker} />
             {[1, 2, 3].map(n => <button key={n} style={{ ...pls.smallBtn, ...(horizon === n ? pls.smallBtnActive : {}) }} onClick={() => setHorizon(n)}>{n} sem.</button>)}
           </>
         )) : (
-          <input type="date" value={pointageDate} onChange={e => setPointageDate(e.target.value)} style={pls.datePicker} />
+          <input type="date" aria-label="Jour affiché" value={pointageDate} onChange={e => setPointageDate(e.target.value)} style={pls.datePicker} />
         )}
       </div>
 

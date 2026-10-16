@@ -1041,4 +1041,14 @@ export const UI_GLOSSARY_ES = {
   'Déjà dans la bibliothèque': 'Ya está en la biblioteca',
   'étapes': 'pasos',
   'étape': 'paso',
+
+  // ── Finitions UI : noms accessibles (16.10.2026) ──
+  'Commandé :': 'Pedido:',
+  'Semaine affichée': 'Semana mostrada',
+  'Jour affiché': 'Día mostrado',
+  "Modifier l'horaire de": 'Modificar el turno',
+  'Ajouter un horaire': 'Añadir un turno',
+  'Ajouter un second horaire': 'Añadir un segundo turno',
+  'Modifier la carte': 'Modificar la carta',
+  'Ajouter un produit': 'Añadir un producto',
 };

@@ -294,10 +294,15 @@ function TableShape({
             // Une table occupée par des clients déjà assis se distingue de
             // celle qui les attend : c'est la question qu'on se pose en
             // regardant le plan pendant le service.
-            background: resa.statut === 'arrive' ? 'var(--success-text)'
+            // Chaque fond a son texte, qui suit le thème (l'aplat s'éclaircit
+            // en sombre) ; sur le gris d'une table partie, la couleur du fond
+            // de page fait l'encre.
+            background: resa.statut === 'arrive' ? 'var(--success-fill)'
                       : resa.statut === 'parti'  ? 'var(--text3)'
                       : 'var(--accent)',
-            color: '#fff',
+            color: resa.statut === 'arrive' ? 'var(--on-success)'
+                 : resa.statut === 'parti'  ? 'var(--bg)'
+                 : 'var(--on-accent)',
             fontSize: tabouret ? 8 : 9, fontWeight: 700, lineHeight: 1.35,
             fontFamily: 'var(--font)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -1930,7 +1935,7 @@ export default function PlanSalle({
         {canEdit && (
           <button type="button" onClick={() => { setMode('plan'); ajouterTable(); }} style={{
             padding: '9px 18px', borderRadius: 8, border: 'none',
-            background: 'var(--accent)', color: '#fff',
+            background: 'var(--accent)', color: 'var(--on-accent)',
             fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
           }}>
             + Ajouter une table
@@ -2033,7 +2038,7 @@ export default function PlanSalle({
                 borderWidth: 1, borderStyle: 'solid',
                 borderColor: modePlan ? 'var(--accent)' : 'var(--border)',
                 background: modePlan ? 'var(--accent)' : 'var(--surface)',
-                color: modePlan ? '#fff' : 'var(--text)',
+                color: modePlan ? 'var(--on-accent)' : 'var(--text)',
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
               {modePlan ? 'Terminer' : 'Modifier le plan'}
@@ -2082,8 +2087,8 @@ export default function PlanSalle({
                 style={{
                   ...puce,
                   borderColor: supprEnAttente ? 'var(--danger-text)' : 'var(--border)',
-                  background: supprEnAttente ? 'var(--danger-text)' : 'var(--surface)',
-                  color: supprEnAttente ? '#fff' : 'var(--danger-text)',
+                  background: supprEnAttente ? 'var(--danger-fill)' : 'var(--surface)',
+                  color: supprEnAttente ? 'var(--on-danger)' : 'var(--danger-text)',
                 }}
               >
                 {supprEnAttente ? 'Confirmer la suppression' : 'Supprimer'}
@@ -2107,7 +2112,7 @@ export default function PlanSalle({
               <button
                 type="button"
                 onClick={ajouterTable}
-                style={{ ...puce, borderColor: 'var(--accent)', background: 'var(--accent)', color: '#fff' }}
+                style={{ ...puce, borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)' }}
               >
                 Table
               </button>
@@ -2353,7 +2358,7 @@ export default function PlanSalle({
           transform: 'translate(-50%, -140%)',
           pointerEvents: 'none', zIndex: 2000,
           padding: '5px 10px', borderRadius: 20,
-          background: 'var(--accent)', color: '#fff',
+          background: 'var(--accent)', color: 'var(--on-accent)',
           fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
           boxShadow: '0 6px 20px rgba(0,0,0,0.28)', whiteSpace: 'nowrap',
         }}>

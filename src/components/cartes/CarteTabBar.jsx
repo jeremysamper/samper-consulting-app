@@ -150,37 +150,49 @@ export default function CarteTabBar({
 
   return (
     <div className="segmented-tabs no-print">
-      {cartes.map(carte => {
-        const active = activeId === carte.id;
-        return (
-          <div
-            key={carte.id}
-            role="button"
-            className={'segmented-tab' + (active ? ' is-active' : '')}
-            onClick={() => onSelect?.(carte.id)}
-          >
-            {/* « (cachée) » : carte cachée. Seul le consultant reçoit ces cartes, le
-                marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
-            <span>{carte.id === homeId && '★ '}{carte.nom}{carte.masquee === true && ' (cachée)'}</span>
-            {canManage && active && (
+      {/* De vrais onglets (clavier, lecteur d'écran). Le crayon de la carte
+          active est un bouton frère de son onglet, plus un bouton imbriqué. */}
+      <div role="tablist" aria-label="Cartes" style={s.tablist}>
+        {cartes.map(carte => {
+          const active = activeId === carte.id;
+          return (
+            <React.Fragment key={carte.id}>
               <button
-                className="mini"
-                style={s.editBtn}
-                title="Modifier la carte"
-                onClick={(e) => { e.stopPropagation(); openEdit(carte); }}
-              ><Pencil size={14} aria-hidden="true" /></button>
-            )}
-          </div>
-        );
-      })}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={'segmented-tab' + (active ? ' is-active' : '')}
+                onClick={() => onSelect?.(carte.id)}
+              >
+                {/* « (cachée) » : carte cachée. Seul le consultant reçoit ces cartes, le
+                    marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
+                <span>{carte.id === homeId && '★ '}{carte.nom}{carte.masquee === true && ' (cachée)'}</span>
+              </button>
+              {canManage && active && (
+                <button
+                  type="button"
+                  className="mini"
+                  style={s.editBtn}
+                  title="Modifier la carte"
+                  aria-label="Modifier la carte"
+                  onClick={() => openEdit(carte)}
+                ><Pencil size={14} aria-hidden="true" /></button>
+              )}
+            </React.Fragment>
+          );
+        })}
 
-      {extraTabs.map(t => (
-        <button
-          key={t.id}
-          className={'segmented-tab' + (activeId === t.id ? ' is-active' : '')}
-          onClick={() => onSelect?.(t.id)}
-        >{t.label}</button>
-      ))}
+        {extraTabs.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={activeId === t.id}
+            className={'segmented-tab' + (activeId === t.id ? ' is-active' : '')}
+            onClick={() => onSelect?.(t.id)}
+          >{t.label}</button>
+        ))}
+      </div>
 
       {canManage && (
         <button className="segmented-tab" style={s.addBtn} onClick={openCreate} title="Ajouter une carte">+ Carte</button>
@@ -359,7 +371,11 @@ const s = {
   tabBtnReset: { outline: 'none' },
   tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
   tabLabel: { whiteSpace: 'nowrap' },
-  editBtn: { background: 'transparent', border: 'none', borderRadius: 5, color: 'var(--accent)', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: '0 2px', marginLeft: 2, fontFamily: 'var(--font)' },
+  // Les onglets se suivent dans une rangée à part, sans rétrécir : la bande
+  // parente défile si la rangée déborde.
+  tablist: { display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 },
+  // 32 px au moins : le crayon de 18 × 16 se ratait au doigt comme à la souris.
+  editBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, background: 'transparent', border: 'none', borderRadius: 6, color: 'var(--accent)', cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' },
   addBtn: { color: 'var(--accent)', border: '1px dashed var(--accent-bd)', fontWeight: 700 },
   ordreBtn: { color: 'var(--text2)', border: '1px dashed var(--border)', fontWeight: 600 },
   archivesBtn: { color: 'var(--text2)', border: '1px dashed var(--border)', fontWeight: 600 },
@@ -397,5 +413,5 @@ const s = {
   ghostBtn: { padding: '8px 14px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Carte actuellement cachée : le bouton porte l'état, pas seulement l'action.
   hideBtnActive: { background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
+  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
 };

@@ -74,14 +74,14 @@ const s = {
     textAlign: 'center', gap: 12, fontFamily: 'var(--font)',
   },
   pastille: {
-    width: 64, height: 64, borderRadius: 32, background: 'var(--accent)', color: '#fff',
+    width: 64, height: 64, borderRadius: 32, background: 'var(--accent)', color: 'var(--on-accent)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700,
   },
   titre: { margin: '4px 0 0', fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
   texte: { margin: 0, fontSize: 15, lineHeight: 1.55, color: 'var(--text2)' },
   principal: {
     width: '100%', marginTop: 8, padding: '16px 18px', borderRadius: 12, border: 'none',
-    background: 'var(--accent)', color: '#fff', fontSize: 17, fontWeight: 700,
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 17, fontWeight: 700,
     fontFamily: 'var(--font)', cursor: 'pointer', minHeight: 56,
   },
   discret: {

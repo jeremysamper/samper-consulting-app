@@ -118,7 +118,7 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
             marginTop:  4,
             padding:    '8px 20px',
             background: 'var(--accent)',
-            color:      '#fff',
+            color:      'var(--on-accent)',
             border:     'none',
             borderRadius: 8,
             fontSize:   13,

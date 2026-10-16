@@ -612,7 +612,7 @@ const s = {
   option: { display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', cursor: 'pointer' },
   principal: {
     padding: '9px 16px', minHeight: 42, borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   secondaire: {

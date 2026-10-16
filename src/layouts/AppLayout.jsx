@@ -241,7 +241,7 @@ export default function AppLayout({
   };
   const renderNavBadge = (itemId) => {
     if (itemId === 'messages' && unreadMessages > 0) {
-      return <span style={{ ...navBadgeStyle, color: '#fff', background: 'var(--danger-strong)' }}>{unreadMessages}</span>;
+      return <span style={{ ...navBadgeStyle, color: 'var(--on-danger)', background: 'var(--danger-fill)' }}>{unreadMessages}</span>;
     }
     if (itemId === 'groupes' && groupesAPreparer > 0) {
       return (
@@ -969,7 +969,7 @@ const ls = {
   // Les quatre boutons du header : même carré de 44 px, sans bordure (survol :
   // .app-bar-btn dans app.css), comme le sélecteur de langue compact.
   iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
-  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
@@ -1028,7 +1028,7 @@ const mls = {
   },
   hamLine: { width: 22, height: 2, background: 'var(--text)', borderRadius: 2, transition: 'all 0.15s' },
   iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
-  notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-strong)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
+  notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 8, minWidth: 14, textAlign: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },

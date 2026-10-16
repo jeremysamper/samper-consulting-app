@@ -555,7 +555,7 @@ const ps = {
   banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'4px 0', flexWrap:'wrap' },
   bannerTitle: { fontSize:20, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)' },
   bannerSub: { fontSize:13, color:'var(--text2)', marginTop:4 },
-  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
   statsRow: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 },
   statCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', padding:'14px 18px' },
   statLabel: { fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4, marginBottom:6 },
@@ -588,7 +588,7 @@ const ps = {
   // Base en borderWidth/Style/Color : l'état coché ne surcharge que borderColor.
   moduleChip: { display:'flex', alignItems:'center', gap:8, minHeight:44, padding:'8px 12px', borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', borderRadius:8, background:'var(--bg)', fontSize:13, color:'var(--text2)', cursor:'pointer', boxSizing:'border-box', minWidth:0 },
   moduleChipOn: { borderColor:'var(--accent)', background:'var(--surface)', color:'var(--text)' },
-  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
 };
 
 export default Parametres;

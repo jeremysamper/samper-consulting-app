@@ -777,7 +777,7 @@ const HACCP = ({ user, etablissement }) => {
                 const done=todayControls.find(c=>c.templateId===tpl.id);
                 return(
                   <div key={tpl.id} style={{...hs.ctrlRow,background:done?(done.statut==='conforme'?'var(--success-bg-soft)':'var(--danger-bg-soft)'):'var(--bg)',border:`1px solid ${done?(done.statut==='conforme'?'var(--success-bd)':'var(--danger-bd)'):'var(--border)'}`}}>
-                    <div style={{...hs.ctrlCheck,background:done?(done.statut==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--border)'}}>{done?(done.statut==='conforme'?'✓':'✕'):''}</div>
+                    <div style={{...hs.ctrlCheck,background:done?(done.statut==='conforme'?'var(--success-fill)':'var(--danger-fill)'):'var(--border)',color:done?(done.statut==='conforme'?'var(--on-success)':'var(--on-danger)'):'var(--text3)'}}>{done?(done.statut==='conforme'?'✓':'✕'):''}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{tpl.label}</div>
                       <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>{tpl.frequence}, {CTRL_TYPES.find(t=>t.id===tpl.type)?.label}</div>

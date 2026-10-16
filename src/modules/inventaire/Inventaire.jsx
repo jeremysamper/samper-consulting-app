@@ -1786,7 +1786,7 @@ const invs = {
   choixTitre: {fontSize:14,fontWeight:700,color:'var(--text)'},
   choixDetail: {fontSize:12,color:'var(--text2)',lineHeight:1.4,whiteSpace:'normal'},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',fontSize:13,fontWeight:500,whiteSpace:'nowrap'},
-  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   validateBtn: {padding:'8px 16px',background:'var(--success-bg)',border:'1px solid var(--success-bd)',color:'var(--success-text)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn: {padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   deleteBtn:{padding:'6px 10px',background:'none',border:'1px solid var(--danger-bd)',color:'var(--danger-strong)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},

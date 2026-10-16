@@ -171,6 +171,7 @@ export default function ComptageRapide({
           value={recherche}
           onChange={e => setRecherche(e.target.value)}
           placeholder="Chercher un produit…"
+          aria-label="Chercher un produit"
           style={st.recherche}
         />
       </div>
@@ -184,6 +185,7 @@ export default function ComptageRapide({
             onChange={e => setAjout(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouter(); } }}
             placeholder="+ Ajouter un produit"
+            aria-label="Ajouter un produit"
             style={st.ajoutInput}
             autoComplete="off"
           />
@@ -325,7 +327,7 @@ const st = {
   recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   ajoutRapide: { display: 'flex', gap: 8, minWidth: 0 },
   ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   vide: { padding: '30px 16px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5, background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12 },
   groupeZone: { display: 'flex', flexDirection: 'column', gap: 4 },
   zoneTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: '10px 2px 0', paddingBottom: 4, borderBottom: '2px solid var(--border)' },

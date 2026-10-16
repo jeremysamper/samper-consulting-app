@@ -384,8 +384,8 @@ export default function ReservationDetailModal({
                 style={{
                   padding: '8px 16px', borderRadius: 8,
                   border: '1px solid var(--danger-text)',
-                  background: deleting ? 'var(--danger-bd)' : 'var(--danger-text)',
-                  color: '#fff', cursor: deleting ? 'not-allowed' : 'pointer',
+                  background: deleting ? 'var(--danger-bd)' : 'var(--danger-fill)',
+                  color: deleting ? 'var(--danger-text)' : 'var(--on-danger)', cursor: deleting ? 'not-allowed' : 'pointer',
                   fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600,
                   opacity: deleting ? 0.7 : 1,
                 }}

@@ -114,14 +114,14 @@ const cs = {
     userSelect: 'none',
   },
   radioActive: {
-    background: 'var(--accent)', color: '#fff',
+    background: 'var(--accent)', color: 'var(--on-accent)',
     border: '1px solid var(--accent)', fontWeight: 600,
   },
   btn: {
     marginTop: 4, padding: '12px 0', borderRadius: 10, border: 'none',
     fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%',
   },
-  btnActive: { background: 'var(--accent)', color: '#fff' },
+  btnActive: { background: 'var(--accent)', color: 'var(--on-accent)' },
   btnDisabled: {
     background: 'var(--border)', color: 'var(--text3)',
     cursor: 'not-allowed', opacity: 0.6,

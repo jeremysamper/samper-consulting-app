@@ -40,7 +40,7 @@ export function MappingFilters({ filter, onFilter, search, onSearch, counts }) {
                 cursor:       'pointer',
                 border:       `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                 background:   active ? 'var(--accent)' : 'var(--surface)',
-                color:        active ? '#fff' : 'var(--text2)',
+                color:        active ? 'var(--on-accent)' : 'var(--text2)',
                 transition:   'all 0.15s',
               }}
             >

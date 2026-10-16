@@ -380,7 +380,7 @@ const st = {
     flex: '1 1 84px', display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'center', gap: 2, padding: '8px 6px', minWidth: 0,
   },
-  choixActif: { borderColor: 'var(--accent)', background: 'var(--accent)', color: '#fff' },
+  choixActif: { borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)' },
   choixSousTitre: {
     fontSize: 11, fontWeight: 500, opacity: 0.85, maxWidth: '100%',
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -415,7 +415,7 @@ const st = {
   },
   principal: {
     minHeight: 44, padding: '10px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)',
   },
   secondaire: {
     minHeight: 44, padding: '10px 18px', borderRadius: 8, cursor: 'pointer',

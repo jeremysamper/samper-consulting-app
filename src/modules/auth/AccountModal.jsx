@@ -264,7 +264,7 @@ const s = {
   // flexShrink 0 : empilés en colonne sous la règle tactile globale (min-height 44 px).
   primary: {
     width: '100%', minHeight: 44, flexShrink: 0, marginTop: 4, borderRadius: 8,
-    background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)',
+    background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)',
     fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font)',
   },
   divider: { height: 1, background: 'var(--border)', margin: '16px 0 8px' },

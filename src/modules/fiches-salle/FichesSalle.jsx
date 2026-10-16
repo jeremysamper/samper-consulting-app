@@ -1093,7 +1093,7 @@ const fss = {
   cats:{display:'flex',gap:4,flexWrap:'wrap'},
   catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
   catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   serverBanner:{background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',gap:14},
@@ -1149,7 +1149,7 @@ const fss = {
   fInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
   smallBtn:{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:600,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
   cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
 };
 
 export default FichesSalle;

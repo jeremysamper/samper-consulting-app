@@ -4,7 +4,7 @@ export const hs = {
   tab:{padding:'8px 16px',border:'1px solid var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   tabActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   datePicker:{padding:'7px 10px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   exportBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   kpiRow:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:'12px 32px'},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
@@ -31,7 +31,7 @@ export const hs = {
   cell:{fontSize:13,color:'var(--text)'},
   ctrlRow:{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:10,marginBottom:4},
   ctrlCheck:{width:26,height:26,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:12,flexShrink:0},
-  doBtn:{padding:'6px 14px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:7,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  doBtn:{padding:'6px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:7,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
   modal:{background:'var(--surface)',borderRadius:14,width:500,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},
   modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)',zIndex:2},
@@ -42,7 +42,7 @@ export const hs = {
   fLabel:{fontSize:11,fontWeight:600,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
   fInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
   cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
 
   // ─── Modale d'export des relevés : options de période (journalier / mensuel) ───
   periodBtn:{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'12px 14px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,cursor:'pointer',fontFamily:'var(--font)',textAlign:'left'},
@@ -51,7 +51,7 @@ export const hs = {
   // (dans hs, PAS hcfg : HACCP.jsx les référence via hs.* ; définis dans hcfg
   // ils valaient undefined et la modale n'était positionnée qu'en mobile via
   // la classe CSS modal-full-overlay)
-  quickBtn: { padding:'8px 14px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
+  quickBtn: { padding:'8px 14px', background:'var(--success-fill)', color:'var(--on-success)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' },
   qrOverlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:12 },
   qrModal: { background:'var(--surface)', borderRadius:12, width:560, maxWidth:'94vw', maxHeight:'92vh', display:'flex', flexDirection:'column', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' },
   qrHeader: { padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 },
@@ -62,7 +62,7 @@ export const hs = {
   qrZoneRow: { display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'1px solid', borderRadius:8, transition:'background .15s, border-color .15s' },
   qrInput: { width:80, padding:'8px 10px', border:'1px solid var(--border)', borderRadius:7, fontSize:13, color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', outline:'none', textAlign:'right' },
   qrFooter: { padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' },
-  qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-text)', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
+  qrPrimaryBtn: { padding:'9px 16px', background:'var(--success-fill)', color:'var(--on-success)', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600 },
   qrGhostBtn: { padding:'8px 14px', background:'none', color:'var(--text)', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', fontFamily:'var(--font)', fontSize:13 },
 
   // ─── Créneaux de relevé (grille horaire de l'établissement) ───

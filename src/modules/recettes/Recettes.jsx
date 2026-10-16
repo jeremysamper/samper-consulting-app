@@ -43,7 +43,7 @@ const PanneauEtat = ({ titre, texte, onRetry }) => (
     <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>{texte}</div>
     {onRetry && (
       <button
-        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)'}}
+        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)'}}
         onClick={onRetry}
       >
         Réessayer
@@ -354,7 +354,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
             </span>
             <button style={smStyle.ghostBtn} onClick={() => !saving && onClose()} disabled={saving}>Annuler</button>
             <button
-              style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
+              style={{ padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
               onClick={handleDuplicate}
               disabled={selectedEtabIds.size === 0 || saving}>
               {saving ? 'Duplication…' : `Dupliquer (${selectedEtabIds.size})`}
@@ -1226,7 +1226,7 @@ const ms = {
   footerInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
   clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
   btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
 };
 
@@ -1989,7 +1989,7 @@ const rs = {
   tabsWrapMobile: {width:'100%',minWidth:0},
   toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
   toolbarActionsMobile: {width:'100%',marginLeft:0},
-  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',boxShadow:'var(--sh-xs)'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
@@ -2025,11 +2025,11 @@ const rs = {
   recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
-  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'#fff',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
+  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
   printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600},
   congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'},
-  congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'#fff'},
+  congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'var(--on-accent)'},
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
   // flexWrap : sur mobile la rangee (vignette + nom + pastilles + statut +
@@ -2115,7 +2115,7 @@ const rs = {
   ingQtyInputRef: {borderColor:'var(--warning-bd)',background:'var(--warning-bg)',color:'var(--warning-text)'},
   ingQtyBase: {fontSize:10,color:'var(--text3)',textAlign:'right',marginTop:2},
   etapeRow: {display:'flex',gap:14,marginBottom:12,alignItems:'flex-start'},
-  etapeNum: {width:24,height:24,borderRadius:'50%',background:'var(--accent)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1},
+  etapeNum: {width:24,height:24,borderRadius:'50%',background:'var(--accent)',color:'var(--on-accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1},
   etapeTxt: {fontSize:13,color:'var(--text)',lineHeight:1.6},
 };
 

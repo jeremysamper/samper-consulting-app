@@ -28,7 +28,7 @@ const ns = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
     boxShadow: 'var(--sh-xs)', minWidth: 0,
   },
-  principalActif: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)', boxShadow: 'var(--sh-sm)' },
+  principalActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', boxShadow: 'var(--sh-sm)' },
   titre: { fontSize: 16, fontWeight: 600, lineHeight: 1.2, overflowWrap: 'break-word' },
   aide: { fontSize: 12, lineHeight: 1.3, opacity: 0.75 },
   secondaire: {

@@ -443,7 +443,7 @@ const Catalogue = ({ user, etablissement }) => {
           // Une action principale, une secondaire, et les trois façons
           // d'importer rangées dans une seule fenêtre.
           <div className="module-actions">
-            <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none' }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>+ Produit</button>
+            <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>+ Produit</button>
             <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>+ Fournisseur</button>
             <BoutonActions
               id="catalogue-importer"
@@ -1085,7 +1085,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                       Fournisseur principal
                     </label>
                     <button style={cat.ghostBtn} onClick={() => setShowAddPF(false)}>Annuler</button>
-                    <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none' }} onClick={addPF}>Ajouter</button>
+                    <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={addPF}>Ajouter</button>
                   </div>
                 </div>
               )}
@@ -1152,7 +1152,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
         </div>
         <div style={cat.modalFoot}>
           <button style={cat.ghostBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none', opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
+          <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
             {saving ? 'Enregistrement…' : prod ? 'Modifier' : 'Ajouter'}
           </button>
         </div>
@@ -1192,7 +1192,7 @@ const FournisseurForm = ({ fourn, onSave, onClose }) => {
         </div>
         <div style={cat.modalFoot}>
           <button style={cat.ghostBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...cat.btn, background: 'var(--accent)', color: '#fff', border: 'none' }} onClick={handleSave}>
+          <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={handleSave}>
             {fourn ? 'Modifier' : 'Ajouter'}
           </button>
         </div>
@@ -1215,7 +1215,7 @@ const cat = {
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   filters: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
   filterBtn: { padding: '5px 12px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
-  filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' },
+  filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
   tableWrap: { overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
   selectBar: { padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
@@ -1415,7 +1415,7 @@ const ipm = {
   rowName: { fontSize: 13, fontWeight: 600, color: 'var(--text)' },
   rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 3 },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
+  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
   ghostBtn: { padding: '8px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
 };
 

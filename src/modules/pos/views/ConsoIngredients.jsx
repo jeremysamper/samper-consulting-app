@@ -142,7 +142,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
                 cursor:     'pointer',
                 border:     `1px solid ${selectedPeriod === opt.id ? 'var(--accent)' : 'var(--border)'}`,
                 background: selectedPeriod === opt.id ? 'var(--accent)' : 'var(--surface)',
-                color:      selectedPeriod === opt.id ? '#fff' : 'var(--text2)',
+                color:      selectedPeriod === opt.id ? 'var(--on-accent)' : 'var(--text2)',
                 transition: 'all 0.15s',
               }}
             >

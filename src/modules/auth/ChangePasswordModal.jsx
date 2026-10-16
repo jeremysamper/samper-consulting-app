@@ -159,5 +159,5 @@ const s = {
   // tactile globale (button:not(.mini) { min-height: 44px }) sur mobile.
   btn: { flex: 1, flexShrink: 0, minHeight: 44, borderRadius: 8, fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer' },
   btnGhost: { background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)' },
-  btnPrimary: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
+  btnPrimary: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
 };

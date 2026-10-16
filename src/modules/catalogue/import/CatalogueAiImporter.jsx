@@ -518,7 +518,7 @@ const st = {
   pickZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 20px' },
   fieldLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
   select: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  primaryBtn: { padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: '#fff', display: 'inline-block' },
+  primaryBtn: { padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-block' },
   ghostBtn: { padding: '9px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)' },
   banner: { padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' },
   progressTrack: { width: 'min(360px,80vw)', height: 10, background: 'var(--bg)', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' },

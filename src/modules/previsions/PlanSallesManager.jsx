@@ -178,7 +178,7 @@ export default function PlanSallesManager({
                       <>
                         <button type="button" disabled={loading} onClick={() => renommer(s.id)} style={{
                           padding: '9px 14px', borderRadius: 8, border: 'none',
-                          background: 'var(--accent)', color: '#fff',
+                          background: 'var(--accent)', color: 'var(--on-accent)',
                           fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
                           minHeight: 44,
                         }}>
@@ -219,7 +219,7 @@ export default function PlanSallesManager({
                       </span>
                       <button type="button" disabled={loading} onClick={() => supprimer(s.id)} style={{
                         padding: '8px 14px', borderRadius: 6, border: 'none',
-                        background: 'var(--danger-text)', color: '#fff',
+                        background: 'var(--danger-fill)', color: 'var(--on-danger)',
                         fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
                       }}>
                         Oui
@@ -257,7 +257,7 @@ export default function PlanSallesManager({
               />
               <button type="button" disabled={loading} onClick={ajouter} style={{
                 padding: '9px 18px', borderRadius: 8, border: 'none',
-                background: 'var(--accent)', color: '#fff', minHeight: 44,
+                background: 'var(--accent)', color: 'var(--on-accent)', minHeight: 44,
                 fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
                 flexShrink: 0,
               }}>
@@ -276,7 +276,7 @@ export default function PlanSallesManager({
           <button type="button" onClick={onClose} style={{
             padding: '10px 20px', borderRadius: 8,
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-            background: 'var(--accent)', color: '#fff',
+            background: 'var(--accent)', color: 'var(--on-accent)',
             cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
           }}>
             Terminé

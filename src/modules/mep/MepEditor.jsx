@@ -198,22 +198,22 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
       <div style={s.editorCard}>
         <div style={s.formRow2}>
           <div style={s.field}>
-            <label style={s.fieldLabel}>Nom de la liste</label>
-            <input style={s.input} value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex : Production week-end" />
+            <label htmlFor="mep-nom" style={s.fieldLabel}>Nom de la liste</label>
+            <input id="mep-nom" style={s.input} value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex : Production week-end" />
           </div>
           <div style={s.field}>
-            <label style={s.fieldLabel}>Date de service</label>
-            <input type="date" style={s.input} value={dateService} onChange={e => setDateService(e.target.value)} />
+            <label htmlFor="mep-date" style={s.fieldLabel}>Date de service</label>
+            <input id="mep-date" type="date" style={s.input} value={dateService} onChange={e => setDateService(e.target.value)} />
           </div>
         </div>
       </div>
 
       {/* Generer depuis une carte */}
       <div style={s.editorCard}>
-        <div style={s.fieldLabel}>Générer depuis une carte</div>
+        <label htmlFor="mep-carte" style={s.fieldLabel}>Générer depuis une carte</label>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ ...s.field, flex: 1, minWidth: 180 }}>
-            <select style={s.input} value={carteId} onChange={e => setCarteId(e.target.value)}>
+            <select id="mep-carte" style={s.input} value={carteId} onChange={e => setCarteId(e.target.value)}>
               <option value="">Choisir une carte…</option>
               {(cartes || []).map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
@@ -267,8 +267,8 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
 
       {/* Recettes de l'etablissement */}
       <div style={s.editorCard}>
-        <div style={s.fieldLabel}>Recettes de l'établissement</div>
-        <input style={s.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette…" />
+        <label htmlFor="mep-recherche" style={s.fieldLabel}>Recettes de l'établissement</label>
+        <input id="mep-recherche" style={s.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette…" />
         {loading ? (
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>Chargement des recettes…</div>
         ) : recettesFiltered.length === 0 ? (
@@ -277,12 +277,14 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
           <div style={s.pickList}>
             {recettesFiltered.map(r => {
               const sel = selectedRecetteIds.has(r.id);
+              // La ligne est un label : un clic n'importe où coche la case, et la
+              // case se coche aussi au clavier (Espace).
               return (
-                <div key={r.id} style={{ ...s.pickRow, ...(sel ? s.pickRowSel : null) }} onClick={() => toggleRecette(r)}>
-                  <input type="checkbox" style={{ width: 20, height: 20, accentColor: 'var(--accent)' }} checked={sel} readOnly />
+                <label key={r.id} style={{ ...s.pickRow, ...(sel ? s.pickRowSel : null) }}>
+                  <input type="checkbox" style={{ width: 20, height: 20, accentColor: 'var(--accent)' }} checked={sel} onChange={() => toggleRecette(r)} aria-label={r.nom} />
                   <span style={s.pickName}>{r.nom}</span>
                   {congChip(r.congelable ?? null)}
-                </div>
+                </label>
               );
             })}
           </div>

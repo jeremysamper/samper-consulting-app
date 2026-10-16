@@ -627,7 +627,7 @@ const st = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     background: 'var(--bg)', color: 'var(--text)',
   },
-  choixFormuleActif: { borderColor: 'var(--accent)', background: 'var(--accent)', color: '#fff' },
+  choixFormuleActif: { borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)' },
   option: {
     display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '4px 0',
     borderBottom: '1px solid var(--border)',
@@ -677,5 +677,5 @@ const st = {
     fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
     background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
   },
-  boutonPrincipal: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
+  boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
 };

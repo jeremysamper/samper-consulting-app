@@ -392,7 +392,7 @@ function Stepper({ current, total }) {
               border: `2px solid ${active || done ? 'var(--accent)' : 'var(--border)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 12, fontWeight: 700,
-              color: active ? '#fff' : done ? 'var(--accent)' : 'var(--text3)',
+              color: active ? 'var(--on-accent)' : done ? 'var(--accent)' : 'var(--text3)',
               flexShrink: 0,
             }}>
               {done ? '✓' : n}
@@ -697,7 +697,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                             width: 40, height: 40, borderRadius: 8, border: '2px solid',
                             borderColor: form.schedule_days.includes(day.id) ? 'var(--accent)' : 'var(--border)',
                             background: form.schedule_days.includes(day.id) ? 'var(--accent)' : 'var(--surface)',
-                            color: form.schedule_days.includes(day.id) ? '#fff' : 'var(--text2)',
+                            color: form.schedule_days.includes(day.id) ? 'var(--on-accent)' : 'var(--text2)',
                             cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600,
                           }}
                           onClick={() => toggleDay(day.id)}
