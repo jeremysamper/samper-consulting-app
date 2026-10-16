@@ -15,10 +15,16 @@ export default function ChiffresGestion({ chiffres, stock, avecPertes, avecStock
       detail: chiffres.aValider ? `${chiffres.aValider} à valider` : 'Toutes validées',
       ton: chiffres.aValider ? 'var(--warning-text)' : 'var(--text2)',
     },
-    avecStock && {
+    avecStock && (stock.recent ? {
       id: 'stock', page: 'inventaire', label: 'Stock valorisé', valeur: chf(stock.valeur),
       detail: stock.detail, ton: 'var(--text2)',
-    },
+    } : {
+      // Valeur nulle ou ancienne : la phrase remplace le montant, et la tuile
+      // mène à l'inventaire pour qui peut l'ouvrir.
+      id: 'stock', page: 'inventaire', label: 'Stock valorisé', texte: "Pas d'inventaire récent",
+      detail: peutOuvrir('inventaire') ? "Ouvrir l'inventaire" : stock.detail,
+      ton: peutOuvrir('inventaire') ? 'var(--accent)' : 'var(--text2)',
+    }),
     avecPlanning && {
       id: 'heures', page: 'planning', label: 'Heures planifiées', valeur: `${chiffres.heures.toLocaleString('fr-CH')} h`,
       detail: 'Sur les sept prochains jours', ton: 'var(--text2)',
@@ -38,7 +44,7 @@ export default function ChiffresGestion({ chiffres, stock, avecPertes, avecStock
           const contenu = (
             <>
               <span style={s.label}>{tu.label}</span>
-              <span style={s.valeur}>{tu.valeur}</span>
+              {tu.texte ? <span style={s.valeurTexte}>{tu.texte}</span> : <span style={s.valeur}>{tu.valeur}</span>}
               <span style={{ ...t.texte2, color: tu.ton }}>{tu.detail}</span>
             </>
           );
@@ -67,4 +73,6 @@ const s = {
   tuileBouton: { borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)' },
   label: { fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
   valeur: { fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  // Phrase à la place d'un montant : même place, taille de texte.
+  valeurTexte: { fontSize: 16, lineHeight: 1.6, fontWeight: 500, color: 'var(--text2)' },
 };

@@ -106,7 +106,7 @@ export default function ChoixGroupe({
     }
     const pris = s.items.length + choix.emprunts.filter((e) => e.section === rub.id).length;
     if (pris >= max) {
-      notify(`Déjà ${max} retenu${max > 1 ? 's' : ''} dans « ${rub.label} » : retires-en un d'abord.`, 'info');
+      notify(`Déjà ${max} retenu${max > 1 ? 's' : ''} dans « ${rub.label} » : retirez-en un d'abord.`, 'info');
       return;
     }
     appliquer(avecSection(rub.id, { ...s, items: [...s.items, item] }));
@@ -178,7 +178,7 @@ export default function ChoixGroupe({
     const pris = sectionDe(rub.id).items.length + choix.emprunts.filter((x) => x.section === rub.id).length;
     const max = rub.regle.mode === 'carte' ? (Number(rub.regle.retenir) || 3) : (Number(rub.regle.nombre) || 1);
     if (!unSeul && pris >= max) {
-      notify(`Déjà ${max} retenu${max > 1 ? 's' : ''} dans « ${rub.label} » : retires-en un d'abord.`, 'info');
+      notify(`Déjà ${max} retenu${max > 1 ? 's' : ''} dans « ${rub.label} » : retirez-en un d'abord.`, 'info');
       return;
     }
     appliquer({
@@ -230,7 +230,7 @@ export default function ChoixGroupe({
   if (!menu) {
     return (
       <div style={st.vide}>
-        Choisis d'abord un menu pour ce groupe (bouton Modifier), puis reviens cocher les choix du client.
+        Choisissez d'abord un menu pour ce groupe (bouton Modifier), puis revenez cocher les choix du client.
       </div>
     );
   }

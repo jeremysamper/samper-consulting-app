@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchToggle : recherche repliée en une simple loupe pour gagner de la place
@@ -77,7 +77,7 @@ export default function SearchToggle({ value, onChange, placeholder = 'Recherche
         onClick={close}
         aria-label="Fermer la recherche"
       >
-        <X size={14} />
+        <span aria-hidden="true">×</span>
       </button>
     </div>
   );

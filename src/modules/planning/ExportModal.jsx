@@ -4,6 +4,7 @@ import { ajouterJours } from './planningModeles.js';
 import { exporterExcel, libellePeriode, payloadEquipe, payloadPersonnes, payloadPointages } from './planningExport.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Exporter : un seul endroit pour tous les documents du planning. On choisit
@@ -84,7 +85,7 @@ export default function ExportModal({
       onClose();
     } catch (err) {
       console.error('[Planning export]', err);
-      if (doc === 'excel') notifyLegacy('Export Excel échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      if (doc === 'excel') notifyLegacy('Export Excel impossible. ' + messageErreur(err, 'planning'), 'error');
     } finally {
       setEnCours(false);
     }

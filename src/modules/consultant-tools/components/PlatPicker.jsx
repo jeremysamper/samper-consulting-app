@@ -123,7 +123,7 @@ export default function PlatPicker({
             <div style={ps.title}>{title}</div>
             {subtitle && <div style={ps.subtitle}>{subtitle}</div>}
           </div>
-          <button style={ps.closeBtn} onClick={() => onClose?.()} disabled={busy} title="Fermer">✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={ps.closeBtn} onClick={() => onClose?.()} disabled={busy} title="Fermer">×</button>
         </div>
 
         {/* Champ de recherche permanent : dans une modale, la loupe repliable
@@ -138,7 +138,7 @@ export default function PlatPicker({
               disabled={busy}
             />
             {query && (
-              <button style={ps.clearBtn} onClick={() => setQuery('')} title="Effacer la recherche">✕</button>
+              <button type="button" style={ps.clearBtn} onClick={() => setQuery('')} title="Effacer la recherche" aria-label="Effacer la recherche">×</button>
             )}
           </div>
         )}
@@ -245,7 +245,7 @@ export default function PlatPicker({
               onClick={onCreatePlat}
               disabled={busy}
               title="Créer le plat manquant, puis rouvrir ce rattachement"
-            >+ Nouveau plat</button>
+            >Nouveau plat</button>
           )}
           <div style={{ flex: 1 }} />
           <button style={cts.ghostBtn} onClick={() => onClose?.()} disabled={busy}>Annuler</button>

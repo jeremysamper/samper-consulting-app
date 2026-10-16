@@ -24,6 +24,8 @@ import { MappingFilters } from './components/MappingFilters.jsx';
 import { PosItemRow }     from './components/PosItemRow.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { messageErreur } from '../../utils/messageErreur.js';
+import { navigateToPage } from '../../services/navigationService.js';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -37,19 +39,19 @@ function deriveStatus(mapping, suggestion) {
 
 // ── Sous-composants ───────────────────────────────────────────────
 
+// État vide : une phrase et, quand ce rôle a une action pour en sortir, le
+// bouton qui y mène (pas de glyphe décoratif).
 function EmptyState({ type, onNavigate }) {
   const config = {
     no_pos: {
-      icon: '◑',
       title: 'Aucune caisse connectée',
-      desc: 'Connectez votre caisse Lightspeed dans Paramètres → Intégrations POS, puis lancez une synchronisation.',
-      action: null,
+      desc: 'Connectez votre caisse Lightspeed dans Paramètres, rubrique Intégrations POS, puis lancez une synchronisation.',
+      actionLabel: 'Ouvrir les paramètres',
     },
     no_recettes: {
-      icon: '◈',
       title: 'Aucune recette disponible',
       desc: "Créez d'abord vos fiches techniques dans le module Recettes pour pouvoir lier vos plats POS.",
-      action: null,
+      actionLabel: null,
     },
   }[type];
 
@@ -67,13 +69,15 @@ function EmptyState({ type, onNavigate }) {
       gap:           12,
       textAlign:     'center',
     }}>
-      <div style={{ fontSize: 40, opacity: 0.15 }}>{config.icon}</div>
       <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
         {config.title}
       </div>
       <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 400, lineHeight: 1.6 }}>
         {config.desc}
       </div>
+      {config.actionLabel && onNavigate && (
+        <Btn variant="primary" onClick={onNavigate} style={{ marginTop: 4 }}>{config.actionLabel}</Btn>
+      )}
     </div>
   );
 }
@@ -95,8 +99,7 @@ function AllMappedState({ total }) {
         Tous les plats sont mappés !
       </div>
       <div style={{ fontSize: 13, color: 'var(--success-text)', lineHeight: 1.6 }}>
-        {total} plat{total > 1 ? 's' : ''} relié{total > 1 ? 's' : ''} à une recette.
-        Les vues Mise en place et Top/Flop sont prêtes pour J4.
+        {total} {total > 1 ? 'plats reliés' : 'plat relié'} à une recette.
       </div>
     </div>
   );
@@ -204,7 +207,7 @@ export default function MappingPlats({ user, etablissement }) {
       }
       notify('Mapping validé', 'success');
     } catch (e) {
-      notify(e?.message ?? 'Erreur de validation', 'error');
+      notify(messageErreur(e, 'ventes caisse', 'Validation impossible.'), 'error');
     }
   }
 
@@ -213,7 +216,7 @@ export default function MappingPlats({ user, etablissement }) {
       await changeMapping(posItemId, recipeId, score);
       notify('Recette modifiée', 'success');
     } catch (e) {
-      notify(e?.message ?? 'Erreur de modification', 'error');
+      notify(messageErreur(e, 'ventes caisse', 'Modification impossible.'), 'error');
     }
   }
 
@@ -222,7 +225,7 @@ export default function MappingPlats({ user, etablissement }) {
       await unlinkMapping(posItemId);
       notify('Lien supprimé', 'info');
     } catch (e) {
-      notify(e?.message ?? 'Erreur', 'error');
+      notify(messageErreur(e, 'ventes caisse', 'Opération impossible.'), 'error');
     }
   }
 
@@ -233,7 +236,8 @@ export default function MappingPlats({ user, etablissement }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionHeader title="Mapping plats POS et recettes" subtitle={etabNom} />
-        <EmptyState type="no_pos" />
+        {/* Paramètres est réservé au consultant : lui seul y est envoyé. */}
+        <EmptyState type="no_pos" onNavigate={user?.role === 'consultant' ? () => navigateToPage('parametres') : null} />
       </div>
     );
   }

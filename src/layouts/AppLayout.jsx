@@ -28,6 +28,10 @@ import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
+import { messageErreur } from '../utils/messageErreur.js';
+
+// Pages hors navItems (réservées au consultant, ouvertes depuis le compte).
+const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès' };
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {
@@ -268,6 +272,11 @@ export default function AppLayout({
   // Labels personnalisés globaux (module_labels table - portée tous établissements)
   // getLabelForModule(key, defaultLabel) → custom label ou defaultLabel si non défini
   const { getLabelForModule } = useModuleLabels();
+  // Titre de la barre du haut : les pages hors menu (ouvertes depuis le
+  // compte) ont leur propre nom, sinon elles s'affichaient « Tableau de bord ».
+  const titrePage = currentItem
+    ? getLabelForModule(currentItem.id, currentItem.label)
+    : (PAGES_HORS_MENU[currentPage] || 'Tableau de bord');
 
   // ── Organiser le menu (consultant) ───────────────────────────────
   const startOrganizing = React.useCallback(() => {
@@ -293,7 +302,7 @@ export default function AppLayout({
       setOrganizing(false);
       notifyLegacy('Ordre du menu enregistré pour tous les comptes', 'success');
     } catch (err) {
-      notifyLegacy('Enregistrement impossible : ' + (err?.message || err), 'error');
+      notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'menu'), 'error');
     }
   };
   const handleResetOrder = async () => {
@@ -303,7 +312,7 @@ export default function AppLayout({
       setOrganizing(false);
       notifyLegacy('Ordre par défaut rétabli', 'success');
     } catch (err) {
-      notifyLegacy('Enregistrement impossible : ' + (err?.message || err), 'error');
+      notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'menu'), 'error');
     }
   };
   const renderOrganizer = (variant) => (
@@ -494,7 +503,7 @@ export default function AppLayout({
           await legacySB.db.updateEtablissementLogo(etablissement.id, dataUrl);
           notifyLegacy('Logo mis à jour pour ' + etablissement.nom, 'success');
         } catch (err) {
-          notifyLegacy('Erreur enregistrement logo : ' + err.message, 'error');
+          notifyLegacy('Logo non enregistré. ' + messageErreur(err, 'logo'), 'error');
           return;
         }
       }
@@ -513,7 +522,7 @@ export default function AppLayout({
       try {
         await legacySB.db.updateEtablissementLogo(etablissement.id, null);
       } catch (err) {
-        notifyLegacy('Erreur suppression logo : ' + err.message, 'error');
+        notifyLegacy('Logo non supprimé. ' + messageErreur(err, 'logo'), 'error');
         return;
       }
     }
@@ -693,7 +702,7 @@ export default function AppLayout({
                 plusieurs) : l'établissement reste visible hors du tiroir. */}
             <EtabSwitcher
               variant="mobile"
-              title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
+              title={titrePage}
               etabs={etabs}
               current={etablissement}
               onSelect={setEtablissement}
@@ -762,7 +771,7 @@ export default function AppLayout({
               {renderLogoMark(36, 13)}
               {renderLogoMenu()}
             </div>
-            <button style={mls.closeDrawer} onClick={() => setDrawerOpen(false)} aria-label="Fermer">✕</button>
+            <button type="button" className="ui-fermer" style={mls.closeDrawer} onClick={() => setDrawerOpen(false)} aria-label="Fermer">×</button>
           </div>
 
           <nav style={mls.drawerNav} aria-label="Modules" data-nav-scroll>
@@ -866,7 +875,7 @@ export default function AppLayout({
               </button>
               {/* Titre + établissement (sélecteur s'il y en a plusieurs). */}
               <EtabSwitcher
-                title={getLabelForModule(currentItem?.id, currentItem?.label) || 'Tableau de bord'}
+                title={titrePage}
                 etabs={etabs}
                 current={etablissement}
                 onSelect={setEtablissement}

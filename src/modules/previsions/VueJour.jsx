@@ -208,7 +208,7 @@ export default function VueJour({
         display: 'flex', alignItems: 'center', gap: 10,
         marginTop: 16, marginBottom: 14, flexWrap: 'wrap',
       }}>
-        <Btn small onClick={onBack}>← Semaine</Btn>
+        <Btn small onClick={onBack}>Retour à la semaine</Btn>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
             {formatDateLongue(date)}
@@ -259,7 +259,7 @@ export default function VueJour({
               fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
               cursor: 'pointer', flexShrink: 0,
             }}>
-            + Réservation
+            Nouvelle réservation
           </button>
         )}
       </div>
@@ -324,7 +324,7 @@ export default function VueJour({
             Aucune réservation ce jour
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-            Reviens à la semaine ou ajoute-en une avec le bouton +
+            Revenez à la semaine ou ajoutez-en une avec le bouton +
           </div>
         </div>
       )}

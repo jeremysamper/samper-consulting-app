@@ -8,9 +8,9 @@ function mapError(error) {
   const MESSAGES = {
     '23505': 'Ce tag existe déjà sur cette réservation.',
     '23503': 'Réservation introuvable.',
-    '42501': "Tu n'as pas les droits pour cette action.",
+    '42501': "Vous n'avez pas les droits pour cette action.",
   };
-  return MESSAGES[String(error.code || '')] || 'Erreur technique. Réessaie ou contacte le support.';
+  return MESSAGES[String(error.code || '')] || 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 export function useReservationTags() {

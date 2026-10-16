@@ -106,7 +106,7 @@ export default function PlanSallesManager({
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             Salles
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
             background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
             color: 'var(--text2)', padding: 4, lineHeight: 1,
           }}>
@@ -119,7 +119,7 @@ export default function PlanSallesManager({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             {salles.length === 0 && (
               <div style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0', lineHeight: 1.5 }}>
-                Aucune salle. Crée la première ci-dessous (« Salle », « Terrasse »…).
+                Aucune salle. Créez la première ci-dessous (« Salle », « Terrasse »…).
               </div>
             )}
 

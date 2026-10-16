@@ -11,6 +11,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RÔLES & ACCÈS : les comptes et leurs droits, personne par personne.
@@ -226,7 +227,7 @@ const Roles = ({ user }) => {
       try {
         await legacySB.db.setPermissionsUtilisateur(id, ecartsRef.current[id] || {});
       } catch (err) {
-        notifyLegacy(`Droits de ${personne.prenom} ${personne.nom} non enregistrés : ${err.message}`, 'error');
+        notifyLegacy(`Droits de ${personne.prenom} ${personne.nom} non enregistrés. ${messageErreur(err, 'rôles')}`, 'error');
         const retour = { ...ecartsRef.current };
         if (avant && Object.keys(avant).length) retour[id] = avant; else delete retour[id];
         ecartsRef.current = retour;
@@ -295,7 +296,7 @@ const Roles = ({ user }) => {
               password: wantsPassword ? u.password : undefined,
             });
           } catch (err) {
-            notifyLegacy('Erreur mise à jour des identifiants : ' + err.message + '\n\nVérifiez que l\'Edge Function "update-user" est déployée.', 'error');
+            notifyLegacy('Identifiants non mis à jour. ' + messageErreur(err, 'rôles'), 'error');
             return;
           }
         }
@@ -307,7 +308,7 @@ const Roles = ({ user }) => {
             role: u.role, poste: u.poste, avatar,
             etablissement_ids: u.etablissementIds, actif: u.actif !== false,
           });
-        } catch (err) { notifyLegacy('Erreur mise à jour : ' + err.message, 'error'); return; }
+        } catch (err) { notifyLegacy('Mise à jour impossible. ' + messageErreur(err, 'rôles'), 'error'); return; }
 
         if (emailChanged || wantsPassword) {
           const parts = [];
@@ -331,7 +332,7 @@ const Roles = ({ user }) => {
           });
           alertLegacy(`Utilisateur ${u.prenom} ${u.nom} créé avec succès.\n\nTransmettez-lui :\n• Email : ${u.email}\n• Mot de passe : ${u.password}\n\nIl pourra se connecter immédiatement.`);
         } catch (err) {
-          notifyLegacy('Erreur lors de la création : ' + err.message + '\n\nVérifiez que les Edge Functions "create-user" et "delete-user" sont bien déployées sur Supabase.', 'error');
+          notifyLegacy('Compte non créé. ' + messageErreur(err, 'rôles'), 'error');
           return;
         }
       }
@@ -363,7 +364,7 @@ const Roles = ({ user }) => {
         // Repli sans la fonction de suppression : seul le profil est parti.
         if (res?.method === 'db_fallback') notifyLegacy(res.message, 'warning');
       } catch (err) {
-        notifyLegacy('Erreur suppression : ' + err.message + '\n\nVérifiez que l\'Edge Function "delete-user" est déployée.', 'error');
+        notifyLegacy('Suppression impossible. ' + messageErreur(err, 'rôles'), 'error');
       }
     } else {
       setUtilisateurs(prev => prev.filter(x => x.id !== u.id));
@@ -376,7 +377,7 @@ const Roles = ({ user }) => {
       try {
         await legacySB.db.updateProfile(u.id, { actif: newActif });
         setUtilisateurs(prev => prev.map(x => x.id === u.id ? { ...x, actif: newActif } : x));
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+      } catch (err) { notifyLegacy(messageErreur(err, 'rôles'), 'error'); }
     } else {
       setUtilisateurs(prev => prev.map(x => x.id === u.id ? { ...x, actif: newActif } : x));
     }
@@ -510,7 +511,7 @@ const Roles = ({ user }) => {
           <>
             <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ flex: 1, minWidth: 200, lineHeight: 1.5 }}>
-                Les cases partent des droits du rôle <strong>{role.label}</strong>. Ce que tu changes ne concerne que {u.prenom}.
+                Les cases partent des droits du rôle <strong>{role.label}</strong>. Ce que vous changez ne concerne que {u.prenom}.
                 {' '}« Accès » : le module apparaît dans son menu. « Modifier » : il peut y créer, modifier et supprimer.
               </span>
               {canEdit && ajustee && (
@@ -621,13 +622,13 @@ const Roles = ({ user }) => {
           {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''}, les droits se règlent personne par personne
         </div>
         <div style={{ flex: 1 }} />
-        {canEdit && <button style={ros.addBtn} onClick={openNewUser}>+ Nouvel utilisateur</button>}
+        {canEdit && <button style={ros.addBtn} onClick={openNewUser}>Nouvel utilisateur</button>}
       </div>
 
       {isMobile ? (
         affichee ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button style={{ ...ros.ghostBtn, alignSelf: 'flex-start', minHeight: 44 }} onClick={() => setSelectedId(null)}>← Toute l'équipe</button>
+            <button style={{ ...ros.ghostBtn, alignSelf: 'flex-start', minHeight: 44 }} onClick={() => setSelectedId(null)}>Toute l'équipe</button>
             {panneau}
           </div>
         ) : listePersonnes
@@ -635,7 +636,7 @@ const Roles = ({ user }) => {
         <div style={ros.permLayout}>
           {listePersonnes}
           {panneau || (
-            <div style={{ ...ros.modulesCol, padding: 24, fontSize: 13, color: 'var(--text3)' }}>Choisis une personne.</div>
+            <div style={{ ...ros.modulesCol, padding: 24, fontSize: 13, color: 'var(--text3)' }}>Choisissez une personne.</div>
           )}
         </div>
       )}
@@ -645,7 +646,7 @@ const Roles = ({ user }) => {
           <div className="modal-full" style={ros.modal} onClick={e => e.stopPropagation()}>
             <div style={ros.modalHeader}>
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>{editingUser.id ? 'Modifier utilisateur' : 'Nouvel utilisateur'}</div>
-              <button style={ros.closeBtn} onClick={() => setShowUserForm(false)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={ros.closeBtn} onClick={() => setShowUserForm(false)}>×</button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

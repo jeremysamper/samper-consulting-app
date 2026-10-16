@@ -4,6 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { libelleType } from './achatsLogic.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pièces des documents d'achat : les photos et PDF déposés, gardés pour être
@@ -70,7 +71,7 @@ export function VisionneusePieces({ doc, etabId, onClose }) {
     let vivant = true;
     legacySB.db.listAchatsPieces(etabId, doc.id)
       .then(p => { if (vivant) setPieces(p); })
-      .catch(err => { if (vivant) { setPieces([]); setErreur(err.message || String(err)); } });
+      .catch(err => { if (vivant) { setPieces([]); setErreur(messageErreur(err, 'pièces des achats')); } });
     return () => { vivant = false; };
   }, [etabId, doc.id]);
 
@@ -92,7 +93,7 @@ export function VisionneusePieces({ doc, etabId, onClose }) {
       a.click();
       a.remove();
     } catch (err) {
-      notifyLegacy('Téléchargement impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Téléchargement impossible. ' + messageErreur(err, 'pièces des achats'), 'error');
     }
   };
 
@@ -108,7 +109,7 @@ export function VisionneusePieces({ doc, etabId, onClose }) {
             {libelleType(doc.typeDocument)}{doc.dateDocument ? ` du ${dateCH(doc.dateDocument)}` : ''}
           </div>
         </div>
-        <button type="button" style={st.btn} onClick={onClose} aria-label="Fermer">✕</button>
+        <button type="button" style={st.btn} onClick={onClose} aria-label="Fermer">×</button>
       </div>
       <div style={st.corps}>
         {pieces === null && <div style={st.info}>Ouverture du document…</div>}

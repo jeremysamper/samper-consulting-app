@@ -144,7 +144,7 @@ export default function MenusGroupe({
                   type="button" style={st.bouton}
                   onClick={() => setEnEdition({ typeGroupe: typeActif, numero: prochainNumero })}
                 >
-                  + Nouveau menu n°{prochainNumero}
+                  Nouveau menu n°{prochainNumero}
                 </button>
               )}
               {!complements && (
@@ -152,7 +152,7 @@ export default function MenusGroupe({
                   type="button" style={st.bouton}
                   onClick={() => setEnEdition({ typeGroupe: typeActif, numero: NUMERO_COMPLEMENTS })}
                 >
-                  + Carte des compléments
+                  Carte des compléments
                 </button>
               )}
             </div>
@@ -403,7 +403,7 @@ function EditeurMenu({
           <div style={st.titre}>
             {metaType(typeGroupe).label}, {estComplements ? 'carte des compléments' : `menu n°${numero}`}
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={st.fermer}>×</button>
         </div>
 
         <div style={st.corps}>
@@ -505,7 +505,7 @@ function EditeurMenu({
                   ))}
                 </div>
               ) : (
-                <div style={st.aide}>Choisis la saison Été ou Hiver pour cocher l'apéritif conseillé.</div>
+                <div style={st.aide}>Choisissez la saison Été ou Hiver pour cocher l'apéritif conseillé.</div>
               )}
             </div>
           )}
@@ -688,7 +688,7 @@ function EditeurMenu({
               onClick={() => setLignes((ls) => [...ls, nouvelleLigne(typeGroupe, lignesVisibles[lignesVisibles.length - 1]?.section, filtre)])}
               style={{ ...st.bouton, marginTop: 10, width: '100%' }}
             >
-              + Ajouter un plat
+              Ajouter un plat
             </button>
           </div>
         </div>

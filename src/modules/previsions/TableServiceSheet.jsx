@@ -148,7 +148,7 @@ export default function TableServiceSheet({
             </div>
           </div>
           <button
-            type="button" onClick={onClose} aria-label="Fermer"
+            type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer"
             style={{
               background: 'none', border: 'none', fontSize: 22, minWidth: 44, minHeight: 44,
               cursor: 'pointer', color: 'var(--text2)', lineHeight: 1,

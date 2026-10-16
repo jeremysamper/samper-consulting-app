@@ -18,6 +18,8 @@ import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
+import { navigateToPage } from '../../services/navigationService.js';
 
 
 // CARTES & RECETTES
@@ -32,6 +34,20 @@ const ROLES_ETIQUETTE = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'];
 
 const RETRY_MIN_MS = 4000;
 const RETRY_MAX_MS = 30000;
+
+// Statut d'une fiche, en mots et en couleur : un brouillon ne se lit pas en vert.
+const STATUTS_RECETTE = {
+  brouillon: { label: 'Brouillon', couleur: 'var(--text2)' },
+  'validée': { label: 'Validée', couleur: 'var(--success-text)' },
+  'archivée': { label: 'Archivée', couleur: 'var(--text3)' },
+};
+const statutRecette = (s) => STATUTS_RECETTE[s] || { label: s || '', couleur: 'var(--text2)' };
+// Date ISO (2026-09-29) en date suisse (29.09.2026) ; un autre texte passe tel quel.
+const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('.') : (v || ''));
+// Temps de la fiche qui valent quelque chose : l'import écrit 0 quand il n'en sait rien.
+const tempsFiche = (r) => [['Prépa', r.tempsPreparation], ['Cuisson', r.tempsCuisson], ['Total', r.tempsTotal]].filter(([, v]) => Number(v) > 0);
+// Allergènes en toutes lettres, jamais en codes de deux lettres.
+const nomsAllergenes = (ids) => (ids || []).map((a) => ALLERGENES_MAP[a] || a).join(', ');
 
 // ─── PanneauEtat : grand panneau centré (vide, chargement, indisponible) ───
 // Un chargement en cours ou une lecture en échec ne doit JAMAIS s'afficher
@@ -158,7 +174,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
   const allSelected = accessibleEtabs.length > 0 && accessibleEtabs.every(e => selectedEtabIds.has(e.id));
 
   const handleDuplicate = async () => {
-    if (selectedEtabIds.size === 0) { notifyLegacy('Sélectionne au moins un établissement.', 'warning'); return; }
+    if (selectedEtabIds.size === 0) { notifyLegacy('Sélectionnez au moins un établissement.', 'warning'); return; }
     if (!legacySB) { notifyLegacy('Base de données indisponible.', 'error'); return; }
 
     setSaving(true);
@@ -215,7 +231,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
         successes.push({ etabId, etabNom: targetEtab?.nom, recetteId: saved?.id });
       } catch (err) {
         console.error('[DuplicateRecette] target', etabId, err);
-        failures.push({ etabId, etabNom: targetEtab?.nom, reason: err?.message || 'erreur DB' });
+        failures.push({ etabId, etabNom: targetEtab?.nom, reason: messageErreur(err, 'recettes', 'Enregistrement impossible.') });
       }
     }
 
@@ -240,7 +256,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Dupliquer la recette vers…</div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>« {recette.nom} »</div>
           </div>
-          <button style={smStyle.closeBtn} onClick={() => !saving && onClose()}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={smStyle.closeBtn} onClick={() => !saving && onClose()}>×</button>
         </div>
 
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -350,7 +366,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
             <span style={{ flex: 1, fontSize: 12, color: selectedEtabIds.size > 0 ? 'var(--text)' : 'var(--text2)' }}>
               {selectedEtabIds.size > 0
                 ? <>Dupliquer vers <strong>{selectedEtabIds.size}</strong> établissement{selectedEtabIds.size > 1 ? 's' : ''}</>
-                : 'Sélectionne au moins un établissement'}
+                : 'Sélectionnez au moins un établissement'}
             </span>
             <button style={smStyle.ghostBtn} onClick={() => !saving && onClose()} disabled={saving}>Annuler</button>
             <button
@@ -446,7 +462,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
     } catch (err) {
       console.error('[saveCongelable]', err);
       setCongelable(prev);
-      notifyLegacy('Erreur : ' + (err?.message || 'enregistrement impossible'), 'error');
+      notifyLegacy(messageErreur(err, 'recettes', 'Enregistrement impossible.'), 'error');
     }
     setSavingCong(false);
   };
@@ -497,7 +513,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
       notifyLegacy('Durées de vie enregistrées.', 'success');
     } catch (err) {
       console.error('[saveDurees]', err);
-      notifyLegacy('Erreur : ' + (err?.message || 'enregistrement impossible'), 'error');
+      notifyLegacy(messageErreur(err, 'recettes', 'Enregistrement impossible.'), 'error');
     }
     setSavingDurees(false);
   };
@@ -567,7 +583,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
         />
       )}
       <div className="module-actions no-print" style={{ marginBottom: 16 }}>
-        <button style={rs.backBtn} onClick={onBack}>← Retour</button>
+        <button style={rs.backBtn} onClick={onBack}>Retour</button>
         {canEtiqueter && (
           <button style={rs.etiquetteBtn} onClick={() => setShowEtiquette(true)}>Étiquette DLC</button>
         )}
@@ -594,15 +610,13 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
         <div style={{ ...rs.detailHero, height: isMobile ? 190 : 240 }}>
           <RecettePhoto src={recette.photoUrl} alt={recette.nom} style={rs.detailHeroImg} />
           <div style={rs.detailHeroScrim} aria-hidden="true" />
-          <span style={{...rs.badge, ...rs.detailHeroBadge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
+          <span style={{...rs.badge, ...rs.detailHeroBadge, background:'var(--surface)', color: statutRecette(recette.statut).couleur}}>{statutRecette(recette.statut).label}</span>
           <div style={rs.detailHeroText}>
             <div style={rs.detailHeroTitle}>{recette.nom}</div>
-            <div style={rs.detailHeroSub}>v{recette.version}, modifié le {recette.modifie}, {recette.categorie}</div>
-            {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
+            <div style={rs.detailHeroSub}>v{recette.version}, modifié le {dateSuisse(recette.modifie)}, {recette.categorie}</div>
+            {tempsFiche(recette).length > 0 && (
               <div style={rs.detailHeroTimes}>
-                {recette.tempsPreparation != null && <span>Prépa {recette.tempsPreparation} min</span>}
-                {recette.tempsCuisson != null && <span>Cuisson {recette.tempsCuisson} min</span>}
-                {recette.tempsTotal != null && <span>Total {recette.tempsTotal} min</span>}
+                {tempsFiche(recette).map(([libelle, minutes]) => <span key={libelle}>{libelle} {minutes} min</span>)}
               </div>
             )}
           </div>
@@ -611,17 +625,15 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
         <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
           <div style={rs.detailMeta}>
             <div style={rs.detailTitle}>{recette.nom}</div>
-            <div style={rs.detailSub}>v{recette.version}, modifié le {recette.modifie}, {recette.categorie}</div>
-            {(recette.tempsPreparation != null || recette.tempsCuisson != null || recette.tempsTotal != null) && (
+            <div style={rs.detailSub}>v{recette.version}, modifié le {dateSuisse(recette.modifie)}, {recette.categorie}</div>
+            {tempsFiche(recette).length > 0 && (
               <div style={{display:'flex', gap:14, marginTop:8, fontSize:12, color:'var(--text2)', flexWrap:'wrap'}}>
-                {recette.tempsPreparation != null && <span>Prépa : <strong style={{color:'var(--text)'}}>{recette.tempsPreparation} min</strong></span>}
-                {recette.tempsCuisson != null && <span>Cuisson : <strong style={{color:'var(--text)'}}>{recette.tempsCuisson} min</strong></span>}
-                {recette.tempsTotal != null && <span>Total : <strong style={{color:'var(--accent)'}}>{recette.tempsTotal} min</strong></span>}
+                {tempsFiche(recette).map(([libelle, minutes]) => <span key={libelle}>{libelle} : <strong style={{color: libelle === 'Total' ? 'var(--accent)' : 'var(--text)'}}>{minutes} min</strong></span>)}
               </div>
             )}
           </div>
           <div style={rs.detailBadges}>
-            <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{recette.statut}</span>
+            <span style={{...rs.badge, background:'none', color: statutRecette(recette.statut).couleur}}>{statutRecette(recette.statut).label}</span>
           </div>
         </div>
       )}
@@ -665,7 +677,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
                 <button type="button" style={rs.echelleReset} onClick={revenirBase}>Revenir à la base</button>
               </>
             ) : (
-              <span>Change les portions, ou tape la quantité que tu as sur une ligne : toute la recette suit.</span>
+              <span>Changez les portions, ou tapez la quantité que vous avez sur une ligne : toute la recette suit.</span>
             )}
           </div>
           <div style={rs.ingTable}>
@@ -795,7 +807,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
           </div>
           {recette.notesConsultant && (
             <div style={{...rs.detailCard, borderLeft:'3px solid var(--accent)'}}>
-              <div style={rs.cardHeader}><span style={rs.cardTitle}>✦ Notes consultant</span></div>
+              <div style={rs.cardHeader}><span style={rs.cardTitle}>Notes consultant</span></div>
               <div style={{padding:'12px 16px', fontSize:13, color:'var(--text)', lineHeight:1.6}}>{recette.notesConsultant}</div>
             </div>
           )}
@@ -1009,9 +1021,9 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
   ].filter(Boolean).join(' + ');
 
   const hints = {
-    cartes: 'Coche une carte pour exporter toutes les fiches recette de ses plats, rangées par catégorie.',
-    plats: 'Coche des plats : toutes leurs recettes associées seront exportées.',
-    recettes: 'Coche des recettes individuelles. La sélection se cumule avec les onglets Cartes et Plats.',
+    cartes: 'Cochez une carte pour exporter toutes les fiches recette de ses plats, rangées par catégorie.',
+    plats: 'Cochez des plats : toutes leurs recettes associées seront exportées.',
+    recettes: 'Cochez des recettes individuelles. La sélection se cumule avec les onglets Cartes et Plats.',
   };
 
   return (
@@ -1025,7 +1037,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Exporter des fiches</div>
               <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Une fiche par page A4, dans un seul PDF</div>
             </div>
-            <button style={smStyle.closeBtn} onClick={() => !busy && onClose()}>✕</button>
+            <button type="button" className="ui-fermer" aria-label="Fermer" style={smStyle.closeBtn} onClick={() => !busy && onClose()}>×</button>
           </div>
           <div style={ms.controls}>
             <SegmentedTabs
@@ -1173,7 +1185,7 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
           <div style={ms.footerInfo}>
             {hasSelection
               ? <>
-                  {recap} → <strong style={{ color: 'var(--text)' }}>{count} fiche{count > 1 ? 's' : ''}</strong>
+                  {recap} : <strong style={{ color: 'var(--text)' }}>{count} fiche{count > 1 ? 's' : ''}</strong>
                   {' '}
                   <button type="button" className="mini" style={ms.clearBtn}
                     onClick={() => { setSelCartes(new Set()); setSelPlats(new Set()); setSelRecettes(new Set()); }}>
@@ -1277,7 +1289,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Recherche allergène / ingrédient</div>
             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Trouvez dans quelles recettes un produit apparaît</div>
           </div>
-          <button style={smStyle.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={smStyle.closeBtn} onClick={onClose}>×</button>
         </div>
 
         <div style={{ padding: '14px 20px 8px' }}>
@@ -1429,7 +1441,7 @@ const Recettes = ({ user, etablissement }) => {
     try {
       await legacySB?.db?.setUserSetting?.('cartes_default:' + etabId, next);
       notifyLegacy(next ? 'Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
-    } catch (e) { notifyLegacy('Erreur enregistrement : ' + (e.message || e), 'error'); }
+    } catch (e) { notifyLegacy('Enregistrement impossible. ' + messageErreur(e, 'recettes'), 'error'); }
   };
 
   React.useEffect(() => {
@@ -1666,7 +1678,7 @@ const Recettes = ({ user, etablissement }) => {
           ) : (
             <PanneauEtat
               titre="Aucune carte"
-              texte={canManageCartes ? 'Créez une carte avec le bouton « + Carte ».' : 'Aucune carte définie pour cet établissement.'}
+              texte={canManageCartes ? 'Créez une carte avec le bouton « Ajouter une carte ».' : 'Aucune carte définie pour cet établissement.'}
             />
           )
         ) : platsCarte.length === 0 ? (
@@ -1696,7 +1708,7 @@ const Recettes = ({ user, etablissement }) => {
               <div style={rs.carteName}>{activeCarte.nom}</div>
               <div style={{fontSize:13, color:'var(--text2)'}}>
                 {platsCarte.length} plat{platsCarte.length > 1 ? 's' : ''}
-                {activeCarte.dateDebut && `, du ${activeCarte.dateDebut}${activeCarte.dateFin ? ` au ${activeCarte.dateFin}` : ''}`}
+                {activeCarte.dateDebut && <>, du {dateSuisse(activeCarte.dateDebut)}{activeCarte.dateFin && <> au {dateSuisse(activeCarte.dateFin)}</>}</>}
               </div>
             </div>
             <div style={rs.carteHeaderRight} className="no-print">
@@ -1704,10 +1716,10 @@ const Recettes = ({ user, etablissement }) => {
                 <button
                   style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
                   onClick={() => toggleDefaultCarte(activeCarte.id)}
-                  title={defaultCarteId === activeCarte.id ? 'Carte d\'accueil - clic pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
+                  title={defaultCarteId === activeCarte.id ? 'Carte par défaut : cliquer pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
                 >
                   {defaultCarteId === activeCarte.id
-                    ? (isMobile ? 'Accueil' : 'Carte d\'accueil')
+                    ? 'Carte par défaut'
                     : (isMobile ? 'Par défaut' : 'Définir par défaut')}
                 </button>
               )}
@@ -1785,7 +1797,7 @@ const Recettes = ({ user, etablissement }) => {
                             </div>
                           )}
                           <div style={rs.platAllergenes}>
-                            {allergsList.map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
+                            {allergsList.length > 0 && <span style={rs.allergenesTexte}>{nomsAllergenes(allergsList)}</span>}
                           </div>
                           {recettesPlat.length > 0 && (
                             <div style={rs.platFooter}>
@@ -1882,21 +1894,18 @@ const Recettes = ({ user, etablissement }) => {
                 <RecettePhoto src={r.photoUrl} alt={r.nom} style={rs.thumb} />
                 <div style={rs.recetteInfo}>
                   <div style={rs.recetteName}>{r.nom}</div>
-                  <div style={rs.recetteMeta}>{r.categorie}, {r.portions} portions, v{r.version}, modifié {r.modifie}</div>
+                  <div style={rs.recetteMeta}>{r.categorie}, {r.portions} portions, v{r.version}, modifié le {dateSuisse(r.modifie)}</div>
                 </div>
                 {/* Pastilles d'allergènes plafonnées : une recette en cumulant 5
                     occupait 139px et écrasait le nom à 0px de large sur mobile.
                     Au-delà de 3, le surplus est résumé par un « +N » dont
                     l'infobulle liste les allergènes restants. */}
                 <div style={rs.recetteBadges}>
-                  {(r.allergenesIds||[]).slice(0, 3).map(a => <span key={a} style={rs.allergeneDot} title={ALLERGENES_MAP[a]||a}>{(ALLERGENES_MAP[a]||a).slice(0,2)}</span>)}
-                  {(r.allergenesIds||[]).length > 3 && (
-                    <span style={rs.allergeneDot} title={(r.allergenesIds||[]).slice(3).map(a => ALLERGENES_MAP[a]||a).join(', ')}>
-                      +{(r.allergenesIds||[]).length - 3}
-                    </span>
+                  {(r.allergenesIds||[]).length > 0 && (
+                    <span style={{ ...rs.allergenesTexte, ...rs.allergenesLigne }} title={nomsAllergenes(r.allergenesIds)}>{nomsAllergenes(r.allergenesIds)}</span>
                   )}
                 </div>
-                <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>{r.statut}</span>
+                <span style={{...rs.badge, background:'none', color: statutRecette(r.statut).couleur}}>{statutRecette(r.statut).label}</span>
                 {/* Raccourci d'étiquette : le clic et le clavier s'arrêtent au
                     bouton, sinon ils ouvriraient aussi la fiche. */}
                 {canEtiqueter && r.statut !== 'archivée' && (
@@ -1924,7 +1933,7 @@ const Recettes = ({ user, etablissement }) => {
                   const isExpanded = expandedPlats.has(plat.id) || recetteTrouvee(plat);
                   return (
                     <div key={plat.id}>
-                      <div style={rs.platBlock}
+                      <div style={rs.platBlock} className="recette-plat-ligne"
                         role="button"
                         tabIndex={0}
                         aria-expanded={isExpanded}
@@ -1956,6 +1965,11 @@ const Recettes = ({ user, etablissement }) => {
                       {isExpanded && platRecettes.length === 0 && (
                         <div style={rs.sousListeVide}>
                           Aucune recette rattachée à ce plat.
+                          {/* Les fiches se relient aux plats dans les Outils
+                              consultant, onglet Recettes. */}
+                          {user?.role === 'consultant' && (
+                            <>{' '}<button type="button" style={rs.lienAction} onClick={() => navigateToPage('outils')}>Rattacher une recette</button></>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2012,6 +2026,11 @@ const rs = {
   platCardName: {fontSize:15,fontWeight:700,color:'#f1ebe1',fontFamily:'var(--font-serif)',lineHeight:1.25,letterSpacing:'-0.01em'},
   platAllergenes: {display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'},
   allergeneDot: {fontSize:10,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
+  lienAction: {background:'none',border:'none',padding:0,color:'var(--accent)',fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
+  // Allergènes en texte simple, noms complets séparés par des virgules.
+  allergenesTexte: {fontSize:12,fontWeight:400,color:'var(--text2)',lineHeight:1.4},
+  // Dans une ligne de liste : une seule ligne, le reste au survol (title).
+  allergenesLigne: {minWidth:0,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
   platFooter: {display:'flex',alignItems:'center',justifyContent:'space-between'},
   // ─── Recettes listées au pied d'une carte de plat ─────────────────────────
   // Mesuré sur iPad paysage (1024px) : c'étaient des liens texte de 11px sans
@@ -2065,7 +2084,7 @@ const rs = {
   // 72px : la photo redevient une information (60px la réduisait à un point de
   // couleur). Le placeholder est rendu par RecettePhoto avec ce même style.
   thumb: { width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
-  platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--warning-bg-soft)', cursor: 'pointer' },
+  platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' },
   platName: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
   orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   recetteName: {fontSize:14,fontWeight:600,color:'var(--text)'},

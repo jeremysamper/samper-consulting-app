@@ -7,14 +7,14 @@ const TABLE = 'reservations';
 const SUPABASE_ERROR_MESSAGES = {
   '23505': 'Cette réservation existe déjà.',
   '23503': 'Établissement introuvable.',
-  '42501': "Tu n'as pas les droits pour cette action.",
+  '42501': "Vous n'avez pas les droits pour cette action.",
 };
 
 function mapError(error) {
   if (!error) return null;
   console.error('[useReservations] erreur Supabase', error);
   return SUPABASE_ERROR_MESSAGES[String(error.code || '')]
-    || 'Erreur technique. Réessaie ou contacte le support.';
+    || 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 /**

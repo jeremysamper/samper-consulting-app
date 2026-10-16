@@ -196,7 +196,7 @@ export default function AlertRules({ etablissement }) {
             Vérifiées automatiquement toutes les heures ; les alertes arrivent dans la cloche des personnes choisies.
           </div>
         </div>
-        <button style={cts.newBtn} onClick={openCreate}>+ Nouvelle règle</button>
+        <button style={cts.newBtn} onClick={openCreate}>Nouvelle règle</button>
       </div>
 
       {/* ─── Filtres ─── */}
@@ -240,7 +240,7 @@ export default function AlertRules({ etablissement }) {
           <div style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'center', maxWidth: 360, lineHeight: 1.5 }}>
             Créez votre première alerte pour surveiller automatiquement vos équipes.
           </div>
-          <button style={cts.newBtn} onClick={openCreate}>+ Créer une alerte</button>
+          <button style={cts.newBtn} onClick={openCreate}>Créer une alerte</button>
         </div>
       )}
 

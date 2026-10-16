@@ -68,7 +68,7 @@ export function useModuleLabels() {
 
     if (error) {
       console.error('[useModuleLabels] updateLabel', error);
-      return { error: 'Erreur technique. Réessaie ou contacte le support.' };
+      return { error: 'Erreur technique. Réessayez ou contactez le support.' };
     }
 
     setLabels((prev) => ({ ...prev, [key]: trimmed }));
@@ -87,7 +87,7 @@ export function useModuleLabels() {
 
     if (error) {
       console.error('[useModuleLabels] resetLabel', error);
-      return { error: 'Erreur technique. Réessaie ou contacte le support.' };
+      return { error: 'Erreur technique. Réessayez ou contactez le support.' };
     }
 
     setLabels((prev) => {

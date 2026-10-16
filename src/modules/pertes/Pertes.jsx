@@ -11,6 +11,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // PERTES
 const Pertes = ({ user, etablissement }) => {
@@ -70,7 +71,7 @@ const Pertes = ({ user, etablissement }) => {
     if (!canManage || !confirmLegacy('Supprimer cette perte ?')) return;
     if (legacySB) {
       try { await legacySB.db.deletePerte(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'pertes'), 'error'); return; }
     }
     setPertes(prev => prev.filter(p => p.id !== id));
   };
@@ -107,7 +108,7 @@ const Pertes = ({ user, etablissement }) => {
       await exportRowsToXlsx(`pertes-${todayStr}.xlsx`, 'Pertes', headers, data, [12, 28, 18, 16, 10, 10, 18, 18, 12, 30]);
       notifyLegacy(`${rows.length} perte(s) exportée(s) en Excel.`, 'success');
     } catch (err) {
-      notifyLegacy('Erreur export : ' + err.message, 'error');
+      notifyLegacy('Export impossible. ' + messageErreur(err, 'pertes'), 'error');
     }
     setBulkBusy(false);
   };
@@ -144,8 +145,10 @@ const Pertes = ({ user, etablissement }) => {
     (search === '' || normalizeSearch(p.produit).includes(normalizeSearch(search)))
   );
 
+  // Total et répartition sur le même ensemble filtré : la répartition divisait
+  // toutes les pertes par le total filtré (« Infinity% » sur un filtre vide).
   const totalValeur = filtered.reduce((s,p) => s + p.quantite * p.valeurUnit, 0);
-  const parCategorie = pertesEtab.reduce((acc,p) => {
+  const parCategorie = filtered.reduce((acc,p) => {
     const k = p.categorie; const v = p.quantite * p.valeurUnit;
     acc[k] = (acc[k]||0) + v; return acc;
   }, {});
@@ -155,7 +158,7 @@ const Pertes = ({ user, etablissement }) => {
     const newPerte = { id:`pt${Date.now()}`, ...form, etablissementId: etabId, quantite:parseFloat(form.quantite), valeurUnit:parseFloat(form.valeurUnit), declarePar:user.id, valide:false };
     if (legacySB) {
       try { await legacySB.db.upsertPerte(newPerte); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'pertes'), 'error'); return; }
     }
     setPertes([newPerte, ...pertes]);
     setShowForm(false);
@@ -168,7 +171,7 @@ const Pertes = ({ user, etablissement }) => {
     const updated = { ...p, valide: true, validePar: user.id };
     if (legacySB) {
       try { await legacySB.db.upsertPerte(updated); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'pertes'), 'error'); return; }
     }
     setPertes(pertes.map(x => x.id===id ? updated : x));
   };
@@ -203,7 +206,7 @@ const Pertes = ({ user, etablissement }) => {
           />
         </div>
         <div className="module-actions">
-          {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>+ Déclarer une perte</button>}
+          {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>Déclarer une perte</button>}
           {canManage && !sel.active && (
             <button style={pts.exportBtn} onClick={sel.enter}>Sélectionner</button>
           )}
@@ -237,7 +240,7 @@ const Pertes = ({ user, etablissement }) => {
         {/* Top catégorie */}
         {Object.entries(parCategorie).sort((a,b)=>b[1]-a[1]).slice(0,1).map(([k,v]) => (
           <div key={k} style={pts.kpiCard}>
-            <div style={pts.kpiLabel}>1ère catégorie de perte</div>
+            <div style={pts.kpiLabel}>Première catégorie de perte</div>
             <div style={pts.kpiVal}>{k}</div>
             <div style={{fontSize:12,color:'var(--danger-strong)',fontWeight:600,marginTop:2}}>CHF {v.toFixed(2)}</div>
           </div>
@@ -333,25 +336,27 @@ const Pertes = ({ user, etablissement }) => {
         })}
       </div>
 
-      {/* Répartition par catégorie */}
-      <div style={pts.chartCard}>
-        <div style={pts.chartTitle}>Répartition par catégorie</div>
-        <div style={pts.chartBars}>
-          {Object.entries(parCategorie).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => {
-            const pct = Math.round(val / totalValeur * 100);
-            return (
-              <div key={cat} style={pts.barRow}>
-                <span style={pts.barLabel}>{cat}</span>
-                <div style={pts.barTrack}>
-                  <div style={{...pts.barFill, width:`${pct}%`}}/>
+      {/* Répartition par catégorie : rien à répartir sans perte valorisée. */}
+      {totalValeur > 0 && (
+        <div style={pts.chartCard}>
+          <div style={pts.chartTitle}>Répartition par catégorie</div>
+          <div style={pts.chartBars}>
+            {Object.entries(parCategorie).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => {
+              const pct = Math.round(val / totalValeur * 100);
+              return (
+                <div key={cat} style={pts.barRow}>
+                  <span style={pts.barLabel}>{cat}</span>
+                  <div style={pts.barTrack}>
+                    <div style={{...pts.barFill, width:`${pct}%`}}/>
+                  </div>
+                  <span style={pts.barVal}>CHF {val.toFixed(2)}</span>
+                  <span style={pts.barPct}>{pct}%</span>
                 </div>
-                <span style={pts.barVal}>CHF {val.toFixed(2)}</span>
-                <span style={pts.barPct}>{pct}%</span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Modal saisie perte */}
       {showForm && (
@@ -359,7 +364,7 @@ const Pertes = ({ user, etablissement }) => {
           <div className="modal-full" style={pts.modal} onClick={e=>e.stopPropagation()}>
             <div style={pts.modalHeader}>
               <div style={{fontWeight:700,fontSize:16,fontFamily:'var(--font-serif)'}}>Déclarer une perte</div>
-              <button style={pts.closeBtn} onClick={()=>setShowForm(false)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={pts.closeBtn} onClick={()=>setShowForm(false)}>×</button>
             </div>
             <div style={pts.modalBody}>
               <div style={pts.formGrid}>

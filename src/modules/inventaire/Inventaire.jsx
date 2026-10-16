@@ -33,6 +33,7 @@ import {
 import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
 import { useAchatsDocuments } from './useAchatsDocuments.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
 // seulement quand on l'ouvre, le comptage reste léger sur la tablette.
@@ -56,6 +57,8 @@ const VUES = [
 ];
 
 const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
+// Feuilles du format d'import Samper, en mots : la valeur brute ne parle pas.
+const TYPES_LIGNE = { sec: 'sec', positif: 'froid positif', negatif: 'froid négatif' };
 
 // Actions rares du module, rangées derrière deux boutons nommés : « Exporter »
 // (PDF, Excel, impression, ouverts à toute l'équipe) et « Gérer » (création,
@@ -113,7 +116,7 @@ function FenetreActions({ id, titre, sousTitre, onClose, children }) {
   return createPortal(
     <div className="modal-sheet-overlay" style={invs.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-sheet" style={invs.fenetre} role="dialog" aria-modal="true" aria-label={titre}>
-        <button type="button" onClick={onClose} aria-label="Fermer" style={invs.fenetreFermer}>×</button>
+        <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={invs.fenetreFermer}>×</button>
         <div style={invs.fenetreTitre}>{titre}</div>
         {sousTitre && <div style={invs.fenetreSousTitre}>{sousTitre}</div>}
         {children}
@@ -341,7 +344,7 @@ const Inventaire = ({ user, etablissement }) => {
           'warning', { duration: 7000 }
         );
       } else {
-        notifyLegacy('Erreur sync : ' + err.message, 'error');
+        notifyLegacy('Synchronisation impossible. ' + messageErreur(err, 'inventaire'), 'error');
       }
     }
   };
@@ -457,7 +460,7 @@ const Inventaire = ({ user, etablissement }) => {
       if (!await saveInvAvecPerimetre(clone)) alertePerimetreNonEnregistre();
     } catch (err) {
       console.error('[createInventory]', err);
-      notifyLegacy('Erreur création inventaire : ' + err.message, 'error');
+      notifyLegacy('Inventaire non créé. ' + messageErreur(err, 'inventaire'), 'error');
     }
   };
 
@@ -506,7 +509,7 @@ const Inventaire = ({ user, etablissement }) => {
           achats.reload();
         } catch (err) {
           console.error('[renommerPerimetre achats]', err);
-          notifyLegacy(`Les factures sont restées rangées dans « ${perimetreActif} » : ${err.message || err}`, 'warning');
+          notifyLegacy(`Les factures sont restées rangées dans « ${perimetreActif} ». ${messageErreur(err, 'inventaire')}`, 'warning');
         }
         notifyLegacy(
           fusion
@@ -517,7 +520,7 @@ const Inventaire = ({ user, etablissement }) => {
       }
     } catch (err) {
       console.error('[renommerPerimetre]', err);
-      notifyLegacy('Erreur renommage : ' + err.message, 'error');
+      notifyLegacy('Renommage impossible. ' + messageErreur(err, 'inventaire'), 'error');
     }
     setRenameBusy(false);
     setShowRename(false);
@@ -532,7 +535,7 @@ const Inventaire = ({ user, etablissement }) => {
         <div className="modal-sheet" style={invs.modal} onClick={e => e.stopPropagation()}>
           <div style={invs.modalHeader}>
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Renommer le périmètre</div>
-            <button style={invs.closeBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>✕</button>
+            <button type="button" className="ui-fermer" aria-label="Fermer" style={invs.closeBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>×</button>
           </div>
           <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
             <div>
@@ -576,7 +579,7 @@ const Inventaire = ({ user, etablissement }) => {
         <div className="modal-sheet" style={invs.modal} onClick={e => e.stopPropagation()}>
           <div style={invs.modalHeader}>
             <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Nouvel inventaire</div>
-            <button style={invs.closeBtn} onClick={() => setShowNew(false)}>✕</button>
+            <button type="button" className="ui-fermer" aria-label="Fermer" style={invs.closeBtn} onClick={() => setShowNew(false)}>×</button>
           </div>
           <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
             <div>
@@ -698,7 +701,7 @@ const Inventaire = ({ user, etablissement }) => {
           Créez un inventaire par périmètre : cuisine, boissons, matériel… chacun avec son propre rythme de comptage.
         </div>
         {loadError && <div style={invs.loadError}>Données indisponibles pour le moment. Ne créez pas d'inventaire avant d'avoir réessayé.</div>}
-        {canManage && <button style={invs.addBtn} onClick={() => openNewInventory()} type="button">+ Créer le premier inventaire</button>}
+        {canManage && <button style={invs.addBtn} onClick={() => openNewInventory()} type="button">Créer le premier inventaire</button>}
         {/* Pas de renommage ici : sans inventaire, il n'y a aucun périmètre à renommer. */}
         {renderNewInventoryModal()}
       </div>
@@ -816,7 +819,7 @@ const Inventaire = ({ user, etablissement }) => {
       }
     } catch (err) {
       console.error('[commitStockReel]', err);
-      notifyLegacy(`Quantité non enregistrée pour « ${ligne.produit} » : ${err.message}`, 'error');
+      notifyLegacy(`Quantité non enregistrée pour « ${ligne.produit} ». ${messageErreur(err, 'inventaire')}`, 'error');
     }
   };
 
@@ -857,7 +860,7 @@ const Inventaire = ({ user, etablissement }) => {
       await exportRowsToXlsx(`inventaire-${inv.date}.xlsx`, 'Inventaire', headers, data, [28, 18, 8, 14, 12, 10, 16, 14, 16]);
       notifyLegacy(`${rows.length} ligne(s) exportée(s) en Excel.`, 'success');
     } catch (err) {
-      notifyLegacy('Erreur export : ' + err.message, 'error');
+      notifyLegacy('Export impossible. ' + messageErreur(err, 'inventaire'), 'error');
     }
     setBulkBusy(false);
   };
@@ -876,7 +879,7 @@ const Inventaire = ({ user, etablissement }) => {
     const idToDelete = inv.id;
     if (legacySB) {
       try { await legacySB.db.deleteInventaire(idToDelete); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'inventaire'), 'error'); return; }
     }
     appliquerListe(liste => liste.filter(i => i.id !== idToDelete));
     const remaining = inventaires.filter(i => i.id !== idToDelete);
@@ -1249,7 +1252,7 @@ const Inventaire = ({ user, etablissement }) => {
         notifyLegacy(`Import terminé\n${nouveaux} produit${nouveaux > 1 ? 's' : ''} ajouté${nouveaux > 1 ? 's' : ''}\n${misAJour} produit${misAJour > 1 ? 's' : ''} mis à jour`, 'success');
       } catch (err) {
         console.error(err);
-        notifyLegacy('Erreur lors de l\'import : ' + err.message, 'error');
+        notifyLegacy('Import impossible. ' + messageErreur(err, 'inventaire'), 'error');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -1331,7 +1334,7 @@ const Inventaire = ({ user, etablissement }) => {
       }
     } catch (err) {
       console.error('[exporterEtat]', err);
-      notifyLegacy('Export impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Export impossible. ' + messageErreur(err, 'inventaire'), 'error');
     }
     setExportEnCours(false);
   };
@@ -1352,7 +1355,7 @@ const Inventaire = ({ user, etablissement }) => {
               id: p,
               label: `${p} (${inventairesEtab.filter(i => perimetreOf(i) === p).length})`,
             })),
-            ...(canManage ? [{ id: '__new__', label: '+ Périmètre' }] : []),
+            ...(canManage ? [{ id: '__new__', label: 'Nouveau périmètre' }] : []),
           ]}
         />
       </div>
@@ -1375,14 +1378,14 @@ const Inventaire = ({ user, etablissement }) => {
       <div style={invs.header} className="no-print">
         <div style={invs.headerLeft}>
           <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
-            {(inventaires || []).map(i => <option key={i.id} value={i.id}>{i.date} - {i.statut}</option>)}
+            {(inventaires || []).map(i => <option key={i.id} value={i.id}>{dateCH(i.date)}, {i.statut}</option>)}
           </select>
           <span style={{...invs.badge, color: estValide ? 'var(--success-text)' : 'var(--text2)'}}>
             {estValide ? (validateurNom ? `Validé par ${validateurNom}` : 'Validé') : `${nbComptes}/${(inv.lignes || []).length} comptés`}
           </span>
         </div>
         <div className="module-actions">
-          {canEditLignes && <button style={invs.addBtn} onClick={() => setShowAjout(true)}>+ Produits</button>}
+          {canEditLignes && <button style={invs.addBtn} onClick={() => setShowAjout(true)}>Ajouter des produits</button>}
           {/* Juste après « + Produits » : visible sur téléphone sans faire défiler la barre. */}
           <BoutonActions
             id="inventaire-exporter"
@@ -1647,14 +1650,11 @@ const Inventaire = ({ user, etablissement }) => {
           </div>
           {(filtered || []).map(l => {
             const ecartColor = l.ecart < 0 ? 'var(--danger-strong)' : l.ecart > 0 ? 'var(--success-strong)' : 'var(--text2)';
-            // Badge type (sec/positif/négatif) si ligne importée via format Samper
+            // Type de la ligne (format d'import Samper) en mots, en texte simple.
             const typeBadge = l.type ? (
-              <span style={{
-                display: 'inline-block', fontSize: 9, fontWeight: 700, marginLeft: 6, padding: '2px 6px', borderRadius: 4, verticalAlign: 'middle',
-                background: l.type === 'sec' ? '#f3e8d6' : l.type === 'positif' ? 'var(--success-bg)' : 'var(--danger-bg)',
-                color: l.type === 'sec' ? 'var(--accent)' : l.type === 'positif' ? 'var(--success-text)' : 'var(--danger-text)',
-                textTransform: 'uppercase', letterSpacing: 0.5,
-              }}>{l.type}</span>
+              <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 400, color: 'var(--text2)' }}>
+                {TYPES_LIGNE[l.type] || l.type}
+              </span>
             ) : null;
             return (
               <div key={l.id} className="grid-table-row" style={{

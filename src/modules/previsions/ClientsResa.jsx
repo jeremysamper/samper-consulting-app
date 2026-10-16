@@ -47,7 +47,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
   const charger = useCallback(async () => {
     if (!etablissementId) return;
     const lecture = lectures.lancer(etablissementId);
-    const res = await clients.list().catch(() => ({ data: null, error: 'Erreur technique. Réessaie.' }));
+    const res = await clients.list().catch(() => ({ data: null, error: 'Erreur technique. Réessayez.' }));
     if (res.error) {
       if (!lecture.signalerEchec()) return;
       if (afficheRef.current) setNonActualise(true); else setErreur(res.error);
@@ -116,7 +116,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
             background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 600,
             fontFamily: 'var(--font)', cursor: 'pointer',
           }}>
-            + Nouveau client
+            Nouveau client
           </button>
         )}
       </div>
@@ -156,7 +156,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
           <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto' }}>
             {(liste || []).length === 0
               ? 'Chaque réservation avec un e-mail ou un téléphone crée ou complète une fiche, automatiquement.'
-              : 'Essaie un autre mot ou un autre filtre.'}
+              : 'Essayez un autre mot ou un autre filtre.'}
           </div>
         </div>
       )}

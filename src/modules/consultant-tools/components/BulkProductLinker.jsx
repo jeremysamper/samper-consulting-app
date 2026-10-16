@@ -3,6 +3,7 @@ import { Btn } from '../../../components/ui/index.jsx';
 import { notify } from '../../../components/toast/index.js';
 import { normalizeSearch } from '../../../utils/searchText.js';
 import { resolvePrixProduit } from '../../../services/prixResolution.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 import {
   collectIngredientGroups, matchGroup, planLinkWrites,
   detectPerteDePrix, prixSeedPourNouveauProduit, uniteDominante,
@@ -182,7 +183,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
       setDecision(g.key, produit);
       notify(`« ${g.nom} » créé au catalogue${prixUnitaire ? ` à ${prixUnitaire.toFixed(3)}/${uniteRef}` : ''}.`, 'success');
     } catch (err) {
-      notify('Création impossible : ' + (err.message || err), 'error');
+      notify('Création impossible. ' + messageErreur(err, 'liaison des produits'), 'error');
     }
   };
 
@@ -251,8 +252,9 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
             onClick={onClose}
             disabled={!!progress}
             title="Fermer"
+            className="ui-fermer" aria-label="Fermer"
             style={{ background: 'none', border: 'none', fontSize: 20, cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}
-          >✕</button>
+          >×</button>
         </div>
 
         {enCalcul ? (
@@ -350,7 +352,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                       </div>
                       {choisi && (
                         <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
-                          → <strong style={{ color: 'var(--text)' }}>{choisi.nom}</strong>
+                          Produit : <strong style={{ color: 'var(--text)' }}>{choisi.nom}</strong>
                           <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-num)', marginLeft: 6 }}>
                             {resolvePrixProduit(choisi).toFixed(3)}/{choisi.uniteRef}
                           </span>

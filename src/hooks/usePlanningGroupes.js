@@ -36,7 +36,7 @@ function messageErreur(error, refus) {
   if (String(error.code) === '42501') return refus;
   if (String(error.code) === '23505') return 'Un groupe porte déjà ce nom.';
   if (String(error.code) === '23514') return 'Nom de groupe invalide (1 à 40 caractères).';
-  return 'Erreur technique. Réessaie ou contacte le support.';
+  return 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 export function usePlanningGroupes(etablissementId) {

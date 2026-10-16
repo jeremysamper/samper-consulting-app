@@ -276,14 +276,14 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
         flexWrap: 'wrap', gap: 8, marginBottom: 12,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Btn small onClick={() => setDateDebut((d) => addDays(d, -7))}>←</Btn>
+          <Btn small ariaLabel="Semaine précédente" onClick={() => setDateDebut((d) => addDays(d, -7))}>←</Btn>
           <span style={{
             fontSize: 13, fontWeight: 700, color: 'var(--text)',
             fontFamily: 'var(--font-num)', minWidth: 110, textAlign: 'center',
           }}>
             {formatDateCourte(dateDebut)} au {formatDateCourte(addDays(dateDebut, 6))}
           </span>
-          <Btn small onClick={() => setDateDebut((d) => addDays(d, 7))}>→</Btn>
+          <Btn small ariaLabel="Semaine suivante" onClick={() => setDateDebut((d) => addDays(d, 7))}>→</Btn>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Btn small onClick={() => setDateDebut(getLundiSemaine(new Date()))}>Cette semaine</Btn>
@@ -331,7 +331,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
             Aucune réservation cette semaine
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-            Saisis ta première résa avec le bouton +
+            Saisissez votre première réservation avec le bouton +
           </div>
         </div>
       )}
@@ -389,7 +389,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
       {/* ── Légende ── */}
       {semaine !== null && !semaineVide && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 8, fontSize: 11, color: 'var(--text3)' }}>
-          <span>Touche un nom pour ouvrir la réservation, le jour pour la journée.</span>
+          <span>Touchez un nom pour ouvrir la réservation, le jour pour la journée.</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger-text)' }} />
             allergie signalée

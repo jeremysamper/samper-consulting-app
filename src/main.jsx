@@ -29,14 +29,19 @@ class RootErrorBoundary extends React.Component {
     return { error };
   }
 
+  // L'erreur brute part dans la console ; l'écran dit seulement quoi faire.
+  componentDidCatch(error, info) {
+    console.error('[RootErrorBoundary]', error, info?.componentStack);
+  }
+
   render() {
     if (this.state.error) {
       return (
         <main className="migration-page">
           <section className="migration-panel">
-            <p className="eyebrow">Migration Vite</p>
-            <h1>Une erreur a interrompu le rendu.</h1>
-            <pre className="error-box">{String(this.state.error?.message || this.state.error)}</pre>
+            <h1>L'application a rencontré une erreur.</h1>
+            <p className="intro">Rechargez la page ; si cela se reproduit, prévenez votre consultant.</p>
+            <button type="button" className="ui-btn ui-btn--primary migration-bouton" onClick={() => window.location.reload()}>Recharger la page</button>
           </section>
         </main>
       );

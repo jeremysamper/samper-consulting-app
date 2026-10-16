@@ -12,6 +12,7 @@ import { resolvePrixProduit } from '../../services/prixResolution.js';
 import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './categoriesCatalogue.js';
 import { Pencil, Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -57,21 +58,22 @@ const Catalogue = ({ user, etablissement }) => {
     .trim();
 
   // Détecte un prix unitaire aberrant.
-  // Renvoie une raison textuelle ou null si OK.
+  // Renvoie { texte, prix? } ou null si OK : la phrase reste fixe (glossaire)
+  // et le prix relevé s'affiche à part, sans partir à la traduction.
   // Seuils volontairement larges pour ne flagger que les VRAIS bugs d'import.
-  const detectAberrantPrice = (prix, uniteRef, nom) => {
-    if (prix == null || isNaN(prix)) return 'prix manquant';
-    if (prix <= 0) return 'prix nul ou négatif';
+  const detectAberrantPrice = (prix, uniteRef) => {
+    if (prix == null || isNaN(prix)) return { texte: 'prix manquant' };
+    if (prix <= 0) return { texte: 'prix nul ou négatif' };
     // Pour g et ml : le prix raisonnable est entre 0.0001 CHF/g et 5 CHF/g
     // (en dessous = facteur 1000 manquant ; au-dessus = unité pcs traitée comme g)
     if (uniteRef === 'g' || uniteRef === 'ml') {
-      if (prix < 0.00001) return `prix très bas (${prix.toFixed(6)} CHF/${uniteRef}) - vérifier l'unité`;
-      if (prix > 10) return `prix très élevé (${prix.toFixed(2)} CHF/${uniteRef}) - vérifier l'unité`;
+      if (prix < 0.00001) return { texte: 'prix très bas, unité à vérifier', prix: `${prix.toFixed(6)} CHF/${uniteRef}` };
+      if (prix > 10) return { texte: 'prix très élevé, unité à vérifier', prix: `${prix.toFixed(2)} CHF/${uniteRef}` };
     }
     // Pour pcs : entre 0.05 CHF et 10000 CHF
     if (uniteRef === 'pcs') {
-      if (prix < 0.05) return `prix très bas (${prix.toFixed(4)} CHF/pcs) - vérifier`;
-      if (prix > 10000) return `prix très élevé (${prix.toFixed(2)} CHF/pcs) - vérifier`;
+      if (prix < 0.05) return { texte: 'prix très bas, à vérifier', prix: `${prix.toFixed(4)} CHF/pcs` };
+      if (prix > 10000) return { texte: 'prix très élevé, à vérifier', prix: `${prix.toFixed(2)} CHF/pcs` };
     }
     return null;
   };
@@ -114,11 +116,11 @@ const Catalogue = ({ user, etablissement }) => {
     try {
       await legacySB.db.upsertFournisseur({ ...f, etablissementId: etabId });
       setShowFournForm(false);
-    } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); }
   };
   const deleteFourn = async (id) => {
     if (!confirmLegacy('Supprimer ce fournisseur ? Les produits associés perdront le lien.')) return;
-    try { await legacySB.db.deleteFournisseur(id); } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    try { await legacySB.db.deleteFournisseur(id); } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); }
   };
 
   // ═══ Produit CRUD ═══
@@ -127,11 +129,11 @@ const Catalogue = ({ user, etablissement }) => {
     try {
       await legacySB.db.upsertProduit({ ...p, etablissementId: etabId });
       setShowProdForm(false);
-    } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); }
   };
   const deleteProd = async (id) => {
     if (!confirmLegacy('Supprimer ce produit du catalogue ?')) return;
-    try { await legacySB.db.deleteProduit(id); } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    try { await legacySB.db.deleteProduit(id); } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); }
   };
 
   // ═══ Import Excel ═══
@@ -367,7 +369,7 @@ const Catalogue = ({ user, etablissement }) => {
         }
 
         // Cas 3 : prix aberrant
-        const aberrantReason = detectAberrantPrice(p.prixUnitaire, p.uniteRef, p.nom);
+        const aberrantReason = detectAberrantPrice(p.prixUnitaire, p.uniteRef);
         if (aberrantReason) {
           aberrants.push({ ...p, _reason: aberrantReason });
           continue;
@@ -384,7 +386,7 @@ const Catalogue = ({ user, etablissement }) => {
         totalScanned: imported.length,
       });
     } catch (err) {
-      notifyLegacy('Erreur import : ' + err.message, 'error');
+      notifyLegacy('Import impossible. ' + messageErreur(err, 'catalogue'), 'error');
       console.error('[handleImportExcel]', err);
     } finally {
       setImporting(false);
@@ -436,15 +438,14 @@ const Catalogue = ({ user, etablissement }) => {
       {/* Header */}
       <div style={cat.header}>
         <div>
-          <div style={cat.title}>Catalogue produits</div>
           <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''}, {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
         {canWrite && (
           // Une action principale, une secondaire, et les trois façons
           // d'importer rangées dans une seule fenêtre.
           <div className="module-actions">
-            <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>+ Produit</button>
-            <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>+ Fournisseur</button>
+            <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>Nouveau produit</button>
+            <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>Nouveau fournisseur</button>
             <BoutonActions
               id="catalogue-importer"
               label={importing ? 'Import…' : 'Importer'}
@@ -621,7 +622,7 @@ const Catalogue = ({ user, etablissement }) => {
                                 const fId = e.target.value || null;
                                 try {
                                   await legacySB.db.upsertProduit({ ...p, fournisseurId: fId, etablissementId: etabId });
-                                } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+                                } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); }
                               }}
                               style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font)', background: 'var(--bg)', color: p.fournisseurId ? 'var(--text)' : 'var(--text2)', maxWidth: 160, cursor: 'pointer' }}
                             >
@@ -826,7 +827,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
     try {
       setHistorique(await legacySB.db.listPrixHistorique(prod.id));
     } catch (err) {
-      notifyLegacy('Historique indisponible : ' + (err.message || err), 'error');
+      notifyLegacy('Historique indisponible. ' + messageErreur(err, 'catalogue'), 'error');
       setHistorique([]);
     } finally {
       setHistBusy(false);
@@ -840,7 +841,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
       try {
         await legacySB.db.upsertProduitFournisseur({ ...pf, produitId: prod.id });
         // rechargement via realtime
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); return; }
     }
     setPfRows(prev => [...prev, { ...pf, id: 'tmp-' + Date.now(), fournisseurNom: fournisseurs.find(f => f.id === newPF.fournisseurId)?.nom || '' }]);
     setNewPF({ fournisseurId: '', prixAchat: '', conditionnement: '', quantiteCond: '', uniteCond: 'g', estPrincipal: false, reference: '' });
@@ -888,7 +889,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>
             {prod ? 'Modifier' : 'Nouveau'} produit
           </div>
-          <button style={cat.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={cat.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={cat.modalBody}>
           {/* Infos de base */}
@@ -1027,7 +1028,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
             <div style={{ marginTop: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <label style={{ ...cat.lbl, margin: 0 }}>Fournisseurs & prix alternatifs</label>
-                <button style={cat.miniLink} onClick={() => setShowAddPF(true)}>+ Ajouter</button>
+                <button style={cat.miniLink} onClick={() => setShowAddPF(true)}>Ajouter</button>
               </div>
               {pfRows.length > 0 && (
                 // 5 colonnes ne tiennent pas dans une modale de 375 px : la table
@@ -1174,7 +1175,7 @@ const FournisseurForm = ({ fourn, onSave, onClose }) => {
       <div className="modal-full" style={{ ...cat.modal, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div style={cat.modalHead}>
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>{fourn ? 'Modifier' : 'Nouveau'} fournisseur</div>
-          <button style={cat.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={cat.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={cat.modalBody}>
           <label style={cat.lbl}>Nom *</label>
@@ -1252,7 +1253,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
             <div style={ipm.title}>Prévisualisation de l'import</div>
             <div style={ipm.subtitle}>{totalScanned} ligne{totalScanned > 1 ? 's' : ''} analysée{totalScanned > 1 ? 's' : ''}</div>
           </div>
-          <button style={ipm.closeBtn} onClick={onCancel}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={ipm.closeBtn} onClick={onCancel}>×</button>
         </div>
 
         {/* KPIs */}
@@ -1353,7 +1354,10 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                 <div key={i} style={{ ...ipm.row, background: 'var(--danger-bg-soft)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={ipm.rowName}>{p.nom}</div>
-                    <div style={{ ...ipm.rowMeta, color: 'var(--danger-strong)' }}>{p._reason}</div>
+                    <div style={{ ...ipm.rowMeta, color: 'var(--danger-strong)' }}>
+                      {p._reason.texte}
+                      {p._reason.prix && <> (<span data-no-translate>{p._reason.prix}</span>)</>}
+                    </div>
                     <div style={ipm.rowMeta}>
                       Catégorie : {p.categorie}
                       {p.referenceFourn && `, réf ${p.referenceFourn}`}

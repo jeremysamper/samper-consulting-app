@@ -22,7 +22,7 @@ function messageErreur(error) {
   console.error('[usePlanningMasques] erreur Supabase', error);
   if (RELATION_ABSENTE.has(error.code)) return 'Le masquage n\'est pas encore activé sur la base de données.';
   if (String(error.code) === '42501') return REFUS;
-  return 'Erreur technique. Réessaie ou contacte le support.';
+  return 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 export function usePlanningMasques(etablissementId) {

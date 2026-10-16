@@ -11,6 +11,7 @@ import {
 } from './achatsLogic.js';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Onglet « Achats & consommation » de l'inventaire.
@@ -141,7 +142,7 @@ export default function AchatsPanel({
     try {
       await legacySB.db.upsertAchatsDocument(doc);
     } catch (err) {
-      notifyLegacy('Document non enregistré : ' + (err.message || err), 'error');
+      notifyLegacy('Document non enregistré. ' + messageErreur(err, 'achats'), 'error');
       reload();
     }
   };
@@ -150,7 +151,7 @@ export default function AchatsPanel({
     if (!confirmLegacy(`Supprimer le document ${libelleType(doc.typeDocument).toLowerCase()} ${doc.numero || ''} de ${doc.fournisseurNom || 'fournisseur inconnu'} ?\nIl sort du calcul des achats${doc.regleLe ? ' et de la liste des factures, avec son règlement' : ''}.`)) return;
     majDocs(liste => liste.filter(d => d.id !== doc.id));
     try { await legacySB.db.deleteAchatsDocument(doc.id); }
-    catch (err) { notifyLegacy('Suppression impossible : ' + (err.message || err), 'error'); reload(); return; }
+    catch (err) { notifyLegacy('Suppression impossible. ' + messageErreur(err, 'achats'), 'error'); reload(); return; }
     // Toujours tenté : la liste des photos a pu ne pas se charger.
     setAvecPieces(s => { const n = new Set(s); n.delete(doc.id); return n; });
     legacySB.db.removeAchatsPieces(etabId, doc.id).catch(err => console.error('[AchatsPanel pièces]', err));
@@ -303,7 +304,7 @@ export default function AchatsPanel({
               <button type="button" style={st.btn} disabled={busy} onClick={toutCreer}>
                 {(() => {
                   const n = aRattacher.filter(e => e.suggestions.length === 0).length;
-                  return n > 1 ? `+ Ajouter les ${n} produits inconnus à l'inventaire` : '+ Ajouter le produit inconnu à l\'inventaire';
+                  return n > 1 ? `Ajouter les ${n} produits inconnus à l'inventaire` : 'Ajouter le produit inconnu à l\'inventaire';
                 })()}
               </button>
             )}
@@ -352,7 +353,7 @@ export default function AchatsPanel({
                   </span>
                 ) : (
                   <button type="button" style={st.btnMini} onClick={() => setCreations(c => ({ ...c, [e.cle]: nomDepuisLibelle(e.ligne.libelle, e.ligne.conditionnement) }))}>
-                    + Nouveau produit
+                    Nouveau produit
                   </button>
                 ))}
                 <button type="button" style={st.btnMini} onClick={() => ignorer(e.cle)} title="Port, consigne, emballage : hors stock">Ignorer</button>
@@ -487,9 +488,9 @@ export default function AchatsPanel({
                         </span>
                         <span style={{ flex: '0 0 80px', textAlign: 'right' }}>{l.montantLigne != null ? chf(l.montantLigne) : 'non lu'}</span>
                         <span style={{ flex: '2 1 180px', minWidth: 0, color: r.produit ? 'var(--text)' : r.mode === 'ignore' ? 'var(--text2)' : 'var(--warning-text)' }}>
-                          {r.produit ? <>→ <span data-no-translate>{r.produit.nom}</span></> : r.mode === 'ignore' ? 'ignorée' : 'à rattacher'}
+                          {r.produit ? <>produit : <span data-no-translate>{r.produit.nom}</span></> : r.mode === 'ignore' ? 'ignorée' : 'à rattacher'}
                           {(l.lien === 'manuel' || l.lien === 'ignore') && (
-                            <button type="button" style={st.lien} onClick={() => delier(normalizeName(l.libelle))} title="Annuler ce choix"> ✕</button>
+                            <button type="button" style={st.lien} onClick={() => delier(normalizeName(l.libelle))} title="Annuler ce choix" aria-label="Annuler ce choix"> ×</button>
                           )}
                         </span>
                       </div>

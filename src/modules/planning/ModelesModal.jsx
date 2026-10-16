@@ -92,8 +92,8 @@ export default function ModelesModal({ modeles, personnalises, onEnregistrer, on
         </div>
       ))}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" style={st.secondaire} onClick={() => setListe(l => [...l, { nom: '', segments: [segmentVide()] }])}>+ Nouveau modèle</button>
-        {!personnalises && <span style={{ ...st.remarque, alignSelf: 'center' }}>Ce sont les modèles par défaut ({MODELES_DEFAUT.length}). Modifie-les pour cet établissement.</span>}
+        <button type="button" style={st.secondaire} onClick={() => setListe(l => [...l, { nom: '', segments: [segmentVide()] }])}>Nouveau modèle</button>
+        {!personnalises && <span style={{ ...st.remarque, alignSelf: 'center' }}>Ce sont les modèles par défaut ({MODELES_DEFAUT.length}). Modifiez-les pour cet établissement.</span>}
       </div>
     </Fenetre>
   );

@@ -94,7 +94,7 @@ export function usePrevisionsSemaine(etablissementId) {
       res = await reservations.findByRange(jours[0], jours[6]);
     } catch (e) {
       console.error('[usePrevisionsSemaine] lecture de la semaine', e);
-      res = { data: null, error: 'Erreur technique. Réessaie ou contacte le support.' };
+      res = { data: null, error: 'Erreur technique. Réessayez ou contactez le support.' };
     }
 
     if (res.error) {

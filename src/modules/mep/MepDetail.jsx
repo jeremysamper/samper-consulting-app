@@ -3,6 +3,7 @@ import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { s, formatDateService, formatFaitAt } from './MiseEnPlace.styles.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // Detail d'une liste : deux sections (Urgent non congelable en premier, puis
 // Grosse production congelable), case a cocher en temps reel, barre d'avancement
@@ -49,7 +50,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
       await legacySB.db.setMepItemFait(item.id, !item.fait, user?.id || null);
     } catch (err) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, fait: item.fait } : i));
-      notifyLegacy('Erreur : ' + (err?.message || 'mise à jour impossible'), 'error');
+      notifyLegacy(messageErreur(err, 'mise en place', 'Mise à jour impossible.'), 'error');
     }
     setBusyId(null);
   };
@@ -61,7 +62,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
     try {
       await legacySB.db.deleteMepItem(item.id);
     } catch (err) {
-      notifyLegacy('Erreur : ' + (err?.message || 'suppression impossible'), 'error');
+      notifyLegacy(messageErreur(err, 'mise en place', 'Suppression impossible.'), 'error');
       reload();
     }
   };
@@ -120,7 +121,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
               {i.quantite != null && i.quantite !== '' && (
                 <span style={s.qtyTag}>{i.quantite}{i.unite ? ` ${i.unite}` : ''}</span>
               )}
-              {canEdit && <button style={s.itemDel} title="Retirer" onClick={() => supprimerItem(i)}>✕</button>}
+              {canEdit && <button type="button" style={s.itemDel} title="Retirer" aria-label="Retirer la préparation" onClick={() => supprimerItem(i)}>×</button>}
             </div>
           ))
         )}
@@ -131,7 +132,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
   return (
     <div style={s.root}>
       <div className="module-actions no-print" style={s.moduleActions}>
-        <button style={s.backBtn} onClick={onBack}>← Retour</button>
+        <button style={s.backBtn} onClick={onBack}>Retour</button>
         <button style={s.ghostBtn} onClick={exportPdf}>Export PDF</button>
         {canEdit && <button style={s.ghostBtn} onClick={onEdit}>Modifier</button>}
         {canEdit && <button style={s.dangerBtn} onClick={onDelete}>Supprimer</button>}

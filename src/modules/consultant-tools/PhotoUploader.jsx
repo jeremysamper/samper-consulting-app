@@ -1,6 +1,7 @@
 import React from 'react';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { Camera } from 'lucide-react';
+import { messageErreur } from '../../utils/messageErreur.js';
 import {
   ACCEPTED_MIME, HEIC_EXTENSIONS, MAX_FILE_SIZE_MB, COMPRESSION_THRESHOLD_MB,
   getExtension, convertHeicToJpeg, maybeCompress,
@@ -80,7 +81,7 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
       await onUpload(file);
     } catch (err) {
       console.error('[PhotoUploader] upload error', err);
-      notifyLegacy('Erreur pendant le traitement de la photo : ' + (err?.message || 'inconnue'), 'error');
+      notifyLegacy('Traitement de la photo impossible. ' + messageErreur(err, 'photo'), 'error');
     } finally {
       setBusy(false);
       setBusyLabel('');
@@ -133,8 +134,9 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
             type="button"
             style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(220,38,38,0.85)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12 }}
             title="Retirer la photo"
+            aria-label="Retirer la photo"
             onClick={onRemove}
-          >✕</button>
+          >×</button>
         )}
       </div>
       {champFichier}

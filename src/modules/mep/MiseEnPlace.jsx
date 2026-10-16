@@ -6,6 +6,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import MepDetail from './MepDetail.jsx';
 import MepEditor from './MepEditor.jsx';
 import { s, formatDateService } from './MiseEnPlace.styles.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // MISE EN PLACE
 // Listes de production separant la grosse production (congelable, batch en
@@ -60,7 +61,7 @@ const MiseEnPlace = ({ user, etablissement }) => {
       notifyLegacy('Liste supprimée.', 'success');
       backToList();
     } catch (err) {
-      notifyLegacy('Erreur : ' + (err?.message || 'suppression impossible'), 'error');
+      notifyLegacy(messageErreur(err, 'mise en place', 'Suppression impossible.'), 'error');
     }
   };
 
@@ -100,13 +101,13 @@ const MiseEnPlace = ({ user, etablissement }) => {
       <div style={s.header}>
         <div style={s.headerLeft}>
           <div>
-            <h2 style={s.title}>Mise en place</h2>
             <div style={s.sub}>Grosse production congelable et préparations urgentes non congelables</div>
           </div>
         </div>
         <div style={s.moduleActions} className="module-actions">
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une liste…" />
-          {canEdit && <button style={s.addBtn} onClick={openNew}>+ Nouvelle liste</button>}
+          {/* Liste vide : l'appel central suffit, pas de second bouton principal. */}
+          {canEdit && !loading && (listes || []).length > 0 && <button style={s.addBtn} onClick={openNew}>Nouvelle liste</button>}
         </div>
       </div>
 
@@ -115,7 +116,7 @@ const MiseEnPlace = ({ user, etablissement }) => {
       ) : filtered.length === 0 ? (
         <div style={s.empty}>
           {q ? 'Aucune liste pour cette recherche.' : 'Aucune liste de mise en place pour le moment.'}
-          {canEdit && !q && <div style={{ marginTop: 12 }}><button style={s.addBtn} onClick={openNew}>+ Créer la première liste</button></div>}
+          {canEdit && !q && <div style={{ marginTop: 12 }}><button style={s.addBtn} onClick={openNew}>Créer la première liste</button></div>}
         </div>
       ) : (
         <div style={s.cardsGrid}>

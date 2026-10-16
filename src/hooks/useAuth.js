@@ -269,7 +269,7 @@ export function useAuth() {
       const data = await withTimeout(authService.signIn(email, password), null, 15000);
 
       if (!data?.user) {
-        throw new Error('Connexion trop lente. Verifie ta connexion internet puis reessaie.');
+        throw new Error('Connexion trop lente. Vérifiez votre connexion internet puis réessayez.');
       }
 
       const nextProfile = await withTimeout(profileService.getProfile(data.user.id), null, 15000);

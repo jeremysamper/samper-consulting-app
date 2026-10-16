@@ -35,7 +35,7 @@ export default function SaisieRapide({ date, userId: userIdInitial = '', employe
     <Fenetre
       id="planning-saisie-rapide"
       titre={dateLongue(date)}
-      sousTitre={userIdInitial ? nomDe(userIdInitial) : 'Choisis la personne, puis l\'horaire'}
+      sousTitre={userIdInitial ? nomDe(userIdInitial) : 'Choisissez la personne, puis l\'horaire'}
       onClose={onClose}
     >
       {!userIdInitial && (

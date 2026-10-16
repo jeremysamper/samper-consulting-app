@@ -143,7 +143,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                 : 'Cochez une catégorie entière ou quelques produits : unité et prix viennent du catalogue.'}
             </div>
           </div>
-          <button type="button" onClick={onClose} style={st.fermer} title="Fermer">✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} style={st.fermer} title="Fermer">×</button>
         </div>
 
         {avecFiches && (
@@ -173,7 +173,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
           />
           {!nomLibreConnu && (
             <button type="button" style={st.libre} onClick={() => valider([nomLibre])} disabled={busy}>
-              + Ajouter « {nomLibre} » hors catalogue
+              Ajouter « {nomLibre} » hors catalogue
             </button>
           )}
         </div>

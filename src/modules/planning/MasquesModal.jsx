@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+
 import { pls } from './Planning.styles.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
@@ -39,8 +39,8 @@ export default function MasquesModal({ onClose, employees, masques, masquer, aff
       <div className="modal-full" style={{ ...pls.modal, width: 480 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Personnes masquées">
         <div style={pls.modalHeader}>
           <div style={pls.modalTitle}>Personnes masquées</div>
-          <button type="button" style={{ ...pls.closeBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44 }} onClick={onClose} aria-label="Fermer">
-            <X size={18} strokeWidth={2} aria-hidden="true" />
+          <button type="button" style={{ ...pls.closeBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44 }} onClick={onClose} aria-label="Fermer" className="ui-fermer">
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 

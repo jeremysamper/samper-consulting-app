@@ -27,7 +27,7 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
             Les variables <code style={as.code}>VITE_SUPABASE_URL</code> et <code style={as.code}>VITE_SUPABASE_ANON_KEY</code> doivent être renseignées dans <code style={as.code}>.env</code>.
           </div>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 12, padding: 10, background: 'var(--bg)', borderRadius: 8 }}>
-            Vos clés Supabase se trouvent dans : <strong>Settings → Data API</strong>
+            Vos clés Supabase se trouvent dans : <strong>Settings</strong>, puis <strong>Data API</strong>.
           </div>
         </div>
       </div>
@@ -60,7 +60,7 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
           return;
         }
         await onResetPassword(email.trim());
-        setInfo("Si ce compte existe, un email de réinitialisation vient d'être envoyé. Le lien est valable une heure et une seule fois : ouvre-le sur cet appareil. Pense à regarder dans les indésirables.");
+        setInfo("Si ce compte existe, un email de réinitialisation vient d'être envoyé. Le lien est valable une heure et une seule fois : ouvrez-le sur cet appareil. Pensez à regarder dans les indésirables.");
       }
     } catch (err) {
       const fallback = mode === 'signin' ? 'Email ou mot de passe incorrect.' : 'Erreur pendant la demande.';
@@ -142,7 +142,7 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard 
             </button>
           ) : (
             <button type="button" onClick={() => { setMode('signin'); setError(''); setInfo(''); }} style={as.linkBtn}>
-              ← Retour à la connexion
+              Retour à la connexion
             </button>
           )}
         </div>

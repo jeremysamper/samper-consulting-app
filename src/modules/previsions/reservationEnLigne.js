@@ -162,7 +162,7 @@ export function useParametresEnLigne(etabId) {
       if (error.code === '23505') return { error: 'Cette adresse de réservation est déjà prise par un autre restaurant.' };
       if (error.code === '23514') return { error: 'Une des valeurs est refusée : vérifiez l\'adresse (lettres minuscules, chiffres et tirets) et les nombres.' };
       if (error.code === '42501') return { error: 'Seuls le patron et le consultant peuvent modifier ces réglages.' };
-      return { error: 'Erreur technique. Réessaie ou contacte le support.' };
+      return { error: 'Erreur technique. Réessayez ou contactez le support.' };
     }
     setExiste(true);
     setParametres(depuisBase(data));
@@ -230,7 +230,7 @@ export async function traiterDemande(resa, evenement) {
   if (error) {
     console.error('[resa en ligne] traitement de la demande', error);
     return {
-      error: error.code === '42501' ? "Tu n'as pas les droits pour cette action." : 'Erreur technique. Réessaie ou contacte le support.',
+      error: error.code === '42501' ? "Vous n'avez pas les droits pour cette action." : 'Erreur technique. Réessayez ou contactez le support.',
     };
   }
   const base = evenement === 'confirmation' ? `Réservation de ${resa.nom} confirmée.` : `Demande de ${resa.nom} refusée.`;

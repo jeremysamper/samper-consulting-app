@@ -45,12 +45,12 @@ export function dowFromDateStr(dateStr) {
 
 // ── Formatage ─────────────────────────────────────────────────────────────────
 
-const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MOIS  = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 /**
- * Formate une date ISO en label long : "Mardi 27 mai 2026"
+ * Formate une date ISO en label long : "mardi 27 mai 2026"
  * @param {string} dateStr
  * @returns {string}
  */

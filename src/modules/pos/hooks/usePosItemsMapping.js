@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../../../services/dbService.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 export function usePosItemsMapping(etablissement, user) {
   const [posItems, setPosItems]   = useState([]);
@@ -104,7 +105,7 @@ export function usePosItemsMapping(etablissement, user) {
       setRecettes(recipes ?? []);
     } catch (e) {
       console.error('[usePosItemsMapping] Erreur chargement :', e);
-      setError(e?.message ?? 'Erreur lors du chargement des données POS');
+      setError(messageErreur(e, 'ventes caisse', 'Chargement des ventes impossible.'));
     } finally {
       setLoading(false);
     }
@@ -130,7 +131,7 @@ export function usePosItemsMapping(etablissement, user) {
       })
       .eq('pos_item_id', posItemId);
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
 
     setMappings((prev) => ({
       ...prev,
@@ -162,7 +163,7 @@ export function usePosItemsMapping(etablissement, user) {
         { onConflict: 'pos_item_id' }
       );
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
 
     setMappings((prev) => ({
       ...prev,
@@ -185,7 +186,7 @@ export function usePosItemsMapping(etablissement, user) {
       .delete()
       .eq('pos_item_id', posItemId);
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
 
     setMappings((prev) => {
       const next = { ...prev };

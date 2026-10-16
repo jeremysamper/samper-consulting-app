@@ -12,6 +12,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { Btn } from '../../components/ui/index.jsx';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 import {
   MODES_REGLEMENT, libelleMode, periodesFactures, rangerParPeriode, statutPaiement,
   totauxFactures, joursEntre, dateLongue, intervalleLong, lendemainIso,
@@ -179,7 +180,7 @@ export default function FacturesPanel({
         : `${n > 1 ? `Règlement annulé pour ${n} factures` : 'Règlement annulé'}.`, 'success');
     } catch (err) {
       restaurer(avant);
-      notifyLegacy('Règlement non enregistré : ' + (err.message || err), 'error');
+      notifyLegacy('Règlement non enregistré. ' + messageErreur(err, 'factures des achats'), 'error');
       reload();
     }
   };
@@ -220,7 +221,7 @@ export default function FacturesPanel({
       await legacySB.db.majFactureAchat(f.id, patch);
     } catch (err) {
       restaurer(avant);
-      notifyLegacy('Facture non enregistrée : ' + (err.message || err), 'error');
+      notifyLegacy('Facture non enregistrée. ' + messageErreur(err, 'factures des achats'), 'error');
       reload();
     }
   };
@@ -342,7 +343,7 @@ export default function FacturesPanel({
         <div style={st.barreDroite}>
           <SearchToggle value={recherche} onChange={setRecherche} placeholder="Fournisseur, numéro…" />
           <Btn small variant={importOuvert ? 'primary' : 'ghost'} onClick={() => setImportOuvert(v => !v)}>
-            {importOuvert ? 'Fermer l’import' : '+ Importer des factures'}
+            {importOuvert ? 'Fermer l’import' : 'Importer des factures'}
           </Btn>
           {canRegler && !sel.active && factures.length > 0 && (
             <Btn small variant="ghost" onClick={sel.enter}>Sélectionner</Btn>

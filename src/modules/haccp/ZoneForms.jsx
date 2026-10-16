@@ -23,7 +23,7 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
       <div className="modal-full" style={{...hs.modal, width:520}} onClick={e=>e.stopPropagation()}>
         <div style={hs.modalHeader}>
           <div style={hs.modalTitle}>{zone?.id ? 'Modifier la zone' : 'Ajouter une zone'}</div>
-          <button style={hs.closeBtn} onClick={onCancel}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={onCancel}>×</button>
         </div>
         <div style={hs.modalBody}>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -111,7 +111,7 @@ export const CtrlForm = ({ ctrl, onSave, onCancel }) => {
       <div className="modal-full" style={{...hs.modal,width:480}} onClick={e=>e.stopPropagation()}>
         <div style={hs.modalHeader}>
           <div style={hs.modalTitle}>{ctrl?.id ? 'Modifier le contrôle' : 'Ajouter un contrôle'}</div>
-          <button style={hs.closeBtn} onClick={onCancel}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={onCancel}>×</button>
         </div>
         <div style={hs.modalBody}>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -177,7 +177,7 @@ export const CreneauForm = ({ creneau, creneaux = [], onSave, onCancel }) => {
       <div className="modal-full" style={{ ...hs.modal, width: 440 }} onClick={e => e.stopPropagation()}>
         <div style={hs.modalHeader}>
           <div style={hs.modalTitle}>{creneau?.id ? 'Modifier le créneau' : 'Ajouter un créneau'}</div>
-          <button style={hs.closeBtn} onClick={onCancel}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={onCancel}>×</button>
         </div>
         <div style={hs.modalBody}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

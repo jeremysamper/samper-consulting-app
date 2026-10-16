@@ -58,7 +58,7 @@ function valider(form) {
   const pax = Number(form.nbPax);
   if (!form.nom.trim()) erreurs.push('Le nom du client ou du groupe est obligatoire.');
   if (!form.dateEvenement) erreurs.push('La date est obligatoire.');
-  if (!Number.isInteger(pax) || pax < 1 || pax > 5000) erreurs.push('Indique le nombre de personnes.');
+  if (!Number.isInteger(pax) || pax < 1 || pax > 5000) erreurs.push('Indiquez le nombre de personnes.');
   return erreurs;
 }
 
@@ -151,14 +151,14 @@ export default function GroupeForm({
       >
         <div style={st.entete}>
           <div style={st.titre}>{groupe ? 'Modifier le groupe' : 'Nouveau groupe'}</div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={st.fermer}>×</button>
         </div>
 
         <div style={st.corps}>
         <div style={st.colonne}>
           {repasseraARelire && (
             <div style={st.avertissement}>
-              Ce groupe a déjà été lu par la brigade. Si tu changes la date, le menu, le nombre de
+              Ce groupe a déjà été lu par la brigade. Si vous changez la date, le menu, le nombre de
               personnes, les allergies ou les remarques, il repassera en rouge pour être relu.
             </div>
           )}
@@ -223,7 +223,7 @@ export default function GroupeForm({
               })}
             </div>
             <div style={st.aide}>
-              {!form.menuNumero && 'Menu à définir : tu pourras le choisir plus tard.'}
+              {!form.menuNumero && 'Menu à définir : vous pourrez le choisir plus tard.'}
               {form.menuNumero && !apercu.length && menusStatus === 'ready'
                 && "Ce menu n'a pas encore été composé pour cette saison (onglet Menus)."}
             </div>

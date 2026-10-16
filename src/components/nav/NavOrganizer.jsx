@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronUp, GripVertical, Pencil, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Pencil } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mode « Organiser le menu » (consultant) : remplace la liste de navigation de
@@ -270,7 +270,7 @@ export default function NavOrganizer({ items, getLabel, onSave, onCancel, onRese
               )}
               <button type="button" className="mini" onClick={() => stepGroup(g, -1)} disabled={g === 0} aria-label={`Monter la rubrique ${group.name}`}><ChevronUp size={14} /></button>
               <button type="button" className="mini" onClick={() => stepGroup(g, 1)} disabled={g === groups.length - 1} aria-label={`Descendre la rubrique ${group.name}`}><ChevronDown size={14} /></button>
-              <button type="button" className="mini" onClick={() => removeGroup(g)} disabled={groups.length < 2} aria-label={`Supprimer la rubrique ${group.name}`} title="Supprimer la rubrique (ses modules passent dans la voisine)"><X size={14} /></button>
+              <button type="button" className="mini" onClick={() => removeGroup(g)} disabled={groups.length < 2} aria-label={`Supprimer la rubrique ${group.name}`} title="Supprimer la rubrique (ses modules passent dans la voisine)"><span aria-hidden="true">×</span></button>
             </span>
           </div>
           {editing?.key === group.key && editing.error && (

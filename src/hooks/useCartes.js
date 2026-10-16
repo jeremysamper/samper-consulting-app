@@ -3,6 +3,7 @@ import { dbService } from '../services/dbService.js';
 import { getDemoData } from '../data/demoData.js';
 import { notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { useResumeRefresh } from './useResumeRefresh.js';
+import { messageErreur } from '../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useCartes - source unique pour la liste des cartes (menus) d'un établissement.
@@ -148,7 +149,7 @@ export function useCartes(etabId, { role } = {}) {
         // si la dernière lecture avait échoué (réseau revenu entre-temps).
         setStatus('ready');
         return saved;
-      } catch (err) { notifyLegacy('Erreur création de carte : ' + (err.message || err), 'error'); return null; }
+      } catch (err) { notifyLegacy('Carte non créée. ' + messageErreur(err, 'cartes'), 'error'); return null; }
     }
     const all = readLegacyStorage('sc_cartes', demoData.cartes) || [];
     all.push(carte);
@@ -167,7 +168,7 @@ export function useCartes(etabId, { role } = {}) {
       try {
         const saved = await legacySB.db.upsertCarte(next);
         setAllCartes(prev => prev.map(c => (c.id === id ? saved : c)));
-      } catch (err) { notifyLegacy('Erreur mise à jour de carte : ' + (err.message || err), 'error'); }
+      } catch (err) { notifyLegacy('Carte non enregistrée. ' + messageErreur(err, 'cartes'), 'error'); }
       return;
     }
     const all = (readLegacyStorage('sc_cartes', demoData.cartes) || []).map(c => (c.id === id ? next : c));
@@ -183,7 +184,7 @@ export function useCartes(etabId, { role } = {}) {
     const flag = archived !== false;
     if (legacySB) {
       try { await legacySB.db.setCarteArchive(id, flag); }
-      catch (err) { notifyLegacy('Erreur archivage de carte : ' + (err.message || err), 'error'); return false; }
+      catch (err) { notifyLegacy('Carte non archivée. ' + messageErreur(err, 'cartes'), 'error'); return false; }
     } else {
       const all = (readLegacyStorage('sc_cartes', demoData.cartes) || []).map(c => (c.id === id ? { ...c, archive: flag } : c));
       demoData.cartes = all;
@@ -209,7 +210,7 @@ export function useCartes(etabId, { role } = {}) {
         notifyLegacy(
           colonneAbsente
             ? 'Masquage de carte indisponible : la mise à jour de la base n\'a pas encore été appliquée.'
-            : 'Erreur masquage de carte : ' + (err.message || err),
+            : 'Carte non masquée. ' + messageErreur(err, 'cartes'),
           'error',
         );
         return false;
@@ -262,7 +263,7 @@ export function useCartes(etabId, { role } = {}) {
       notifyLegacy(
         colonneAbsente
           ? 'Ordre des cartes indisponible : la mise à jour de la base n\'a pas encore été appliquée.'
-          : 'Erreur enregistrement de l\'ordre : ' + (err.message || err),
+          : 'Ordre des cartes non enregistré. ' + messageErreur(err, 'cartes'),
         'error',
       );
       return false;
@@ -272,7 +273,7 @@ export function useCartes(etabId, { role } = {}) {
   const deleteCarte = React.useCallback(async (id) => {
     if (legacySB) {
       try { await legacySB.db.deleteCarte(id); }
-      catch (err) { notifyLegacy('Erreur suppression de carte : ' + (err.message || err), 'error'); return; }
+      catch (err) { notifyLegacy('Carte non supprimée. ' + messageErreur(err, 'cartes'), 'error'); return; }
     } else {
       const all = (readLegacyStorage('sc_cartes', demoData.cartes) || []).filter(c => c.id !== id);
       demoData.cartes = all;

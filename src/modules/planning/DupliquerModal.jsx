@@ -223,7 +223,7 @@ export default function DupliquerModal({ semaine, existants, employees, nomDe, e
         {plan.sources.length === 0
           ? (quoi === 'reprendre' ? 'La semaine précédente est vide.' : 'Rien à dupliquer ici.')
           : plan.aCreer.length === 0
-            ? (quoi === 'jour' && joursCibles.size === 0 ? 'Choisis au moins un jour.' : 'Tout est déjà en place, rien ne sera créé.')
+            ? (quoi === 'jour' && joursCibles.size === 0 ? 'Choisissez au moins un jour.' : 'Tout est déjà en place, rien ne sera créé.')
             : <>
                 <strong>{pluriel(plan.aCreer.length, 'horaire sera créé', 'horaires seront créés')}</strong>, pour {pluriel(nbPersonnes, 'personne', 'personnes')} sur {pluriel(nbJours, 'jour', 'jours')}.
                 {plan.aSupprimer.length > 0 && <> {pluriel(plan.aSupprimer.length, 'horaire existant sera remplacé', 'horaires existants seront remplacés')}.</>}

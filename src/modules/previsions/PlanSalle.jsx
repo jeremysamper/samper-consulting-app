@@ -582,7 +582,7 @@ export default function PlanSalle({
       setNonActualise(false);
     } catch (e) {
       console.error('[PlanSalle] lecture du plan', e);
-      echec('Erreur technique. Réessaie ou contacte le support.');
+      echec('Erreur technique. Réessayez ou contactez le support.');
     }
     // resaIdsKey pilote le rechargement : une réservation ajoutée ou annulée
     // change la clé, une simple re-création du tableau ne la change pas.
@@ -1130,7 +1130,7 @@ export default function PlanSalle({
       const anciens = (liensRef.current || [])
         .filter((l) => l.reservation_id === d.resaId && depart.has(l.table_id));
       if (!(await retirerLiens(anciens))) return;
-      notify(`${d.resa.nom} → ${nomTablee(cibleId)}`, 'success');
+      notify(`${d.resa.nom} : ${nomTablee(cibleId)}`, 'success');
       return;
     }
 
@@ -1164,7 +1164,7 @@ export default function PlanSalle({
     const tablee = tableeDe(tableId);
     const actives = tablee.filter((t) => t.actif !== false);
     if (!actives.length) {
-      notify(`${tablee[0]?.nom ?? 'Cette table'} est inactive : réactive-la dans « Modifier le plan ».`, 'warning');
+      notify(`${tablee[0]?.nom ?? 'Cette table'} est inactive : réactivez-la dans « Modifier le plan ».`, 'warning');
       return false;
     }
     const nouveaux = [];
@@ -1929,7 +1929,7 @@ export default function PlanSalle({
         </div>
         <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
           {canEdit
-            ? 'Ajoute les tables une à une, place-les au doigt, puis glisse les réservations dessus.'
+            ? 'Ajoutez les tables une à une, placez-les au doigt, puis glissez les réservations dessus.'
             : 'Un responsable doit le dessiner depuis « Modifier le plan ».'}
         </div>
         {canEdit && (
@@ -1938,7 +1938,7 @@ export default function PlanSalle({
             background: 'var(--accent)', color: 'var(--on-accent)',
             fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
           }}>
-            + Ajouter une table
+            Ajouter une table
           </button>
         )}
       </div>
@@ -1965,7 +1965,7 @@ export default function PlanSalle({
       }}>
         {ajusterActif && (
           <div style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12, color: 'var(--text2)', order: 2 }}>
-            Ce service seulement : glisse une table pour la déplacer, lâche-la sur une autre pour les rapprocher, touche-la pour la séparer, ⟳ pour la tourner.
+            Ce service seulement : glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.
           </div>
         )}
         {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
@@ -1986,9 +1986,9 @@ export default function PlanSalle({
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text2)' }}>
             {elementChoisi
               ? (defChoisi?.forme === 'ligne'
-                ? 'Glisse pour déplacer, tire le rond pour allonger.'
-                : 'Glisse pour déplacer, tire le rond pour agrandir.')
-              : 'Glisse pour déplacer. Double-clic sur une table pour la régler, touche un élément du décor pour le modifier.'}
+                ? 'Glissez pour déplacer, tirez le rond pour allonger.'
+                : 'Glissez pour déplacer, tirez le rond pour agrandir.')
+              : 'Glissez pour déplacer. Double-cliquez sur une table pour la régler, touchez un élément du décor pour le modifier.'}
           </div>
         )}
         {canEdit && (

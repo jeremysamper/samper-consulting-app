@@ -184,7 +184,7 @@ export default function ComptageRapide({
             value={ajout}
             onChange={e => setAjout(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouter(); } }}
-            placeholder="+ Ajouter un produit"
+            placeholder="Ajouter un produit"
             aria-label="Ajouter un produit"
             style={st.ajoutInput}
             autoComplete="off"
@@ -208,7 +208,7 @@ export default function ComptageRapide({
       {visibles.length === 0 && (
         <div style={st.vide}>
           {total === 0
-            ? 'Aucun produit dans cet inventaire. Ajoutez-les depuis le catalogue avec « + Produits », ou tapez un nom ci-dessus.'
+            ? 'Aucun produit dans cet inventaire. Ajoutez-les depuis le catalogue avec « Ajouter des produits », ou tapez un nom ci-dessus.'
             : filtre === 'a_compter' ? 'Tout est compté.' : 'Aucun produit ne correspond.'}
         </div>
       )}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { coutUnitaireRecette, suggererRecette, estMaison } from './produitsMaison.js';
+import { montantLisible } from '../../services/qrFacture.js';
 
 // Liaison des lignes d'inventaire aux fiches recettes (produits maison) et
 // mise à jour de leur prix au coût matière actuel des fiches.
@@ -10,7 +11,8 @@ import { coutUnitaireRecette, suggererRecette, estMaison } from './produitsMaiso
 // Props : lignes, recettes, refs, canEdit, onLier(liens: [{ ligneId, recette|null }]),
 //         onMajPrix(maj: [{ ligneId, prixUnit }]), onClose
 
-const chf = (n) => (n == null ? '-' : Number(n).toFixed(2));
+// Même écriture des montants que le reste du module (milliers groupés).
+const chf = (n) => (n == null ? '-' : (montantLisible(n) || '-'));
 
 export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, onLier, onMajPrix, onClose }) {
   const [busy, setBusy] = React.useState(false);
@@ -50,7 +52,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
               coût matière de la fiche, au kilo ou à la portion selon l'unité de comptage.
             </div>
           </div>
-          <button type="button" onClick={onClose} style={st.fermer} title="Fermer">✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} style={st.fermer} title="Fermer">×</button>
         </div>
 
         <div style={st.corps}>
@@ -68,7 +70,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
               </button>
             )}
           </div>
-          {liees.length === 0 && <div style={st.vide}>Aucun produit maison pour l'instant. Ajoutez-en depuis « + Produits », onglet Fiches recettes, ou liez une ligne ci-dessous.</div>}
+          {liees.length === 0 && <div style={st.vide}>Aucun produit maison pour l'instant. Ajoutez-en depuis « Ajouter des produits », onglet Fiches recettes, ou liez une ligne ci-dessous.</div>}
           {liees.map(({ l, recette, calcul, actuel, aJour }) => (
             <div key={l.id} style={st.ligne}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
@@ -81,7 +83,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
               <div style={st.prix}>
                 {aJour
                   ? <>{chf(actuel)} CHF/{l.unite}</>
-                  : <>{chf(actuel)} → <strong>{chf(calcul.prix)}</strong> CHF/{l.unite}</>}
+                  : <>{chf(actuel)} puis <strong>{chf(calcul.prix)}</strong> CHF/{l.unite}</>}
                 {calcul.estime && <div style={st.estime}>estimé</div>}
               </div>
               {canEdit && (
@@ -109,12 +111,12 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
                     <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                       <div data-no-translate style={st.nom}>{l.produit}</div>
                       <div style={st.info}>
-                        → fiche « <span data-no-translate>{s.recette.nom}</span> » {s.sure ? '' : `(${s.confidence} %, à confirmer)`}
+                        Fiche « <span data-no-translate>{s.recette.nom}</span> » {s.sure ? '' : <>({s.confidence} %, à confirmer)</>}
                         {calcul.detail ? `, ${calcul.detail}` : ''}
                       </div>
                     </div>
                     <div style={st.prix}>
-                      {chf(Number(l.prixUnit) || 0)} → <strong>{chf(calcul.prix)}</strong> CHF/{l.unite}
+                      {chf(Number(l.prixUnit) || 0)} puis <strong>{chf(calcul.prix)}</strong> CHF/{l.unite}
                       {calcul.estime && <div style={st.estime}>estimé</div>}
                     </div>
                     <button type="button" style={st.btnMini} disabled={busy} onClick={() => agir(() => onLier([{ ligneId: l.id, recette: s.recette }]))}>Lier</button>

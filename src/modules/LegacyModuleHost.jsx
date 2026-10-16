@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react';
-import { estEnPause, isPageActiveForEtab, navItems, normalizePage, pageAccueil, tousLesNavItems } from './moduleConfig.js';
+import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
+import { messageErreur } from '../utils/messageErreur.js';
+import { Btn } from '../components/ui/index.jsx';
 
 // Loaders nommés : partagés entre lazy() et le préchargement idle ci-dessous.
 // Un même import() est dédupliqué par Vite → précharger ne coûte qu'un fetch.
@@ -107,7 +109,7 @@ export default function LegacyModuleHost({
   const permissions = getPermissionsForRole(user.role);
 
   if (loadingEtablissement) {
-    return <ModulePlaceholder page={page} message="Chargement de l'etablissement courant..." />;
+    return <ModulePlaceholder message="Chargement…" />;
   }
 
   if (error) {
@@ -115,14 +117,14 @@ export default function LegacyModuleHost({
     // remonté au réveil). useCurrentEtablissement réessaie déjà tout seul ; le
     // bouton évite d'attendre le prochain palier.
     return (
-      <div className="form-alert error">
-        {error.message || String(error)}
+      <section className="module-placeholder">
+        <p>{messageErreur(error, 'établissement', "L'établissement n'a pas pu être chargé.")}</p>
         {typeof onRetryEtablissement === 'function' && (
-          <button type="button" className="primary-action inline" style={{ marginLeft: 12 }} onClick={onRetryEtablissement}>
-            Réessayer
-          </button>
+          <div>
+            <Btn variant="primary" onClick={onRetryEtablissement}>Réessayer</Btn>
+          </div>
         )}
-      </div>
+      </section>
     );
   }
 
@@ -303,29 +305,26 @@ export default function LegacyModuleHost({
 function AccessDenied() {
   return (
     <section className="module-placeholder">
-      <div className="form-alert warning">Acces refuse pour ce module.</div>
+      <p>Vous n'avez pas accès à ce module. Votre consultant peut l'ouvrir pour votre rôle.</p>
     </section>
   );
 }
 
 function ModuleInactif({ page, etablissement, user, setPage }) {
-  const current = navItems.find((item) => item.id === page) || (page === 'pointage' ? navItems.find((item) => item.id === 'planning') : null);
   const canGoHome = typeof setPage === 'function';
   const retourAccueil = () => setPage(pageAccueil(etablissement, getPermissionsForRole(user.role)));
   // Module mis de côté (moduleConfig.modulesEnPause) : pas d'invitation à
   // l'activer, il n'est proposé nulle part pour l'instant.
+  // Le nom du module est déjà dans la barre du haut : pas de titre répété ici.
+  // Un seul bouton principal ; « Retour à l'accueil » reste secondaire.
   if (estEnPause(page)) {
-    const module = tousLesNavItems.find((item) => item.id === normalizePage(page));
     return (
       <section className="module-placeholder">
         <div>
-          <h2>{module?.label || page}</h2>
           <p>Ce module est mis de côté pour l'instant.</p>
           {canGoHome && (
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-              <button type="button" className="primary-action inline" onClick={retourAccueil}>
-                Retour à l'accueil
-              </button>
+              <Btn onClick={retourAccueil}>Retour à l'accueil</Btn>
             </div>
           )}
         </div>
@@ -335,7 +334,6 @@ function ModuleInactif({ page, etablissement, user, setPage }) {
   return (
     <section className="module-placeholder">
       <div>
-        <h2>{current?.label || page}</h2>
         <p>
           Ce module n'est pas activé pour {etablissement?.nom || 'cet établissement'}.
           {user.role === 'consultant'
@@ -343,15 +341,11 @@ function ModuleInactif({ page, etablissement, user, setPage }) {
             : ' Demandez à votre consultant de l\'activer si vous en avez besoin.'}
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-          {canGoHome && (
-            <button type="button" className="primary-action inline" onClick={retourAccueil}>
-              Retour à l'accueil
-            </button>
-          )}
           {canGoHome && user.role === 'consultant' && (
-            <button type="button" className="primary-action inline" onClick={() => setPage('parametres')}>
-              Ouvrir les paramètres
-            </button>
+            <Btn variant="primary" onClick={() => setPage('parametres')}>Ouvrir les paramètres</Btn>
+          )}
+          {canGoHome && (
+            <Btn onClick={retourAccueil}>Retour à l'accueil</Btn>
           )}
         </div>
       </div>
@@ -359,16 +353,10 @@ function ModuleInactif({ page, etablissement, user, setPage }) {
   );
 }
 
-function ModulePlaceholder({ page, message }) {
-  const current = navItems.find((item) => item.id === page);
-
+function ModulePlaceholder({ message }) {
   return (
     <section className="module-placeholder">
-      <div>
-        <p className="eyebrow">Migration module</p>
-        <h2>{current?.label || page}</h2>
-        <p>{message || 'Le module demande est indisponible dans le runtime Vite actuel.'}</p>
-      </div>
+      <p>{message || "Ce module n'est pas disponible pour le moment."}</p>
     </section>
   );
 }

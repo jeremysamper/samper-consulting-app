@@ -163,7 +163,7 @@ function ZonePicker({ etablissementId, selected, onChange }) {
             onToggle={() => toggle(z.id)}
             title={`${z.icone ? z.icone + ' ' : ''}${z.nom}`}
             subtitle={z.orpheline
-              ? 'Zone désactivée ou supprimée - décochez-la'
+              ? 'Zone désactivée ou supprimée : décochez-la'
               : [z.cible != null ? `cible ${z.cible}${z.unite || ''}` : null,
                  z.min != null || z.max != null
                    ? `tolérance de ${z.min ?? '−∞'} à ${z.max ?? '+∞'}${z.unite || ''}`
@@ -545,9 +545,10 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
             <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
               {isEdit ? 'Modifier la règle' : 'Nouvelle règle d\'alerte'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Étape {step} / {TOTAL_STEPS} - {stepTitles[step - 1]}</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Étape {step} / {TOTAL_STEPS} : {stepTitles[step - 1]}</div>
           </div>
           <button
+            className="ui-fermer"
             style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', padding: 4 }}
             onClick={onClose}
             aria-label="Fermer"
@@ -752,7 +753,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
           <div style={{ display: 'flex', gap: 8 }}>
             {step > 1 && (
               <button style={{ ...cts.ghostBtn, fontSize: 13 }} onClick={() => setStep(step - 1)} disabled={saving}>
-                ← Précédent
+                Précédent
               </button>
             )}
             {step < TOTAL_STEPS ? (
@@ -761,7 +762,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                 onClick={() => canProceed() && setStep(step + 1)}
                 disabled={!canProceed()}
               >
-                Suivant →
+                Suivant
               </button>
             ) : (
               <button

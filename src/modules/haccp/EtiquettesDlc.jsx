@@ -732,7 +732,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
         <div style={es.blocTitre}>
           <span style={es.blocLabel}>Étiquettes maison</span>
           <button type="button" style={es.ajoutBtn} onClick={() => setFormPerso({})}>
-            + Ajouter une étiquette
+            Ajouter une étiquette
           </button>
         </div>
         {persoVisibles.map(p => renderLigne(p, canGererEtiquettes ? (

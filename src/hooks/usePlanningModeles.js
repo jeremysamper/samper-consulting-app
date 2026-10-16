@@ -25,7 +25,7 @@ function messageErreur(error) {
   console.error('[usePlanningModeles] erreur Supabase', error);
   if (RELATION_ABSENTE.has(error.code)) return 'Les modèles d\'horaires ne sont pas encore activés sur la base de données.';
   if (String(error.code) === '42501') return REFUS;
-  return 'Erreur technique. Réessaie ou contacte le support.';
+  return 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 // Segment propre : heures HH:MM, pause entière, type connu ou 'simple'.

@@ -20,6 +20,7 @@
 // ================================================================
 import { Fragment, useState, useEffect } from 'react';
 import { Btn } from '../../../components/ui/index.jsx';
+import { messageErreur } from '../../../utils/messageErreur.js';
 import {
   callPosEdge, POS_OAUTH_FN, POS_BACKFILL_FN, OAUTH_ERRORS,
 } from '../lib/posApi.js';
@@ -198,7 +199,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
       }
     } catch (err) {
       setWaiting(false);
-      setAuthError(`Impossible de lancer la connexion : ${err.message}`);
+      setAuthError(`Impossible de lancer la connexion. ${messageErreur(err, 'caisse')}`);
     }
   }
 
@@ -217,7 +218,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
       setLocationName(selectedLoc.locationName);
       setStep('import');
     } catch (err) {
-      setLocError(err.message);
+      setLocError(messageErreur(err, 'caisse'));
     } finally {
       setSavingLoc(false);
     }
@@ -236,7 +237,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
         setStep('done');
       }
     } catch (err) {
-      setImportError(err.message);
+      setImportError(messageErreur(err, 'caisse'));
     } finally {
       setImporting(false);
     }
@@ -269,7 +270,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
           <span style={S.stepNum}>3</span>
           <div>
             <div style={S.stepText}>Acceptez les droits demandés</div>
-            <div style={S.stepHint}>Lecture des ventes et des commandes en cours - la fenêtre se ferme toute seule.</div>
+            <div style={S.stepHint}>Lecture des ventes et des commandes en cours : la fenêtre se ferme toute seule.</div>
           </div>
         </div>
       </div>
@@ -422,7 +423,7 @@ export default function LightspeedConnectWizard({ etablissement, provider, mode 
             <div style={S.title}>{copy.title}</div>
             <div style={S.etab}>{etabNom}</div>
           </div>
-          <button type="button" onClick={close} aria-label="Fermer" style={S.close}>×</button>
+          <button type="button" onClick={close} aria-label="Fermer" className="ui-fermer" style={S.close}>×</button>
         </div>
 
         <Stepper current={STEP_INDEX[step] ?? 0} />

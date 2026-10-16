@@ -109,7 +109,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
           background:  on ? couleurs.on.bg : couleurs.off.bg,
           color:       on ? couleurs.on.text : couleurs.off.text,
         }}>
-        {on ? `✓ ${label}` : label}
+        {label}
       </button>
     );
     return (
@@ -130,7 +130,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
           ))}
           <button type="button" onClick={() => setShowDialog(true)}
             style={{ minHeight: 44, padding: '0 14px', borderRadius: 22, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--accent)' }}>
-            + Autre
+            Autre
           </button>
         </div>
         {dialogue}
@@ -191,7 +191,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
 
       <button type="button" onClick={() => setShowDialog(true)}
         style={{ marginTop: 4, fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: 'var(--font)', fontWeight: 600 }}>
-        + Tag personnalisé
+        Tag personnalisé
       </button>
 
       {dialogue}

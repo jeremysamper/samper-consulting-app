@@ -252,9 +252,8 @@ export default function Groupes({ user, etablissement }) {
   if (!etabId) {
     return (
       <section style={st.page}>
-        <SectionHeader title="Groupes" />
         <div style={st.encartAttention}>
-          Aucun établissement sélectionné. Sélectionne un établissement pour voir ses groupes.
+          Aucun établissement sélectionné. Sélectionnez un établissement pour voir ses groupes.
         </div>
       </section>
     );
@@ -264,7 +263,6 @@ export default function Groupes({ user, etablissement }) {
     <section style={st.page}>
       <div className="module-toolbar" style={{ marginBottom: 12 }}>
         <SectionHeader
-          title="Groupes"
           sub="Mariages, anniversaires, séminaires, groupes et apéros dînatoires"
           style={{ marginBottom: 0 }}
         />
@@ -276,7 +274,7 @@ export default function Groupes({ user, etablissement }) {
           />
           {canEdit && status !== 'absent' && (
             <button type="button" onClick={() => setFormulaire({})} style={st.nouveau}>
-              + Nouveau groupe
+              Nouveau groupe
             </button>
           )}
         </div>
@@ -407,7 +405,7 @@ export default function Groupes({ user, etablissement }) {
                 onClick={() => { setFormulaire({ date: jourOuvert }); setJourOuvert(null); }}
                 style={{ ...st.nouveau, marginTop: 12, width: '100%' }}
               >
-                + Ajouter un groupe ce jour-là
+                Ajouter un groupe ce jour-là
               </button>
             )}
           </div>

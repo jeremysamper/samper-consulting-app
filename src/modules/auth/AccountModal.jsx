@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, X } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { profileService } from '../../services/supabase.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // « Mon compte » : ouvert d'un clic sur son nom, en bas de la barre latérale.
@@ -106,7 +107,7 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
       }
       notify('Compte mis à jour', 'success');
     } catch (err) {
-      setError('Enregistrement impossible : ' + (err?.message || err));
+      setError('Enregistrement impossible. ' + messageErreur(err, 'mon compte'));
     } finally {
       setSaving(false);
     }
@@ -133,7 +134,7 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
             <div style={s.sub} data-no-translate="">{fullName}</div>
           </div>
           <button type="button" style={s.close} onClick={onClose} disabled={saving} aria-label="Fermer">
-            <X size={18} aria-hidden="true" />
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 
@@ -180,7 +181,7 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
             <span style={s.hint}>
               {telState === 'error'
                 ? 'Téléphone indisponible pour le moment.'
-                : 'Visible par toi, ton patron et le consultant.'}
+                : 'Visible par vous, votre patron et le consultant.'}
             </span>
           </label>
 

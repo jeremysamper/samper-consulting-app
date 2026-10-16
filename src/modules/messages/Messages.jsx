@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import React from 'react';
-import { ArrowLeft, MessageSquare, Send, X } from 'lucide-react';
+import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { Btn, SectionHeader } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { roles as roleConfig } from '../moduleConfig.js';
@@ -16,6 +16,7 @@ import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { normalizeSearch } from '../../utils/searchText.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 const MAX_LENGTH = 4000;
 
@@ -177,7 +178,7 @@ const Messages = ({ user, isActive = true }) => {
       setDraft('');
       composerRef.current?.focus();
     } catch (err) {
-      notifyLegacy("Message non envoyé : " + (err?.message || 'erreur inconnue'), 'error');
+      notifyLegacy('Message non envoyé. ' + messageErreur(err, 'messages'), 'error');
     } finally { setSending(false); }
   };
 
@@ -186,7 +187,7 @@ const Messages = ({ user, isActive = true }) => {
     try {
       await legacySB.db.deletePrivateMessage(msg.id);
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
-    } catch (err) { notifyLegacy('Suppression impossible : ' + err.message, 'error'); }
+    } catch (err) { notifyLegacy('Suppression impossible. ' + messageErreur(err, 'messages'), 'error'); }
   };
 
   if (loading) {
@@ -278,7 +279,7 @@ const Messages = ({ user, isActive = true }) => {
               <div style={{ ...ms.bubbleWrap, justifyContent: mine ? 'flex-end' : 'flex-start' }}>
                 {mine && (
                   <button type="button" className="mini" style={ms.deleteBtn} onClick={() => remove(m)} title="Supprimer" aria-label="Supprimer le message">
-                    <X size={14} aria-hidden="true" />
+                    <span aria-hidden="true">×</span>
                   </button>
                 )}
                 <div style={mine ? ms.bubbleMine : ms.bubbleTheirs}>
@@ -316,7 +317,6 @@ const Messages = ({ user, isActive = true }) => {
         <div style={ms.composerFoot}>
           {!isMobile && <span style={ms.composerHint}>Ctrl/⌘ + Entrée pour envoyer</span>}
           <Btn variant="primary" onClick={send} disabled={!draft.trim() || sending} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Send size={14} aria-hidden="true" />
             {sending ? 'Envoi…' : 'Envoyer'}
           </Btn>
         </div>
@@ -327,7 +327,6 @@ const Messages = ({ user, isActive = true }) => {
   return (
     <div style={ms.root}>
       <SectionHeader
-        title="Messagerie privée"
         sub="Écrivez à vos collègues et à votre consultant. Chaque conversation n'est visible que par ses deux participants."
       />
       {isMobile ? (
@@ -373,7 +372,7 @@ const ms = {
   threadName: { fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   threadSub: { fontSize: 11, color: 'var(--text2)' },
   threadMessages: { display: 'flex', flexDirection: 'column', gap: 8, padding: 14, minHeight: 160, maxHeight: '52vh', overflowY: 'auto', background: 'var(--bg)' },
-  dayDivider: { alignSelf: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text3)', padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', margin: '6px 0', textTransform: 'capitalize' },
+  dayDivider: { alignSelf: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text3)', padding: '4px 10px', borderRadius: 99, background: 'var(--surface)', border: '1px solid var(--border)', margin: '6px 0' },
   bubbleWrap: { display: 'flex', alignItems: 'flex-end', gap: 4 },
   bubbleMine: { background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', maxWidth: '78%', minWidth: 0 },
   bubbleTheirs: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px', padding: '8px 12px', maxWidth: '78%', minWidth: 0 },

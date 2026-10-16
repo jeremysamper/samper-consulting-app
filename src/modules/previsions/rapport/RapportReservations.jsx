@@ -633,7 +633,7 @@ export default function RapportReservations({ etablissementId }) {
         <span style={{ minWidth: 0 }}>
           {/* Flèches plutôt que « du … au » : « au » (deux lettres) échappe à
               la traduction de l'écran. */}
-          {dateCh(periode.debut)} → {dateCh(periode.fin)}, comparé à {dateCh(comparaison.debut)} → {dateCh(comparaison.fin)}
+          Du {dateCh(periode.debut)} au {dateCh(periode.fin)}, comparé à la période du {dateCh(comparaison.debut)} au {dateCh(comparaison.fin)}
         </span>
         <div style={s.boutons}>
           <button type="button" onClick={() => actualiser()} disabled={enCours} style={{ ...s.btn, opacity: enCours ? 0.6 : 1 }}>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Pencil } from 'lucide-react';
 import { Carte, t } from './tableauUi.jsx';
 import { userDisplayName } from '../../utils/userDisplay.js';
 
@@ -42,7 +41,7 @@ export default function MotConsultant({ message, consultant, onPublier }) {
       sousTitre={texte && !edition ? null : "Visible par toute l'équipe de l'établissement"}
       action={consultant && !edition ? (
         <button type="button" onClick={ouvrir} style={s.modifier}>
-          <Pencil size={15} strokeWidth={1.9} aria-hidden="true" /> {texte ? 'Modifier' : 'Écrire'}
+          {texte ? 'Modifier' : 'Écrire'}
         </button>
       ) : null}
     >
@@ -75,7 +74,7 @@ export default function MotConsultant({ message, consultant, onPublier }) {
           <p style={s.signature}>{auteur}{message?.updatedAt ? `, le ${dateCourte(message.updatedAt)}` : ''}</p>
         </>
       ) : (
-        <div style={t.vide}>Aucun message pour l'instant. Écris un mot : il s'affichera ici pour toute l'équipe.</div>
+        <div style={t.vide}>Aucun message pour l'instant. Écrivez un mot : il s'affichera ici pour toute l'équipe.</div>
       )}
     </Carte>
   );

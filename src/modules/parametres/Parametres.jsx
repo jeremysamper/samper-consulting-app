@@ -9,6 +9,7 @@ import {
 import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────
 // PARAMÈTRES - Gestion des établissements (Consultant)
@@ -86,7 +87,6 @@ const EtabModulesPicker = ({ value, onChange, getLabel, sansTableauDeBord = fals
                     onChange={() => toggle(item.permKey)}
                     style={{ width:18, height:18, margin:0, flexShrink:0, accentColor:'var(--accent)' }}
                   />
-                  <span style={{ width:18, textAlign:'center', flexShrink:0 }} aria-hidden="true">{item.icon}</span>
                   <span style={{ minWidth:0 }}>
                     {getLabel ? getLabel(item.id, item.label) : item.label}
                     {optInModuleKeys.includes(item.permKey) && <span style={{ color:'var(--text3)' }}> (à activer)</span>}
@@ -129,7 +129,7 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
       <div className="modal-full" style={ps.modal} onClick={e => e.stopPropagation()}>
         <div style={ps.modalHeader}>
           <div style={ps.modalTitle}>{etab?.id ? 'Modifier l\'établissement' : 'Ajouter un établissement'}</div>
-          <button style={ps.closeBtn} onClick={onCancel}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={ps.closeBtn} onClick={onCancel}>×</button>
         </div>
         <div style={ps.modalBody}>
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -300,7 +300,9 @@ const Parametres = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertEtablissement(payload);
         if (!saved || !saved.id) {
-          notifyLegacy("Échec silencieux de la sauvegarde (vérifiez les permissions RLS sur Supabase).", 'error');
+          // Écriture refusée sans erreur (RLS) : le détail reste en console.
+          console.error('[Parametres] upsertEtablissement sans ligne renvoyée', payload);
+          notifyLegacy("L'établissement n'a pas été enregistré. Réessayez ; si cela se reproduit, vérifiez vos droits sur cet établissement.", 'error');
           return;
         }
         // Force un reload local pour ne pas attendre le realtime
@@ -312,7 +314,7 @@ const Parametres = ({ user, etablissement }) => {
         } catch (e) { console.warn('[Parametres] reload fail', e); }
       } catch (err) {
         console.error('[Parametres save]', err);
-        notifyLegacy("Erreur enregistrement : " + err.message + (err.code === '42501' ? "\n\n(Erreur de permissions RLS - vérifiez votre rôle)" : ''), 'error');
+        notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'paramètres'), 'error');
         return;
       }
     } else {
@@ -327,7 +329,7 @@ const Parametres = ({ user, etablissement }) => {
       try {
         await legacySB.db.deleteEtablissement(id);
         // Cascade automatique : toutes les données liées (shifts, recettes, pertes, HACCP, etc.) sont supprimées via ON DELETE CASCADE
-      } catch (err) { notifyLegacy('Erreur suppression : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy('Suppression impossible. ' + messageErreur(err, 'paramètres'), 'error'); return; }
     } else {
       setEtablissements(prev => prev.filter(e=>e.id!==id));
     }
@@ -345,7 +347,7 @@ const Parametres = ({ user, etablissement }) => {
           <div style={ps.bannerTitle}>Gestion des établissements</div>
           <div style={ps.bannerSub}>Ajoutez, modifiez ou archivez les établissements de votre portefeuille clients.</div>
         </div>
-        <button style={ps.addBtn} onClick={openAdd}>+ Ajouter un établissement</button>
+        <button style={ps.addBtn} onClick={openAdd}>Ajouter un établissement</button>
       </div>
 
       <div style={ps.statsRow}>
@@ -428,7 +430,7 @@ const Parametres = ({ user, etablissement }) => {
             <div>
               <div style={ps.listTitle}>Personnalisation des modules</div>
               <div style={{ fontSize:12, color:'var(--text2)', marginTop:4, fontWeight:400, textTransform:'none', letterSpacing:0 }}>
-                Renommez les modules dans la navigation - s'applique globalement à tous les établissements. Les clés techniques ne changent pas.
+                Renommez les modules dans la navigation : le changement s'applique à tous les établissements. Les clés techniques ne changent pas.
               </div>
             </div>
           </div>
@@ -531,7 +533,7 @@ const Parametres = ({ user, etablissement }) => {
           <div className="modal-sheet" style={{...ps.modal, width:420}} onClick={e=>e.stopPropagation()}>
             <div style={ps.modalHeader}>
               <div style={ps.modalTitle}>Confirmer la suppression</div>
-              <button style={ps.closeBtn} onClick={()=>setShowConfirm(null)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={ps.closeBtn} onClick={()=>setShowConfirm(null)}>×</button>
             </div>
             <div style={ps.modalBody}>
               <div style={{fontSize:14,color:'var(--text)',lineHeight:1.6,marginBottom:20}}>

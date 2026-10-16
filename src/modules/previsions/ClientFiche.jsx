@@ -87,7 +87,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   async function enregistrer() {
-    if (!form.prenom.trim() && !form.nom.trim()) { notify('Indique au moins un nom.', 'error'); return; }
+    if (!form.prenom.trim() && !form.nom.trim()) { notify('Indiquez au moins un nom.', 'error'); return; }
     if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) { notify('L\'e-mail semble incorrect.', 'error'); return; }
     setEnCours(true);
     const res = nouveau ? await clients.create(form) : await clients.update(clientId, form);
@@ -178,7 +178,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
               </div>
             )}
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
             background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text2)',
             minWidth: 44, minHeight: 44, lineHeight: 1,
           }}>×</button>
@@ -218,7 +218,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                         ? `Désinscrit le ${dateHeureCh(client.desinscritAt)}`
                         : client.email
                           ? 'Pas d\'accord : aucun envoi d\'actualités.'
-                          : 'Ajoute un e-mail pour pouvoir lui écrire.'}
+                          : 'Ajoutez un e-mail pour pouvoir lui écrire.'}
                   </div>
                 </div>
               )}

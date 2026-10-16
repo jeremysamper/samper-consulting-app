@@ -75,24 +75,29 @@ export default function EtabSwitcher({ etabs = [], current, onSelect, title, var
     </>
   );
 
+  // Le titre du module est le <h1> de la page (un seul par écran : les
+  // modules ne répètent plus leur nom). Le bouton reste dans le titre, seul
+  // contenu admis par un <h1> avec le texte ; la liste en sort.
   return (
     <div ref={rootRef} style={{ ...s.wrap, ...(mobile ? s.wrapMobile : null) }}>
-      {multiple ? (
-        <button
-          ref={triggerRef}
-          type="button"
-          className="sc-title-switch"
-          style={{ ...s.block, ...s.button, ...align }}
-          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          title="Changer d'établissement"
-        >
-          {body}
-        </button>
-      ) : (
-        <div style={{ ...s.block, ...align }}>{body}</div>
-      )}
+      <h1 style={{ ...s.h1, ...(mobile ? s.h1Mobile : null) }}>
+        {multiple ? (
+          <button
+            ref={triggerRef}
+            type="button"
+            className="sc-title-switch"
+            style={{ ...s.block, ...s.button, ...align }}
+            onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            title="Changer d'établissement"
+          >
+            {body}
+          </button>
+        ) : (
+          <span style={{ ...s.block, ...align }}>{body}</span>
+        )}
+      </h1>
       {open && (
         <div style={{ ...s.menu, ...(mobile ? s.menuMobile : null) }} role="menu" aria-label="Établissement">
           <div style={s.menuHeader} aria-hidden="true">Établissement</div>
@@ -135,6 +140,12 @@ const s = {
   // gauche et les trois boutons à droite ; centrée sur lui, elle sortait de
   // l'écran par la gauche.
   wrapMobile: { position: 'static', flex: 1, justifyContent: 'center', marginLeft: 0 },
+  // Rendu inchangé : le <h1> ne porte ni marge, ni taille, ni graisse propres.
+  h1: {
+    margin: 0, padding: 0, display: 'flex', minWidth: 0, maxWidth: '100%',
+    fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', lineHeight: 'inherit', color: 'inherit',
+  },
+  h1Mobile: { justifyContent: 'center' },
   block: {
     display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
     minWidth: 0, maxWidth: '100%', padding: '3px 8px', fontFamily: 'var(--font)', color: 'var(--text)',

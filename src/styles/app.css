@@ -1051,33 +1051,57 @@ a {
   font-weight: 700;
 }
 
+/* Écrans de la coquille (compte désactivé, démarrage impossible, erreur de
+   rendu) : un message posé sur la page, au style de l'app, sans cadre ni
+   capitales. */
 .migration-page {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 32px;
+  padding: 32px 16px;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .migration-panel {
-  width: min(960px, 100%);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  padding: clamp(24px, 4vw, 48px);
-  box-shadow: var(--sh-lg);
+  width: min(560px, 100%);
+}
+
+.migration-panel h1 {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
 }
 
 .compact-panel {
-  max-width: 620px;
+  max-width: 560px;
 }
 
 .eyebrow {
-  margin: 0 0 10px;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 800;
+  margin: 0 0 8px;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 500;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
+}
+
+/* Bouton de l'écran d'erreur de rendu (main.jsx) : celui de Btn, en CSS, car
+   l'écran doit s'afficher même si les composants de l'app ne le peuvent plus. */
+.migration-bouton {
+  margin-top: 20px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 h1 {
@@ -1089,10 +1113,10 @@ h1 {
 
 .intro {
   max-width: 720px;
-  margin: 18px 0 0;
-  color: var(--text2);
-  font-size: 18px;
-  line-height: 1.6;
+  margin: 12px 0 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .error-box {
@@ -1181,9 +1205,10 @@ h1 {
 
 .module-placeholder p {
   max-width: 720px;
-  margin: 12px 0 0;
-  color: var(--text2);
-  line-height: 1.6;
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .drawer-backdrop {
@@ -1518,8 +1543,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   padding: 10px 10px 4px;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--text3);
 }
 .cmdk-item {
@@ -1685,8 +1709,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   padding: 8px 4px 4px 8px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--nav-text-active);
 }
 .nav-organizer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1892,6 +1915,38 @@ html[data-theme="dark"] button:not(:disabled):active {
   --on-success: var(--on-accent);
 }
 
+/* Bouton de fermeture « × », le même partout que celui de Fenetre
+   (components/ui/Fenetres.jsx) : 24 px, zone de 40 px, nommé « Fermer ». Les
+   !important passent devant les tailles posées en style inline. */
+.ui-fermer {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text2) !important;
+  font-family: var(--font);
+  font-size: 24px !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ui-fermer:hover,
+.ui-fermer:focus-visible {
+  color: var(--text) !important;
+}
+
+/* Bibliothèque des recettes : une ligne de plat n'est pas une alerte, elle
+   s'éclaire seulement au survol. */
+.recette-plat-ligne:hover,
+.recette-plat-ligne:focus-visible {
+  background: var(--surface2) !important;
+}
+
 /* Barre de sélection du Planning (fixe en bas d'écran) : sur ordinateur, elle
    commence après la barre latérale ouverte, sinon elle en couvrait le bas (le
    menu de l'utilisateur). --largeur-menu est posée par AppLayout (bureau
@@ -1946,9 +2001,9 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
    « MIDI »…), posées partout en style inline, se disputaient l'attention :
    écrites en casse normale, elles se lisent comme des titres et laissent le
    contenu passer devant. Une seule règle plutôt que deux cents retouches ;
-   `data-casse` garde les capitales là où elles sont voulues. Planning &
-   Pointage et Documents (data-module posé par App.jsx) ne sont pas concernés. */
-[style*="text-transform: uppercase"]:not([data-casse]):not(:is([data-module="planning"], [data-module="documents"]) *) {
+   `data-casse` garde les capitales là où elles sont voulues. Planning et
+   Documents, longtemps exclus, sont écrits en casse normale à la source. */
+[style*="text-transform: uppercase"]:not([data-casse]) {
   text-transform: none !important;
   letter-spacing: normal !important;
 }

@@ -24,6 +24,7 @@ import { supabase } from '../../../services/supabase.js';
 import { notify } from '../../../components/toast/index.js';
 import { callPosEdge, POS_OAUTH_FN, POS_BACKFILL_FN } from '../lib/posApi.js';
 import LightspeedConnectWizard from './LightspeedConnectWizard.jsx';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 const CONNECT_ROLES = ['consultant', 'patron'];
 const SYNC_ROLES    = ['consultant', 'patron', 'resp_cuisine'];
@@ -148,7 +149,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
         onSynced?.();
       }
     } catch (err) {
-      notify(`Synchro échouée : ${err.message}`, 'error');
+      notify(`Synchronisation impossible. ${messageErreur(err, 'caisse')}`, 'error');
     } finally {
       setAction(null);
       loadStatus();
@@ -162,7 +163,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
       const res = await callPosEdge(POS_OAUTH_FN, 'test', { etablissementId, providerId: provider.id });
       notify(res.message || 'Connexion opérationnelle', 'success');
     } catch (err) {
-      notify(`Test échoué : ${err.message}`, 'error');
+      notify(`Test de connexion échoué. ${messageErreur(err, 'caisse')}`, 'error');
     } finally {
       setAction(null);
       loadStatus();

@@ -43,7 +43,7 @@ export function SimulationPlatRow({ plat }) {
           <span>
             {suggestion}
             {impact_si_simplifie != null && (
-              <span style={cs.impact}> → score {impact_si_simplifie}/5</span>
+              <span style={cs.impact}>, score <span>{impact_si_simplifie}</span>/5 une fois simplifié</span>
             )}
           </span>
         </div>

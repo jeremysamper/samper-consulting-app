@@ -114,7 +114,7 @@ export default function LightspeedSetupGuide({ onClose }) {
             </div>
           </div>
           <button
-            type="button" onClick={onClose}
+            type="button" onClick={onClose} className="ui-fermer" aria-label="Fermer"
             style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text2)', padding: '2px 6px' }}
           >
             ×
@@ -135,14 +135,14 @@ export default function LightspeedSetupGuide({ onClose }) {
             <div style={{ paddingLeft: 36, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--text)', fontSize: 13, lineHeight: 1.7 }}>
                 <li>
-                  Va sur{' '}
+                  Allez sur{' '}
                   <a href={DEV_PORTAL_URL} target="_blank" rel="noreferrer"
                     style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
                     developers.lightspeedhq.com
                   </a>
                 </li>
-                <li>Connecte-toi avec le compte propriétaire du restaurant</li>
-                <li>Crée une nouvelle app et renseigne ces valeurs&nbsp;:</li>
+                <li>Connectez-vous avec le compte propriétaire du restaurant</li>
+                <li>Créez une nouvelle app et renseignez ces valeurs&nbsp;:</li>
               </ol>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Redirect URI</div>
@@ -157,8 +157,8 @@ export default function LightspeedSetupGuide({ onClose }) {
                 background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>
-                Note le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création
-                - tu en auras besoin à l'étape&nbsp;2.
+                Notez le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création :
+                vous en aurez besoin à l'étape&nbsp;2.
               </div>
             </div>
           </div>
@@ -175,15 +175,15 @@ export default function LightspeedSetupGuide({ onClose }) {
             </div>
             <div style={{ paddingLeft: 36, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
-                Dans <strong>Supabase Dashboard → Edge Functions → Manage secrets</strong>,
-                ajoute ces 4 valeurs&nbsp;:
+                Dans <strong>Supabase Dashboard</strong>, puis <strong>Edge Functions</strong>, puis <strong>Manage secrets</strong>,
+                ajoutez ces 4 valeurs&nbsp;:
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {[
-                  { key: 'LS_CLIENT_ID',     note: '(ton Client ID Lightspeed)' },
-                  { key: 'LS_CLIENT_SECRET', note: '(ton Client Secret Lightspeed)' },
+                  { key: 'LS_CLIENT_ID',     note: '(votre Client ID Lightspeed)' },
+                  { key: 'LS_CLIENT_SECRET', note: '(votre Client Secret Lightspeed)' },
                   { key: 'LS_REDIRECT_URI',  note: REDIRECT_URI, copyVal: REDIRECT_URI },
-                  { key: 'LS_ENV',           note: 'prod  (vraie caisse)  ou  demo  (sandbox) - exactement "prod", pas "production"' },
+                  { key: 'LS_ENV',           note: 'prod (vraie caisse) ou demo (sandbox) ; écrivez exactement « prod », pas « production »' },
                 ].map(({ key, note, copyVal }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <code style={{
@@ -194,7 +194,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                     }}>
                       {key}
                     </code>
-                    <span style={{ fontSize: 12, color: 'var(--text2)', flex: 1 }}>→ {note}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text2)', flex: 1 }}>{note}</span>
                     {copyVal && <CopyBtn value={copyVal} />}
                   </div>
                 ))}
@@ -204,7 +204,7 @@ export default function LightspeedSetupGuide({ onClose }) {
                 background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)',
                 borderRadius: 7, padding: '7px 11px', marginTop: 2,
               }}>
-                Une fois les secrets ajoutés, recharge cette page - le bouton
+                Une fois les secrets ajoutés, rechargez cette page : le bouton
                 "Connecter" s'activera automatiquement.
               </div>
             </div>
@@ -221,9 +221,9 @@ export default function LightspeedSetupGuide({ onClose }) {
               </div>
             </div>
             <div style={{ paddingLeft: 36, fontSize: 13, color: 'var(--text)', lineHeight: 1.7 }}>
-              Clique sur <strong>"Connecter Lightspeed"</strong> dans cette page.<br />
-              Tu seras redirigé vers Lightspeed pour autoriser l'accès.<br />
-              Une fois autorisé, tu reviens automatiquement ici et le module POS est opérationnel.
+              Cliquez sur <strong>« Connecter Lightspeed »</strong> dans cette page.<br />
+              Vous serez redirigé vers Lightspeed pour autoriser l'accès.<br />
+              Une fois l'accès autorisé, vous revenez automatiquement ici et le module de caisse est opérationnel.
             </div>
           </div>
 

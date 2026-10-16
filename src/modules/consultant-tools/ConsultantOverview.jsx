@@ -142,7 +142,7 @@ export default function ConsultantOverview({
     orphelines.length > 0 && {
       key: 'orphelines', sev: 'info', count: orphelines.length,
       label: 'Recettes non rattachées à un plat',
-      hint: 'Invisibles dans la hiérarchie Carte ▸ Plat : rattachez-les pour les retrouver et les publier.',
+      hint: 'Invisibles dans la hiérarchie des cartes et des plats : rattachez-les pour les retrouver et les publier.',
       items: orphelines.map(recChip),
     },
     platsVides.length > 0 && {
@@ -169,7 +169,7 @@ export default function ConsultantOverview({
       <div style={S.actionsRow}>
         <BoutonActions
           id="consultant-ajouter"
-          label="+ Ajouter"
+          label="Ajouter"
           style={S.primaryBtn}
           titre="Ajouter"
           sections={[{ items: [

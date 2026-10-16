@@ -113,7 +113,7 @@ export default function ReservationDetailModal({
             {resa.nom}
           </div>
           <button
-            type="button" onClick={onClose}
+            type="button" onClick={onClose} className="ui-fermer" aria-label="Fermer"
             style={{
               background: 'none', border: 'none', fontSize: 20,
               cursor: 'pointer', color: 'var(--text2)', padding: 4, lineHeight: 1,
@@ -210,7 +210,7 @@ export default function ReservationDetailModal({
                 fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
               }}
             >
-              {passeport ? '✓ Passeport gourmand' : 'Passeport gourmand'}
+              Passeport gourmand
             </button>
           ) : (
             passeport && <LigneDetail label="Offre" valeur="Passeport gourmand" />

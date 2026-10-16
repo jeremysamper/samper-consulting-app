@@ -116,7 +116,6 @@ export default function Previsions({ user, etablissement }) {
     <section style={{ padding: '20px 24px', position: 'relative', minHeight: '100%' }}>
       <div className="module-toolbar">
         <SectionHeader
-          title="Réservations"
           sub={onglet === 'clients'
             ? 'Fichier clients, rempli par les réservations'
             : onglet === 'rapport'
@@ -135,9 +134,9 @@ export default function Previsions({ user, etablissement }) {
               type="button"
               onClick={() => etabId ? setShowForm(true) : null}
               disabled={!etabId}
-              title={etabId ? 'Nouvelle réservation' : "Sélectionne un établissement d'abord"}
+              title={etabId ? 'Nouvelle réservation' : "Sélectionnez un établissement d'abord"}
               style={{ ...btnPrincipal, background: etabId ? 'var(--accent)' : 'var(--border)', color: etabId ? 'var(--on-accent)' : 'var(--text3)', cursor: etabId ? 'pointer' : 'not-allowed', opacity: etabId ? 1 : 0.6 }}>
-              + Nouvelle réservation
+              Nouvelle réservation
             </button>
           )}
           {/* Le plan de salle en un tap : écran scindé plan + réservations du
@@ -179,7 +178,7 @@ export default function Previsions({ user, etablissement }) {
           background: 'var(--warning-bg-soft)', border: '1px solid var(--warning-bd)',
           color: 'var(--warning-text)', fontSize: 13, fontFamily: 'var(--font)',
         }}>
-          Aucun établissement sélectionné. Sélectionne un établissement avant de saisir des réservations.
+          Aucun établissement sélectionné. Sélectionnez un établissement avant de saisir des réservations.
         </div>
       )}
 
@@ -262,7 +261,7 @@ export default function Previsions({ user, etablissement }) {
         }}>
           <div style={{ fontSize: 42, opacity: 0.2 }}>◐</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
-            Sélectionne un établissement
+            Sélectionnez un établissement
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 300, lineHeight: 1.6 }}>
             La vue semaine s'affichera une fois un établissement sélectionné.

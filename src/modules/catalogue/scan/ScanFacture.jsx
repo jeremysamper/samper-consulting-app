@@ -7,6 +7,7 @@ import {
   planScanWrites, prixUnitaireDepuisLigne, SEUIL_ECART_PCT,
 } from './scanFactureLogic.js';
 import { estPdf } from './pdfFacture.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 // Écran de lecture d'une facture fournisseur par photo.
 //
@@ -105,7 +106,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
       setEtape('revue');
       if (!rapprochees.length) setErreur("Aucune ligne de produit lisible sur ces photos.");
     } catch (e) {
-      setErreur(e.message || String(e));
+      setErreur(messageErreur(e, 'lecture de facture'));
       setEtape('capture');
     }
   };
@@ -158,7 +159,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
       choisirProduit(ligne.id, produit);
       notifyLegacy(`« ${ligne.libelle} » créé au catalogue.`, 'success');
     } catch (e) {
-      notifyLegacy('Création impossible : ' + (e.message || e), 'error');
+      notifyLegacy('Création impossible. ' + messageErreur(e, 'lecture de facture'), 'error');
     }
   };
 
@@ -202,7 +203,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
       });
     } catch (e) {
       setProgress(null);
-      notifyLegacy("Enregistrement de la session impossible : " + (e.message || e), 'error');
+      notifyLegacy('Enregistrement de la session impossible. ' + messageErreur(e, 'lecture de facture'), 'error');
       return;
     }
 
@@ -312,7 +313,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             </div>
           </div>
           <button onClick={onClose} disabled={!!progress} title="Fermer"
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}>✕</button>
+            className="ui-fermer" aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}>×</button>
         </div>
 
         {erreur && (
@@ -374,9 +375,9 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                       <img src={a.url} alt={a.nom} style={{ width: 110, height: 140, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                     )}
                     <button
-                      onClick={() => retirerPhoto(i)} title="Retirer ce document"
+                      onClick={() => retirerPhoto(i)} title="Retirer ce document" aria-label="Retirer ce document"
                       style={{ position: 'absolute', top: -6, right: -6, width: 26, height: 26, borderRadius: 13, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontSize: 12 }}
-                    >✕</button>
+                    >×</button>
                   </div>
                 ))}
               </div>
@@ -465,7 +466,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                       {impact && (
                         <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
                           <div>
-                            {fmt(impact.actuel)} → <strong style={{ color: 'var(--text)' }}>{fmt(impact.nouveau)}</strong>
+                            {fmt(impact.actuel)} puis <strong style={{ color: 'var(--text)' }}>{fmt(impact.nouveau)}</strong>
                             <span style={{ color: 'var(--text3)' }}> /{l.produit.uniteRef}</span>
                           </div>
                           {impact.ecartPct != null && (
@@ -512,7 +513,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                         {l.produit && (
                           <span style={{ fontSize: 11, color: 'var(--text2)' }}>
-                            → <strong style={{ color: 'var(--text)' }}>{l.produit.nom}</strong>
+                            Produit : <strong style={{ color: 'var(--text)' }}>{l.produit.nom}</strong>
                             {l.statut === 'alias' && <span style={{ color: 'var(--success-text)', marginLeft: 6 }}>libellé déjà connu</span>}
                           </span>
                         )}
@@ -527,7 +528,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                           style={{ ...inp, background: 'var(--surface)', flex: '1 1 160px', minWidth: 0 }} />
                         {l.statut === 'aucun' && (
                           <button onClick={() => creerProduit(l)}
-                            style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', whiteSpace: 'nowrap' }}>+ Créer au catalogue</button>
+                            style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', whiteSpace: 'nowrap' }}>Créer au catalogue</button>
                         )}
                       </div>
                     )}

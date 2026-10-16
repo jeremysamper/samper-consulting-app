@@ -81,7 +81,7 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
           <div style={hs.modalTitle}>
             {etiquette?.id ? 'Modifier l\'étiquette' : 'Ajouter une étiquette'}
           </div>
-          <button type="button" style={hs.closeBtn} onClick={onCancel} aria-label="Fermer">✕</button>
+          <button type="button" className="ui-fermer" style={hs.closeBtn} onClick={onCancel} aria-label="Fermer">×</button>
         </div>
 
         <div style={hs.modalBody}>

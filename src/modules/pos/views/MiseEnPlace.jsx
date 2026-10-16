@@ -11,6 +11,7 @@
 import { useMiseEnPlace } from '../hooks/useMiseEnPlace.js';
 import { PosEmptyState }  from '../components/PosEmptyState.jsx';
 import { PosExportButton } from '../components/PosExportButton.jsx';
+import { ArrowRight } from 'lucide-react';
 
 const PRINT_ID = 'pos-print-mise-en-place';
 
@@ -77,8 +78,8 @@ function ItemRow({ item }) {
         {item.name}
       </div>
 
-      {/* Flèche */}
-      <div style={{ color: 'var(--text3)', fontSize: 14, flexShrink: 0 }}>→</div>
+      {/* Flèche : dessin seul, sans caractère dans le texte. */}
+      <ArrowRight size={14} aria-hidden="true" style={{ color: 'var(--text3)', flexShrink: 0 }} />
 
       {/* Quantité */}
       <div style={{
@@ -145,7 +146,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
         </div>
         <PosExportButton
           printId={PRINT_ID}
-          title={`Mise en place - ${tomorrowLabel}`}
+          title={`Mise en place du ${tomorrowLabel}`}
           etablissement={etablissement}
         />
       </div>
@@ -165,7 +166,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
             fontFamily: 'var(--font-serif)',
             color:      'var(--text)',
           }}>
-            Mise en place - {tomorrowLabel}
+            Mise en place du {tomorrowLabel}
           </div>
           {etabNom && (
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
@@ -207,7 +208,7 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
                   textDecoration: 'underline',
                 }}
               >
-                Aller au mapping →
+                Aller au mapping
               </button>
             )}
           </div>

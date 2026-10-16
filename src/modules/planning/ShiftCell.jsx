@@ -1,13 +1,13 @@
 import React from 'react';
 import { pls } from './Planning.styles.js';
 import { metaMotif } from '../../utils/absences.js';
-import { typeHoraire } from './planningModeles.js';
+import { formatDuree, typeHoraire } from './planningModeles.js';
 
 // Absence (congé, formation, absence) posée en tête de case.
 const PuceAbsence = ({ absence }) => {
   const m = metaMotif(absence.motif);
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: m.texte, textAlign: 'center' }}>
+    <div style={{ fontSize: 11, fontWeight: 700, color: m.texte, textAlign: 'center' }}>
       {m.label}
     </div>
   );
@@ -76,10 +76,10 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
               <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected?.(shift.id)} onClick={(e) => e.stopPropagation()} style={{ marginTop: 1 }} aria-label="Sélectionner cet horaire" />
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: t.texte }}>{t.label}{etat ? `, ${etat}` : ''}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: t.texte }}>{t.label}{etat ? `, ${etat}` : ''}</div>
               <div id={`shift-h-${shift.id}`} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>{shift.debut}-{shift.fin}</div>
               {(shift.poste || heures) && (
-                <div style={{ fontSize: 10, color: 'var(--text2)' }}>{[heures && `${heures} h`, shift.poste].filter(Boolean).join(', ')}</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)' }}>{[heures > 0 && formatDuree(heures), shift.poste].filter(Boolean).join(', ')}</div>
               )}
             </div>
           </div>
@@ -87,7 +87,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
       })}
       {canWrite && !selectionMode && !onRemplir && shifts.length < 2 && (
         <div
-          style={{ ...pls.emptyCell, minHeight: 22, padding: '2px', fontSize: 10 }}
+          style={{ ...pls.emptyCell, minHeight: 22, padding: '2px', fontSize: 11 }}
           onClick={(e) => { e.stopPropagation(); openAddPrefill(userId, date); }}
           {...activable((e) => { e.stopPropagation(); openAddPrefill(userId, date); })}
           aria-label="Ajouter un second horaire"

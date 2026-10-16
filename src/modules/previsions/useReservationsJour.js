@@ -60,7 +60,7 @@ export function useReservationsJour(etablissementId, date, { refreshKey = 0, onC
       res = await reservations.findByDate(date);
     } catch (e) {
       console.error('[useReservationsJour] lecture des réservations', e);
-      res = { data: null, error: 'Erreur technique. Réessaie ou contacte le support.' };
+      res = { data: null, error: 'Erreur technique. Réessayez ou contactez le support.' };
     }
 
     if (res.error) {

@@ -21,7 +21,7 @@ export default function ChangePasswordModal({ email, onClose }) {
     setError('');
 
     if (!current) {
-      setError('Saisis ton mot de passe actuel.');
+      setError('Saisissez votre mot de passe actuel.');
       return;
     }
     const invalid = validateNewPassword(password, confirmation);

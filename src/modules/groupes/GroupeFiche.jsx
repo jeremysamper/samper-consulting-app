@@ -166,7 +166,7 @@ export default function GroupeFiche({
               {menu?.nom ? `, menu ${menu.nom}` : ''}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={st.fermer}>×</button>
         </div>
 
         <div style={st.corps}>
@@ -174,7 +174,7 @@ export default function GroupeFiche({
           {groupe.annule && (
             <div style={{ ...st.encart, ...st.encartDanger }}>
               Ce groupe est annulé : il reste barré dans « groupes annulés ».
-              {canEdit && ' Tu peux le rétablir'}
+              {canEdit && ' Vous pouvez le rétablir'}
               {canEdit && onSupprimer && ' ou le supprimer définitivement'}
               {canEdit && '.'}
             </div>
@@ -416,7 +416,7 @@ function ListeCourses({ liste, groupe, menu, production, estimation, chargement,
   if (chargement) return <div style={st.vide}>Calcul de la liste…</div>;
   // Une liste vide née d'une lecture en échec aurait l'air juste : on le dit.
   if (indisponible) return <div style={st.vide}>Liste indisponible pour le moment (connexion ?).</div>;
-  if (!groupe.menuNumero) return <div style={st.vide}>Choisis d'abord un menu pour ce groupe.</div>;
+  if (!groupe.menuNumero) return <div style={st.vide}>Choisissez d'abord un menu pour ce groupe.</div>;
   if (!(menu?.lignes || []).length) {
     return <div style={st.vide}>Ce menu n'a pas encore été composé : aucune liste à calculer.</div>;
   }

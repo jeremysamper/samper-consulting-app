@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { Btn } from '../../../components/ui/index.jsx';
 import { MatchBadge } from './MatchBadge.jsx';
 import { RecipeSelector } from './RecipeSelector.jsx';
@@ -121,8 +122,8 @@ export function PosItemRow({
           </div>
         </div>
 
-        {/* Flèche */}
-        <div style={{ color: 'var(--text3)', fontSize: 16, flexShrink: 0 }}>→</div>
+        {/* Flèche : dessin seul, sans caractère dans le texte. */}
+        <ArrowRight size={16} aria-hidden="true" style={{ color: 'var(--text3)', flexShrink: 0 }} />
 
         {/* Colonne droite : recette */}
         <div style={{

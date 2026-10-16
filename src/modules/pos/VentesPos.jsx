@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { SectionHeader } from '../../components/ui/index.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import PosConnectionBar   from './components/PosConnectionBar.jsx';
@@ -40,18 +39,12 @@ export default function VentesPos({ user, etablissement }) {
   // (ex. changement de rôle en cours de session), on revient sur la vue par défaut.
   const effectiveTab = (!canEdit && tab === 'mapping') ? 'mise_en_place' : tab;
 
-  const etabNom = etablissement?.nom || 'Établissement sélectionné';
-
   // onNavigateToMapping : proposé uniquement aux rôles canEdit
   const handleNavigateToMapping = canEdit ? () => setTab('mapping') : undefined;
 
+  // Pas de titre interne : « Ventes POS » est déjà le titre de la barre du haut.
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader
-        title="Ventes POS"
-        subtitle={`Synchronisation Lightspeed : ${etabNom}`}
-      />
-
       {/* ── Barre connexion / synchro (couplage + sync manuelle) ── */}
       <PosConnectionBar
         etablissement={etablissement}
@@ -59,7 +52,8 @@ export default function VentesPos({ user, etablissement }) {
         onSynced={() => setDataVersion((v) => v + 1)}
       />
 
-      <SegmentedTabs tabs={TABS} active={effectiveTab} onChange={setTab} />
+      {/* Libellés seuls : pas de glyphe devant un onglet. */}
+      <SegmentedTabs tabs={TABS.map(({ id, label }) => ({ id, label }))} active={effectiveTab} onChange={setTab} />
 
       {/* ── Mise en place J+1 ── */}
       {effectiveTab === 'mise_en_place' && (

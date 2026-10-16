@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, CircleCheck, Clock, LogIn, LogOut, Moon, Sun } from 'lucide-react';
+import { CalendarClock, CircleCheck } from 'lucide-react';
 import { Carte, Puce, t } from './tableauUi.jsx';
 import { duree, enMinutes, jourRelatif } from './tableauLogique.js';
 
@@ -15,8 +15,8 @@ import { duree, enMinutes, jourRelatif } from './tableauLogique.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LIBELLES = {
-  midi: { texte: 'Service du midi', icone: Sun },
-  soir: { texte: 'Service du soir', icone: Moon },
+  midi: { texte: 'Service du midi' },
+  soir: { texte: 'Service du soir' },
 };
 
 function ponctualite(debut, maintenant) {
@@ -73,7 +73,6 @@ export default function CartePointage({
             disabled={attenteHorsPlanning}
             style={{ ...s.action, background: 'var(--tdb-go)', color: 'var(--tdb-on-go)', opacity: attenteHorsPlanning ? 0.7 : 1 }}
           >
-            <LogIn size={20} strokeWidth={2} aria-hidden="true" />
             {attenteHorsPlanning ? 'Pointage…' : 'Pointer mon arrivée'}
           </button>
           <div style={{ ...t.texte2, marginTop: 6 }}>
@@ -86,8 +85,7 @@ export default function CartePointage({
         {shifts.map((shift) => {
           // Horaire créé par un pointage hors planning : pas d'heure prévue.
           const horsPlanning = shift.note === 'Pointage hors planning';
-          const libelle = horsPlanning ? { texte: 'Hors planning', icone: Clock } : (LIBELLES[shift.typeShift] || { texte: 'Service', icone: Clock });
-          const Icone = libelle.icone;
+          const libelle = horsPlanning ? { texte: 'Hors planning' } : (LIBELLES[shift.typeShift] || { texte: 'Service' });
           const termine = shift.pointageDebut && shift.pointageFin;
           const enPoste = shift.pointageDebut && !shift.pointageFin;
           const attente = enCours === shift.id;
@@ -101,10 +99,7 @@ export default function CartePointage({
           return (
             <div key={shift.id} style={{ ...s.service, ...(termine ? s.serviceTermine : null) }}>
               <div style={s.serviceTete}>
-                <span style={s.serviceNom}>
-                  <Icone size={15} strokeWidth={1.9} aria-hidden="true" style={{ color: 'var(--text2)' }} />
-                  {libelle.texte}
-                </span>
+                <span style={s.serviceNom}>{libelle.texte}</span>
                 {!horsPlanning && <span style={s.serviceHeures}>{shift.debut} à {shift.fin}</span>}
               </div>
               {shift.poste && <div style={{ ...t.texte2, marginTop: 2 }} data-no-translate>{shift.poste}</div>}
@@ -118,7 +113,6 @@ export default function CartePointage({
                     disabled={attente}
                     style={{ ...s.action, background: 'var(--tdb-go)', color: 'var(--tdb-on-go)', opacity: attente ? 0.7 : 1 }}
                   >
-                    <LogIn size={20} strokeWidth={2} aria-hidden="true" />
                     {attente ? 'Pointage…' : 'Pointer mon arrivée'}
                   </button>
                 </>
@@ -137,7 +131,6 @@ export default function CartePointage({
                     disabled={attente}
                     style={{ ...s.action, background: 'var(--tdb-stop)', color: 'var(--tdb-on-stop)', opacity: attente ? 0.7 : 1 }}
                   >
-                    <LogOut size={20} strokeWidth={2} aria-hidden="true" />
                     {attente ? 'Pointage…' : 'Pointer mon départ'}
                   </button>
                 </>

@@ -4,6 +4,7 @@ import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { useCartes } from '../../hooks/useCartes.js';
 import { s } from './MiseEnPlace.styles.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 let _tmpSeq = 0;
 const tmpKey = () => `tmp-${Date.now()}-${_tmpSeq++}`;
@@ -89,7 +90,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
   }, [plats, recetteById]);
 
   const addFromCarte = () => {
-    if (!carteId) { notifyLegacy('Choisis une carte à générer.', 'warning'); return; }
+    if (!carteId) { notifyLegacy('Choisissez une carte à générer.', 'warning'); return; }
     const recs = recettesForCarte(carteId);
     if (recs.length === 0) { notifyLegacy('Cette carte ne contient aucune recette liée.', 'info'); return; }
     const already = new Set(items.filter(i => i.recetteId).map(i => i.recetteId));
@@ -170,7 +171,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
       onClose();
     } catch (err) {
       console.error('[MepEditor save]', err);
-      notifyLegacy('Erreur : ' + (err?.message || 'enregistrement impossible'), 'error');
+      notifyLegacy(messageErreur(err, 'mise en place', 'Enregistrement impossible.'), 'error');
       setSaving(false);
     }
   };
@@ -190,7 +191,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
   return (
     <div style={s.root}>
       <div className="module-actions" style={s.moduleActions}>
-        <button style={s.backBtn} onClick={onClose}>← Retour</button>
+        <button style={s.backBtn} onClick={onClose}>Retour</button>
       </div>
       <h2 style={s.title}>{isEdit ? 'Modifier la liste' : 'Nouvelle liste de mise en place'}</h2>
 
@@ -221,7 +222,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
           <button type="button" style={s.addBtn} onClick={addFromCarte} disabled={!carteId}>Ajouter les recettes de la carte</button>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
-          Ajoute toutes les recettes des plats de la carte, sans doublon. Tu peux ensuite compléter à la main.
+          Ajoute toutes les recettes des plats de la carte, sans doublon. Vous pouvez ensuite compléter à la main.
         </div>
       </div>
 
@@ -229,7 +230,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
       <div style={s.editorCard}>
         <div style={s.fieldLabel}>Préparations de la liste ({items.length})</div>
         {items.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>Sélectionne des recettes ci-dessous ou ajoute une préparation manuelle.</div>
+          <div style={{ fontSize: 13, color: 'var(--text2)' }}>Sélectionnez des recettes ci-dessous ou ajoutez une préparation manuelle.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {items.map(it => (
@@ -241,7 +242,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
                 </div>
                 <input style={s.qtyInput} value={it.quantite} onChange={e => patchItem(it.key, { quantite: e.target.value })} placeholder="Qté" inputMode="decimal" />
                 <input style={s.uniteInput} value={it.unite} onChange={e => patchItem(it.key, { unite: e.target.value })} placeholder="Unité" />
-                <button type="button" style={s.itemDel} title="Retirer" onClick={() => removeItem(it)}>✕</button>
+                <button type="button" style={s.itemDel} title="Retirer" aria-label={`Retirer ${it.label}`} onClick={() => removeItem(it)}>×</button>
               </div>
             ))}
           </div>

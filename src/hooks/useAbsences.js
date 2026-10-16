@@ -34,7 +34,7 @@ function messageErreur(error) {
   if (!error) return null;
   console.error('[useAbsences] erreur Supabase', error);
   if (RELATION_ABSENTE.has(error.code)) return "Les absences ne sont pas encore activées sur la base de données.";
-  return MESSAGES_ERREUR[String(error.code || '')] || 'Erreur technique. Réessaie ou contacte le support.';
+  return MESSAGES_ERREUR[String(error.code || '')] || 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 const plancherParDefaut = () => isoDate(addDays(parseLocalDate(zurichToday()), -62));

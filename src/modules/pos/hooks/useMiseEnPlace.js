@@ -20,6 +20,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../../../services/dbService.js';
 import { addDays, todayInTz, dowFromDateStr, formatDateLabel } from '../lib/date-utils.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 export function useMiseEnPlace(etablissement) {
   const [items, setItems]               = useState([]);
@@ -168,7 +169,7 @@ export function useMiseEnPlace(etablissement) {
       setItems(result);
     } catch (e) {
       console.error('[useMiseEnPlace]', e);
-      setError(e?.message ?? 'Erreur de chargement');
+      setError(messageErreur(e, 'ventes caisse', 'Chargement impossible.'));
     } finally {
       setLoading(false);
     }

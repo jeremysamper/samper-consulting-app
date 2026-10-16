@@ -70,7 +70,7 @@ export default function PlanTableForm({
   async function enregistrer() {
     if (!nom.trim()) { notify('Le nom de la table est obligatoire.', 'error'); return; }
     if (places < 1 || places > 40) { notify('Le nombre de places doit être entre 1 et 40.', 'error'); return; }
-    if (salles.length > 0 && !salleId) { notify('Choisis une salle.', 'error'); return; }
+    if (salles.length > 0 && !salleId) { notify('Choisissez une salle.', 'error'); return; }
 
     setLoading(true);
     try {
@@ -157,7 +157,7 @@ export default function PlanTableForm({
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             {table.forme === 'tabouret' ? 'Place de bar' : 'Table'} {table.nom}
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
             background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
             color: 'var(--text2)', padding: 4, lineHeight: 1,
           }}>
@@ -247,7 +247,7 @@ export default function PlanTableForm({
             <label style={lbl}>Salle</label>
             {salles.length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
-                Aucune salle définie. Crée-en une depuis le bouton « Salles ».
+                Aucune salle définie. Créez-en une depuis le bouton « Salles ».
               </div>
             ) : (
               <select

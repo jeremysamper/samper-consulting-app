@@ -9,6 +9,7 @@ import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS - dossiers et fichiers de l'établissement
@@ -219,7 +220,7 @@ const Documents = ({ user, etablissement }) => {
       else if (file.size > TAILLE_MAX) refuses.push(`${file.name} : plus de 50 Mo`);
       else valides.push({ file, mime });
     });
-    if (refuses.length) notifyLegacy(`Ignoré${refuses.length > 1 ? 's' : ''} : ${refuses.join(' · ')}`, 'warning');
+    if (refuses.length) notifyLegacy(`Ignoré${refuses.length > 1 ? 's' : ''} : ${refuses.join(', ')}`, 'warning');
     if (!valides.length) return;
 
     const parentId = currentFolder;
@@ -232,7 +233,7 @@ const Documents = ({ user, etablissement }) => {
         ok += 1;
       } catch (err) {
         console.error('[Documents upload]', err);
-        notifyLegacy(`« ${file.name} » n'a pas pu être importé : ${err.message || err}`, 'error');
+        notifyLegacy(`« ${file.name} » n'a pas pu être importé. ${messageErreur(err, 'documents')}`, 'error');
       }
     }
     setUpload(null);
@@ -257,7 +258,7 @@ const Documents = ({ user, etablissement }) => {
       if (nature === 'pdf' || nature === 'image') setApercu({ doc, url });
       else browserWindow?.open(url, '_blank');
     } catch (err) {
-      notifyLegacy('Ouverture impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Ouverture impossible. ' + messageErreur(err, 'documents'), 'error');
     }
   };
 
@@ -274,7 +275,7 @@ const Documents = ({ user, etablissement }) => {
       a.click();
       a.remove();
     } catch (err) {
-      notifyLegacy('Téléchargement impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Téléchargement impossible. ' + messageErreur(err, 'documents'), 'error');
     }
   };
 
@@ -294,7 +295,7 @@ const Documents = ({ user, etablissement }) => {
       setNouveauDossier(null);
       recharger();
     } catch (err) {
-      notifyLegacy('Création impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Création impossible. ' + messageErreur(err, 'documents'), 'error');
     } finally { setBusy(false); }
   };
 
@@ -314,7 +315,7 @@ const Documents = ({ user, etablissement }) => {
       setRenommage(null);
       recharger();
     } catch (err) {
-      notifyLegacy('Renommage impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Renommage impossible. ' + messageErreur(err, 'documents'), 'error');
     } finally { setBusy(false); }
   };
 
@@ -332,7 +333,7 @@ const Documents = ({ user, etablissement }) => {
       notifyLegacy(`« ${doc.nom} » déplacé dans ${dest}.`, 'success');
       recharger();
     } catch (err) {
-      notifyLegacy('Déplacement impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Déplacement impossible. ' + messageErreur(err, 'documents'), 'error');
     } finally { setBusy(false); }
   };
 
@@ -353,7 +354,7 @@ const Documents = ({ user, etablissement }) => {
     let ok = 0;
     for (const doc of docs) {
       try { await legacySB.db.deleteDocument(doc); ok += 1; }
-      catch (err) { console.error('[Documents delete]', err); notifyLegacy(`« ${doc.nom} » n'a pas pu être supprimé : ${err.message || err}`, 'error'); }
+      catch (err) { console.error('[Documents delete]', err); notifyLegacy(`« ${doc.nom} » n'a pas pu être supprimé. ${messageErreur(err, 'documents')}`, 'error'); }
     }
     setBusy(false);
     if (sel.active) sel.exit();
@@ -393,7 +394,7 @@ const Documents = ({ user, etablissement }) => {
       const n = (enfants.get(doc.id) || []).length;
       return n ? pluriel(n, 'élément') : 'Vide';
     }
-    return [formatTaille(doc.taille), formatDate(doc.createdAt)].filter(Boolean).join(' · ');
+    return [formatTaille(doc.taille), formatDate(doc.createdAt)].filter(Boolean).join(', ');
   };
 
   const icone = (doc) => {
@@ -428,7 +429,7 @@ const Documents = ({ user, etablissement }) => {
         {icone(doc)}
         <div style={ds.ligneInfo}>
           <div style={ds.ligneNom}>{doc.nom}</div>
-          <div style={ds.ligneMeta}>{ou ? `Dans ${ou} · ${metaDe(doc)}` : metaDe(doc)}</div>
+          <div style={ds.ligneMeta}>{ou ? `Dans ${ou}, ${metaDe(doc)}` : metaDe(doc)}</div>
         </div>
         {!sel.active && (
           <button
@@ -554,7 +555,7 @@ const Documents = ({ user, etablissement }) => {
           <div className="modal-sheet" style={ds.modal} onClick={e => e.stopPropagation()}>
             <div style={ds.modalTete}>
               <div style={ds.modalTitre}>{actions.nom}</div>
-              <button type="button" style={ds.fermer} onClick={() => setActions(null)} aria-label="Fermer">✕</button>
+              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setActions(null)} aria-label="Fermer">×</button>
             </div>
             <div style={ds.menuListe}>
               <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); ouvrir(d); }}>Ouvrir</button>
@@ -579,7 +580,7 @@ const Documents = ({ user, etablissement }) => {
           <div className="modal-sheet" style={ds.modal} onClick={e => e.stopPropagation()}>
             <div style={ds.modalTete}>
               <div style={ds.modalTitre}>Nouveau dossier</div>
-              <button type="button" style={ds.fermer} onClick={() => setNouveauDossier(null)} aria-label="Fermer">✕</button>
+              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setNouveauDossier(null)} aria-label="Fermer">×</button>
             </div>
             <div style={ds.modalCorps}>
               <label style={ds.champLabel}>Nom du dossier</label>
@@ -607,7 +608,7 @@ const Documents = ({ user, etablissement }) => {
           <div className="modal-sheet" style={ds.modal} onClick={e => e.stopPropagation()}>
             <div style={ds.modalTete}>
               <div style={ds.modalTitre}>Renommer</div>
-              <button type="button" style={ds.fermer} onClick={() => setRenommage(null)} aria-label="Fermer">✕</button>
+              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setRenommage(null)} aria-label="Fermer">×</button>
             </div>
             <div style={ds.modalCorps}>
               <input
@@ -635,7 +636,7 @@ const Documents = ({ user, etablissement }) => {
           <div className="modal-sheet" style={{ ...ds.modal, width: 480 }} onClick={e => e.stopPropagation()}>
             <div style={ds.modalTete}>
               <div style={ds.modalTitre}>Déplacer « {deplacement.nom} »</div>
-              <button type="button" style={ds.fermer} onClick={() => setDeplacement(null)} aria-label="Fermer">✕</button>
+              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setDeplacement(null)} aria-label="Fermer">×</button>
             </div>
             <div style={{ ...ds.modalCorps, paddingTop: 10, maxHeight: '60vh', overflowY: 'auto' }}>
               {[{ dossier: null, niveau: 0 }, ...destinations].map(({ dossier, niveau }) => {
@@ -674,7 +675,7 @@ const Documents = ({ user, etablissement }) => {
                   PDF intégré n'affiche souvent que sa première page). */}
               <a href={apercu.url} target="_blank" rel="noreferrer" style={ds.apercuBtn}>Plein écran</a>
               <button type="button" style={ds.apercuBtn} onClick={() => telecharger(apercu.doc)}>Télécharger</button>
-              <button type="button" style={ds.apercuBtn} onClick={() => setApercu(null)} aria-label="Fermer">✕</button>
+              <button type="button" style={ds.apercuBtn} onClick={() => setApercu(null)} aria-label="Fermer">×</button>
             </div>
             <div style={ds.apercuCorps} onClick={e => e.stopPropagation()}>
               {nature === 'pdf' && <iframe src={apercu.url} title={apercu.doc.nom} style={ds.apercuPdf} />}
@@ -701,7 +702,7 @@ const ds = {
   depot: { padding: '18px 16px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: 'var(--accent)', background: 'var(--bg)', border: '2px dashed var(--accent)', borderRadius: 12 },
 
   liste: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
-  listeTitre: { padding: '10px 14px', fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)', borderBottom: '1px solid var(--border)' },
+  listeTitre: { padding: '10px 14px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', borderBottom: '1px solid var(--border)' },
   // Base de bordure en borderWidth/Style/Color : la sélection ne surcharge
   // que borderColor (cf. npm run lint:borders).
   ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 10px 10px 14px', minHeight: 60, cursor: 'pointer', borderWidth: '0 0 1px 0', borderStyle: 'solid', borderColor: 'var(--border)', background: 'transparent', outline: 'none' },
@@ -729,7 +730,7 @@ const ds = {
   modalPied: { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 },
   menuListe: { display: 'flex', flexDirection: 'column', padding: 6 },
   menuItem: { minHeight: 48, flexShrink: 0, padding: '0 16px', textAlign: 'left', background: 'none', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  champLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  champLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 },
   // 16 px : en dessous, Safari iOS zoome la page au focus.
   champ: { width: '100%', padding: '11px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 16, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
   aide: { fontSize: 11.5, color: 'var(--text2)', marginTop: 6 },

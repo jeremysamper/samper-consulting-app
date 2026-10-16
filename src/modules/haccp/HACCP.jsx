@@ -18,6 +18,7 @@ import HaccpNav from './HaccpNav.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -256,7 +257,7 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpReleve(newReleve);
         setReleves(prev => [saved, ...prev]);
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setReleves([{ id: 'r' + Date.now(), ...newReleve }, ...releves]);
     }
@@ -280,7 +281,7 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpControl(newCtrl);
         setControls(prev => [saved, ...prev]);
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setControls([{ id: 'ct' + Date.now(), ...newCtrl }, ...controls]);
     }
@@ -294,7 +295,7 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpZone(payload);
         setZones(prev => prev.find(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved]);
-      } catch (err) { notifyLegacy('Erreur zone : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy('Zone non enregistrée. ' + messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setZones(prev => prev.find(x=>x.id===z.id) ? prev.map(x=>x.id===z.id?z:x) : [...prev,z]);
     }
@@ -304,7 +305,7 @@ const HACCP = ({ user, etablissement }) => {
     if (!confirmLegacy('Supprimer cette zone ? Les relevés associés seront aussi supprimés.')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpZone(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     }
     setZones(prev=>prev.filter(z=>z.id!==id));
   };
@@ -320,7 +321,7 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpTpl(payload);
         setCtrlTpls(prev => prev.find(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved]);
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setCtrlTpls(prev=>prev.find(x=>x.id===c.id)?prev.map(x=>x.id===c.id?c:x):[...prev,c]);
     }
@@ -330,7 +331,7 @@ const HACCP = ({ user, etablissement }) => {
     if (!confirmLegacy('Supprimer ce contrôle ?')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpTpl(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     }
     setCtrlTpls(prev=>prev.filter(c=>c.id!==id));
   };
@@ -345,7 +346,7 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpCreneau(payload);
         setCreneaux(prev => prev.find(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved]);
-      } catch (err) { notifyLegacy('Erreur créneau : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy('Créneau non enregistré. ' + messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setCreneaux(prev => prev.find(x => x.id === c.id) ? prev.map(x => x.id === c.id ? c : x) : [...prev, c]);
     }
@@ -356,7 +357,7 @@ const HACCP = ({ user, etablissement }) => {
     if (!confirmLegacy('Supprimer ce créneau ? Les relevés déjà enregistrés sont conservés.')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpCreneau(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     }
     setCreneaux(prev => prev.filter(c => c.id !== id));
   };
@@ -394,7 +395,7 @@ const HACCP = ({ user, etablissement }) => {
     if (!confirmLegacy('Supprimer ce relevé ?')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpReleve(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     }
     setReleves(prev => prev.filter(r => r.id !== id));
   };
@@ -435,7 +436,7 @@ const HACCP = ({ user, etablissement }) => {
       await exportRowsToXlsx(`haccp-releves-${todayStr}.xlsx`, 'Relevés HACCP', headers, data, [22, 12, 8, 12, 22, 12, 32]);
       notifyLegacy(`${rows.length} relevé(s) exporté(s) en Excel.`, 'success');
     } catch (err) {
-      notifyLegacy('Erreur export : ' + err.message, 'error');
+      notifyLegacy('Export impossible. ' + messageErreur(err, 'haccp'), 'error');
     }
     setBulkBusy(false);
   };
@@ -491,7 +492,7 @@ const HACCP = ({ user, etablissement }) => {
     if (!confirmLegacy('Supprimer ce contrôle enregistré ?')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpControl(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     }
     setControls(prev => prev.filter(c => c.id !== id));
   };
@@ -516,7 +517,7 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpReleve(newReleve);
         setReleves(prev => [saved, ...prev]);
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setReleves(prev => [{ id: 'r' + Date.now(), ...newReleve }, ...prev]);
     }
@@ -601,7 +602,7 @@ const HACCP = ({ user, etablissement }) => {
     {id:'tracabilite', l:'Traçabilité', aide:'Photos des étiquettes', principal:true},
     {id:'tableau',     l:'Tableau de bord'},
     {id:'controles',   l:'Contrôles hygiène'},
-    ...(isConsultant ? [{id:'config', l:'✦ Paramètres'}] : []),
+    ...(isConsultant ? [{id:'config', l:'Paramètres'}] : []),
   ];
 
   // Onglets sans filtre de date ni impression de la vue courante : traçabilité
@@ -625,13 +626,13 @@ const HACCP = ({ user, etablissement }) => {
           {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
               première option mais le state reste vide → « Cible : undefined » et
               validation bloquée alors qu'une zone semble choisie. */}
-          {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>{setFormRel(f=>({...f, zoneId: f.zoneId || activeZones[0]?.id || '', heure: f.heure || creneauProchain?.heure || zurichClock()}));setShowReleve(true);}}>+ Nouveau relevé</button>}
-          {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>{setFormCtrl(f=>({...f, templateId: f.templateId || activeTpls[0]?.id || ''}));setShowControl(true);}}>+ Enregistrer contrôle</button>}
-          {activeTab==='tracabilite' && canWrite && <button style={hs.addBtn} onClick={()=>triggerCapture && triggerCapture()}>+ Prendre une photo</button>}
+          {activeTab==='releves'   && <button style={hs.addBtn} onClick={()=>{setFormRel(f=>({...f, zoneId: f.zoneId || activeZones[0]?.id || '', heure: f.heure || creneauProchain?.heure || zurichClock()}));setShowReleve(true);}}>Nouveau relevé</button>}
+          {activeTab==='controles' && <button style={hs.addBtn} onClick={()=>{setFormCtrl(f=>({...f, templateId: f.templateId || activeTpls[0]?.id || ''}));setShowControl(true);}}>Enregistrer un contrôle</button>}
+          {activeTab==='tracabilite' && canWrite && <button style={hs.addBtn} onClick={()=>triggerCapture && triggerCapture()}>Prendre une photo</button>}
           {activeTab==='config' && isConsultant && (
             <>
-              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>+ Ajouter zone</button>
-              <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>+ Ajouter contrôle</button>
+              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter une zone</button>
+              <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
             </>
           )}
           {/* Onglet relevés : choix de période (journalier / mensuel) avant génération.
@@ -771,7 +772,7 @@ const HACCP = ({ user, etablissement }) => {
       {activeTab==='controles' && (
         <div style={{display:'flex',flexDirection:'column',gap:12}} id="haccp-controls-print">
           <div style={hs.tableCard}>
-            <div style={hs.tableCardHeader}>Contrôles - {new Date(dateFilter+'T12:00:00').toLocaleDateString('fr-CH',{weekday:'long',day:'numeric',month:'long'})}</div>
+            <div style={hs.tableCardHeader}>Contrôles du {new Date(dateFilter+'T12:00:00').toLocaleDateString('fr-CH',{weekday:'long',day:'numeric',month:'long'})}</div>
             <div style={{padding:'12px 18px',display:'flex',flexDirection:'column',gap:8}}>
               {(activeTpls || []).map(tpl=>{
                 const done=todayControls.find(c=>c.templateId===tpl.id);
@@ -843,7 +844,7 @@ const HACCP = ({ user, etablissement }) => {
           {/* Banner */}
           <div style={{background:'var(--nav)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:220}}>
-              <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP - Réservé au consultant</div>
+              <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP, réservée au consultant</div>
               <div style={{color:'rgba(255,255,255,0.5)',fontSize:12,marginTop:3}}>Gérez les zones de contrôle et les contrôles d'hygiène de l'établissement. Ces paramètres s'appliquent à toute l'équipe.</div>
             </div>
           </div>
@@ -855,11 +856,11 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={hcfg.sectionTitle}>Créneaux de relevé</div>
                 <div style={hcfg.sectionSub}>
                   {creneaux.length === 0
-                    ? "Aucun créneau - l'heure est saisie librement à chaque relevé"
+                    ? "Aucun créneau : l'heure est saisie librement à chaque relevé"
                     : `${creneaux.length} créneau${creneaux.length>1?'x':''} configuré${creneaux.length>1?'s':''}, ${activeCreneaux.length} actif${activeCreneaux.length>1?'s':''}`}
                 </div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>+ Ajouter un créneau</button>
+              <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>Ajouter un créneau</button>
             </div>
 
             {creneaux.length === 0 ? (
@@ -867,7 +868,7 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.55,marginBottom:14}}>
                   Les heures de relevé ne sont pas les mêmes d'une maison à l'autre : un seul shift
                   qui démarre à 6h ne se relève pas comme un double service midi et soir. Définissez
-                  ici la grille horaire de l'établissement - elle pré-remplit l'heure à la saisie et
+                  ici la grille horaire de l'établissement : elle pré-remplit l'heure à la saisie et
                   affiche les tournées restantes sur le tableau de bord. Un relevé hors créneau
                   reste toujours possible.
                 </div>
@@ -915,7 +916,7 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={hcfg.sectionTitle}>Zones & équipements</div>
                 <div style={hcfg.sectionSub}>{zones.length} zone{zones.length>1?'s':''} configurée{zones.length>1?'s':''}, {activeZones.length} active{activeZones.length>1?'s':''}</div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>+ Ajouter une zone</button>
+              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter une zone</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {zones.map(z=>(
@@ -948,7 +949,7 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={hcfg.sectionTitle}>Contrôles d'hygiène</div>
                 <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''}, {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
               </div>
-              <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>+ Ajouter un contrôle</button>
+              <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {ctrlTpls.map(c=>(
@@ -981,7 +982,7 @@ const HACCP = ({ user, etablissement }) => {
       {showReleve&&(
         <div className="modal-sheet-overlay" style={hs.overlay} onClick={()=>setShowReleve(false)}>
           <div className="modal-sheet" style={hs.modal} onClick={e=>e.stopPropagation()}>
-            <div style={hs.modalHeader}><div style={hs.modalTitle}>Nouveau relevé de température</div><button style={hs.closeBtn} onClick={()=>setShowReleve(false)}>✕</button></div>
+            <div style={hs.modalHeader}><div style={hs.modalTitle}>Nouveau relevé de température</div><button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={()=>setShowReleve(false)}>×</button></div>
             <div style={hs.modalBody}>
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
                 <div style={hs.field}>
@@ -1017,7 +1018,7 @@ const HACCP = ({ user, etablissement }) => {
                     const zone=zones.find(z=>z.id===formRel.zoneId);
                     const ok=isConforme(zone,formRel.valeur);
                     return<div style={{marginTop:8,padding:'8px 12px',borderRadius:8,background:ok?'var(--success-bg)':'var(--danger-bg)',color:ok?'var(--success-text)':'var(--danger-strong)',fontSize:13,fontWeight:600,textAlign:'center'}}>
-                      {ok?`Conforme - plage autorisée : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`:`Hors plage - [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`}
+                      {ok?`Conforme, plage autorisée : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`:`Hors plage : [${zone.min??'-'} ; ${zone.max??'+∞'}]${zone.unite}`}
                     </div>;
                   })()}
                 </div>
@@ -1036,7 +1037,7 @@ const HACCP = ({ user, etablissement }) => {
       {showControl&&(
         <div className="modal-sheet-overlay" style={hs.overlay} onClick={()=>setShowControl(false)}>
           <div className="modal-sheet" style={hs.modal} onClick={e=>e.stopPropagation()}>
-            <div style={hs.modalHeader}><div style={hs.modalTitle}>Enregistrer un contrôle</div><button style={hs.closeBtn} onClick={()=>setShowControl(false)}>✕</button></div>
+            <div style={hs.modalHeader}><div style={hs.modalTitle}>Enregistrer un contrôle</div><button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={()=>setShowControl(false)}>×</button></div>
             <div style={hs.modalBody}>
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
                 <div style={hs.field}>
@@ -1081,7 +1082,7 @@ const HACCP = ({ user, etablissement }) => {
           <div className="modal-sheet" style={{...hs.modal, width: 460}} onClick={e=>e.stopPropagation()}>
             <div style={hs.modalHeader}>
               <div style={hs.modalTitle}>{exportRelevesMode==='print' ? 'Imprimer les relevés' : 'Exporter les relevés en PDF'}</div>
-              <button style={hs.closeBtn} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>×</button>
             </div>
             <div style={hs.modalBody}>
               <div style={{fontSize:12, color:'var(--text2)', marginBottom:14, lineHeight:1.5}}>
@@ -1117,10 +1118,10 @@ const HACCP = ({ user, etablissement }) => {
               <div>
                 <div style={hs.qrTitle}>Saisie rapide des relevés</div>
                 <div style={hs.qrSubtitle}>
-                  Saisissez les températures pour toutes les zones d'un coup. Les valeurs cibles sont pré-remplies - modifiez ce qui doit l'être, laissez vide pour ignorer.
+                  Saisissez les températures pour toutes les zones d'un coup. Les valeurs cibles sont pré-remplies : modifiez ce qui doit l'être, laissez vide pour ignorer.
                 </div>
               </div>
-              <button style={hs.qrCloseBtn} onClick={() => !quickSaving && setShowQuickReleves(false)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.qrCloseBtn} onClick={() => !quickSaving && setShowQuickReleves(false)}>×</button>
             </div>
 
             {/* Heure appliquée à TOUT le lot : la tournée choisie, ou une heure

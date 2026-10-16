@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn } from '../components/ui/index.jsx';
 
 class ModuleErrorBoundary extends React.Component {
   constructor(props) {
@@ -10,22 +11,20 @@ class ModuleErrorBoundary extends React.Component {
     return { error };
   }
 
+  // Le message brut part dans la console seulement : à l'écran, la brigade
+  // n'en tirerait rien.
+  componentDidCatch(error, info) {
+    console.error(`[SafeModule] ${this.props.name || 'module'}`, error, info?.componentStack);
+  }
+
   render() {
     if (this.state.error) {
       return (
         <section className="module-placeholder">
-          <div className="form-alert error">
-            Le module {this.props.name || 'courant'} a rencontre une erreur :{' '}
-            {this.state.error.message || String(this.state.error)}
+          <p>Ce module n'a pas pu s'afficher. Rechargez la page ; si cela se reproduit, prévenez votre consultant.</p>
+          <div>
+            <Btn variant="primary" onClick={() => window.location.reload()}>Recharger la page</Btn>
           </div>
-          <button
-            type="button"
-            className="ghost-button compact"
-            style={{ marginTop: 12 }}
-            onClick={() => window.location.reload()}
-          >
-            Recharger la page
-          </button>
         </section>
       );
     }

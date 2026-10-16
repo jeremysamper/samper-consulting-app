@@ -100,7 +100,7 @@ export default function EtablissementTransferModal({
               {sourceNom ? ` depuis « ${sourceNom} »` : ''}.
             </div>
           </div>
-          <button style={ts.closeBtn} onClick={() => onClose?.()} disabled={busy} title="Fermer">✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={ts.closeBtn} onClick={() => onClose?.()} disabled={busy} title="Fermer">×</button>
         </div>
 
         <div style={ts.body}>

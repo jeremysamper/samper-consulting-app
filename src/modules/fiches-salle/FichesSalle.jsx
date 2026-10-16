@@ -15,6 +15,7 @@ import {
 } from '../../utils/allergenes.js';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -259,7 +260,7 @@ const FichesSalle = ({ user, etablissement }) => {
         const savedWithCartes = { ...saved, carteIds: f.carteIds || [] };
         setFiches(prev => prev.find(x => x.id === savedWithCartes.id) ? prev.map(x => x.id === savedWithCartes.id ? savedWithCartes : x) : [...prev, savedWithCartes]);
         if (selected?.id === savedWithCartes.id) setSelected(savedWithCartes);
-      } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'fiches salle'), 'error'); return; }
     } else {
       setFiches(prev => prev.find(x=>x.id===f.id) ? prev.map(x=>x.id===f.id?f:x) : [...prev,f]);
       if (selected?.id === f.id) setSelected(f);
@@ -271,7 +272,7 @@ const FichesSalle = ({ user, etablissement }) => {
     if (!confirmLegacy('Supprimer cette fiche salle ?')) return;
     if (legacySB) {
       try { await legacySB.db.deleteFicheSalle(id); }
-      catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy(messageErreur(err, 'fiches salle'), 'error'); return; }
     }
     setFiches(prev => prev.filter(f => f.id !== id));
     if (selected?.id === id) setSelected(null);
@@ -392,7 +393,7 @@ const FichesSalle = ({ user, etablissement }) => {
       + (carteActive
         ? `Une fiche par plat fini de « ${carteActive.nom} », rattachée à cette carte. `
         : 'Une fiche par plat fini, rattachée aux cartes de son plat. ')
-      + `Cela effectue ${targets.length} rédaction(s) automatique(s). Les fiches sont créées en statut « Brouillon » - à relire avant publication.`
+      + `Cela effectue ${targets.length} rédaction(s) automatique(s). Les fiches sont créées en statut « Brouillon », à relire avant publication.`
     )) return;
     bulkCancelRef.current = false;
     setBulkProgress({ done: 0, total: targets.length, created: 0 });
@@ -459,7 +460,7 @@ const FichesSalle = ({ user, etablissement }) => {
         setBulkProgress({ done, total: targets.length, created });
       }
     } catch (err) {
-      notifyLegacy('Génération interrompue : ' + (err.message || err), 'error');
+      notifyLegacy('Génération interrompue. ' + messageErreur(err, 'fiches salle'), 'error');
     }
     setBulkProgress(null);
     notifyLegacy(
@@ -502,7 +503,7 @@ const FichesSalle = ({ user, etablissement }) => {
           /* L'action principale d'abord ; générer (consultant) et sélectionner
              rangés dans « Gérer ». */
           <div className="module-actions">
-            <button style={fss.addBtn} onClick={()=>openEdit(null)}>+ Nouvelle fiche</button>
+            <button style={fss.addBtn} onClick={()=>openEdit(null)}>Nouvelle fiche</button>
             <BoutonActions
               id="fiches-gerer"
               label="Gérer"
@@ -559,7 +560,7 @@ const FichesSalle = ({ user, etablissement }) => {
         <div style={fss.serverBanner}>
           <div>
             <div style={{fontWeight:700,fontSize:14,color:'var(--text)'}}>Fiches techniques salle</div>
-            <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>Descriptions plats, allergènes et accords mets & vins - pour vous aider à conseiller les clients avec assurance.</div>
+            <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>Descriptions plats, allergènes et accords mets & vins, pour vous aider à conseiller les clients avec assurance.</div>
           </div>
         </div>
       )}
@@ -656,7 +657,7 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
   return (
     <div style={fss.detailRoot}>
       <div style={fss.detailHeader}>
-        <button style={fss.backBtn} onClick={onBack}>← Retour</button>
+        <button style={fss.backBtn} onClick={onBack}>Retour</button>
         <div style={{flex:1}}>
           <div style={fss.detailCat}>{fiche.categorie}</div>
           <div style={fss.detailTitre}>{fiche.nom}</div>
@@ -806,7 +807,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
       <div className="modal-full" style={{...fss.modal,width:620}} onClick={e=>e.stopPropagation()}>
         <div style={fss.modalHeader}>
           <div style={fss.modalTitle}>{fiche?.id?.startsWith('fs') && fiche?.nom?'Modifier la fiche':'Nouvelle fiche salle'}</div>
-          <button style={fss.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={fss.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={fss.modalBody}>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -871,7 +872,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
 
             <div style={fss.field}><label style={fss.fLabel}>Description pour l'équipe salle *</label><textarea style={{...fss.fInput,minHeight:80,resize:'vertical'}} value={fiche?.descriptionService||''} onChange={e=>setFiche(f=>({...f,descriptionService:e.target.value}))}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <div style={fss.field}><label style={fss.fLabel}>Température de service</label><input style={fss.fInput} placeholder="ex. Chaud - servir immédiatement" value={fiche?.temperatureService||''} onChange={e=>setFiche(f=>({...f,temperatureService:e.target.value}))}/></div>
+              <div style={fss.field}><label style={fss.fLabel}>Température de service</label><input style={fss.fInput} placeholder="ex. Chaud, servir immédiatement" value={fiche?.temperatureService||''} onChange={e=>setFiche(f=>({...f,temperatureService:e.target.value}))}/></div>
               <div style={fss.field}><label style={fss.fLabel}>Temps préparation</label><input style={fss.fInput} placeholder="ex. 12 min" value={fiche?.tempsPreparation||''} onChange={e=>setFiche(f=>({...f,tempsPreparation:e.target.value}))}/></div>
             </div>
             <div style={fss.field}><label style={fss.fLabel}>Notes de dressage / service en salle</label><textarea style={{...fss.fInput,minHeight:56,resize:'vertical'}} placeholder="À compléter manuellement" value={fiche?.dressageNotes||''} onChange={e=>setFiche(f=>({...f,dressageNotes:e.target.value}))}/></div>
@@ -919,7 +920,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
               {inconnus.length > 0 && (
                 <div style={{marginTop:10,padding:'8px 10px',background:'var(--warning-bg-soft)',border:'1px solid var(--warning-bd)',borderRadius:8}}>
                   <div style={{fontSize:11,color:'var(--warning-text)',fontWeight:700,marginBottom:6}}>
-                    {inconnus.length} valeur{inconnus.length>1?'s':''} hors liste (import ancien) - à convertir ou retirer
+                    {inconnus.length} valeur{inconnus.length>1?'s':''} hors liste (import ancien), à convertir ou à retirer
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
                     {inconnus.map(v=>{
@@ -933,14 +934,15 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                               onClick={()=>corrigerInconnu(v)}
                               title={`Remplacer par ${ids.map(labelAllergene).join(' + ')}`}
                               style={{border:'none',background:'none',color:'var(--warning-text)',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
-                            >→ {ids.map(labelAllergene).join(' + ')}</button>
+                            >Remplacer par {ids.map(labelAllergene).join(', ')}</button>
                           )}
                           <button
                             className="touch-target"
                             onClick={()=>retirerInconnu(v)}
                             title="Retirer cette valeur"
+                            aria-label={`Retirer ${v}`}
                             style={{border:'none',background:'none',color:'var(--text2)',fontSize:13,cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
-                          >✕</button>
+                          >×</button>
                         </span>
                       );
                     })}
@@ -967,7 +969,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                     <span style={{fontSize:12,color:'var(--text2)'}}>{accordLabel(a.type)}</span>
                     <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
-                    <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)}>✕</button>
+                    <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)} aria-label="Retirer l'accord">×</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'130px 1fr 1fr',gap:8,marginTop:6}}>
                     {/* Changer de famille sans devoir supprimer puis recréer. */}
@@ -983,10 +985,10 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
 
             {/* Accords généraux - familles de boissons recommandées */}
             <div style={fss.field}>
-              <label style={fss.fLabel}>Accords généraux - familles recommandées</label>
+              <label style={fss.fLabel}>Accords généraux : familles recommandées</label>
               <textarea
                 style={{...fss.fInput,minHeight:56,resize:'vertical'}}
-                placeholder={'Une famille par ligne - ex. :\nVin rouge corsé\nVin blanc sec\nVin blanc moelleux'}
+                placeholder={'Une famille par ligne, par exemple :\nVin rouge corsé\nVin blanc sec\nVin blanc moelleux'}
                 value={(fiche?.accordsGeneraux||[]).join('\n')}
                 onChange={e=>setFiche(f=>({...f,accordsGeneraux:e.target.value.split('\n')}))}
               />
@@ -1021,7 +1023,7 @@ const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
       <div className="modal-sheet" style={{ ...fss.modal, width: 460 }} onClick={e => e.stopPropagation()}>
         <div style={fss.modalHeader}>
           <div style={fss.modalTitle}>Attribuer {count} fiche{count > 1 ? 's' : ''}</div>
-          <button style={fss.closeBtn} onClick={fermer}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={fss.closeBtn} onClick={fermer}>×</button>
         </div>
         <div style={fss.modalBody}>
           <div style={{ ...fss.field, marginBottom: 16 }}>

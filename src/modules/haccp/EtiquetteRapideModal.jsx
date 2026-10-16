@@ -104,7 +104,7 @@ const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
             <div style={hs.modalTitle}>Étiquette DLC</div>
             <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2 }}>{recette.nom}</div>
           </div>
-          <button type="button" style={hs.closeBtn} onClick={onClose} aria-label="Fermer">✕</button>
+          <button type="button" className="ui-fermer" style={hs.closeBtn} onClick={onClose} aria-label="Fermer">×</button>
         </div>
 
         <div style={{ ...hs.modalBody, display: 'flex', flexDirection: 'column', gap: 16 }}>

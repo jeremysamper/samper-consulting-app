@@ -3,6 +3,7 @@ import { dbService } from '../../services/dbService.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { TYPES_DOCUMENT, devinerTypeDocument, trouverDoublon } from './achatsLogic.js';
 import { estPdfFichier, preparerPieces } from './achatsPieces.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Import des factures et bons : on dépose d'un coup les PDF reçus par mail ou
@@ -115,7 +116,7 @@ export default function ImportDocumentsAchats({
           + (pieceGardee ? '' : estPdfFichier(travail.fichiers[0]) ? ', PDF non conservé' : ', photo non conservée'),
       });
     } catch (err) {
-      majTravail(travail.key, { statut: 'erreur', message: err.message || String(err) });
+      majTravail(travail.key, { statut: 'erreur', message: messageErreur(err, 'import des achats') });
     }
   };
 

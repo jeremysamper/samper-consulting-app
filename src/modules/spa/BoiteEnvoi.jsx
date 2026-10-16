@@ -279,7 +279,9 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
           </ol>
         )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-          {Object.entries(FOURNISSEURS).map(([id, f]) => {
+          {/* Une messagerie dont l'accès n'est pas encore créé n'est pas
+              proposée : un bouton grisé qui annonce « bientôt » n'aide personne. */}
+          {Object.entries(FOURNISSEURS).filter(([id]) => connexions[id]).map(([id, f]) => {
             const dispo = Boolean(connexions[id]);
             return (
               <button
@@ -372,21 +374,18 @@ export default function BoiteEnvoi({ etablissementId, etat, erreurService, onRec
             ? 'En attendant, les e-mails partent d\'une adresse de secours, à votre nom.'
             : 'Tant qu\'aucune adresse n\'est connectée, aucun e-mail ne part.')}
         </div>
-        {(aucuneConnexion || !connexions.google || !connexions.microsoft) && (
+        {consultant && (aucuneConnexion || !connexions.google || !connexions.microsoft) && (
           <div style={{ ...st.encartInfo, marginTop: 12, fontSize: 13 }}>
-            {consultant ? (
-              <span>
-                Pas encore activé : les accès{' '}
-                {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([, f]) => f.editeur).join(' et ')}
-                {' '}sont à créer une seule fois, pour {txt.tous}.{smtpDispo ? ' Infomaniak fonctionne déjà.' : ''}
-              </span>
-            ) : (
-              <span>
-                {aucuneConnexion
-                  ? (smtpDispo ? 'Gmail et Outlook : bientôt disponibles. Infomaniak fonctionne déjà.' : 'Bientôt disponible.')
-                  : 'L\'autre bouton sera bientôt disponible.'}
-              </span>
-            )}
+            <span>
+              Pas encore activé : les accès{' '}
+              {Object.entries(FOURNISSEURS).filter(([id]) => !connexions[id]).map(([, f]) => f.editeur).join(' et ')}
+              {' '}sont à créer une seule fois, pour {txt.tous}.{smtpDispo ? ' Infomaniak fonctionne déjà.' : ''}
+            </span>
+          </div>
+        )}
+        {!consultant && aucuneConnexion && !smtpDispo && (
+          <div style={{ ...st.encartInfo, marginTop: 12, fontSize: 13 }}>
+            <span>La connexion d'une adresse n'est pas encore possible ici. Votre consultant peut l'activer.</span>
           </div>
         )}
       </div>

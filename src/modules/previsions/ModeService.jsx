@@ -162,7 +162,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
               fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
             }}
           >
-            + Passage
+            Passage
           </button>
         )}
         {canEdit && (
@@ -175,7 +175,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
               fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
             }}
           >
-            + Réservation
+            Nouvelle réservation
           </button>
         )}
         <button

@@ -1416,7 +1416,8 @@ export function installLegacySupabase() {
       const payload = {
         id: carte.id || ('carte-' + Date.now()),
         etablissement_id: carte.etablissementId,
-        nom: carte.nom || 'Carte principale',
+        // Nom nettoyé : un nom fait d'espaces s'affichait comme un onglet vide.
+        nom: String(carte.nom ?? '').trim() || 'Carte principale',
         date_debut: carte.dateDebut || null,
         date_fin: carte.dateFin || null,
         plats: carte.plats || [],

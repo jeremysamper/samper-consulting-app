@@ -47,6 +47,7 @@ import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
 import AlertRules from './AlertRules.jsx';
 import ConsultantOverview from './ConsultantOverview.jsx';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 const CONSULTANT_TOOLS_TABS = ['vue', 'recettes', 'creation_carte', 'simulation', 'roles', 'etablissements', 'factures', 'alertes'];
 // Dernier onglet visité, restauré à l'ouverture du module (préférence UI locale).
@@ -443,7 +444,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     } catch (err) {
       console.error('[upsertRecette]', err);
       setSaveStatus('error');
-      setSaveError(err.message || 'Erreur sync');
+      setSaveError(messageErreur(err, 'outils consultant', 'Synchronisation impossible.'));
       // brouillon localStorage conservé → retry au retour réseau
     }
   }, [legacySB]);
@@ -538,7 +539,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setSelectedId(newRec.id);
     if (legacySB) {
       try { await legacySB.db.upsertRecette(newRec); }
-      catch (err) { notifyLegacy('Erreur création : ' + err.message, 'error'); }
+      catch (err) { notifyLegacy('Création impossible. ' + messageErreur(err, 'outils consultant'), 'error'); }
     }
   };
 
@@ -559,7 +560,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     setSelectedId(copy.id);
     if (legacySB) {
       try { await legacySB.db.upsertRecette(copy); }
-      catch (err) { notifyLegacy('Erreur duplication : ' + err.message, 'error'); }
+      catch (err) { notifyLegacy('Duplication impossible. ' + messageErreur(err, 'outils consultant'), 'error'); }
     }
   };
 
@@ -568,7 +569,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
     const idToDelete = selectedId;
     if (legacySB) {
       try { await legacySB.db.deleteRecette(idToDelete); }
-      catch (err) { notifyLegacy('Erreur suppression : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy('Suppression impossible. ' + messageErreur(err, 'outils consultant'), 'error'); return; }
     }
     const next = recettes.filter(r => r.id !== idToDelete);
     setRecettes(next);
@@ -610,7 +611,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         notifyLegacy(
           colonneAbsente
             ? 'Masquage de recette indisponible : la mise à jour de la base n\'a pas encore été appliquée.'
-            : 'Erreur masquage de recette : ' + (err.message || err),
+            : 'Recette non masquée. ' + messageErreur(err, 'outils consultant'),
           'error',
         );
         return null;
@@ -715,7 +716,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       await exportRowsToXlsx(`recettes-${new Date().toISOString().slice(0, 10)}.xlsx`, 'Recettes', headers, data, [30, 14, 12, 9, 16, 18, 18, 13, 14, 11]);
       notifyLegacy(`${rows.length} recette(s) exportée(s) en Excel.`, 'success');
     } catch (err) {
-      notifyLegacy('Erreur export : ' + err.message, 'error');
+      notifyLegacy('Export impossible. ' + messageErreur(err, 'outils consultant'), 'error');
     }
     setRecBulkBusy(false);
   };
@@ -959,7 +960,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
     if (legacySB) {
       try { await legacySB.db.upsertCarte(carteEtab); }
-      catch (err) { notifyLegacy('Erreur sync carte : ' + err.message, 'error'); return; }
+      catch (err) { notifyLegacy('Synchronisation de la carte impossible. ' + messageErreur(err, 'outils consultant'), 'error'); return; }
     } else {
       const cartes = readLegacyStorage('sc_cartes', demoData.cartes);
       const idx = cartes.findIndex(c => c.id === carteEtab.id);
@@ -1095,7 +1096,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       if (incertains.length) msg += ` À vérifier : ${incertains.map(labelOf).join(', ')}.`;
       notifyLegacy(msg, added.length ? 'success' : 'info');
     } catch (err) {
-      notifyLegacy('Détection impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Détection impossible. ' + messageErreur(err, 'outils consultant'), 'error');
     } finally {
       setAllergenAiBusy(false);
     }
@@ -1140,7 +1141,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         setBulkAllergenProgress({ done, total: targets.length, added: totalAdded });
       }
     } catch (err) {
-      notifyLegacy('Détection groupée interrompue : ' + (err.message || err), 'error');
+      notifyLegacy('Détection groupée interrompue. ' + messageErreur(err, 'outils consultant'), 'error');
     }
     setBulkAllergenProgress(null);
     notifyLegacy(
@@ -1167,7 +1168,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         setHaccpResult(res);
       }
     } catch (err) {
-      notifyLegacy('Génération HACCP impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Génération HACCP impossible. ' + messageErreur(err, 'outils consultant'), 'error');
     } finally {
       setHaccpAiBusy(false);
     }
@@ -1176,7 +1177,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Insère l'analyse HACCP générée dans les notes consultant de la recette.
   const insererHaccpDansNotes = () => {
     if (!haccpResult || !selected) return;
-    const lines = ['── Analyse HACCP (générée automatiquement - à valider par un responsable) ──'];
+    const lines = ['── Analyse HACCP (générée automatiquement, à valider par un responsable) ──'];
     (haccpResult.points || []).forEach(p => {
       lines.push(`• ${p.etape || '-'} - ${p.danger || '-'} [${p.type || '-'}]${p.ccp ? ' (CCP)' : ''}`);
       if (p.mesure) lines.push(`  Maîtrise : ${p.mesure}`);
@@ -1204,12 +1205,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       const { suggestRecipe } = await import('../../services/aiService.js');
       const res = await suggestRecipe(selected, (catalogue || []).map(p => p.nom));
       if (!res.ingredients.length && !res.etapes.length) {
-        notifyLegacy('Aucune suggestion - la recette semble complète.', 'info');
+        notifyLegacy('Aucune suggestion : la recette semble complète.', 'info');
       } else {
         setSuggestResult(res);
       }
     } catch (err) {
-      notifyLegacy('Suggestions impossibles : ' + (err.message || err), 'error');
+      notifyLegacy('Suggestions impossibles. ' + messageErreur(err, 'outils consultant'), 'error');
     } finally {
       setSuggestAiBusy(false);
     }
@@ -1445,7 +1446,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <BoutonActions
                   id="recettes-ajouter"
-                  label="+ Ajouter"
+                  label="Ajouter"
                   style={{ ...cts.newBtn, flex: 1 }}
                   titre="Ajouter"
                   sections={[{ items: [
@@ -1535,7 +1536,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 setPlats(prev => prev.map(p => p.id === plat.id
                   ? { ...p, carteIds: (p.carteIds || []).filter(id => id !== carte.id) }
                   : p));
-              } catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+              } catch (err) { notifyLegacy(messageErreur(err, 'outils consultant'), 'error'); }
             };
 
             const renderPlatBlock = (plat, folder) => {
@@ -1685,7 +1686,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
         <div style={cts.emptyState}>
           <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Aucune recette sélectionnée</div>
           <div style={{ fontSize: 13, color: 'var(--text2)' }}>Créez une nouvelle recette ou sélectionnez-en une dans la liste.</div>
-          <button style={cts.newBtn} onClick={createNew}>+ Nouvelle recette</button>
+          <button style={cts.newBtn} onClick={createNew}>Nouvelle recette</button>
         </div>
       ) : (
         <div style={cts.rightCol}>
@@ -1781,12 +1782,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(760px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Analyse HACCP - {selected.nom}</div>
-                  <button onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Analyse HACCP : {selected.nom}</div>
+                  <button type="button" className="ui-fermer" aria-label="Fermer" onClick={() => setHaccpResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
                   <div style={{ fontSize: 11, color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 6, padding: '8px 12px', marginBottom: 12 }}>
-                    Généré automatiquement - à valider par un responsable avant utilisation.
+                    Généré automatiquement, à valider par un responsable avant utilisation.
                   </div>
                   {(haccpResult.points || []).length === 0 && (
                     <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucun point de maîtrise identifié.</div>
@@ -1831,31 +1832,31 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             >
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(680px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Suggestions - {selected.nom}</div>
-                  <button onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>Suggestions pour {selected.nom}</div>
+                  <button type="button" className="ui-fermer" aria-label="Fermer" onClick={() => setSuggestResult(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
                 </div>
                 <div style={{ padding: 18, overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)' }}>Ingrédients suggérés ({suggestResult.ingredients.length})</div>
-                    {suggestResult.ingredients.length > 0 && <button style={cts.smallBtn} onClick={ajouterTousIngredientsSuggere}>+ Tout ajouter</button>}
+                    {suggestResult.ingredients.length > 0 && <button style={cts.smallBtn} onClick={ajouterTousIngredientsSuggere}>Tout ajouter</button>}
                   </div>
                   {suggestResult.ingredients.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 10 }}>Aucune suggestion d'ingrédient.</div>}
                   {suggestResult.ingredients.map((ing, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>{ing.nom}</span>
                       <span style={{ fontSize: 12, color: 'var(--text2)' }}>{ing.quantite || ''} {ing.unite}</span>
-                      <button style={cts.smallBtn} onClick={() => ajouterIngredientSuggere(i)}>+ Ajouter</button>
+                      <button style={cts.smallBtn} onClick={() => ajouterIngredientSuggere(i)}>Ajouter</button>
                     </div>
                   ))}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '14px 0 6px' }}>
                     <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text2)' }}>Étapes suggérées ({suggestResult.etapes.length})</div>
-                    {suggestResult.etapes.length > 0 && <button style={cts.smallBtn} onClick={ajouterToutesEtapesSuggere}>+ Tout ajouter</button>}
+                    {suggestResult.etapes.length > 0 && <button style={cts.smallBtn} onClick={ajouterToutesEtapesSuggere}>Tout ajouter</button>}
                   </div>
                   {suggestResult.etapes.length === 0 && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucune suggestion d'étape.</div>}
                   {suggestResult.etapes.map((e, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>{e}</span>
-                      <button style={cts.smallBtn} onClick={() => ajouterEtapeSuggere(i)}>+ Ajouter</button>
+                      <button style={cts.smallBtn} onClick={() => ajouterEtapeSuggere(i)}>Ajouter</button>
                     </div>
                   ))}
                 </div>
@@ -1876,7 +1877,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   try {
                     const { url } = await legacySB.db.uploadRecettePhoto({ etabId, type: 'recette', id: selected.id, file });
                     updateSelected({ photoUrl: url });
-                  } catch (err) { notifyLegacy('Erreur upload : ' + err.message, 'error'); }
+                  } catch (err) { notifyLegacy('Envoi du fichier impossible. ' + messageErreur(err, 'outils consultant'), 'error'); }
                 }}
                 onRemove={() => updateSelected({ photoUrl: null })}
               />
@@ -2015,7 +2016,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           fontFamily: 'var(--font)'
                         }}
                       >
-                        {active ? '✓ ' : '+ '}{a.label}
+                        {a.label}
                       </button>
                     );
                   })}
@@ -2035,16 +2036,17 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                               <button
                                 className="touch-target"
                                 onClick={() => corrigerAllergeneInconnu(v)}
-                                title={`Remplacer par ${ids.map(labelAllergene).join(' + ')}`}
+                                title={`Remplacer par ${ids.map(labelAllergene).join(', ')}`}
                                 style={{ border: 'none', background: 'none', color: 'var(--warning-text)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' }}
-                              >→ {ids.map(labelAllergene).join(' + ')}</button>
+                              >Remplacer par {ids.map(labelAllergene).join(', ')}</button>
                             )}
                             <button
                               className="touch-target"
                               onClick={() => retirerAllergeneInconnu(v)}
                               title="Retirer cette valeur"
+                              aria-label={`Retirer ${v}`}
                               style={{ border: 'none', background: 'none', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' }}
-                            >✕</button>
+                            >×</button>
                           </span>
                         );
                       })}
@@ -2066,7 +2068,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         Depuis catalogue
                       </button>
                     )}
-                    <button style={cts.smallBtn} onClick={addIngredient}>+ Ingrédient</button>
+                    <button style={cts.smallBtn} onClick={addIngredient}>Ajouter un ingrédient</button>
                   </div>
                 </div>
 
@@ -2153,7 +2155,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   {(selected.ingredients || []).length === 0 && (
                     <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' }}>
-                      Aucun ingrédient. Cliquez sur "+ Ingrédient" pour commencer.
+                      Aucun ingrédient. Cliquez sur « Ajouter un ingrédient » pour commencer.
                     </div>
                   )}
                   {(selected.ingredients || []).map((ing, idx) => {
@@ -2310,7 +2312,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
                         {((Number(ing.quantite) || 0) * prixInfo.prix).toFixed(2)}
                       </span>
-                      <button onClick={() => removeIngredient(idx)} style={cts.deleteLineBtn} title="Supprimer">✕</button>
+                      <button type="button" onClick={() => removeIngredient(idx)} style={cts.deleteLineBtn} title="Supprimer" aria-label="Supprimer l'ingrédient">×</button>
                     </div>
                     );
                   })}
@@ -2321,12 +2323,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               <div style={{...cts.card, gridColumn: '1/-1'}}>
                 <div style={{...cts.cardTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <span>Étapes de préparation ({selected.etapes.length})</span>
-                  <button style={cts.smallBtn} onClick={addEtape}>+ Étape</button>
+                  <button style={cts.smallBtn} onClick={addEtape}>Ajouter une étape</button>
                 </div>
                 <div style={{padding: 14}}>
                   {selected.etapes.length === 0 && (
                     <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' }}>
-                      Aucune étape. Cliquez sur "+ Étape" pour détailler la préparation.
+                      Aucune étape. Cliquez sur « Ajouter une étape » pour détailler la préparation.
                     </div>
                   )}
                   {(selected.etapes || []).map((etape, idx) => (
@@ -2344,7 +2346,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         <button onClick={() => moveEtape(idx, -1)} disabled={idx === 0} style={cts.moveBtn} title="Monter">▲</button>
                         <button onClick={() => moveEtape(idx, 1)} disabled={idx === selected.etapes.length - 1} style={cts.moveBtn} title="Descendre">▼</button>
                       </div>
-                      <button onClick={() => removeEtape(idx)} style={cts.deleteLineBtn} title="Supprimer">✕</button>
+                      <button type="button" onClick={() => removeEtape(idx)} style={cts.deleteLineBtn} title="Supprimer" aria-label="Supprimer l'étape">×</button>
                     </div>
                   ))}
                 </div>
@@ -2470,7 +2472,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             setShowPlatForm(false);
             setEditPlat(null);
           } catch (err) {
-            notifyLegacy('Erreur : ' + err.message, 'error');
+            notifyLegacy(messageErreur(err, 'outils consultant'), 'error');
           }
         };
         const deletePlat = async () => {
@@ -2480,7 +2482,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             await legacySB.db.deletePlat(p.id);
             setShowPlatForm(false);
             setEditPlat(null);
-          } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+          } catch (err) { notifyLegacy(messageErreur(err, 'outils consultant'), 'error'); }
         };
         return (
           <div className="modal-full-overlay" style={cts.overlay} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>
@@ -2489,7 +2491,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>
                   {p.id ? 'Modifier le plat' : 'Nouveau plat'}
                 </div>
-                <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>✕</button>
+                <button type="button" className="ui-fermer" aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => { setShowPlatForm(false); setEditPlat(null); }}>×</button>
               </div>
               <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -2502,7 +2504,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       try {
                         const { url } = await legacySB.db.uploadRecettePhoto({ etabId, type: 'plat', id: tempId, file });
                         setP({ photoUrl: url });
-                      } catch (err) { notifyLegacy('Erreur upload : ' + err.message, 'error'); }
+                      } catch (err) { notifyLegacy('Envoi du fichier impossible. ' + messageErreur(err, 'outils consultant'), 'error'); }
                     }}
                     onRemove={() => setP({ photoUrl: null })}
                   />
@@ -2708,7 +2710,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       : 'Cliquez sur un produit pour remplacer cet ingrédient'}
                   </div>
                 </div>
-                <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => setCatalogPicker(null)}>✕</button>
+                <button type="button" className="ui-fermer" aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }} onClick={() => setCatalogPicker(null)}>×</button>
               </div>
 
               {/* Filtres */}

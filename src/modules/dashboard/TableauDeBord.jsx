@@ -41,6 +41,7 @@ import MotConsultant from './MotConsultant.jsx';
 import AFaire from './AFaire.jsx';
 import ASavoir from './ASavoir.jsx';
 import ChiffresGestion from './ChiffresGestion.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
 // retour sur l'app. Le jour suit : passé minuit, tout se relit sur le nouveau.
@@ -123,8 +124,9 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       }
     } catch (err) {
       d.remplacerShift(shift);
-      setErreurPointage(`Pointage refusé : ${err.message}`);
-      notify(`Pointage refusé : ${err.message}`, 'error');
+      const refus = `Pointage refusé. ${messageErreur(err, 'pointage')}`;
+      setErreurPointage(refus);
+      notify(refus, 'error');
     } finally {
       setEnCours(null);
     }
@@ -162,8 +164,9 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       }
     } catch (err) {
       d.retirerShift(provisoire.id);
-      setErreurPointage(`Pointage refusé : ${err.message}`);
-      notify(`Pointage refusé : ${err.message}`, 'error');
+      const refus = `Pointage refusé. ${messageErreur(err, 'pointage')}`;
+      setErreurPointage(refus);
+      notify(refus, 'error');
     } finally {
       setEnCours(null);
     }
@@ -178,7 +181,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       notify(texte ? 'Message publié pour toute l\'équipe.' : 'Message retiré.', 'success');
       return true;
     } catch (err) {
-      notify(`Le message n'a pas pu être publié : ${err.message}`, 'error');
+      notify(`Le message n'a pas pu être publié. ${messageErreur(err, 'tableau de bord')}`, 'error');
       return false;
     }
   }
@@ -197,8 +200,14 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const chiffres = chiffresGestion({ pertes: d.pertes, shifts: d.shifts, couverts: d.couverts, aujourdhui });
   const derniers = derniersParPerimetre(d.inventaires || []);
   const plusAncien = derniers.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))[0];
+  // Stock à zéro ou dernier comptage de plus de 30 jours : la valeur ne dit
+  // plus rien du stock réel, la tuile l'écrit au lieu d'afficher « CHF 0 ».
+  const valeurStock = valeurStockConsolidee(d.inventaires || []);
+  const plusRecent = derniers.reduce((max, inv) => (String(inv.date || '') > max ? String(inv.date) : max), '');
+  const ageStock = plusRecent ? (Date.parse(`${aujourdhui}T12:00:00`) - Date.parse(`${plusRecent}T12:00:00`)) / 86400000 : Infinity;
   const stock = {
-    valeur: valeurStockConsolidee(d.inventaires || []),
+    valeur: valeurStock,
+    recent: valeurStock > 0 && ageStock <= 30,
     detail: !plusAncien ? 'Aucun inventaire'
       : derniers.length > 1 ? `${derniers.length} zones, la plus ancienne au ${new Date(`${plusAncien.date}T12:00:00`).toLocaleDateString('fr-CH')}`
         : `Au ${new Date(`${plusAncien.date}T12:00:00`).toLocaleDateString('fr-CH')}`,
@@ -287,7 +296,7 @@ export function EnTete({ date, salutation, prenom, resume, onAssistant }) {
   return (
     <header style={s.entete}>
       <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-        <h1 style={s.titre}>{date}</h1>
+        <h2 style={s.titre}>{date}</h2>
         <p style={s.resume}>
           <span style={{ color: 'var(--text)' }}>{salutation}{prenom ? ` ${prenom}` : ''}.</span>
           {resume ? ` ${resume}` : ''}

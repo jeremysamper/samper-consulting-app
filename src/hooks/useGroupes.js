@@ -31,7 +31,7 @@ const JOURS_PASSES_PAR_DEFAUT = 62;
 const MESSAGES_ERREUR = {
   '23503': 'Établissement introuvable.',
   '23514': 'Une des valeurs saisies est refusée (couverts, type ou numéro de menu).',
-  '42501': "Tu n'as pas les droits pour cette action.",
+  '42501': "Vous n'avez pas les droits pour cette action.",
 };
 
 function messageErreur(error) {
@@ -41,7 +41,7 @@ function messageErreur(error) {
     return "Le module Groupes n'est pas encore activé sur la base de données.";
   }
   return MESSAGES_ERREUR[String(error.code || '')]
-    || 'Erreur technique. Réessaie ou contacte le support.';
+    || 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 export function mapGroupeFromDB(row) {
@@ -269,7 +269,7 @@ export function useGroupes(etablissementId) {
         .select('id');
       if (error) return { error: messageErreur(error) };
       if (!data || !data.length) {
-        return { error: "Suppression impossible : ce groupe n'est plus annulé, a déjà été supprimé, ou ton rôle ne le permet pas." };
+        return { error: "Suppression impossible : ce groupe n'est plus annulé, a déjà été supprimé, ou votre rôle ne le permet pas." };
       }
       setGroupes((liste) => liste.filter((g) => g.id !== id));
       return { error: null };

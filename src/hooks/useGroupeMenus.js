@@ -216,10 +216,10 @@ export function useGroupeMenus(etablissementId) {
       if (error) {
         console.error('[useGroupeMenus] enregistrer', error);
         const message = error.code === '42501'
-          ? "Tu n'as pas les droits pour modifier les menus de groupe."
+          ? "Vous n'avez pas les droits pour modifier les menus de groupe."
           : RELATION_ABSENTE.has(error.code)
             ? "Le module Groupes n'est pas encore activé sur la base de données."
-            : 'Enregistrement du menu impossible. Réessaie.';
+            : 'Enregistrement du menu impossible. Réessayez.';
         return { data: null, error: message };
       }
       const saved = mapMenuFromDB(data);
@@ -253,7 +253,7 @@ export function useGroupeMenus(etablissementId) {
         .select('id');
       if (error || !data?.length) {
         if (error) console.error('[useGroupeMenus] supprimer', error);
-        return { error: "Suppression du menu impossible : ton rôle ne le permet pas ou le menu n'existe plus." };
+        return { error: "Suppression du menu impossible : votre rôle ne le permet pas ou le menu n'existe plus." };
       }
       setMenus((liste) => liste.filter((m) => m.id !== menu.id));
       return { error: null };

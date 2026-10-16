@@ -6,11 +6,13 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { Btn } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -92,7 +94,7 @@ const SOP = ({ user, etablissement }) => {
       });
       notifyLegacy('SOP ajoutée à la bibliothèque de templates.', 'success');
     } catch (err) {
-      notifyLegacy('Erreur : ' + err.message, 'error');
+      notifyLegacy(messageErreur(err, 'sop'), 'error');
     }
   };
 
@@ -124,7 +126,6 @@ const SOP = ({ user, etablissement }) => {
       {/* Header */}
       <div style={ss.header}>
         <div>
-          <h1 style={ss.title}>SOPs & Checklists</h1>
           <div style={ss.subtitle}>
             {sops.filter(s => s.actif).length} procédure{sops.filter(s => s.actif).length > 1 ? 's' : ''}
             {', '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
@@ -133,7 +134,7 @@ const SOP = ({ user, etablissement }) => {
         <div className="module-actions">
           {canManage && (
             <>
-              <button style={ss.primaryBtn} onClick={() => setSelectedSop({})}>+ Nouvelle SOP</button>
+              <button style={ss.primaryBtn} onClick={() => setSelectedSop({})}>Nouvelle SOP</button>
               <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>Templates</button>
             </>
           )}
@@ -167,7 +168,7 @@ const SOP = ({ user, etablissement }) => {
                 sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
               });
               setRunningExec(exec);
-            } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+            } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
           }}
         />
       ) : (
@@ -364,7 +365,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             {sops.length === 0 ? 'Aucune procédure' : 'Aucun résultat'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-            {sops.length === 0 ? 'Créez une SOP avec "+ Nouvelle SOP", ou importez-en une depuis "Templates".' : 'Modifiez vos filtres.'}
+            {sops.length === 0 ? 'Créez une SOP avec « Nouvelle SOP », ou importez-en une depuis « Templates ».' : 'Modifiez vos filtres.'}
           </div>
         </div>
       )}
@@ -482,7 +483,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
 
   if (!sop) return (
     <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>
-      SOP introuvable. <button onClick={onBack} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>← Retour</button>
+      SOP introuvable. <button onClick={onBack} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Retour</button>
     </div>
   );
 
@@ -519,7 +520,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
       });
       onBack();
     } catch (err) {
-      notifyLegacy('Erreur : ' + err.message, 'error');
+      notifyLegacy(messageErreur(err, 'sop'), 'error');
       setBusy(false);
     }
   };
@@ -528,7 +529,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
     <div style={ss.checklistRoot}>
       {/* Header sticky */}
       <div style={ss.checklistHeader}>
-        <button style={ss.backBtn} onClick={onBack}>←</button>
+        <button type="button" style={ss.backBtn} onClick={onBack} aria-label="Retour">←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sop.titre}</div>
           <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -637,7 +638,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
       {/* Photo en plein écran (utile sur téléphone au poste) */}
       {zoomPhoto && (
         <div style={ss.zoomOverlay} onClick={() => setZoomPhoto(null)}>
-          <button style={ss.zoomClose} onClick={() => setZoomPhoto(null)} title="Fermer">✕</button>
+          <button type="button" style={ss.zoomClose} onClick={() => setZoomPhoto(null)} title="Fermer" aria-label="Fermer">×</button>
           <img src={zoomPhoto.url} alt={zoomPhoto.label || 'Photo de référence'} style={ss.zoomImg} onClick={e => e.stopPropagation()} />
         </div>
       )}
@@ -646,6 +647,16 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
 };
 
 // ─── Historique des exécutions ───
+// Une exécution restée ouverte plus d'un jour n'est plus « en cours » : elle a
+// été abandonnée sans validation, et un contrôle doit le lire tel quel.
+const UN_JOUR_MS = 24 * 60 * 60 * 1000;
+const libelleStatutExecution = (exec) => {
+  if (exec.statut === 'terminee') return 'Terminée';
+  if (exec.statut === 'abandonnee') return 'Abandonnée';
+  const debut = new Date(exec.heureDebut || `${exec.dateExecution}T12:00:00`).getTime();
+  return Number.isFinite(debut) && Date.now() - debut > UN_JOUR_MS ? 'Non terminée' : 'En cours';
+};
+
 const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
   const legacySB = dbService.getBridge();
   const sopMap = Object.fromEntries(sops.map(s => [s.id, s]));
@@ -693,9 +704,7 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
       const total = exec.totalEtapes > 0 ? exec.totalEtapes : allEtapes.length;
       const cochees = exec.totalEtapes > 0 ? exec.etapesCochees : allEtapes.filter(e => e.cochee).length;
 
-      const statutLabel = exec.statut === 'terminee' ? 'Terminée'
-                        : exec.statut === 'abandonnee' ? 'Abandonnée'
-                        : 'En cours';
+      const statutLabel = libelleStatutExecution(exec);
       // Vert seulement si tout est validé : une checklist terminée à 8/10 n'est
       // pas conforme, et c'est précisément ce qu'un contrôle doit voir.
       const statutOk = exec.statut === 'terminee' ? (total > 0 && cochees >= total)
@@ -755,7 +764,11 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
           </div>
           {byDate[date].map(exec => {
             const sop = sopMap[exec.sopId];
-            const totalProgress = exec.totalEtapes > 0 ? Math.round(exec.etapesCochees / exec.totalEtapes * 100) : 0;
+            // Compteurs écrits seulement à la validation : avant, même repli que
+            // l'export PDF (le nombre d'étapes de la SOP), sans inventer de cochées.
+            const compteursConnus = exec.totalEtapes > 0;
+            const etapesSop = (sop?.sections || []).reduce((n, sec) => n + (sec.etapes || []).length, 0);
+            const totalProgress = compteursConnus ? Math.round(exec.etapesCochees / exec.totalEtapes * 100) : 0;
             const couleur = exec.statut === 'terminee'
               ? (totalProgress === 100 ? '#16a34a' : '#d97706')
               : exec.statut === 'abandonnee' ? '#dc2626' : '#0ea5e9';
@@ -768,7 +781,7 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>
                     {new Date(exec.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
-                    {exec.heureFin && ` → ${new Date(exec.heureFin).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}`}
+                    {exec.heureFin && <> à {new Date(exec.heureFin).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}</>}
                     {exec.operateurNom && `, ${exec.operateurNom}`}
                   </div>
                   {exec.notes && (
@@ -776,22 +789,21 @@ const SopHistory = ({ executions, sops, user, canManage, etablissement }) => {
                   )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: couleur }}>{exec.etapesCochees}/{exec.totalEtapes}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    {exec.statut === 'terminee' ? 'Terminée' : exec.statut === 'abandonnee' ? 'Abandonnée' : 'En cours'}
+                  <div style={{ fontSize: 14, fontWeight: 700, color: couleur }}>
+                    {compteursConnus
+                      ? <>{exec.etapesCochees}/{exec.totalEtapes}</>
+                      : etapesSop > 0 && <>{etapesSop} étape{etapesSop > 1 ? 's' : ''}</>}
                   </div>
-                  <button
-                    style={{
-                      marginTop: 4, padding: '3px 8px',
-                      background: 'var(--surface)', border: '1px solid var(--border)',
-                      borderRadius: 6, fontSize: 10, fontWeight: 600, color: 'var(--text2)',
-                      cursor: pdfBusyId ? 'default' : 'pointer', fontFamily: 'var(--font)',
-                      opacity: pdfBusyId && pdfBusyId !== exec.id ? 0.5 : 1,
-                    }}
+                  <div style={{ fontSize: 10, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                    {libelleStatutExecution(exec)}
+                  </div>
+                  <Btn
+                    small
+                    style={{ marginTop: 4 }}
                     onClick={(e) => { e.stopPropagation(); exportExecutionPDF(exec); }}
                     disabled={!!pdfBusyId}
                     title="Exporter cette exécution en PDF (audit)"
-                  >{pdfBusyId === exec.id ? '… PDF' : 'PDF'}</button>
+                  >{pdfBusyId === exec.id ? 'PDF…' : 'PDF'}</Btn>
                 </div>
               </div>
             );
@@ -852,7 +864,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
     try {
       await legacySB.db.deleteSop(tpl.id);
       notifyLegacy('Template retiré de la bibliothèque.', 'success');
-    } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
   };
 
   // Templates de la bibliothèque (en base) actuellement cochés - supprimables en lot.
@@ -938,7 +950,7 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
               à la bibliothèque via le bouton « + Template » sur sa carte.
             </div>
           </div>
-          <button style={ss.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={ss.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
           {dbItems.length === 0 && (
@@ -1037,7 +1049,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
       const saved = await legacySB.db.upsertSop({ ...data, etablissementId: etabId });
       onSaved(saved);
     } catch (err) {
-      notifyLegacy('Erreur : ' + err.message, 'error');
+      notifyLegacy(messageErreur(err, 'sop'), 'error');
       setSaving(false);
     }
   };
@@ -1048,14 +1060,14 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
     try {
       await legacySB.db.deleteSop(data.id);
       onBack();
-    } catch (err) { notifyLegacy('Erreur : ' + err.message, 'error'); }
+    } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
   };
 
   return (
     <div style={ss.editorRoot}>
       {/* Header */}
       <div style={ss.editorHeader}>
-        <button style={{ ...ss.backBtn, width: 'auto', padding: '0 14px', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }} onClick={onBack}>← Retour</button>
+        <button style={{ ...ss.backBtn, width: 'auto', padding: '0 14px', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }} onClick={onBack}>Retour</button>
         <div style={{ flex: 1 }} />
         {!isNew && (
           <button style={{ ...ss.ghostBtn, color: '#dc2626', borderColor: 'var(--danger-bd)' }} onClick={deleteSop}>Supprimer</button>
@@ -1109,7 +1121,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                 placeholder={`Titre section ${sIdx + 1} (optionnel pour SOP simple)`}
                 style={{ ...ss.input, flex: 1, fontWeight: 600 }}
               />
-              <button style={ss.iconBtnDanger} onClick={() => removeSection(sIdx)} title="Supprimer la section">✕</button>
+              <button type="button" style={ss.iconBtnDanger} onClick={() => removeSection(sIdx)} title="Supprimer la section" aria-label="Supprimer la section">×</button>
             </div>
             {(section.etapes || []).map((etape, eIdx) => (
               <div key={etape.id} style={ss.etapeEditRow}>
@@ -1124,7 +1136,7 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                         etabId, type: 'sop', id: etape.id, file,
                       });
                       updateEtape(sIdx, eIdx, { photoUrl: url });
-                    } catch (err) { notifyLegacy('Erreur upload : ' + err.message, 'error'); }
+                    } catch (err) { notifyLegacy('Envoi du fichier impossible. ' + messageErreur(err, 'sop'), 'error'); }
                   }}
                   onRemove={() => updateEtape(sIdx, eIdx, { photoUrl: null })}
                 />
@@ -1151,15 +1163,15 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
                       style={{ accentColor: '#dc2626' }}/>
                     Critique
                   </label>
-                  <button style={ss.iconBtnDanger} onClick={() => removeEtape(sIdx, eIdx)}>✕</button>
+                  <button type="button" style={ss.iconBtnDanger} onClick={() => removeEtape(sIdx, eIdx)} aria-label="Supprimer l'étape">×</button>
                 </div>
               </div>
             ))}
-            <button style={ss.addStepBtn} onClick={() => addEtape(sIdx)}>+ Étape</button>
+            <button style={ss.addStepBtn} onClick={() => addEtape(sIdx)}>Ajouter une étape</button>
           </div>
         ))}
 
-        <button style={{ ...ss.ghostBtn, width: '100%' }} onClick={addSection}>+ Nouvelle section</button>
+        <button style={{ ...ss.ghostBtn, width: '100%' }} onClick={addSection}>Nouvelle section</button>
       </div>
     </div>
   );

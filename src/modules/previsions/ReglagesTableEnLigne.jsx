@@ -117,7 +117,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
     if (status === 'absent') {
       return <div style={s.info}>La réservation en ligne n'est pas encore activée sur la base de données.</div>;
     }
-    if (status === 'error') return <div style={s.erreur}>Les réglages n'ont pas pu être lus. Réessaie dans un instant.</div>;
+    if (status === 'error') return <div style={s.erreur}>Les réglages n'ont pas pu être lus. Réessayez dans un instant.</div>;
     if (!form) return <div style={{ color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>;
 
     const slugValide = SLUG_OK.test(form.slug || '');
@@ -533,7 +533,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
       <div className="modal-full" style={s.fenetre} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Réservation en ligne">
         <div style={s.entete}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Réservation en ligne</div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={s.fermer}>×</button>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={s.fermer}>×</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 18px' }}>{contenu}</div>
       </div>

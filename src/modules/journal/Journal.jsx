@@ -18,7 +18,29 @@ const PAGE = 1000;
 
 const libelleRole = (role) => (role ? roles[role]?.label || role : '');
 const libelleActeur = (l) => l.acteur_nom || (l.acteur_id ? 'Compte inconnu' : 'Système');
-const libelleChamps = (l) => (l.colonnes_modifiees || []).join(', ');
+// Colonnes de la base, telles que le déclencheur les relève, en mots lisibles.
+// Une colonne absente de la table se lit « autre champ » ; les colonnes de
+// service (date de mise à jour, auteur) ne disent rien au lecteur du journal.
+const LIBELLES_CHAMPS = {
+  nom: 'nom', categorie: 'catégorie', sous_categorie: 'sous-catégorie', statut: 'statut',
+  portions: 'portions', prix_vente: 'prix de vente', temps_preparation: 'temps de préparation',
+  temps_cuisson: 'temps de cuisson', temps_total: 'temps total', version: 'version',
+  allergenes_ids: 'allergènes', allergenes: 'allergènes', notes_consultant: 'notes du consultant',
+  dressage: 'dressage', conservation: 'conservation', etapes: 'étapes', ingredients: 'ingrédients',
+  photo_url: 'photo', congelable: 'congelable', masquee: 'visibilité', archive: 'archivage',
+  duree_vie_jours: 'durée de vie', duree_vie_congele_jours: 'durée de vie congelé',
+  duree_vie_decongele_jours: 'durée de vie décongelé', date: 'date', valide_par: 'validation',
+  valide: 'validation', valeur_totale: 'valeur totale', lignes: 'lignes comptées', produit: 'produit',
+  quantite: 'quantité', unite: 'unité', unite_ref: 'unité', valeur_unit: 'valeur unitaire',
+  motif: 'motif', declare_par: 'déclarant', commentaire: 'commentaire', prix_unitaire: 'prix unitaire',
+  fournisseur_id: 'fournisseur', fournisseurs: 'fournisseurs', reference_fourn: 'référence fournisseur',
+  conditionnement: 'conditionnement', actif: 'actif', notes: 'notes', strategie_prix: 'stratégie de prix',
+  prix_verrouille: 'prix verrouillé', prix_maj_le: 'mise à jour du prix', zone: 'zone',
+};
+const CHAMPS_DE_SERVICE = new Set(['id', 'etablissement_id', 'created_at', 'updated_at', 'modifie_par']);
+const libelleChamps = (l) => [...new Set((l.colonnes_modifiees || [])
+  .filter((c) => !CHAMPS_DE_SERVICE.has(c))
+  .map((c) => LIBELLES_CHAMPS[c] || 'autre champ'))].join(', ');
 
 function libelleJour(jour) {
   const [y, m, d] = jour.split('-').map(Number);
@@ -158,7 +180,6 @@ export default function Journal({ user, etablissement }) {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       <SectionHeader
-        title="Journal d'activité"
         sub="Créations, modifications et suppressions dans les recettes, produits, pertes et inventaires."
         style={{ marginBottom: 0 }}
       />
@@ -192,11 +213,9 @@ export default function Journal({ user, etablissement }) {
       {etat === 'chargement' && <div style={{ fontSize: 13, color: 'var(--text2)' }}>Chargement…</div>}
 
       {etat === 'erreur' && (
-        <div className="form-alert error">
+        <div className="form-alert error" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           Le journal n'a pas pu être chargé.
-          <button type="button" className="primary-action inline" style={{ marginLeft: 12 }} onClick={() => setEssai((n) => n + 1)}>
-            Réessayer
-          </button>
+          <Btn variant="primary" small onClick={() => setEssai((n) => n + 1)}>Réessayer</Btn>
         </div>
       )}
 
@@ -221,7 +240,7 @@ export default function Journal({ user, etablissement }) {
                   <span style={{ color: COULEUR_ACTION[l.operation], fontWeight: 600 }}>{ACTIONS[l.operation] || l.operation}</span>
                   {' par '}{libelleActeur(l)}
                   {l.acteur_role ? ` (${libelleRole(l.acteur_role)})` : ''}
-                  {l.colonnes_modifiees?.length ? `, champs : ${libelleChamps(l)}` : ''}
+                  {libelleChamps(l) ? <>, champs : {libelleChamps(l)}</> : ''}
                 </div>
               </div>
             </div>

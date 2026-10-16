@@ -7,7 +7,7 @@ import { Pencil } from 'lucide-react';
 // et Fiches salle. Un onglet par carte + des onglets supplémentaires fournis par
 // le parent (ex. « Bibliothèque recettes », « Toutes »).
 //
-// Si canManage : bouton « + Carte » et édition (renommer / dates / archiver /
+// Si canManage : bouton « Ajouter une carte » et édition (renommer / dates / archiver /
 // supprimer) de la carte active. Supprimer une carte ne retire que l'onglet et
 // ses liaisons - aucun plat / recette / fiche n'est effacé. Archiver conserve
 // tout (liaisons comprises) : la carte sort des onglets et se restaure depuis
@@ -19,7 +19,7 @@ import { Pencil } from 'lucide-react';
 // barré, pour que le consultant sache d'un coup d'œil ce que la brigade ne voit
 // pas. Archiver et cacher sont indépendants : cacher ne range pas la carte.
 //
-// onReorderCartes (optionnel) active le bouton « ⇄ Ordre » : une modale où l'on
+// onReorderCartes (optionnel) active le bouton « Ordre des cartes » : une modale où l'on
 // déplace chaque carte d'un cran vers la gauche ou vers la droite. Pas de
 // glisser-déposer : la barre défile horizontalement sur tablette, et un drag y
 // entre en conflit avec le défilement tactile. L'ordre n'est écrit qu'à la
@@ -27,6 +27,9 @@ import { Pencil } from 'lucide-react';
 //
 // Styles via tokens CSS (var(--surface/nav/border/text…)), aucune couleur en dur.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Une carte au nom vide (ou fait d'espaces) garde un onglet lisible.
+const nomCarte = (carte) => String(carte?.nom ?? '').trim() || 'Carte sans nom';
 
 export default function CarteTabBar({
   cartes = [],
@@ -86,7 +89,7 @@ export default function CarteTabBar({
   const remove = async () => {
     if (modal?.mode !== 'edit') return;
     const carte = modal.carte;
-    if (!confirmLegacy(`Supprimer la carte « ${carte.nom} » ?\n\nLes plats, recettes et fiches ne sont pas supprimés - ils ne seront simplement plus rattachés à cette carte.`)) return;
+    if (!confirmLegacy(`Supprimer la carte « ${nomCarte(carte)} » ?\n\nLes plats, recettes et fiches ne sont pas supprimés : ils ne seront simplement plus rattachés à cette carte.`)) return;
     await onDeleteCarte?.(carte.id);
     // Bascule vers une autre carte / le 1er onglet supplémentaire
     const fallback = cartes.find(c => c.id !== carte.id)?.id || extraTabs[0]?.id || null;
@@ -166,7 +169,7 @@ export default function CarteTabBar({
               >
                 {/* « (cachée) » : carte cachée. Seul le consultant reçoit ces cartes, le
                     marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
-                <span>{carte.id === homeId && '★ '}{carte.nom}{carte.masquee === true && ' (cachée)'}</span>
+                <span>{nomCarte(carte)}{carte.masquee === true && ' (cachée)'}</span>
               </button>
               {canManage && active && (
                 <button
@@ -195,7 +198,7 @@ export default function CarteTabBar({
       </div>
 
       {canManage && (
-        <button className="segmented-tab" style={s.addBtn} onClick={openCreate} title="Ajouter une carte">+ Carte</button>
+        <button className="segmented-tab" style={s.addBtn} onClick={openCreate}>Ajouter une carte</button>
       )}
 
       {canManage && onReorderCartes && cartes.length > 1 && (
@@ -204,7 +207,7 @@ export default function CarteTabBar({
           style={s.ordreBtn}
           onClick={() => setOrdreDraft(ordreActuel)}
           title="Changer l'ordre des onglets, de gauche à droite"
-        >⇄ Ordre</button>
+        >Ordre des cartes</button>
       )}
 
       {canManage && onArchiveCarte && archivedCartes.length > 0 && (
@@ -212,7 +215,7 @@ export default function CarteTabBar({
           className="segmented-tab"
           style={s.archivesBtn}
           onClick={() => setShowArchives(true)}
-          title="Cartes archivées - cliquer pour restaurer"
+          title="Cartes archivées : cliquez pour restaurer"
         >Archives ({archivedCartes.length})</button>
       )}
 
@@ -221,7 +224,7 @@ export default function CarteTabBar({
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <div style={s.modalHeader}>
               <div style={s.modalTitle}>{modal.mode === 'create' ? 'Nouvelle carte' : 'Modifier la carte'}</div>
-              <button style={s.closeBtn} onClick={close}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={close}>×</button>
             </div>
             <div style={s.modalBody}>
               <label style={s.label}>Nom de la carte *</label>
@@ -282,26 +285,26 @@ export default function CarteTabBar({
                 <div style={s.modalTitle}>Ordre des cartes</div>
                 <div style={s.modalHint}>Le haut de la liste est l'onglet le plus à gauche.</div>
               </div>
-              <button style={s.closeBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>×</button>
             </div>
             <div style={{ ...s.modalBody, gap: 6, maxHeight: '58vh', overflowY: 'auto' }}>
               {ordreLignes.map((carte, i) => (
                 <div key={carte.id} style={s.ordreRow}>
                   <span style={s.ordreRang}>{i + 1}</span>
-                  <div style={s.ordreNom}>{carte.nom}</div>
+                  <div style={s.ordreNom}>{nomCarte(carte)}</div>
                   <button
                     style={{ ...s.ordreArrow, opacity: i === 0 ? 0.3 : 1 }}
                     onClick={() => deplacerCarte(i, -1)}
                     disabled={i === 0 || ordreBusy}
                     title="Déplacer vers la gauche"
-                    aria-label={`Déplacer « ${carte.nom} » vers la gauche`}
+                    aria-label={`Déplacer « ${nomCarte(carte)} » vers la gauche`}
                   >←</button>
                   <button
                     style={{ ...s.ordreArrow, opacity: i === ordreLignes.length - 1 ? 0.3 : 1 }}
                     onClick={() => deplacerCarte(i, 1)}
                     disabled={i === ordreLignes.length - 1 || ordreBusy}
                     title="Déplacer vers la droite"
-                    aria-label={`Déplacer « ${carte.nom} » vers la droite`}
+                    aria-label={`Déplacer « ${nomCarte(carte)} » vers la droite`}
                   >→</button>
                 </div>
               ))}
@@ -324,7 +327,7 @@ export default function CarteTabBar({
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <div style={s.modalHeader}>
               <div style={s.modalTitle}>Cartes archivées</div>
-              <button style={s.closeBtn} onClick={() => setShowArchives(false)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={() => setShowArchives(false)}>×</button>
             </div>
             <div style={{ ...s.modalBody, gap: 6, maxHeight: '60vh', overflowY: 'auto' }}>
               {archivedCartes.length === 0 && (
@@ -333,7 +336,7 @@ export default function CarteTabBar({
               {archivedCartes.map(carte => (
                 <div key={carte.id} style={s.archiveRow}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={s.archiveName}>{carte.nom}</div>
+                    <div style={s.archiveName}>{nomCarte(carte)}</div>
                     {(carte.dateDebut || carte.dateFin) && (
                       <div style={s.archiveMeta}>
                         {carte.dateDebut && `Du ${carte.dateDebut}`}{carte.dateFin && ` au ${carte.dateFin}`}
@@ -376,9 +379,10 @@ const s = {
   tablist: { display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 },
   // 32 px au moins : le crayon de 18 × 16 se ratait au doigt comme à la souris.
   editBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, background: 'transparent', border: 'none', borderRadius: 6, color: 'var(--accent)', cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' },
-  addBtn: { color: 'var(--accent)', border: '1px dashed var(--accent-bd)', fontWeight: 700 },
-  ordreBtn: { color: 'var(--text2)', border: '1px dashed var(--border)', fontWeight: 600 },
-  archivesBtn: { color: 'var(--text2)', border: '1px dashed var(--border)', fontWeight: 600 },
+  // Sans pointillés : des actions de la barre, pas des onglets à remplir.
+  addBtn: { color: 'var(--accent)', border: 'none', fontWeight: 700 },
+  ordreBtn: { color: 'var(--text2)', border: 'none', fontWeight: 600 },
+  archivesBtn: { color: 'var(--text2)', border: 'none', fontWeight: 600 },
   // flexShrink 0 : sans lui les lignes se superposent sur mobile (min-height
   // global 44px sur les contrôles vs hauteur calculée par flex).
   ordreRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', flexShrink: 0 },

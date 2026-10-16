@@ -110,7 +110,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                 <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', margin: '8px 0 4px' }}>INGRÉDIENTS</div>
                   {(r.ingredients || []).length === 0 && (
-                    <div style={{ fontSize: 12, color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient - recette non importable.</div>
+                    <div style={{ fontSize: 12, color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient : recette non importable.</div>
                   )}
                   {(r.ingredients || []).map((ing, iIdx) => {
                     const warn = ing._import && ing._import.warning;
@@ -134,7 +134,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                         {warn && ing._import.originalText && (
                           <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 11, color: 'var(--danger-strong)', cursor: 'help', display: 'inline-flex' }}><AlertTriangle size={12} aria-hidden="true" /></span>
                         )}
-                        <button onClick={() => removeIngredient(rIdx, iIdx)} title="Supprimer" style={{ ...cell, cursor: 'pointer', color: 'var(--danger-strong)', width: 28 }}>✕</button>
+                        <button type="button" onClick={() => removeIngredient(rIdx, iIdx)} title="Supprimer" aria-label="Supprimer l'ingrédient" style={{ ...cell, cursor: 'pointer', color: 'var(--danger-strong)', width: 28 }}>×</button>
                       </div>
                     );
                   })}

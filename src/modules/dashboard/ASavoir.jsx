@@ -1,5 +1,4 @@
 import React from 'react';
-import { Moon, Sun, Sunrise } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import { Avatar, Carte, Ligne, Puce, SousTitre, t } from './tableauUi.jsx';
@@ -120,15 +119,15 @@ function CarteJour({
 
 function BlocCouverts({ c, onClick }) {
   const cases = [
-    ...(c.brunch ? [{ id: 'brunch', label: 'Brunch', valeur: c.brunch, icone: Sunrise }] : []),
-    { id: 'midi', label: 'Midi', valeur: c.midi, icone: Sun },
-    { id: 'soir', label: 'Soir', valeur: c.soir, icone: Moon },
+    ...(c.brunch ? [{ id: 'brunch', label: 'Brunch', valeur: c.brunch }] : []),
+    { id: 'midi', label: 'Midi', valeur: c.midi },
+    { id: 'soir', label: 'Soir', valeur: c.soir },
   ];
   const contenu = (
     <div style={{ display: 'flex', width: '100%' }}>
-      {cases.map(({ id, label, valeur, icone: Icone }, i) => (
+      {cases.map(({ id, label, valeur }, i) => (
         <div key={id} style={{ ...s.couvert, ...(i ? s.couvertSuivant : null) }}>
-          <span style={s.couvertLabel}><Icone size={13} strokeWidth={2} aria-hidden="true" /> {label}</span>
+          <span style={s.couvertLabel}>{label}</span>
           <span style={{ ...s.couvertValeur, color: valeur ? 'var(--text)' : 'var(--text3)' }}>{valeur}</span>
         </div>
       ))}

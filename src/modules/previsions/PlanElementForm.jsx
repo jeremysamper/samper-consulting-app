@@ -70,7 +70,7 @@ export default function PlanElementForm({ element, onClose, onSave }) {
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             {def?.label ?? 'Élément'}
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
             background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
             color: 'var(--text2)', padding: 4, lineHeight: 1,
           }}>

@@ -4,12 +4,13 @@ import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
-import { ChevronDown, ChevronRight, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { AUTRES, RAYONS, classerProduit, trierRayons } from './classerProduit.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // Rayon affiché d'une ligne : sa catégorie enregistrée, ou, si elle vaut
 // « Autres » (listes générées avant le classement automatique, ajouts sans
@@ -84,7 +85,7 @@ const Commande = ({ user, etablissement }) => {
         catalogue: catalogue || [],
       });
     } catch (err) {
-      notifyLegacy('Chargement des cartes impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Chargement des cartes impossible. ' + messageErreur(err, 'commande'), 'error');
       setShowGen(false);
     } finally {
       setGenLoading(false);
@@ -137,7 +138,7 @@ const Commande = ({ user, etablissement }) => {
       setShowGen(false);
       notifyLegacy(`Liste générée : ${n} produit(s) pour ${selCartes.length} carte${selCartes.length > 1 ? 's' : ''}.`, 'success');
     } catch (err) {
-      notifyLegacy('Génération impossible : ' + (err.message || err), 'error');
+      notifyLegacy('Génération impossible. ' + messageErreur(err, 'commande'), 'error');
     } finally {
       setBusy(false);
     }
@@ -152,7 +153,7 @@ const Commande = ({ user, etablissement }) => {
       const rows = await legacySB.db.listCommandeItems(etabId);
       setItems(Array.isArray(rows) ? rows : []);
     } catch (err) {
-      notifyLegacy('Erreur : ' + (err.message || err), 'error');
+      notifyLegacy(messageErreur(err, 'commande'), 'error');
     } finally { setBusy(false); }
   };
 
@@ -162,7 +163,7 @@ const Commande = ({ user, etablissement }) => {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, coche: next } : i));
     if (legacySB) {
       try { await legacySB.db.upsertCommandeItem({ ...item, coche: next }); }
-      catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+      catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); }
     }
   };
 
@@ -175,7 +176,7 @@ const Commande = ({ user, etablissement }) => {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantite: val } : i));
     if (legacySB) {
       try { await legacySB.db.upsertCommandeItem({ ...item, quantite: val }); }
-      catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+      catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); }
     }
   };
 
@@ -187,7 +188,7 @@ const Commande = ({ user, etablissement }) => {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, nom } : i));
     if (legacySB) {
       try { await legacySB.db.upsertCommandeItem({ ...item, nom }); }
-      catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+      catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); }
     }
   };
 
@@ -195,7 +196,7 @@ const Commande = ({ user, etablissement }) => {
     setItems(prev => prev.filter(i => i.id !== item.id));
     if (legacySB) {
       try { await legacySB.db.deleteCommandeItem(item.id); }
-      catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); }
+      catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); }
     }
   };
 
@@ -218,7 +219,7 @@ const Commande = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertCommandeItem(item);
         setItems(prev => [...prev, saved]);
-      } catch (err) { notifyLegacy('Erreur : ' + (err.message || err), 'error'); return; }
+      } catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); return; }
     } else {
       setItems(prev => [...prev, { ...item, id: item.cle }]);
     }
@@ -288,7 +289,7 @@ const Commande = ({ user, etablissement }) => {
         {/* Ajouter d'abord ; sortir la liste (PDF, imprimante) dans « Exporter » ;
             générer et vider, réservés au consultant, dans « Gérer ». */}
         <div className="module-actions">
-          <button style={s.ghostBtn} onClick={() => setShowAdd(true)}><Plus size={14} /> Produit</button>
+          <button style={s.ghostBtn} onClick={() => setShowAdd(true)}>Ajouter</button>
           {totalCount > 0 && (
             <BoutonActions
               id="commande-exporter"
@@ -303,7 +304,7 @@ const Commande = ({ user, etablissement }) => {
           )}
           {isConsultant && (
             busy
-              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)' }}><Loader2 size={14} /> Génération…</span>
+              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)' }}>Génération…</span>
               : (
                 <BoutonActions
                   id="commande-gerer"
@@ -461,7 +462,7 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
       <div className="modal-full" style={s.modal} onClick={e => e.stopPropagation()}>
         <div style={s.modalHead}>
           <div style={s.modalTitle}>Générer depuis les cartes</div>
-          <button style={s.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={s.genBody}>
           <div style={s.genHint}>
@@ -542,7 +543,7 @@ const AddProductModal = ({ onClose, onAdd }) => {
       <div className="modal-full" style={s.modal} onClick={e => e.stopPropagation()}>
         <div style={s.modalHead}>
           <div style={s.modalTitle}>Ajouter un produit</div>
-          <button style={s.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>

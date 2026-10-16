@@ -46,7 +46,7 @@ function DeltaBadge({ delta, isNew }) {
 
   let bg, color, arrow;
   if (delta >= 10)       { bg = 'var(--success-bg)'; color = 'var(--success-text)'; arrow = '↑'; }
-  else if (delta > -10)  { bg = 'var(--bg)'; color = 'var(--text2)'; arrow = '→'; }
+  else if (delta > -10)  { bg = 'var(--bg)'; color = 'var(--text2)'; arrow = '='; }
   else if (delta > -25)  { bg = 'var(--warning-bg)'; color = 'var(--warning-text)'; arrow = '↓'; }
   else                   { bg = 'var(--danger-bg)'; color = 'var(--danger-strong)'; arrow = '↓↓'; }
 
@@ -260,7 +260,7 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
               fontFamily: 'var(--font)', textDecoration: 'underline',
             }}
           >
-            Mapping plats →
+            Mapping plats
           </button>
         </div>
       )}

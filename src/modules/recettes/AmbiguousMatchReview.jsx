@@ -2,6 +2,7 @@ import React from 'react';
 import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { applyProductToIngredient as applyProduct } from '../../services/prixResolution.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 // Lève le drapeau sans lier de produit.
 function ignoreMatch(ing) {
   const next = { ...ing };
@@ -96,7 +97,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
         notify(`Aucune correspondance fiable trouvée pour « ${it.ing.nom} ».`, 'info');
       }
     } catch (err) {
-      notify('Suggestion impossible : ' + (err.message || err), 'error');
+      notify('Suggestion impossible. ' + messageErreur(err, 'import des recettes'), 'error');
     } finally {
       setAiBusy(false);
     }
@@ -123,7 +124,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
           <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             Correspondances catalogue à valider ({items.length})
           </div>
-          <button onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, padding: '10px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>

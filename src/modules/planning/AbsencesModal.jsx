@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { pls } from './Planning.styles.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
@@ -35,8 +35,8 @@ export default function AbsencesModal({ onClose, employees, absences, status, ca
 
   async function ajouter(e) {
     e.preventDefault();
-    if (!form.userId) { notifyLegacy('Choisis un équipier.', 'error'); return; }
-    if (!form.dateDebut || !form.dateFin) { notifyLegacy('Indique les dates.', 'error'); return; }
+    if (!form.userId) { notifyLegacy('Choisissez un équipier.', 'error'); return; }
+    if (!form.dateDebut || !form.dateFin) { notifyLegacy('Indiquez les dates.', 'error'); return; }
     setEnCours(true);
     try {
       const { error } = await creer(form);
@@ -59,8 +59,8 @@ export default function AbsencesModal({ onClose, employees, absences, status, ca
       <div className="modal-full" style={{ ...pls.modal, width: 520 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Absences de l'équipe">
         <div style={pls.modalHeader}>
           <div style={pls.modalTitle}>Absences de l'équipe</div>
-          <button type="button" style={{ ...pls.closeBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44 }} onClick={onClose} aria-label="Fermer">
-            <X size={18} strokeWidth={2} aria-hidden="true" />
+          <button type="button" style={{ ...pls.closeBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44 }} onClick={onClose} aria-label="Fermer" className="ui-fermer">
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 
@@ -164,7 +164,7 @@ const s = {
     background: 'var(--surface)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   aide: { fontSize: 12, color: 'var(--text2)', marginTop: 6 },
-  titreListe: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+  titreListe: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 },
   vide: { fontSize: 13, color: 'var(--text2)', padding: '6px 0' },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', minHeight: 48,

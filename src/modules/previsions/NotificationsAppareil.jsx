@@ -92,7 +92,7 @@ export default function NotificationsAppareil({ etablissementId, user }) {
       {ouvert && createPortal(
         <div style={s.voile} onClick={(e) => { if (e.target === e.currentTarget) setOuvert(false); }}>
         <div style={s.panneau} role="dialog" aria-modal="true" aria-label="Notifications sur cet appareil">
-          <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer" style={s.fermer}>×</button>
+          <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer" className="ui-fermer" style={s.fermer}>×</button>
           <div style={s.titre}>Nouvelles réservations en ligne</div>
           {etat === null && <div style={s.texte}>Vérification…</div>}
           {MESSAGES[etat] && <div style={s.texte}>{MESSAGES[etat]}</div>}

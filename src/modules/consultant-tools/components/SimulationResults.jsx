@@ -31,7 +31,7 @@ export function SimulationResults({
     <div style={cs.root}>
       {alerte && (
         <div style={cs.alerte}>
-          Charge élevée - risque en coup de feu
+          Charge élevée : risque en coup de feu
         </div>
       )}
 

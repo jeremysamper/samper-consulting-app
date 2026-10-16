@@ -35,7 +35,7 @@ const MESSAGES = {
   '23505': 'Doublon : cette table est déjà attribuée, ou une salle porte déjà ce nom.',
   '23503': 'Réservation ou table introuvable.',
   '23514': 'Valeur hors limites (nom vide, places ou position invalides).',
-  '42501': "Tu n'as pas les droits pour modifier le plan de salle.",
+  '42501': "Vous n'avez pas les droits pour modifier le plan de salle.",
   // Table absente : 42P01 côté Postgres, PGRST205 côté cache de schéma PostgREST
   '42P01':    MESSAGE_SCHEMA_ABSENT,
   'PGRST205': MESSAGE_SCHEMA_ABSENT,
@@ -55,7 +55,7 @@ function mapError(error) {
   if (/schema cache|does not exist|relation .* does not exist/.test(texte)) {
     return MESSAGE_SCHEMA_ABSENT;
   }
-  return 'Erreur technique. Réessaie ou contacte le support.';
+  return 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 // Gabarits par forme : une table de 8 est plus grande qu'un deux-couverts, et

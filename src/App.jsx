@@ -22,6 +22,8 @@ import { getPendingPunchCount, startPunchSync } from './services/offline/punchSy
 import { startInventaireSync } from './services/offline/inventaireSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 import { clearTranslationCache } from './i18n/domTranslator.js';
+import { messageErreur } from './utils/messageErreur.js';
+import { Btn } from './components/ui/index.jsx';
 
 // Ouverture depuis une notification push (public/push-sw.js) :
 // /?page=previsions&etab=<id>. Lu une fois au chargement, puis retiré de l'URL
@@ -269,12 +271,14 @@ export default function App() {
       // Même raison : le cache de traduction contient des noms de recettes.
       clearTranslationCache();
       setPage('dashboard');
-      notify('Deconnexion effectuee', 'info');
+      notify('Déconnexion effectuée.', 'info');
       if (pendingPunches > 0) {
-        notify(`${pendingPunches} pointage(s) non synchronise(s) : ils partiront a la prochaine connexion de ce compte`, 'warning');
+        notify(pendingPunches > 1
+          ? `${pendingPunches} pointages non synchronisés partiront à la prochaine connexion de ce compte.`
+          : 'Un pointage non synchronisé partira à la prochaine connexion de ce compte.', 'warning');
       }
     } catch (err) {
-      notify(err?.message || 'Erreur pendant la deconnexion', 'error');
+      notify(messageErreur(err, 'déconnexion', 'La déconnexion a échoué. Réessayez.'), 'error');
     }
   }
 
@@ -284,9 +288,9 @@ export default function App() {
       // Purge des caches de données scopés établissement (défense en profondeur,
       // les clés d'URL portent déjà etablissement_id).
       purgeEtabDataCaches();
-      notify('Etablissement mis a jour', 'info');
+      notify('Établissement changé.', 'info');
     } catch (err) {
-      notify(err?.message || "Impossible de changer d'etablissement", 'error');
+      notify(messageErreur(err, 'établissement', "Impossible de changer d'établissement. Réessayez."), 'error');
     }
   }
 
@@ -372,13 +376,15 @@ export default function App() {
   );
 }
 
+// L'erreur brute part dans la console ; l'écran dit seulement quoi faire.
 function LegacyLoadError({ error }) {
+  useEffect(() => { console.error('[App] chargement des modules', error); }, [error]);
   return (
     <main className="migration-page">
-      <section className="migration-panel compact-panel">
-        <p className="eyebrow">Migration Vite</p>
-        <h1>Modules legacy non charges</h1>
-        <p className="intro">{error?.message || String(error)}</p>
+      <section className="migration-panel">
+        <h1>L'application n'a pas pu démarrer.</h1>
+        <p className="intro">Rechargez la page.</p>
+        <Btn variant="primary" onClick={() => window.location.reload()} style={{ marginTop: 20 }}>Recharger la page</Btn>
       </section>
     </main>
   );
@@ -387,11 +393,11 @@ function LegacyLoadError({ error }) {
 function DisabledAccount({ onLogout }) {
   return (
     <main className="migration-page">
-      <section className="migration-panel compact-panel">
-        <p className="eyebrow">Compte desactive</p>
-        <h1>Acces suspendu</h1>
-        <p className="intro">Ce profil existe mais il est desactive. Contacte le consultant pour reactiver l'acces.</p>
-        <button className="primary-action inline" type="button" onClick={onLogout}>Se deconnecter</button>
+      <section className="migration-panel">
+        <p className="eyebrow">Compte désactivé</p>
+        <h1>Accès suspendu</h1>
+        <p className="intro">Contactez votre consultant pour réactiver l'accès.</p>
+        <Btn variant="primary" onClick={onLogout} style={{ marginTop: 20 }}>Se déconnecter</Btn>
       </section>
     </main>
   );

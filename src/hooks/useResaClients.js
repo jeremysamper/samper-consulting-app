@@ -15,14 +15,14 @@ const TABLE = 'resa_clients';
 
 const MESSAGES = {
   '23505': 'Une autre fiche porte déjà cet e-mail.',
-  '23514': 'Vérifie le nom et l\'e-mail de la fiche.',
-  '42501': "Tu n'as pas les droits pour modifier les fiches clients.",
+  '23514': 'Vérifiez le nom et l\'e-mail de la fiche.',
+  '42501': "Vous n'avez pas les droits pour modifier les fiches clients.",
 };
 
 function mapError(error) {
   if (!error) return null;
   console.error('[useResaClients] erreur Supabase', error);
-  return MESSAGES[String(error.code || '')] || 'Erreur technique. Réessaie ou contacte le support.';
+  return MESSAGES[String(error.code || '')] || 'Erreur technique. Réessayez ou contactez le support.';
 }
 
 // Base (snake_case) → écran (camelCase).

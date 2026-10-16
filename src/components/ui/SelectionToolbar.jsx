@@ -42,7 +42,7 @@ export function SelectionToolbar({
           )}
           <div style={{ flex: 1 }} />
           {headExtra}
-          <button style={s.closeBtn} onClick={onCancel} disabled={busy} title="Quitter le mode sélection">✕</button>
+          <button type="button" className="ui-fermer" style={s.closeBtn} onClick={onCancel} disabled={busy} title="Quitter le mode sélection" aria-label="Quitter le mode sélection">×</button>
         </div>
         {/* minmax(0,1fr) : sans le minimum à 0, un libellé en white-space:nowrap
             impose sa largeur à la colonne et la grille déborde du conteneur. */}

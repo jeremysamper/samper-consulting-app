@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { hs } from './HACCP.styles.js';
 
 const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, setInlineReleve, setInlineTempInput, submitInlineReleve }) => {
@@ -19,25 +20,25 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
     }
   }
 
-  // ─── Indicateur de tendance (vs 7 jours précédents) ───
-  // up   = ↗ (température monte)
-  // down = ↘ (température baisse)
-  // stable = → (pas de variation significative)
-  // Pour une zone froide, ↗ est mauvais ; pour une zone chaude, ↘ est mauvais.
-  let trendIcon = null, trendColor = null, trendLabel = null;
+  // ─── Indicateur de tendance (par rapport aux 7 jours précédents) ───
+  // Icône seule (hausse, baisse, stable) avec un nom accessible fixe : le
+  // libellé ne porte pas l'écart chiffré, sinon chaque valeur partirait à la
+  // traduction. Pour une zone froide, la hausse est mauvaise ; pour une zone
+  // chaude, la baisse.
+  let TrendIcon = null, trendColor = null, trendLabel = null;
   if (trend) {
     if (trend.direction === 'up') {
-      trendIcon = '↗';
+      TrendIcon = TrendingUp;
       trendColor = zone.type === 'froid' ? 'var(--danger-strong)' : 'var(--warning-strong)';
-      trendLabel = `+${trend.delta.toFixed(1)}${zone.unite} vs sem. dernière`;
+      trendLabel = 'En hausse par rapport à la semaine précédente';
     } else if (trend.direction === 'down') {
-      trendIcon = '↘';
+      TrendIcon = TrendingDown;
       trendColor = zone.type === 'chaud' ? 'var(--danger-strong)' : 'var(--success-strong)';
-      trendLabel = `${trend.delta.toFixed(1)}${zone.unite} vs sem. dernière`;
+      trendLabel = 'En baisse par rapport à la semaine précédente';
     } else {
-      trendIcon = '→';
+      TrendIcon = ArrowRight;
       trendColor = 'var(--text2)';
-      trendLabel = 'stable vs sem. dernière';
+      trendLabel = 'Stable par rapport à la semaine précédente';
     }
   }
 
@@ -58,11 +59,13 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-num)', color: vc, display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' }}>
               {last.valeur}{zone.unite}
-              {trendIcon && (
+              {TrendIcon && (
                 <span
-                  style={{ fontSize: 14, color: trendColor, fontWeight: 700 }}
+                  role="img"
+                  aria-label={trendLabel}
                   title={trendLabel}
-                >{trendIcon}</span>
+                  style={{ display: 'inline-flex', alignSelf: 'center', color: trendColor }}
+                ><TrendIcon size={16} strokeWidth={2.2} aria-hidden="true" /></span>
               )}
             </div>
             <div style={{ fontSize: 10, color: delaiAlert ? 'var(--danger-strong)' : 'var(--text2)', fontWeight: delaiAlert ? 700 : 400 }}>
@@ -89,7 +92,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
               <button
                 style={{ padding: '7px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700 }}
                 onClick={() => { setInlineReleve(zone.id); setInlineTempInput(''); }}
-              >+ Relever</button>
+              >Relever</button>
             )}
           </div>
         ) : (
@@ -109,7 +112,7 @@ const ZoneTile = ({ zone, last, trend, inlineReleve, inlineTempInput, canWrite, 
             <button style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               onClick={() => submitInlineReleve(zone, inlineTempInput)}>✓</button>
             <button style={{ flexShrink: 0, padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}
-              onClick={() => setInlineReleve(null)}>✕</button>
+              onClick={() => setInlineReleve(null)} aria-label="Annuler le relevé">×</button>
           </div>
         )}
       </div>

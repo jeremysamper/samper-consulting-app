@@ -3,6 +3,7 @@ import { supabase, getSupabaseConfig } from '../../services/supabase.js';
 import { resilientFetch } from '../../services/netResilience.js';
 import { notify } from '../../components/toast/index.js';
 import LightspeedSetupGuide from './LightspeedSetupGuide.jsx';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────
 // PosIntegrationsCard v3
@@ -23,13 +24,13 @@ const POS_BACKFILL_FN = 'pos-backfill';
 // Messages d'erreur OAuth traduits par code d'erreur
 const OAUTH_ERRORS = {
   invalid_client:
-    "Client ID ou Secret incorrect. Vérifie les secrets Supabase (LS_CLIENT_ID et LS_CLIENT_SECRET).",
+    "Client ID ou Secret incorrect. Vérifiez les secrets Supabase (LS_CLIENT_ID et LS_CLIENT_SECRET).",
   invalid_redirect_uri:
-    "Redirect URI non autorisée. Vérifie qu'elle est bien enregistrée dans le portail Lightspeed.",
+    "Redirect URI non autorisée. Vérifiez qu'elle est bien enregistrée dans le portail Lightspeed.",
   access_denied:
-    "Autorisation refusée. Réessaie et accepte les permissions demandées.",
+    "Autorisation refusée. Réessayez et acceptez les permissions demandées.",
   invalid_scope:
-    "Scopes insuffisants. Vérifie que financial-api et offline_access sont activés dans le portail Lightspeed.",
+    "Scopes insuffisants. Vérifiez que financial-api et offline_access sont activés dans le portail Lightspeed.",
 };
 
 function IconLightspeed() {
@@ -77,7 +78,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
       notify(`Location "${selected.locationName}" sélectionnée`, 'success');
       onSelected();
     } catch (err) {
-      notify(`Erreur : ${err.message}`, 'error');
+      notify(messageErreur(err, 'caisse'), 'error');
     } finally {
       setSaving(false);
     }
@@ -98,7 +99,7 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
           <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>
             Sélectionner votre restaurant
           </div>
-          <button type="button" onClick={onCancel} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onCancel} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
         </div>
         <div style={{ padding: '14px 20px' }}>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
@@ -165,7 +166,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
       notify(`Historique importé : ${result.salesTotal} ventes sur ${result.daysProcessed} jours`, 'success');
       onComplete?.();
     } catch (err) {
-      notify(`Backfill échoué : ${err.message}`, 'error');
+      notify(`Import des ventes impossible. ${messageErreur(err, 'caisse')}`, 'error');
     } finally {
       setRunning(false);
     }
@@ -229,9 +230,9 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
   else                 { step2Icon = '!'; step2Color = 'var(--warning-text)'; }
 
   const steps = [
-    { icon: '①', color: 'var(--text2)', label: 'Créer une app sur le portail développeur Lightspeed' },
+    { icon: '1', color: 'var(--text2)', label: 'Créer une app sur le portail développeur Lightspeed' },
     { icon: step2Icon, color: step2Color, label: 'Configurer les 4 secrets Supabase' },
-    { icon: '→',  color: 'var(--text)',  label: 'Autoriser la connexion' },
+    { icon: '3',  color: 'var(--text)',  label: 'Autoriser la connexion' },
   ];
 
   return (
@@ -275,7 +276,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
           borderRadius: 8, padding: '8px 12px',
         }}>
           Configure d'abord les secrets Supabase (étape 2) avant de connecter.
-          Clique sur "Voir le guide" pour les instructions détaillées.
+          Cliquez sur « Voir le guide » pour les instructions détaillées.
         </div>
       )}
 
@@ -372,7 +373,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
         // Message traduit selon le code d'erreur OAuth, générique en fallback
         const msg = (error_code && OAUTH_ERRORS[error_code])
           ? OAUTH_ERRORS[error_code]
-          : (event.data.error || 'Connexion échouée. Vérifie ta configuration et réessaie.');
+          : (event.data.error || 'Connexion échouée. Vérifiez la configuration et réessayez.');
         notify(`Erreur OAuth : ${msg}`, 'error');
       }
     };
@@ -386,12 +387,12 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
       const { url: authUrl } = await callEdgeFn(POS_OAUTH_FN, 'get_auth_url', { etablissementId, providerId: provider.id });
       const popup = window.open(authUrl, 'lightspeed_oauth', 'width=600,height=700,left=200,top=100,toolbar=no,menubar=no');
       if (!popup) {
-        notify('Popup bloqué - autorisez les popups pour ce site.', 'warning');
+        notify('Le navigateur a bloqué la fenêtre : autorisez les fenêtres pop-up pour ce site.', 'warning');
         setAction(null);
       }
       // Le résultat vient via postMessage (géré dans useEffect ci-dessus)
     } catch (err) {
-      notify(`Impossible de lancer la connexion : ${err.message}`, 'error');
+      notify(`Impossible de lancer la connexion. ${messageErreur(err, 'caisse')}`, 'error');
       setAction(null);
     }
   }
@@ -403,7 +404,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
       notify(res.message || 'Connexion opérationnelle', 'success');
       loadStatus();
     } catch (err) {
-      notify(`Test échoué : ${err.message}`, 'error');
+      notify(`Test de connexion échoué. ${messageErreur(err, 'caisse')}`, 'error');
       loadStatus();
     } finally {
       setAction(null);
@@ -418,7 +419,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
       notify(`${provider.label} déconnecté.`, 'info');
       loadStatus();
     } catch (err) {
-      notify(`Erreur déconnexion : ${err.message}`, 'error');
+      notify(`Déconnexion de la caisse impossible. ${messageErreur(err, 'caisse')}`, 'error');
     } finally {
       setAction(null);
     }
@@ -494,7 +495,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             )}
             {needsLocation && (
               <div style={{ fontSize: 12, color: 'var(--warning-text)', marginTop: 3 }}>
-                Plusieurs restaurants détectés - choisissez la location ci-dessous.
+                Plusieurs restaurants détectés : choisissez l'établissement ci-dessous.
               </div>
             )}
           </div>
@@ -599,7 +600,6 @@ export default function PosIntegrationsCard({ etablissement, user }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Intégrations POS</div>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Synchronisation des ventes : {etablissement?.nom || etablissementId}</div>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px' }}>Beta</div>
       </div>
 
       {loadingProviders ? (

@@ -1,21 +1,13 @@
 import React from 'react';
-import { ClipboardList, MessageSquareText, Thermometer, TriangleAlert, Users, UsersRound } from 'lucide-react';
 import { Carte, Ligne, Puce, TONS, t } from './tableauUi.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // À faire : ce qui attend quelqu'un maintenant, du plus urgent au moins
 // urgent (relevés HACCP en retard, groupes à lire ou à préparer, retards de
 // pointage, pertes à valider, messages). Chaque ligne mène au module concerné
-// quand le rôle y a accès.
+// quand le rôle y a accès. Libellé seul, sans icône : une alerte (danger,
+// warning) garde sa couleur sur le titre.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const ICONES = {
-  haccp: Thermometer,
-  groupe: UsersRound,
-  equipe: Users,
-  pertes: ClipboardList,
-  messages: MessageSquareText,
-};
 
 const MAX = 6;
 
@@ -35,8 +27,7 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
       {!items.length && <div style={t.vide}>Tout est à jour. Bon service !</div>}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {visibles.map((item, i) => {
-          const Icone = ICONES[item.icone] || TriangleAlert;
-          const c = TONS[item.ton] || TONS.info;
+          const alerte = item.ton === 'danger' || item.ton === 'warning';
           const cliquable = peutOuvrir(item.page);
           return (
             <Ligne
@@ -45,9 +36,8 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
               label={`${item.titre}. ${item.detail}`}
               style={{ borderRadius: 0, paddingInline: 2, ...(i ? { borderTop: '1px solid var(--border)' } : null) }}
             >
-              <Icone size={18} strokeWidth={1.9} aria-hidden="true" style={{ color: c.texte, flexShrink: 0 }} />
               <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <span style={{ ...t.nom, whiteSpace: 'normal' }}>{item.titre}</span>
+                <span style={{ ...t.nom, whiteSpace: 'normal', ...(alerte ? { color: TONS[item.ton].texte } : null) }}>{item.titre}</span>
                 <span style={{ ...t.texte2, display: 'block' }}>{item.detail}</span>
               </span>
               {item.ton === 'danger' && <Puce ton="danger">Urgent</Puce>}

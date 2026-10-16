@@ -6,8 +6,9 @@ import {
   ACCEPTED_MIME, HEIC_EXTENSIONS, MAX_FILE_SIZE_MB, COMPRESSION_THRESHOLD_MB,
   getExtension, convertHeicToJpeg, maybeCompress,
 } from '../consultant-tools/photoProcessing.js';
-import { Camera, ChevronLeft, Trash2, X } from 'lucide-react';
+import { Camera, ChevronLeft, Trash2 } from 'lucide-react';
 import { userDisplayName } from '../../utils/userDisplay.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -183,7 +184,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
       cancelPending();
     } catch (err) {
       console.error('[Tracabilite] save error', err);
-      notifyLegacy('Erreur pendant l\'enregistrement : ' + (err?.message || 'inconnue'), 'error');
+      notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'traçabilité'), 'error');
     } finally {
       setBusy(false);
       setBusyLabel('');
@@ -199,7 +200,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
       notifyLegacy('Photo supprimée', 'success');
     } catch (err) {
       console.error('[Tracabilite] delete error', err);
-      notifyLegacy('Erreur pendant la suppression : ' + (err?.message || 'inconnue'), 'error');
+      notifyLegacy('Suppression impossible. ' + messageErreur(err, 'traçabilité'), 'error');
     }
   };
 
@@ -308,7 +309,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
           <div style={hs.modal} onClick={e => e.stopPropagation()}>
             <div style={hs.modalHeader}>
               <span style={hs.modalTitle}>Nouvelle photo de traçabilité</span>
-              <button style={hs.closeBtn} onClick={cancelPending} disabled={busy}><X size={18} /></button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={cancelPending} disabled={busy}>×</button>
             </div>
             <div style={hs.modalBody}>
               <img src={pending.previewUrl} alt="Aperçu de la photo à valider" style={gStyles.preview} />
@@ -345,7 +346,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
           <div className="modal-sheet" style={hs.modal} onClick={e => e.stopPropagation()}>
             <div style={hs.modalHeader}>
               <span style={hs.modalTitle}>Accès à la caméra</span>
-              <button style={hs.closeBtn} onClick={() => setShowCameraInfo(false)}><X size={18} /></button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={() => setShowCameraInfo(false)}>×</button>
             </div>
             <div style={hs.modalBody}>
               <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 14px' }}>
@@ -379,7 +380,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
           <div style={hs.modal} onClick={e => e.stopPropagation()}>
             <div style={hs.modalHeader}>
               <span style={hs.modalTitle}>{lightbox.produit || 'Photo traçabilité'}</span>
-              <button style={hs.closeBtn} onClick={() => setLightbox(null)}><X size={18} /></button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={() => setLightbox(null)}>×</button>
             </div>
             <div style={hs.modalBody}>
               <img src={lightbox.photoUrl} alt="" style={gStyles.lightboxImg} />

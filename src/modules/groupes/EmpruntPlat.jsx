@@ -78,7 +78,7 @@ export default function EmpruntPlat({
               {plurielSection(section)}, servis {saison ? `en ${metaSaison(saison).label.toLowerCase()}` : ''} à la date du groupe
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={st.fermer}>×</button>
         </div>
 
         <div style={st.corps}>

@@ -115,8 +115,10 @@ export function SectionHeader({ title, sub, action, style = {} }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, ...style }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>{title}</div>
-        {sub ? <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{sub}</div> : null}
+        {/* Sans titre : le nom du module est déjà le titre de la barre du haut,
+            seule la phrase d'explication reste. */}
+        {title ? <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>{title}</div> : null}
+        {sub ? <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: title ? 2 : 0 }}>{sub}</div> : null}
       </div>
       {action}
     </div>

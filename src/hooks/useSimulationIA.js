@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../services/supabase.js';
+import { messageErreur } from '../utils/messageErreur.js';
 
 // Couverts/cuisinier/heure selon le score de complexité moyen
 const CAPACITE = {
@@ -109,7 +110,7 @@ export function useSimulationIA() {
 
       return { data: r, error: null };
     } catch (e) {
-      const msg = e.message || 'Erreur inconnue.';
+      const msg = messageErreur(e, 'simulation', 'Simulation impossible.');
       setError(msg);
       return { data: null, error: msg };
     } finally {

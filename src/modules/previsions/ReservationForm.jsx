@@ -271,7 +271,7 @@ export default function ReservationForm({
   async function enregistrerAccord(resa) {
     if (!form.accordActus || !form.email.trim()) return;
     if (!resa?.client_id) {
-      notify("Réservation enregistrée, mais la fiche client n'a pas été trouvée : note l'accord depuis l'onglet Clients.", 'warning');
+      notify("Réservation enregistrée, mais la fiche client n'a pas été trouvée : notez l'accord depuis l'onglet Clients.", 'warning');
       return;
     }
     const { error } = await fichesClients.setConsentement(resa.client_id, true, 'equipe');
@@ -349,11 +349,11 @@ export default function ReservationForm({
             if (eRollback) {
               console.error('[ReservationForm] ROLLBACK ÉCHOUÉ', resa.id, eRollback);
               notify(
-                `Tags KO et rollback impossible. Résa ${resa.id} à supprimer manuellement.`,
+                "Les étiquettes n'ont pas été enregistrées et la réservation n'a pas pu être annulée. Supprimez-la à la main.",
                 'error'
               );
             } else {
-              echec(eTags || 'Erreur tags - réservation annulée.');
+              echec(eTags || "Les étiquettes n'ont pas été enregistrées : réservation annulée.");
             }
             return;
           }
@@ -438,7 +438,7 @@ export default function ReservationForm({
         fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
       }}
     >
-      {form.passeport ? '✓ Passeport gourmand' : 'Passeport gourmand'}
+      Passeport gourmand
     </button>
   );
 
@@ -544,7 +544,7 @@ export default function ReservationForm({
           <div style={{ fontWeight: 700, fontSize: isMobile ? 16 : 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
             {initialResa ? 'Modifier la réservation' : 'Nouvelle réservation'}
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer"
+          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer"
             style={{
               background: 'none', border: 'none', fontSize: isMobile ? 28 : 22, cursor: 'pointer',
               color: 'var(--text2)', padding: 4, lineHeight: 1,
@@ -664,7 +664,7 @@ export default function ReservationForm({
                 <button type="button"
                   onClick={() => setForm((p) => ({ ...p, heureCustom: false, heure: suggestions[0] }))}
                   style={{ fontSize: 12, color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)' }}>
-                  ← Suggestions
+                  Retour aux suggestions
                 </button>
               </div>
             )}
@@ -823,7 +823,7 @@ export default function ReservationForm({
                         color: form.groupe ? 'var(--on-accent)' : 'var(--text2)',
                         fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
                       }}>
-                      {form.groupe ? '✓ Groupe' : 'Groupe'}
+                      Groupe
                     </button>
                     {boutonPasseport}
                   </div>
@@ -887,7 +887,7 @@ export default function ReservationForm({
               ) : (
                 <button type="button" disabled={loading} onClick={() => submit(true)}
                   style={{ flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 0, background: 'var(--surface2)', color: 'var(--accent)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, opacity: loading ? 0.5 : 1, padding: '0 8px' }}>
-                  + Saisir une autre
+                  Saisir une autre
                 </button>
               )}
               <button type="button" disabled={loading} onClick={() => submit(false)}
@@ -904,7 +904,7 @@ export default function ReservationForm({
           {!initialResa && (
             <button type="button" disabled={loading} onClick={() => submit(true)}
               style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 600, padding: 0, opacity: loading ? 0.5 : 1 }}>
-              + Saisir une autre
+              Saisir une autre
             </button>
           )}
           <div style={{ display: 'flex', gap: 8 }}>

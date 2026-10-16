@@ -28,6 +28,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../../../services/dbService.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 // ── Normalisation ─────────────────────────────────────────────────────────────
 
@@ -210,7 +211,7 @@ export function useConsoIngredients(etablissement, dateRange) {
       setItems(result.map(({ nom, quantite, unite }) => ({ nom, quantite, unite })));
     } catch (e) {
       console.error('[useConsoIngredients]', e);
-      setError(e?.message ?? 'Erreur de chargement');
+      setError(messageErreur(e, 'ventes caisse', 'Chargement impossible.'));
     } finally {
       setLoading(false);
     }

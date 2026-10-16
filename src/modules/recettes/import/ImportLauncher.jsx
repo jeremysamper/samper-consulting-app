@@ -5,6 +5,7 @@ import { notify } from '../../../components/toast/index.js';
 import { parseWorkbook, buildFromMapping, FIELD_LABELS } from './ExcelImporter.js';
 import ImportPreview, { isRecipeValid } from './ImportPreview.jsx';
 import { getUnrecognizedUnits, resetUnrecognizedUnits } from './UnitParser.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 const BATCH_SIZE = 10;
 
@@ -129,7 +130,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           const result = await parsePdf(buf);
           if (result.scanned) {
             scannedCount += 1;
-            notes.push(`${file.name} : PDF scanné (image), prends-en une photo pour la lecture.`);
+            notes.push(`${file.name} : PDF scanné (image), prenez-en une photo pour la lecture.`);
           } else if (result.recipes && result.recipes.length) {
             aggregated.push(...result.recipes);
           } else {
@@ -147,7 +148,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           notes.push(`${file.name} : format non pris en charge.`);
         }
       } catch (err) {
-        notes.push(`${file.name} : ${err.message || err}`);
+        notes.push(`${file.name} : ${messageErreur(err, 'import des recettes', 'fichier illisible.')}`);
       }
     }
 
@@ -199,7 +200,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
       setRecipes(built);
       setStep('preview');
     } catch (err) {
-      setParseError('Mapping invalide : ' + (err.message || err));
+      setParseError('Correspondance des colonnes invalide. ' + messageErreur(err, 'import des recettes'));
     }
   };
 
@@ -260,7 +261,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
       <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
         Import multiple de recettes
       </div>
-      <button onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>✕</button>
+      <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
     </div>
   );
 
@@ -311,7 +312,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
               {scannedPdf && (
                 <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}>
                   Ce PDF semble être une image scannée (aucun texte sélectionnable).
-                  Astuce : prends-en une photo et utilise l'option « Photo » ci-dessus
+                  Astuce : prenez-en une photo et utilisez l'option « Photo » ci-dessus
                   pour le faire lire automatiquement.
                 </div>
               )}
@@ -344,7 +345,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
               </div>
               {parseError && <div style={errBox}>{parseError}</div>}
               <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                <Btn variant="ghost" onClick={reset}>← Retour</Btn>
+                <Btn variant="ghost" onClick={reset}>Retour</Btn>
                 <Btn variant="primary" onClick={applyMapping}>Continuer</Btn>
               </div>
             </div>
@@ -382,7 +383,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
               )}
               <ImportPreview recipes={recipes} onChange={setRecipes} unrecognizedUnits={getUnrecognizedUnits()} />
               <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                <Btn variant="ghost" onClick={reset}>← Autre fichier</Btn>
+                <Btn variant="ghost" onClick={reset}>Autre fichier</Btn>
                 <div style={{ flex: 1 }} />
                 <Btn variant="primary" onClick={importAllValid}>
                   Importer les recettes valides ({recipes.filter(r => r._selected !== false && isRecipeValid(r)).length})

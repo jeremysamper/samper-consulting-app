@@ -75,8 +75,8 @@ export default function ResetPassword({ ready, hasSession, email, linkErrorCode,
               ne sont valables qu'une heure et une seule fois.
             </div>
             <div style={as.hint}>
-              Retourne à l'écran de connexion, clique sur « Mot de passe oublié ? »
-              et ouvre le nouveau mail sur ce même appareil.
+              Retournez à l'écran de connexion, cliquez sur « Mot de passe oublié ? »
+              et ouvrez le nouveau mail sur ce même appareil.
             </div>
             <button type="button" style={as.submitBtn} onClick={onDismiss}>
               Retour à la connexion
@@ -87,7 +87,7 @@ export default function ResetPassword({ ready, hasSession, email, linkErrorCode,
         {ready && !linkIsDead && (
           <>
             <div style={as.hint}>
-              Choisis un nouveau mot de passe pour ce compte.
+              Choisissez un nouveau mot de passe pour ce compte.
               {email ? <><br /><span style={as.emailBadge}>{email}</span></> : null}
             </div>
 
@@ -117,7 +117,7 @@ export default function ResetPassword({ ready, hasSession, email, linkErrorCode,
                   style={as.input}
                   value={confirmation}
                   onChange={(event) => setConfirmation(event.target.value)}
-                  placeholder="Retape le même mot de passe"
+                  placeholder="Retapez le même mot de passe"
                   required
                   disabled={loading}
                 />
@@ -144,7 +144,7 @@ export default function ResetPassword({ ready, hasSession, email, linkErrorCode,
         )}
 
         <div style={as.footer}>
-          Un souci persistant ? Contacte le consultant, il peut réinitialiser
+          Un souci persistant ? Contactez le consultant, il peut réinitialiser
           l'accès depuis le module <strong>Rôles &amp; Accès</strong>.
         </div>
       </div>

@@ -23,10 +23,11 @@ import ExportModal from './ExportModal.jsx';
 import MonPlanning from './MonPlanning.jsx';
 import ModelesModal from './ModelesModal.jsx';
 import { BoutonActions } from './planningUi.jsx';
-import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
+import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, formatDuree, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 import { usePlanningModeles } from '../../hooks/usePlanningModeles.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -328,7 +329,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
     const [dh, dm] = debut.split(':').map(Number);
     const [fh, fm] = fin.split(':').map(Number);
     const total = (fh * 60 + fm) - (dh * 60 + dm) - (pause || 0);
-    return (total / 60).toFixed(1);
+    // En heures, sans arrondi : l'affichage passe par formatDuree (« 4 h 45 »),
+    // un arrondi au dixième aurait écrit 4 h 48.
+    return total / 60;
+  };
+  const dureeLisible = (h) => {
+    if (h == null || !Number.isFinite(Number(h))) return '-';
+    return Number(h) < 0 ? `${Number(h).toFixed(1)} h` : formatDuree(h);
   };
 
   // ─── Calculs heures par employé ───
@@ -386,7 +393,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         // Optimistic update local (realtime fera aussi le refresh)
         setPlanning(prev => prev.filter(s => s.id !== id));
       } catch (err) {
-        notifyLegacy('Erreur suppression : ' + err.message, 'error');
+        notifyLegacy('Suppression impossible. ' + messageErreur(err, 'planning'), 'error');
         return;
       }
     } else {
@@ -429,7 +436,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       setPlanning(prev => [...prev, ...crees.filter(c => !prev.some(p => p.id === c.id))]);
       if (ignores && !silencieux) notifyLegacy('Une partie était déjà occupée : seul le créneau libre a été posé.', 'info');
     } catch (err) {
-      notifyLegacy('Erreur enregistrement : ' + err.message, 'error');
+      notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'planning'), 'error');
     }
   };
 
@@ -454,7 +461,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       if (aSupprimer.length) msg += `, ${aSupprimer.length} remplacé${aSupprimer.length > 1 ? 's' : ''}`;
       notifyLegacy(msg + '.', 'success');
     } catch (err) {
-      notifyLegacy('Erreur duplication : ' + err.message, 'error');
+      notifyLegacy('Duplication impossible. ' + messageErreur(err, 'planning'), 'error');
       throw err;
     }
   };
@@ -483,7 +490,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           setPlanning(prev => [...prev, mapped]);
         }
       } catch (err) {
-        notifyLegacy('Erreur enregistrement : ' + err.message, 'error');
+        notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'planning'), 'error');
         return;
       }
     } else {
@@ -546,7 +553,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
       }
     } catch (err) {
-      notifyLegacy(`Erreur pointage ${label} : ` + err.message, 'error');
+      notifyLegacy(`Pointage (${label}) non enregistré. ` + messageErreur(err, 'pointage'), 'error');
     } finally {
       punchEnCoursRef.current.delete(cle);
     }
@@ -564,7 +571,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         setPlanning(prev => prev.map(s => s.id === shift.id ? mapped : s));
         setSelectedShift(mapped);
       } catch (err) {
-        notifyLegacy('Erreur : ' + err.message, 'error');
+        notifyLegacy(messageErreur(err, 'planning'), 'error');
       }
     } else {
       setPlanning(prev => prev.map(s => s.id === shift.id ? { ...s, pointageDebut: null, pointageFin: null } : s));
@@ -600,7 +607,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     }
     // Validation : pas de fin sans début
     if (newFin && !newDebut) {
-      alertLegacy('Renseigne d\'abord l\'heure d\'arrivée.');
+      alertLegacy('Renseignez d\'abord l\'heure d\'arrivée.');
       return;
     }
     setPointageEditSaving(true);
@@ -620,7 +627,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       setPointageEditMode(false);
       notifyLegacy('Pointage corrigé manuellement', 'success');
     } catch (err) {
-      notifyLegacy('Erreur : ' + err.message, 'error');
+      notifyLegacy(messageErreur(err, 'planning'), 'error');
     } finally {
       setPointageEditSaving(false);
     }
@@ -735,7 +742,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       setSelectionMode(false);
       setShowBulkDeleteConfirm(false);
     } catch (err) {
-      notifyLegacy('Erreur suppression : ' + err.message, 'error');
+      notifyLegacy('Suppression impossible. ' + messageErreur(err, 'planning'), 'error');
     } finally {
       setBulkDeleting(false);
     }
@@ -801,9 +808,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
 
   const doBatchCreate = async () => {
-    if (batchUserIds.size === 0) { alertLegacy('Sélectionne au moins une personne.'); return; }
+    if (batchUserIds.size === 0) { alertLegacy('Sélectionnez au moins une personne.'); return; }
     const segments = batchSegments();
-    if (segments.some(s => !s.debut || !s.fin)) { alertLegacy('Renseigne le créneau (début et fin).'); return; }
+    if (segments.some(s => !s.debut || !s.fin)) { alertLegacy('Renseignez le créneau (début et fin).'); return; }
     const dates = buildBatchDates();
     if (dates.length === 0) { alertLegacy('Aucune date valide (vérifie la plage et les jours sélectionnés).'); return; }
 
@@ -867,7 +874,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       notifyLegacy(msg, 'success');
       setShowBatchModal(false);
     } catch (err) {
-      notifyLegacy('Erreur saisie groupée : ' + err.message, 'error');
+      notifyLegacy('Saisie groupée impossible. ' + messageErreur(err, 'planning'), 'error');
     } finally {
       setBatchSaving(false);
     }
@@ -961,7 +968,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       setSelectionMode(false);
       setSelectedIds(new Set());
     } catch (err) {
-      notifyLegacy('Erreur duplication : ' + err.message, 'error');
+      notifyLegacy('Duplication impossible. ' + messageErreur(err, 'planning'), 'error');
     } finally {
       setDemultSaving(false);
     }
@@ -1160,8 +1167,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
           {dayShifts.length === 0 ? (
             <div style={pls.mobileEmptyDay}>
-              <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos - aucun horaire planifié.</span>
-              {canWrite && <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>+ Ajouter un horaire</button>}
+              <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos, aucun horaire planifié.</span>
+              {canWrite && <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>Ajouter un horaire</button>}
             </div>
           ) : (
             <>
@@ -1204,7 +1211,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </React.Fragment>
               ))}
               {canWrite && !selectionMode && (
-                <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>+ Ajouter un horaire</button>
+                <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>Ajouter un horaire</button>
               )}
             </>
           )}
@@ -1217,7 +1224,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const renderMobilePointage = () => {
     return (
       <div style={pls.mobilePlanList} id="pointage-print">
-        <div style={pls.mobileTitle}>Pointages - {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        <div style={pls.mobileTitle}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         {allShifts.length === 0 && <div style={{ padding: 20, fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>Aucun horaire ce jour.</div>}
         {sectionsPointage.map(sec => (
           <React.Fragment key={sec.id || 'tous'}>
@@ -1242,7 +1249,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 11 }}>
                 <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 600 }}>{shift.pointageDebut || '-'}</div></div>
                 <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 600 }}>{shift.pointageFin || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 600 }}>{heuresReel ? heuresReel + 'h' : '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 600 }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
               </div>
               {canPointShift(shift) && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }} className="no-print">
@@ -1299,7 +1306,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         {canWrite && activeTab === 'planning' && (
           <BoutonActions
             id="planning-ajouter"
-            label="+ Ajouter"
+            label="Ajouter"
             style={pls.addBtn}
             titre="Ajouter des horaires"
             sousTitre="Ou touche directement une case du planning."
@@ -1310,7 +1317,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               ] },
               !isMobile && {
                 titre: 'Remplir la grille avec un modèle',
-                items: modeles.map(m => ({ titre: `Remplir avec « ${m.nom} »`, detail: `${libelleModele(m)}. Touche ensuite chaque case à remplir.`, onClick: () => { setSelectionMode(false); setSelectedIds(new Set()); setRemplissage(m); } })),
+                items: modeles.map(m => ({ titre: `Remplir avec « ${m.nom} »`, detail: `${libelleModele(m)}. Touchez ensuite chaque case à remplir.`, onClick: () => { setSelectionMode(false); setSelectedIds(new Set()); setRemplissage(m); } })),
               },
             ].filter(Boolean)}
           />
@@ -1342,7 +1349,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         <div className="no-print" style={pls.remplissage} role="status">
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
             <div style={{ fontWeight: 700 }}>Remplissage avec « {remplissage.nom} »</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)' }}>{libelleModele(remplissage)}. Touche les cases à remplir ; un créneau déjà pris est laissé tel quel.</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)' }}>{libelleModele(remplissage)}. Touchez les cases à remplir ; un créneau déjà pris est laissé tel quel.</div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {modeles.map(m => (
@@ -1411,13 +1418,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                               style={{ fontSize: 11, fontWeight: 700, color: weekColor }}
                               title={`Semaine : ${totalHours.toFixed(1)}h / contractuel ${heuresContractSem}h`}
                             >
-                              {totalHours.toFixed(1)}h <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--text2)' }}>sem</span>
+                              {dureeLisible(totalHours)} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text2)' }}>sem</span>
                             </span>
                             <span
-                              style={{ fontSize: 10, color: 'var(--text2)' }}
+                              style={{ fontSize: 11, color: 'var(--text2)' }}
                               title={`Total ${currentMonthLabel}`}
                             >
-                              {monthHours.toFixed(0)}h <span style={{ fontSize: 9 }}>ce mois</span>
+                              {dureeLisible(monthHours)} <span style={{ fontSize: 11 }}>ce mois</span>
                             </span>
                           </div>
                           <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
@@ -1448,15 +1455,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const role = emp.role ? demoData.roles[emp.role] : null;
                 const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
                 const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
-                const ecart = heuresPrev && heuresReel ? (parseFloat(heuresReel) - parseFloat(heuresPrev)).toFixed(1) : null;
+                // Écart à la minute près ; rien d'affiché sous la minute.
+                const ecartMin = heuresPrev && heuresReel ? Math.round((heuresReel - heuresPrev) * 60) : 0;
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
                     <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: role?.couleur }}>{emp.avatar}</div><div><div style={pls.ptName}>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
-                    <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev}h prévues</span></span>
+                    <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
-                    <span style={pls.ptCell}>{heuresReel ? <>{heuresReel}h {ecart && <span style={{ color: parseFloat(ecart) > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecart > 0 ? '+' : ''}{ecart}h)</span>}</> : '-'}</span>
+                    <span style={pls.ptCell}>{heuresReel ? <>{dureeLisible(heuresReel)} {ecartMin !== 0 && <span style={{ color: ecartMin > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecartMin > 0 ? '+' : '-'}{dureeLisible(Math.abs(ecartMin) / 60)})</span>}</> : '-'}</span>
                     <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                     {/* Pointage en un geste depuis la liste (iPad du restaurant, compte partagé) */}
                     <span style={pls.ptAction} className="no-print" onClick={e => e.stopPropagation()}>
@@ -1477,7 +1485,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {showDetailModal && selectedShift && (
         <div className="modal-full-overlay" style={pls.overlay} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>
           <div className="modal-full" style={pls.modal} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button style={pls.closeBtn} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>✕</button></div>
+            <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>×</button></div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
                 const emp = userDisplay(selectedShift.userId);
@@ -1526,7 +1534,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
-                    Action manager : utilise ce mode quand un employé a oublié de pointer. Laisse vide pour effacer une heure. Le pointage normal (RPC sécurisé côté serveur) reste prioritaire.
+                    Pour la direction : utilisez ce mode quand un équipier a oublié de pointer. Laissez vide pour effacer une heure. Le pointage normal reste prioritaire.
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button style={pls.exportBtn} onClick={cancelPointageEdit} disabled={pointageEditSaving}>Annuler</button>
@@ -1545,13 +1553,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {showEditModal && editForm && (
         <div className="modal-full-overlay" style={pls.overlay} onClick={() => setShowEditModal(false)}>
           <div className="modal-full" style={pls.modal} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}><div style={pls.modalTitle}>{editForm.id ? 'Modifier l\'horaire' : 'Nouvel horaire'}</div><button style={pls.closeBtn} onClick={() => setShowEditModal(false)}>✕</button></div>
+            <div style={pls.modalHeader}><div style={pls.modalTitle}>{editForm.id ? 'Modifier l\'horaire' : 'Nouvel horaire'}</div><button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => setShowEditModal(false)}>×</button></div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label style={pls.fieldLabel}>Employé</label>
                 <select style={pls.fieldInput} value={editForm.userId} onChange={e => setEditForm({ ...editForm, userId: e.target.value })}>
                   <option value="">Sélectionner…</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.prenom} {e.nom} - {demoData.roles[e.role]?.label}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.prenom} {e.nom}{demoData.roles[e.role]?.label ? ` (${demoData.roles[e.role].label})` : ''}</option>)}
                 </select>
               </div>
               <div>
@@ -1593,7 +1601,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </select></div>
               </div>
               <div><label style={pls.fieldLabel}>Poste / Tâche</label><input type="text" style={pls.fieldInput} value={editForm.poste} placeholder="Ex : Cuisine, Salle…" onChange={e => setEditForm({ ...editForm, poste: e.target.value })} /></div>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>Durée : <strong>{calcHeures(editForm.debut, editForm.fin, editForm.pause) || '-'}h</strong></div>
+              <div style={{ fontSize: 12, color: 'var(--text2)' }}>Durée : <strong>{dureeLisible(calcHeures(editForm.debut, editForm.fin, editForm.pause))}</strong></div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', marginTop: 4 }}>
                 {/* Suppression contextuelle de l'horaire en cours d'édition (pas un raccourci grille) */}
                 {editForm.id && canWrite && (
@@ -1616,7 +1624,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <div className="modal-full" style={{ ...pls.modal, width: 560 }} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}>
               <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Générer un relevé CCNT</div>
-              <button style={pls.closeBtn} onClick={() => setShowCCNTModal(false)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => setShowCCNTModal(false)}>×</button>
             </div>
             <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--warning-text)', lineHeight: 1.5 }}>
@@ -1773,8 +1781,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <td style={{ ...ccntCell, ...ccnt.etiquette }}>Solde cumulé à fin {data.moisLabel}</td>
                     <td style={{ ...ccntCell, ...ccnt.valeur }}>{data.soldeCumule} h</td>
                   </tr>
-                  <tr><td style={ccntCell}>Vacances - solde dû</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.vacances.solde} j</td></tr>
-                  <tr style={ccnt.ligneZebre}><td style={ccntCell}>Vacances - prises ce mois</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.vacances.pris} j</td></tr>
+                  <tr><td style={ccntCell}>Vacances : solde dû</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.vacances.solde} j</td></tr>
+                  <tr style={ccnt.ligneZebre}><td style={ccntCell}>Vacances : prises ce mois</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.vacances.pris} j</td></tr>
                   <tr><td style={ccntCell}>Jours de repos dus / pris</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.joursRepos.dus} j / {data.joursRepos.pris} j</td></tr>
                   <tr style={ccnt.ligneZebre}><td style={ccntCell}>Jours fériés dus / pris</td><td style={{ ...ccntCell, ...ccnt.valeur }}>{data.joursFeries.dus} j / {data.joursFeries.pris} j</td></tr>
                 </tbody>
@@ -1802,7 +1810,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
 
             <div style={ccnt.mentionLegale}>
-              Document à conserver 5 ans minimum - Art. 73 OLT 1 / Art. 21 CCNT
+              Document à conserver 5 ans minimum (art. 73 OLT 1, art. 21 CCNT)
             </div>
           </div>
         );
@@ -1842,7 +1850,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw' }} onClick={e => e.stopPropagation()}>
               <div style={pls.modalHeader}>
                 <div style={pls.modalTitle}>Dupliquer vers…</div>
-                <button style={pls.closeBtn} onClick={closeDemult}>✕</button>
+                <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={closeDemult}>×</button>
               </div>
               <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Récapitulatif sélection */}
@@ -2082,7 +2090,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <div className="modal-full" style={{ ...pls.modal, width: 420 }} onClick={e => e.stopPropagation()}>
             <div style={pls.modalHeader}>
               <div style={pls.modalTitle}>Supprimer {selectedIds.size} horaire{selectedIds.size > 1 ? 's' : ''} ?</div>
-              <button style={pls.closeBtn} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>✕</button>
+              <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>×</button>
             </div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
@@ -2124,13 +2132,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
         });
         const totalPairs = batchUserIds.size * dates.length * segs.length;
         const willCreate = batchConflictMode === 'skip' ? totalPairs - conflictCount : totalPairs - pointesBloquants;
-        const heuresCreneau = segs.reduce((t, s) => t + (parseFloat(calcHeures(s.debut, s.fin, s.pause)) || 0), 0).toFixed(1);
+        const heuresCreneau = segs.reduce((t, s) => t + (calcHeures(s.debut, s.fin, s.pause) || 0), 0);
         return (
           <div className="modal-full-overlay" style={pls.overlay} onClick={() => !batchSaving && setShowBatchModal(false)}>
             <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
               <div style={pls.modalHeader}>
                 <div style={pls.modalTitle}>Saisie groupée d'horaires</div>
-                <button style={pls.closeBtn} onClick={() => !batchSaving && setShowBatchModal(false)}>✕</button>
+                <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => !batchSaving && setShowBatchModal(false)}>×</button>
               </div>
               <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -2260,7 +2268,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     <label style={{ ...pls.fieldLabel, fontSize: 10 }}>Poste / Tâche (optionnel)</label>
                     <input type="text" style={pls.fieldInput} value={batchPoste} placeholder="Ex : Cuisine, Salle…" onChange={e => setBatchPoste(e.target.value)} />
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau || '-'}h</strong></div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau ? dureeLisible(heuresCreneau) : '-'}</strong></div>
                 </div>
 
                 {/* ── Gestion des conflits ── */}

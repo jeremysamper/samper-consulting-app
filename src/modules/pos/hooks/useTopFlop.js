@@ -26,6 +26,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../../../services/dbService.js';
 import { addDays, todayInTz, formatRangeLabel } from '../lib/date-utils.js';
+import { messageErreur } from '../../../utils/messageErreur.js';
 
 export function useTopFlop(etablissement, periodDays = 7) {
   const [items, setItems]             = useState([]);
@@ -119,7 +120,7 @@ export function useTopFlop(etablissement, periodDays = 7) {
       setItems(result);
     } catch (e) {
       console.error('[useTopFlop]', e);
-      setError(e?.message ?? 'Erreur de chargement');
+      setError(messageErreur(e, 'ventes caisse', 'Chargement impossible.'));
     } finally {
       setLoading(false);
     }

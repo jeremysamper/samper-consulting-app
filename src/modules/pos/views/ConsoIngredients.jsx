@@ -217,7 +217,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
           <div style={{
             fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)',
           }}>
-            Conso ingrédients - {periodLabel}
+            Conso ingrédients, {periodLabel}
           </div>
           {etabNom && (
             <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{etabNom}</div>
@@ -308,7 +308,7 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
                       fontFamily: 'var(--font)', textDecoration: 'underline',
                     }}
                   >
-                    Mapping →
+                    Mapping
                   </button></>
                 )
               )}
