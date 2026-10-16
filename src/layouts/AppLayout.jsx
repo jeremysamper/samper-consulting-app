@@ -938,8 +938,8 @@ export default function AppLayout({
 }
 
 const ls = {
-  // Desktop - navigation « encre pétrole » : la sidebar porte le dégradé de
-  // marque (--nav-grad) dans les DEUX thèmes, avec les tokens nav-* pour les
+  // Desktop - navigation « encre pétrole » : la sidebar est en aplat uni
+  // (--nav, sans dégradé) dans les DEUX thèmes, avec les tokens nav-* pour les
   // textes et filets. Le tiroir mobile (mls) reçoit exactement le même
   // traitement : la cohérence sidebar/drawer est préservée en les changeant
   // ensemble. Fond transparent sur la coque : l'ambiance (--ambient) posée
@@ -950,7 +950,7 @@ const ls = {
   root: { display: 'flex', height: '100%', fontFamily: 'var(--font)', background: 'transparent', overflow: 'hidden' },
   // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
   // être bloquée par la taille min-content de ses enfants flex.
-  sidebar: { background: 'var(--nav-grad)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
+  sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
   // Haut de barre : le logo seul, aligné sur le texte des modules.
   sidebarTop: { display: 'flex', alignItems: 'center', padding: '18px 16px 12px', flexShrink: 0 },
   logoMenu: { position: 'absolute', top: '100%', left: 0, marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--sh-lg)', width: 200, zIndex: 300, overflow: 'hidden' },
@@ -1055,7 +1055,7 @@ const mls = {
   // Drawer latéral gauche - même encre pétrole que la sidebar desktop
   drawer: {
     position: 'fixed', top: 0, left: 0, bottom: 0, width: '80%', maxWidth: 320,
-    background: 'var(--nav-grad)',
+    background: 'var(--nav)',
     zIndex: 100,
     display: 'flex', flexDirection: 'column',
     transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
