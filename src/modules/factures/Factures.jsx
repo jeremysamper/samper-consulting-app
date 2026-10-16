@@ -19,7 +19,7 @@ import {
 // {{etablissement}}, {{prestation}}, {{reference}}
 const EMAIL_VARS = ['numero', 'date', 'echeance', 'montant', 'etablissement', 'prestation', 'reference'];
 
-const DEFAULT_EMAIL_SUBJECT = 'Facture n° {{numero}} - Samper Consulting';
+const DEFAULT_EMAIL_SUBJECT = 'Facture n° {{numero}}, Samper Consulting';
 
 const DEFAULT_EMAIL_TEMPLATE = `Bonjour,
 
@@ -34,7 +34,7 @@ Je reste à disposition pour toute question.
 
 Avec mes meilleures salutations,
 
-Jeremy Samper
+Jérémy Samper
 Consultant culinaire
 Samper Consulting
 +41 76 626 54 00
@@ -61,8 +61,8 @@ const flattenValue = (v) => String(v ?? '').replace(/\s*\n\s*/g, ' ').trim();
 // propres textes. Stockage en user_settings sous une clé scopée par etabId,
 // donc pas de migration ni de colonne à ajouter.
 const DEFAULT_FACTURE_TEXTS = {
-  titre: 'FACTURE DE PRESTATION',
-  emetteur: `Jeremy SAMPER - Consultant Culinaire
+  titre: 'Facture de prestation',
+  emetteur: `Jérémy Samper, consultant culinaire
 Téléphone : +41 76 626 54 00
 E-mail : jeremysamper.pro@gmail.com
 Adresse : Route de Collombé 24A, 1976 Erde, Suisse`,
@@ -79,7 +79,7 @@ IBAN : CH33 0076 5001 0561 6551 0
 SWIFT / BIC : BCVSCH2LXXX`,
   mentionTva: 'Numéro TVA : Non assujetti (activité indépendante en création)',
   ville: 'Erde',
-  signature: 'Jeremy Samper - Consultant culinaire',
+  signature: 'Jérémy Samper, consultant culinaire',
   // ─── QR-facture suisse ───
   // L'adresse du créancier est saisie en champs séparés et non reprise du bloc
   // émetteur : depuis novembre 2025 la norme n'accepte plus que les adresses
