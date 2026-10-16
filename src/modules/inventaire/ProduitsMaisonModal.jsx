@@ -1,6 +1,7 @@
 import React from 'react';
 import { coutUnitaireRecette, suggererRecette, estMaison } from './produitsMaison.js';
 import { montantLisible } from '../../services/qrFacture.js';
+import { Fenetre } from '../../components/ui/Fenetres.jsx';
 
 // Liaison des lignes d'inventaire aux fiches recettes (produits maison) et
 // mise à jour de leur prix au coût matière actuel des fiches.
@@ -41,20 +42,25 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
     try { await fn(); } finally { setBusy(false); }
   };
 
+  // Fenetre : portail, rôle de dialogue, Échap, « × » nommé, geste retour ;
+  // le corps défile seul, le pied reste visible.
   return (
-    <div className="modal-full-overlay" style={st.overlay} onClick={e => { if (e.target === e.currentTarget && !busy) onClose(); }}>
-      <div className="modal-full" style={st.panel}>
-        <div style={st.header}>
-          <div style={{ minWidth: 0 }}>
-            <div style={st.titre}>Produits maison</div>
-            <div style={st.sousTitre}>
-              Les préparations maison (pickles, fonds, confits, desserts) sont liées à leur fiche recette : leur prix est le
-              coût matière de la fiche, au kilo ou à la portion selon l'unité de comptage.
-            </div>
-          </div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} style={st.fermer} title="Fermer">×</button>
-        </div>
-
+    <Fenetre
+      id="inventaire-produits-maison"
+      titre="Produits maison"
+      sousTitre="Les préparations maison (pickles, fonds, confits, desserts) sont liées à leur fiche recette : leur prix est le coût matière de la fiche, au kilo ou à la portion selon l'unité de comptage."
+      onClose={onClose}
+      largeur={760}
+      pied={(
+        <>
+          <span style={{ fontSize: 11, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0, lineHeight: 1.45 }}>
+            « Estimé » : un ingrédient de la fiche n'est pas lié au catalogue, son prix vient du produit de même nom
+            dans l'inventaire (prix des factures) ou au catalogue de l'établissement, à défaut du prix figé sur la fiche.
+          </span>
+          <button type="button" onClick={onClose} style={st.btnPrimaire} disabled={busy}>Fermer</button>
+        </>
+      )}
+    >
         <div style={st.corps}>
           <datalist id="inventaire-fiches">
             {(recettes || []).map(r => <option key={r.id} value={r.nom} />)}
@@ -135,16 +141,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
             </>
           )}
         </div>
-
-        <div style={st.footer}>
-          <span style={{ fontSize: 11, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0, lineHeight: 1.45 }}>
-            « Estimé » : un ingrédient de la fiche n'est pas lié au catalogue, son prix vient du produit de même nom
-            dans l'inventaire (prix des factures) ou au catalogue de l'établissement, à défaut du prix figé sur la fiche.
-          </span>
-          <button type="button" onClick={onClose} style={st.btnPrimaire} disabled={busy}>Fermer</button>
-        </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 }
 
@@ -168,13 +165,8 @@ function LiaisonManuelle({ lignes, parNom, busy, onLier }) {
 }
 
 const st = {
-  overlay: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  panel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 'min(760px, 96vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
-  header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '16px 18px', borderBottom: '1px solid var(--border)' },
-  titre: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sousTitre: { fontSize: 12, color: 'var(--text2)', marginTop: 3, lineHeight: 1.45 },
-  fermer: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0 },
-  corps: { overflowY: 'auto', flex: 1, padding: '6px 18px 14px' },
+  // Hauteur bornée : le corps défile seul, le pied de la fenêtre reste visible.
+  corps: { overflowY: 'auto', maxHeight: '56vh', padding: '6px 0 14px' },
   blocTitre: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '14px 0 6px' },
   vide: { fontSize: 12, color: 'var(--text2)', padding: '10px 12px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 8, lineHeight: 1.45 },
   ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)' },
@@ -185,6 +177,5 @@ const st = {
   btn: { padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
   btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
   champ: { flex: '1 1 200px', minWidth: 0, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  footer: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 18px', borderTop: '1px solid var(--border)' },
   btnPrimaire: { padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
 };

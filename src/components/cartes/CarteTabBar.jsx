@@ -1,6 +1,7 @@
 import React from 'react';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
 import { Pencil } from 'lucide-react';
+import { Fenetre } from '../ui/Fenetres.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CarteTabBar - barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
@@ -219,35 +220,16 @@ export default function CarteTabBar({
         >Archives ({archivedCartes.length})</button>
       )}
 
+      {/* Fenêtres sur Fenetre : portail, rôle de dialogue, Échap, « × » nommé,
+          geste retour ; elles s'ouvrent aussi bien depuis un menu. */}
       {modal && (
-        <div style={s.overlay} onClick={close}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <div style={s.modalHeader}>
-              <div style={s.modalTitle}>{modal.mode === 'create' ? 'Nouvelle carte' : 'Modifier la carte'}</div>
-              <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={close}>×</button>
-            </div>
-            <div style={s.modalBody}>
-              <label style={s.label}>Nom de la carte *</label>
-              <input
-                autoFocus
-                style={s.input}
-                value={form.nom}
-                placeholder="Ex : Carte petit-déjeuner, Brunch, Menus spéciaux…"
-                onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') submit(); }}
-              />
-              <div style={s.dateRow}>
-                <div style={s.dateCol}>
-                  <label style={s.label}>Début (optionnel)</label>
-                  <input type="date" style={s.input} value={form.dateDebut || ''} onChange={e => setForm(f => ({ ...f, dateDebut: e.target.value }))} />
-                </div>
-                <div style={s.dateCol}>
-                  <label style={s.label}>Fin (optionnel)</label>
-                  <input type="date" style={s.input} value={form.dateFin || ''} onChange={e => setForm(f => ({ ...f, dateFin: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-            <div style={s.modalFooter}>
+        <Fenetre
+          id="cartes-edition"
+          titre={modal.mode === 'create' ? 'Nouvelle carte' : 'Modifier la carte'}
+          onClose={close}
+          largeur={460}
+          pied={(
+            <>
               {modal.mode === 'edit' && (
                 <button style={{ ...s.ghostBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={remove}>Supprimer</button>
               )}
@@ -272,22 +254,52 @@ export default function CarteTabBar({
               <button style={{ ...s.primaryBtn, opacity: form.nom.trim() ? 1 : 0.5 }} onClick={submit} disabled={!form.nom.trim()}>
                 {modal.mode === 'create' ? 'Créer la carte' : 'Enregistrer'}
               </button>
+            </>
+          )}
+        >
+            <div style={s.fenetreCorps}>
+              <label style={s.label}>Nom de la carte *</label>
+              <input
+                autoFocus
+                style={s.input}
+                value={form.nom}
+                placeholder="Ex : Carte petit-déjeuner, Brunch, Menus spéciaux…"
+                onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+              />
+              <div style={s.dateRow}>
+                <div style={s.dateCol}>
+                  <label style={s.label}>Début (optionnel)</label>
+                  <input type="date" style={s.input} value={form.dateDebut || ''} onChange={e => setForm(f => ({ ...f, dateDebut: e.target.value }))} />
+                </div>
+                <div style={s.dateCol}>
+                  <label style={s.label}>Fin (optionnel)</label>
+                  <input type="date" style={s.input} value={form.dateFin || ''} onChange={e => setForm(f => ({ ...f, dateFin: e.target.value }))} />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {ordreDraft && (
-        <div className="modal-sheet-overlay" style={s.overlay} onClick={() => { if (!ordreBusy) setOrdreDraft(null); }}>
-          <div className="modal-sheet" style={s.modal} onClick={e => e.stopPropagation()}>
-            <div style={s.modalHeader}>
-              <div>
-                <div style={s.modalTitle}>Ordre des cartes</div>
-                <div style={s.modalHint}>Le haut de la liste est l'onglet le plus à gauche.</div>
-              </div>
-              <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>×</button>
-            </div>
-            <div style={{ ...s.modalBody, gap: 6, maxHeight: '58vh', overflowY: 'auto' }}>
+        <Fenetre
+          id="cartes-ordre"
+          titre="Ordre des cartes"
+          sousTitre="Le haut de la liste est l'onglet le plus à gauche."
+          onClose={() => setOrdreDraft(null)}
+          largeur={460}
+          pied={(
+            <>
+              <button style={s.ghostBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>Annuler</button>
+              <button
+                style={{ ...s.primaryBtn, opacity: ordreModifie && !ordreBusy ? 1 : 0.5 }}
+                onClick={submitOrdre}
+                disabled={!ordreModifie || ordreBusy}
+              >{ordreBusy ? 'Enregistrement…' : 'Enregistrer l\'ordre'}</button>
+            </>
+          )}
+        >
+            <div style={{ ...s.fenetreCorps, gap: 6, maxHeight: '58vh', overflowY: 'auto' }}>
               {ordreLignes.map((carte, i) => (
                 <div key={carte.id} style={s.ordreRow}>
                   <span style={s.ordreRang}>{i + 1}</span>
@@ -309,27 +321,18 @@ export default function CarteTabBar({
                 </div>
               ))}
             </div>
-            <div style={s.modalFooter}>
-              <div style={{ flex: 1 }} />
-              <button style={s.ghostBtn} onClick={() => setOrdreDraft(null)} disabled={ordreBusy}>Annuler</button>
-              <button
-                style={{ ...s.primaryBtn, opacity: ordreModifie && !ordreBusy ? 1 : 0.5 }}
-                onClick={submitOrdre}
-                disabled={!ordreModifie || ordreBusy}
-              >{ordreBusy ? 'Enregistrement…' : 'Enregistrer l\'ordre'}</button>
-            </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {showArchives && (
-        <div style={s.overlay} onClick={() => setShowArchives(false)}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <div style={s.modalHeader}>
-              <div style={s.modalTitle}>Cartes archivées</div>
-              <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={() => setShowArchives(false)}>×</button>
-            </div>
-            <div style={{ ...s.modalBody, gap: 6, maxHeight: '60vh', overflowY: 'auto' }}>
+        <Fenetre
+          id="cartes-archives"
+          titre="Cartes archivées"
+          onClose={() => setShowArchives(false)}
+          largeur={460}
+          pied={<button style={s.ghostBtn} onClick={() => setShowArchives(false)}>Fermer</button>}
+        >
+            <div style={{ ...s.fenetreCorps, gap: 6, maxHeight: '60vh', overflowY: 'auto' }}>
               {archivedCartes.length === 0 && (
                 <div style={s.archiveEmpty}>Aucune carte archivée.</div>
               )}
@@ -353,12 +356,7 @@ export default function CarteTabBar({
                 </div>
               ))}
             </div>
-            <div style={s.modalFooter}>
-              <div style={{ flex: 1 }} />
-              <button style={s.ghostBtn} onClick={() => setShowArchives(false)}>Fermer</button>
-            </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
     </div>
   );
@@ -397,20 +395,14 @@ const s = {
   archiveEmpty: { padding: '18px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
   restoreBtn: { padding: '7px 12px', background: 'var(--accent-light)', border: '1px solid transparent', color: 'var(--accent)', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0 },
   divider: { width: 1, height: 24, background: 'var(--border)', margin: '0 4px' },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
-  modal: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 460, maxWidth: '94vw', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
-  modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
-  modalTitle: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  modalHint: { fontSize: 11, color: 'var(--text2)', marginTop: 3, lineHeight: 1.4 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  modalBody: { padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
+  // Corps des fenêtres (Fenetre porte déjà le cadre, le titre et le rembourrage).
+  fenetreCorps: { display: 'flex', flexDirection: 'column', gap: 12 },
   label: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   // minWidth:0 : les input[type=date] ont une largeur intrinsèque (~170px) qui
   // ferait déborder la rangée hors de la modale sur mobile (375px).
   dateRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   dateCol: { flex: '1 1 140px', minWidth: 0 },
-  modalFooter: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '12px 20px', borderTop: '1px solid var(--border)' },
   // Bordure en propriétés longues (pas le raccourci `border`) : « Supprimer » et
   // « Cacher » surchargent borderColor, et mélanger les deux fait warner React
   // à chaque bascule (cf. npm run lint:borders).

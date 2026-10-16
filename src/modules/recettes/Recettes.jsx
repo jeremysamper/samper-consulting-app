@@ -17,7 +17,7 @@ import { dureesVie } from '../../utils/etiquettesDlc.js';
 import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { navigateToPage } from '../../services/navigationService.js';
 import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
@@ -97,14 +97,9 @@ const RecettePhoto = ({ src, alt = '', placeholder = '', style }) => {
 };
 
 // ─── smStyle : habillage commun des modales du module ─────────────────────
-// Partagé par DuplicateRecetteModal, ExportMultipleModal et
-// IngredientSearchModal (chacune surcharge sa largeur si besoin).
+// Les trois fenêtres (DuplicateRecetteModal, ExportMultipleModal,
+// IngredientSearchModal) passent par Fenetre ; reste le bouton secondaire.
 const smStyle = {
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 12, width: 620, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
-  header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
-  footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' },
   ghostBtn: { padding: '8px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer' },
 };
 
@@ -249,18 +244,33 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
     if (successes.length > 0) onClose();
   };
 
+  // Fenetre : portail, rôle de dialogue, Échap, « × » nommé, geste retour. La
+  // fermeture reste possible pendant la duplication, qui se poursuit.
   return (
-    <div className="modal-full-overlay" style={smStyle.overlay} onClick={() => !saving && onClose()}>
-      <div className="modal-full" style={{ ...smStyle.modal, maxWidth: 640, width: '94vw' }} onClick={e => e.stopPropagation()}>
-        <div style={smStyle.header}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Dupliquer la recette vers…</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>« {recette.nom} »</div>
-          </div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" style={smStyle.closeBtn} onClick={() => !saving && onClose()}>×</button>
-        </div>
-
-        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <Fenetre
+      id="recette-dupliquer"
+      titre="Dupliquer la recette vers…"
+      sousTitre={`« ${recette.nom} »`}
+      onClose={onClose}
+      largeur={640}
+      pied={(
+        <>
+          <span style={{ flex: 1, fontSize: 12, color: selectedEtabIds.size > 0 ? 'var(--text)' : 'var(--text2)' }}>
+            {selectedEtabIds.size > 0
+              ? <>Dupliquer vers <strong>{selectedEtabIds.size}</strong> établissement{selectedEtabIds.size > 1 ? 's' : ''}</>
+              : 'Sélectionnez au moins un établissement'}
+          </span>
+          <button style={smStyle.ghostBtn} onClick={() => !saving && onClose()} disabled={saving}>Annuler</button>
+          <button
+            style={{ padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
+            onClick={handleDuplicate}
+            disabled={selectedEtabIds.size === 0 || saving}>
+            {saving ? 'Duplication…' : `Dupliquer (${selectedEtabIds.size})`}
+          </button>
+        </>
+      )}
+    >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {loading && <div style={{ textAlign: 'center', color: 'var(--text2)', padding: 20 }}>Chargement des établissements…</div>}
 
@@ -361,25 +371,8 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
               )}
             </>
           )}
-
-          {/* ── Footer ── */}
-          <div style={smStyle.footer}>
-            <span style={{ flex: 1, fontSize: 12, color: selectedEtabIds.size > 0 ? 'var(--text)' : 'var(--text2)' }}>
-              {selectedEtabIds.size > 0
-                ? <>Dupliquer vers <strong>{selectedEtabIds.size}</strong> établissement{selectedEtabIds.size > 1 ? 's' : ''}</>
-                : 'Sélectionnez au moins un établissement'}
-            </span>
-            <button style={smStyle.ghostBtn} onClick={() => !saving && onClose()} disabled={saving}>Annuler</button>
-            <button
-              style={{ padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
-              onClick={handleDuplicate}
-              disabled={selectedEtabIds.size === 0 || saving}>
-              {saving ? 'Duplication…' : `Dupliquer (${selectedEtabIds.size})`}
-            </button>
-          </div>
         </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 };
 
@@ -1027,19 +1020,17 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
     recettes: 'Cochez des recettes individuelles. La sélection se cumule avec les onglets Cartes et Plats.',
   };
 
+  // Fenetre (portail, rôle de dialogue, Échap, « × » nommé, geste retour). La
+  // fenêtre défile en bloc ; onglets et recherche, puis le pied, restent
+  // collés en haut et en bas pendant qu'on parcourt les listes.
   return (
-    <div className="modal-full-overlay" style={smStyle.overlay} onClick={() => !busy && onClose()}>
-      <div className="modal-full" style={ms.modal} onClick={e => e.stopPropagation()}>
-
-        {/* ── Zone fixe : titre, onglets, recherche ── */}
-        <div style={ms.sticky}>
-          <div style={ms.header}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Exporter des fiches</div>
-              <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Une fiche par page A4, dans un seul PDF</div>
-            </div>
-            <button type="button" className="ui-fermer" aria-label="Fermer" style={smStyle.closeBtn} onClick={() => !busy && onClose()}>×</button>
-          </div>
+    <Fenetre
+      id="recettes-exporter"
+      titre="Exporter des fiches"
+      sousTitre="Une fiche par page A4, dans un seul PDF"
+      onClose={onClose}
+      largeur={720}
+    >
           <div style={ms.controls}>
             <SegmentedTabs
               size="sm"
@@ -1060,7 +1051,6 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
             />
             <div style={ms.hint}>{hints[tab]}</div>
           </div>
-        </div>
 
         {/* ── Liste ── */}
         <div style={ms.list}>
@@ -1202,22 +1192,18 @@ const ExportMultipleModal = ({ cartes, plats, recettes, etablissement, onClose }
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 };
 
 const ms = {
-  // Le conteneur scrolle en bloc (pas de double zone de scroll) : l'en-tête
-  // (titre + onglets + recherche) et le pied (récap + export) sont sticky pour
+  // La fenêtre (Fenetre) défile en bloc (pas de double zone de défilement) :
+  // les onglets avec la recherche, et le pied (récap + export), sont collants pour
   // rester visibles pendant qu'on parcourt les listes.
-  modal: { background: 'var(--surface)', borderRadius: 12, width: 720, maxWidth: '94vw', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
-  sticky: { position: 'sticky', top: 0, zIndex: 3, background: 'var(--surface)', borderBottom: '1px solid var(--border)', borderRadius: '12px 12px 0 0' },
-  header: { padding: '16px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
-  controls: { padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 10 },
+  controls: { position: 'sticky', top: 0, zIndex: 3, background: 'var(--surface)', padding: '4px 0 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 },
   search: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
   hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  list: { padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', minHeight: 160 },
+  list: { padding: '6px 0 10px', display: 'flex', flexDirection: 'column', minHeight: 160 },
   groupHead: { display: 'flex', alignItems: 'center', gap: 6, padding: '14px 6px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   groupCount: { fontWeight: 500, color: 'var(--text3)' },
   groupAllBtn: { marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', textTransform: 'none', letterSpacing: 0, flexShrink: 0 },
@@ -1235,7 +1221,7 @@ const ms = {
   previewCat: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
   previewLine: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
   empty: { padding: '28px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)' },
-  footer: { position: 'sticky', bottom: 0, zIndex: 3, background: 'var(--surface)', borderTop: '1px solid var(--border)', borderRadius: '0 0 12px 12px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  footer: { position: 'sticky', bottom: 0, zIndex: 3, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 0 4px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   footerInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
   clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
   btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
@@ -1282,18 +1268,16 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
     ].filter(Boolean);
   }, [q, recettes, recettesCachees, platsByRecette]);
 
+  // Fenetre : portail, rôle de dialogue, Échap, « × » nommé, geste retour.
   return (
-    <div className="modal-sheet-overlay" style={smStyle.overlay} onClick={onClose}>
-      <div className="modal-sheet" style={smStyle.modal} onClick={e => e.stopPropagation()}>
-        <div style={smStyle.header}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Recherche allergène / ingrédient</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Trouvez dans quelles recettes un produit apparaît</div>
-          </div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" style={smStyle.closeBtn} onClick={onClose}>×</button>
-        </div>
-
-        <div style={{ padding: '14px 20px 8px' }}>
+    <Fenetre
+      id="recettes-recherche-allergene"
+      titre="Recherche allergène / ingrédient"
+      sousTitre="Trouvez dans quelles recettes un produit apparaît"
+      onClose={onClose}
+      largeur={620}
+    >
+        <div>
           <input
             autoFocus
             style={is.input}
@@ -1362,8 +1346,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 };
 
@@ -1371,7 +1354,7 @@ const is = {
   input: { width: '100%', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   chip: { padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 99, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  results: { flex: 1, overflowY: 'auto', padding: '6px 12px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 120 },
+  results: { display: 'flex', flexDirection: 'column', gap: 6, minHeight: 120 },
   hint: { padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
   countLine: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
   // flexShrink:0 IMPÉRATIF : la règle globale mobile « button:not(.mini){min-height:44px} »

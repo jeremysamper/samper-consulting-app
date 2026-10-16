@@ -1,7 +1,5 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -35,6 +33,7 @@ import ChoixZone from './ChoixZone.jsx';
 import { useAchatsDocuments } from './useAchatsDocuments.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { Btn } from '../../components/ui/index.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 
 // L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
 // seulement quand on l'ouvre, le comptage reste léger sur la tablette.
@@ -63,69 +62,8 @@ const TYPES_LIGNE = { sec: 'sec', positif: 'froid positif', negatif: 'froid nég
 
 // Actions rares du module, rangées derrière deux boutons nommés : « Exporter »
 // (PDF, Excel, impression, ouverts à toute l'équipe) et « Gérer » (création,
-// renommage, import...). Ils remplacent un « ⋯ Plus » unique où l'export se
-// perdait parmi dix actions. Chaque action reste la même fonction qu'avant.
-//
-// Chaque bouton ouvre une fenêtre rendue dans <body> (portail) : sur téléphone
-// la barre d'actions défile (overflow) et coupait le menu déroulant posé
-// dedans, « ⋯ Plus » s'ouvrait sans que rien n'apparaisse.
-function BoutonActions({ id, label, style, disabled, titre, sousTitre, sections }) {
-  const [ouvert, setOuvert] = React.useState(false);
-  const fermer = React.useCallback(() => setOuvert(false), []);
-  const visibles = sections
-    .map(s => ({ ...s, items: (s.items || []).filter(Boolean) }))
-    .filter(s => s.items.length);
-  if (!visibles.length) return null;
-  return (
-    <>
-      <button type="button" style={style} disabled={disabled} onClick={() => setOuvert(true)} aria-haspopup="dialog" aria-expanded={ouvert}>
-        {label}
-      </button>
-      {ouvert && (
-        <FenetreActions id={id} titre={titre} sousTitre={sousTitre} onClose={fermer}>
-          {visibles.map((s, i) => (
-            <div key={s.titre || i} style={invs.fenetreSection}>
-              {s.titre && <div style={invs.fenetreSectionTitre}>{s.titre}</div>}
-              {s.items.map(it => (
-                <button
-                  key={it.titre}
-                  type="button"
-                  style={{ ...invs.choix, ...(it.danger ? invs.choixDanger : {}) }}
-                  onClick={() => { fermer(); it.onClick(); }}
-                >
-                  <span style={{ ...invs.choixTitre, ...(it.danger ? { color: 'var(--danger-strong)' } : {}) }}>{it.titre}</span>
-                  {it.detail && <span style={invs.choixDetail}>{it.detail}</span>}
-                </button>
-              ))}
-            </div>
-          ))}
-        </FenetreActions>
-      )}
-    </>
-  );
-}
-
-// Fenêtre centrée sur ordinateur, tiroir du bas sur téléphone (modal-sheet).
-// Se ferme par ×, Échap, un tap à côté ou le geste retour.
-function FenetreActions({ id, titre, sousTitre, onClose, children }) {
-  useBackLayer(true, onClose, id);
-  React.useEffect(() => {
-    const echap = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', echap);
-    return () => document.removeEventListener('keydown', echap);
-  }, [onClose]);
-  return createPortal(
-    <div className="modal-sheet-overlay" style={invs.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-sheet" style={invs.fenetre} role="dialog" aria-modal="true" aria-label={titre}>
-        <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={invs.fenetreFermer}>×</button>
-        <div style={invs.fenetreTitre}>{titre}</div>
-        {sousTitre && <div style={invs.fenetreSousTitre}>{sousTitre}</div>}
-        {children}
-      </div>
-    </div>,
-    document.body,
-  );
-}
+// renommage, import...), les BoutonActions partagés de Fenetres.jsx : fenêtre
+// en portail, Échap et geste retour, comme dans les autres modules.
 
 // Réapplique les quantités encore en file par-dessus une liste venue du serveur
 // (ou du cache du service worker). Une quantité comptée en chambre froide reste
@@ -531,14 +469,24 @@ const Inventaire = ({ user, etablissement }) => {
     if (!showRename) return null;
     const cible = (renameValue || '').trim();
     const fusion = cible && cible !== perimetreActif && perimetres.includes(cible);
+    // Fenetre : la fermeture (×, Échap, retour) reste possible pendant
+    // l'enregistrement, qui se poursuit et se relit (règle des modales).
     return (
-      <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => !renameBusy && setShowRename(false)}>
-        <div className="modal-sheet" style={invs.modal} onClick={e => e.stopPropagation()}>
-          <div style={invs.modalHeader}>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Renommer le périmètre</div>
-            <button type="button" className="ui-fermer" aria-label="Fermer" style={invs.closeBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>×</button>
-          </div>
-          <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
+      <Fenetre
+        id="inventaire-renommer"
+        titre="Renommer le périmètre"
+        onClose={() => setShowRename(false)}
+        largeur={420}
+        pied={(
+          <>
+            <button style={invs.exportBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>Annuler</button>
+            <button style={invs.addBtn} onClick={renommerPerimetre} disabled={renameBusy}>
+              {renameBusy ? 'Renommage…' : (fusion ? 'Fusionner' : 'Renommer')}
+            </button>
+          </>
+        )}
+      >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
             <div>
               <label style={invs.fieldLabel}>Nouveau nom</label>
               <input
@@ -555,15 +503,8 @@ const Inventaire = ({ user, etablissement }) => {
                   : `${inventaires.length} inventaire(s) de « ${perimetreActif} » seront renommés, historique compris.`}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
-              <button style={invs.exportBtn} onClick={() => setShowRename(false)} disabled={renameBusy}>Annuler</button>
-              <button style={invs.addBtn} onClick={renommerPerimetre} disabled={renameBusy}>
-                {renameBusy ? 'Renommage…' : (fusion ? 'Fusionner' : 'Renommer')}
-              </button>
-            </div>
           </div>
-        </div>
-      </div>
+      </Fenetre>
     );
   };
 
@@ -576,13 +517,19 @@ const Inventaire = ({ user, etablissement }) => {
     const suggestions = PERIMETRES_SUGGERES.filter(p => !perimetres.includes(p));
     const sourceDuplication = inventairesEtab.filter(i => perimetreOf(i) === nomRetenu).sort(parDateDesc)[0];
     return (
-      <div className="modal-sheet-overlay" style={invs.overlay} onClick={() => setShowNew(false)}>
-        <div className="modal-sheet" style={invs.modal} onClick={e => e.stopPropagation()}>
-          <div style={invs.modalHeader}>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Nouvel inventaire</div>
-            <button type="button" className="ui-fermer" aria-label="Fermer" style={invs.closeBtn} onClick={() => setShowNew(false)}>×</button>
-          </div>
-          <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
+      <Fenetre
+        id="inventaire-nouveau"
+        titre="Nouvel inventaire"
+        onClose={() => setShowNew(false)}
+        largeur={420}
+        pied={(
+          <>
+            <button style={invs.exportBtn} onClick={() => setShowNew(false)}>Annuler</button>
+            <button style={invs.addBtn} onClick={createInventory}>Créer</button>
+          </>
+        )}
+      >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
             <div>
               <label style={invs.fieldLabel}>Périmètre</label>
               <select
@@ -642,13 +589,8 @@ const Inventaire = ({ user, etablissement }) => {
                       : `Aucun inventaire précédent dans « ${nomRetenu} » : il démarrera vierge.`}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
-              <button style={invs.exportBtn} onClick={() => setShowNew(false)}>Annuler</button>
-              <button style={invs.addBtn} onClick={createInventory}>Créer</button>
-            </div>
           </div>
-        </div>
-      </div>
+      </Fenetre>
     );
   };
 
@@ -1773,20 +1715,6 @@ const invs = {
   stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
   zoneTag: {display:'inline-block',marginLeft:4,fontSize:11,color:'var(--text2)'},
   rangement: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize:13,color:'var(--text2)',padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
-  // Fenêtre d'actions (Exporter, Gérer) : centrée, tiroir du bas sur téléphone.
-  voile: {position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
-  fenetre: {position:'relative',width:'min(440px, 100%)',maxHeight:'85vh',overflowY:'auto',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,boxShadow:'0 20px 60px rgba(0,0,0,0.3)',padding:'20px 18px 18px',display:'flex',flexDirection:'column',gap:12,boxSizing:'border-box'},
-  fenetreFermer: {position:'absolute',top:6,right:8,width:40,height:40,border:'none',background:'transparent',color:'var(--text2)',fontSize:24,cursor:'pointer',lineHeight:1},
-  fenetreTitre: {fontSize:16,fontWeight:700,paddingRight:32,color:'var(--text)',fontFamily:'var(--font-serif)'},
-  fenetreSousTitre: {fontSize:12,color:'var(--text2)',marginTop:-8},
-  // flexShrink 0 : dans une colonne qui défile, le min-height global des boutons
-  // sur tactile écraserait sinon la hauteur et les choix se chevaucheraient.
-  fenetreSection: {display:'flex',flexDirection:'column',gap:8,flexShrink:0},
-  fenetreSectionTitre: {fontSize:12,fontWeight:500,color:'var(--text2)',marginTop:2},
-  choix: {display:'flex',flexDirection:'column',alignItems:'flex-start',gap:3,width:'100%',textAlign:'left',padding:'12px 14px',minHeight:52,background:'var(--bg)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:10,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0,boxSizing:'border-box'},
-  choixDanger: {background:'var(--surface)',borderColor:'var(--danger-bd)'},
-  choixTitre: {fontSize:14,fontWeight:700,color:'var(--text)'},
-  choixDetail: {fontSize:12,color:'var(--text2)',lineHeight:1.4,whiteSpace:'normal'},
   invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',fontSize:13,fontWeight:500,whiteSpace:'nowrap'},
   // Gabarit des boutons de Btn (38 px sur ordinateur, 44 au toucher par la règle globale) : principal et secondaire.
   addBtn: {minHeight:38,padding:'8px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'1px solid var(--accent)',borderRadius:'var(--r-sm)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)'},
@@ -1798,7 +1726,7 @@ const invs = {
   kpiNote: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.4},
   filters: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',minWidth:0}, catTabs: {display:'flex',gap:4,flexWrap:'wrap'}, catBtn: {padding:'5px 14px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}, catActive: {background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:12,fontWeight:700,color:'var(--text2)',borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:500,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:500,color:'var(--text)'}, catTag: {fontSize:11,fontWeight:500,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
-  overlay: {position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}, modal: {background:'var(--surface)',borderRadius:14,width:420,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}, modalHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'}, closeBtn: {background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}, fieldLabel: {display:'block',fontSize:12,fontWeight:500,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
+  fieldLabel: {display:'block',fontSize:12,fontWeight:500,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
 };
 
 export default Inventaire;

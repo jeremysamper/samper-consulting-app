@@ -5,7 +5,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -457,13 +457,26 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
     setSelected(allOn ? new Set() : new Set(cartes.map(c => c.id)));
   };
 
+  // Fenetre : portail, rôle de dialogue, Échap, « × » nommé et geste retour.
   return (
-    <div className="modal-full-overlay" style={s.overlay} onClick={onClose}>
-      <div className="modal-full" style={s.modal} onClick={e => e.stopPropagation()}>
-        <div style={s.modalHead}>
-          <div style={s.modalTitle}>Générer depuis les cartes</div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={onClose}>×</button>
-        </div>
+    <Fenetre
+      id="commande-generer"
+      titre="Générer depuis les cartes"
+      onClose={onClose}
+      largeur={420}
+      pied={(
+        <>
+          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
+          <button
+            style={{ ...s.primaryBtn, opacity: (selected.size && !busy) ? 1 : 0.5 }}
+            disabled={!selected.size || busy}
+            onClick={() => onConfirm([...selected])}
+          >
+            {busy ? 'Génération…' : `Générer${selected.size ? ` (${selected.size})` : ''}`}
+          </button>
+        </>
+      )}
+    >
         <div style={s.genBody}>
           <div style={s.genHint}>
             Cochez les cartes à inclure. Les produits sont regroupés sans doublon pour faciliter la commande.
@@ -502,18 +515,7 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
             </>
           )}
         </div>
-        <div style={s.modalFooter}>
-          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
-          <button
-            style={{ ...s.primaryBtn, opacity: (selected.size && !busy) ? 1 : 0.5 }}
-            disabled={!selected.size || busy}
-            onClick={() => onConfirm([...selected])}
-          >
-            {busy ? 'Génération…' : `Générer${selected.size ? ` (${selected.size})` : ''}`}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 };
 
@@ -539,13 +541,19 @@ const AddProductModal = ({ onClose, onAdd }) => {
   const CATS = RAYONS.filter(c => c !== 'Hygiène / non alimentaire');
   const UNITES = ['', 'g', 'kg', 'ml', 'L', 'pcs'];
   return (
-    <div className="modal-full-overlay" style={s.overlay} onClick={onClose}>
-      <div className="modal-full" style={s.modal} onClick={e => e.stopPropagation()}>
-        <div style={s.modalHead}>
-          <div style={s.modalTitle}>Ajouter un produit</div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" style={s.closeBtn} onClick={onClose}>×</button>
-        </div>
-        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <Fenetre
+      id="commande-ajouter"
+      titre="Ajouter un produit"
+      onClose={onClose}
+      largeur={420}
+      pied={(
+        <>
+          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
+          <button style={{ ...s.primaryBtn, opacity: nom.trim() ? 1 : 0.5 }} disabled={!nom.trim()} onClick={() => onAdd({ nom, categorie, unite })}>Ajouter</button>
+        </>
+      )}
+    >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={s.label}>Produit *</label>
             <input autoFocus style={s.input} value={nom} onChange={e => setNom(e.target.value)}
@@ -569,12 +577,7 @@ const AddProductModal = ({ onClose, onAdd }) => {
             </div>
           </div>
         </div>
-        <div style={s.modalFooter}>
-          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...s.primaryBtn, opacity: nom.trim() ? 1 : 0.5 }} disabled={!nom.trim()} onClick={() => onAdd({ nom, categorie, unite })}>Ajouter</button>
-        </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 };
 
@@ -626,17 +629,11 @@ const s = {
   qtyUnit: { fontSize: 12, color: 'var(--text2)', width: 26 },
   delBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
-  modal: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 420, maxWidth: '94vw', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
-  modalHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
-  modalTitle: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
   label: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  modalFooter: { display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--border)' },
   primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
   // Modale de generation
-  genBody: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 },
+  genBody: { display: 'flex', flexDirection: 'column', gap: 12 },
   genHint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
   selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   carteList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '46vh', overflowY: 'auto' },

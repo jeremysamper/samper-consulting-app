@@ -982,7 +982,9 @@ const ls = {
   // Compteur d'alertes : une seule forme, ordinateur et téléphone (pilule qui
   // s'élargit au-delà de 9).
   notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 11, fontWeight: 700, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
-  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
+  // Hauteur bornée : une longue liste d'alertes sortait du bas de la zone
+  // (overflow hidden) sans pouvoir défiler.
+  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   // minHeight 0 : sans lui <main> prend la hauteur de son contenu et ne défile pas.

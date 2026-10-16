@@ -11,7 +11,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { Trash2 } from 'lucide-react';
-import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ═══════════════════════════════════════════════════════════════
@@ -938,28 +938,16 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
     );
   };
 
+  // Fenetre : portail, rôle de dialogue, Échap, « × » nommé, geste retour.
   return (
-    <div className="modal-full-overlay" style={ss.overlay} onClick={onClose}>
-      <div className="modal-full" style={ss.modal} onClick={e => e.stopPropagation()}>
-        <div style={ss.modalHeader}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Bibliothèque de templates SOP</div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-              Importez des SOP dans cet établissement. Pour partager une SOP, ajoutez-la
-              à la bibliothèque via le bouton « + Template » sur sa carte.
-            </div>
-          </div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" style={ss.closeBtn} onClick={onClose}>×</button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          {dbItems.length === 0 && (
-            <div style={{ padding: '24px 18px', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', textAlign: 'center' }}>
-              Aucun template dans la bibliothèque. Utilisez le bouton « + Template » sur une SOP pour l'ajouter ici.
-            </div>
-          )}
-          {dbItems.map(renderItem)}
-        </div>
-        <div style={ss.modalFooter}>
+    <Fenetre
+      id="sop-templates"
+      titre="Bibliothèque de templates SOP"
+      sousTitre="Importez des SOP dans cet établissement. Pour partager une SOP, ajoutez-la à la bibliothèque depuis sa carte : « Gérer », puis « Ajouter à la bibliothèque »."
+      onClose={onClose}
+      largeur={640}
+      pied={(
+        <>
           <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>
             {selected.size} sélectionnée{selected.size > 1 ? 's' : ''}
           </span>
@@ -984,9 +972,18 @@ const SopTemplatesModal = ({ etabId, existingSops, dbTemplates = [], onClose }) 
           >
             {busy ? 'Import…' : `Importer ici (${selected.size})`}
           </button>
+        </>
+      )}
+    >
+        <div style={{ maxHeight: '56vh', overflowY: 'auto' }}>
+          {dbItems.length === 0 && (
+            <div style={{ padding: '24px 0', fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', textAlign: 'center' }}>
+              Aucun template dans la bibliothèque. Ajoutez une SOP depuis sa carte : « Gérer », puis « Ajouter à la bibliothèque ».
+            </div>
+          )}
+          {dbItems.map(renderItem)}
         </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 };
 
@@ -1273,11 +1270,6 @@ const ss = {
   addStepBtn: { alignSelf: 'flex-start', minHeight: 38, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 13, fontWeight: 500, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 6 },
 
   // Modale
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 12, width: 700, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
-  modalHeader: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  modalFooter: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center' },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
 };
 
 export default SOP;

@@ -2,6 +2,7 @@ import React from 'react';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { cleProduit } from './inventaireLignes.js';
 import ChoixZone from './ChoixZone.jsx';
+import { Fenetre } from '../../components/ui/Fenetres.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { nomMaison } from './produitsMaison.js';
 
@@ -131,23 +132,36 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
   // Pendant une recherche, on déplie tout : le résultat doit se voir sans clic.
   const estOuverte = (cat) => match.active || ouvertes.has(cat) || parCategorie.length === 1;
 
+  // Fenetre : portail, rôle de dialogue, Échap, « × » nommé, geste retour. La
+  // liste défile seule (hauteur bornée) pour garder le pied et son bouton
+  // « Ajouter » visibles sans faire défiler toute la fenêtre.
   return (
-    <div className="modal-full-overlay" style={st.overlay} onClick={e => { if (e.target === e.currentTarget && !busy) onClose(); }}>
-      <div className="modal-full" style={st.panel}>
-        <div style={st.header}>
-          <div style={{ minWidth: 0 }}>
-            <div style={st.titre}>Ajouter des produits</div>
-            <div style={st.sousTitre}>
-              {source === 'fiches'
-                ? 'Cochez les préparations maison à compter : leur prix est le coût matière de la fiche.'
-                : 'Cochez une catégorie entière ou quelques produits : unité et prix viennent du catalogue.'}
-            </div>
-          </div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} style={st.fermer} title="Fermer">×</button>
-        </div>
-
+    <Fenetre
+      id="inventaire-ajout-produits"
+      titre="Ajouter des produits"
+      sousTitre={source === 'fiches'
+        ? 'Cochez les préparations maison à compter : leur prix est le coût matière de la fiche.'
+        : 'Cochez une catégorie entière ou quelques produits : unité et prix viennent du catalogue.'}
+      onClose={onClose}
+      largeur={640}
+      pied={(
+        <>
+          <label style={st.zone}>
+            Ranger dans
+            <ChoixZone value={zone} onChange={setZone} lignes={lignesExistantes} style={st.zoneSelect} ariaLabel="Zone des produits ajoutés" />
+          </label>
+          <span style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 160px', minWidth: 0 }}>
+            {nbCoches === 0 ? 'Aucun produit coché.' : <><strong style={{ color: 'var(--text)' }}>{nbCoches}</strong> produit{nbCoches > 1 ? 's' : ''} à ajouter</>}
+          </span>
+          <button type="button" onClick={onClose} style={st.btnSecondaire} disabled={busy}>Annuler</button>
+          <button type="button" onClick={() => valider()} style={{ ...st.btnPrimaire, opacity: nbCoches ? 1 : 0.5 }} disabled={!nbCoches || busy}>
+            {busy ? 'Ajout…' : `Ajouter ${nbCoches || ''}`}
+          </button>
+        </>
+      )}
+    >
         {avecFiches && (
-          <div style={{ padding: '10px 18px 0' }}>
+          <div>
             <SegmentedTabs
               size="sm"
               active={source}
@@ -159,7 +173,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
             />
           </div>
         )}
-        <div style={{ padding: '12px 18px 8px' }}>
+        <div>
           <input
             type="search"
             autoFocus
@@ -239,35 +253,15 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
             );
           })}
         </div>
-
-        <div style={st.footer}>
-          <label style={st.zone}>
-            Ranger dans
-            <ChoixZone value={zone} onChange={setZone} lignes={lignesExistantes} style={st.zoneSelect} ariaLabel="Zone des produits ajoutés" />
-          </label>
-          <span style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 160px', minWidth: 0 }}>
-            {nbCoches === 0 ? 'Aucun produit coché.' : <><strong style={{ color: 'var(--text)' }}>{nbCoches}</strong> produit{nbCoches > 1 ? 's' : ''} à ajouter</>}
-          </span>
-          <button type="button" onClick={onClose} style={st.btnSecondaire} disabled={busy}>Annuler</button>
-          <button type="button" onClick={() => valider()} style={{ ...st.btnPrimaire, opacity: nbCoches ? 1 : 0.5 }} disabled={!nbCoches || busy}>
-            {busy ? 'Ajout…' : `Ajouter ${nbCoches || ''}`}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Fenetre>
   );
 }
 
 const st = {
-  overlay: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  panel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 'min(640px, 96vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' },
-  header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '16px 18px', borderBottom: '1px solid var(--border)' },
-  titre: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sousTitre: { fontSize: 12, color: 'var(--text2)', marginTop: 3, lineHeight: 1.4 },
-  fermer: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0 },
   recherche: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   libre: { marginTop: 8, padding: '9px 14px', borderRadius: 8, border: '1px dashed var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44, width: '100%', textAlign: 'left' },
-  liste: { overflowY: 'auto', flex: 1, padding: '4px 18px 12px', minHeight: 120 },
+  // Hauteur bornée : la liste défile seule, le pied de la fenêtre reste visible.
+  liste: { overflowY: 'auto', maxHeight: '48vh', padding: '4px 0 12px', minHeight: 120 },
   noteFiches: { fontSize: 12, color: 'var(--text2)', padding: '8px 10px', margin: '6px 0', background: 'var(--bg)', borderRadius: 8, lineHeight: 1.45 },
   vide: { padding: '30px 10px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5 },
   categorie: { borderBottom: '1px solid var(--border)', padding: '4px 0' },
@@ -280,7 +274,6 @@ const st = {
   produitCoche: { background: 'var(--bg)' },
   zone: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)', flexBasis: '100%' },
   zoneSelect: { padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)' },
-  footer: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 18px', borderTop: '1px solid var(--border)' },
   btnSecondaire: { padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   btnPrimaire: { padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
 };

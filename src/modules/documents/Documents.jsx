@@ -10,6 +10,8 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { Fenetre } from '../../components/ui/Fenetres.jsx';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS - dossiers et fichiers de l'établissement
@@ -95,6 +97,15 @@ const Documents = ({ user, etablissement }) => {
   const [deplacement, setDeplacement] = React.useState(null); // doc | null
   const [actions, setActions] = React.useState(null); // doc dont le menu est ouvert
   const [apercu, setApercu] = React.useState(null); // { doc, url } | null
+  // Visionneuse : Échap et le geste retour la ferment, comme une fenêtre.
+  const fermerApercu = React.useCallback(() => setApercu(null), []);
+  useBackLayer(Boolean(apercu), fermerApercu, 'documents-apercu');
+  React.useEffect(() => {
+    if (!apercu) return undefined;
+    const echap = (e) => { if (e.key === 'Escape') fermerApercu(); };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
+  }, [apercu, fermerApercu]);
   const [busy, setBusy] = React.useState(false);
   const sel = useSelection();
   const fileInputRef = React.useRef(null);
@@ -550,13 +561,10 @@ const Documents = ({ user, etablissement }) => {
       )}
 
       {/* ── Menu d'actions d'un élément ── */}
+      {/* Fenêtres sur Fenetre : portail, rôle de dialogue, Échap, « × » nommé,
+          geste retour ; une fenêtre ouverte depuis ce menu reste ouverte. */}
       {actions && (
-        <div className="modal-sheet-overlay" style={ds.overlay} onClick={() => setActions(null)}>
-          <div className="modal-sheet" style={ds.modal} onClick={e => e.stopPropagation()}>
-            <div style={ds.modalTete}>
-              <div style={ds.modalTitre}>{actions.nom}</div>
-              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setActions(null)} aria-label="Fermer">×</button>
-            </div>
+        <Fenetre id="documents-actions" titre={actions.nom} onClose={() => setActions(null)} largeur={420}>
             <div style={ds.menuListe}>
               <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); ouvrir(d); }}>Ouvrir</button>
               {actions.type === 'file' && (
@@ -570,19 +578,24 @@ const Documents = ({ user, etablissement }) => {
                 </>
               )}
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* ── Nouveau dossier ── */}
       {nouveauDossier !== null && (
-        <div className="modal-sheet-overlay" style={ds.overlay} onClick={() => setNouveauDossier(null)}>
-          <div className="modal-sheet" style={ds.modal} onClick={e => e.stopPropagation()}>
-            <div style={ds.modalTete}>
-              <div style={ds.modalTitre}>Nouveau dossier</div>
-              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setNouveauDossier(null)} aria-label="Fermer">×</button>
-            </div>
-            <div style={ds.modalCorps}>
+        <Fenetre
+          id="documents-nouveau-dossier"
+          titre="Nouveau dossier"
+          onClose={() => setNouveauDossier(null)}
+          largeur={420}
+          pied={(
+            <>
+              <button type="button" style={ds.btnGhost} onClick={() => setNouveauDossier(null)}>Annuler</button>
+              <button type="button" style={{ ...ds.btnPrimaire, opacity: nouveauDossier.trim() && !busy ? 1 : 0.5 }} disabled={!nouveauDossier.trim() || busy} onClick={creerDossier}>Créer</button>
+            </>
+          )}
+        >
+            <div style={ds.fenetreCorps}>
               <label style={ds.champLabel}>Nom du dossier</label>
               <input
                 autoFocus
@@ -593,24 +606,25 @@ const Documents = ({ user, etablissement }) => {
                 placeholder="Ex : Contrats, Fiches techniques…"
               />
               <div style={ds.aide}>Créé dans {dossierCourant ? `« ${dossierCourant.nom} »` : 'Documents'}.</div>
-              <div style={ds.modalPied}>
-                <button type="button" style={ds.btnGhost} onClick={() => setNouveauDossier(null)}>Annuler</button>
-                <button type="button" style={{ ...ds.btnPrimaire, opacity: nouveauDossier.trim() && !busy ? 1 : 0.5 }} disabled={!nouveauDossier.trim() || busy} onClick={creerDossier}>Créer</button>
-              </div>
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* ── Renommer ── */}
       {renommage && (
-        <div className="modal-sheet-overlay" style={ds.overlay} onClick={() => setRenommage(null)}>
-          <div className="modal-sheet" style={ds.modal} onClick={e => e.stopPropagation()}>
-            <div style={ds.modalTete}>
-              <div style={ds.modalTitre}>Renommer</div>
-              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setRenommage(null)} aria-label="Fermer">×</button>
-            </div>
-            <div style={ds.modalCorps}>
+        <Fenetre
+          id="documents-renommer"
+          titre="Renommer"
+          onClose={() => setRenommage(null)}
+          largeur={420}
+          pied={(
+            <>
+              <button type="button" style={ds.btnGhost} onClick={() => setRenommage(null)}>Annuler</button>
+              <button type="button" style={{ ...ds.btnPrimaire, opacity: renommage.nom.trim() && !busy ? 1 : 0.5 }} disabled={!renommage.nom.trim() || busy} onClick={renommer}>Renommer</button>
+            </>
+          )}
+        >
+            <div style={ds.fenetreCorps}>
               <input
                 autoFocus
                 style={ds.champ}
@@ -621,24 +635,14 @@ const Documents = ({ user, etablissement }) => {
               {renommage.doc.type === 'file' && extensionDe(renommage.doc.nom) && (
                 <div style={ds.aide}>L'extension .{extensionDe(renommage.doc.nom)} est conservée.</div>
               )}
-              <div style={ds.modalPied}>
-                <button type="button" style={ds.btnGhost} onClick={() => setRenommage(null)}>Annuler</button>
-                <button type="button" style={{ ...ds.btnPrimaire, opacity: renommage.nom.trim() && !busy ? 1 : 0.5 }} disabled={!renommage.nom.trim() || busy} onClick={renommer}>Renommer</button>
-              </div>
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* ── Déplacer ── */}
       {deplacement && (
-        <div className="modal-sheet-overlay" style={ds.overlay} onClick={() => setDeplacement(null)}>
-          <div className="modal-sheet" style={{ ...ds.modal, width: 480 }} onClick={e => e.stopPropagation()}>
-            <div style={ds.modalTete}>
-              <div style={ds.modalTitre}>Déplacer « {deplacement.nom} »</div>
-              <button type="button" className="ui-fermer" style={ds.fermer} onClick={() => setDeplacement(null)} aria-label="Fermer">×</button>
-            </div>
-            <div style={{ ...ds.modalCorps, paddingTop: 10, maxHeight: '60vh', overflowY: 'auto' }}>
+        <Fenetre id="documents-deplacer" titre="Déplacer" sousTitre={deplacement.nom} onClose={() => setDeplacement(null)} largeur={480}>
+            <div style={{ ...ds.fenetreCorps, maxHeight: '60vh', overflowY: 'auto' }}>
               {[{ dossier: null, niveau: 0 }, ...destinations].map(({ dossier, niveau }) => {
                 const id = dossier ? dossier.id : null;
                 const actuel = (deplacement.parentId || null) === id;
@@ -656,15 +660,15 @@ const Documents = ({ user, etablissement }) => {
                 );
               })}
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
-      {/* ── Aperçu PDF / photo ── */}
+      {/* ── Aperçu PDF / photo : visionneuse plein écran, rôle de dialogue,
+          fermée par Échap et le geste retour comme les fenêtres ── */}
       {apercu && (() => {
         const nature = natureDe(apercu.doc);
         return (
-          <div style={ds.apercuFond} onClick={() => setApercu(null)}>
+          <div style={ds.apercuFond} onClick={() => setApercu(null)} role="dialog" aria-modal="true" aria-label={apercu.doc.nom}>
             <div style={ds.apercuTete} onClick={e => e.stopPropagation()}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={ds.apercuNom}>{apercu.doc.nom}</div>
@@ -721,13 +725,8 @@ const ds = {
   videTitre: { fontSize: 15, fontWeight: 500, color: 'var(--text)' },
   videTexte: { fontSize: 13, color: 'var(--text2)', marginTop: 6 },
 
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
-  modal: { background: 'var(--surface)', borderRadius: 14, width: 420, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
-  modalTete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 },
-  modalTitre: { fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' },
-  fermer: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0 },
-  modalCorps: { padding: '18px 18px 20px' },
-  modalPied: { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 },
+  // Corps des fenêtres : Fenetre porte le cadre, le titre et le rembourrage.
+  fenetreCorps: { display: 'flex', flexDirection: 'column', gap: 10 },
   menuListe: { display: 'flex', flexDirection: 'column', padding: 6 },
   menuItem: { minHeight: 48, flexShrink: 0, padding: '0 16px', textAlign: 'left', background: 'none', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 500, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
   champLabel: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginBottom: 6 },

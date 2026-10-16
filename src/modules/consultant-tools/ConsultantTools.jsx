@@ -42,6 +42,7 @@ import BulkProductLinker from './components/BulkProductLinker.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
 import { Btn, Encadre, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { ListeAncree } from '../../components/ui/ListeAncree.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
 import AlertRules from './AlertRules.jsx';
@@ -2231,8 +2232,10 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                           onClick={() => setCatalogPicker(ing.id)}
                           aria-label="Choisir depuis le catalogue"
                         ><Search size={13} aria-hidden="true" /></button>
+                        {/* Liste rendue dans <body> : la carte (overflow hidden)
+                            coupait celle de la dernière ligne. */}
                         {suggestions.length > 0 && (
-                          <div style={cts.suggestionsCompact}>
+                          <ListeAncree style={cts.suggestionsCompact}>
                             {(suggestions || []).map(p => (
                               <div key={p.id} style={cts.suggItemCompact}
                                 onMouseDown={() => linkProductToIngredient(idx, p)}
@@ -2241,7 +2244,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                                 {p.prixUnitaire > 0 && <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', marginLeft: 6 }}>{p.prixUnitaire.toFixed(3)}/{p.uniteRef}</span>}
                               </div>
                             ))}
-                          </div>
+                          </ListeAncree>
                         )}
                       </div>
                       {/* Le champ porte la quantité ENREGISTRÉE ; le recalcul

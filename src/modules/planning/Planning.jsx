@@ -23,7 +23,7 @@ import DupliquerModal from './DupliquerModal.jsx';
 import ExportModal from './ExportModal.jsx';
 import MonPlanning from './MonPlanning.jsx';
 import ModelesModal from './ModelesModal.jsx';
-import { BoutonActions } from './planningUi.jsx';
+import { BoutonActions, Fenetre } from './planningUi.jsx';
 import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, formatDuree, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
@@ -665,6 +665,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Crée des horaires pour plusieurs employés × une plage de dates (filtrée par jours
   // de semaine) × un créneau commun, en une seule requête insert([...]).
   const [showBatchModal, setShowBatchModal] = React.useState(false);
+  // La fenêtre se ferme pendant l'enregistrement : une saisie finie ensuite ne
+  // referme pas une saisie rouverte entre-temps (numéro d'ouverture).
+  const batchOuvertureRef = React.useRef(0);
   const [batchUserIds, setBatchUserIds] = React.useState(new Set());
   const [batchStart, setBatchStart] = React.useState(selectedDate);
   const [batchEnd, setBatchEnd] = React.useState(selectedDate);
@@ -765,6 +768,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setBatchModele(null);
     setBatchPoste('');
     setBatchConflictMode('skip');
+    batchOuvertureRef.current += 1;
     setShowBatchModal(true);
   };
 
@@ -815,6 +819,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     const dates = buildBatchDates();
     if (dates.length === 0) { alertLegacy('Aucune date valide (vérifie la plage et les jours sélectionnés).'); return; }
 
+    const ouverture = batchOuvertureRef.current;
     setBatchSaving(true);
     const toCreate = [];
     const idsToRemove = new Set();
@@ -873,7 +878,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       if (idsToRemove.size > 0) msg += ` (${idsToRemove.size} remplacé${idsToRemove.size > 1 ? 's' : ''})`;
       if (skipped > 0) msg += ` - ${skipped} conflit${skipped > 1 ? 's' : ''} ignoré${skipped > 1 ? 's' : ''}`;
       notifyLegacy(msg, 'success');
-      setShowBatchModal(false);
+      if (batchOuvertureRef.current === ouverture) setShowBatchModal(false);
     } catch (err) {
       notifyLegacy('Saisie groupée impossible. ' + messageErreur(err, 'planning'), 'error');
     } finally {
@@ -1483,11 +1488,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
       )}
 
       {/* Modale détail */}
+      {/* Fenêtres sur Fenetre : portail, rôle de dialogue, Échap, « × » nommé,
+          geste retour ; ouvertes depuis un menu, elles restent ouvertes. */}
       {showDetailModal && selectedShift && (
-        <div className="modal-full-overlay" style={pls.overlay} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>
-          <div className="modal-full" style={pls.modal} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}><div style={pls.modalTitle}>Détail de l'horaire</div><button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => { setShowDetailModal(false); setPointageEditMode(false); }}>×</button></div>
-            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Fenetre id="planning-detail" titre="Détail de l'horaire" onClose={() => { setShowDetailModal(false); setPointageEditMode(false); }} largeur={460}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
                 const emp = userDisplay(selectedShift.userId);
                 return (
@@ -1546,16 +1551,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* Modale ajout/édition */}
       {showEditModal && editForm && (
-        <div className="modal-full-overlay" style={pls.overlay} onClick={() => setShowEditModal(false)}>
-          <div className="modal-full" style={pls.modal} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}><div style={pls.modalTitle}>{editForm.id ? 'Modifier l\'horaire' : 'Nouvel horaire'}</div><button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => setShowEditModal(false)}>×</button></div>
-            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Fenetre id="planning-horaire" titre={editForm.id ? 'Modifier l\'horaire' : 'Nouvel horaire'} onClose={() => setShowEditModal(false)} largeur={460}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label style={pls.fieldLabel}>Employé</label>
                 <select style={pls.fieldInput} value={editForm.userId} onChange={e => setEditForm({ ...editForm, userId: e.target.value })}>
@@ -1615,19 +1617,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <button style={pls.addBtn} onClick={saveShift}>{editForm.id ? 'Enregistrer' : 'Créer'}</button>
               </div>
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* ═════════ MODALE RELEVÉ CCNT ═════════ */}
       {showCCNTModal && (
-        <div className="modal-full-overlay" style={pls.overlay} onClick={() => setShowCCNTModal(false)}>
-          <div className="modal-full" style={{ ...pls.modal, width: 560 }} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Générer un relevé CCNT</div>
-              <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => setShowCCNTModal(false)}>×</button>
-            </div>
-            <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Fenetre id="planning-ccnt" titre="Générer un relevé CCNT" onClose={() => setShowCCNTModal(false)} largeur={560}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ ...encadreStyle('alerte'), fontSize: 11, lineHeight: 1.5 }}>
                 Document conforme aux <strong>articles 15 &amp; 21 CCNT</strong> hôtellerie-restauration suisse. À signer <strong>chaque mois</strong> par le collaborateur et l'employeur, à conserver <strong>5 ans</strong>.
               </div>
@@ -1680,8 +1676,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <button style={pls.addBtn} onClick={() => exportCCNT('pdf')}>Exporter en PDF</button>
               </div>
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* ═════════ ZONE D'IMPRESSION CCNT (cachée, utilisée par PDFUtils) ═════════ */}
@@ -1847,13 +1842,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const allDatesSelected = DAYS.length > 0 && DAYS.every(d => demultDates.has(d.date));
         const allUsersSelected = employees.length > 0 && employees.every(e => demultUserIds.has(e.id));
         return (
-          <div className="modal-full-overlay" style={pls.overlay} onClick={closeDemult}>
-            <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw' }} onClick={e => e.stopPropagation()}>
-              <div style={pls.modalHeader}>
-                <div style={pls.modalTitle}>Dupliquer vers…</div>
-                <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={closeDemult}>×</button>
-              </div>
-              <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Fenetre id="planning-dupliquer" titre="Dupliquer vers…" onClose={closeDemult} largeur={720}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Récapitulatif sélection */}
                 <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>Horaires à dupliquer</div>
@@ -1968,8 +1958,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+          </Fenetre>
         );
       })()}
       {/* ═════════ BARRE D'ACTION SÉLECTION MULTIPLE (Axe 2) ═════════ */}
@@ -2087,18 +2076,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
       )}
 
       {showBulkDeleteConfirm && (
-        <div className="modal-full-overlay" style={pls.overlay} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>
-          <div className="modal-full" style={{ ...pls.modal, width: 420 }} onClick={e => e.stopPropagation()}>
-            <div style={pls.modalHeader}>
-              <div style={pls.modalTitle}>Supprimer {selectedIds.size} horaire{selectedIds.size > 1 ? 's' : ''} ?</div>
-              <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}>×</button>
-            </div>
-            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Fenetre id="planning-supprimer-selection" titre="Supprimer les horaires sélectionnés ?" onClose={() => setShowBulkDeleteConfirm(false)} largeur={420}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
                 Cette action est <strong>définitive</strong>. {selectedIds.size} horaire{selectedIds.size > 1 ? 's' : ''} {selectedIds.size > 1 ? 'seront supprimés' : 'sera supprimé'} en une seule opération.
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button style={pls.exportBtn} onClick={() => setShowBulkDeleteConfirm(false)} disabled={bulkDeleting}>Annuler</button>
+                <button style={pls.exportBtn} onClick={() => setShowBulkDeleteConfirm(false)}>{bulkDeleting ? 'Fermer' : 'Annuler'}</button>
                 <button
                   style={{ ...pls.addBtn, background: 'var(--danger-strong)', borderColor: 'var(--danger-strong)', opacity: bulkDeleting ? 0.5 : 1 }}
                   onClick={doBulkDelete}
@@ -2106,8 +2090,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 >{bulkDeleting ? 'Suppression…' : `Supprimer (${selectedIds.size})`}</button>
               </div>
             </div>
-          </div>
-        </div>
+        </Fenetre>
       )}
 
       {/* ═════════ MODALE SAISIE GROUPÉE (Axe 3) ═════════ */}
@@ -2135,13 +2118,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const willCreate = batchConflictMode === 'skip' ? totalPairs - conflictCount : totalPairs - pointesBloquants;
         const heuresCreneau = segs.reduce((t, s) => t + (calcHeures(s.debut, s.fin, s.pause) || 0), 0);
         return (
-          <div className="modal-full-overlay" style={pls.overlay} onClick={() => !batchSaving && setShowBatchModal(false)}>
-            <div className="modal-full" style={{ ...pls.modal, maxWidth: 720, width: '94vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-              <div style={pls.modalHeader}>
-                <div style={pls.modalTitle}>Saisie groupée d'horaires</div>
-                <button type="button" className="ui-fermer" aria-label="Fermer" style={pls.closeBtn} onClick={() => !batchSaving && setShowBatchModal(false)}>×</button>
-              </div>
-              <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Fenetre id="planning-saisie-groupee" titre="Saisie groupée d'horaires" onClose={() => setShowBatchModal(false)} largeur={720}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* ── Employés ── */}
                 <div>
@@ -2299,14 +2277,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       ? <>Aperçu : <strong>{willCreate}</strong> horaire{willCreate > 1 ? 's' : ''} {willCreate > 1 ? 'seront créés' : 'sera créé'}{conflictCount > 0 && batchConflictMode === 'skip' ? ` (${conflictCount} ignoré${conflictCount > 1 ? 's' : ''})` : ''}</>
                       : 'Configuration incomplète'}
                   </span>
-                  <button style={pls.exportBtn} onClick={() => setShowBatchModal(false)} disabled={batchSaving}>Annuler</button>
+                  <button style={pls.exportBtn} onClick={() => setShowBatchModal(false)}>{batchSaving ? 'Fermer' : 'Annuler'}</button>
                   <button style={{ ...pls.addBtn, opacity: willCreate === 0 || batchSaving ? 0.5 : 1 }} onClick={doBatchCreate} disabled={willCreate === 0 || batchSaving}>
                     {batchSaving ? 'Création…' : `Créer (${willCreate})`}
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+          </Fenetre>
         );
       })()}
     </div>

@@ -12,13 +12,21 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 
 export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children, pied = null }) {
   useBackLayer(true, onClose, id);
+  const voileRef = React.useRef(null);
   React.useEffect(() => {
-    const echap = (e) => { if (e.key === 'Escape') onClose(); };
+    // Échap ferme la fenêtre du dessus seulement : une fenêtre ouverte depuis
+    // une autre (« Gérer » dans une fiche) ne referme pas les deux d'un coup.
+    const echap = (e) => {
+      if (e.key !== 'Escape') return;
+      const voiles = document.querySelectorAll('[data-fenetre]');
+      if (voiles.length && voiles[voiles.length - 1] !== voileRef.current) return;
+      onClose();
+    };
     document.addEventListener('keydown', echap);
     return () => document.removeEventListener('keydown', echap);
   }, [onClose]);
   return createPortal(
-    <div className="modal-sheet-overlay" style={st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div ref={voileRef} data-fenetre="" className="modal-sheet-overlay" style={st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-sheet" style={{ ...st.fenetre, width: `min(${largeur}px, 100%)` }} role="dialog" aria-modal="true" aria-label={titre}>
         <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
         <div style={st.titre}>{titre}</div>
@@ -48,7 +56,8 @@ export function Choix({ titre, detail, onClick, danger = false, actif = false, d
 
 // Bouton nommé qui ouvre une fenêtre de choix rangés par sections.
 // sections = [{ titre?, items: [{ titre, detail?, onClick, danger? } | null] }]
-export function BoutonActions({ id, label, style, titre, sousTitre, sections }) {
+// disabled : le bouton déclencheur reste visible mais inactif (export en cours).
+export function BoutonActions({ id, label, style, disabled = false, titre, sousTitre, sections }) {
   const [ouvert, setOuvert] = React.useState(false);
   const fermer = React.useCallback(() => setOuvert(false), []);
   const visibles = sections
@@ -57,7 +66,7 @@ export function BoutonActions({ id, label, style, titre, sousTitre, sections }) 
   if (!visibles.length) return null;
   return (
     <>
-      <button type="button" style={style} onClick={() => setOuvert(true)} aria-haspopup="dialog" aria-expanded={ouvert}>
+      <button type="button" style={style} disabled={disabled} onClick={() => setOuvert(true)} aria-haspopup="dialog" aria-expanded={ouvert}>
         {label}
       </button>
       {ouvert && (
