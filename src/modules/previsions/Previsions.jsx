@@ -13,6 +13,7 @@ import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
 import NotificationsAppareil from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
+import { useReservationsJour } from './useReservationsJour.js';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
@@ -68,6 +69,15 @@ export default function Previsions({ user, etablissement }) {
     setRefreshKey((k) => k + 1);
   };
 
+  // Fiche ouverte depuis la recherche : statuts et demandes en ligne passent
+  // par la même source que la vue jour (le jour de la réservation trouvée),
+  // sinon la fiche affiche « Demande en ligne à confirmer » sans bouton.
+  const jourTrouvee = useReservationsJour(etablissement?.id, resaTrouvee?.date_service || null, { onChange: bumpRecherche });
+  async function traiterTrouvee(resa, evenement) {
+    const ok = await jourTrouvee.traiter(resa, evenement);
+    if (ok && evenement === 'refus') setResaTrouvee((cur) => (cur?.id === resa.id ? null : cur));
+  }
+
   // Pas de liste de rôles ici : l'accès au module se règle personne par
   // personne dans Rôles & accès, et LegacyModuleHost l'applique déjà. Une
   // liste en dur refusait un cuisinier à qui l'on avait ouvert le module.
@@ -113,10 +123,13 @@ export default function Previsions({ user, etablissement }) {
               ? 'Activité des réservations, en lecture seule'
               : selectedDate ? null : 'Planning de la semaine, service par service'}
         />
-        {/* L'action principale d'abord, puis le mode service et la recherche ;
-            les réglages (en ligne, e-mails) et les notifications ferment la
-            rangée. Un seul style de bouton secondaire. */}
+        {/* Les notifications de l'appareil d'abord, puis l'action principale,
+            le mode service et la recherche ; les réglages (en ligne, e-mails)
+            ferment la rangée. Un seul style de bouton secondaire. */}
         <div className="module-actions">
+          {/* Prévenir ce téléphone / cette tablette à chaque réservation en
+              ligne. En tête : visible sur téléphone sans faire défiler. */}
+          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
           {canEdit && (
             <button
               type="button"
@@ -156,8 +169,6 @@ export default function Previsions({ user, etablissement }) {
               Réglages
             </button>
           )}
-          {/* Prévenir ce téléphone / cette tablette à chaque réservation en ligne. */}
-          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
         </div>
       </div>
 
@@ -275,8 +286,10 @@ export default function Previsions({ user, etablissement }) {
           pour quoi on l'a cherchée. */}
       {resaTrouvee && (
         <ReservationDetailModal
-          resa={resaTrouvee}
+          resa={jourTrouvee.resas?.find((r) => r.id === resaTrouvee.id) || resaTrouvee}
           canEdit={canEdit}
+          onStatut={canEdit ? jourTrouvee.changerStatut : undefined}
+          onTraiter={canEdit ? traiterTrouvee : undefined}
           onEdit={canEdit ? (r) => { setResaTrouvee(null); setResaEnEdition(r); } : undefined}
           onClose={() => setResaTrouvee(null)}
           onResaUpdated={() => { setResaTrouvee(null); bumpRecherche(); }}

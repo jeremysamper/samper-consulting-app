@@ -607,7 +607,7 @@ const HACCP = ({ user, etablissement }) => {
   // Onglets sans filtre de date ni impression de la vue courante : traçabilité
   // (galerie photo) et étiquettes (qui a ses propres dates de lot et son PDF).
   const showDateFilter  = !['config', 'tracabilite', 'etiquettes'].includes(activeTab);
-  const showPrintExport = !['tracabilite', 'etiquettes'].includes(activeTab);
+  const showPrintExport = !['config', 'tracabilite', 'etiquettes'].includes(activeTab);
   // Barre d'actions affichée seulement si elle porte quelque chose : sur
   // l'onglet Étiquettes elle serait vide et ne ferait que pousser l'écran.
   const hasActions = showDateFilter || showPrintExport

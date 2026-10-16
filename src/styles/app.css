@@ -25,6 +25,11 @@
   --surface2: oklch(97.6% 0.004 230);
   --border: oklch(87% 0.008 230);
   --border2: oklch(83% 0.009 230);
+  /* Filet doux sous les éléments d'une liste aplatie (« Plus de carrés », en
+     fin de feuille) : la teinte de --border à 80 %, sans color-mix(), que
+     html2canvas ne sait pas lire. Une vue capturée en PDF le reprend en hex
+     (règle .pdf-render-root, même endroit). */
+  --rule-soft: oklch(87% 0.008 230 / 0.8);
   --text: oklch(19% 0.012 235);
   --text2: oklch(47% 0.012 235);
   --text3: oklch(59% 0.010 235);
@@ -163,6 +168,7 @@
     --surface2: oklch(26% 0.022 225);
     --border: oklch(33% 0.022 225);
     --border2: oklch(38% 0.02 225);
+    --rule-soft: oklch(33% 0.022 225 / 0.8);
     --text: oklch(94% 0.007 210);
     --text2: oklch(78% 0.014 215);
     --text3: oklch(62% 0.014 220);
@@ -233,6 +239,7 @@ html[data-theme="dark"] {
   --surface2: oklch(26% 0.022 225);
   --border: oklch(33% 0.022 225);
   --border2: oklch(38% 0.02 225);
+  --rule-soft: oklch(33% 0.022 225 / 0.8);
   --text: oklch(94% 0.007 210);
   --text2: oklch(78% 0.014 215);
   --text3: oklch(62% 0.014 220);
@@ -594,6 +601,12 @@ html[data-theme="dark"] {
   scroll-snap-type: x proximity;
 }
 .segmented-tabs::-webkit-scrollbar { display: none; }
+/* Retour à la ligne au-delà de 768 px (prop retourLigne) : une longue série
+   d'onglets (les rayons de la Commande) reste atteignable à la souris, la
+   barre de défilement étant masquée. Sur téléphone, la piste défile. */
+@media (min-width: 769px) {
+  .segmented-tabs.segmented-tabs--retour { flex-wrap: wrap; overflow-x: visible; }
+}
 
 .segmented-tab {
   flex: 0 0 auto;
@@ -1837,7 +1850,7 @@ html[data-theme="dark"] button:not(:disabled):active {
 }
 :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea))
 :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):not(:has(> input, > select, > textarea)) {
-  border-bottom-color: color-mix(in oklab, var(--spa-line, var(--border)) 70%, transparent) !important;
+  border-bottom-color: var(--rule-soft) !important;
 }
 /* Les éléments d'une même liste (frères aplatis : lignes de produits, tuiles
    de chiffres, cartes d'une grille) gardent chacun un filet bas : sans lui,
@@ -1846,8 +1859,21 @@ html[data-theme="dark"] button:not(:disabled):active {
    sert ici ; un groupe de champ garde de toute façon son cadre.) */
 :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *):has(~ :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *)),
 :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *) ~ :is(div, section, article, aside, li, ul, header, footer, form, fieldset, details, figure):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--spa-line)"], [style*="background: var(--surface)"], [style*="background: var(--surface2)"], [style*="background: var(--bg)"], [style*="background: var(--spa-surface"])[style*="border-radius"]:is([style*="padding: "], [style*="padding-top: "], [style*="overflow: hidden"]):not([style*="position: absolute"]):not([style*="position: fixed"]):not([style*="position: sticky"]):not([style*="box-shadow: rgba"]):not([style*="box-shadow: var(--sh-lg)"]):not([style*="box-shadow: var(--sh)"]):not([style*="box-shadow: var(--spa-shadow)"]):not([style*="color: rgb(255, 255, 255)"]):not([style^="height: "]):not([style*="; height: "]):not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([role="tooltip"]):not(.modal, .modal-sheet, .modal-full, [data-cadre]):not([style*="position: fixed"] > *, [style*="position: absolute"] > *, .modal-sheet-overlay > *, .modal-full-overlay > *) {
-  border-bottom-color: color-mix(in oklab, var(--spa-line, var(--border)) 85%, transparent) !important;
+  border-bottom-color: var(--rule-soft) !important;
 }
+/* Vue capturée en PDF (pdf.js monte la zone dans .pdf-render-root) : le filet
+   doux suit --border2, que THEME_VAR_OVERRIDES (src/design/brandTokens.js)
+   redéclare en hex sur chaque élément. html2canvas ne lit ni oklch() ni
+   color-mix() : sans cette ligne, l'export s'arrête sur la première liste. */
+.pdf-render-root, .pdf-render-root * {
+  --rule-soft: var(--border2);
+}
+
+/* Barre de sélection du Planning (fixe en bas d'écran) : sur ordinateur, elle
+   commence après la barre latérale ouverte, sinon elle en couvrait le bas (le
+   menu de l'utilisateur). --largeur-menu est posée par AppLayout (bureau
+   seulement) ; sur téléphone elle reste à 0. */
+.barre-selection-planning { left: var(--largeur-menu, 0px) !important; }
 
 /* Les lignes de liste en bouton pleine largeur suivent la même règle. */
 button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"])[style*="width: 100%"][style*="text-align: left"]:not([data-cadre]) {

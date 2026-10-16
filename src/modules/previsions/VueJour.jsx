@@ -311,6 +311,7 @@ export default function VueJour({
           resasNonActualisees={nonActualise}
           onRelireResas={load}
           onStatut={canEdit ? changerStatut : undefined}
+          onTraiter={canEdit ? traiter : undefined}
           onResasModifiees={() => { load(); onResaUpdated?.(); }}
         />
       )}

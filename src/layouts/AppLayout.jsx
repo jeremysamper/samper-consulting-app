@@ -789,8 +789,10 @@ export default function AppLayout({
   // ════════════════════════════════
   // DESKTOP
   // ════════════════════════════════
+  // --largeur-menu : place prise par la barre latérale, pour les barres fixes
+  // en bas d'écran qui doivent commencer après elle (sélection du Planning).
   return (
-    <div style={ls.root} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+    <div style={{ ...ls.root, '--largeur-menu': sidebarOpen ? '234px' : '0px' }} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
       {/* Barre au strict minimum : logo en haut, modules, nom de l'utilisateur
           en bas. L'établissement est dans le header, les actions de compte
           dans le menu du nom, le repli dans le bouton du header.

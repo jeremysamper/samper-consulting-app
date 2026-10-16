@@ -275,6 +275,7 @@ const Commande = ({ user, etablissement }) => {
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
           <SegmentedTabs
             size="sm"
+            retourLigne
             active={catFilter}
             onChange={setCatFilter}
             tabs={categories.map(c => ({ id: c, label: c }))}
@@ -330,7 +331,7 @@ const Commande = ({ user, etablissement }) => {
             <div style={{ fontSize: 16, fontWeight: 600, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Liste de commande vide</div>
             <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
               {isConsultant
-                ? 'Cliquez sur « Générer la liste » pour rassembler automatiquement les produits nécessaires à toutes les cartes, ou ajoutez un produit manuellement.'
+                ? 'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.'
                 : 'Aucun produit pour le moment. Vous pouvez ajouter un produit, ou demander au consultant de générer la liste depuis les cartes.'}
             </div>
           </div>

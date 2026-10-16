@@ -619,11 +619,14 @@ export function installLegacySupabase() {
       }
 
       // FALLBACK : supprimer directement le profil dans la table (sans toucher auth.users)
-      // L'utilisateur ne pourra plus se connecter dans l'app car son profil n'existe plus
-      const { error: delErr } = await client.from('profiles').delete().eq('id', user_id);
+      // L'utilisateur ne pourra plus se connecter dans l'app car son profil n'existe plus.
+      // Les lignes supprimées sont relues : un DELETE refusé par la RLS ne lève
+      // pas d'erreur, il touche 0 ligne, et l'écran annonçait alors un succès.
+      const { data: supprimes, error: delErr } = await client.from('profiles').delete().eq('id', user_id).select('id');
       if (delErr) throw new Error('Suppression impossible : ' + delErr.message);
+      if (!supprimes?.length) throw new Error("Le compte n'a pas été supprimé.");
 
-      return { success: true, method: 'db_fallback', message: 'Profil supprimé. Le compte Auth reste présent (à supprimer manuellement dans Supabase Dashboard > Authentication si souhaité).' };
+      return { success: true, method: 'db_fallback', message: "Profil retiré de l'application. Son compte de connexion existe encore, à supprimer dans Supabase (Authentication)." };
     },
 
     // Modifier l'e-mail et/ou le mot de passe d'un compte auth existant.

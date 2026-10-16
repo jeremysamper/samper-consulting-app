@@ -70,7 +70,9 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const perms = getPermissionsForRole(role);
 
   const actif = (page) => isPageActiveForEtab(etablissement, page);
-  const peutOuvrir = (page) => typeof setPage === 'function' && actif(page) && perms[page] !== false;
+  // La page Pointage s'ouvre avec le droit du Planning (même module).
+  const permDe = (page) => (page === 'pointage' ? 'planning' : page);
+  const peutOuvrir = (page) => typeof setPage === 'function' && actif(page) && perms[permDe(page)] !== false;
   const ouvrir = (page) => { if (typeof setPage === 'function') setPage(page); };
 
   const avecPlanning = actif('planning');

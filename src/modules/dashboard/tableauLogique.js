@@ -243,7 +243,7 @@ export function aFaire({
           icone: 'equipe',
           titre: `${nomDe(s.userId)} n'a pas pointé`,
           detail: `Attendu à ${s.debut}`,
-          page: 'planning',
+          page: 'pointage',
           rang: 3,
         });
       }

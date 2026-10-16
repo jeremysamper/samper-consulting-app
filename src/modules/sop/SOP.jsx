@@ -424,13 +424,16 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                           label="Gérer"
                           style={ss.gererBtn}
                           titre={sop.titre}
-                          sousTitre={`${sop.categorie || 'SOP'}, ${totalSteps} étape${totalSteps > 1 ? 's' : ''}`}
+                          sousTitre={(
+                            <>
+                              {sop.categorie || 'SOP'}, {totalSteps} {totalSteps > 1 ? 'étapes' : 'étape'}
+                              {inTemplates && <>. <span>Déjà dans la bibliothèque</span>.</>}
+                            </>
+                          )}
                           sections={[{
                             items: [
                               { titre: 'Modifier', detail: 'Titre, description, fréquence, sections et étapes.', onClick: () => onEdit(sop) },
-                              inTemplates
-                                ? { titre: 'Déjà dans la bibliothèque', detail: "Cette SOP figure parmi les templates, prête à être reprise par d'autres établissements.", disabled: true, onClick: () => {} }
-                                : { titre: 'Ajouter à la bibliothèque', detail: 'La proposer comme template aux autres établissements.', onClick: () => onAddToTemplates && onAddToTemplates(sop) },
+                              !inTemplates && { titre: 'Ajouter à la bibliothèque', detail: 'La proposer comme template aux autres établissements.', onClick: () => onAddToTemplates && onAddToTemplates(sop) },
                             ],
                           }]}
                         />

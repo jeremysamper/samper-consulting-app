@@ -476,18 +476,25 @@ const Documents = ({ user, etablissement }) => {
           {canWrite && (
             <>
               <button type="button" style={ds.btnGhost} onClick={() => setNouveauDossier('')}>Nouveau dossier</button>
-              <label style={{ ...ds.btnPrimaire, cursor: upload ? 'wait' : 'pointer', opacity: upload ? 0.7 : 1 }}>
+              {/* Un vrai bouton (clavier, lecteur d'écran) ; le champ fichier
+                  reste masqué et s'ouvre par lui. */}
+              <button
+                type="button"
+                style={{ ...ds.btnPrimaire, cursor: upload ? 'wait' : 'pointer', opacity: upload ? 0.7 : 1 }}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!!upload}
+              >
                 {upload ? `Import ${upload.fait + 1}/${upload.total}…` : 'Importer'}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ACCEPT}
-                  multiple
-                  style={{ display: 'none' }}
-                  onChange={e => importer(e.target.files)}
-                  disabled={!!upload}
-                />
-              </label>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT}
+                multiple
+                style={{ display: 'none' }}
+                onChange={e => importer(e.target.files)}
+                disabled={!!upload}
+              />
             </>
           )}
         </div>

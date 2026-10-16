@@ -29,6 +29,8 @@ const layers = [];
 // différée, sinon le retour asynchrone dépilerait la page qu'on vient de poser.
 let pendingBacks = 0;
 let deferredPage = null;
+// Calques ouverts pendant qu'un retour interne est en route : posés au popstate.
+const deferredLayers = [];
 const listeners = new Set();
 
 function emit() {
@@ -63,6 +65,10 @@ function onPopState(event) {
     const next = deferredPage;
     deferredPage = null;
     pushPage(next);
+  }
+  if (pendingBacks === 0 && deferredLayers.length) {
+    const enAttente = deferredLayers.splice(0);
+    enAttente.forEach((poser) => poser());
   }
   emit();
 }
@@ -138,14 +144,23 @@ export function replacePage(page) {
 export function pushLayer(id, close) {
   const win = getBrowserWindow();
   if (!win?.history) return () => {};
-  currentIdx += 1;
-  const entry = { id, idx: currentIdx, close };
-  layers.push(entry);
-  try {
-    win.history.pushState({ sc: 1, idx: currentIdx, page: currentPage, layer: id }, '');
-  } catch { /* sans historique, le calque se ferme uniquement par l'UI */ }
-  emit();
+  const entry = { id, idx: null, close };
+  const poser = () => {
+    currentIdx += 1;
+    entry.idx = currentIdx;
+    layers.push(entry);
+    try {
+      win.history.pushState({ sc: 1, idx: currentIdx, page: currentPage, layer: id }, '');
+    } catch { /* sans historique, le calque se ferme uniquement par l'UI */ }
+    emit();
+  };
+  // Un calque refermé dans le même geste a lancé history.back() : poser
+  // l'entrée maintenant la ferait dépiler par ce retour asynchrone.
+  if (pendingBacks > 0) deferredLayers.push(poser);
+  else poser();
   return () => {
+    const k = deferredLayers.indexOf(poser);
+    if (k !== -1) { deferredLayers.splice(k, 1); return; }
     const i = layers.indexOf(entry);
     if (i === -1) return; // déjà refermé par « retour » ou consommé par une navigation
     layers.splice(i, 1);

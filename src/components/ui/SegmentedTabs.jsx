@@ -17,13 +17,15 @@ import React from 'react';
 //   active   : id de l'onglet actif
 //   onChange : (id) => void
 //   size     : 'sm' | undefined         - 'sm' → pilules plus compactes
+//   retourLigne : true                  - au-delà de 768 px, les onglets
+//              passent à la ligne au lieu de défiler (longues séries)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SegmentedTabs({ tabs, active, onChange, size, style = {}, className = '' }) {
+export default function SegmentedTabs({ tabs, active, onChange, size, retourLigne = false, style = {}, className = '' }) {
   const list = Array.isArray(tabs) ? tabs : [];
   return (
     <div
-      className={`segmented-tabs no-print${size === 'sm' ? ' segmented-tabs--sm' : ''}${className ? ' ' + className : ''}`}
+      className={`segmented-tabs no-print${size === 'sm' ? ' segmented-tabs--sm' : ''}${retourLigne ? ' segmented-tabs--retour' : ''}${className ? ' ' + className : ''}`}
       role="tablist"
       style={style}
     >

@@ -358,8 +358,10 @@ const Roles = ({ user }) => {
 
     if (legacySB) {
       try {
-        await legacySB.db.deleteUserViaEdge(u.id);
+        const res = await legacySB.db.deleteUserViaEdge(u.id);
         setUtilisateurs(prev => prev.filter(x => x.id !== u.id));
+        // Repli sans la fonction de suppression : seul le profil est parti.
+        if (res?.method === 'db_fallback') notifyLegacy(res.message, 'warning');
       } catch (err) {
         notifyLegacy('Erreur suppression : ' + err.message + '\n\nVérifiez que l\'Edge Function "delete-user" est déployée.', 'error');
       }

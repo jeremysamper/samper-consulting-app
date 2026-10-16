@@ -1051,6 +1051,15 @@ export const UI_GLOSSARY = {
   'oct.': 'Oct',
   'nov.': 'Nov',
   'déc.': 'Dec',
+
+  // ── Finitions UI : boutons et parcours réparés (16.10.2026) ──
+  "Le compte n'a pas été supprimé.": 'The account was not deleted.',
+  "Profil retiré de l'application. Son compte de connexion existe encore, à supprimer dans Supabase (Authentication).": 'Profile removed from the app. The login account still exists; delete it in Supabase (Authentication).',
+  'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.': 'Open « Manage » then « Generate from menus » to gather the products of every menu, or add a product.',
+  'Générer depuis les cartes': 'Generate from menus',
+  'Déjà dans la bibliothèque': 'Already in the library',
+  'étapes': 'steps',
+  'étape': 'step',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

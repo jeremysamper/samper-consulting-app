@@ -1032,4 +1032,13 @@ export const UI_GLOSSARY_ES = {
   'oct.': 'oct.',
   'nov.': 'nov.',
   'déc.': 'dic.',
+
+  // ── Finitions UI : boutons et parcours réparés (16.10.2026) ──
+  "Le compte n'a pas été supprimé.": 'La cuenta no se ha eliminado.',
+  "Profil retiré de l'application. Son compte de connexion existe encore, à supprimer dans Supabase (Authentication).": 'Perfil retirado de la aplicación. Su cuenta de acceso sigue existiendo; elimínela en Supabase (Authentication).',
+  'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.': 'Abra « Gestionar » y luego « Generar desde las cartas » para reunir los productos de todas las cartas, o añada un producto.',
+  'Générer depuis les cartes': 'Generar desde las cartas',
+  'Déjà dans la bibliothèque': 'Ya está en la biblioteca',
+  'étapes': 'pasos',
+  'étape': 'paso',
 };

@@ -21,6 +21,8 @@
   --spa-sunken: #efeae1;
   --spa-line: #e3dcd0;
   --spa-line2: #d5ccbd;
+  /* Filet doux des listes aplaties (app.css, « Plus de carrés ») : celui du Spa. */
+  --rule-soft: var(--spa-line);
   --spa-ink: #25302c;
   --spa-ink2: #535f5a;
   --spa-ink3: #6b7671;
@@ -67,6 +69,7 @@ html[data-theme="dark"] .spa {
   --spa-sunken: #141b1a;
   --spa-line: #2a3533;
   --spa-line2: #35423f;
+  --rule-soft: var(--spa-line);
   --spa-ink: #e6ece9;
   --spa-ink2: #adbab5;
   --spa-ink3: #8d9a95;
@@ -104,6 +107,7 @@ html[data-theme="dark"] .spa {
     --spa-sunken: #141b1a;
     --spa-line: #2a3533;
     --spa-line2: #35423f;
+    --rule-soft: var(--spa-line);
     --spa-ink: #e6ece9;
     --spa-ink2: #adbab5;
     --spa-ink3: #8d9a95;

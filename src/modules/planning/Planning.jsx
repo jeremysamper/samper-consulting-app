@@ -1965,7 +1965,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       })()}
       {/* ═════════ BARRE D'ACTION SÉLECTION MULTIPLE (Axe 2) ═════════ */}
       {selectionMode && activeTab === 'planning' && (
-        <div className="no-print" style={pls.selectionBar}>
+        <div className="no-print barre-selection-planning" style={pls.selectionBar}>
           <button style={pls.selectionGhostBtn} onClick={toggleSelectAllVisible}>
             {allVisibleSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
           </button>
