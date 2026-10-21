@@ -1,21 +1,30 @@
 import { useMemo, useState } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
-import { cleLibelle, ligneReliee, propagerLiaison } from './choixMenu.js';
+import { SAISONS, cleLibelle, cleLiaison, ligneReliee, metaSaison, propagerLiaison } from './choixMenu.js';
 import SelecteurFiche, { liaisonDeValeur, valeurLiaison } from './SelecteurFiche.jsx';
 import { NUMERO_COMPLEMENTS, metaType, plurielSection } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Plats à relier : chaque plat des menus de groupe, une seule fois, avec le
-// nombre de menus qui le servent. Le relier ici à son plat de la carte ou à
-// sa fiche technique le relie dans TOUS les menus qui portent le même
-// libellé : « même plat qu'au mariage à 95 » se relie une fois.
+// Plats à relier : chaque plat des menus de groupe, une seule fois par
+// saison, avec le nombre de menus qui le servent. Le relier ici à son plat de
+// la carte ou à sa fiche technique le relie dans TOUS les menus qui portent
+// le même libellé à la même saison : « même plat qu'au mariage à 95 » se
+// relie une fois. Un libellé servi en plusieurs saisons (« Mini tartelette de
+// saison ») a une entrée par saison, saison affichée : chacune vise sa fiche
+// (voir cleLiaison dans choixMenu.js).
 //
 // C'est la liaison qui fait la liste de courses : un plat non relié s'imprime
 // sur le menu mais se commande à la main, et ses allergènes restent non
 // vérifiés. La liste s'ouvre donc sur ce qui reste à relier, les plus servis
 // en tête.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Été, hiver, puis toute l'année.
+const rangSaison = (id) => {
+  const i = SAISONS.findIndex((s) => s.id === id);
+  return i < 0 ? SAISONS.length : i;
+};
 
 export default function PlatsARelier({ menus, plats, recettes, enregistrerPlusieurs }) {
   const [recherche, setRecherche] = useState('');
@@ -27,11 +36,20 @@ export default function PlatsARelier({ menus, plats, recettes, enregistrerPlusie
 
   const entrees = useMemo(() => {
     const map = new Map();
+    const saisonsDuLibelle = new Map(); // libellé : saisons où il est servi
     (menus || []).forEach((m) => {
       (m.lignes || []).forEach((l) => {
-        const cle = cleLibelle(l.libelle);
+        const cle = cleLiaison(l);
         if (!cle) return;
-        if (!map.has(cle)) map.set(cle, { cle, libelle: l.libelle, sections: new Set(), menus: new Set(), ligne: l, reliee: false });
+        const libelle = cleLibelle(l.libelle);
+        if (!saisonsDuLibelle.has(libelle)) saisonsDuLibelle.set(libelle, new Set());
+        saisonsDuLibelle.get(libelle).add(l.saison || '');
+        if (!map.has(cle)) {
+          map.set(cle, {
+            cle, libelle: l.libelle, cleDuLibelle: libelle, saison: l.saison || '',
+            sections: new Set(), menus: new Set(), ligne: l, reliee: false,
+          });
+        }
         const e = map.get(cle);
         e.sections.add(l.section);
         e.menus.add(m.numero === NUMERO_COMPLEMENTS
@@ -40,8 +58,11 @@ export default function PlatsARelier({ menus, plats, recettes, enregistrerPlusie
         if (ligneReliee(l)) { e.reliee = true; e.ligne = l; }
       });
     });
-    return [...map.values()].sort((a, b) => (a.reliee - b.reliee) || (b.menus.size - a.menus.size)
-      || a.libelle.localeCompare(b.libelle, 'fr'));
+    // La saison ne s'affiche que là où elle distingue deux entrées.
+    return [...map.values()]
+      .map((e) => ({ ...e, saisonAffichee: saisonsDuLibelle.get(e.cleDuLibelle).size > 1 }))
+      .sort((a, b) => (a.reliee - b.reliee) || (b.menus.size - a.menus.size)
+        || a.libelle.localeCompare(b.libelle, 'fr') || rangSaison(a.saison) - rangSaison(b.saison));
   }, [menus]);
 
   const match = makeSearchMatcher(recherche);
@@ -73,7 +94,7 @@ export default function PlatsARelier({ menus, plats, recettes, enregistrerPlusie
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={st.intro}>
         {restants
-          ? `${restants} plat${restants > 1 ? 's' : ''} sur ${entrees.length} pas encore relié${restants > 1 ? 's' : ''} à une fiche : ils ne comptent pas dans les listes de courses et leurs allergènes ne sont pas vérifiés. Relier un plat ici le relie dans tous les menus qui le servent.`
+          ? `${restants} plat${restants > 1 ? 's' : ''} sur ${entrees.length} pas encore relié${restants > 1 ? 's' : ''} à une fiche : ils ne comptent pas dans les listes de courses et leurs allergènes ne sont pas vérifiés. Relier un plat ici le relie dans tous les menus qui le servent à la même saison.`
           : `Les ${entrees.length} plats des menus sont reliés à une fiche.`}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
@@ -95,6 +116,7 @@ export default function PlatsARelier({ menus, plats, recettes, enregistrerPlusie
           <div key={e.cle} style={st.ligne}>
             <div style={{ minWidth: 0, flex: '1 1 260px' }}>
               <div style={st.libelle}>{e.libelle}</div>
+              {e.saisonAffichee && <div style={st.saison}>{metaSaison(e.saison).label}</div>}
               <div style={st.detail}>
                 {[...e.sections].map(plurielSection).join(', ')}, {e.menus.size} menu{e.menus.size > 1 ? 's' : ''} : {[...e.menus].join(', ')}
               </div>
@@ -130,6 +152,7 @@ const st = {
     padding: '10px 0', borderBottom: '1px solid var(--border)',
   },
   libelle: { fontSize: 14, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.35, overflowWrap: 'anywhere' },
+  saison: { fontSize: 12, fontWeight: 600, color: 'var(--accent)', marginTop: 2 },
   detail: { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
   vide: { fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
 };

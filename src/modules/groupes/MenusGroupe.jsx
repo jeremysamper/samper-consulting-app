@@ -4,7 +4,7 @@ import { SegmentedTabs } from '../../components/ui/index.jsx';
 import { pdfUtils } from '../../services/pdf.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  MODES, NOMS_MOIS, REGIMES, SAISONS, cleLibelle, labelRegime, libelleFenetre, ligneDeSaison,
+  MODES, NOMS_MOIS, REGIMES, SAISONS, cleLiaison, labelRegime, libelleFenetre, ligneDeSaison,
   ligneReliee, metaSaison, propagerLiaison, regleSection, saisonDeDate,
 } from './choixMenu.js';
 import { payloadMenuSeul } from './pdfGroupe.js';
@@ -27,7 +27,8 @@ import {
 // Un menu se compose à partir des plats de la carte ou des fiches techniques :
 // c'est ce lien qui permet de calculer la liste de courses d'un groupe. Un
 // plat relié dans un menu l'est dans tous les menus qui portent le même
-// libellé (vue « Plats à relier », et à l'enregistrement d'un menu).
+// libellé à la même saison (vue « Plats à relier », et à l'enregistrement
+// d'un menu) : voir cleLiaison dans choixMenu.js.
 //
 // Chaque rubrique a sa règle de choix (servi à tous, un choix pour la table,
 // carte dont chaque convive choisit, quantités) : voir choixMenu.js.
@@ -59,7 +60,7 @@ export default function MenusGroupe({
   }
 
   // Enregistre un menu, puis reporte ses nouvelles liaisons sur les autres
-  // menus qui servent le même plat.
+  // menus qui servent le même plat à la même saison.
   async function enregistrerMenu(menu, avant) {
     const res = await enregistrer(menu);
     if (res.error) return res;
@@ -70,7 +71,7 @@ export default function MenusGroupe({
       let aEnregistrer = autres;
       const modifies = new Map();
       changees.forEach((l) => {
-        propagerLiaison(aEnregistrer, cleLibelle(l.libelle), { platId: l.platId, recetteIds: l.recetteIds }).forEach((m) => {
+        propagerLiaison(aEnregistrer, cleLiaison(l), { platId: l.platId, recetteIds: l.recetteIds }).forEach((m) => {
           modifies.set(m.id, m);
         });
         aEnregistrer = aEnregistrer.map((m) => modifies.get(m.id) || m);
@@ -78,7 +79,7 @@ export default function MenusGroupe({
       if (modifies.size) {
         const { faits, error } = await enregistrerPlusieurs([...modifies.values()]);
         if (error) notify(`Menu enregistré, mais report des liaisons incomplet : ${error}`, 'warning');
-        else notify(`Liaison reportée dans ${faits} autre${faits > 1 ? 's' : ''} menu${faits > 1 ? 's' : ''} servant le même plat.`, 'info');
+        else notify(`Liaison reportée dans ${faits} autre${faits > 1 ? 's' : ''} menu${faits > 1 ? 's' : ''} servant le même plat à la même saison.`, 'info');
       }
     }
     return res;

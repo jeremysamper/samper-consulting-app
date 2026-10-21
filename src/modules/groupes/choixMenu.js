@@ -555,15 +555,29 @@ export const cleLibelle = (s) => normalizeSearch(String(s || '').replace(/[’']
 
 export const ligneReliee = (l) => !!(l?.platId || (Array.isArray(l?.recetteIds) && l.recetteIds.length));
 
-// Applique une liaison à toutes les lignes de même libellé, dans tous les
-// menus. Rend seulement les menus modifiés, prêts à enregistrer.
+// Clé de report d'une liaison : même libellé ET même saison. Un libellé
+// identique vise une fiche différente selon la saison (« Mini tartelette de
+// saison » : abricots l'été, fruits d'hiver l'hiver) ; relier la ligne d'été
+// ne touche donc pas celle d'hiver. Une ligne sans saison (toute l'année) ne
+// se reporte que vers les lignes sans saison, et inversement : elle sert les
+// deux saisons, alors qu'une ligne d'été ou d'hiver de même libellé peut
+// viser une autre fiche. Vide pour une ligne sans libellé, qui ne se reporte
+// nulle part.
+export const cleLiaison = (l) => {
+  const libelle = cleLibelle(l?.libelle);
+  return libelle ? `${libelle}|${l?.saison || ''}` : '';
+};
+
+// Applique une liaison à toutes les lignes de même clé (cleLiaison), dans
+// tous les menus. Rend seulement les menus modifiés, prêts à enregistrer.
 export function propagerLiaison(menus, cle, liaison) {
+  if (!cle) return [];
   const platId = liaison?.platId || null;
   const recetteIds = Array.isArray(liaison?.recetteIds) ? liaison.recetteIds.filter(Boolean) : [];
   return (menus || []).map((m) => {
     let change = false;
     const lignes = (m.lignes || []).map((l) => {
-      if (cleLibelle(l.libelle) !== cle) return l;
+      if (cleLiaison(l) !== cle) return l;
       if ((l.platId || null) === platId && JSON.stringify(l.recetteIds || []) === JSON.stringify(recetteIds)) return l;
       change = true;
       return { ...l, platId, recetteIds };
