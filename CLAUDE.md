@@ -1,5 +1,15 @@
 # CLAUDE.md
 
+## Mode ÉCO
+
+- Ce fichier ne grossit plus : toute nouvelle règle détaillée va dans `.claude/rules/` (chargée par chemin) ou dans un skill.
+- /clear entre deux tâches sans lien ; /compact dès que /context dépasse 50 %.
+- Nommer les fichiers à ouvrir. Jamais « lis le repo ».
+- Pas de sous-agent sans demande explicite ; si demandé : un seul, model sonnet.
+- Sortie : le diff + 3 lignes. Pas de narration.
+- Plan mode (Shift+Tab) pour tout chantier de plus d'une heure, après le brief Prompt Optimizer.
+- Un serveur MCP actif par tâche (supabase OU vercel), jamais les deux par défaut.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Commands
