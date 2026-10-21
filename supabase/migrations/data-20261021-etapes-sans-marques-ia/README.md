@@ -86,6 +86,49 @@ majuscules (« REPOS OBLIGATOIRE ») et des parenthèses explicatives.
   hors noms de fiches citées (« en deux textures »).
 - Annulation : `99-rollback-passe-2.sql`, depuis le journal d'activité.
 
+## Troisième passe : vérification stricte de la carte Brunch
+
+Demande de Jérémy : « vérifie strictement toutes les recettes du menu
+brunch ». Le balayage a porté sur tous les champs de texte des 313 fiches de
+la carte : nom, ingrédients, étapes, notes, dressage, conservation, note de
+complexité. Il ajoutait aux contrôles précédents les « + » et « / » en guise
+de liste, les majuscules, « etc. », les anglicismes, les mots sans accent et
+les adverbes publicitaires (« parfaitement », « idéalement »,
+« indispensable »).
+
+58 corrections sur 39 fiches, en une transaction (7 h 53) :
+- 14 étapes, dont la justification « (la viande séchée sale déjà) » et le
+  calcul « 707 + 452 + 254 = 1 413 cm² » de 5 entremets ;
+- 3 notes (« au prochain batch », « ne pas sauter », « indispensable ») ;
+- 4 noms de recettes : « + » devient « et » (Panna cotta et coulis, Chia
+  pudding coco et mangue, Tartare de tomates et burrata, Yaourt grec et
+  compote d'abricot) ;
+- 37 noms d'ingrédients : « Sel/poivre » devient « Sel, poivre », « etc... »
+  est retiré, les accents de « Glaçage », « crème entière », « Levure
+  fraîche » et « Cacao poudre non sucré » sont remis.
+
+Contrôles dans la transaction : chaque ancien texte trouvé une fois et une
+seule, nombre d'étapes inchangé, quantités, unités et identifiants des
+ingrédients inchangés, ancienne version de chaque fiche gardée au journal.
+Les nouveaux noms ne sont cités comme ingrédient dans aucune fiche. Les
+ingrédients corrigés n'ont pas d'identifiant de produit, et la commande les
+regroupe par nom.
+
+Laissés tels quels : les parenthèses de précision (quantités, listes,
+« une pièce par convive à chaque passage »), qui ne justifient rien, et
+« Oeufs » sans ligature dans les noms d'ingrédients, qui est une habitude de
+saisie et non une marque IA.
+
+Balayage refait après correction : 0 occurrence. Contrôle de l'instrument :
+2 408 étapes et 1 961 ingrédients lus, textes corrigés retrouvés.
+
+Écart de comptage expliqué : la carte compte 313 fiches et non 314, parce
+que Jérémy a remplacé à 7 h 41 dans l'app « Rillettes de porc » par
+« Rillettes de cochon maison » dans le plat « Dips et tartinables ».
+
+Annulation : `99-rollback-passe-3.sql`, testé à blanc (39 fiches remises,
+transaction annulée).
+
 ## Fichiers
 
 - `consignes.md` : règles de style, exemple validé, contrôles.
@@ -94,3 +137,4 @@ majuscules (« REPOS OBLIGATOIRE ») et des parenthèses explicatives.
 - `99-rollback.sql` : annulation depuis le journal d'activité.
 - `gabarit-fiche.sql` : deuxième passe, étapes et notes d'une fiche.
 - `99-rollback-passe-2.sql` : annulation de la deuxième passe.
+- `99-rollback-passe-3.sql` : annulation de la troisième passe (brunch).
