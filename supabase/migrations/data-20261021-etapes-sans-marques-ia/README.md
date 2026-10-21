@@ -61,9 +61,36 @@ apparaissent dans le Journal d'activité de l'app, sans nom d'auteur.
 `99-rollback.sql` remet les anciennes étapes depuis le journal. Une fiche
 retouchée depuis dans l'app n'est pas touchée : le script la liste.
 
+## Deuxième passe : les fiches plus anciennes des mêmes cartes
+
+À la relecture, Jérémy a relevé que les cartes Brunch, Groupes, Mariages et
+Séminaires comptent aussi 98 fiches créées avant le 16.10 : le brunch de juin,
+les desserts des cartes restaurant et des sous-fiches d'août. Elles portaient
+les mêmes marques, surtout dans les notes (`notes_consultant`) : « zéro stress
+le jour même », « la préparation d'avance par excellence », « se congèle deux
+mois ». Les étapes avaient aussi des « ≈ », des listes en « + », des
+majuscules (« REPOS OBLIGATOIRE ») et des parenthèses explicatives.
+
+- 81 fiches réécrites (étapes et/ou notes) avec `gabarit-fiche.sql`, qui
+  reprend les contrôles du premier gabarit pour les deux champs. Les
+  caractères interdits y sont écrits par `chr()`. Les bornes de mot évitent
+  les refus injustifiés (« sauce qui », « pour quelques », « au moins 12 »).
+- Les accents ont été remis dans les fiches Brownie et Cinnamon rolls
+  Woodland.
+- Les 17 autres fiches étaient déjà propres et n'ont pas été touchées : les
+  fiches d'avril (« Accompagne : … »), les pancakes, la confiture de lait, la
+  meringue, l'assaisonnement et plusieurs sous-fiches d'août.
+- Vérification finale sur les 740 fiches des 7 cartes : 0 point-virgule,
+  tiret long, point médian, flèche ou « ≈ ». 0 « vigilance », 0 « soit », 0
+  explication en fin de phrase, 0 mot en majuscules, 0 nombre en lettres
+  hors noms de fiches citées (« en deux textures »).
+- Annulation : `99-rollback-passe-2.sql`, depuis le journal d'activité.
+
 ## Fichiers
 
 - `consignes.md` : règles de style, exemple validé, contrôles.
 - `gabarit-lot.sql` : le SQL d'un paquet, contrôles compris.
 - `02-verification.sql` : bilan sur les 647 fiches.
 - `99-rollback.sql` : annulation depuis le journal d'activité.
+- `gabarit-fiche.sql` : deuxième passe, étapes et notes d'une fiche.
+- `99-rollback-passe-2.sql` : annulation de la deuxième passe.
