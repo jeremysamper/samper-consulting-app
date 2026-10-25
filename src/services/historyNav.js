@@ -22,6 +22,15 @@ let currentIdx = 0;
 let currentPage = null;
 let popHandler = null;
 let started = false;
+// Page d'accueil de la coque tactile : index de sa dernière entrée dans la
+// pile (null : aucune, ou écartée par une navigation qui l'a recouverte).
+// Le bouton Accueil y revient au lieu d'empiler un second accueil.
+const PAGE_ACCUEIL = 'accueil';
+let accueilIdx = null;
+function noterAccueil(page, idx) {
+  if (page === PAGE_ACCUEIL) accueilIdx = idx;
+  else if (accueilIdx !== null && accueilIdx >= idx) accueilIdx = null;
+}
 // Calques ouverts, du plus ancien au plus récent : { id, idx, close }.
 const layers = [];
 // Retours déclenchés par l'app elle-même (fermeture d'un calque au clic) dont le
@@ -56,6 +65,7 @@ function onPopState(event) {
     try { layer.close(); } catch { /* le calque a pu être démonté entre-temps */ }
   }
 
+  if (state.page === PAGE_ACCUEIL) accueilIdx = state.idx;
   if (state.page && state.page !== currentPage) {
     currentPage = state.page;
     popHandler?.(state.page);
@@ -83,6 +93,7 @@ export function startHistory(initialPage, onPop) {
   if (!win?.history) return () => {};
   const existing = win.history.state;
   currentIdx = isOurState(existing) ? existing.idx : 0;
+  accueilIdx = initialPage === PAGE_ACCUEIL ? currentIdx : null;
   try {
     win.history.replaceState({ sc: 1, idx: currentIdx, page: initialPage }, '');
   } catch { /* historique indisponible (iframe sandbox…) : l'app marche sans */ }
@@ -120,8 +131,24 @@ export function pushPage(page) {
       win.history.pushState({ sc: 1, idx: currentIdx, page }, '');
     }
   } catch { /* quota d'historique : on navigue quand même */ }
+  noterAccueil(page, currentIdx);
   currentPage = page;
   emit();
+}
+
+// Retour à la page d'accueil (bouton Accueil, glissé depuis le bord) : si une
+// entrée « accueil » est derrière, on y revient par l'historique (les calques
+// et les pages intermédiaires se dépilent, aucun doublon) ; sinon `push`
+// pose la page. Déjà sur l'accueil : rien.
+export function goHome(page, push) {
+  const win = getBrowserWindow();
+  if (page === currentPage) return false;
+  if (win?.history && page === PAGE_ACCUEIL && accueilIdx !== null && accueilIdx < currentIdx && pendingBacks === 0) {
+    win.history.go(accueilIdx - currentIdx);
+    return true;
+  }
+  push(page);
+  return true;
 }
 
 // Remplace la page de l'entrée courante, sans en poser une nouvelle : pour une
@@ -136,6 +163,7 @@ export function replacePage(page) {
   try {
     win.history.replaceState({ sc: 1, idx: currentIdx, page }, '');
   } catch { /* historique indisponible : on navigue quand même */ }
+  noterAccueil(page, currentIdx);
   emit();
 }
 

@@ -9,6 +9,7 @@ import { useAuth } from './hooks/useAuth.js';
 import { usePasswordRecovery } from './hooks/usePasswordRecovery.js';
 import { useCurrentEtablissement } from './hooks/useCurrentEtablissement.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
+import { estTactile, useShellMode } from './hooks/useShellMode.js';
 import SafeModule from './legacy/SafeModule.jsx';
 import { loadLegacyModules } from './legacy/loadLegacyModules.js';
 import { getHydrateFromSupabase, removeLegacyGlobal, writeLegacyGlobal } from './legacy/legacyApi.js';
@@ -125,6 +126,9 @@ export default function App() {
     bridgeReady: !legacyState.loading && !legacyState.error,
   });
   const isMobile = useIsMobile();
+  // Coque : barre latérale (ordinateur) ou page d'accueil tactile (tablette,
+  // téléphone). Décision distincte d'isMobile, qui reste le seuil des modules.
+  const shellMode = useShellMode();
 
   useEffect(() => {
     installToastGlobals();
@@ -209,20 +213,25 @@ export default function App() {
     writeText(UI_STORAGE_KEYS.page, normalized);
   }), []);
 
-  // Établissement sans tableau de bord (spa) : l'accueil mène à sa propre page
-  // d'accueil. Remplacement de l'entrée, pas empilement : « retour » ne
-  // rejoue pas la redirection.
+  // Établissement sans tableau de bord (spa) : « dashboard » mène à sa page
+  // d'accueil (la page tactile en coque tactile, le module Spa sur
+  // ordinateur), et « accueil » sur ordinateur y mène aussi. Remplacement de
+  // l'entrée, pas empilement : « retour » ne rejoue pas la redirection.
+  // Avec un tableau de bord, rien ne bouge : « accueil » sur ordinateur
+  // affiche le tableau de bord sans redirection (LegacyModuleHost).
   const etabCourant = currentEtablissement.current;
   const roleCourant = auth.profile?.role;
   useEffect(() => {
-    if (!etabCourant || !roleCourant || page !== 'dashboard') return;
+    if (!etabCourant || !roleCourant) return;
+    if (page !== 'dashboard' && page !== 'accueil') return;
+    if (page === 'accueil' && estTactile(shellMode)) return;
     if (isModuleActiveForEtab(etabCourant, 'dashboard')) return;
-    const accueil = pageAccueil(etabCourant, getPermissionsForRole(roleCourant));
-    if (accueil === 'dashboard') return;
+    const accueil = pageAccueil(etabCourant, getPermissionsForRole(roleCourant), shellMode);
+    if (accueil === page) return;
     setPageState(accueil);
     writeText(UI_STORAGE_KEYS.page, accueil);
     replacePage(accueil);
-  }, [page, etabCourant, roleCourant]);
+  }, [page, etabCourant, roleCourant, shellMode]);
 
   // Notification touchée : l'app bascule sur l'établissement de la réservation
   // (s'il fait partie des siens), au démarrage ou si elle était déjà ouverte.
@@ -270,7 +279,9 @@ export default function App() {
       purgeAllDataCaches();
       // Même raison : le cache de traduction contient des noms de recettes.
       clearTranslationCache();
-      setPage('dashboard');
+      // Page mémorisée pour la prochaine connexion sur cet appareil : la page
+      // d'accueil de la coque (gros boutons en tactile, tableau de bord sinon).
+      setPage(pageAccueil(currentEtablissement.current, getPermissionsForRole(auth.profile?.role), shellMode));
       notify('Déconnexion effectuée.', 'info');
       if (pendingPunches > 0) {
         notify(pendingPunches > 1
@@ -309,7 +320,7 @@ export default function App() {
   } else if (auth.loading) {
     content = null;
   } else if (!auth.profile) {
-    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} onNavigateToDashboard={() => setPage('dashboard')} />;
+    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} onNavigateToDashboard={() => setPage(pageAccueil(null, {}, shellMode))} />;
   } else if (auth.profile.actif === false) {
     content = <DisabledAccount onLogout={handleLogout} />;
   } else if (legacyState.loading) {
@@ -327,6 +338,7 @@ export default function App() {
         etablissement={currentEtablissement.current}
         onSelectEtablissement={handleSelectEtablissement}
         permissions={getPermissionsForRole(auth.profile.role)}
+        shellMode={shellMode}
       >
         {/* Keep-alive : chaque module visité reste monté ; seul le module prêt
             (visiblePage) est affiché. display:contents préserve la mise en page
@@ -343,6 +355,7 @@ export default function App() {
               user={auth.profile}
               etablissement={currentEtablissement.current}
               isMobile={isMobile}
+              shellMode={shellMode}
               loadingEtablissement={currentEtablissement.loading}
               error={currentEtablissement.error}
               onRetryEtablissement={currentEtablissement.retry}

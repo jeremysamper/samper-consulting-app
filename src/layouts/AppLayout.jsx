@@ -1,12 +1,10 @@
 import React from 'react';
-import { navItems as NAV_ITEMS, isModuleActiveForEtab } from '../modules/moduleConfig.js';
+import { navItems as NAV_ITEMS } from '../modules/moduleConfig.js';
 import { getDemoData } from '../data/demoData.js';
-import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
-import { useUnreadPrivateMessages } from '../hooks/useUnreadPrivateMessages.js';
-import { useGroupesAlerte } from '../hooks/useGroupesAlerte.js';
+import { useVisibleNav } from '../hooks/useVisibleNav.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
@@ -16,22 +14,30 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
+import { Bell, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
 import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
-import { goBack } from '../services/historyNav.js';
+import { goBack, goHome as goHomeHistory } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
 import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
 import AccountButton from '../components/nav/AccountButton.jsx';
 import AccountModal from '../modules/auth/AccountModal.jsx';
-import { applyNavOrder, useNavOrder } from '../hooks/useNavOrder.js';
+import NavBadge from '../components/nav/NavBadge.jsx';
+import { ShellProvider } from './ShellContext.js';
+import { applyNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
 import { messageErreur } from '../utils/messageErreur.js';
 
-// Pages hors navItems (réservées au consultant, ouvertes depuis le compte).
-const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès' };
+// Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
+// et la page d'accueil de la coque tactile.
+const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', accueil: 'Accueil' };
+
+// Ancienne coque téléphone (hamburger et tiroir), remplacée par la coque
+// tactile. Gardée à une constante de distance le temps de l'essai de la
+// nouvelle coque sur la preview ; retirée ensuite dans un commit à part.
+const COQUE_TIROIR = false;
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {
@@ -55,9 +61,15 @@ export default function AppLayout({
   etablissements = [],
   etablissement,
   onSelectEtablissement,
-  permissions: permissionsOverride
+  permissions: permissionsOverride,
+  // Mode de présentation de la coque (useShellMode, posé par App.jsx) :
+  // 'ordinateur' | 'tablette' | 'telephone'.
+  shellMode = 'ordinateur'
 }) {
-  const isMobile = useIsMobile();
+  const isMobile = shellMode === 'telephone';
+  // Tablette et téléphone partagent la coque tactile (page d'accueil, bouton
+  // Accueil) ; l'ordinateur garde barre latérale et raccourcis.
+  const tactile = shellMode !== 'ordinateur';
   const { isDark, toggleTheme } = useTheme();
   const legacySB = dbService.getBridge();
   const DEMO_DATA = getDemoData();
@@ -177,43 +189,12 @@ export default function AppLayout({
     }
   }, [etablissement?.id]);
 
-  // Nav filtrée : on cache TOUT module dont la permission est explicitement false.
-  // Si la permission n'existe pas (undefined) → on suit la valeur par défaut du rôle dans DEMO_DATA.
-  // Si la valeur par défaut est aussi absente → on affiche par défaut (nouveau module ajouté côté code).
-  // Ordre du menu choisi par le consultant (partagé par tous les comptes).
-  const { order: navOrder, save: saveNavOrder } = useNavOrder();
+  // Modules visibles, rangés par rubrique, avec leurs badges : useVisibleNav
+  // (filtres de rôle et d'établissement, ordre du consultant). La page
+  // d'accueil tactile lit la même liste par ShellContext.
+  const { visibleNav, groupedNav, navOrder, saveNavOrder, badges } = useVisibleNav({ user, etablissement, perms });
   const [organizing, setOrganizing] = React.useState(false);
   const isConsultant = user.role === 'consultant';
-  const visibleNav = React.useMemo(() => applyNavOrder(NAV_ITEMS, navOrder).filter(item => {
-    // IA / assistant / outils consultant : réservés au consultant culinaire,
-    // même si la table permissions accorde le module à un autre rôle.
-    if ((item.id === 'faq' || item.id === 'consultant_tools') && user.role !== 'consultant') return false;
-    // KDS : rôles cuisine uniquement (miroir de la RLS kds_orders), la clé kds
-    // n'existant pas encore dans la table permissions en BDD.
-    if (item.id === 'kds' && !['consultant', 'resp_cuisine', 'cuisinier'].includes(user.role)) return false;
-    // Journal d'activité : consultant et patron (miroir de la RLS journal_activite).
-    if (item.id === 'journal' && !['consultant', 'patron'].includes(user.role)) return false;
-    // Modules choisis pour l'établissement courant (Paramètres), pour tous les
-    // rôles consultant compris : le menu montre ce que l'équipe utilise.
-    if (!isModuleActiveForEtab(etablissement, item.permKey)) return false;
-    const permVal = perms[item.permKey];
-    if (permVal === false) return false;
-    if (permVal === true) return true;
-    // permVal undefined : fallback sur les défauts du rôle
-    const defaultPerms = (DEMO_DATA.permissions && DEMO_DATA.permissions[user.role]) || {};
-    if (defaultPerms[item.permKey] === false) return false;
-    return true;
-  }), [perms, user.role, navOrder, etablissement]);
-  const groupedNav = React.useMemo(() => visibleNav.reduce((groups, item) => {
-    const groupName = item.group || 'Modules';
-    const group = groups.find((entry) => entry.label === groupName);
-    if (group) {
-      group.items.push(item);
-    } else {
-      groups.push({ label: groupName, items: [item] });
-    }
-    return groups;
-  }, []), [visibleNav]);
   // ─── Alertes configurables - Supabase (remplace DEMO_DATA) ──────
   const {
     alerts,
@@ -230,42 +211,14 @@ export default function AppLayout({
     setDrawerOpen(false);
   }, [currentPage, isMobile]);
 
-  // Badge messages privés non lus (reçus, tous expéditeurs) sur l'item de nav
-  const unreadMessages = useUnreadPrivateMessages(user?.id);
-  // Groupes des 14 prochains jours pas encore prêts : l'alerte d'anticipation
-  // doit se voir depuis n'importe quel module, sinon elle ne prévient personne.
-  // Aucune requête pour un rôle qui n'a pas le module dans son menu.
-  const groupesAPreparer = useGroupesAlerte(etablissement?.id, {
-    enabled: visibleNav.some((item) => item.id === 'groupes'),
-  });
-  const navBadgeStyle = {
-    fontSize: 11, fontWeight: 700,
-    padding: '2px 7px', borderRadius: 99, minWidth: 14, textAlign: 'center',
-    lineHeight: 1.4, flexShrink: 0,
-  };
-  const renderNavBadge = (itemId) => {
-    if (itemId === 'messages' && unreadMessages > 0) {
-      return <span style={{ ...navBadgeStyle, color: 'var(--on-danger)', background: 'var(--danger-fill)' }}>{unreadMessages}</span>;
-    }
-    if (itemId === 'groupes' && groupesAPreparer > 0) {
-      return (
-        <span
-          title="Groupes à préparer dans les 14 prochains jours"
-          /* Texte foncé sur ambre clair : du blanc sur --warning-strong tombait
-             à ~2:1 de contraste, illisible de loin sur l'iPad du passe. */
-          style={{
-            ...navBadgeStyle, background: 'var(--warning-bg)', color: 'var(--warning-text)',
-            boxShadow: 'inset 0 0 0 1px var(--warning-bd)',
-          }}
-        >
-          {groupesAPreparer}
-        </span>
-      );
-    }
-    return null;
-  };
+  // Badge d'un module (messages non lus, groupes à préparer) : NavBadge, le
+  // même composant que sur la page d'accueil tactile.
+  const renderNavBadge = (itemId) => <NavBadge itemId={itemId} badges={badges} />;
 
   const handleSetPage = (p) => { setPage(p); setDrawerOpen(false); };
+  // Bouton Accueil et glissé depuis le bord (coque tactile) : retour à
+  // l'entrée « accueil » déjà dans l'historique, sinon nouvelle entrée.
+  const goHome = () => goHomeHistory('accueil', () => handleSetPage('accueil'));
 
   const currentItem = NAV_ITEMS.find(n => n.id === currentPage);
 
@@ -333,7 +286,9 @@ export default function AppLayout({
     <div key={group.label} role="group" aria-label={group.label}>
       {index > 0 && <div style={dividerStyle} aria-hidden="true" />}
       {group.items.map(item => {
-        const active = currentPage === item.id;
+        // Page « accueil » sur ordinateur (iPad passé de tactile à clavier) :
+        // elle affiche le tableau de bord, c'est lui qui est surligné.
+        const active = currentPage === item.id || (currentPage === 'accueil' && item.id === 'dashboard');
         return (
           <button
             key={item.id}
@@ -373,10 +328,18 @@ export default function AppLayout({
         id: updated.id, prenom: updated.prenom, nom: updated.nom, avatar: updated.avatar,
       })}
       onChangePassword={() => { setAccountOpen(false); setPasswordModalOpen(true); }}
-      onOrganize={isConsultant ? () => { setAccountOpen(false); startOrganizing(); } : null}
+      onOrganize={isConsultant && !tactile ? () => { setAccountOpen(false); startOrganizing(); } : null}
       onLogout={onLogout}
     />
   ) : null;
+
+  // Ce que la page d'accueil tactile lit (ShellContext) : la même liste de
+  // modules et les mêmes badges que la barre latérale, le compte, la navigation.
+  const shellValue = {
+    mode: shellMode, visibleNav, groupedNav, badges, getLabelForModule,
+    setPage: handleSetPage, etablissement, etabs, accountUser,
+    openAccount: () => setAccountOpen(true),
+  };
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
   const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
@@ -390,7 +353,7 @@ export default function AppLayout({
     onNavigate: handleSetPage,
     onTogglePalette: togglePalette,
     onOpenHelp: openHelp,
-    onToggleSidebar: isMobile ? null : toggleSidebar,
+    onToggleSidebar: tactile ? null : toggleSidebar,
   });
 
   // Échap referme ce que la coque a ouvert (panneau d'alertes, menu du logo,
@@ -413,8 +376,14 @@ export default function AppLayout({
     setHelpOpen(false);
   }, [currentPage]);
 
+  // En coque tactile, la page d'accueil est une entrée de la palette comme un
+  // module (elle n'est pas dans visibleNav : pas un module, pas de permission).
+  const paletteNav = React.useMemo(
+    () => (tactile ? [{ id: 'accueil', label: 'Accueil', group: 'Général' }, ...visibleNav] : visibleNav),
+    [tactile, visibleNav],
+  );
   const paletteEntries = React.useMemo(() => (paletteOpen ? buildPaletteEntries({
-    navItems: visibleNav,
+    navItems: paletteNav,
     getLabel: getLabelForModule,
     currentPage,
     onNavigate: handleSetPage,
@@ -423,19 +392,19 @@ export default function AppLayout({
     onSelectEtab: setEtablissement,
     isDark,
     onToggleTheme: toggleTheme,
-    onToggleSidebar: isMobile ? null : toggleSidebar,
+    onToggleSidebar: tactile ? null : toggleSidebar,
     sidebarOpen,
     onOpenHelp: openHelp,
     onBack: goBack,
     canGoBack,
-    onOrganize: isConsultant ? startOrganizing : null,
-  }) : []), [paletteOpen, visibleNav, currentPage, etabs, etablissement?.id, isDark, isMobile, sidebarOpen, canGoBack, isConsultant, startOrganizing]);
+    onOrganize: isConsultant && !tactile ? startOrganizing : null,
+  }) : []), [paletteOpen, paletteNav, currentPage, etabs, etablissement?.id, isDark, tactile, sidebarOpen, canGoBack, isConsultant, startOrganizing]);
 
   const shortcutsLayer = (
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} entries={paletteEntries} />
       <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} touch={isEdgeSwipeEnabled()} />
-      <EdgeSwipeBack onRootSwipe={() => (isMobile ? setDrawerOpen(true) : setSidebarOpen(true))} />
+      <EdgeSwipeBack onRootSwipe={() => (tactile ? goHome() : setSidebarOpen(true))} />
     </>
   );
 
@@ -674,13 +643,97 @@ export default function AppLayout({
   };
 
   // ════════════════════════════════
-  // MOBILE BOTTOM NAV
+  // COQUE TACTILE (tablette et téléphone)
   // ════════════════════════════════
-  if (isMobile) {
+  // Ni barre latérale ni tiroir : la liste des modules est la page d'accueil
+  // (AccueilTactile, rendue par LegacyModuleHost). Header « verre » : bouton
+  // Accueil à gauche, titre et établissement au centre, langue, thème et
+  // alertes à droite. Les bandeaux restent au-dessus du header.
+  if (tactile && !COQUE_TIROIR) {
+    return (
+      <ShellProvider value={shellValue}>
+      <div style={mls.root}>
+        <OfflineBanner />
+        <HomeScreenIconBanner />
+
+        <div style={mls.stage}>
+          <header style={mls.topbar} className="app-glass-bar">
+            <button
+              type="button"
+              className="app-bar-btn"
+              style={mls.iconBtn}
+              onClick={goHome}
+              aria-label="Accueil"
+              aria-current={currentPage === 'accueil' ? 'page' : undefined}
+              title="Accueil"
+            >
+              <House size={24} strokeWidth={2} aria-hidden="true" />
+            </button>
+
+            <EtabSwitcher
+              variant="mobile"
+              title={titrePage}
+              etabs={etabs}
+              current={etablissement}
+              onSelect={setEtablissement}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+              {showPosBanner && (
+                <PosTokenAlertBanner
+                  unhealthy={posUnhealthy}
+                  onReconnect={handleReconnect}
+                  variant="pill"
+                />
+              )}
+              <LanguageToggle compact etablissementId={etablissement?.id || null} />
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={mls.iconBtn}
+                onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+                aria-label={isDark ? 'Mode clair' : 'Mode sombre'}
+                title={isDark ? 'Mode clair' : 'Mode sombre'}
+              >
+                {isDark ? <Sun size={20} strokeWidth={2} aria-hidden="true" /> : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
+              </button>
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={mls.iconBtn}
+                onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+                aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
+                aria-expanded={notifOpen}
+              >
+                <Bell size={20} strokeWidth={2} aria-hidden="true" />
+                {unreadCount > 0 && <div style={mls.notifDot}>{unreadCount}</div>}
+              </button>
+              {notifOpen && renderAlertPanel(mls.notifPanel, mls.notifHeader, mls.notifItem)}
+            </div>
+          </header>
+
+          <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+            {children}
+          </main>
+        </div>
+
+        {accountModal}
+        {passwordModal}
+        {shortcutsLayer}
+      </div>
+      </ShellProvider>
+    );
+  }
+
+  // ════════════════════════════════
+  // ANCIENNE COQUE TÉLÉPHONE (hamburger et tiroir), voir COQUE_TIROIR
+  // ════════════════════════════════
+  if (COQUE_TIROIR && isMobile) {
     // ═══════════════════════════════════════════════════════════════
     // MOBILE v2 - Hamburger qui ouvre un drawer latéral gauche
     // ═══════════════════════════════════════════════════════════════
     return (
+      <ShellProvider value={shellValue}>
       <div style={mls.root}>
         {/* Bandeaux d'état (hors-ligne, sync des pointages, icône d'accueil)
             AU-DESSUS du header, comme en desktop : le header translucide flotte
@@ -793,6 +846,7 @@ export default function AppLayout({
         {passwordModal}
         {shortcutsLayer}
       </div>
+      </ShellProvider>
     );
   }
 
@@ -802,6 +856,7 @@ export default function AppLayout({
   // --largeur-menu : place prise par la barre latérale, pour les barres fixes
   // en bas d'écran qui doivent commencer après elle (sélection du Planning).
   return (
+    <ShellProvider value={shellValue}>
     <div style={{ ...ls.root, '--largeur-menu': sidebarOpen ? '234px' : '0px' }} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
       {/* Barre au strict minimum : logo en haut, modules, nom de l'utilisateur
           en bas. L'établissement est dans le header, les actions de compte
@@ -934,6 +989,7 @@ export default function AppLayout({
       {passwordModal}
       {shortcutsLayer}
     </div>
+    </ShellProvider>
   );
 }
 

@@ -64,6 +64,14 @@ export const UI_GLOSSARY = {
   'Menu': 'Menu',
   'Retour': 'Back',
   'Accueil': 'Home',
+  // Page d'accueil tactile : salutation et libellés courts des modules.
+  'Bonjour': 'Hello',
+  'Bonsoir': 'Good evening',
+  'HACCP': 'HACCP',
+  'Journal': 'Log',
+  'KDS': 'KDS',
+  'Outils': 'Tools',
+  'Spa': 'Spa',
   // Barre latérale, header et « Mon compte »
   'Se déconnecter': 'Sign out',
   'Changer mon mot de passe': 'Change my password',

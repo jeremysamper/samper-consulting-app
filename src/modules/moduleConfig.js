@@ -104,7 +104,9 @@ export const modulesEnPause = ['faq'];
 
 // Tous les modules, mis de côté compris (libellés des écrans « mis de côté »).
 export const tousLesNavItems = [
-  { id: 'dashboard', label: 'Tableau de bord', mobileLabel: 'Accueil', icon: '◉', group: 'Général', permKey: 'dashboard' },
+  // Pas de mobileLabel : sur la page d'accueil tactile, le bouton du tableau
+  // de bord s'appelle « Tableau de bord » (l'accueil, c'est la page elle-même).
+  { id: 'dashboard', label: 'Tableau de bord', icon: '◉', group: 'Général', permKey: 'dashboard' },
   { id: 'planning', label: 'Planning & Pointage', mobileLabel: 'Planning', icon: '◷', group: 'Général', permKey: 'planning' },
   { id: 'messages', label: 'Messages privés', mobileLabel: 'Messages', icon: '✉', group: 'Général', permKey: 'messages' },
   // Journal d'activité : consultant et patron seulement (garde dure, miroir de la RLS).
@@ -185,10 +187,13 @@ export function isModuleActiveForEtab(etablissement, permKey) {
   return actifs.includes(permKey);
 }
 
-// Page d'accueil d'un établissement : le tableau de bord quand il en a un ;
-// sinon le module Spa pour un spa, à défaut le premier module du menu
-// activé et permis au rôle.
-export function pageAccueil(etablissement, permissions = {}) {
+// Coque tactile (tablette, téléphone, useShellMode) : la page d'accueil à gros
+// boutons, quel que soit l'établissement (un spa y a Spa, Planning, Messages).
+// Ordinateur : le tableau de bord quand l'établissement en a un ; sinon le
+// module Spa pour un spa, à défaut le premier module du menu activé et permis
+// au rôle.
+export function pageAccueil(etablissement, permissions = {}, shellMode = 'ordinateur') {
+  if (shellMode === 'tablette' || shellMode === 'telephone') return 'accueil';
   if (isModuleActiveForEtab(etablissement, 'dashboard')) return 'dashboard';
   const permis = (item) => isModuleActiveForEtab(etablissement, item.permKey) && permissions[item.permKey] !== false;
   const spa = navItems.find((item) => item.id === 'spa');

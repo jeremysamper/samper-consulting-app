@@ -32,6 +32,9 @@ const loadPrevisions = () => import('./previsions/Previsions.jsx');
 const loadVentesPos = () => import('./pos/VentesPos.jsx');
 const loadSOP = () => import('./sop/SOP.jsx');
 const loadSpa = () => import('./spa/Spa.jsx');
+// Page d'accueil de la coque tactile (gros boutons) ; sur ordinateur, la même
+// page affiche le tableau de bord.
+const loadAccueilTactile = () => import('../layouts/AccueilTactile.jsx');
 
 const Catalogue = lazy(loadCatalogue);
 const Commande = lazy(loadCommande);
@@ -57,6 +60,7 @@ const Previsions = lazy(loadPrevisions);
 const VentesPos = lazy(loadVentesPos);
 const SOP = lazy(loadSOP);
 const Spa = lazy(loadSpa);
+const AccueilTactile = lazy(loadAccueilTactile);
 
 // Modules du quotidien, préchargés en idle après le login pour que la première
 // navigation soit instantanée (le chunk est déjà en cache navigateur).
@@ -104,8 +108,11 @@ export default function LegacyModuleHost({
   // Keep-alive : true seulement pour le module réellement affiché. Permet aux
   // modules gardés montés en arrière-plan de suspendre leurs effets « visibles »
   // (ex. marquage lu des messages privés).
-  isActivePage = true
+  isActivePage = true,
+  // Coque (useShellMode) : 'ordinateur' | 'tablette' | 'telephone'.
+  shellMode = 'ordinateur'
 }) {
+  const tactile = shellMode === 'tablette' || shellMode === 'telephone';
   const permissions = getPermissionsForRole(user.role);
 
   if (loadingEtablissement) {
@@ -146,11 +153,18 @@ export default function LegacyModuleHost({
     // Accueil d'un établissement sans tableau de bord (spa) : App redirige
     // aussitôt vers sa page d'accueil, rien à afficher d'ici là.
     if (normalizePage(page) === 'dashboard') return null;
-    return <ModuleInactif page={page} etablissement={etablissement} user={user} setPage={setPage} />;
+    return <ModuleInactif page={page} etablissement={etablissement} user={user} setPage={setPage} shellMode={shellMode} />;
   }
 
   switch (page) {
     case 'dashboard':
+      return wrap('Tableau de bord', <TableauDeBord user={user} etablissement={etablissement} setPage={setPage} />);
+    case 'accueil':
+      // Ordinateur : le tableau de bord, sans redirection (un iPad qui passe
+      // du tactile au clavier ne rejoue rien). Spa sur ordinateur : App.jsx
+      // redirige vers sa page d'accueil, rien à afficher d'ici là.
+      if (tactile) return wrap('Accueil', <AccueilTactile />);
+      if (!isPageActiveForEtab(etablissement, 'dashboard')) return null;
       return wrap('Tableau de bord', <TableauDeBord user={user} etablissement={etablissement} setPage={setPage} />);
     case 'planning': {
       const PlanningComponent = Planning;
@@ -310,9 +324,9 @@ function AccessDenied() {
   );
 }
 
-function ModuleInactif({ page, etablissement, user, setPage }) {
+function ModuleInactif({ page, etablissement, user, setPage, shellMode }) {
   const canGoHome = typeof setPage === 'function';
-  const retourAccueil = () => setPage(pageAccueil(etablissement, getPermissionsForRole(user.role)));
+  const retourAccueil = () => setPage(pageAccueil(etablissement, getPermissionsForRole(user.role), shellMode));
   // Module mis de côté (moduleConfig.modulesEnPause) : pas d'invitation à
   // l'activer, il n'est proposé nulle part pour l'instant.
   // Le nom du module est déjà dans la barre du haut : pas de titre répété ici.
