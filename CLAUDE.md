@@ -25,8 +25,9 @@ npm.cmd run dev
 # Production build
 npm.cmd run build
 
-# Lint (src/ only — no test suite): eslint, then the border-shorthand check,
-# then the English/Spanish glossary parity check
+# Lint (src/ only, no test suite): eslint, then the border-shorthand check,
+# the glossary parity check (EN/ES), the capture-colors check and the on-color check
+# (lint:borders, lint:glossary, lint:capture, lint:on-color)
 npm.cmd run lint
 
 # Border check alone. Fails when a style object keeps the `border` shorthand
@@ -35,7 +36,7 @@ npm.cmd run lint
 npm.cmd run lint:borders
 ```
 
-> Node LTS 22 is required. Node v25+ causes npm to loop without creating `node_modules`. A portable Node 22 is installed under `tools-node/node-v22.22.2-win-x64/` as a fallback.
+> Node LTS 22 is required. Node v25+ causes npm to loop without creating `node_modules`. (The portable Node under `tools-node/` mentioned in earlier versions is no longer in the repo.)
 
 There are two entry points served by the same Vite dev server:
 - `/index.html` — the untouched legacy vanilla-JS app
