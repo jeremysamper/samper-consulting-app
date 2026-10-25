@@ -15,7 +15,7 @@ import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
 import { Bell, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
-import { useBackLayer, useCanGoBack } from '../hooks/useBackLayer.js';
+import { useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack, goHome as goHomeHistory } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
 import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
@@ -33,11 +33,6 @@ import { messageErreur } from '../utils/messageErreur.js';
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // et la page d'accueil de la coque tactile.
 const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', accueil: 'Accueil' };
-
-// Ancienne coque téléphone (hamburger et tiroir), remplacée par la coque
-// tactile. Gardée à une constante de distance le temps de l'essai de la
-// nouvelle coque sur la preview ; retirée ensuite dans un commit à part.
-const COQUE_TIROIR = false;
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {
@@ -66,7 +61,6 @@ export default function AppLayout({
   // 'ordinateur' | 'tablette' | 'telephone'.
   shellMode = 'ordinateur'
 }) {
-  const isMobile = shellMode === 'telephone';
   // Tablette et téléphone partagent la coque tactile (page d'accueil, bouton
   // Accueil) ; l'ordinateur garde barre latérale et raccourcis.
   const tactile = shellMode !== 'ordinateur';
@@ -79,14 +73,10 @@ export default function AppLayout({
     if (!nextEtablissement?.id) return;
     onSelectEtablissement?.(nextEtablissement.id);
   };
-  // DEUX états distincts, et non un seul partagé : le tiroir mobile s'ouvre à la
-  // demande et se referme après navigation, la barre latérale desktop reste
-  // ouverte tant que l'utilisateur ne la replie pas lui-même. Avec un état
-  // commun, un basculement transitoire en présentation mobile refermait le
-  // tiroir - et l'iPad revenait en desktop SANS barre latérale, sans que
-  // personne ne l'ait repliée.
+  // Barre latérale (ordinateur) : reste ouverte tant que l'utilisateur ne la
+  // replie pas lui-même ; un passage transitoire par la coque tactile (iPad
+  // qui change de pointeur) ne la touche pas.
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
@@ -95,15 +85,7 @@ export default function AppLayout({
   const [identityOverride, setIdentityOverride] = React.useState(null);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
-  // Décalage du tiroir pendant un glissé vers la gauche (null = au repos).
-  const [drawerDrag, setDrawerDrag] = React.useState(null);
-  const drawerGestureRef = React.useRef(null);
   const canGoBack = useCanGoBack();
-
-  // Tiroir mobile ouvert = une entrée d'historique : le geste retour
-  // (Android, glissé depuis le bord) le referme au lieu de quitter le module.
-  const closeDrawer = React.useCallback(() => setDrawerOpen(false), []);
-  useBackLayer(isMobile && drawerOpen, closeDrawer, 'drawer');
 
   // Modale « changer mon mot de passe » : rendue à l'identique dans la coque
   // mobile et la coque desktop, qui ont deux arbres de rendu séparés.
@@ -205,17 +187,11 @@ export default function AppLayout({
     loading: alertsLoading,
   } = useAlertInstances(etablissement?.id);
 
-  // Le tiroir ne survit ni à une navigation ni au retour en présentation
-  // desktop. La barre latérale desktop, elle, n'est jamais touchée ici.
-  React.useEffect(() => {
-    setDrawerOpen(false);
-  }, [currentPage, isMobile]);
-
   // Badge d'un module (messages non lus, groupes à préparer) : NavBadge, le
   // même composant que sur la page d'accueil tactile.
   const renderNavBadge = (itemId) => <NavBadge itemId={itemId} badges={badges} />;
 
-  const handleSetPage = (p) => { setPage(p); setDrawerOpen(false); };
+  const handleSetPage = (p) => setPage(p);
   // Bouton Accueil et glissé depuis le bord (coque tactile) : retour à
   // l'entrée « accueil » déjà dans l'historique, sinon nouvelle entrée.
   const goHome = () => goHomeHistory('accueil', () => handleSetPage('accueil'));
@@ -232,15 +208,11 @@ export default function AppLayout({
     : (PAGES_HORS_MENU[currentPage] || 'Tableau de bord');
 
   // ── Organiser le menu (consultant) ───────────────────────────────
+  // Ordinateur seulement : la coque tactile n'a pas de barre à ranger.
   const startOrganizing = React.useCallback(() => {
-    if (isMobile) setDrawerOpen(true);
-    else setSidebarOpen(true);
+    setSidebarOpen(true);
     setOrganizing(true);
-  }, [isMobile]);
-  // Tiroir refermé = rangement abandonné (rien n'est enregistré).
-  React.useEffect(() => {
-    if (isMobile && !drawerOpen) setOrganizing(false);
-  }, [isMobile, drawerOpen]);
+  }, []);
   const handleSaveOrder = async (order, renames = {}) => {
     try {
       // Les modules que le consultant ne voit pas ici (inactifs dans cet
@@ -268,14 +240,13 @@ export default function AppLayout({
       notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'menu'), 'error');
     }
   };
-  const renderOrganizer = (variant) => (
+  const renderOrganizer = () => (
     <NavOrganizer
       items={visibleNav}
       getLabel={getLabelForModule}
       onSave={handleSaveOrder}
       onCancel={() => setOrganizing(false)}
       onReset={handleResetOrder}
-      variant={variant}
     />
   );
 
@@ -317,7 +288,7 @@ export default function AppLayout({
     <AccountButton
       user={accountUser}
       variant={variant}
-      onOpen={() => { setDrawerOpen(false); setAccountOpen(true); }}
+      onOpen={() => setAccountOpen(true)}
     />
   );
   const accountModal = accountOpen ? (
@@ -356,19 +327,18 @@ export default function AppLayout({
     onToggleSidebar: tactile ? null : toggleSidebar,
   });
 
-  // Échap referme ce que la coque a ouvert (panneau d'alertes, menu du logo,
-  // tiroir). Les modales des modules gèrent leur propre Échap.
+  // Échap referme ce que la coque a ouvert (panneau d'alertes, menu du logo).
+  // Les modales des modules gèrent leur propre Échap.
   React.useEffect(() => {
-    if (!notifOpen && !logoMenuOpen && !drawerOpen) return undefined;
+    if (!notifOpen && !logoMenuOpen) return undefined;
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       setNotifOpen(false);
       setLogoMenuOpen(false);
-      setDrawerOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [notifOpen, logoMenuOpen, drawerOpen]);
+  }, [notifOpen, logoMenuOpen]);
 
   // Une navigation (clic, raccourci, retour) referme les panneaux flottants.
   React.useEffect(() => {
@@ -407,33 +377,6 @@ export default function AppLayout({
       <EdgeSwipeBack onRootSwipe={() => (tactile ? goHome() : setSidebarOpen(true))} />
     </>
   );
-
-  // Glisser le tiroir vers la gauche pour le refermer : il suit le doigt.
-  const drawerTouch = {
-    onTouchStart: (e) => {
-      const t = e.touches[0];
-      drawerGestureRef.current = { x0: t.clientX, y0: t.clientY, horizontal: null };
-    },
-    onTouchMove: (e) => {
-      const g = drawerGestureRef.current;
-      if (!g) return;
-      const t = e.touches[0];
-      const dx = t.clientX - g.x0;
-      const dy = t.clientY - g.y0;
-      if (g.horizontal === null) {
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-        g.horizontal = Math.abs(dx) > Math.abs(dy);
-      }
-      if (g.horizontal) setDrawerDrag(Math.min(0, dx));
-    },
-    onTouchEnd: () => {
-      const g = drawerGestureRef.current;
-      drawerGestureRef.current = null;
-      if (g?.horizontal && drawerDrag !== null && drawerDrag < -70) setDrawerOpen(false);
-      setDrawerDrag(null);
-    },
-  };
-  drawerTouch.onTouchCancel = drawerTouch.onTouchEnd;
 
   // ── Bandeau alerte token POS expiré ────────────────────────────
   // Visible uniquement pour consultant / patron / resp_cuisine.
@@ -649,7 +592,7 @@ export default function AppLayout({
   // (AccueilTactile, rendue par LegacyModuleHost). Header « verre » : bouton
   // Accueil à gauche, titre et établissement au centre, langue, thème et
   // alertes à droite. Les bandeaux restent au-dessus du header.
-  if (tactile && !COQUE_TIROIR) {
+  if (tactile) {
     return (
       <ShellProvider value={shellValue}>
       <div style={mls.root}>
@@ -726,131 +669,6 @@ export default function AppLayout({
   }
 
   // ════════════════════════════════
-  // ANCIENNE COQUE TÉLÉPHONE (hamburger et tiroir), voir COQUE_TIROIR
-  // ════════════════════════════════
-  if (COQUE_TIROIR && isMobile) {
-    // ═══════════════════════════════════════════════════════════════
-    // MOBILE v2 - Hamburger qui ouvre un drawer latéral gauche
-    // ═══════════════════════════════════════════════════════════════
-    return (
-      <ShellProvider value={shellValue}>
-      <div style={mls.root}>
-        {/* Bandeaux d'état (hors-ligne, sync des pointages, icône d'accueil)
-            AU-DESSUS du header, comme en desktop : le header translucide flotte
-            sur le contenu, un bandeau posé dessous passerait sous lui. */}
-        <OfflineBanner />
-        <HomeScreenIconBanner />
-
-        {/* Scène : le header « verre » est posé en absolu sur la zone qui
-            défile, le contenu passe dessous (--app-header-h, app.css). */}
-        <div style={mls.stage}>
-          <header style={mls.topbar} className="app-glass-bar">
-            <button className="app-bar-btn" style={mls.hamburger} onClick={() => setDrawerOpen(true)} aria-label="Menu">
-              <span style={mls.hamLine} />
-              <span style={mls.hamLine} />
-              <span style={mls.hamLine} />
-            </button>
-
-            {/* Titre central + établissement courant (sélecteur s'il y en a
-                plusieurs) : l'établissement reste visible hors du tiroir. */}
-            <EtabSwitcher
-              variant="mobile"
-              title={titrePage}
-              etabs={etabs}
-              current={etablissement}
-              onSelect={setEtablissement}
-            />
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
-              {showPosBanner && (
-                <PosTokenAlertBanner
-                  unhealthy={posUnhealthy}
-                  onReconnect={handleReconnect}
-                  variant="pill"
-                />
-              )}
-              <LanguageToggle compact etablissementId={etablissement?.id || null} />
-              <button
-                type="button"
-                className="app-bar-btn"
-                style={mls.iconBtn}
-                onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
-                aria-label={isDark ? 'Mode clair' : 'Mode sombre'}
-                title={isDark ? 'Mode clair' : 'Mode sombre'}
-              >
-                {isDark ? <Sun size={20} strokeWidth={2} aria-hidden="true" /> : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
-              </button>
-              <button
-                type="button"
-                className="app-bar-btn"
-                style={mls.iconBtn}
-                onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
-                aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
-                aria-expanded={notifOpen}
-              >
-                <Bell size={20} strokeWidth={2} aria-hidden="true" />
-                {unreadCount > 0 && <div style={mls.notifDot}>{unreadCount}</div>}
-              </button>
-              {notifOpen && renderAlertPanel(mls.notifPanel, mls.notifHeader, mls.notifItem)}
-            </div>
-          </header>
-
-          <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
-            {children}
-          </main>
-        </div>
-
-        {/* ─── Overlay sombre (visible seulement quand le drawer est ouvert) ─── */}
-        {drawerOpen && <div style={mls.overlay} onClick={() => setDrawerOpen(false)} />}
-
-        {/* ─── Drawer latéral gauche ─── */}
-        {/* inert fermé : hors écran, le tiroir restait atteignable au clavier
-            et par le lecteur d'écran. */}
-        <aside
-          className="app-drawer"
-          inert={drawerOpen ? undefined : ''}
-          aria-label="Menu principal"
-          {...(organizing ? {} : drawerTouch)}
-          style={{
-            ...mls.drawer,
-            transform: drawerOpen ? `translateX(${drawerDrag || 0}px)` : 'translateX(-100%)',
-            transition: drawerDrag !== null ? 'none' : mls.drawer.transition,
-          }}
-        >
-          {/* Même contenu que la barre desktop : logo, modules, compte.
-              L'établissement est passé dans le header. */}
-          <div style={mls.drawerHead}>
-            <div style={{ position: 'relative' }}>
-              {renderLogoMark(36, 13)}
-              {renderLogoMenu()}
-            </div>
-            <button type="button" className="ui-fermer" style={mls.closeDrawer} onClick={() => setDrawerOpen(false)} aria-label="Fermer">×</button>
-          </div>
-
-          <nav style={mls.drawerNav} aria-label="Modules" data-nav-scroll>
-            {organizing ? renderOrganizer('mobile') : renderNavGroups({
-              itemStyle: mls.drawerItem,
-              activeStyle: mls.drawerItemActive,
-              dividerStyle: mls.navDivider,
-              // Même trait que sur ordinateur (et plus un rond) pour la rubrique active.
-              activeMarker: <span style={ls.navActiveLine} aria-hidden="true" />,
-            })}
-          </nav>
-
-          <div style={mls.drawerFooter}>
-            {renderAccountButton('mobile')}
-          </div>
-        </aside>
-
-        {accountModal}
-        {passwordModal}
-        {shortcutsLayer}
-      </div>
-      </ShellProvider>
-    );
-  }
-
-  // ════════════════════════════════
   // DESKTOP
   // ════════════════════════════════
   // --largeur-menu : place prise par la barre latérale, pour les barres fixes
@@ -884,7 +702,7 @@ export default function AppLayout({
         </div>
 
         <nav style={ls.nav} aria-label="Modules" data-nav-scroll>
-          {organizing ? renderOrganizer('desktop') : renderNavGroups({
+          {organizing ? renderOrganizer() : renderNavGroups({
             itemStyle: ls.navItem,
             activeStyle: ls.navActive,
             dividerStyle: ls.navDivider,
@@ -996,10 +814,9 @@ export default function AppLayout({
 const ls = {
   // Desktop - navigation « encre pétrole » : la sidebar est en aplat uni
   // (--nav, sans dégradé) dans les DEUX thèmes, avec les tokens nav-* pour les
-  // textes et filets. Le tiroir mobile (mls) reçoit exactement le même
-  // traitement : la cohérence sidebar/drawer est préservée en les changeant
-  // ensemble. Fond transparent sur la coque : l'ambiance (--ambient) posée
-  // sur <body> respire sous le contenu.
+  // textes et filets. La coque tactile (mls) n'a pas de barre : seul son
+  // header « verre » reprend ces tokens. Fond transparent sur la coque :
+  // l'ambiance (--ambient) posée sur <body> respire sous le contenu.
   // height 100% et non 100vh : #root porte déjà les zones de sécurité iOS, une
   // coque en 100vh dépasse par le bas de la hauteur de l'indicateur d'accueil et
   // fait sortir de l'écran le bas de la zone de contenu (barres d'action posées).
@@ -1054,22 +871,10 @@ const ls = {
     scrollPaddingTop: 'var(--app-header-h)',
   },
 
-  // Mobile
-  mobileRoot: { display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'var(--font)', background: 'var(--bg)' },
-  mobileTopbar: { height: 54, background: 'var(--nav)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', flexShrink: 0, gap: 10 },
-  mobileTitle: { flex: 1, color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-serif)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  mobileEtabSelect: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)', borderRadius: 5, padding: '4px 6px', fontSize: 11, maxWidth: 100, fontFamily: 'var(--font)' },
-  mobileContent: { flex: 1, overflowY: 'auto', padding: '12px', WebkitOverflowScrolling: 'touch' },
-  mobileNav: { display: 'flex', background: 'var(--surface)', borderTop: '1px solid var(--border)', flexShrink: 0, position: 'relative', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' },
-  mobileNavBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 4px 10px', background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', gap: 2, minHeight: 58 },
-  mobileNavActive: { color: 'var(--accent)' },
-  mobileAvatar: { width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0 },
-  moreDrawer: { position: 'absolute', bottom: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px 12px 0 0', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', padding: '8px 0', maxHeight: '70vh', overflowY: 'auto' },
-  moreItem: { display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px', background: 'none', border: 'none', width: '100%', cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)', transition: 'background .1s' },
 };
 
 // ═══════════════════════════════════════════════════════════════
-// MOBILE LAYOUT STYLES (v2 - hamburger + drawer)
+// COQUE TACTILE (tablette et téléphone) : styles
 // ═══════════════════════════════════════════════════════════════
 const mls = {
   // Coque de hauteur FIXE dont seul <main> défile, exactement comme en desktop.
@@ -1092,63 +897,11 @@ const mls = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
     padding: '0 8px',
   },
-  hamburger: {
-    width: 44, height: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-    background: 'none', border: 'none', borderRadius: 12, cursor: 'pointer', padding: 10, flexShrink: 0,
-  },
-  hamLine: { width: 22, height: 2, background: 'var(--text)', borderRadius: 2, transition: 'all 0.15s' },
   iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 11, fontWeight: 700, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
-
-  // Overlay pétrole + léger flou : ici le contenu passe réellement sous le
-  // voile, le backdrop-filter a donc un effet (contrairement aux topbars,
-  // que rien ne recouvre : elles restent opaques exprès).
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,22,32,0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 90, animation: 'fadeIn 0.2s' },
-
-  // Drawer latéral gauche - même encre pétrole que la sidebar desktop
-  drawer: {
-    position: 'fixed', top: 0, left: 0, bottom: 0, width: '80%', maxWidth: 320,
-    background: 'var(--nav)',
-    zIndex: 100,
-    display: 'flex', flexDirection: 'column',
-    transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: 'var(--sh-lg)',
-  },
-  // Haut du tiroir : le logo seul, et la fermeture.
-  drawerHead: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '14px 14px 8px 18px', flexShrink: 0,
-  },
-  closeDrawer: {
-    width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'rgba(255,255,255,0.06)', border: '1px solid var(--nav-border)', borderRadius: 8,
-    cursor: 'pointer', fontSize: 16, color: 'var(--nav-text)',
-  },
-  drawerNav: {
-    flex: 1, overflowY: 'auto', padding: '4px 10px 12px',
-    display: 'flex', flexDirection: 'column', gap: 2,
-  },
-  navDivider: { height: 1, background: 'var(--nav-border)', margin: '8px 12px' },
-  drawerItem: {
-    display: 'flex', alignItems: 'center', gap: 12,
-    padding: '13px 14px', borderRadius: 8, position: 'relative',
-    background: 'none', border: 'none', width: '100%',
-    cursor: 'pointer', fontFamily: 'var(--font)',
-    fontSize: 14, fontWeight: 500, color: 'var(--nav-text)',
-    textAlign: 'left',
-  },
-  drawerItemActive: {
-    background: 'var(--nav-active)', color: 'var(--nav-text-active)',
-    boxShadow: 'var(--nav-glow)',
-  },
-  drawerIcon: { fontSize: 17, width: 24, textAlign: 'center', flexShrink: 0 },
-  drawerFooter: {
-    padding: '8px 8px 10px', flexShrink: 0,
-    borderTop: '1px solid var(--nav-border)',
-  },
 
   // minHeight 0 : sans lui, la taille minimale automatique d'un élément flex
   // vaut la hauteur de son contenu, <main> déborde la coque et ne défile pas.

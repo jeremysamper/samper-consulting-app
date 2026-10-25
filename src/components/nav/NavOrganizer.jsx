@@ -51,7 +51,7 @@ function moveItem(groups, id, toGroupIndex, toIndex) {
   return next;
 }
 
-export default function NavOrganizer({ items, getLabel, onSave, onCancel, onReset, variant = 'desktop' }) {
+export default function NavOrganizer({ items, getLabel, onSave, onCancel, onReset }) {
   const [groups, setGroups] = React.useState(() => buildGroups(items));
   const [editing, setEditing] = React.useState(null); // { key, draft, error }
   const newKeyRef = React.useRef(0);
@@ -62,7 +62,6 @@ export default function NavOrganizer({ items, getLabel, onSave, onCancel, onRese
   const [saving, setSaving] = React.useState(false);
   const listRef = React.useRef(null);
   const byId = React.useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
-  const mobile = variant === 'mobile';
 
   const locate = (id) => {
     for (let g = 0; g < groups.length; g += 1) {
@@ -236,7 +235,7 @@ export default function NavOrganizer({ items, getLabel, onSave, onCancel, onRese
   };
 
   return (
-    <div className={`nav-organizer${mobile ? ' is-mobile' : ''}`} ref={listRef}>
+    <div className="nav-organizer" ref={listRef}>
       <div className="nav-organizer-intro">
         Glissez les modules par la poignée, ou utilisez les flèches. Le crayon renomme une rubrique. Le nouvel ordre s'applique à tous les comptes.
       </div>
@@ -252,8 +251,8 @@ export default function NavOrganizer({ items, getLabel, onSave, onCancel, onRese
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setEditing({ ...editing, draft: e.target.value, error: '' })}
                 onKeyDown={(e) => {
-                  // preventDefault : l'Échap global de la coque refermerait
-                  // sinon le tiroir mobile en même temps que la saisie.
+                  // preventDefault : l'Échap global de la coque (panneaux
+                  // flottants) ne doit pas se déclencher avec la saisie.
                   if (e.key === 'Enter') { e.preventDefault(); commitRename({ keepOnError: true }); }
                   if (e.key === 'Escape') { e.preventDefault(); setEditing(null); }
                 }}

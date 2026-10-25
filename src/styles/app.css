@@ -1467,7 +1467,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   }
 }
 
-/* Boutons du header (langue, recherche, thème, alertes, repli, hamburger) :
+/* Boutons du header (langue, recherche, thème, alertes, repli, accueil) :
    sans cadre, un voile au survol. !important : leur fond est inline ;
    .is-active (langue traduite) garde son fond accent. */
 .app-bar-btn { transition: background-color 0.15s ease, color 0.15s ease; }
@@ -1664,7 +1664,6 @@ html[data-theme="dark"] button:not(:disabled):active {
   .cmdk-overlay,
   .cmdk-panel { animation: none; }
   .app-bar-btn { transition: none; }
-  .app-drawer { transition: none !important; }
 }
 
 /* ─── Barre latérale, tiroir et titre du header : survol et focus
