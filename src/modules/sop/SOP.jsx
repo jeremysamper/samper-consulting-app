@@ -1,18 +1,21 @@
 import React from 'react';
-import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
+import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Btn } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
-import { Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, FilePlus2, History, Library, Trash2 } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { useEcranModule } from '../../components/parcours/useEcranModule.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -29,18 +32,22 @@ const SOP_FREQUENCES = [
 const FREQ_MAP = Object.fromEntries(SOP_FREQUENCES.map(f => [f.id, f]));
 
 // ─── Composant racine ───
+// Le module s'ouvre sur la liste des procédures, comme avant : lancer une
+// checklist reste à deux gestes depuis l'accueil de l'app. Les autres tâches
+// sont de gros boutons posés au-dessus de la liste (L'historique pour tous ;
+// Nouvelle procédure et Modèles pour qui gère, mêmes droits qu'avant).
+// L'historique est un écran de tâche (Retour, geste retour et Échap ramènent
+// à la liste) ; la checklist et l'éditeur se referment aussi par le retour.
 const SOP = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
-  const browserWindow = getBrowserWindow();
-  const isMobile = (browserWindow?.innerWidth || 1024) < 768;
   const canManage = canManageModule(user.role, 'sop');
 
   const [sops, setSops] = React.useState([]);
   const [sopTemplates, setSopTemplates] = React.useState([]);
   const [executions, setExecutions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState('liste'); // liste | historique
+  const { ecran, setEcran, retourAccueil } = useEcranModule('sop');
   const [selectedSop, setSelectedSop] = React.useState(null);  // pour éditer
   const [runningExec, setRunningExec] = React.useState(null);  // pour exécuter
   const [showTemplates, setShowTemplates] = React.useState(false);
@@ -121,6 +128,27 @@ const SOP = ({ user, etablissement }) => {
     />;
   }
 
+  // ─── Écran : l'historique des exécutions ───
+  if (ecran === 'historique') {
+    return (
+      <div style={ss.root}>
+        <EcranTache titre="L'historique" onRetour={retourAccueil}>
+          <div style={{ marginTop: 16 }}>
+            <SopHistory executions={executions} sops={sops} user={user} canManage={canManage} etablissement={etablissement} />
+          </div>
+        </EcranTache>
+      </div>
+    );
+  }
+
+  const tuiles = [
+    // Lignes d'état courtes : sur téléphone, une tuile de plus haut repousse la
+    // dernière procédure d'un défilement.
+    { id: 'historique', Icone: History, libelle: "L'historique", etat: <>ce qui est fait</>, onClick: () => setEcran('historique') },
+    { id: 'nouvelle', Icone: FilePlus2, libelle: 'Nouvelle procédure', etat: <>étapes, photos</>, visible: canManage, onClick: () => setSelectedSop({}) },
+    { id: 'modeles', Icone: Library, libelle: 'Modèles', etat: <>à importer</>, visible: canManage, onClick: () => setShowTemplates(true) },
+  ];
+
   return (
     <div style={ss.root}>
       {/* Header */}
@@ -131,49 +159,32 @@ const SOP = ({ user, etablissement }) => {
             {', '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
           </div>
         </div>
-        <div className="module-actions">
-          {canManage && (
-            <>
-              <button style={ss.primaryBtn} onClick={() => setSelectedSop({})}>Nouvelle SOP</button>
-              <button style={ss.ghostBtn} onClick={() => setShowTemplates(true)}>Templates</button>
-            </>
-          )}
-        </div>
       </div>
 
-      {/* Tabs */}
-      <SegmentedTabs
-        active={activeTab}
-        onChange={setActiveTab}
-        tabs={[
-          { id: 'liste', label: 'Mes procédures' },
-          { id: 'historique', label: 'Historique' },
-        ]}
-      />
+      {/* Les autres tâches, en gros boutons au-dessus de la liste */}
+      <div style={{ marginBottom: 16 }}>
+        <AccueilModule tuiles={tuiles} />
+      </div>
 
-      {activeTab === 'liste' ? (
-        <SopList
-          sops={sops}
-          sopTemplates={sopTemplates}
-          executions={executions}
-          user={user}
-          canManage={canManage}
-          etabId={etabId}
-          legacySB={legacySB}
-          onEdit={(s) => setSelectedSop(s)}
-          onAddToTemplates={addToTemplates}
-          onStart={async (sop) => {
-            try {
-              const exec = await legacySB.db.startSopExecution({
-                sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
-              });
-              setRunningExec(exec);
-            } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
-          }}
-        />
-      ) : (
-        <SopHistory executions={executions} sops={sops} user={user} canManage={canManage} etablissement={etablissement} />
-      )}
+      <SopList
+        sops={sops}
+        sopTemplates={sopTemplates}
+        executions={executions}
+        user={user}
+        canManage={canManage}
+        etabId={etabId}
+        legacySB={legacySB}
+        onEdit={(s) => setSelectedSop(s)}
+        onAddToTemplates={addToTemplates}
+        onStart={async (sop) => {
+          try {
+            const exec = await legacySB.db.startSopExecution({
+              sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
+            });
+            setRunningExec(exec);
+          } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
+        }}
+      />
 
       {/* Modale templates */}
       {showTemplates && (
@@ -248,7 +259,15 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
       'success',
     );
   };
-  const [filterFreq, setFilterFreq] = React.useState('all');
+  // Fréquences repliées : la liste reste groupée par fréquence, et le titre
+  // d'un groupe le replie d'un geste (ce que faisait l'ancien filtre : amener
+  // les procédures hebdomadaires ou ponctuelles en haut, en autant de gestes).
+  const [plies, setPlies] = React.useState(() => new Set());
+  const basculerFrequence = (id) => setPlies(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
   // Mode "nouveau cuisinier" : ne montre que les SOPs taggées 'essentielle'
   const [onboardingMode, setOnboardingMode] = React.useState(false);
 
@@ -290,7 +309,6 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
     if (!s.actif) return false;
     if (search !== '' && !normalizeSearch(s.titre).includes(normalizeSearch(search))) return false;
     if (onboardingMode && !(s.tags || []).includes(ONBOARDING_TAG)) return false;
-    if (!onboardingMode && filterFreq !== 'all' && s.frequence !== filterFreq) return false;
     return true;
   });
 
@@ -319,14 +337,6 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             >
               Nouveau cuisinier ({essentialCount})
             </button>
-          )}
-          {!onboardingMode && (
-            <SegmentedTabs
-              size="sm"
-              active={filterFreq}
-              onChange={setFilterFreq}
-              tabs={[{ id: 'all', label: 'Toutes' }, ...SOP_FREQUENCES.map(f => ({ id: f.id, label: f.label }))]}
-            />
           )}
           {canManage && !sel.active && (
             <button style={ss.chip} onClick={sel.enter} title="Sélectionner plusieurs SOP">Sélectionner</button>
@@ -364,19 +374,22 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             {sops.length === 0 ? 'Aucune procédure' : 'Aucun résultat'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-            {sops.length === 0 ? 'Créez une SOP avec « Nouvelle SOP », ou importez-en une depuis « Templates ».' : 'Modifiez vos filtres.'}
+            {sops.length === 0 ? 'Créez une procédure avec « Nouvelle procédure », ou importez-en une depuis « Modèles ».' : 'Modifiez vos filtres.'}
           </div>
         </div>
       )}
 
-      {SOP_FREQUENCES.filter(f => byFreq[f.id]?.length > 0).map(freq => (
+      {SOP_FREQUENCES.filter(f => byFreq[f.id]?.length > 0).map(freq => {
+        const plie = plies.has(freq.id);
+        const Chevron = plie ? ChevronRight : ChevronDown;
+        return (
         <div key={freq.id} style={{ marginBottom: 24 }}>
-          <div style={ss.groupHeader}>
-
+          <button type="button" className="mini" style={ss.groupHeader} onClick={() => basculerFrequence(freq.id)} aria-expanded={!plie}>
+            <Chevron size={16} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text2)' }} />
             <span style={ss.groupTitle}>{freq.label}</span>
             <span style={{ fontSize: 11, color: 'var(--text2)' }}>({byFreq[freq.id].length})</span>
-          </div>
-          <div style={ss.cardsGrid}>
+          </button>
+          {!plie && <div style={ss.cardsGrid}>
             {byFreq[freq.id].map(sop => {
               const totalSteps = (sop.sections || []).reduce((s, sec) => s + (sec.etapes || []).length, 0);
               const doneToday = doneTodayMap[sop.id];
@@ -443,9 +456,10 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                 </div>
               );
             })}
-          </div>
+          </div>}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -479,6 +493,19 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
     }).catch(() => {});
     setNotes(execution.notes || '');
   }, [execution?.id]);
+
+  // Le geste retour et Échap (hors du champ de notes, hors de la photo
+  // agrandie) referment la checklist, comme le bouton « Retour ».
+  useBackLayer(true, onBack, 'sop-checklist');
+  React.useEffect(() => {
+    const echap = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || zoomPhoto) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      onBack();
+    };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
+  }, [onBack, zoomPhoto]);
 
   if (!sop) return (
     <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>
@@ -528,7 +555,10 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
     <div style={ss.checklistRoot}>
       {/* Header sticky */}
       <div style={ss.checklistHeader}>
-        <button type="button" style={ss.backBtn} onClick={onBack} aria-label="Retour">←</button>
+        <Btn variant="ghost" onClick={onBack} style={ss.retourBtn}>
+          <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+          <span>Retour</span>
+        </Btn>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sop.titre}</div>
           <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -572,7 +602,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
                     onClick={() => toggleStep(section.id, etape.id)}
                   >
                     <div style={{ ...ss.checkbox, ...(state.cochee ? ss.checkboxChecked : {}) }}>
-                      {state.cochee && <span style={{ color: 'var(--on-success)', fontSize: 16, fontWeight: 700 }}>✓</span>}
+                      {state.cochee && <Check size={20} strokeWidth={2.5} aria-hidden="true" style={{ color: 'var(--on-success)' }} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ ...ss.etapeLabel, ...(state.cochee ? ss.etapeLabelChecked : {}) }}>
@@ -998,6 +1028,8 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
     ...sop,
   });
   const [saving, setSaving] = React.useState(false);
+  // Le geste retour referme l'éditeur, comme le bouton « Retour » (sans enregistrer).
+  useBackLayer(true, onBack, 'sop-editeur');
 
   const setField = (k, v) => setData(prev => ({ ...prev, [k]: v }));
 
@@ -1202,7 +1234,8 @@ const ss = {
   chip: { padding: '5px 12px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text2)' },
   chipActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
-  groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
+  // Titre d'un groupe de fréquence : un bouton qui replie le groupe.
+  groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
 
   groupTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 },
@@ -1226,15 +1259,19 @@ const ss = {
   checklistRoot: { background: 'var(--bg)', minHeight: '100vh', position: 'relative' },
   checklistHeader: { position: 'sticky', top: 0, zIndex: 10, background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 },
   backBtn: { width: 36, height: 36, padding: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontSize: 16, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  // « Retour » de la checklist : celui des écrans de tâche (EcranTache), 44 px.
+  retourBtn: { minHeight: 44, flexShrink: 0 },
   progressBarOuter: { height: 4, background: 'var(--bg)', position: 'sticky', top: 60, zIndex: 9 },
   progressBarInner: { height: '100%', transition: 'width 0.3s, background 0.3s' },
   sectionBlock: { marginBottom: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 6, overflow: 'hidden' },
   sectionHeader: { padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' },
   sectionTitle: { fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
   sectionCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 500 },
-  etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
+  // Étapes en grandes cases : case de 30 px, la ligne entière coche, même
+  // hauteur de ligne qu'avant (le rembourrage cède ce que la case gagne).
+  etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
   etapeRowChecked: { background: 'var(--success-bg-soft)' },
-  checkbox: { width: 26, height: 26, borderRadius: 6, borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  checkbox: { width: 30, height: 30, borderRadius: 8, borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 0 },
   checkboxChecked: { background: 'var(--success-fill)', borderColor: 'var(--success-fill)' },
   etapeLabel: { fontSize: 14, color: 'var(--text)', lineHeight: 1.4 },
   etapeLabelChecked: { textDecoration: 'line-through', color: 'var(--text2)' },
