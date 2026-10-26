@@ -1,24 +1,24 @@
 import React from 'react';
-import { Bell, CalendarDays, CalendarPlus, ChartColumn, ConciergeBell, Inbox, LayoutGrid, Search, Settings2, Users } from 'lucide-react';
+import { Bell, CalendarDays, CalendarPlus, ChartColumn, ConciergeBell, LayoutGrid, Search, Settings2, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Réservations : une tuile par tâche, sur la grille partagée
-// AccueilModule. Réserver et le service du jour d'abord, les demandes en ligne
-// quand il y en a, puis le planning, le plan de salle, la recherche, les
-// clients, le rapport, les notifications de cet appareil, les réglages. Une
-// tuile hors droit n'est pas rendue ; les droits sont ceux d'aujourd'hui
-// (canEdit, ROLES_RAPPORT, ROLES_EN_LIGNE dans Previsions.jsx).
+// AccueilModule. Réserver et le service du jour d'abord, puis le planning, le
+// plan de salle, la recherche, les clients, le rapport, les notifications de
+// cet appareil, les réglages. Les demandes en ligne ne sont pas une tuile :
+// leur bloc est posé au-dessus de la grille (Previsions.jsx), on les confirme
+// d'un geste. Une tuile hors droit n'est pas rendue ; les droits sont ceux
+// d'aujourd'hui (canEdit, ROLES_RAPPORT, ROLES_EN_LIGNE dans Previsions.jsx).
 //
 // couverts : couverts du jour (no-shows exclus, comme la vue jour), null tant
-// que la lecture n'a pas abouti ; demandes : nombre à confirmer, null tant
-// qu'il n'est pas lu. Nombres dans leurs propres nœuds : la phrase autour
-// reste une entrée du glossaire.
+// que la lecture n'a pas abouti. Nombres dans leurs propres nœuds : la phrase
+// autour reste une entrée du glossaire.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AccueilReservations({
-  couverts, demandes, notificationsActives, canEdit, voitRapport, voitReglages,
-  onReserver, onService, onDemandes, onPlanning, onPlan, onChercher, onClients, onRapport, onNotifications, onReglages,
+  couverts, notificationsActives, canEdit, voitRapport, voitReglages,
+  onReserver, onService, onPlanning, onPlan, onChercher, onClients, onRapport, onNotifications, onReglages,
 }) {
   const tuiles = [
     { id: 'reserver', Icone: CalendarPlus, libelle: 'Je réserve une table', onClick: onReserver, visible: canEdit, etat: <>au téléphone ou au comptoir</> },
@@ -27,10 +27,6 @@ export default function AccueilReservations({
       etat: couverts == null ? <>le plan et les arrivées du jour</>
         : couverts === 0 ? <>aucune réservation aujourd'hui</>
           : <><span>{couverts}</span> {couverts > 1 ? "couverts aujourd'hui" : "couvert aujourd'hui"}</>,
-    },
-    {
-      id: 'demandes', Icone: Inbox, libelle: 'Les demandes en ligne', onClick: onDemandes, visible: canEdit && demandes > 0,
-      etat: <><span>{demandes}</span> à confirmer</>,
     },
     { id: 'planning', Icone: CalendarDays, libelle: 'Le planning', onClick: onPlanning, etat: <>la semaine, jour par jour</> },
     { id: 'plan', Icone: LayoutGrid, libelle: 'Le plan de salle', onClick: onPlan, etat: <>les tables d'aujourd'hui</> },

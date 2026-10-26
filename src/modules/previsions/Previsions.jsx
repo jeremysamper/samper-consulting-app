@@ -3,7 +3,6 @@ import { Input } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { canManageModule } from '../../data/demoData.js';
-import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import AccueilReservations from './AccueilReservations.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
@@ -16,7 +15,6 @@ import { PanneauNotifications, useNotificationsAppareil } from './NotificationsA
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { useReservationsJour } from './useReservationsJour.js';
-import { listerDemandes } from './reservationEnLigne.js';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
@@ -48,7 +46,6 @@ const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 const TITRES_ECRAN = {
   planning: 'Le planning',
   plan: 'Le plan de salle',
-  demandes: 'Les demandes en ligne',
   chercher: 'Je cherche une réservation',
   clients: 'Les clients',
   rapport: 'Le rapport',
@@ -66,9 +63,6 @@ export default function Previsions({ user, etablissement }) {
   // Le champ de « Je cherche une réservation » prend la main quand on vient de
   // toucher sa tuile.
   const [champAuToucher, setChampAuToucher] = useState(false);
-  // Demandes en ligne à confirmer, pour la tuile de l'accueil : null tant
-  // qu'elles ne sont pas lues.
-  const [nbDemandes, setNbDemandes] = useState(null);
   // Date affichée en mode service (écran scindé plan + réservations), null
   // quand il est fermé.
   const [modeService, setModeService] = useState(() => (
@@ -120,20 +114,12 @@ export default function Previsions({ user, etablissement }) {
   const surAccueil = ecran === ECRAN_ACCUEIL;
   const aujourdhui = zurichToday();
 
-  // Lignes d'état de l'accueil : couverts du jour (no-shows exclus, comme la
-  // vue jour) et demandes en ligne à confirmer (lues seulement pour qui peut
-  // les traiter, comme le bandeau du planning). Lectures seules, à l'accueil.
+  // Ligne d'état de la tuile Ce soir : couverts du jour (no-shows exclus,
+  // comme la vue jour). Lecture seule, à l'accueil.
   const jourAccueil = useReservationsJour(etabId, surAccueil ? aujourdhui : null, { refreshKey });
   const couvertsDuJour = jourAccueil.resas && !jourAccueil.error
     ? jourAccueil.resas.filter((r) => r.statut !== 'no_show').reduce((s, r) => s + (r.nb_couverts || 0), 0)
     : null;
-  const lireDemandes = useCallback(async () => {
-    if (!etabId || !canEdit || !surAccueil) return;
-    const { data } = await listerDemandes(etabId);
-    setNbDemandes(data.length);
-  }, [etabId, canEdit, surAccueil]);
-  useEffect(() => { lireDemandes(); }, [lireDemandes, refreshKey]);
-  useResumeRefresh(lireDemandes);
 
   const notifications = useNotificationsAppareil(etabId, user);
   const fermerNotifications = useCallback(() => setNotificationsOuvertes(false), []);
@@ -188,7 +174,6 @@ export default function Previsions({ user, etablissement }) {
 
   const etatEcran = {
     planning: selectedDate ? null : <>la semaine, service par service</>,
-    demandes: <>à confirmer ou à refuser</>,
     chercher: <>par le nom ou le téléphone, toutes dates</>,
     clients: <>le fichier, rempli par les réservations</>,
     rapport: <>l'activité des réservations, en lecture seule</>,
@@ -206,17 +191,27 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
+      {/* ── Accueil : les demandes venues du site en tête, pour qui peut les
+             traiter, confirmées ou refusées d'un geste ; puis les tuiles. ── */}
+      {etabId && surAccueil && canEdit && (
+        <DemandesEnLigne
+          etablissementId={etabId}
+          refreshKey={refreshKey}
+          onTraitee={() => setRefreshKey((k) => k + 1)}
+          onAllerAuJour={allerAuJour}
+          style={st.demandesAccueil}
+        />
+      )}
+
       {etabId && surAccueil && (
         <AccueilReservations
           couverts={couvertsDuJour}
-          demandes={nbDemandes}
           notificationsActives={notifications.actif}
           canEdit={canEdit}
           voitRapport={voitRapport}
           voitReglages={voitReglages}
           onReserver={() => setShowForm(true)}
           onService={() => ouvrirModeService(zurichToday())}
-          onDemandes={() => setEcran('demandes')}
           onPlanning={() => setEcran('planning')}
           onPlan={() => setEcran('plan')}
           onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
@@ -278,16 +273,6 @@ export default function Previsions({ user, etablissement }) {
           canEdit={canEdit}
           onModeService={ouvrirModeService}
           onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
-        />
-      )}
-
-      {etabId && ecran === 'demandes' && canEdit && (
-        <DemandesEnLigne
-          etablissementId={etabId}
-          refreshKey={refreshKey}
-          onTraitee={() => setRefreshKey((k) => k + 1)}
-          onAllerAuJour={allerAuJour}
-          siVide={<div style={st.vide}>Aucune demande à confirmer.</div>}
         />
       )}
 
@@ -402,5 +387,6 @@ export default function Previsions({ user, etablissement }) {
 const st = {
   // 16 px : iOS ne zoome pas sur le champ quand il prend la main.
   champ: { marginTop: 16, fontSize: 16, padding: '12px 14px', minHeight: 44 },
-  vide: { marginTop: 24, fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font)' },
+  // Premier bloc de l'accueil : pas de marge au-dessus, un écart avant les tuiles.
+  demandesAccueil: { marginTop: 0, marginBottom: 16 },
 };

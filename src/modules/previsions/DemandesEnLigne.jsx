@@ -11,22 +11,20 @@ import { listerDemandes, traiterDemande } from './reservationEnLigne.js';
 // attend une réponse. Elle doit se voir sans chercher dans quel jour elle est
 // tombée, et se traiter d'un geste. Confirmer ou refuser prévient le client
 // par e-mail (quand l'envoi est branché), sinon le toast rappelle de l'appeler.
-// Rien ne s'affiche tant qu'il n'y a aucune demande, sauf `siVide`, rendu une
-// fois la liste lue (l'écran Les demandes en ligne, après la dernière traitée).
+// Rien ne s'affiche tant qu'il n'y a aucune demande. `style` ajuste les marges
+// du bloc là où il est posé (en tête de l'accueil du module).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SERVICES = { midi: 'Midi', soir: 'Soir', brunch: 'Brunch' };
 
-export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee, onAllerAuJour, siVide = null }) {
+export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee, onAllerAuJour, style }) {
   const [demandes, setDemandes] = useState([]);
-  const [lue, setLue] = useState(false);
   const [enCours, setEnCours] = useState(null); // id en cours de traitement
 
   async function charger() {
     if (!etablissementId) return;
     const { data } = await listerDemandes(etablissementId);
     setDemandes(data);
-    setLue(true);
   }
 
   useEffect(() => { charger(); }, [etablissementId, refreshKey]); // charger est défini dans le composant, stable par construction
@@ -43,13 +41,14 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
     onTraitee?.();
   }
 
-  if (!demandes.length) return lue ? siVide : null;
+  if (!demandes.length) return null;
 
   return (
     <section
       aria-label="Demandes en ligne à confirmer"
       style={{
         marginTop: 14, padding: '12px 0 12px 12px',   borderLeft: '2px solid var(--warning-bd)',
+        ...style,
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 8 }}>
