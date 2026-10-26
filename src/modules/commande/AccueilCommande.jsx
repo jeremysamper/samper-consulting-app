@@ -16,6 +16,10 @@ export default function AccueilCommande({ listeVide, isConsultant, busy, onAjout
   const [fenetre, setFenetre] = React.useState(null);
   const fermer = React.useCallback(() => setFenetre(null), []);
   const choisir = (action) => () => { fermer(); action(); };
+  // Une fenêtre qui n'a plus lieu d'être (liste vidée ailleurs, génération en
+  // cours) se ferme pour de bon : elle ne doit pas se rouvrir seule ensuite.
+  const permise = fenetre === 'envoyer' ? !listeVide : fenetre === 'gerer' ? isConsultant && !busy : false;
+  React.useEffect(() => { if (fenetre && !permise) setFenetre(null); }, [fenetre, permise]);
 
   const tuiles = [
     { id: 'ajouter', Icone: PackagePlus, libelle: "J'ajoute un produit", etat: <>à la main</>, onClick: onAjouter },
@@ -26,8 +30,9 @@ export default function AccueilCommande({ listeVide, isConsultant, busy, onAjout
 
   return (
     <>
-      <AccueilModule tuiles={tuiles} />
-      {fenetre === 'envoyer' && !listeVide && (
+      {/* Hors de l'impression de la page, comme l'ancienne barre d'actions. */}
+      <div className="no-print"><AccueilModule tuiles={tuiles} /></div>
+      {fenetre === 'envoyer' && permise && (
         <Fenetre id="commande-exporter" titre="J'envoie la commande" onClose={fermer}>
           <div style={stFenetre.section}>
             <Choix titre="Télécharger le PDF" detail="La liste rangée par rayon, prête à envoyer." onClick={choisir(onPdf)} />
@@ -35,7 +40,7 @@ export default function AccueilCommande({ listeVide, isConsultant, busy, onAjout
           </div>
         </Fenetre>
       )}
-      {fenetre === 'gerer' && isConsultant && !busy && (
+      {fenetre === 'gerer' && permise && (
         <Fenetre id="commande-gerer" titre="Gérer la commande" onClose={fermer}>
           <div style={stFenetre.section}>
             <Choix titre="Générer depuis les cartes" detail="Les produits des recettes de la carte, aux bonnes quantités." onClick={choisir(onGenerer)} />
