@@ -1583,8 +1583,10 @@ const Recettes = ({ user, etablissement }) => {
 
   if (selectedRecette) return <RecetteDetail recette={selectedRecette} user={user} etablissement={etablissement} canEtiqueter={canEtiqueter} onBack={() => setSelectedRecette(null)}/>;
 
-  return (
-    <div style={rs.root}>
+  // Fenêtres du module (étiquette, export, recherche allergène) : les mêmes sur
+  // chaque écran, posées avant son contenu.
+  const fenetres = (
+    <>
       {etiquetteRecette && (
         <EtiquetteRapideModal
           recette={etiquetteRecette}
@@ -1611,6 +1613,12 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowIngredientSearch(false)}
         />
       )}
+    </>
+  );
+
+  return (
+    <div style={rs.root}>
+      {fenetres}
       {/* Barre d'outils. Mobile : onglets en bande scrollable (1 ligne) + actions
           compactes (icônes) sur une 2e ligne → pas de pavé qui mange l'écran.
           Desktop : onglets + actions groupées à droite. */}
