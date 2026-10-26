@@ -25,12 +25,12 @@ export const FREQ_OPTIONS = [
 
 // ─── Écrans du module ───
 // Une tâche par écran ; le libellé sert à la tuile de l'accueil et au titre
-// de l'écran. L'identifiant est celui de l'ancien onglet.
+// de l'écran. L'identifiant est celui de l'ancien onglet ; le tableau de bord
+// n'est pas un écran, il vit sur l'accueil, sous les tuiles.
 export const ECRANS_HACCP = {
   releves: 'Je relève une température',
   etiquettes: 'Une étiquette',
   tracabilite: 'Je photographie une étiquette',
-  tableau: 'Le tableau',
   controles: 'Les contrôles',
   config: 'Réglages',
 };

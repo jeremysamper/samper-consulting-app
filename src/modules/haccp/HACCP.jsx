@@ -90,13 +90,16 @@ const HACCP = ({ user, etablissement }) => {
   const [bulkBusy, setBulkBusy] = React.useState(false);
 
   // ─── Un écran par tâche (useEcranModule) ───
-  // L'accueil à tuiles, puis un écran par tâche : relevés, étiquettes,
-  // traçabilité, tableau, contrôles, réglages. L'identifiant d'un écran est
-  // celui de l'ancien onglet : les conditions d'affichage restent en place
-  // (activeTab = l'écran ouvert, null sur l'accueil). Aucun écran n'est repris
-  // d'une ouverture à l'autre ; le module s'ouvre sur les relevés quand une
-  // tournée attend (plus bas). Revenir à l'accueil referme les fenêtres de
-  // l'écran quitté, sauf pendant un enregistrement ou un export.
+  // L'accueil : les tuiles, puis le tableau de bord d'avant (tournées, saisie
+  // rapide, zones à relever, anomalies) avec sa barre : relever, saisir une
+  // tournée et exporter le tableau ne coûtent pas un geste de plus qu'avant
+  // l'accueil par tâche. Puis un écran par tâche : relevés, étiquettes,
+  // traçabilité, contrôles, réglages. L'identifiant d'un écran est celui de
+  // l'ancien onglet, et l'accueil vaut l'ancien onglet « tableau » : les
+  // conditions d'affichage restent en place. Aucun écran n'est repris d'une
+  // ouverture à l'autre, le module s'ouvre toujours sur l'accueil. Revenir à
+  // l'accueil referme les fenêtres de l'écran quitté, sauf pendant un
+  // enregistrement ou un export.
   const { ecran, setEcran, retourAccueil } = useEcranModule('haccp', {
     surRetour: () => {
       setShowReleve(false);
@@ -108,7 +111,7 @@ const HACCP = ({ user, etablissement }) => {
       if (!quickSaving) setShowQuickReleves(false);
     },
   });
-  const activeTab = ecran === ECRAN_ACCUEIL ? null : ecran;
+  const activeTab = ecran === ECRAN_ACCUEIL ? 'tableau' : ecran;
 
   // ═══ Chargement depuis Supabase + Realtime ═══
   React.useEffect(() => {
@@ -157,19 +160,6 @@ const HACCP = ({ user, etablissement }) => {
 
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
-
-  // ─── Ouverture ───
-  // Sur les relevés quand la personne peut relever et que la tournée proposée
-  // maintenant n'est pas faite (au Rucher, la brigade ouvre le module pour
-  // relever) ; sinon l'accueil. Une seule fois, à la première lecture : une
-  // relecture ne défait jamais un retour à l'accueil.
-  const ouvertureFaite = React.useRef(false);
-  React.useEffect(() => {
-    if (loading || ouvertureFaite.current) return;
-    ouvertureFaite.current = true;
-    const tournee = canWrite ? tourneeProposee(creneaux, zones, releves, todayStr, zurichClock()) : null;
-    if (tournee && !tournee.complet) setEcran('releves');
-  }, [loading, canWrite, creneaux, zones, releves, todayStr, setEcran]);
 
   // Échap sur un écran de tâche ramène à l'accueil (useEcranModule), sauf sous
   // une fenêtre du module (relevé, contrôle, export, saisie rapide, zone,
@@ -645,23 +635,9 @@ const HACCP = ({ user, etablissement }) => {
     || (activeTab === 'tracabilite' && canWrite)
     || (activeTab === 'config' && isConsultant);
 
-  return (
-    <div style={hs.root}>
-      {/* L'accueil à tuiles, ou l'en-tête de l'écran ouvert avec ses actions
-          (la barre d'aujourd'hui, mêmes boutons, mêmes conditions). */}
-      {ecran === ECRAN_ACCUEIL ? (
-        <AccueilHaccp
-          tournee={tourneeAccueil}
-          dernierReleve={dernierReleveDuJour}
-          tauxConformite={releves.length > 0 ? tauxConf : null}
-          controlesFaits={controlesFaitsDuJour}
-          controlesActifs={activeTpls.length}
-          canWrite={canWrite}
-          isConsultant={isConsultant}
-          onOuvrir={setEcran}
-        />
-      ) : (
-      <EcranTache titre={ECRANS_HACCP[ecran]} onRetour={retourAccueil} actions={hasActions ? (
+  // La barre d'aujourd'hui, mêmes boutons, mêmes conditions : sous les tuiles
+  // sur l'accueil (le tableau), dans l'en-tête sur un écran de tâche.
+  const actions = hasActions ? (
         <>
           {showDateFilter && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
@@ -692,10 +668,34 @@ const HACCP = ({ user, etablissement }) => {
             />
           )}
         </>
-      ) : null} />
+  ) : null;
+
+  return (
+    <div style={hs.root}>
+      {/* L'accueil (tuiles, barre, puis le tableau de bord), ou l'en-tête de
+          l'écran ouvert avec ses actions. */}
+      {ecran === ECRAN_ACCUEIL ? (
+        <>
+          <AccueilHaccp
+            tournee={tourneeAccueil}
+            dernierReleve={dernierReleveDuJour}
+            controlesFaits={controlesFaitsDuJour}
+            controlesActifs={activeTpls.length}
+            canWrite={canWrite}
+            isConsultant={isConsultant}
+            onOuvrir={setEcran}
+          />
+          {actions && (
+            <div className="module-toolbar">
+              <div className="module-actions">{actions}</div>
+            </div>
+          )}
+        </>
+      ) : (
+        <EcranTache titre={ECRANS_HACCP[ecran]} onRetour={retourAccueil} actions={actions} />
       )}
 
-      {/* ── TABLEAU DE BORD ── */}
+      {/* ── TABLEAU DE BORD (sur l'accueil) ── */}
       {activeTab==='tableau' && (
         <div style={{display:'flex',flexDirection:'column',gap:16}} id="haccp-dashboard-print">
           <div style={hs.kpiRow}>
