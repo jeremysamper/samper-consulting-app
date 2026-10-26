@@ -1446,12 +1446,17 @@ const Recettes = ({ user, etablissement }) => {
       setActiveTab(t => (t === LIBRARY_TAB ? '' : t));
     },
   });
+  // Le champ de « Je cherche une fiche » prend la main quand on vient de toucher
+  // sa tuile, pas quand l'écran se rouvre seul à l'arrivée sur le module : Échap
+  // y resterait sans effet tant que le champ a la main.
+  const [champAuToucher, setChampAuToucher] = React.useState(false);
 
   // Fiche ouverte : le geste retour et Échap la referment vers l'écran d'où
   // elle a été ouverte, comme son bouton « Retour ». Échap ne fait rien dans
   // un champ ni sous une fenêtre : une Fenetre se ferme seule, la fenêtre
   // d'étiquette (qui n'en est pas une) reste ouverte comme aujourd'hui, au lieu
-  // que l'écran parte sous elle.
+  // que l'écran parte sous elle. Elle se reconnaît à ce qu'elle est rendue dans
+  // le module (<main>), là où une Fenetre passe en portail sous <body>.
   const fermerFiche = React.useCallback(() => setSelectedRecette(null), []);
   useBackLayer(Boolean(selectedRecette), fermerFiche, 'recettes-fiche');
   React.useEffect(() => {
@@ -1459,7 +1464,7 @@ const Recettes = ({ user, etablissement }) => {
     const echap = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       if (document.querySelector('[data-fenetre]')) return;
-      if (document.querySelector('.modal-sheet-overlay')) { e.preventDefault(); return; }
+      if (document.querySelector('main .modal-sheet-overlay')) { e.preventDefault(); return; }
       if (!selectedRecette || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
       e.preventDefault();
       fermerFiche();
@@ -1680,7 +1685,7 @@ const Recettes = ({ user, etablissement }) => {
         canEtiqueter={canEtiqueter}
         canGerer={canManageCartes}
         consultant={isConsultant}
-        onChercher={() => setEcran('chercher')}
+        onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
         onCarte={() => setEcran('carte')}
         onAllergenes={() => setShowIngredientSearch(true)}
         onEtiquette={() => setEcran('etiquette')}
@@ -1705,6 +1710,8 @@ const Recettes = ({ user, etablissement }) => {
   // Je cherche une fiche ouvre la bibliothèque sous un champ toujours ouvert.
   const gerer = ecran === 'gerer';
   const vueBiblio = ecran === 'chercher' || (gerer && isLibrary);
+  // La loupe : dans l'en-tête de la carte du moment, dans la barre de Gérer.
+  const loupe = <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />;
   return (
     <div style={rs.root}>
       {fenetres}
@@ -1712,14 +1719,14 @@ const Recettes = ({ user, etablissement }) => {
         titre={TITRES_ECRAN[ecran]}
         etat={ecran === 'chercher' ? <>par nom de plat ou de recette</> : null}
         onRetour={retourAccueil}
-        actions={ecran === 'carte' ? <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" /> : null}
+        actions={ecran === 'carte' ? loupe : null}
       />
       {ecran === 'chercher' && (
         <input
           type="text"
           inputMode="search"
           enterKeyHint="search"
-          autoFocus
+          autoFocus={champAuToucher}
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Nom d'un plat ou d'une recette"
@@ -1752,7 +1759,7 @@ const Recettes = ({ user, etablissement }) => {
           </div>
           {gerer && (
             <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
-              <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />
+              {loupe}
               {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
                   en icône seule (une loupe), il se confondait avec la loupe de recherche. */}
               <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>

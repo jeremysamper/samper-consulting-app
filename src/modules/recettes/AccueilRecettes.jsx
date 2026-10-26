@@ -27,7 +27,8 @@ export default function AccueilRecettes({
     },
     {
       id: 'carte', Icone: BookOpen, libelle: 'La carte du moment', onClick: onCarte,
-      etat: lectureCartes || (carte ? carte.nom : <>aucune carte</>),
+      // Nom vide : le même repli que l'onglet de la carte (CarteTabBar).
+      etat: lectureCartes || (carte ? (String(carte.nom ?? '').trim() || 'Carte sans nom') : <>aucune carte</>),
     },
     { id: 'allergenes', Icone: Wheat, libelle: 'Allergènes', onClick: onAllergenes, etat: <>ou un ingrédient, dans quelles fiches</> },
     { id: 'etiquette', Icone: Tag, libelle: 'Une étiquette', onClick: onEtiquette, etat: <>DLC d'une préparation</>, visible: canEtiqueter },

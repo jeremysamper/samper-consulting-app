@@ -14,10 +14,13 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 
 export default function ChoixEtiquette({ recettes, chargement, onChoisir }) {
   const [frappe, setFrappe] = React.useState('');
+  // Tri une fois par liste reçue : la frappe ne fait que filtrer.
+  const triees = React.useMemo(() => {
+    const ordre = new Intl.Collator('fr');
+    return [...recettes].sort((a, b) => ordre.compare(a.nom || '', b.nom || ''));
+  }, [recettes]);
   const match = makeSearchMatcher(frappe);
-  const liste = recettes
-    .filter(r => match(r.nom))
-    .sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
+  const liste = triees.filter(r => match(r.nom));
 
   return (
     <>
