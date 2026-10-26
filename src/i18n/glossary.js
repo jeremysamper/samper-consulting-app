@@ -961,6 +961,15 @@ export const UI_GLOSSARY = {
   'Vous dessinez la salle : chaque service repartira de ce plan.': 'You are drawing the room: every service will start from this plan.',
   'Un responsable doit le dessiner depuis « Dessiner la salle ».': 'A manager must draw it from « Draw the room ».',
 
+  // ── Commande par tâche : gros boutons en tête de la liste ──
+  "J'ajoute un produit": 'I add a product',
+  'à la main': 'by hand',
+  "J'envoie la commande": 'I send the order',
+  'PDF ou imprimante': 'PDF or printer',
+  'générer, vider': 'generate, clear',
+  'Gérer la commande': 'Manage the order',
+  'Vider la liste': 'Clear the list',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',

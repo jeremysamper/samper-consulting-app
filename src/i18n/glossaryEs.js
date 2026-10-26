@@ -942,6 +942,15 @@ export const UI_GLOSSARY_ES = {
   'Vous dessinez la salle : chaque service repartira de ce plan.': 'Está dibujando la sala: cada servicio partirá de este plano.',
   'Un responsable doit le dessiner depuis « Dessiner la salle ».': 'Un responsable debe dibujarlo desde « Dibujar la sala ».',
 
+  // ── Commande par tâche : gros boutons en tête de la liste ──
+  "J'ajoute un produit": 'Añado un producto',
+  'à la main': 'a mano',
+  "J'envoie la commande": 'Envío el pedido',
+  'PDF ou imprimante': 'PDF o impresora',
+  'générer, vider': 'generar, vaciar',
+  'Gérer la commande': 'Gestionar el pedido',
+  'Vider la liste': 'Vaciar la lista',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',
