@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { notify } from '../../components/toast/index.js';
 import { activerPush, desactiverPush, etatPush, testerPush } from '../../services/pushNotifications.js';
@@ -12,6 +12,9 @@ import { activerPush, desactiverPush, etatPush, testerPush } from '../../service
 // Le panneau est une fenêtre centrée, rendue dans <body> (portail) : sur
 // téléphone la barre d'actions défile (overflow) et coupait un panneau
 // déroulant posé dedans, qui n'apparaissait jamais.
+//
+// L'état de l'appareil et les trois actions vivent dans un hook : la tuile de
+// l'accueil du module en tire sa ligne d'état et ouvre le même panneau.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MESSAGES = {
@@ -20,9 +23,8 @@ const MESSAGES = {
   refuse: "Les notifications sont bloquées pour l'app sur cet appareil. Autorisez-les dans les réglages du navigateur (ou de l'app), puis revenez ici.",
 };
 
-export default function NotificationsAppareil({ etablissementId, user }) {
+export function useNotificationsAppareil(etablissementId, user) {
   const [etat, setEtat] = useState(null); // null = lecture en cours
-  const [ouvert, setOuvert] = useState(false);
   const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
@@ -31,13 +33,6 @@ export default function NotificationsAppareil({ etablissementId, user }) {
     etatPush(etablissementId).then((e) => { if (vivant) setEtat(e); }).catch(() => { if (vivant) setEtat('non-supporte'); });
     return () => { vivant = false; };
   }, [etablissementId]);
-
-  useEffect(() => {
-    if (!ouvert) return undefined;
-    const echap = (e) => { if (e.key === 'Escape') setOuvert(false); };
-    document.addEventListener('keydown', echap);
-    return () => document.removeEventListener('keydown', echap);
-  }, [ouvert]);
 
   async function activer() {
     setEnCours(true);
@@ -74,7 +69,56 @@ export default function NotificationsAppareil({ etablissementId, user }) {
     }
   }
 
-  const actif = etat === 'actif';
+  return { etat, actif: etat === 'actif', enCours, activer, tester, desactiver };
+}
+
+// Le panneau, ouvert par le bouton ci-dessous ou par la tuile de l'accueil.
+// notifs : ce que rend useNotificationsAppareil.
+export function PanneauNotifications({ notifs, onFermer }) {
+  const { etat, actif, enCours, activer, tester, desactiver } = notifs;
+
+  useEffect(() => {
+    const echap = (e) => { if (e.key === 'Escape') onFermer(); };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
+  }, [onFermer]);
+
+  return createPortal(
+    <div style={s.voile} onClick={(e) => { if (e.target === e.currentTarget) onFermer(); }}>
+    <div style={s.panneau} role="dialog" aria-modal="true" aria-label="Notifications sur cet appareil">
+      <button type="button" onClick={onFermer} aria-label="Fermer" className="ui-fermer" style={s.fermer}>×</button>
+      <div style={s.titre}>Nouvelles réservations en ligne</div>
+      {etat === null && <div style={s.texte}>Vérification…</div>}
+      {MESSAGES[etat] && <div style={s.texte}>{MESSAGES[etat]}</div>}
+      {etat === 'inactif' && (
+        <>
+          <div style={s.texte}>
+            Recevez une notification sur cet appareil (téléphone, tablette) à chaque réservation faite sur votre site, même app fermée.
+          </div>
+          <button type="button" onClick={activer} disabled={enCours} style={s.principal}>
+            {enCours ? 'Activation…' : 'Activer sur cet appareil'}
+          </button>
+        </>
+      )}
+      {actif && (
+        <>
+          <div style={s.texte}>Cet appareil est prévenu à chaque nouvelle réservation en ligne de cet établissement.</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={tester} disabled={enCours} style={s.secondaire}>Envoyer un essai</button>
+            <button type="button" onClick={desactiver} disabled={enCours} style={s.discret}>Désactiver</button>
+          </div>
+        </>
+      )}
+    </div>
+    </div>,
+    document.body,
+  );
+}
+
+export default function NotificationsAppareil({ etablissementId, user }) {
+  const notifs = useNotificationsAppareil(etablissementId, user);
+  const [ouvert, setOuvert] = useState(false);
+  const fermer = useCallback(() => setOuvert(false), []);
   return (
     <>
       <button
@@ -84,41 +128,12 @@ export default function NotificationsAppareil({ etablissementId, user }) {
         title="Être prévenu sur cet appareil à chaque réservation en ligne"
         style={{
           ...s.bouton,
-          ...(actif ? { borderColor: 'var(--success-bd)', color: 'var(--success-text)', background: 'var(--success-bg-soft)' } : null),
+          ...(notifs.actif ? { borderColor: 'var(--success-bd)', color: 'var(--success-text)', background: 'var(--success-bg-soft)' } : null),
         }}
       >
-        {actif ? 'Notifications activées' : 'Notifications'}
+        {notifs.actif ? 'Notifications activées' : 'Notifications'}
       </button>
-      {ouvert && createPortal(
-        <div style={s.voile} onClick={(e) => { if (e.target === e.currentTarget) setOuvert(false); }}>
-        <div style={s.panneau} role="dialog" aria-modal="true" aria-label="Notifications sur cet appareil">
-          <button type="button" onClick={() => setOuvert(false)} aria-label="Fermer" className="ui-fermer" style={s.fermer}>×</button>
-          <div style={s.titre}>Nouvelles réservations en ligne</div>
-          {etat === null && <div style={s.texte}>Vérification…</div>}
-          {MESSAGES[etat] && <div style={s.texte}>{MESSAGES[etat]}</div>}
-          {etat === 'inactif' && (
-            <>
-              <div style={s.texte}>
-                Recevez une notification sur cet appareil (téléphone, tablette) à chaque réservation faite sur votre site, même app fermée.
-              </div>
-              <button type="button" onClick={activer} disabled={enCours} style={s.principal}>
-                {enCours ? 'Activation…' : 'Activer sur cet appareil'}
-              </button>
-            </>
-          )}
-          {actif && (
-            <>
-              <div style={s.texte}>Cet appareil est prévenu à chaque nouvelle réservation en ligne de cet établissement.</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={tester} disabled={enCours} style={s.secondaire}>Envoyer un essai</button>
-                <button type="button" onClick={desactiver} disabled={enCours} style={s.discret}>Désactiver</button>
-              </div>
-            </>
-          )}
-        </div>
-        </div>,
-        document.body,
-      )}
+      {ouvert && <PanneauNotifications notifs={notifs} onFermer={fermer} />}
     </>
   );
 }

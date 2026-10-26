@@ -168,8 +168,12 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
 }
 
 // ── Composant principal ────────────────────────────────────
+// vueInitiale : « plan » pour l'écran Le plan de salle, qui s'ouvre sur le plan
+// du jour. onBack absent : pas de « Retour à la semaine » (l'écran a déjà son
+// Retour vers l'accueil du module).
 export default function VueJour({
-  etablissementId, date, onBack, onResaUpdated, refreshKey, canEdit = true, onModeService, onNouvelle = null,
+  etablissementId, date, onBack = null, onResaUpdated, refreshKey, canEdit = true, onModeService, onNouvelle = null,
+  vueInitiale = 'liste',
 }) {
   const isMobile    = useIsMobile();
   const {
@@ -177,7 +181,7 @@ export default function VueJour({
   } = useReservationsJour(etablissementId, date, { refreshKey, onChange: onResaUpdated });
   const [selectedResa, setSelectedResa] = useState(null);
   const [editingResa,  setEditingResa]  = useState(null);
-  const [vue,          setVue]          = useState('liste'); // 'liste' | 'plan'
+  const [vue,          setVue]          = useState(vueInitiale); // 'liste' | 'plan'
   const [creating,     setCreating]     = useState(false);
 
   // Une demande refusée ferme la fiche qui la montrait, par identité : une
@@ -208,7 +212,7 @@ export default function VueJour({
         display: 'flex', alignItems: 'center', gap: 10,
         marginTop: 16, marginBottom: 14, flexWrap: 'wrap',
       }}>
-        <Btn small onClick={onBack}>Retour à la semaine</Btn>
+        {onBack && <Btn small onClick={onBack}>Retour à la semaine</Btn>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
             {formatDateLongue(date)}
