@@ -16,13 +16,16 @@ import {
 //           absents.
 //   Semaine couverts des sept jours en barres, groupes et absences à venir.
 // Sur téléphone, un onglet par colonne pour ne pas empiler trois cartes.
+// Direction (parRubrique) : aujourd'hui d'office, demain et la semaine
+// derrière un bouton nommé chacun, sans rangée d'onglets.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EQUIPE_MAX = 8;
 
 export default function ASavoir(props) {
-  const { mobile } = props;
+  const { mobile, parRubrique } = props;
   const [onglet, setOnglet] = React.useState('aujourdhui');
+  const [rubrique, setRubrique] = React.useState(null);
   const colonnes = [
     { id: 'aujourdhui', label: "Aujourd'hui" },
     { id: 'demain', label: 'Demain' },
@@ -34,6 +37,37 @@ export default function ASavoir(props) {
     if (id === 'demain') return <CarteJour key={id} {...props} date={decaler(props.aujourdhui, 1)} titre="Demain" />;
     return <CarteSemaine key={id} {...props} />;
   };
+
+  // Les deux boutons à la place de la rangée d'onglets, sous le titre : la
+  // rubrique choisie s'ouvre juste dessous, au-dessus de la carte du jour,
+  // sans défilement de plus qu'avec les onglets.
+  if (mobile && parRubrique) {
+    return (
+      <section aria-labelledby="tdb-a-savoir">
+        <div style={s.entete}>
+          <h2 id="tdb-a-savoir" style={s.titre}>À savoir</h2>
+        </div>
+        <div style={s.rubriques}>
+          {colonnes.slice(1).map((c) => {
+            const ouverte = rubrique === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                aria-expanded={ouverte}
+                onClick={() => setRubrique(ouverte ? null : c.id)}
+                style={{ ...s.rubrique, ...(ouverte ? s.rubriqueOuverte : null) }}
+              >
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+        {rubrique && <div style={{ marginBottom: 12 }}>{rendre(rubrique)}</div>}
+        {rendre('aujourdhui')}
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="tdb-a-savoir">
@@ -282,6 +316,14 @@ const s = {
   entete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12, minWidth: 0 },
   // Même niveau que les autres titres de section du tableau de bord.
   titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.2, color: 'var(--text)' },
+  // Demain, la semaine : deux gros boutons sous le titre.
+  rubriques: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginBottom: 12 },
+  rubrique: {
+    minHeight: 52, padding: '10px 14px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500,
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+  },
+  rubriqueOuverte: { borderColor: 'var(--accent)', color: 'var(--accent)' },
   couvertsBouton: {
     display: 'block', width: '100%', padding: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)',

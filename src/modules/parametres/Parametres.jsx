@@ -1,4 +1,5 @@
 import React from 'react';
+import { Building2, CreditCard, LayoutGrid, PencilLine, RotateCcw } from 'lucide-react';
 import { getDemoData } from '../../data/demoData.js';
 import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
@@ -10,14 +11,53 @@ import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
+import Interrupteur from '../roles/Interrupteur.jsx';
 
 // ─────────────────────────────────────────────────────
 // PARAMÈTRES - Gestion des établissements (Consultant)
 // + Maintenance des données
+//
+// Accueil par tâche : la liste des établissements reste le premier écran
+// (la tâche principale, aucun geste de plus), et le compte du consultant
+// dessous, comme avant ; les autres tâches en gros boutons au-dessus,
+// chacune sur son écran : les modules d'un établissement en interrupteurs,
+// les noms des modules, la caisse, la remise à zéro.
 // ─────────────────────────────────────────────────────
 
 const ALL_MODULE_KEYS = etabToggleableModules.map((item) => item.permKey);
 const MODULE_GROUPS = [...new Set(etabToggleableModules.map((item) => item.group))];
+
+// Exactement les modules standard = null : les modules ajoutés plus tard à
+// l'app apparaîtront d'office pour cet établissement, comme avant le réglage.
+const normaliserModules = (keys) => {
+  const next = ALL_MODULE_KEYS.filter((key) => keys.includes(key));
+  const standard = next.length === defaultEtabModuleKeys.length
+    && defaultEtabModuleKeys.every((key) => next.includes(key));
+  return standard ? null : next;
+};
+
+// Ligne envoyée à upsertEtablissement : la même pour « Enregistrer » de la
+// fenêtre et pour un interrupteur de module. modulesReady : sans la colonne
+// en base, la colonne n'est pas envoyée (voir mapEtabFromRow).
+const payloadEtab = (etab, modulesReady) => {
+  const payload = {
+    id: etab.id,
+    nom: etab.nom,
+    type: etab.type || 'Restaurant',
+    adresse: etab.adresse || null,
+    tel: etab.tel || null,
+    email: etab.email || null,
+    couleur: etab.couleur || '#003042',
+    actif: etab.actif !== false,
+    notes: etab.notes || null,
+    ccnt_heures_semaine: etab.ccntHeuresSemaine || 42,
+  };
+  if (modulesReady) payload.modules_actifs = Array.isArray(etab.modulesActifs) ? etab.modulesActifs : null;
+  return payload;
+};
 
 // hasModulesColumn : la ligne porte la colonne modules_actifs (migration
 // 20260927 appliquée). Sans elle, Paramètres n'envoie pas la colonne : un
@@ -47,14 +87,7 @@ const EtabModulesPicker = ({ value, onChange, getLabel, sansTableauDeBord = fals
   // null = tous les modules standard : tout coché sauf les modules « à
   // activer » (spa), qui ne s'affichent que cochés explicitement.
   const selected = Array.isArray(value) ? value : defaultEtabModuleKeys;
-  const set = (keys) => {
-    const next = ALL_MODULE_KEYS.filter((key) => keys.includes(key));
-    // Exactement les modules standard = null : les modules ajoutés plus tard à
-    // l'app apparaîtront d'office pour cet établissement, comme avant le réglage.
-    const standard = next.length === defaultEtabModuleKeys.length
-      && defaultEtabModuleKeys.every((key) => next.includes(key));
-    onChange(standard ? null : next);
-  };
+  const set = (keys) => onChange(normaliserModules(keys));
   // « Tout cocher » = tous les modules standard ; un module à activer déjà
   // coché le reste, mais n'est jamais coché en masse.
   const toutCocher = () => set([...defaultEtabModuleKeys, ...selected.filter((key) => optInModuleKeys.includes(key))]);
@@ -225,6 +258,23 @@ const Parametres = ({ user, etablissement }) => {
   const [editingLabelValue, setEditingLabelValue] = React.useState('');
   const [labelSaving, setLabelSaving] = React.useState(false);
 
+  // Écran de tâche : l'accueil (établissements et gros boutons) ou une tâche.
+  const [etabModulesId, setEtabModulesId] = React.useState(null);
+  const { ecran, setEcran, retourAccueil } = useEcranModule('parametres', {
+    surRetour: () => { setEtabModulesId(null); setEditingLabelKey(null); },
+  });
+  // Échap sous une fenêtre de la caisse (voile fixe dans la page, sans
+  // rôle de fenêtre) : la fenêtre reste, l'écran aussi.
+  const rootRef = React.useRef(null);
+  React.useEffect(() => {
+    if (ecran === ECRAN_ACCUEIL) return undefined;
+    const garde = (e) => {
+      if (e.key === 'Escape' && rootRef.current?.querySelector('[style*="position: fixed"]')) e.preventDefault();
+    };
+    document.addEventListener('keydown', garde, true);
+    return () => document.removeEventListener('keydown', garde, true);
+  }, [ecran]);
+
   const startEditLabel = (item) => {
     setEditingLabelKey(item.id);
     setEditingLabelValue(getLabelForModule(item.id, item.label));
@@ -283,19 +333,7 @@ const Parametres = ({ user, etablissement }) => {
     if (!etab.id) {
       etab.id = 'etab-' + Date.now();
     }
-    const payload = {
-      id: etab.id,
-      nom: etab.nom,
-      type: etab.type || 'Restaurant',
-      adresse: etab.adresse || null,
-      tel: etab.tel || null,
-      email: etab.email || null,
-      couleur: etab.couleur || '#003042',
-      actif: etab.actif !== false,
-      notes: etab.notes || null,
-      ccnt_heures_semaine: etab.ccntHeuresSemaine || 42,
-    };
-    if (modulesReady) payload.modules_actifs = Array.isArray(etab.modulesActifs) ? etab.modulesActifs : null;
+    const payload = payloadEtab(etab, modulesReady);
     if (legacySB) {
       try {
         const saved = await legacySB.db.upsertEtablissement(payload);
@@ -340,8 +378,121 @@ const Parametres = ({ user, etablissement }) => {
     if (typeof scResetAllData === 'function') scResetAllData();
   };
 
+  // ── Modules d'un établissement en interrupteurs ──
+  // Chaque interrupteur écrit tout de suite, par le même upsertEtablissement
+  // et la même ligne que « Enregistrer » de la fenêtre pour ce seul
+  // changement. Les écritures partent l'une après l'autre, chacune avec
+  // l'état voulu le plus récent ; tant qu'une écriture attend, l'écran montre
+  // l'état voulu, puis la ligne enregistrée. Échec : l'état d'avant revient de
+  // lui-même (la liste n'est changée qu'au succès), sans relecture.
+  const etablissementsRef = React.useRef(etablissements);
+  etablissementsRef.current = etablissements;
+  const enCoursRef = React.useRef({});
+  const fileModulesRef = React.useRef(Promise.resolve());
+  const [, rafraichir] = React.useReducer((n) => n + 1, 0);
+  const modulesDe = (etab) => (enCoursRef.current[etab.id] ? enCoursRef.current[etab.id].valeur : etab.modulesActifs);
+
+  function basculerModule(etab, key) {
+    if (!canEdit || !legacySB) return;
+    const avant = modulesDe(etab);
+    const selected = Array.isArray(avant) ? avant : defaultEtabModuleKeys;
+    const valeur = normaliserModules(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
+    enCoursRef.current[etab.id] = { valeur, n: (enCoursRef.current[etab.id]?.n || 0) + 1 };
+    rafraichir();
+    fileModulesRef.current = fileModulesRef.current.then(async () => {
+      const courant = etablissementsRef.current.find((e) => e.id === etab.id) || etab;
+      const voulu = enCoursRef.current[etab.id]?.valeur ?? null;
+      try {
+        const saved = await legacySB.db.upsertEtablissement(payloadEtab({ ...courant, modulesActifs: voulu }, modulesReady));
+        if (!saved || !saved.id) throw new Error("L'établissement n'a pas été enregistré.");
+        setEtablissements((prev) => {
+          const suite = prev.map((e) => (e.id === saved.id ? mapEtabFromRow(saved) : e));
+          demoData.etablissements = suite;
+          return suite;
+        });
+      } catch (err) {
+        console.error('[Parametres modules]', err);
+        notifyLegacy(`Modules non enregistrés. ${messageErreur(err, 'paramètres')}`, 'error');
+      } finally {
+        const attente = enCoursRef.current[etab.id];
+        if (attente) { attente.n -= 1; if (!attente.n) delete enCoursRef.current[etab.id]; }
+        rafraichir();
+      }
+    });
+  }
+
+  const nbNomsPerso = NAV_ITEMS.filter((item) => customLabels[item.id]).length;
+  const tuiles = [
+    { id: 'modules', libelle: "Les modules de l'établissement", Icone: LayoutGrid, visible: canEdit, onClick: () => setEcran('modules') },
+    {
+      id: 'noms', libelle: 'Les noms des modules', Icone: PencilLine, visible: canEditLabels, onClick: () => setEcran('noms'),
+      etat: nbNomsPerso ? <><span>{nbNomsPerso}</span> <span>{nbNomsPerso > 1 ? 'personnalisés' : 'personnalisé'}</span></> : 'par défaut',
+    },
+    { id: 'caisse', libelle: 'La caisse', Icone: CreditCard, onClick: () => setEcran('caisse') },
+    { id: 'donnees', libelle: 'Remettre à zéro', Icone: RotateCcw, onClick: () => setEcran('donnees') },
+  ];
+
+  // Un seul établissement : pas de choix à faire.
+  const etabModules = etablissements.find((e) => e.id === etabModulesId) || (etablissements.length === 1 ? etablissements[0] : null);
+  const nbModules = (valeur) => {
+    if (!Array.isArray(valeur)) return 'Tous les modules standard';
+    const n = ALL_MODULE_KEYS.filter((key) => valeur.includes(key)).length;
+    return <><span>{n}</span> <span>{n === 1 ? 'module activé' : 'modules activés'}</span></>;
+  };
+  let ecranModules = null;
+  if (ecran === 'modules') {
+    if (!modulesReady) {
+      ecranModules = (
+        <div style={{ fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
+          Choix des modules par établissement : disponible une fois la migration 20260927_etablissements_modules_actifs appliquée.
+        </div>
+      );
+    } else if (!etabModules) {
+      ecranModules = (
+        <AccueilModule tuiles={etablissements.map((e) => ({
+          id: e.id, libelle: e.nom, brut: true, Icone: Building2, etat: nbModules(modulesDe(e)), onClick: () => setEtabModulesId(e.id),
+        }))} />
+      );
+    } else {
+      const valeur = modulesDe(etabModules);
+      const selected = Array.isArray(valeur) ? valeur : defaultEtabModuleKeys;
+      ecranModules = (
+        <div style={ps.listCard}>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
+            L'équipe ne voit que les modules ouverts, en plus des droits de son rôle. Chaque interrupteur s'enregistre tout de suite.
+            {estTypeSpa(etabModules.type) ? ' Vos outils consultant restent toujours affichés.' : ' Le tableau de bord et vos outils consultant restent toujours affichés.'}
+          </div>
+          {MODULE_GROUPS.map((group) => (
+            <div key={group}>
+              <div style={ps.groupeModules}>{group}</div>
+              {etabToggleableModules.filter((item) => item.group === group).map((item) => {
+                const label = getLabelForModule(item.id, item.label);
+                return (
+                  <div key={item.id} style={ps.moduleLigne}>
+                    <span style={{ flex:1, minWidth:0, fontSize:14, color:'var(--text)' }}>
+                      {label}
+                      {optInModuleKeys.includes(item.permKey) && <span style={{ color:'var(--text3)' }}> (à activer)</span>}
+                    </span>
+                    <Interrupteur
+                      checked={selected.includes(item.permKey)}
+                      disabled={!canEdit}
+                      label={label}
+                      onChange={() => basculerModule(etabModules, item.permKey)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          <div style={{ padding:'12px 20px', fontSize:12, color:'var(--text2)' }}>{nbModules(valeur)}</div>
+        </div>
+      );
+    }
+  }
+
   return (
-    <div style={ps.root}>
+    <div style={ps.root} ref={rootRef}>
+      {ecran === ECRAN_ACCUEIL && (<>
       <div style={ps.banner}>
         <div>
           <div style={ps.bannerTitle}>Gestion des établissements</div>
@@ -350,15 +501,17 @@ const Parametres = ({ user, etablissement }) => {
         <button style={ps.addBtn} onClick={openAdd}>Ajouter un établissement</button>
       </div>
 
-      <div style={ps.statsRow}>
-        <div style={ps.statCard}><div style={ps.statLabel}>Établissements total</div><div style={ps.statVal}>{etablissements.length}</div></div>
-        <div style={ps.statCard}><div style={ps.statLabel}>Actifs</div><div style={{...ps.statVal,color:'var(--success-text)'}}>{etablissements.filter(e=>e.actif!==false).length}</div></div>
-        <div style={ps.statCard}><div style={ps.statLabel}>En suivi consultant</div><div style={ps.statVal}>{etablissements.length}</div></div>
-      </div>
+      <AccueilModule tuiles={tuiles} />
 
+      {/* Les chiffres (total, actifs ; « en suivi consultant » était le total)
+          passent dans l'en-tête de la liste : avec les gros boutons au-dessus,
+          le dernier établissement reste à l'écran sans défiler. */}
       <div style={ps.listCard}>
-        <div style={ps.listHeader}>
+        <div style={{ ...ps.listHeader, display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
           <div style={ps.listTitle}>Tous les établissements</div>
+          <div style={{ fontSize:12, color:'var(--text2)' }}>
+            <span style={ps.compte}>{etablissements.length}</span> <span>au total</span>, <span style={{ ...ps.compte, color:'var(--success-text)' }}>{etablissements.filter(e=>e.actif!==false).length}</span> <span>actifs</span>
+          </div>
         </div>
         {etablissements.length === 0 && (
           <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucun établissement. Cliquez sur "Ajouter un établissement" pour commencer.</div>
@@ -368,12 +521,12 @@ const Parametres = ({ user, etablissement }) => {
             <div style={{...ps.etabColor, background:etab.couleur||'var(--accent)'}}/>
             <div style={ps.etabInfo}>
               <div style={ps.etabNom}>
-                {etab.nom}
+                <span data-no-translate>{etab.nom}</span>
                 {etab.actif===false && <span style={ps.inactifBadge}>Inactif</span>}
               </div>
               <div style={ps.etabMeta}>{etab.type}, {etab.adresse || 'Adresse non renseignée'}</div>
               {etab.tel && <div style={ps.etabMeta}>{etab.tel}{etab.email && `, ${etab.email}`}</div>}
-              {modulesReady && <div style={ps.etabMeta}>{moduleCountLabel(etab.modulesActifs)}</div>}
+              {modulesReady && <div style={ps.etabMeta}>{nbModules(modulesDe(etab))}</div>}
             </div>
             <BoutonActions
               id={`etab-gerer-${etab.id}`}
@@ -389,8 +542,23 @@ const Parametres = ({ user, etablissement }) => {
           </div>
         ))}
       </div>
+      </>)}
 
-      {/* Compte consultant */}
+      {ecran === 'modules' && (
+        <EcranTache
+          titre="Les modules de l'établissement"
+          etat={etabModules ? <span data-no-translate>{etabModules.nom}</span> : 'Choisissez un établissement'}
+          onRetour={retourAccueil}
+          actions={etabModules && etablissements.length > 1 ? (
+            <button type="button" style={{ ...ps.ghostBtn, minHeight:44 }} onClick={() => setEtabModulesId(null)}>Un autre établissement</button>
+          ) : null}
+        >
+          {ecranModules}
+        </EcranTache>
+      )}
+
+      {/* Compte consultant : sous la liste, comme avant (lecture seule). */}
+      {ecran === ECRAN_ACCUEIL && (
       <div style={ps.listCard}>
         <div style={ps.listHeader}>
           <div style={ps.listTitle}>Mon compte consultant</div>
@@ -419,12 +587,18 @@ const Parametres = ({ user, etablissement }) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Intégrations POS */}
-      <PosIntegrationsCard etablissement={etablissement} user={user} />
+      {ecran === 'caisse' && (
+        <EcranTache titre="La caisse" onRetour={retourAccueil}>
+          <PosIntegrationsCard etablissement={etablissement} user={user} />
+        </EcranTache>
+      )}
 
       {/* Personnalisation des modules */}
-      {canEditLabels && (
+      {ecran === 'noms' && canEditLabels && (
+        <EcranTache titre="Les noms des modules" onRetour={retourAccueil}>
         <div style={ps.listCard}>
           <div style={ps.listHeader}>
             <div>
@@ -504,9 +678,12 @@ const Parametres = ({ user, etablissement }) => {
             );
           })}
         </div>
+        </EcranTache>
       )}
 
       {/* Maintenance */}
+      {ecran === 'donnees' && (
+      <EcranTache titre="Remettre à zéro" onRetour={retourAccueil}>
       <div style={ps.listCard}>
         <div style={ps.listHeader}>
           <div style={ps.listTitle}>Maintenance des données</div>
@@ -525,6 +702,8 @@ const Parametres = ({ user, etablissement }) => {
           </div>
         </div>
       </div>
+      </EcranTache>
+      )}
 
       {showForm && <EtabForm etab={editEtab} onSave={save} onCancel={()=>setShowForm(false)} modulesReady={modulesReady} getLabel={getLabelForModule}/>}
 
@@ -558,12 +737,9 @@ const ps = {
   bannerTitle: { fontSize:20, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)' },
   bannerSub: { fontSize:13, color:'var(--text2)', marginTop:4 },
   addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
-  statsRow: { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 },
-  statCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', padding:'14px 18px' },
-  statLabel: { fontSize:11, fontWeight:500, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4, marginBottom:6 },
-  statVal: { fontSize:22, fontWeight:700, fontFamily:'var(--font-num)', color:'var(--text)' },
   listCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', overflow:'hidden' },
   listHeader: { padding:'14px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg)' },
+  compte: { fontFamily:'var(--font-num)', fontWeight:700, color:'var(--text)' },
   listTitle: { fontSize:13, fontWeight:700, color:'var(--text)', textTransform:'uppercase', letterSpacing:0.4 },
   etabRow: { display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid var(--border)', flexWrap:'wrap' },
   etabColor: { width:6, height:38, borderRadius:3, flexShrink:0 },
@@ -590,6 +766,9 @@ const ps = {
   // Base en borderWidth/Style/Color : l'état coché ne surcharge que borderColor.
   moduleChip: { display:'flex', alignItems:'center', gap:8, minHeight:44, padding:'8px 12px', borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', borderRadius:8, background:'var(--bg)', fontSize:13, color:'var(--text2)', cursor:'pointer', boxSizing:'border-box', minWidth:0 },
   moduleChipOn: { borderColor:'var(--accent)', background:'var(--surface)', color:'var(--text)' },
+  // Modules d'un établissement : un groupe, puis une ligne par module (nom, interrupteur).
+  groupeModules: { padding:'12px 20px 4px', fontSize:12, fontWeight:500, color:'var(--text2)' },
+  moduleLigne: { display:'flex', alignItems:'center', gap:12, padding:'2px 12px 2px 20px', borderBottom:'1px solid var(--border)', minHeight:48 },
   saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
 };
 

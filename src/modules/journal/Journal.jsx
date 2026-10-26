@@ -1,14 +1,19 @@
 import React from 'react';
+import { Building2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { etablissementService, supabase } from '../../services/supabase.js';
 import { roles } from '../moduleConfig.js';
 import { zurichAjouterJours, zurichDateHeure, zurichLundi, zurichMinuitIso } from '../../utils/zurichTime.js';
 import { Btn, SectionHeader } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
+import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 
 // Journal d'activité : qui a créé, modifié ou supprimé quoi dans les recettes,
 // produits, pertes et inventaires d'un établissement, semaine par semaine.
 // Alimenté par le déclencheur journal_activite_log (migration 20261015) ;
 // lecture réservée au consultant et au patron par la RLS.
+// La semaine en cours d'office ; semaine précédente, suivante et « Exporter »
+// en gros boutons ; un autre établissement, s'il y en a plusieurs, derrière
+// un bouton nommé puis une tuile (le cas rare ne pousse pas la liste).
 
 const ACTIONS = { INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression' };
 const COULEUR_ACTION = { INSERT: 'var(--success-text)', UPDATE: 'var(--accent)', DELETE: 'var(--danger-text)' };
@@ -109,11 +114,8 @@ function telechargerCsv(lignes, nomFichier) {
 const slug = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-const selectStyle = {
-  height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)',
-  background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13,
-  maxWidth: '100%', minWidth: 0,
-};
+// Gros boutons : 48 px au doigt, texte lisible.
+const gros = { minHeight: 48, padding: '10px 16px', fontSize: 14 };
 
 export default function Journal({ user, etablissement }) {
   const lundiCourant = zurichLundi();
@@ -124,6 +126,7 @@ export default function Journal({ user, etablissement }) {
   const [etat, setEtat] = React.useState('chargement');
   const [essai, setEssai] = React.useState(0);
   const [enExport, setEnExport] = React.useState(false);
+  const [choixEtab, setChoixEtab] = React.useState(false);
   const estCourante = lundi === lundiCourant;
 
   React.useEffect(() => {
@@ -184,31 +187,41 @@ export default function Journal({ user, etablissement }) {
         style={{ marginBottom: 0 }}
       />
 
+      {/* Une seule rangée qui passe à la ligne : la liste commence à la même
+          hauteur qu'avec l'ancienne barre, aucun défilement de plus. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, minWidth: 0 }}>
-        <select
-          value={etabId}
-          onChange={(e) => setEtabId(e.target.value)}
-          aria-label="Établissement"
-          disabled={etabs.length < 2}
-          style={selectStyle}
-        >
-          {!etabs.some((e) => e.id === etabId) && etabId ? <option value={etabId}>{nomEtab}</option> : null}
-          {etabs.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
-        </select>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flexWrap: 'wrap' }}>
-          <Btn small onClick={() => setLundi(zurichAjouterJours(lundi, -7))} ariaLabel="Semaine précédente" title="Semaine précédente">‹</Btn>
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
-          <Btn small disabled={estCourante} onClick={() => setLundi(zurichAjouterJours(lundi, 7))} ariaLabel="Semaine suivante" title="Semaine suivante">›</Btn>
-          {!estCourante && <Btn small onClick={() => setLundi(lundiCourant)}>Cette semaine</Btn>}
-        </div>
-
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }} data-no-translate>{nomEtab}</span>
+        {etabs.length > 1 && (
+          <Btn onClick={() => setChoixEtab((v) => !v)} style={gros}>
+            <Building2 size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>Un autre établissement</span>
+          </Btn>
+        )}
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
+        <Btn onClick={() => setLundi(zurichAjouterJours(lundi, -7))} ariaLabel="Semaine précédente" style={gros}>
+          <ChevronLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+          <span>Semaine précédente</span>
+        </Btn>
+        {!estCourante && (
+          <Btn onClick={() => setLundi(zurichAjouterJours(lundi, 7))} ariaLabel="Semaine suivante" style={gros}>
+            <span>Semaine suivante</span>
+            <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />
+          </Btn>
+        )}
+        {!estCourante && <Btn onClick={() => setLundi(lundiCourant)} style={gros}>Cette semaine</Btn>}
         <div style={{ marginLeft: 'auto' }}>
-          <Btn variant="primary" small onClick={exporter} disabled={enExport || etat !== 'pret'}>
-            {enExport ? 'Export en cours…' : 'Export CSV'}
+          <Btn variant="primary" onClick={exporter} disabled={enExport || etat !== 'pret'} style={gros}>
+            <Download size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>{enExport ? 'Export en cours…' : 'Exporter'}</span>
           </Btn>
         </div>
       </div>
+      {choixEtab && etabs.length > 1 && (
+        <AccueilModule tuiles={etabs.map((e) => ({
+          id: e.id, libelle: e.nom, brut: true, Icone: Building2, etat: e.id === etabId ? 'Affiché' : null,
+          onClick: () => { setEtabId(e.id); setChoixEtab(false); },
+        }))} />
+      )}
 
       {etat === 'chargement' && <div style={{ fontSize: 13, color: 'var(--text2)' }}>Chargement…</div>}
 

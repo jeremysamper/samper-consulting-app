@@ -259,12 +259,14 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
             avecAbsences={avecAbsences}
             peutOuvrir={peutOuvrir}
             ouvrir={ouvrir}
+            parRubrique={direction}
           />
 
           {direction && (
             <ChiffresGestion
               chiffres={chiffres}
               stock={stock}
+              couvertsJour={couvertsJour}
               avecPertes={avecPertes}
               avecStock={avecStock}
               avecCouverts={avecCouverts}

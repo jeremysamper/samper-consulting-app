@@ -10,17 +10,20 @@ import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
-import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, st as stFenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import Interrupteur from './Interrupteur.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RÔLES & ACCÈS : les comptes et leurs droits, personne par personne.
 //
-// Un seul écran (demande de Jérémy, 30.09.2026) : à gauche l'équipe, à droite
-// la personne choisie avec, pour chaque module, « Accès » (le voir dans le
-// menu) et « Modifier » (créer, modifier, supprimer). Il y avait trois onglets
-// (permissions par rôle, droits d'action, utilisateurs) et tout se réglait par
-// rôle.
+// Un seul écran (demande de Jérémy, 30.09.2026) : à gauche l'équipe, « Qui
+// fait quoi », une carte par personne (rôle, établissements, modules
+// ouverts) ; à droite la personne choisie avec, pour chaque module, un
+// interrupteur « Accès » (le voir dans le menu) et dessous, quand il est
+// ouvert, « Modifier » (créer, modifier, supprimer) et ses droits d'action.
+// Il y avait trois onglets (permissions par rôle, droits d'action,
+// utilisateurs) et tout se réglait par rôle.
 //
 // Le rôle reste le point de départ : ses droits (table `permissions`, complétés
 // par les défauts du code) s'appliquent tant qu'on n'a rien changé. Une case
@@ -402,7 +405,7 @@ const Roles = ({ user }) => {
 
   const listePersonnes = (
     <div style={ros.peopleCol}>
-      <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
+      <div>
         <input
           type="search"
           value={recherche}
@@ -419,20 +422,33 @@ const Roles = ({ user }) => {
         const role = getRoleInfo(u.role);
         const ajustee = !!(ecartsParId && ecartsParId[u.id] && Object.keys(ecartsParId[u.id]).length);
         const active = affichee?.id === u.id;
+        const etabsNoms = (demoData.etablissements || []).filter((e) => u.etablissementIds?.includes(e.id)).map((e) => e.nom).join(', ');
+        // Modules ouverts : ceux dont l'accès est ouvert, rôle et écarts compris
+        // (rien tant que les écarts ne sont pas lus).
+        const ouverts = u.role === 'consultant' || ecartsParId === null ? null
+          : MODULES.filter((m) => etatModule(rolePerms, u, ecartsParId[u.id] || {}, m.permKey).acces).length;
         return (
           <button
             key={u.id}
             type="button"
             onClick={() => setSelectedId(u.id)}
-            style={{ ...ros.personRow, ...(active ? ros.personActive : {}) }}
+            aria-pressed={active}
+            style={{ ...ros.personCard, ...(active ? ros.personActive : {}) }}
           >
-            <div style={{ ...ros.userAvatar, width: 34, height: 34, fontSize: 12, background: role.couleur || '#888' }}>{u.avatar}</div>
+            <div style={{ ...ros.userAvatar, width: 34, height: 34, fontSize: 12, background: role.couleur || '#888' }} data-no-translate>{u.avatar}</div>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={ros.personNom} data-no-translate>
                 {u.prenom} {u.nom}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {role.label}{u.poste ? `, ${u.poste}` : ''}
+              {/* Rôle, modules ouverts, établissements : une seule ligne, la carte
+                  garde la hauteur de l'ancienne ligne de liste (aucun défilement
+                  de plus pour atteindre une personne). Le détail est à droite. */}
+              <div style={ros.personLigne}>
+                <span>{role.label}</span>
+                {u.poste && <><span>, </span><span>{u.poste}</span></>}
+                {u.role === 'consultant' ? <><span>, </span><span>tous les modules</span></>
+                  : ouverts !== null && <><span>, </span><span>{ouverts}</span> <span>{ouverts > 1 ? 'modules ouverts' : 'module ouvert'}</span></>}
+                {etabsNoms && <><span>, </span><span data-no-translate>{etabsNoms}</span></>}
               </div>
             </div>
             {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>Inactif</span>}
@@ -461,18 +477,18 @@ const Roles = ({ user }) => {
             <div style={{ ...ros.userAvatar, background: role.couleur || '#888' }}>{u.avatar}</div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
-                {u.prenom} {u.nom}
+                <span data-no-translate>{u.prenom} {u.nom}</span>
                 {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
-                {u.email}
+                <span data-no-translate>{u.email}</span>
                 {phones[u.id] && (<>{', '}<PhoneLink tel={phones[u.id]} /></>)}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                 {role.label}{u.poste ? `, ${u.poste}` : ''}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                {etabs.map(e => e.nom).join(', ') || 'Aucun établissement'}
+                {etabs.length ? <span data-no-translate>{etabs.map(e => e.nom).join(', ')}</span> : 'Aucun établissement'}
               </div>
             </div>
           </div>
@@ -511,8 +527,8 @@ const Roles = ({ user }) => {
           <>
             <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ flex: 1, minWidth: 200, lineHeight: 1.5 }}>
-                Les cases partent des droits du rôle <strong>{role.label}</strong>. Ce que vous changez ne concerne que {u.prenom}.
-                {' '}« Accès » : le module apparaît dans son menu. « Modifier » : il peut y créer, modifier et supprimer.
+                Les droits partent de ceux du rôle <strong>{role.label}</strong>. Ce que vous changez ne concerne que {u.prenom}.
+                {' '}L'interrupteur ouvre le module dans son menu. « Modifier » : il peut y créer, modifier et supprimer.
               </span>
               {canEdit && ajustee && (
                 <button style={ros.smallGhost} onClick={() => revenirAuRole(u)} disabled={ecartsParId === null}>
@@ -528,11 +544,6 @@ const Roles = ({ user }) => {
                 <button style={ros.smallGhost} onClick={() => reloadRef.current?.()}>Réessayer</button>
               </div>
             )}
-            <div style={{ ...ros.moduleRow, padding: '8px 18px', background: 'var(--bg)', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              <span style={{ flex: 1 }}>Module</span>
-              <span style={{ width: 44, textAlign: 'center' }}>Accès</span>
-              <span style={{ width: 44, textAlign: 'center' }}>Modifier</span>
-            </div>
             <div style={ros.moduleList}>
               {MODULES.map((m) => {
                 const e = etatModule(rolePerms, u, ecarts, m.permKey);
@@ -551,51 +562,49 @@ const Roles = ({ user }) => {
                   }
                 }
                 const note = notes.length ? notes.join('. ') : null;
+                // Sous le module, quand il est ouvert : « Modifier » et ses
+                // droits d'action, chacun une case nommée. Fermé, ils ne
+                // s'appliquent pas : rendus (grisés) seulement s'ils portent un écart.
                 return (
-                  <React.Fragment key={m.permKey}>
-                    <div style={{ ...ros.moduleRow, padding: '2px 18px', opacity: e.accesVerrouille ? 0.6 : 1 }}>
+                  <div key={m.permKey} style={{ ...ros.moduleBloc, opacity: e.accesVerrouille ? 0.6 : 1 }}>
+                    <div style={ros.moduleRow}>
                       <div style={{ flex: 1, minWidth: 0, padding: '8px 0' }}>
-                        <div style={{ fontSize: 13, color: 'var(--text)' }}>{label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{label}</div>
                         {note && (
                           <div style={{ fontSize: 11, marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
                         )}
                       </div>
-                      <Case
+                      <Interrupteur
                         checked={e.acces}
                         disabled={!casesActives || e.accesVerrouille}
                         label={`Accès à ${label} pour ${u.prenom}`}
                         onChange={() => basculer(u, m.permKey, e.duRole.acces, e.acces)}
                       />
-                      {GERABLES.has(m.permKey) ? (
+                    </div>
+                    {(e.acces || aCle(ecarts, cleGerer(m.permKey))) && GERABLES.has(m.permKey) && (
+                      <div style={ros.droitRow}>
+                        <div style={{ flex: 1, minWidth: 0, padding: '6px 0', fontSize: 13, color: 'var(--text2)' }}>Modifier</div>
                         <Case
                           checked={e.gerer}
                           disabled={!casesActives || e.gererVerrouille || !e.acces}
                           label={`Modifier dans ${label} pour ${u.prenom}`}
                           onChange={() => basculer(u, cleGerer(m.permKey), e.duRole.gerer, e.gerer)}
                         />
-                      ) : (
-                        <span title="Rien à régler : ce module n'a pas d'actions réservées" style={{ width: 44, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>-</span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     {(DROITS_PAR_MODULE[m.permKey] || []).map((d) => {
                       const da = etatDroitAction(rolePerms, u, ecarts, d.id, e.acces);
-                      const notesDroit = [];
-                      if (da.ajuste) notesDroit.push(`Ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})`);
-                      // Case grisée faute d'accès au module : dire quoi faire,
-                      // sinon elle passe pour un bug. Un accès réservé à d'autres
-                      // rôles est déjà expliqué sur la ligne du module.
-                      if (!e.acces && !e.accesVerrouille) notesDroit.push('Donne d’abord l’accès au module');
-                      const noteDroit = notesDroit.length ? notesDroit.join('. ') : null;
+                      // Module fermé : le droit n'est rendu que s'il porte un écart, pour rester visible.
+                      if (!e.acces && !da.ajuste) return null;
+                      const noteDroit = da.ajuste ? `Ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})` : null;
                       return (
-                        <div key={d.id} style={{ ...ros.moduleRow, ...ros.droitRow, opacity: e.accesVerrouille ? 0.6 : 1 }}>
+                        <div key={d.id} style={ros.droitRow}>
                           <div style={{ flex: 1, minWidth: 0, padding: '6px 0' }}>
-                            <div style={{ fontSize: 12, color: e.acces ? 'var(--text2)' : 'var(--text3)' }}>{d.label}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text2)' }}>{d.label}</div>
                             {noteDroit && (
                               <div style={{ fontSize: 11, marginTop: 2, color: da.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{noteDroit}</div>
                             )}
                           </div>
-                          {/* Colonne « Accès » vide : le droit suit l'accès du module. */}
-                          <span aria-hidden="true" style={{ width: 44, flexShrink: 0 }} />
                           <Case
                             checked={da.actif}
                             disabled={!casesActives || !e.acces}
@@ -605,7 +614,7 @@ const Roles = ({ user }) => {
                         </div>
                       );
                     })}
-                  </React.Fragment>
+                  </div>
                 );
               })}
             </div>
@@ -618,11 +627,13 @@ const Roles = ({ user }) => {
   return (
     <div style={ros.root}>
       <div style={ros.tabs} className="no-print">
-        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-          {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''}, les droits se règlent personne par personne
+        <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+          <div style={ros.titre}>Qui fait quoi</div>
+          <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2 }}>
+            {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''}, les droits se règlent personne par personne
+          </div>
         </div>
-        <div style={{ flex: 1 }} />
-        {canEdit && <button style={ros.addBtn} onClick={openNewUser}>Nouvel utilisateur</button>}
+        {canEdit && <button style={ros.addBtn} onClick={openNewUser}>Ajouter une personne</button>}
       </div>
 
       {isMobile ? (
@@ -645,7 +656,7 @@ const Roles = ({ user }) => {
         <div className="modal-full-overlay" style={ros.overlay} onClick={() => setShowUserForm(false)}>
           <div className="modal-full" style={ros.modal} onClick={e => e.stopPropagation()}>
             <div style={ros.modalHeader}>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>{editingUser.id ? 'Modifier utilisateur' : 'Nouvel utilisateur'}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>{editingUser.id ? 'Modifier utilisateur' : 'Ajouter une personne'}</div>
               <button type="button" className="ui-fermer" aria-label="Fermer" style={ros.closeBtn} onClick={() => setShowUserForm(false)}>×</button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -653,12 +664,17 @@ const Roles = ({ user }) => {
                 <div><label style={ros.fieldLabel}>Prénom</label><input type="text" style={ros.fieldInput} value={editingUser.prenom} onChange={e => setEditingUser({ ...editingUser, prenom: e.target.value })} /></div>
                 <div><label style={ros.fieldLabel}>Nom</label><input type="text" style={ros.fieldInput} value={editingUser.nom} onChange={e => setEditingUser({ ...editingUser, nom: e.target.value })} /></div>
               </div>
-              <div>
-                <label style={ros.fieldLabel}>E-mail</label>
-                <input type="email" style={ros.fieldInput} value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} />
-                {editingUser.id && (
-                  <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>Modifier l'e-mail change aussi l'identifiant de connexion de l'utilisateur.</div>
-                )}
+              {/* Poste à côté de l'e-mail : les tuiles de rôle prennent plus de
+                  place que l'ancienne liste, la fenêtre garde sa hauteur. */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                <div>
+                  <label style={ros.fieldLabel}>E-mail</label>
+                  <input type="email" style={ros.fieldInput} value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} />
+                  {editingUser.id && (
+                    <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>Modifier l'e-mail change aussi l'identifiant de connexion de l'utilisateur.</div>
+                  )}
+                </div>
+                <div><label style={ros.fieldLabel}>Poste / Fonction</label><input type="text" style={ros.fieldInput} value={editingUser.poste} placeholder="Ex: Cheffe de partie" onChange={e => setEditingUser({ ...editingUser, poste: e.target.value })} /></div>
               </div>
               <div>
                 <label style={ros.fieldLabel}>{editingUser.id ? 'Nouveau mot de passe' : 'Mot de passe temporaire *'}</label>
@@ -677,34 +693,48 @@ const Roles = ({ user }) => {
                     : 'Vous devrez transmettre ce mot de passe à l\'utilisateur. Il pourra le changer après sa première connexion.'}
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={ros.fieldLabel}>Rôle</label>
-                  <select style={ros.fieldInput} value={editingUser.role} onChange={e => setEditingUser({ ...editingUser, role: e.target.value })}>
-                    {Object.entries(demoData.roles).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+              {/* Le rôle se choisit d'un toucher, une tuile par rôle (même
+                  valeur écrite que l'ancienne liste déroulante). */}
+              <div>
+                <div id="roles-choix-role" style={ros.fieldLabel}>Rôle</div>
+                <div role="radiogroup" aria-labelledby="roles-choix-role" style={ros.rolesGrille}>
+                  {Object.entries(demoData.roles).map(([k, v]) => {
+                    const choisi = editingUser.role === k;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={choisi}
+                        data-role-choix={k}
+                        onClick={() => setEditingUser({ ...editingUser, role: k })}
+                        style={{ ...stFenetre.choix, ...ros.roleTuile, ...(choisi ? ros.roleTuileChoisie : null) }}
+                      >
+                        <span style={{ ...stFenetre.choixTitre, fontSize: 13, lineHeight: 1.25 }}>{v.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div><label style={ros.fieldLabel}>Poste / Fonction</label><input type="text" style={ros.fieldInput} value={editingUser.poste} placeholder="Ex: Cheffe de partie" onChange={e => setEditingUser({ ...editingUser, poste: e.target.value })} /></div>
               </div>
               <div>
                 <label style={ros.fieldLabel}>Établissements attribués</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))', gap: 6, marginTop: 4 }}>
                   {(demoData.etablissements || []).map(e => (
                     <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
                       <input type="checkbox" checked={editingUser.etablissementIds?.includes(e.id)} onChange={() => toggleEtabForUser(e.id)} style={{ accentColor: 'var(--accent)' }} />
-                      <span style={{ fontSize: 13 }}>{e.nom}</span>
+                      <span style={{ fontSize: 13 }} data-no-translate>{e.nom}</span>
                       <span style={{ fontSize: 11, color: 'var(--text2)' }}>- {e.type}</span>
                     </label>
                   ))}
                 </div>
               </div>
-              <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              {/* « Compte actif » sur la ligne des boutons : « Créer » reste à
+                  l'écran du téléphone malgré les tuiles de rôle. */}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginRight: 'auto', minHeight: 44 }}>
                   <input type="checkbox" checked={editingUser.actif !== false} onChange={e => setEditingUser({ ...editingUser, actif: e.target.checked })} style={{ accentColor: 'var(--accent)' }} />
                   Compte actif
                 </label>
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
                 <button style={ros.ghostBtn} onClick={() => setShowUserForm(false)}>Annuler</button>
                 <button style={ros.addBtn} onClick={saveUser}>{editingUser.id ? 'Enregistrer' : 'Créer'}</button>
               </div>
@@ -722,20 +752,34 @@ const ros = {
   addBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
   ghostBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
   smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
+  titre: { fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2 },
   permLayout: { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 14, alignItems: 'start' },
-  peopleCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
-  personRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', minHeight: 52, background: 'transparent', borderWidth: 0, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)' },
-  personActive: { background: 'var(--accent-light)', borderLeftColor: 'var(--accent)' },
+  // Qui fait quoi : une carte par personne, empilées.
+  peopleCol: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
+  personCard: {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 12px', minHeight: 50, boxSizing: 'border-box',
+    background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
+    cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
+  },
+  personActive: { background: 'var(--accent-light)', borderColor: 'var(--accent)' },
+  personNom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  personLigne: { fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 },
   modulesCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', minWidth: 0 },
   modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap', gap: 10 },
   moduleList: { display: 'flex', flexDirection: 'column' },
-  moduleRow: { display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' },
-  // Droit d'action sous son module : en retrait, sans icône, libellé plus petit.
-  droitRow: { padding: '0 18px 0 34px' },
+  // Un module : sa ligne (nom, interrupteur), puis ses cases quand il est ouvert.
+  moduleBloc: { padding: '2px 12px 4px 18px', borderBottom: '1px solid var(--border)' },
+  moduleRow: { display: 'flex', alignItems: 'center', gap: 8 },
+  // « Modifier » et les droits d'action sous leur module : en retrait, libellé nommé.
+  droitRow: { display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 6 },
+  rolesGrille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 96px), 1fr))', gap: 6, marginTop: 2 },
+  // 44 px : la cible au doigt, pas plus, la fenêtre garde sa hauteur sur téléphone.
+  roleTuile: { minHeight: 44, padding: '6px 8px', justifyContent: 'center' },
+  roleTuileChoisie: { borderColor: 'var(--accent)', background: 'var(--accent-light)' },
   permBadge: { fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap', flexShrink: 0 },
   userAvatar: { width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 14, width: 500, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  modal: { background: 'var(--surface)', borderRadius: 14, width: 640, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
   modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
   fieldLabel: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
