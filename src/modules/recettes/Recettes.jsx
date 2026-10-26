@@ -21,6 +21,11 @@ import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { navigateToPage } from '../../services/navigationService.js';
 import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
+import AccueilRecettes from './AccueilRecettes.jsx';
+import ChoixEtiquette, { champRecherche } from './ChoixEtiquette.jsx';
 
 
 // CARTES & RECETTES
@@ -49,6 +54,15 @@ const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v
 const tempsFiche = (r) => [['Prépa', r.tempsPreparation], ['Cuisson', r.tempsCuisson], ['Total', r.tempsTotal]].filter(([, v]) => Number(v) > 0);
 // Allergènes en toutes lettres, jamais en codes de deux lettres.
 const nomsAllergenes = (ids) => (ids || []).map((a) => ALLERGENES_MAP[a] || a).join(', ');
+
+// Titres des écrans du parcours qui reprennent la barre et les vues d'aujourd'hui.
+const TITRES_ECRAN = { chercher: 'Je cherche une fiche', carte: 'La carte du moment', gerer: 'Gérer les cartes' };
+// Où en est une lecture, pour les lignes d'état : rien une fois lue ; sinon le
+// chargement, ou le nouvel essai programmé après un échec (réveil, réseau).
+const lectureEnCours = (status) => {
+  if (status === 'ready') return null;
+  return status === 'error' ? <>indisponible, nouvel essai en cours</> : <>Chargement…</>;
+};
 
 // ─── PanneauEtat : grand panneau centré (vide, chargement, indisponible) ───
 // Un chargement en cours ou une lecture en échec ne doit JAMAIS s'afficher
@@ -1419,6 +1433,43 @@ const Recettes = ({ user, etablissement }) => {
     setDefaultCarteId(legacySB?.db?.getUserSettingSync?.('cartes_default:' + etabId, null) || null);
   }, [etabId]);
 
+  // Écran du parcours : l'accueil (une tuile par tâche), puis un écran par
+  // tâche. La carte du moment et la recherche se rouvrent à la visite suivante
+  // (lecture en service) ; Une étiquette et Gérer repartent de l'accueil.
+  // Revenir à l'accueil vide la frappe, referme l'étiquette et quitte
+  // l'onglet Bibliothèque de Gérer (la carte du moment rouvre une carte).
+  const { ecran, setEcran, retourAccueil } = useEcranModule('recettes', {
+    repris: ['carte', 'chercher'],
+    surRetour: () => {
+      setSearch('');
+      setEtiquetteRecette(null);
+      setActiveTab(t => (t === LIBRARY_TAB ? '' : t));
+    },
+  });
+
+  // Fiche ouverte : le geste retour et Échap la referment vers l'écran d'où
+  // elle a été ouverte, comme son bouton « Retour ». Échap ne fait rien dans
+  // un champ ni sous une fenêtre : une Fenetre se ferme seule, la fenêtre
+  // d'étiquette (qui n'en est pas une) reste ouverte comme aujourd'hui, au lieu
+  // que l'écran parte sous elle.
+  const fermerFiche = React.useCallback(() => setSelectedRecette(null), []);
+  useBackLayer(Boolean(selectedRecette), fermerFiche, 'recettes-fiche');
+  React.useEffect(() => {
+    if (!selectedRecette && !etiquetteRecette) return undefined;
+    const echap = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('[data-fenetre]')) return;
+      if (document.querySelector('.modal-sheet-overlay')) { e.preventDefault(); return; }
+      if (!selectedRecette || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      e.preventDefault();
+      fermerFiche();
+    };
+    // Phase de capture : passe avant le retour à l'accueil du module
+    // (useEcranModule), qui laisse la main à un Échap déjà traité.
+    document.addEventListener('keydown', echap, true);
+    return () => document.removeEventListener('keydown', echap, true);
+  }, [selectedRecette, etiquetteRecette, fermerFiche]);
+
   const toggleDefaultCarte = async (carteId) => {
     const next = defaultCarteId === carteId ? null : carteId;
     setDefaultCarteId(next);
@@ -1524,12 +1575,14 @@ const Recettes = ({ user, etablissement }) => {
   // Atterrissage : à l'ouverture (activeTab vide) ou si la carte courante a
   // disparu, on bascule sur la carte d'accueil définie par l'utilisateur, sinon
   // la 1re carte. Un choix explicite déjà valide (carte ou bibliothèque) est respecté.
+  // activeTab compte aussi : le retour à l'accueil depuis la bibliothèque de
+  // Gérer le vide, pour que la carte du moment rouvre une carte.
   React.useEffect(() => {
     if (!cartes.length) return;
     if (activeTab === LIBRARY_TAB || cartes.some(c => c.id === activeTab)) return;
     const saved = legacySB?.db?.getUserSettingSync?.('cartes_default:' + etabId, null);
     setActiveTab(saved && cartes.some(c => c.id === saved) ? saved : cartes[0].id);
-  }, [cartes, etabId]);
+  }, [cartes, etabId, activeTab]);
 
   // Plats de la carte active (M2M via carteIds). Les plats sans recette
   // rattachée s'affichent quand même sur la carte.
@@ -1576,7 +1629,7 @@ const Recettes = ({ user, etablissement }) => {
     return platsAilleurs.length + recettesEtab.filter(r => match(r.nom) && !dejaVues.has(r.id)).length;
   })();
   const voirDansBibliotheque = ailleursCount > 0 ? (
-    <button type="button" style={rs.searchElsewhereBtn} onClick={() => setActiveTab(LIBRARY_TAB)}>
+    <button type="button" style={rs.searchElsewhereBtn} onClick={() => (ecran === 'carte' ? setEcran('chercher') : setActiveTab(LIBRARY_TAB))}>
       {ailleursCount} autre{ailleursCount > 1 ? 's' : ''} résultat{ailleursCount > 1 ? 's' : ''} hors de cette carte : voir dans la bibliothèque ›
     </button>
   ) : null;
@@ -1616,42 +1669,101 @@ const Recettes = ({ user, etablissement }) => {
     </>
   );
 
+  if (ecran === ECRAN_ACCUEIL) return (
+    <div style={rs.root}>
+      {fenetres}
+      <AccueilRecettes
+        fiches={dataStatus === 'ready' ? recettesEtab.length : null}
+        lectureFiches={lectureEnCours(dataStatus)}
+        carte={activeCarte}
+        lectureCartes={lectureEnCours(cartesStatus)}
+        canEtiqueter={canEtiqueter}
+        canGerer={canManageCartes}
+        consultant={isConsultant}
+        onChercher={() => setEcran('chercher')}
+        onCarte={() => setEcran('carte')}
+        onAllergenes={() => setShowIngredientSearch(true)}
+        onEtiquette={() => setEcran('etiquette')}
+        onExporter={() => setShowExportModal(true)}
+        onGerer={() => setEcran('gerer')}
+      />
+    </div>
+  );
+
+  if (ecran === 'etiquette') return (
+    <div style={rs.root}>
+      {fenetres}
+      <EcranTache titre="Une étiquette" etat={<>Choisissez la préparation</>} onRetour={retourAccueil} />
+      <ChoixEtiquette recettes={recettesEtab} chargement={lectureEnCours(dataStatus)} onChoisir={setEtiquetteRecette} />
+    </div>
+  );
+
+  // La carte du moment, Je cherche une fiche, Gérer les cartes : la barre et
+  // les vues d'aujourd'hui sous l'en-tête de l'écran. La carte du moment garde
+  // les onglets de cartes sans les outils de gestion, la loupe passe dans
+  // l'en-tête ; Gérer garde la barre entière, onglet Bibliothèque compris ;
+  // Je cherche une fiche ouvre la bibliothèque sous un champ toujours ouvert.
+  const gerer = ecran === 'gerer';
+  const vueBiblio = ecran === 'chercher' || (gerer && isLibrary);
   return (
     <div style={rs.root}>
       {fenetres}
+      <EcranTache
+        titre={TITRES_ECRAN[ecran]}
+        etat={ecran === 'chercher' ? <>par nom de plat ou de recette</> : null}
+        onRetour={retourAccueil}
+        actions={ecran === 'carte' ? <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" /> : null}
+      />
+      {ecran === 'chercher' && (
+        <input
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
+          autoFocus
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Nom d'un plat ou d'une recette"
+          aria-label="Nom d'un plat ou d'une recette"
+          style={champRecherche}
+        />
+      )}
       {/* Barre d'outils. Mobile : onglets en bande scrollable (1 ligne) + actions
           compactes (icônes) sur une 2e ligne → pas de pavé qui mange l'écran.
           Desktop : onglets + actions groupées à droite. */}
-      <div style={rs.toolbar}>
-        <div style={isMobile ? rs.tabsWrapMobile : rs.tabsWrap}>
-          <CarteTabBar
-            cartes={cartes}
-            activeId={activeTab}
-            onSelect={setActiveTab}
-            extraTabs={[{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }]}
-            canManage={canManageCartes}
-            onAddCarte={addCarte}
-            onRenameCarte={renameCarte}
-            onDeleteCarte={deleteCarte}
-            archivedCartes={archivedCartes}
-            onArchiveCarte={archiveCarte}
-            canHide={isConsultant}
-            onHideCarte={masquerCarte}
-            homeId={defaultCarteId}
-            onReorderCartes={reorderCartes}
-          />
+      {ecran !== 'chercher' && (
+        <div style={rs.toolbar}>
+          <div style={isMobile ? rs.tabsWrapMobile : rs.tabsWrap}>
+            <CarteTabBar
+              cartes={cartes}
+              activeId={activeTab}
+              onSelect={setActiveTab}
+              extraTabs={gerer ? [{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }] : []}
+              canManage={gerer && canManageCartes}
+              onAddCarte={addCarte}
+              onRenameCarte={renameCarte}
+              onDeleteCarte={deleteCarte}
+              archivedCartes={archivedCartes}
+              onArchiveCarte={archiveCarte}
+              canHide={gerer && isConsultant}
+              onHideCarte={masquerCarte}
+              homeId={defaultCarteId}
+              onReorderCartes={reorderCartes}
+            />
+          </div>
+          {gerer && (
+            <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
+              <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />
+              {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
+                  en icône seule (une loupe), il se confondait avec la loupe de recherche. */}
+              <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
+              <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
+            </div>
+          )}
+          {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
         </div>
-        <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
-          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />
-          {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
-              en icône seule, la loupe 🔎 se confondait avec la loupe de recherche. */}
-          <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
-          <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
-        </div>
-        {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
-      </div>
+      )}
 
-      {!isLibrary ? (
+      {!vueBiblio ? (
         !activeCarte ? (
           // « Aucune carte » ne s'affiche que si la lecture a VRAIMENT abouti sur
           // zéro carte. Tant qu'elle est en cours ou en échec (tablette qui sort
