@@ -29,6 +29,10 @@ import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 import { usePlanningModeles } from '../../hooks/usePlanningModeles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
+import AccueilPlanning from './AccueilPlanning.jsx';
+import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -61,7 +65,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const browserWindow = getBrowserWindow();
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
-  const [activeTab, setActiveTab] = React.useState(initialTab || 'planning');
 
   const getMondayOfCurrentWeek = () => {
     const d = new Date();
@@ -87,6 +90,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Horaires dont un pointage est en cours d'envoi : un double tap sur l'iPad
   // partagé ne repart pas en second appel (qui reviendrait en « déjà pointé »).
   const punchEnCoursRef = React.useRef(new Set());
+  // Même garde pour l'arrivée hors planning, et un temps mort après chaque
+  // toucher de la tuile « J'arrive » : un double tap ne pointe pas le départ.
+  const horsPlanningEnCoursRef = React.useRef(false);
+  const dernierGesteRef = React.useRef(-Infinity);
   const [isMobile, setIsMobile] = React.useState(browserWindow?.innerWidth < 768);
 
   // === Export CCNT ===
@@ -131,15 +138,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const groupeDeId = (userId) => groupesEtab.groupeDe(userById.get(userId) || { id: userId });
   const nomDe = (userId) => userDisplay(userId).name;
 
-  // Un compte partagé ouvre le module sur le pointage.
-  const pointageOuvertRef = React.useRef(false);
-  React.useEffect(() => {
-    if (estComptePoste && !initialTab && !pointageOuvertRef.current) {
-      pointageOuvertRef.current = true;
-      setActiveTab('pointage');
-    }
-  }, [estComptePoste, initialTab]);
-
   // canPoint(shift) : le propriétaire du shift, un manager (pour corriger), ou
   // un compte de pointage partagé rattaché au groupe de la personne. Même règle
   // que peut_pointer_pour() côté base.
@@ -180,16 +178,26 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [showDupliquer, setShowDupliquer] = React.useState(false);
   const [exportOuvert, setExportOuvert] = React.useState(false);
 
-  // « Mon planning » : la vue de chaque personne planifiée. C'est la vue
-  // d'ouverture de ceux qui ne gèrent pas le planning.
+  // Chaque personne planifiée a ses horaires et pointe pour elle-même ; pas
+  // un compte de pointage partagé, qui n'est pas une personne.
   const moiPlanifie = equipe.some(u => u.id === user.id);
-  const ongletMoiOuvertRef = React.useRef(false);
+  const pointePourMoi = moiPlanifie && !estComptePoste;
+
+  // Un écran par tâche (socle des parcours) : l'accueil du module, puis Mes
+  // horaires, L'équipe aujourd'hui ou la grille. activeTab garde le nom des
+  // anciens onglets pour les conditions de rendu (null sur l'accueil).
+  const { ecran, setEcran, retourAccueil } = useEcranModule('planning', { surRetour: () => setRemplissage(null) });
+  const activeTab = { horaires: 'moi', equipe: 'pointage', planning: 'planning' }[ecran] || null;
+
+  // Un compte partagé, et la page Pointage (« X n'a pas pointé » du tableau
+  // de bord), ouvrent le module sur le pointage du jour.
+  const pointageOuvertRef = React.useRef(false);
   React.useEffect(() => {
-    if (moiPlanifie && !canWrite && !estComptePoste && !initialTab && !ongletMoiOuvertRef.current) {
-      ongletMoiOuvertRef.current = true;
-      setActiveTab('moi');
+    if ((estComptePoste || initialTab === 'pointage') && !pointageOuvertRef.current) {
+      pointageOuvertRef.current = true;
+      setEcran('equipe');
     }
-  }, [moiPlanifie, canWrite, estComptePoste, initialTab]);
+  }, [estComptePoste, initialTab, setEcran]);
 
   // ─── Groupes : filtre et sections ───
   // Un compte partagé qui ne gère pas le planning ne voit au pointage que ses
@@ -562,6 +570,30 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const pointerArrivee = (shift) => pointer(shift, 'arrivee');
   const pointerDepart = (shift) => pointer(shift, 'depart');
+
+  // Arrivée sans horaire prévu, même chemin que le tableau de bord
+  // (pointageDuJour.js) : horaire provisoire affiché, puis celui du serveur ;
+  // hors-ligne, il reste affiché et part en file.
+  const pointerHorsPlanning = async () => {
+    if (!legacySB || horsPlanningEnCoursRef.current) return;
+    horsPlanningEnCoursRef.current = true;
+    const provisoire = horaireHorsPlanning({ etablissementId: etabId, userId: user.id, date: zurichToday() });
+    setPlanning(prev => [...prev, provisoire]);
+    try {
+      const res = await envoyerHorsPlanning(legacySB, provisoire);
+      if (res.mode === 'online') {
+        const mapped = legacySB.db.mapShiftFromDB(res.row);
+        setPlanning(prev => prev.map(s => s.id === provisoire.id ? mapped : s));
+      } else {
+        notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
+      }
+    } catch (err) {
+      setPlanning(prev => prev.filter(s => s.id !== provisoire.id));
+      notifyLegacy('Pointage (arrivée) non enregistré. ' + messageErreur(err, 'pointage'), 'error');
+    } finally {
+      horsPlanningEnCoursRef.current = false;
+    }
+  };
 
   const resetPointage = async (shift) => {
     if (!confirmLegacy('Réinitialiser le pointage ?')) return;
@@ -1273,21 +1305,73 @@ const Planning = ({ user, etablissement, initialTab }) => {
     );
   };
 
+  // ─── Accueil du module : la personne, l'équipe du jour, la semaine ───
+  const aujourdhuiZ = zurichToday();
+  const maintenantZ = zurichClock();
+  const mesHoraires = planningEtab.filter(s => s.userId === user.id);
+  const mesHorairesDuJour = mesHoraires.filter(s => s.date === aujourdhuiZ);
+  const dureePointee = mesHorairesDuJour.reduce((t, s) => t + (calcHeures(s.pointageDebut, s.pointageFin, s.pause) || 0), 0);
+  const jour = pointePourMoi ? { ...pointageDuJour(mesHorairesDuJour), duree: dureeLisible(dureePointee) } : null;
+  // Prochain service : le premier qui n'est pas encore terminé (même règle que MonPlanning).
+  const prochainService = mesHoraires
+    .filter(s => s.date > aujourdhuiZ || (s.date === aujourdhuiZ && (s.fin || '') > maintenantZ))
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.debut || '').localeCompare(b.debut || ''))[0] || null;
+  // L'équipe du jour se compte en personnes : arrivées sur prévues.
+  const duJour = planningVisible.filter(s => s.date === aujourdhuiZ);
+  const equipeDuJour = { pointes: new Set(duJour.filter(s => s.pointageDebut).map(s => s.userId)).size, total: new Set(duJour.map(s => s.userId)).size };
+  const lundiZ = ajouterJoursIso(aujourdhuiZ, -((new Date(aujourdhuiZ + 'T12:00:00').getDay() + 6) % 7));
+  const horairesSemaine = planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6)).length;
+
+  // Un geste, une action : le départ en cours, l'arrivée prévue, ou l'arrivée
+  // hors planning ; un second toucher dans la foulée est ignoré.
+  const pointerDepuisAccueil = () => {
+    const t = performance.now();
+    if (t - dernierGesteRef.current < 1500) return;
+    dernierGesteRef.current = t;
+    if (jour.action === 'depart') pointerDepart(jour.shift);
+    else if (jour.action === 'arrivee') pointerArrivee(jour.shift);
+    else pointerHorsPlanning();
+  };
+
+  // Choix de « Gérer », partagés par la barre de la grille et la tuile Gérer
+  // de l'accueil, avec les gardes d'aujourd'hui.
+  const choixAbsences = absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) };
+  const choixModeles = canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => setShowModeles(true) };
+  const choixGroupes = groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => setShowGroupes(true) };
+  const choixMasques = canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => setShowMasques(true) };
+  const titreEcran = { horaires: 'Mes horaires', equipe: 'L\'équipe aujourd\'hui', planning: canWrite ? 'Faire le planning' : 'La semaine de l\'équipe' }[ecran];
+
   return (
     <div style={pls.root}>
-      {/* ─── Header : onglets + navigation temporelle ─── */}
-      <div style={pls.tabs} className="no-print">
-        <SegmentedTabs
-          active={activeTab}
-          onChange={(v) => { setActiveTab(v); setRemplissage(null); }}
-          tabs={[
-            ...(moiPlanifie && !estComptePoste ? [{ id: 'moi', label: 'Mon planning' }] : []),
-            { id: 'planning', label: canWrite ? 'Planning' : 'Équipe' },
-            { id: 'pointage', label: 'Pointage' },
+      {/* ─── Accueil du module, ou en-tête de l'écran de tâche ─── */}
+      {ecran === ECRAN_ACCUEIL ? (
+        <AccueilPlanning
+          jour={jour}
+          prochain={prochainService}
+          equipe={equipeDuJour}
+          semaine={horairesSemaine}
+          canWrite={canWrite}
+          gerer={[
+            // Sur téléphone, les cartes du pointage n'ouvrent pas le détail : pas de correction.
+            !isMobile && { titre: 'Corriger un pointage', detail: 'Touchez ensuite la ligne de la personne.', onClick: () => setEcran('equipe') },
+            choixAbsences, choixModeles, choixGroupes, choixMasques,
+            { titre: 'Dupliquer la semaine', onClick: () => setShowDupliquer(true) },
+            canExport && { titre: 'Exporter', onClick: () => setExportOuvert(true) },
           ]}
+          onPointer={pointerDepuisAccueil}
+          onHoraires={() => setEcran('horaires')}
+          onEquipe={() => setEcran('equipe')}
+          onPlanning={() => setEcran('planning')}
         />
+      ) : (
+        <EcranTache titre={titreEcran} onRetour={retourAccueil} />
+      )}
+
+      {/* ─── Navigation temporelle de l'écran ─── */}
+      {(activeTab === 'pointage' || (activeTab === 'planning' && !isMobile)) && (
+      <div style={pls.tabs} className="no-print">
         <div style={{ flex: 1 }} />
-        {activeTab === 'moi' ? null : activeTab === 'planning' ? (!isMobile && (
+        {activeTab === 'planning' ? (
           <>
             <div style={pls.weekNav}>
               <button style={pls.navArrow} onClick={() => shiftWeek(-1)} title="Semaine précédente" aria-label="Semaine précédente">‹</button>
@@ -1298,16 +1382,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <input type="date" aria-label="Semaine affichée" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={pls.datePicker} />
             {[1, 2, 3].map(n => <button key={n} style={{ ...pls.smallBtn, ...(horizon === n ? pls.smallBtnActive : {}) }} onClick={() => setHorizon(n)}>{n} sem.</button>)}
           </>
-        )) : (
+        ) : (
           <input type="date" aria-label="Jour affiché" value={pointageDate} onChange={e => setPointageDate(e.target.value)} style={pls.datePicker} />
         )}
       </div>
+      )}
 
       {/* ─── Actions du module (posées, jamais flottantes ; scroll horizontal sur mobile) ─── */}
       {/* Quatre entrées : Ajouter, Dupliquer, Exporter, Gérer. Les actions
           rares sont rangées dans des fenêtres (portail : la barre défile sur
           téléphone et couperait un menu posé dedans). */}
-      {activeTab !== 'moi' && (
+      {(activeTab === 'planning' || activeTab === 'pointage') && (
       <div className="module-actions no-print">
         {canWrite && activeTab === 'planning' && (
           <BoutonActions
@@ -1341,10 +1426,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
           titre="Gérer le planning"
           sections={[{ items: [
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
-            activeTab === 'planning' && absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) },
-            canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => setShowModeles(true) },
-            groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => setShowGroupes(true) },
-            canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => setShowMasques(true) },
+            activeTab === 'planning' && choixAbsences,
+            choixModeles,
+            choixGroupes,
+            choixMasques,
           ] }]}
         />
       </div>
@@ -1370,7 +1455,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       )}
 
       {/* Filtre par groupe (Salle, Cuisine, groupes ajoutés) */}
-      {ongletsGroupes && activeTab !== 'moi' && (
+      {ongletsGroupes && (activeTab === 'planning' || activeTab === 'pointage') && (
         <div style={pls.groupeFiltre}>
           <SegmentedTabs size="sm" active={filtreEffectif} onChange={setGroupeFiltre} tabs={ongletsGroupes} />
         </div>
@@ -1446,7 +1531,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
           </div>
         )
-      ) : (
+      ) : activeTab === 'pointage' ? (
         isMobile ? renderMobilePointage() : (
           <div style={pls.card} id="pointage-print">
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)', marginBottom: 10 }}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
@@ -1485,7 +1570,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
           </div>
         )
-      )}
+      ) : null}
 
       {/* Modale détail */}
       {/* Fenêtres sur Fenetre : portail, rôle de dialogue, Échap, « × » nommé,
