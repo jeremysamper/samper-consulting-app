@@ -4,7 +4,7 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
-import { estCompte } from './inventaireLignes.js';
+import { dateCH, estCompte } from './inventaireLignes.js';
 import { zoneOf } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
 
@@ -19,7 +19,6 @@ import ChoixZone from './ChoixZone.jsx';
 // (catégorie, type, recherche) sont les siens.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 // Feuilles du format d'import Samper, en mots : la valeur brute ne parle pas.
 const TYPES_LIGNE = { sec: 'sec', positif: 'froid positif', negatif: 'froid négatif' };
 const chfKpi = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

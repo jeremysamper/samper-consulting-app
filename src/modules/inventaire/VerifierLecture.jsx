@@ -1,10 +1,11 @@
 import React from 'react';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { Btn } from '../../components/ui/index.jsx';
-import EnTeteEcran from './EnTeteEcran.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
 import LignesARattacher from './LignesARattacher.jsx';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import { libelleType, prixLusDuDocument } from './achatsLogic.js';
+import { dateCH } from './inventaireLignes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // « Vérifier la lecture » : chaque document lu passe par cet écran, un à la
@@ -19,8 +20,7 @@ import { libelleType, prixLusDuDocument } from './achatsLogic.js';
 // Les écritures restent dans Inventaire.jsx (onEnregistrer, enregistrerDoc).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
-const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const chf =(n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // « 1'234.50 », « 1 234,50 », « 454.5 » : saisie libre du montant.
 // null = vide, undefined = illisible.
 const lireMontant = (texte) => {
@@ -111,12 +111,11 @@ export default function VerifierLecture({
   const styleChamp = (cle) => ({ ...st.input, ...(nonLu[cle] ? { borderColor: 'var(--warning-bd)' } : {}) });
 
   return (
-    <>
-      <EnTeteEcran
-        titre="Vérifier la lecture"
-        sousTitre={<>Document <span>{position}</span> / <span>{total}</span></>}
-        onRetour={onRetour}
-      />
+    <EcranTache
+      titre="Vérifier la lecture"
+      etat={<>Document <span>{position}</span> / <span>{total}</span></>}
+      onRetour={onRetour}
+    >
       <div style={st.carte}>
         <div style={st.ligneTitre}>
           <div style={st.resume}>
@@ -219,7 +218,7 @@ export default function VerifierLecture({
       )}
 
       {apercu && <VisionneusePieces doc={doc} etabId={etabId} onClose={fermerApercu} />}
-    </>
+    </EcranTache>
   );
 }
 

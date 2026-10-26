@@ -11,6 +11,7 @@ import {
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import LignesARattacher from './LignesARattacher.jsx';
 import { useRapprochement } from './useRapprochement.js';
+import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,8 +39,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
-const qte = (n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
+const qte =(n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
 
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,

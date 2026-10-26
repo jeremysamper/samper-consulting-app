@@ -15,6 +15,10 @@ import { normalizeName } from '../../services/recipeProductMatching.js';
 export const CATEGORIES_INVENTAIRE = ['Viandes', 'Poissons', 'Légumes', 'Fruits', 'Produits laitiers', 'Féculents', 'Épicerie', 'Boissons', 'Autres'];
 export const UNITES_INVENTAIRE = ['pcs', 'kg', 'g', 'L', 'ml', 'btl', 'cs', 'cc'];
 
+// Date ISO (aaaa-mm-jj) affichée à la suisse (jj.mm.aaaa) ; vide si absente.
+// Seule copie du module, hors etatInventaire.js (chargé à la demande).
+export const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
+
 export const estCompte = (l) => l?.stockReel != null && l.stockReel !== '';
 
 // Recalcule écarts et valeurs d'un inventaire (muté sur place, puis renvoyé).

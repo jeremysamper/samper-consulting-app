@@ -4,6 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { libelleType } from './achatsLogic.js';
+import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11,8 +12,6 @@ import { messageErreur } from '../../utils/messageErreur.js';
 // revus (bucket `documents`, <etab>/achats/<id du document>/). Partagé par les
 // onglets « Achats & consommation » et « Factures ».
 // ─────────────────────────────────────────────────────────────────────────────
-
-const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 
 // Types acceptés par le bucket `documents`. Le type se déduit de l'extension
 // quand le navigateur ne le donne pas (photos HEIC sur Safari).

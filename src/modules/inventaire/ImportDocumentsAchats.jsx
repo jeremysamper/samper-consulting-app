@@ -4,6 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { TYPES_DOCUMENT, devinerTypeDocument, trouverDoublon } from './achatsLogic.js';
 import { estPdfFichier, preparerPieces } from './achatsPieces.jsx';
+import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,7 +25,6 @@ import { messageErreur } from '../../utils/messageErreur.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CONCURRENCE = 3;
-const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 
 export default function ImportDocumentsAchats({
   user, etabId, perimetreActif, docsRef, onImporte, tableAbsente, type = 'facture', fournisseurs = [],

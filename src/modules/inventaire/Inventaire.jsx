@@ -4,7 +4,6 @@ import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { removeStorageKeys } from '../../utils/storage.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
@@ -17,12 +16,13 @@ import {
 } from '../../services/offline/inventaireSync.js';
 import { isNetworkError } from '../../services/offline/offlineNet.js';
 import {
-  recalcInventaire, parseQuantite, estCompte, cleProduit,
+  recalcInventaire, parseQuantite, estCompte, cleProduit, dateCH,
   ligneDepuisProduit, ligneLibre, lignesReprises,
 } from './inventaireLignes.js';
 import AccueilInventaire from './AccueilInventaire.jsx';
 import ChoixPerimetre from './ChoixPerimetre.jsx';
-import EnTeteEcran from './EnTeteEcran.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import EcranComptage from './EcranComptage.jsx';
 import EcartsPanel from './EcartsPanel.jsx';
 import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
@@ -58,11 +58,9 @@ const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date |
 // Mémorisé sous sc_inventaire_ecran ; seuls les écrans qui se suffisent à
 // eux-mêmes sont repris à l'ouverture suivante, un import ou un choix de
 // périmètre repart de l'accueil.
-const ECRANS_REPRIS = ['accueil', 'comptage', 'ecarts', 'reglement'];
-// Clé des anciens onglets de vues : lue une fois pour être effacée.
+const ECRANS_REPRIS = ['comptage', 'ecarts', 'reglement'];
+// Clé des anciens onglets de vues : effacée à l'ouverture du module.
 const ANCIENNE_CLE_VUE = 'sc_inventaire_vue';
-
-const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 
 // Actions rares du module, rangées derrière deux boutons nommés : « Exporter »
 // (PDF, Excel, impression, ouverts à toute l'équipe) et « Gérer » (création,
@@ -157,29 +155,34 @@ const Inventaire = ({ user, etablissement }) => {
   // la même règle (déclencheur achats_documents_garde_reglement). Hors de ce
   // droit, aucun statut de paiement n'apparaît dans le module.
   const canRegler = canManageModule(user.role, 'factures_achat');
-  const [ecran, setEcran] = React.useState(() => {
-    // Les onglets de vues n'existent plus : la clé est effacée, sa valeur
-    // n'est pas reprise, tout le monde découvre l'accueil du module.
-    if (readLegacyStorage(ANCIENNE_CLE_VUE, null) != null) removeStorageKeys([ANCIENNE_CLE_VUE]);
-    const memo = readLegacyStorage('sc_inventaire_ecran', 'accueil');
-    if (memo === 'reglement' && !canRegler) return 'accueil';
-    return ECRANS_REPRIS.includes(memo) ? memo : 'accueil';
-  });
-  // Type du document qu'on dépose, donné par la tuile d'entrée.
-  const [importType, setImportType] = React.useState('facture');
-  // Les écrans d'import et de règlement restent montés une fois ouverts : une
-  // lecture de documents en cours ne s'arrête pas parce qu'on revient à
-  // l'accueil du module.
-  const [importOuvert, setImportOuvert] = React.useState(ecran === 'import');
-  const [reglementOuvert, setReglementOuvert] = React.useState(ecran === 'reglement');
-  // Factures et bons d'achat : une seule liste pour tout le module, lue dès
-  // le montage (l'accueil compte les documents à compléter et à régler).
-  const achats = useAchatsDocuments(etabId);
   // File des documents à vérifier après lecture (ids), dans l'ordre d'import ;
   // les documents déjà « à compléter » passent en tête à l'ouverture d'une
   // tuile d'import. `suiteVerification` : l'écran repris une fois la file vide.
   const [aVerifier, setAVerifier] = React.useState([]);
-  const [suiteVerification, setSuiteVerification] = React.useState('accueil');
+  const [suiteVerification, setSuiteVerification] = React.useState(ECRAN_ACCUEIL);
+  // Écran courant (socle des parcours) : mémorisé sous sc_inventaire_ecran ;
+  // « Je règle les factures » n'est repris que si le droit est là. « Retour »
+  // vide la file de vérification : un document laissé à moitié reste signalé
+  // « à compléter », il n'est pas rouvert d'office.
+  const { ecran, setEcran, retourAccueil } = useEcranModule('inventaire', {
+    repris: canRegler ? ECRANS_REPRIS : ECRANS_REPRIS.filter(e => e !== 'reglement'),
+    surRetour: () => setAVerifier([]),
+  });
+  // Les onglets de vues n'existent plus : la clé est effacée, sa valeur
+  // n'est pas reprise, tout le monde découvre l'accueil du module.
+  // Provisoire : à retirer quelques semaines après la mise en prod du lot 1
+  // (26.10.2026), quand plus aucun appareil ne porte la clé.
+  React.useEffect(() => { removeStorageKeys([ANCIENNE_CLE_VUE]); }, []);
+  // Type du document qu'on dépose, donné par la tuile d'entrée.
+  const [importType, setImportType] = React.useState('facture');
+  // Les écrans d'import et de règlement restent montés une fois ouverts : une
+  // lecture de documents en cours ne s'arrête pas parce qu'on revient à
+  // l'accueil du module. L'import n'est jamais repris à l'ouverture.
+  const [importOuvert, setImportOuvert] = React.useState(false);
+  const [reglementOuvert, setReglementOuvert] = React.useState(ecran === 'reglement');
+  // Factures et bons d'achat : une seule liste pour tout le module, lue dès
+  // le montage (l'accueil compte les documents à compléter et à régler).
+  const achats = useAchatsDocuments(etabId);
   // Fournisseurs connus : suggestions de « Vérifier la lecture », rattachement à l'import.
   const [fournisseurs, setFournisseurs] = React.useState([]);
   const importXlsxRef = React.useRef(null);
@@ -283,27 +286,9 @@ const Inventaire = ({ user, etablissement }) => {
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_selected', selectedId); }, [selectedId]);
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_perimetre', perimetreActif); }, [perimetreActif]);
   React.useEffect(() => {
-    writeLegacyStorage('sc_inventaire_ecran', ecran);
     if (ecran === 'import') setImportOuvert(true);
     if (ecran === 'reglement') setReglementOuvert(true);
   }, [ecran]);
-  // Geste retour, Échap et le bouton « Retour » ramènent à l'accueil du
-  // module ; le retour à l'accueil de l'app reste celui de la coque.
-  const retourAccueil = React.useCallback(() => { setAVerifier([]); setEcran('accueil'); }, []);
-  useBackLayer(ecran !== 'accueil', retourAccueil, 'inventaire-ecran');
-  // Échap aussi, sauf quand une fenêtre est ouverte (elle se ferme seule,
-  // Fenetres.jsx) ou qu'un champ a la main (Échap y annule la frappe).
-  React.useEffect(() => {
-    if (ecran === 'accueil') return undefined;
-    const echap = (e) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
-      if (document.querySelector('[data-fenetre], [role="dialog"]')) return;
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
-      retourAccueil();
-    };
-    document.addEventListener('keydown', echap);
-    return () => document.removeEventListener('keydown', echap);
-  }, [ecran, retourAccueil]);
 
   // Pile d'inventaires de chaque périmètre, la plus récente d'abord : accueil
   // du module, « Quel périmètre ? » et ouverture directe du comptage.
@@ -528,13 +513,12 @@ const Inventaire = ({ user, etablissement }) => {
     setAVerifier(reste);
     if (!reste.length) setEcran(suiteVerification);
   };
-  const terminerVerification = () => { setAVerifier([]); setEcran('accueil'); };
   // « Retour » avant « Enregistrer » : les champs tapés sont perdus, le
   // document et sa photo restent, et il reste signalé « à compléter ».
+  // « Terminer » est le retour simple (retourAccueil vide la file).
   const quitterVerification = () => {
     if (docAVerifier && estACompleter(docAVerifier)) notifyLegacy('Document gardé, à compléter plus tard.', 'info');
-    setAVerifier([]);
-    setEcran('accueil');
+    retourAccueil();
   };
 
   // Document entier réécrit (lignes rattachées, type, périmètre) : jamais
@@ -832,9 +816,10 @@ const Inventaire = ({ user, etablissement }) => {
   // Aucun inventaire dans l'établissement : l'accueil du module se rend quand
   // même (on peut déjà déposer des documents) ; les écrans qui ont besoin
   // d'un inventaire le disent et proposent d'en créer un.
+  // Le nom du périmètre est une donnée : jamais traduit, rendu dans son nœud.
+  const nomPerimetre = <span data-no-translate>{perimetreActif}</span>;
   const renderSansInventaire = () => (
-    <>
-      <EnTeteEcran titre={<span data-no-translate>{perimetreActif}</span>} onRetour={retourAccueil} />
+    <EcranTache titre={nomPerimetre} onRetour={retourAccueil}>
       <div style={{ padding: 40, textAlign: 'center' }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
@@ -843,7 +828,7 @@ const Inventaire = ({ user, etablissement }) => {
         {loadError && <div style={invs.loadError}>Données indisponibles pour le moment. Ne créez pas d'inventaire avant d'avoir réessayé.</div>}
         <button style={invs.addBtn} onClick={() => openNewInventory()} type="button">Créer le premier inventaire</button>
       </div>
-    </>
+    </EcranTache>
   );
 
   // ─── Validation ───
@@ -1398,6 +1383,10 @@ const Inventaire = ({ user, etablissement }) => {
     setTimeout(action, 80);
   };
 
+  // Conteneur d'un écran gardé monté (import, règlement) : caché hors de son
+  // écran plutôt que démonté, une lecture en cours continue.
+  const ecranGarde = (id) => ({ display: ecran === id ? 'flex' : 'none', flexDirection: 'column', gap: 16, minWidth: 0 });
+
   const printInventory = () => {
     if (!pdfUtils?.printElement) {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
@@ -1465,7 +1454,7 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
       )}
 
-      {ecran === 'accueil' && (
+      {ecran === ECRAN_ACCUEIL && (
         <AccueilInventaire
           perimetreActif={perimetreActif}
           perimetres={perimetres}
@@ -1537,27 +1526,33 @@ const Inventaire = ({ user, etablissement }) => {
       ) : renderSansInventaire())}
 
       {ecran === 'ecarts' && (inv ? (
-        <>
-          <EnTeteEcran titre="Écarts et documents" sousTitre={<span data-no-translate>{perimetreActif}</span>} onRetour={retourAccueil}>
-            <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)} aria-label="Inventaire affiché">
-              {(inventaires || []).map(i => <option key={i.id} value={i.id}>{dateCH(i.date)}, {i.statut}</option>)}
-            </select>
-            <BoutonActions
-              id="inventaire-exporter"
-              label={exportEnCours ? 'Export en cours…' : 'Exporter'}
-              style={invs.exportBtn}
-              disabled={exportEnCours}
-              titre="Exporter l'inventaire"
-              sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}${estValide ? ', validé' : ', en cours'}`}
-              sections={[{
-                items: [
-                  { titre: 'PDF', detail: "L'état d'inventaire complet, prêt à envoyer ou à archiver.", onClick: () => exporterEtat('pdf') },
-                  { titre: 'Excel', detail: 'Le même état au format du classeur, à reprendre dans un tableur.', onClick: () => exporterEtat('xlsx') },
-                  { titre: 'Imprimer', detail: "Le tableau des écarts et des valeurs, envoyé à l'imprimante.", onClick: printInventory },
-                ],
-              }]}
-            />
-          </EnTeteEcran>
+        <EcranTache
+          titre="Écarts et documents"
+          etat={nomPerimetre}
+          onRetour={retourAccueil}
+          actions={(
+            <>
+              <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)} aria-label="Inventaire affiché">
+                {(inventaires || []).map(i => <option key={i.id} value={i.id}>{dateCH(i.date)}, {i.statut}</option>)}
+              </select>
+              <BoutonActions
+                id="inventaire-exporter"
+                label={exportEnCours ? 'Export en cours…' : 'Exporter'}
+                style={invs.exportBtn}
+                disabled={exportEnCours}
+                titre="Exporter l'inventaire"
+                sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}${estValide ? ', validé' : ', en cours'}`}
+                sections={[{
+                  items: [
+                    { titre: 'PDF', detail: "L'état d'inventaire complet, prêt à envoyer ou à archiver.", onClick: () => exporterEtat('pdf') },
+                    { titre: 'Excel', detail: 'Le même état au format du classeur, à reprendre dans un tableur.', onClick: () => exporterEtat('xlsx') },
+                    { titre: 'Imprimer', detail: "Le tableau des écarts et des valeurs, envoyé à l'imprimante.", onClick: printInventory },
+                  ],
+                }]}
+              />
+            </>
+          )}
+        >
           <EcartsPanel
             inv={inv}
             previousInv={previousInv}
@@ -1602,7 +1597,7 @@ const Inventaire = ({ user, etablissement }) => {
               onCompleter={(d) => ouvrirVerification([d.id], 'ecarts')}
             />
           </React.Suspense>
-        </>
+        </EcranTache>
       ) : renderSansInventaire())}
 
       {/* Créer un produit ou reporter un prix écrit dans l'inventaire AFFICHÉ :
@@ -1630,49 +1625,50 @@ const Inventaire = ({ user, etablissement }) => {
           onEnregistrer={(valeurs) => enregistrerLecture(docAVerifier, valeurs)}
           onRetour={quitterVerification}
           onSuivant={passerAuSuivant}
-          onTerminer={terminerVerification}
+          onTerminer={retourAccueil}
         />
       ) : (
-        <>
-          <EnTeteEcran titre="Vérifier la lecture" onRetour={retourAccueil} />
+        <EcranTache titre="Vérifier la lecture" onRetour={retourAccueil}>
           <div style={{ fontSize: 13, color: 'var(--text2)', padding: '12px 14px' }}>Rien à vérifier.</div>
-        </>
+        </EcranTache>
       ))}
 
       {importOuvert && (
-        <div style={{ display: ecran === 'import' ? 'flex' : 'none', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-          <EnTeteEcran
+        <div style={ecranGarde('import')}>
+          <EcranTache
             titre={importType === 'facture' ? 'Facture reçue' : 'Livraison reçue'}
-            sousTitre={<span data-no-translate>{perimetreActif}</span>}
+            etat={nomPerimetre}
             onRetour={retourAccueil}
-          />
-          <ImportDocumentsAchats
-            user={user}
-            etabId={etabId}
-            perimetreActif={perimetreActif}
-            docsRef={achats.docsRef}
-            tableAbsente={achats.tableAbsente}
-            type={importType}
-            fournisseurs={fournisseurs}
-            onImporte={documentLu}
-          />
+          >
+            <ImportDocumentsAchats
+              user={user}
+              etabId={etabId}
+              perimetreActif={perimetreActif}
+              docsRef={achats.docsRef}
+              tableAbsente={achats.tableAbsente}
+              type={importType}
+              fournisseurs={fournisseurs}
+              onImporte={documentLu}
+            />
+          </EcranTache>
         </div>
       )}
 
       {reglementOuvert && canRegler && (
-        <div style={{ display: ecran === 'reglement' ? 'flex' : 'none', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-          <EnTeteEcran titre="Je règle les factures" sousTitre={<span data-no-translate>{perimetreActif}</span>} onRetour={retourAccueil} />
-          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
-            <FacturesPanel
-              user={user}
-              etabId={etabId}
-              perimetreActif={perimetreActif}
-              datesInventaires={datesInventairesPerimetre}
-              canRegler={canRegler}
-              canModifier={canManage || canRegler}
-              achats={achats}
-            />
-          </React.Suspense>
+        <div style={ecranGarde('reglement')}>
+          <EcranTache titre="Je règle les factures" etat={nomPerimetre} onRetour={retourAccueil}>
+            <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+              <FacturesPanel
+                user={user}
+                etabId={etabId}
+                perimetreActif={perimetreActif}
+                datesInventaires={datesInventairesPerimetre}
+                canRegler={canRegler}
+                canModifier={canManage || canRegler}
+                achats={achats}
+              />
+            </React.Suspense>
+          </EcranTache>
         </div>
       )}
 
