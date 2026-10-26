@@ -63,6 +63,19 @@ export function rangerParPeriode(factures, periodes) {
   return groupes;
 }
 
+// Dans une période : les factures à régler par échéance croissante (la plus
+// pressée en tête), puis celles sans échéance, puis les réglées ; à égalité,
+// la plus récente d'abord.
+export function trierParEcheance(factures) {
+  const rang = (f) => (f.regleLe ? 2 : f.dateEcheance ? 0 : 1);
+  return (factures || []).slice().sort((a, b) => {
+    const r = rang(a) - rang(b);
+    if (r) return r;
+    if (rang(a) === 0 && a.dateEcheance !== b.dateEcheance) return String(a.dateEcheance).localeCompare(String(b.dateEcheance));
+    return String(b.dateDocument || '').localeCompare(String(a.dateDocument || ''));
+  });
+}
+
 // 'reglee' | 'en_retard' | 'a_regler'. `aujourdhui` : date du jour à Zurich.
 export function statutPaiement(f, aujourdhui) {
   if (f.regleLe) return 'reglee';

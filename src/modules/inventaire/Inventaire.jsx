@@ -1592,6 +1592,7 @@ const Inventaire = ({ user, etablissement }) => {
               catalogue={catalogue}
               canEditLignes={canEditLignes}
               canAppliquerPrix={canGererLignes}
+              canModifierDocs={canManage}
               canRegler={canRegler}
               achats={achats}
               onAjouterLignes={ajouterLignes}

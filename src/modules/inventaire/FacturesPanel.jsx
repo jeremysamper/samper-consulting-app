@@ -11,11 +11,10 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { Btn } from '../../components/ui/index.jsx';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
-import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import {
   MODES_REGLEMENT, libelleMode, periodesFactures, rangerParPeriode, statutPaiement,
-  totauxFactures, joursEntre, dateLongue, intervalleLong, lendemainIso,
+  totauxFactures, trierParEcheance, joursEntre, dateLongue, intervalleLong, lendemainIso,
 } from './facturesLogic.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,18 +55,18 @@ const FILTRES = [
 ];
 
 export default function FacturesPanel({
-  user, etabId, perimetreActif, datesInventaires, canRegler, canModifier, achats,
+  etabId, perimetreActif, datesInventaires, canRegler, canModifier, achats,
 }) {
   const legacySB = dbService.getBridge();
-  // Documents partagés avec l'onglet Achats (useAchatsDocuments, tenu par Inventaire.jsx).
+  // Documents partagés avec « Écarts et documents » (useAchatsDocuments, tenu par Inventaire.jsx).
   const {
-    docs, tousLesDocs, tableAbsente, loadError, docsRef, majDocs, reload, avecPieces, setAvecPieces,
+    docs, tousLesDocs, tableAbsente, loadError, docsRef, majDocs, reload, avecPieces,
   } = achats;
   const aujourdhui = zurichToday();
 
-  const [filtre, setFiltre] = React.useState('toutes');
+  // Ouvert sur ce qu'il reste à payer : c'est pour ça qu'on vient ici.
+  const [filtre, setFiltre] = React.useState('a_regler');
   const [recherche, setRecherche] = React.useState('');
-  const [importOuvert, setImportOuvert] = React.useState(false);
   // Périodes dépliées ou repliées à la main ; les autres suivent leur défaut.
   const [plis, setPlis] = React.useState({});
   const [ouverte, setOuverte] = React.useState(null); // id de la facture dépliée
@@ -305,26 +304,8 @@ export default function FacturesPanel({
         )}
       </div>
 
-      {/* ── Import : replié, la liste passe d'abord. Masqué plutôt que démonté :
-          une lecture en cours continue quand on le referme. ── */}
-      <div style={{ display: importOuvert ? 'block' : 'none' }}>
-        <ImportDocumentsAchats
-          user={user}
-          etabId={etabId}
-          perimetreActif={perimetreActif}
-          docsRef={docsRef}
-          tableAbsente={tableAbsente}
-          typeParDefaut="facture"
-          onImporte={(doc, pieceGardee) => {
-            majDocs(liste => [doc, ...liste]);
-            if (pieceGardee) setAvecPieces(s => new Set(s).add(doc.id));
-          }}
-          titre="Importer des factures"
-          sousTitre={<>PDF reçus par mail ou photos. Chaque facture est lue automatiquement (fournisseur, date, montant à payer, échéance) et rangée dans « <span data-no-translate>{perimetreActif}</span> ». Ses lignes servent aussi au calcul des achats.</>}
-        />
-      </div>
-
-      {/* ── Barre : filtres, recherche, import, sélection ── */}
+      {/* ── Barre : filtres, recherche, sélection (l'import a sa tuile
+          « Facture reçue » sur l'accueil du module) ── */}
       <div style={st.barre}>
         <SegmentedTabs
           size="sm"
@@ -342,9 +323,6 @@ export default function FacturesPanel({
         />
         <div style={st.barreDroite}>
           <SearchToggle value={recherche} onChange={setRecherche} placeholder="Fournisseur, numéro…" />
-          <Btn small variant={importOuvert ? 'primary' : 'ghost'} onClick={() => setImportOuvert(v => !v)}>
-            {importOuvert ? 'Fermer l’import' : 'Importer des factures'}
-          </Btn>
           {canRegler && !sel.active && factures.length > 0 && (
             <Btn small variant="ghost" onClick={sel.enter}>Sélectionner</Btn>
           )}
@@ -383,7 +361,7 @@ export default function FacturesPanel({
 
       {factures.length === 0 && (
         <div style={st.info}>
-          Aucune facture « <span data-no-translate>{perimetreActif}</span> » pour l'instant. Importez-les avec « Importer des factures » :
+          Aucune facture « <span data-no-translate>{perimetreActif}</span> » pour l'instant. Déposez-les avec « Facture reçue » depuis l'accueil du module :
           elles seront rangées par période d'inventaire.
           {nbBons > 0 && ` ${nbBons} bon${nbBons > 1 ? 's' : ''} de livraison ou de commande ${nbBons > 1 ? 'sont' : 'est'} dans l'onglet Achats & consommation.`}
         </div>
@@ -399,8 +377,8 @@ export default function FacturesPanel({
 
       {/* ── Périodes ── */}
       {blocs.map(p => {
-        const liste = groupes.get(p.id).slice()
-          .sort((a, b) => String(b.dateDocument || '').localeCompare(String(a.dateDocument || '')));
+        // La plus pressée en tête : échéance croissante, sans échéance ensuite, réglées en dernier.
+        const liste = trierParEcheance(groupes.get(p.id));
         // Totaux et pastille sur TOUTES les factures de la période, pas sur
         // celles que le filtre ou la recherche laissent voir : sinon, filtre
         // « Réglées » actif, une période encore due s'affichait « tout est réglé ».
@@ -629,7 +607,7 @@ function LigneFacture({
               {f.regleMode ? `, ${libelleMode(f.regleMode).toLowerCase()}` : ''}
             </span>
           ) : canRegler && !selectionActive ? (
-            <Btn small variant="primary" onClick={onRegler}>Marquer réglée</Btn>
+            <Btn variant="primary" onClick={onRegler}>Marquer réglée</Btn>
           ) : (
             <span style={{ ...st.pastille, ...(statut === 'en_retard' ? st.pastilleRetard : st.pastilleARegler) }}>
               {statut === 'en_retard' ? 'En retard' : 'À régler'}

@@ -42,7 +42,7 @@ const qte = (n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
 
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,
-  canEditLignes, canAppliquerPrix = canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats, onCompleter,
+  canEditLignes, canAppliquerPrix = canEditLignes, canModifierDocs = true, canRegler, onAjouterLignes, onMajPrix, achats, onCompleter,
 }) {
   const legacySB = dbService.getBridge();
   // Documents partagés avec l'onglet Factures (useAchatsDocuments, tenu par Inventaire.jsx).
@@ -96,7 +96,7 @@ export default function AchatsPanel({
   };
 
   const supprimerDoc = async (doc) => {
-    if (!confirmLegacy(`Supprimer le document ${libelleType(doc.typeDocument).toLowerCase()} ${doc.numero || ''} de ${doc.fournisseurNom || 'fournisseur inconnu'} ?\nIl sort du calcul des achats${doc.regleLe ? ' et de la liste des factures, avec son règlement' : ''}.`)) return;
+    if (!confirmLegacy(`Supprimer le document ${libelleType(doc.typeDocument).toLowerCase()} ${doc.numero || ''} de ${doc.fournisseurNom || 'fournisseur inconnu'} ?\nIl sort du calcul des achats et de la liste des factures.`)) return;
     majDocs(liste => liste.filter(d => d.id !== doc.id));
     try { await legacySB.db.deleteAchatsDocument(doc.id); }
     catch (err) { notifyLegacy('Suppression impossible. ' + messageErreur(err, 'achats'), 'error'); reload(); return; }
@@ -284,9 +284,11 @@ export default function AchatsPanel({
                     type="date"
                     value={d.dateDocument || ''}
                     onChange={e => enregistrerDoc({ ...d, dateDocument: e.target.value || null })}
-                    // Facture réglée : sa date est verrouillée en base pour qui ne règle pas les factures.
+                    // Facture réglée : sa date est verrouillée en base pour qui ne règle pas
+                    // les factures. Le libellé ne dit pas pourquoi : hors de ce droit,
+                    // aucun statut de paiement n'apparaît dans le module.
                     disabled={!!d.regleLe && !canRegler}
-                    title={d.regleLe && !canRegler ? 'Facture réglée : date verrouillée' : undefined}
+                    title={d.regleLe && !canRegler ? 'Date verrouillée' : undefined}
                     style={{ ...st.select, ...(d.dateDocument ? {} : { borderColor: 'var(--warning-bd)' }) }}
                     aria-label="Date du document"
                   />
@@ -323,7 +325,7 @@ export default function AchatsPanel({
                         <span style={{ flex: '0 0 80px', textAlign: 'right' }}>{l.montantLigne != null ? chf(l.montantLigne) : 'non lu'}</span>
                         <span style={{ flex: '2 1 180px', minWidth: 0, color: r.produit ? 'var(--text)' : r.mode === 'ignore' ? 'var(--text2)' : 'var(--warning-text)' }}>
                           {r.produit ? <>produit : <span data-no-translate>{r.produit.nom}</span></> : r.mode === 'ignore' ? 'ignorée' : 'à rattacher'}
-                          {(l.lien === 'manuel' || l.lien === 'ignore') && (
+                          {canModifierDocs && (l.lien === 'manuel' || l.lien === 'ignore') && (
                             <button type="button" style={st.lien} onClick={() => delier(normalizeName(l.libelle))} title="Annuler ce choix" aria-label="Annuler ce choix"> ×</button>
                           )}
                         </span>
@@ -339,16 +341,19 @@ export default function AchatsPanel({
                     >
                       {Array.from(new Set([...(perimetres || []), (d.perimetre || '').trim() || 'Général'])).map(p => <option key={p} value={p}>Périmètre : {p}</option>)}
                     </select>
-                    <button type="button" style={st.btnMini} onClick={() => enregistrerDoc({ ...d, exclu: !d.exclu })}>
-                      {d.exclu ? 'Réintégrer au calcul' : 'Exclure du calcul'}
-                    </button>
+                    {/* Exclure, supprimer, délier : case « Modifier » du module (canModifierDocs). */}
+                    {canModifierDocs && (
+                      <button type="button" style={st.btnMini} onClick={() => enregistrerDoc({ ...d, exclu: !d.exclu })}>
+                        {d.exclu ? 'Réintégrer au calcul' : 'Exclure du calcul'}
+                      </button>
+                    )}
                     {/* Une facture réglée est une pièce comptable : la base refuse sa
                         suppression à qui n'a pas le droit de régler les factures. */}
-                    {d.regleLe && !canRegler ? (
-                      <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Facture réglée : seule une personne qui règle les factures peut la supprimer.</span>
+                    {canModifierDocs && (d.regleLe && !canRegler ? (
+                      <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Suppression réservée à la direction.</span>
                     ) : (
                       <button type="button" style={{ ...st.btnMini, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => supprimerDoc(d)}>Supprimer</button>
-                    )}
+                    ))}
                     {d.nomFichier && <span data-no-translate style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>{d.nomFichier}</span>}
                     {!avecPieces.has(d.id) && <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Pas de photo conservée pour ce document.</span>}
                   </div>
