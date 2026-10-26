@@ -94,6 +94,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // toucher de la tuile « J'arrive » : un double tap ne pointe pas le départ.
   const horsPlanningEnCoursRef = React.useRef(false);
   const dernierGesteRef = React.useRef(-Infinity);
+  const [enCoursAccueil, setEnCoursAccueil] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(browserWindow?.innerWidth < 768);
 
   // === Export CCNT ===
@@ -1311,26 +1312,33 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const mesHoraires = planningEtab.filter(s => s.userId === user.id);
   const mesHorairesDuJour = mesHoraires.filter(s => s.date === aujourdhuiZ);
   const dureePointee = mesHorairesDuJour.reduce((t, s) => t + (calcHeures(s.pointageDebut, s.pointageFin, s.pause) || 0), 0);
-  const jour = pointePourMoi ? { ...pointageDuJour(mesHorairesDuJour), duree: dureeLisible(dureePointee) } : null;
+  const jour = pointePourMoi ? { ...pointageDuJour(mesHorairesDuJour), duree: dureeLisible(dureePointee), enCours: enCoursAccueil } : null;
   // Prochain service : le premier qui n'est pas encore terminé (même règle que MonPlanning).
   const prochainService = mesHoraires
     .filter(s => s.date > aujourdhuiZ || (s.date === aujourdhuiZ && (s.fin || '') > maintenantZ))
     .sort((a, b) => a.date.localeCompare(b.date) || (a.debut || '').localeCompare(b.debut || ''))[0] || null;
-  // L'équipe du jour se compte en personnes : arrivées sur prévues.
-  const duJour = planningVisible.filter(s => s.date === aujourdhuiZ);
+  // L'équipe du jour se compte en personnes : arrivées sur prévues, parmi
+  // celles que l'écran montre (un compte partagé ne voit que ses groupes).
+  const duJour = planningVisible.filter(s => s.date === aujourdhuiZ
+    && (!(groupesActifs && estComptePoste && !canWrite) || mesGroupesPoste.has(groupeDeId(s.userId))));
   const equipeDuJour = { pointes: new Set(duJour.filter(s => s.pointageDebut).map(s => s.userId)).size, total: new Set(duJour.map(s => s.userId)).size };
   const lundiZ = ajouterJoursIso(aujourdhuiZ, -((new Date(aujourdhuiZ + 'T12:00:00').getDay() + 6) % 7));
   const horairesSemaine = planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6)).length;
 
   // Un geste, une action : le départ en cours, l'arrivée prévue, ou l'arrivée
   // hors planning ; un second toucher dans la foulée est ignoré.
-  const pointerDepuisAccueil = () => {
+  const pointerDepuisAccueil = async () => {
     const t = performance.now();
-    if (t - dernierGesteRef.current < 1500) return;
+    if (enCoursAccueil || t - dernierGesteRef.current < 1500) return;
     dernierGesteRef.current = t;
-    if (jour.action === 'depart') pointerDepart(jour.shift);
-    else if (jour.action === 'arrivee') pointerArrivee(jour.shift);
-    else pointerHorsPlanning();
+    setEnCoursAccueil(true);
+    try {
+      if (jour.action === 'depart') await pointerDepart(jour.shift);
+      else if (jour.action === 'arrivee') await pointerArrivee(jour.shift);
+      else await pointerHorsPlanning();
+    } finally {
+      setEnCoursAccueil(false);
+    }
   };
 
   // Choix de « Gérer », partagés par la barre de la grille et la tuile Gérer

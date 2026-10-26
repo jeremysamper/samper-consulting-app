@@ -863,6 +863,7 @@ export const UI_GLOSSARY_ES = {
   'Faire le planning': 'Hacer el horario',
   "La semaine de l'équipe": 'La semana del equipo',
   'prévu à': 'previsto a las',
+  'pointage en cours': 'fichaje en curso',
   'journée pointée': 'jornada fichada',
   'hors planning, ajouté au planning à votre nom': 'fuera del horario, añadido al horario a tu nombre',
   'aucun service prévu': 'ningún turno previsto',

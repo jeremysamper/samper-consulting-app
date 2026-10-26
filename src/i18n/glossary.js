@@ -882,6 +882,7 @@ export const UI_GLOSSARY = {
   'Faire le planning': 'Make the schedule',
   "La semaine de l'équipe": "The team's week",
   'prévu à': 'planned at',
+  'pointage en cours': 'clocking in progress',
   'journée pointée': 'day clocked',
   'hors planning, ajouté au planning à votre nom': 'off schedule, added to the schedule under your name',
   'aucun service prévu': 'no shift planned',

@@ -18,6 +18,7 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 const jourCH = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
 function etatDuJour(jour) {
+  if (jour.enCours) return <>pointage en cours</>;
   if (jour.action === 'arrivee') return <>prévu à <span>{jour.shift.debut}</span></>;
   if (jour.action === 'depart') return <>en poste depuis <span>{jour.shift.pointageDebut}</span></>;
   if (jour.termine) return <>journée pointée, <span>{jour.duree}</span></>;
