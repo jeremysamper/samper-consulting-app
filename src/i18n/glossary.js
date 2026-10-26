@@ -897,6 +897,27 @@ export const UI_GLOSSARY = {
   'Dupliquer la semaine': 'Duplicate the week',
   'Pointage enregistré : il sera synchronisé au retour du réseau': 'Clock-in saved: it will sync when the network is back',
 
+  // ── Cartes & Recettes par tâche : accueil du module ──
+  'Je cherche une fiche': "I'm looking for a recipe",
+  'La carte du moment': "Today's menu",
+  'Une étiquette': 'A label',
+  'Gérer les cartes': 'Manage menus',
+  'fiche': 'recipe',
+  'fiches': 'recipes',
+  'aucune carte': 'no menu',
+  'ou un ingrédient, dans quelles fiches': 'or an ingredient, in which recipes',
+  "DLC d'une préparation": 'use-by label for a preparation',
+  'une carte, des plats ou des fiches en PDF': 'a menu, dishes or recipes as PDF',
+  'ajouter, renommer, archiver, ordre': 'add, rename, archive, order',
+  'ajouter, renommer, archiver, ordre, cacher': 'add, rename, archive, order, hide',
+  'par nom de plat ou de recette': 'by dish or recipe name',
+  "Nom d'un plat ou d'une recette": 'Dish or recipe name',
+  'Choisissez la préparation': 'Choose the preparation',
+  'Nom de la préparation': 'Preparation name',
+  'Aucune préparation ne correspond.': 'No preparation matches.',
+  'Aucune préparation pour cet établissement.': 'No preparation for this establishment.',
+  'indisponible, nouvel essai en cours': 'unavailable, retrying',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',

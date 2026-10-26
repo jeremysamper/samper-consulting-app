@@ -878,6 +878,27 @@ export const UI_GLOSSARY_ES = {
   'Dupliquer la semaine': 'Duplicar la semana',
   'Pointage enregistré : il sera synchronisé au retour du réseau': 'Fichaje guardado: se sincronizará cuando vuelva la red',
 
+  // ── Cartes & Recettes par tâche : accueil du module ──
+  'Je cherche une fiche': 'Busco una ficha',
+  'La carte du moment': 'La carta del momento',
+  'Une étiquette': 'Una etiqueta',
+  'Gérer les cartes': 'Gestionar las cartas',
+  'fiche': 'ficha',
+  'fiches': 'fichas',
+  'aucune carte': 'ninguna carta',
+  'ou un ingrédient, dans quelles fiches': 'o un ingrediente, en qué fichas',
+  "DLC d'une préparation": 'etiqueta de caducidad de una preparación',
+  'une carte, des plats ou des fiches en PDF': 'una carta, platos o fichas en PDF',
+  'ajouter, renommer, archiver, ordre': 'añadir, renombrar, archivar, orden',
+  'ajouter, renommer, archiver, ordre, cacher': 'añadir, renombrar, archivar, orden, ocultar',
+  'par nom de plat ou de recette': 'por nombre de plato o de receta',
+  "Nom d'un plat ou d'une recette": 'Nombre de un plato o de una receta',
+  'Choisissez la préparation': 'Elige la preparación',
+  'Nom de la préparation': 'Nombre de la preparación',
+  'Aucune préparation ne correspond.': 'Ninguna preparación coincide.',
+  'Aucune préparation pour cet établissement.': 'Ninguna preparación para este establecimiento.',
+  'indisponible, nouvel essai en cours': 'no disponible, reintentando',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',
