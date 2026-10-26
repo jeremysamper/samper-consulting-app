@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { matchIngredient, normalizeName, tokenize } from '../../services/recipeProductMatching.js';
-import { estCompte } from './inventaireLignes.js';
+import { cleProduit, estCompte, ligneLibre } from './inventaireLignes.js';
 
 export const TYPES_DOCUMENT = [
   { id: 'facture', label: 'Facture', pluriel: 'factures' },
@@ -350,4 +350,46 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
     unitesIncompatibles,
     sansDebut: !previousInv,
   };
+}
+
+// ── Rattachement : produit créé depuis une ligne lue, décision propagée ──
+
+// Unité de comptage d'un produit créé depuis une ligne de document. Un
+// liquide livré « 6 x 75 cl » se compte en bouteilles, comme au bar ; le
+// reste en kg, en L ou à la pièce.
+export const uniteDepuisLigneDoc = (l) => {
+  if (l.uniteTotale === 'ml') {
+    const m = /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b/i.exec(String(l.conditionnement || l.libelle || ''));
+    if (m) {
+      const facteur = { ml: 1, cl: 10, dl: 100, l: 1000 }[m[3].toLowerCase()];
+      const contenance = Number(m[2].replace(',', '.')) * facteur;
+      if (contenance > 0 && contenance <= 1500) return 'btl';
+    }
+    return 'L';
+  }
+  return l.uniteTotale === 'g' ? 'kg' : 'pcs';
+};
+
+// Ligne d'inventaire fabriquée depuis une ligne de document : nom choisi,
+// unité de comptage, prix = montant de la ligne / quantité dans cette unité,
+// catégorie du catalogue quand le nom y existe.
+export function ligneInventaireDepuisDoc(ligneDoc, nom, catalogue) {
+  const unite = uniteDepuisLigneDoc(ligneDoc);
+  const q = quantiteEnUniteInventaire(ligneDoc, unite);
+  const montant = Number(ligneDoc.montantLigne);
+  const prix = q && Number.isFinite(montant) ? montant / q : 0;
+  const produitCat = (catalogue || []).find(p => p?.nom && cleProduit(p.nom) === cleProduit(nom));
+  return ligneLibre(nom, { unite, prixUnit: +prix.toFixed(4), categorie: produitCat?.categorie || 'Autres' });
+}
+
+// Décision (rattacher, ignorer, délier) appliquée à toutes les lignes qui
+// portent ce libellé, dans tous les documents passés. Rend les documents
+// modifiés, à enregistrer un par un ; les autres ne sont pas repris.
+export function appliquerDecision(docs, cleLibelle, patch) {
+  return (docs || [])
+    .filter(d => (d.lignes || []).some(l => normalizeName(l.libelle) === cleLibelle))
+    .map(d => ({
+      ...d,
+      lignes: d.lignes.map(l => (normalizeName(l.libelle) === cleLibelle ? { ...l, ...patch } : l)),
+    }));
 }

@@ -2,15 +2,16 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
-import { cleProduit, ligneLibre } from './inventaireLignes.js';
+import { cleProduit } from './inventaireLignes.js';
 import {
   TYPES_DOCUMENT, libelleType, periodeInventaire, dansPeriode,
-  statutsDocuments, quantiteEnUniteInventaire,
+  statutsDocuments, appliquerDecision,
   construireContexteRapprochement, rapprocherLigneDoc, calculerConsommation,
-  SEUIL_ECART_PRIX_PCT, nomDepuisLibelle,
+  SEUIL_ECART_PRIX_PCT,
 } from './achatsLogic.js';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
+import LignesARattacher from './LignesARattacher.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,25 +41,9 @@ const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDig
 const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 const qte = (n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
 
-// Unité de comptage d'un produit créé depuis une ligne de document. Un
-// liquide livré « 6 x 75 cl » se compte en bouteilles, comme au bar ; le
-// reste en kg, en L ou à la pièce.
-const uniteDepuisLigneDoc = (l) => {
-  if (l.uniteTotale === 'ml') {
-    const m = /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b/i.exec(String(l.conditionnement || l.libelle || ''));
-    if (m) {
-      const facteur = { ml: 1, cl: 10, dl: 100, l: 1000 }[m[3].toLowerCase()];
-      const contenance = Number(m[2].replace(',', '.')) * facteur;
-      if (contenance > 0 && contenance <= 1500) return 'btl';
-    }
-    return 'L';
-  }
-  return l.uniteTotale === 'g' ? 'kg' : 'pcs';
-};
-
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,
-  canImport, canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats,
+  canImport, canEditLignes, canAppliquerPrix = canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats,
 }) {
   const legacySB = dbService.getBridge();
   // Documents partagés avec l'onglet Factures (useAchatsDocuments, tenu par Inventaire.jsx).
@@ -69,7 +54,6 @@ export default function AchatsPanel({
 
   const [tousDocs, setTousDocs] = React.useState(false);
   const [docOuvert, setDocOuvert] = React.useState(null);
-  const [creations, setCreations] = React.useState({}); // cle libellé -> nom en cours
   const [busy, setBusy] = React.useState(false);
   // Document dont on regarde la photo ou le PDF, ou null.
   const [apercu, setApercu] = React.useState(null);
@@ -117,24 +101,12 @@ export default function AchatsPanel({
     [inv, previousInv, docsPeriode, statuts, ctx],
   );
 
-  // Lignes à rattacher, une par libellé : décider une fois vaut pour tous
-  // les documents qui portent ce libellé, ce mois-ci et les suivants.
-  const aRattacher = React.useMemo(() => {
-    const m = new Map();
-    docsPeriode.forEach(d => {
-      if (!statuts.get(d.id)?.compte) return;
-      (d.lignes || []).forEach(l => {
-        const r = rapprocherLigneDoc(l, ctx);
-        if (r.mode !== 'aucun' && r.mode !== 'ambigu') return;
-        const cle = normalizeName(l.libelle);
-        if (!m.has(cle)) m.set(cle, { cle, ligne: l, fournisseur: d.fournisseurNom, suggestions: r.suggestions, montant: 0, occurrences: 0 });
-        const e = m.get(cle);
-        e.montant += Number(l.montantLigne) || 0;
-        e.occurrences += 1;
-      });
-    });
-    return Array.from(m.values()).sort((a, b) => b.montant - a.montant);
-  }, [docsPeriode, statuts, ctx]);
+  // Documents dont les lignes sont à rattacher : ceux de la période qui
+  // comptent dans le calcul (LignesARattacher en fait une entrée par libellé).
+  const docsARattacher = React.useMemo(
+    () => docsPeriode.filter(d => statuts.get(d.id)?.compte),
+    [docsPeriode, statuts],
+  );
 
   // ── Écritures ──
   const enregistrerDoc = async (doc) => {
@@ -157,54 +129,10 @@ export default function AchatsPanel({
     legacySB.db.removeAchatsPieces(etabId, doc.id).catch(err => console.error('[AchatsPanel pièces]', err));
   };
 
-  // Applique une décision à toutes les lignes portant ce libellé, dans tous
-  // les documents de l'établissement.
-  const decider = async (cleLibelle, patch) => {
-    const cibles = (docsRef.current || []).filter(d => (d.lignes || []).some(l => normalizeName(l.libelle) === cleLibelle));
-    for (const d of cibles) {
-      await enregistrerDoc({
-        ...d,
-        lignes: d.lignes.map(l => (normalizeName(l.libelle) === cleLibelle ? { ...l, ...patch } : l)),
-      });
-    }
-  };
-
-  const rattacher = (cleLibelle, produitNom) => decider(cleLibelle, { lien: 'manuel', produitNom });
-  const ignorer = (cleLibelle) => decider(cleLibelle, { lien: 'ignore', produitNom: null });
-  const delier = (cleLibelle) => decider(cleLibelle, { lien: null, produitNom: null });
-
-  // Crée la ligne d'inventaire depuis la ligne de document, puis rattache.
-  const ligneInventaireDepuisDoc = (ligneDoc, nom) => {
-    const unite = uniteDepuisLigneDoc(ligneDoc);
-    const q = quantiteEnUniteInventaire(ligneDoc, unite);
-    const montant = Number(ligneDoc.montantLigne);
-    const prix = q && Number.isFinite(montant) ? montant / q : 0;
-    const produitCat = (catalogue || []).find(p => p?.nom && cleProduit(p.nom) === cleProduit(nom));
-    return ligneLibre(nom, { unite, prixUnit: +prix.toFixed(4), categorie: produitCat?.categorie || 'Autres' });
-  };
-
-  const creerDepuisDoc = async (entree, nom) => {
-    const nomFinal = String(nom || '').trim();
-    if (!nomFinal) return;
-    setBusy(true);
-    try {
-      await onAjouterLignes([ligneInventaireDepuisDoc(entree.ligne, nomFinal)]);
-      await rattacher(entree.cle, nomFinal);
-      setCreations(c => { const s = { ...c }; delete s[entree.cle]; return s; });
-    } finally { setBusy(false); }
-  };
-
-  const toutCreer = async () => {
-    const cibles = aRattacher.filter(e => e.suggestions.length === 0);
-    if (!cibles.length) return;
-    if (!confirmLegacy(`Ajouter ${cibles.length} produit${cibles.length > 1 ? 's' : ''} lu${cibles.length > 1 ? 's' : ''} sur les documents à l'inventaire « ${perimetreActif} » ?\nNom, unité et prix sont repris des documents ; vous pourrez les compter tout de suite.`)) return;
-    setBusy(true);
-    try {
-      const lignes = cibles.map(e => ligneInventaireDepuisDoc(e.ligne, nomDepuisLibelle(e.ligne.libelle, e.ligne.conditionnement)));
-      await onAjouterLignes(lignes);
-      for (let i = 0; i < cibles.length; i += 1) await rattacher(cibles[i].cle, lignes[i].produit);
-      notifyLegacy(`${cibles.length} produit${cibles.length > 1 ? 's' : ''} ajouté${cibles.length > 1 ? 's' : ''} à l'inventaire.`, 'success');
-    } finally { setBusy(false); }
+  // Délier une ligne depuis la liste des documents : même propagation qu'un
+  // rattachement (toutes les lignes de même libellé, tous les documents).
+  const delier = async (cleLibelle) => {
+    for (const d of appliquerDecision(docsRef.current || [], cleLibelle, { lien: null, produitNom: null })) await enregistrerDoc(d);
   };
 
   const prixAMettreAJour = calcul.lignes.filter(r => r.prixFacture != null && r.prixFacture > 0
@@ -234,7 +162,6 @@ export default function AchatsPanel({
   const lignesTableau = calcul.lignes
     .filter(r => r.debutVal || r.achatsVal || r.finVal)
     .sort((a, b) => b.consoVal - a.consoVal);
-  const nomsProduits = produits.map(p => p.nom).sort((a, b) => a.localeCompare(b, 'fr'));
 
   return (
     <div style={st.root}>
@@ -296,78 +223,24 @@ export default function AchatsPanel({
       )}
 
       {/* ── Lignes à rattacher ── */}
-      {aRattacher.length > 0 && (
-        <div style={st.carte}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <div style={st.titre}>À rattacher ({aRattacher.length})</div>
-            {canEditLignes && aRattacher.some(e => e.suggestions.length === 0) && (
-              <button type="button" style={st.btn} disabled={busy} onClick={toutCreer}>
-                {(() => {
-                  const n = aRattacher.filter(e => e.suggestions.length === 0).length;
-                  return n > 1 ? `Ajouter les ${n} produits inconnus à l'inventaire` : 'Ajouter le produit inconnu à l\'inventaire';
-                })()}
-              </button>
-            )}
-          </div>
-          <div style={st.sousTitre}>
-            Lignes lues que l'app n'a pas reconnues avec certitude. Votre choix est mémorisé : ce libellé sera reconnu tout seul sur les prochains documents.
-          </div>
-          <datalist id="achats-produits-inventaire">
-            {nomsProduits.map(n => <option key={n} value={n} />)}
-          </datalist>
-          {aRattacher.map(e => (
-            <div key={e.cle} style={st.aRattacher}>
-              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                <div data-no-translate style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-word' }}>{e.ligne.libelle}</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  <span data-no-translate>{e.fournisseur || 'Fournisseur non lu'}</span>
-                  {', '}CHF {chf(e.montant)}{e.occurrences > 1 ? ` sur ${e.occurrences} documents` : ''}
-                </div>
-              </div>
-              <div style={st.actionsLigne}>
-                {e.suggestions.map(s => (
-                  <button key={s.produit.cle} type="button" style={st.suggestion} onClick={() => rattacher(e.cle, s.produit.nom)}>
-                    {s.produit.nom} <span style={{ color: 'var(--text3, var(--text2))' }}>{s.confidence}%</span>
-                  </button>
-                ))}
-                <input
-                  list="achats-produits-inventaire"
-                  placeholder="Produit de l'inventaire…"
-                  style={st.inputRattacher}
-                  onChange={ev => {
-                    const p = produits.find(x => x.nom === ev.target.value);
-                    if (p) rattacher(e.cle, p.nom);
-                  }}
-                />
-                {canEditLignes && (creations[e.cle] != null ? (
-                  <span style={{ display: 'flex', gap: 6, flex: '1 1 220px', minWidth: 0 }}>
-                    <input
-                      autoFocus
-                      value={creations[e.cle]}
-                      onChange={ev => setCreations(c => ({ ...c, [e.cle]: ev.target.value }))}
-                      onKeyDown={ev => { if (ev.key === 'Enter') creerDepuisDoc(e, creations[e.cle]); if (ev.key === 'Escape') setCreations(c => { const s = { ...c }; delete s[e.cle]; return s; }); }}
-                      style={{ ...st.inputRattacher, flex: 1 }}
-                      aria-label="Nom du produit à créer"
-                    />
-                    <button type="button" style={st.btnMini} disabled={busy} onClick={() => creerDepuisDoc(e, creations[e.cle])}>Créer</button>
-                  </span>
-                ) : (
-                  <button type="button" style={st.btnMini} onClick={() => setCreations(c => ({ ...c, [e.cle]: nomDepuisLibelle(e.ligne.libelle, e.ligne.conditionnement) }))}>
-                    Nouveau produit
-                  </button>
-                ))}
-                <button type="button" style={st.btnMini} onClick={() => ignorer(e.cle)} title="Port, consigne, emballage : hors stock">Ignorer</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <LignesARattacher
+        documents={docsARattacher}
+        ctx={ctx}
+        produits={produits}
+        catalogue={catalogue}
+        perimetreActif={perimetreActif}
+        canCreer={canEditLignes}
+        docsRef={docsRef}
+        enregistrerDoc={enregistrerDoc}
+        onAjouterLignes={onAjouterLignes}
+      />
 
       {/* ── Consommation par produit ── */}
       <div style={st.carte}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <div style={st.titre}>Consommation par produit</div>
-          {canEditLignes && prixAMettreAJour.length > 0 && (
+          {/* Reporter les prix lus sur l'inventaire : case « Modifier » du module. */}
+          {canAppliquerPrix && prixAMettreAJour.length > 0 && (
             <button type="button" style={st.btn} disabled={busy} onClick={appliquerPrix}>
               Mettre à jour {prixAMettreAJour.length} prix avec les dernières factures
             </button>
@@ -566,10 +439,6 @@ const st = {
   btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
   lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 40 },
-  aRattacher: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' },
-  actionsLigne: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', flex: '2 1 300px', minWidth: 0 },
-  suggestion: { padding: '6px 10px', borderRadius: 7, border: '1px solid transparent', background: 'var(--accent-light)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
-  inputRattacher: { flex: '1 1 160px', minWidth: 0, padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--bg)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)', minHeight: 36, boxSizing: 'border-box' },
   tableWrap: { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10, maxWidth: '100%' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 640 },
   th: { textAlign: 'left', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)' },
