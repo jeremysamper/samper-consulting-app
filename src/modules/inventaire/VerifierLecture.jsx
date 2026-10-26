@@ -20,7 +20,7 @@ import { dateCH } from './inventaireLignes.js';
 // Les écritures restent dans Inventaire.jsx (onEnregistrer, enregistrerDoc).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const chf =(n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // « 1'234.50 », « 1 234,50 », « 454.5 » : saisie libre du montant.
 // null = vide, undefined = illisible.
 const lireMontant = (texte) => {

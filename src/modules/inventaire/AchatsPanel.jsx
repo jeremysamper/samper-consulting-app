@@ -39,7 +39,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const qte =(n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
+const qte = (n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
 
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,

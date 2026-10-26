@@ -18,7 +18,7 @@ import { estFacture, totauxFactures } from './facturesLogic.js';
 // une entrée du glossaire au lieu de partir à l'IA à chaque valeur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const plusRecent =(docs) => docs.slice().sort((a, b) => String(b.dateDocument || '').localeCompare(String(a.dateDocument || '')))[0];
+const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument || '').localeCompare(String(a.dateDocument || '')))[0];
 
 export default function AccueilInventaire({
   perimetreActif, perimetres, pilesParPerimetre, inv, docs,
