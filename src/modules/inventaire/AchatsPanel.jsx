@@ -14,10 +14,11 @@ import { useRapprochement } from './useRapprochement.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onglet « Achats & consommation » de l'inventaire.
+// Consommation de la période et documents, sous les écarts de l'écran
+// « Écarts et documents ».
 //
-// On dépose d'un coup toutes les factures et tous les bons de la période
-// (PDF reçus par mail, photos). L'IA lit chaque document, ses lignes sont
+// Les factures et les bons de la période (déposés par « Livraison reçue » et
+// « Facture reçue », lus par l'IA, vérifiés un à un) ont leurs lignes
 // rattachées aux produits de l'inventaire, et le module calcule :
 //
 //   consommation = stock de début + achats - stock de fin
@@ -32,7 +33,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 // Depuis le 03.10.2026, chaque photo ou PDF déposé est aussi gardé (bucket
 // `documents`, <etab>/achats/<id>/) et se revoit par « Voir la photo ».
 // Depuis le 07.10.2026, les documents, l'import et la visionneuse sont
-// partagés avec l'onglet « Factures » (prop `achats` = useAchatsDocuments
+// partagés avec « Je règle les factures » (prop `achats` = useAchatsDocuments
 // appelé par Inventaire.jsx, ImportDocumentsAchats, achatsPieces).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export default function AchatsPanel({
   canEditLignes, canAppliquerPrix = canEditLignes, canModifierDocs = true, canRegler, onAjouterLignes, onMajPrix, achats, onCompleter,
 }) {
   const legacySB = dbService.getBridge();
-  // Documents partagés avec l'onglet Factures (useAchatsDocuments, tenu par Inventaire.jsx).
+  // Documents partagés avec « Je règle les factures » (useAchatsDocuments, tenu par Inventaire.jsx).
   const {
     docs, tousLesDocs, tableAbsente, loadError, docsRef, majDocs, reload, avecPieces, setAvecPieces,
   } = achats;

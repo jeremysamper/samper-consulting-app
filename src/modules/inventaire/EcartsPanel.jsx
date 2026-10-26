@@ -73,7 +73,7 @@ export default function EcartsPanel({
   return (
       <div id="inventaire-print">
         {/* Identité du document : reprise telle quelle dans l'impression et le PDF,
-            où les onglets de périmètre (no-print) ont disparu. */}
+            où l'en-tête de l'écran (no-print) a disparu. */}
         <div style={st.docTitle}>
           <span style={st.docTitlePerimetre}>{perimetreActif}</span>
           <span style={st.docTitleDate}>Inventaire du {inv.date}</span>

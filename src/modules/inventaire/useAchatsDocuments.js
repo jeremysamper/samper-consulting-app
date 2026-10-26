@@ -2,8 +2,9 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Documents d'achat de l'établissement (achats_documents), partagés par les
-// onglets « Achats & consommation » et « Factures » de l'inventaire.
+// Documents d'achat de l'établissement (achats_documents), partagés par tout
+// le module Inventaire : accueil (documents à compléter, factures à régler),
+// import et vérification, « Écarts et documents », « Je règle les factures ».
 //
 // docs : null = chargement, 'absente' = migration non appliquée, sinon la
 // liste. Une lecture en échec garde la liste précédente et lève `loadError` :
@@ -11,11 +12,11 @@ import { dbService } from '../../services/dbService.js';
 // `docsRef` suit la liste à chaque écriture, avant le rendu : la file d'import
 // y cherche les doublons pendant que plusieurs lectures tournent.
 //
-// Appelé UNE fois, par Inventaire.jsx, et passé aux deux onglets : avec une
-// copie par onglet, l'upsert de document entier fait depuis Achats pouvait
-// réécrire une date tout juste corrigée dans Factures, avant que sa copie ne
-// soit rechargée. `actif` : rien n'est lu tant qu'aucun des deux onglets n'a
-// été ouvert, le comptage reste léger.
+// Appelé UNE fois, par Inventaire.jsx, et passé aux écrans : avec une copie
+// par écran, l'upsert de document entier fait d'un côté pouvait réécrire une
+// date tout juste corrigée de l'autre, avant que sa copie ne soit rechargée.
+// Lu dès le montage du module (l'accueil compte les documents à compléter) ;
+// `actif: false` reste possible pour un appelant qui n'en a pas besoin.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useAchatsDocuments(etabId, { actif = true } = {}) {

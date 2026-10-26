@@ -177,8 +177,9 @@ export default function VerifierLecture({
             </div>
             <div style={st.pied}>
               <span style={st.aide}>
+                {/* Chaque champ manquant dans son nœud : la phrase reste au glossaire. */}
                 {manque.length
-                  ? <>{manque.length > 1 ? 'À saisir avant d’enregistrer : ' : 'À saisir avant d’enregistrer : '}{manque.join(', ')}. Le document et sa photo sont déjà gardés.</>
+                  ? <>À saisir avant d’enregistrer : {manque.map((m, i) => <React.Fragment key={m}>{i ? ', ' : ''}<span>{m}</span></React.Fragment>)}. Le document et sa photo sont déjà gardés.</>
                   : illisible ? 'Montant illisible : écrivez par exemple 454.50.' : 'Le document et sa photo sont déjà gardés.'}
               </span>
               <Btn variant="primary" onClick={enregistrer} disabled={!peutEnregistrer}>{busy ? 'Enregistrement…' : 'Enregistrer'}</Btn>

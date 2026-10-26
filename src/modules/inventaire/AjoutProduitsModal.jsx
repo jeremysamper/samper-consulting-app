@@ -196,7 +196,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
           {actifs.length === 0 && source === 'catalogue' && (
             <div style={st.vide}>
               Le catalogue de cet établissement est vide. Tapez un nom ci-dessus pour ajouter un produit hors catalogue,
-              ou importez vos factures dans l'onglet Achats.
+              ou déposez vos factures depuis « Facture reçue ».
             </div>
           )}
           {source === 'fiches' && (

@@ -40,10 +40,11 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 
-// L'onglet Achats embarque la lecture de PDF et le rapprochement : chargé
-// seulement quand on l'ouvre, le comptage reste léger sur la tablette.
+// La consommation et les documents de « Écarts et documents » embarquent le
+// rapprochement et la visionneuse : chargés seulement quand on y va, le
+// comptage reste léger sur la tablette.
 const AchatsPanel = React.lazy(() => import('./AchatsPanel.jsx'));
-// Même principe pour l'onglet Factures (lecture IA, visionneuse).
+// Même principe pour « Je règle les factures ».
 const FacturesPanel = React.lazy(() => import('./FacturesPanel.jsx'));
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
@@ -125,7 +126,7 @@ const Inventaire = ({ user, etablissement }) => {
   // Un seul périmètre à l'écran : tout le module (sélecteur de date, KPI,
   // comparaison vs précédent) ne travaille que sur cette pile.
   const inventaires = inventairesEtab.filter(i => perimetreOf(i) === perimetreActif).sort(parDateDesc);
-  // Bornes des périodes de l'onglet Factures : chaque inventaire du périmètre.
+  // Bornes des périodes de « Je règle les factures » : chaque inventaire du périmètre.
   const datesInventairesPerimetre = inventaires.map(i => i.date);
   const [selectedId, setSelectedId] = React.useState(() => readLegacyStorage('sc_inventaire_selected', inventaires[0]?.id));
   const [showNew, setShowNew] = React.useState(false);
@@ -271,7 +272,7 @@ const Inventaire = ({ user, etablissement }) => {
   }, [etabId]);
 
   // Si l'inventaire sélectionné n'appartient pas au périmètre affiché (changement
-  // d'onglet, d'établissement, suppression), basculer sur le plus récent.
+  // de périmètre, d'établissement, suppression), basculer sur le plus récent.
   React.useEffect(() => {
     if (selectedId && inventaires.some(i => i.id === selectedId)) return;
     setSelectedId(inventaires[0]?.id);
@@ -617,7 +618,7 @@ const Inventaire = ({ user, etablissement }) => {
       let perimetreEnregistre = true;
       for (const item of renommes) {
         // Séquentiel : au premier échec on s'arrête, plutôt que de laisser une
-        // pile à moitié renommée éclatée sur deux onglets.
+        // pile à moitié renommée éclatée sur deux périmètres.
         if (!await saveInvAvecPerimetre(item)) { perimetreEnregistre = false; break; }
       }
       if (!perimetreEnregistre) {
@@ -627,7 +628,7 @@ const Inventaire = ({ user, etablissement }) => {
         appliquerListe(liste => liste.map(i => parId.get(i.id) || i));
         setPerimetre(cible);
         // Les factures et bons du périmètre suivent : sinon ils restent rangés
-        // sous un nom qu'aucun onglet ne propose plus, et ne se règlent plus.
+        // sous un nom qu'aucun périmètre ne porte plus, et ne se règlent plus.
         try {
           await legacySB.db.renommerPerimetreAchats(etabId, perimetreActif, cible);
           achats.reload();
@@ -1016,7 +1017,7 @@ const Inventaire = ({ user, etablissement }) => {
   // ═══ Ajout de produits ═══
   // Trois chemins, du plus rapide au plus complet : taper un nom dans le
   // comptage (catalogue reconnu = unité et prix repris), cocher en masse dans
-  // le catalogue, ou reprendre les produits lus sur les factures (onglet Achats).
+  // le catalogue, ou reprendre les produits lus sur les factures (lignes à rattacher).
   // Un produit déjà présent n'est jamais ajouté deux fois.
   const ajouterLignes = async (nouvelles) => {
     if (!canEditLignes || !nouvelles.length) return [];
@@ -1125,7 +1126,8 @@ const Inventaire = ({ user, etablissement }) => {
     await majLignes(lignes => lignes.map(l => (!estCompte(l) && l.precedent != null ? { ...l, stockReel: l.precedent } : l)));
   };
 
-  // Depuis l'onglet Achats : prix du dernier document appliqué aux lignes.
+  // Depuis « Écarts et documents » ou « Vérifier la lecture » : prix lus sur
+  // les documents appliqués aux lignes.
   // `maj` : [{ cle, prixUnit }]
   const majPrixDepuisAchats = async (maj) => {
     if (!canGererLignes || !maj.length) return 0;
@@ -1300,7 +1302,7 @@ const Inventaire = ({ user, etablissement }) => {
 
           // Créer un nouvel inventaire (ne pas fusionner - c'est un import complet).
           // Il atterrit dans le périmètre affiché : on importe le classeur de la
-          // cuisine depuis l'onglet Cuisine, celui du bar depuis l'onglet Boissons.
+          // cuisine depuis le périmètre Cuisine, celui du bar depuis Boissons.
           const inventaireImporte = {
             id: 'inv-' + Date.now(),
             etablissementId: etabId,
@@ -1405,9 +1407,9 @@ const Inventaire = ({ user, etablissement }) => {
   };
 
   // ─── État d'inventaire (Excel + PDF) au format du classeur établissement ───
-  // Reprend report, achats de la période et relevé : les documents lus dans
-  // l'onglet Achats sont relus ici, au moment de l'export, pour qu'un document
-  // ajouté sur une autre tablette soit pris en compte.
+  // Reprend report, achats de la période et relevé : les documents déposés
+  // sont relus ici, au moment de l'export, pour qu'un document ajouté sur une
+  // autre tablette soit pris en compte.
   const exporterEtat = async (format) => {
     if (exportEnCours || !inv) return;
     setExportEnCours(true);
@@ -1708,14 +1710,11 @@ const Inventaire = ({ user, etablissement }) => {
 };
 
 const invs = {
-  root: {display:'flex',flexDirection:'column',gap:16}, header: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}, headerLeft: {display:'flex',alignItems:'center',gap:12}, headerRight: {display:'flex',gap:8,flexWrap:'wrap'},
-  // minWidth:0 : sans ça la barre d'onglets, enfant flex, est clampée à sa
-  // largeur de contenu et pousse la page en scroll horizontal sur mobile.
-  perimetreBar: {display:'flex',alignItems:'center',gap:10,minWidth:0,maxWidth:'100%'},
+  root: {display:'flex',flexDirection:'column',gap:16},
   loadError: { color:'var(--warning-text)',borderLeft: '2px solid var(--warning-bd)', padding: '10px 0 10px 12px',fontSize:12,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
   fieldHint: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.45},
   saisiesAttente: {fontSize:12,lineHeight:1.5,padding:'10px 14px',borderRadius:8,background:'var(--info-bg, var(--warning-bg))',color:'var(--info-text, var(--warning-text))',border:'1px solid var(--info-bd, var(--warning-bd))'},
-  invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'}, badge: {display:'inline-block',fontSize:13,fontWeight:500,whiteSpace:'nowrap'},
+  invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'},
   // Gabarit des boutons de Btn (38 px sur ordinateur, 44 au toucher par la règle globale) : principal et secondaire.
   addBtn: {minHeight:38,padding:'8px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'1px solid var(--accent)',borderRadius:'var(--r-sm)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)'},
 

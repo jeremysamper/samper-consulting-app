@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onglet « Factures » de l'inventaire, sans React.
+// « Je règle les factures » et accueil du module Inventaire, sans React.
 //
 // Les factures d'un périmètre sont rangées par période d'inventaire : une
 // période se clôt le jour d'un inventaire du périmètre, la suivante démarre
-// le lendemain. Mêmes bornes que l'onglet Achats (periodeInventaire), qui
+// le lendemain. Mêmes bornes que la consommation (periodeInventaire), qui
 // reprend les factures de chaque période pour calculer la consommation :
 //   - période close par l'inventaire du jour J : du lendemain de l'inventaire
 //     précédent jusqu'à J inclus ;

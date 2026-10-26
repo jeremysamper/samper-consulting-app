@@ -18,19 +18,21 @@ import {
 } from './facturesLogic.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onglet « Factures » de l'inventaire (demande de Jérémy, 07.10.2026).
+// Écran « Je règle les factures » de l'inventaire (demande de Jérémy,
+// 07.10.2026 ; tuile de l'accueil du module depuis le 26.10.2026, pour qui a
+// le droit de régler).
 //
 // Les factures du périmètre affiché, rangées par période d'inventaire : la
 // période en cours se clôt toute seule au prochain inventaire du périmètre,
-// la suivante démarre le lendemain. L'onglet « Achats & consommation »
-// reprend les factures de chaque période, par les mêmes dates.
+// la suivante démarre le lendemain. « Écarts et documents » reprend les
+// factures de chaque période, par les mêmes dates.
 //
 // Le comptable y marque les factures réglées, une par une ou par sélection,
 // avec la date, le mode et une note. Ce droit (manage:factures_achat, réglable
 // personne par personne dans Rôles & accès) est vérifié en base par un
 // déclencheur : le bouton n'apparaît qu'à qui la base laissera écrire.
 //
-// Mêmes documents que l'onglet Achats (achats_documents) : seules les
+// Mêmes documents que « Écarts et documents » (achats_documents) : seules les
 // factures y sont listées, les bons de livraison et de commande ne se paient
 // pas. Une facture réglée reste listée même si son type change ensuite.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -259,7 +261,7 @@ export default function FacturesPanel({
         <div style={st.titre}>Factures « <span data-no-translate>{perimetreActif}</span> »</div>
         <div style={st.sousTitre}>
           Rangées par période d'inventaire : chaque inventaire « <span data-no-translate>{perimetreActif}</span> » clôt
-          une période et la suivante commence le lendemain. L'onglet Achats & consommation reprend les factures
+          une période et la suivante commence le lendemain. « Écarts et documents » reprend les factures
           de chaque période pour calculer la consommation.
         </div>
         {/* Nombres dans leur propre nœud : la phrase autour reste la même
@@ -363,7 +365,7 @@ export default function FacturesPanel({
         <div style={st.info}>
           Aucune facture « <span data-no-translate>{perimetreActif}</span> » pour l'instant. Déposez-les avec « Facture reçue » depuis l'accueil du module :
           elles seront rangées par période d'inventaire.
-          {nbBons > 0 && ` ${nbBons} bon${nbBons > 1 ? 's' : ''} de livraison ou de commande ${nbBons > 1 ? 'sont' : 'est'} dans l'onglet Achats & consommation.`}
+          {nbBons > 0 && ` ${nbBons} bon${nbBons > 1 ? 's' : ''} de livraison ou de commande ${nbBons > 1 ? 'sont' : 'est'} dans « Écarts et documents ».`}
         </div>
       )}
       {factures.length > 0 && facturesVisibles.length === 0 && (
@@ -677,7 +679,7 @@ function LigneFacture({
                 <Btn small variant="ghost" onClick={onAnnulerReglement}>Annuler le règlement</Btn>
               </>
             )}
-            {f.exclu && <span style={st.detailNote}>Exclue du calcul des achats (onglet Achats).</span>}
+            {f.exclu && <span style={st.detailNote}>Exclue du calcul des achats (Écarts et documents).</span>}
           </div>
         </div>
       )}
