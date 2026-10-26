@@ -100,3 +100,38 @@ export function trierCreneaux(creneaux) {
   return (creneaux || []).slice().sort((a, b) =>
     (heureEnMinutes(a.heure) ?? 0) - (heureEnMinutes(b.heure) ?? 0));
 }
+
+// Suivi d'une journée : pour chaque tournée (créneaux actifs, triés), les
+// zones actives déjà relevées. Le rattachement se fait sur l'heure
+// enregistrée du relevé (au créneau le plus proche) : aucune colonne
+// supplémentaire en base, et l'historique antérieur aux créneaux se répartit
+// correctement. Lu par l'affichage des tournées et par l'ouverture du module.
+export function suiviDesTournees(creneauxActifs, zonesActives, relevesDuJour) {
+  const zonesActivesIds = new Set(zonesActives.map(z => z.id));
+  return creneauxActifs.map(c => {
+    const faites = new Set();
+    relevesDuJour.forEach(r => {
+      if (!zonesActivesIds.has(r.zoneId)) return;
+      if (creneauLePlusProche(creneauxActifs, r.heure)?.id === c.id) faites.add(r.zoneId);
+    });
+    return {
+      ...c,
+      faites: faites.size,
+      total: zonesActives.length,
+      complet: zonesActives.length > 0 && faites.size >= zonesActives.length,
+    };
+  });
+}
+
+// Tournée proposée à une heure donnée : celle du créneau le plus proche (la
+// même que la saisie rapide propose par défaut), avec son suivi du jour.
+// null sans grille horaire ou sans zone active.
+export function tourneeProposee(creneaux, zones, releves, date, heure) {
+  const actifs = trierCreneaux((creneaux || []).filter(c => c.actif));
+  const zonesActives = (zones || []).filter(z => z.actif);
+  if (!actifs.length || !zonesActives.length) return null;
+  const proche = creneauLePlusProche(actifs, heure);
+  if (!proche) return null;
+  const duJour = (releves || []).filter(r => r.date === date);
+  return suiviDesTournees(actifs, zonesActives, duJour).find(t => t.id === proche.id) || null;
+}

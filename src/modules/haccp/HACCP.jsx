@@ -2,19 +2,21 @@ import React from 'react';
 import { getDemoData, canManageModule } from '../../data/demoData.js';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
-import { CRENEAUX_PRESETS, CTRL_TYPES, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
+import { CRENEAUX_PRESETS, CTRL_TYPES, ECRANS_HACCP, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
 import { CreneauForm, CtrlForm, ZoneForm } from './ZoneForms.jsx';
 import ZoneTile from './ZoneTile.jsx';
 import CreneauxDuJour from './CreneauxDuJour.jsx';
 import { hcfg, hs } from './HACCP.styles.js';
-import { creneauLePlusProche, heureEnMinutes, isReleveConforme, parseHaccpNumber, trierCreneaux } from './HACCP.utils.js';
+import { creneauLePlusProche, heureEnMinutes, isReleveConforme, parseHaccpNumber, suiviDesTournees, tourneeProposee, trierCreneaux } from './HACCP.utils.js';
 import { zurichClock, zurichToday } from '../../utils/zurichTime.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import HaccpNav from './HaccpNav.jsx';
+import AccueilHaccp from './AccueilHaccp.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
@@ -45,7 +47,6 @@ const HACCP = ({ user, etablissement }) => {
   // rangé sur le mauvais jour.
   const todayStr = zurichToday();
 
-  const [activeTab, setActiveTab] = React.useState('tableau');
   const [dateFilter, setDateFilter] = React.useState(todayStr);
 
   // Modals
@@ -87,6 +88,27 @@ const HACCP = ({ user, etablissement }) => {
   const canManage = canManageModule(user.role, 'haccp');
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
+
+  // ─── Un écran par tâche (useEcranModule) ───
+  // L'accueil à tuiles, puis un écran par tâche : relevés, étiquettes,
+  // traçabilité, tableau, contrôles, réglages. L'identifiant d'un écran est
+  // celui de l'ancien onglet : les conditions d'affichage restent en place
+  // (activeTab = l'écran ouvert, null sur l'accueil). Aucun écran n'est repris
+  // d'une ouverture à l'autre ; le module s'ouvre sur les relevés quand une
+  // tournée attend (plus bas). Revenir à l'accueil referme les fenêtres de
+  // l'écran quitté, sauf pendant un enregistrement ou un export.
+  const { ecran, setEcran, retourAccueil } = useEcranModule('haccp', {
+    surRetour: () => {
+      setShowReleve(false);
+      setShowControl(false);
+      setZoneModal(null);
+      setCtrlModal(null);
+      setCreneauModal(null);
+      if (!exportRelevesBusy) setExportRelevesMode(null);
+      if (!quickSaving) setShowQuickReleves(false);
+    },
+  });
+  const activeTab = ecran === ECRAN_ACCUEIL ? null : ecran;
 
   // ═══ Chargement depuis Supabase + Realtime ═══
   React.useEffect(() => {
@@ -135,6 +157,35 @@ const HACCP = ({ user, etablissement }) => {
 
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
+
+  // ─── Ouverture ───
+  // Sur les relevés quand la personne peut relever et que la tournée proposée
+  // maintenant n'est pas faite (au Rucher, la brigade ouvre le module pour
+  // relever) ; sinon l'accueil. Une seule fois, à la première lecture : une
+  // relecture ne défait jamais un retour à l'accueil.
+  const ouvertureFaite = React.useRef(false);
+  React.useEffect(() => {
+    if (loading || ouvertureFaite.current) return;
+    ouvertureFaite.current = true;
+    const tournee = canWrite ? tourneeProposee(creneaux, zones, releves, todayStr, zurichClock()) : null;
+    if (tournee && !tournee.complet) setEcran('releves');
+  }, [loading, canWrite, creneaux, zones, releves, todayStr, setEcran]);
+
+  // Échap sur un écran de tâche ramène à l'accueil (useEcranModule), sauf sous
+  // une fenêtre du module (relevé, contrôle, export, saisie rapide, zone,
+  // étiquette maison, photo) : ce ne sont pas des Fenetre, on les reconnaît à
+  // leur voile fixe posé dans <main>. Échap n'y fait alors rien, comme avant
+  // les écrans. Phase de capture : passe avant useEcranModule, qui laisse la
+  // main à un Échap déjà traité.
+  React.useEffect(() => {
+    if (ecran === ECRAN_ACCUEIL) return undefined;
+    const echap = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('main [style*="position: fixed"]')) e.preventDefault();
+    };
+    document.addEventListener('keydown', echap, true);
+    return () => document.removeEventListener('keydown', echap, true);
+  }, [ecran]);
 
   // ─── Tendance par zone : moyenne des 7 derniers jours vs les 7 jours précédents ───
   // ATTENTION : ce useMemo DOIT être déclaré AVANT le early return `if (loading)`,
@@ -195,23 +246,8 @@ const HACCP = ({ user, etablissement }) => {
   const creneauProchain = aDesCreneaux ? creneauLePlusProche(activeCreneaux, zurichClock()) : null;
 
   // Suivi de la journée affichée : pour chaque tournée, les zones actives déjà
-  // relevées. Le rattachement se fait sur l'heure enregistrée du relevé (au
-  // créneau le plus proche) : aucune colonne supplémentaire en base, et
-  // l'historique antérieur aux créneaux se répartit correctement.
-  const zonesActivesIds = new Set(activeZones.map(z => z.id));
-  const suiviCreneaux = activeCreneaux.map(c => {
-    const faites = new Set();
-    todayReleves.forEach(r => {
-      if (!zonesActivesIds.has(r.zoneId)) return;
-      if (creneauLePlusProche(activeCreneaux, r.heure)?.id === c.id) faites.add(r.zoneId);
-    });
-    return {
-      ...c,
-      faites: faites.size,
-      total: activeZones.length,
-      complet: activeZones.length > 0 && faites.size >= activeZones.length,
-    };
-  });
+  // relevées (HACCP.utils.js).
+  const suiviCreneaux = suiviDesTournees(activeCreneaux, activeZones, todayReleves);
 
   // Ouvre la saisie groupée sur une tournée donnée (ou sur la plus proche).
   // Les valeurs cibles sont pré-remplies : l'opérateur ne corrige que ce qui
@@ -593,20 +629,13 @@ const HACCP = ({ user, etablissement }) => {
     }
   };
 
-  // principal = gros bouton en tête : les trois gestes du service. Les autres
-  // sections (consultation, réglages) passent en boutons plus petits dessous.
-  const tabs = [
-    {id:'releves',     l:'Relevés température', aide:'Frigos et chambres froides', principal:true},
-    // Poste d'étiquetage : mêmes rôles que la saisie (consultant, patron,
-    // resp_cuisine, cuisinier). Serveur et hôte n'accèdent déjà pas au module.
-    ...(canWrite ? [{id:'etiquettes', l:'Étiquettes DLC', aide:'Imprimer un lot', principal:true}] : []),
-    {id:'tracabilite', l:'Traçabilité', aide:'Photos des étiquettes', principal:true},
-    {id:'tableau',     l:'Tableau de bord'},
-    {id:'controles',   l:'Contrôles hygiène'},
-    ...(isConsultant ? [{id:'config', l:'Paramètres'}] : []),
-  ];
+  // ─── Lignes d'état de l'accueil : la journée d'aujourd'hui, quelle que soit
+  // la date choisie dans un écran ───
+  const tourneeAccueil = tourneeProposee(creneaux, zones, releves, todayStr, zurichClock());
+  const dernierReleveDuJour = releves.filter(r => r.date === todayStr && activeZones.some(z => z.id === r.zoneId)).map(r => r.heure).sort().pop() || null;
+  const controlesFaitsDuJour = activeTpls.filter(t => controls.some(c => c.templateId === t.id && c.date === todayStr)).length;
 
-  // Onglets sans filtre de date ni impression de la vue courante : traçabilité
+  // Écrans sans filtre de date ni impression de la vue courante : traçabilité
   // (galerie photo) et étiquettes (qui a ses propres dates de lot et son PDF).
   const showDateFilter  = !['config', 'tracabilite', 'etiquettes'].includes(activeTab);
   const showPrintExport = !['config', 'tracabilite', 'etiquettes'].includes(activeTab);
@@ -618,11 +647,22 @@ const HACCP = ({ user, etablissement }) => {
 
   return (
     <div style={hs.root}>
-      {/* Navigation en gros boutons, puis la barre d'actions de la section */}
-      <HaccpNav tabs={tabs} active={activeTab} onChange={setActiveTab} />
-      {hasActions && (
-      <div className="module-toolbar">
-        <div className="module-actions">
+      {/* L'accueil à tuiles, ou l'en-tête de l'écran ouvert avec ses actions
+          (la barre d'aujourd'hui, mêmes boutons, mêmes conditions). */}
+      {ecran === ECRAN_ACCUEIL ? (
+        <AccueilHaccp
+          tournee={tourneeAccueil}
+          dernierReleve={dernierReleveDuJour}
+          tauxConformite={releves.length > 0 ? tauxConf : null}
+          controlesFaits={controlesFaitsDuJour}
+          controlesActifs={activeTpls.length}
+          canWrite={canWrite}
+          isConsultant={isConsultant}
+          onOuvrir={setEcran}
+        />
+      ) : (
+      <EcranTache titre={ECRANS_HACCP[ecran]} onRetour={retourAccueil} actions={hasActions ? (
+        <>
           {showDateFilter && <input type="date" style={hs.datePicker} value={dateFilter} onChange={e=>setDateFilter(e.target.value)}/>}
           {/* zoneId/templateId par défaut à l'ouverture : sans ça le select AFFICHE la
               première option mais le state reste vide → « Cible : undefined » et
@@ -651,8 +691,8 @@ const HACCP = ({ user, etablissement }) => {
               ] }]}
             />
           )}
-        </div>
-      </div>
+        </>
+      ) : null} />
       )}
 
       {/* ── TABLEAU DE BORD ── */}

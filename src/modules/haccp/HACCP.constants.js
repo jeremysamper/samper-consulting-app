@@ -23,6 +23,18 @@ export const FREQ_OPTIONS = [
   '2× / jour','Quotidien','Hebdomadaire','Mensuel','Sur demande',
 ];
 
+// ─── Écrans du module ───
+// Une tâche par écran ; le libellé sert à la tuile de l'accueil et au titre
+// de l'écran. L'identifiant est celui de l'ancien onglet.
+export const ECRANS_HACCP = {
+  releves: 'Je relève une température',
+  etiquettes: 'Une étiquette',
+  tracabilite: 'Je photographie une étiquette',
+  tableau: 'Le tableau',
+  controles: 'Les contrôles',
+  config: 'Réglages',
+};
+
 // ─── Créneaux de relevé ───
 // Libellés proposés à la création d'un créneau : la brigade reconnaît sa
 // tournée à son nom, pas à son heure. Liste indicative, la saisie reste libre.
