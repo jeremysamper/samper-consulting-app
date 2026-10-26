@@ -951,6 +951,20 @@ export const UI_GLOSSARY_ES = {
   'Gérer la commande': 'Gestionar el pedido',
   'Vider la liste': 'Vaciar la lista',
 
+  // ── HACCP par tâche : accueil du module, une tuile par tâche ──
+  'Je relève une température': 'Tomo una temperatura',
+  'Je photographie une étiquette': 'Fotografío una etiqueta',
+  'Le tableau': 'El resumen',
+  'Les contrôles': 'Los controles de higiene',
+  'zones relevées': 'zonas registradas',
+  'dernier relevé à': 'último registro a las',
+  "aucun relevé aujourd'hui": 'ningún registro hoy',
+  'aucun relevé enregistré': 'ningún registro guardado',
+  'voir les photos': 'ver las fotos',
+  'de relevés conformes': 'de registros conformes',
+  "faits aujourd'hui": 'hechos hoy',
+  'zones, créneaux, contrôles': 'zonas, franjas, controles',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',

@@ -970,6 +970,20 @@ export const UI_GLOSSARY = {
   'Gérer la commande': 'Manage the order',
   'Vider la liste': 'Clear the list',
 
+  // ── HACCP par tâche : accueil du module, une tuile par tâche ──
+  'Je relève une température': 'I take a temperature',
+  'Je photographie une étiquette': 'I photograph a label',
+  'Le tableau': 'The overview',
+  'Les contrôles': 'The hygiene checks',
+  'zones relevées': 'areas checked',
+  'dernier relevé à': 'last reading at',
+  "aucun relevé aujourd'hui": 'no reading today',
+  'aucun relevé enregistré': 'no reading recorded',
+  'voir les photos': 'see the photos',
+  'de relevés conformes': 'of readings within range',
+  "faits aujourd'hui": 'done today',
+  'zones, créneaux, contrôles': 'areas, time slots, checks',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',
