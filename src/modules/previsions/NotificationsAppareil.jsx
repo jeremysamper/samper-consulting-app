@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { notify } from '../../components/toast/index.js';
 import { activerPush, desactiverPush, etatPush, testerPush } from '../../services/pushNotifications.js';
@@ -13,8 +13,9 @@ import { activerPush, desactiverPush, etatPush, testerPush } from '../../service
 // téléphone la barre d'actions défile (overflow) et coupait un panneau
 // déroulant posé dedans, qui n'apparaissait jamais.
 //
-// L'état de l'appareil et les trois actions vivent dans un hook : la tuile de
-// l'accueil du module en tire sa ligne d'état et ouvre le même panneau.
+// L'état de l'appareil et les trois actions vivent dans un hook : la tuile
+// « Prévenir cet appareil » de l'accueil du module en tire sa ligne d'état et
+// ouvre le panneau.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MESSAGES = {
@@ -72,8 +73,8 @@ export function useNotificationsAppareil(etablissementId, user) {
   return { etat, actif: etat === 'actif', enCours, activer, tester, desactiver };
 }
 
-// Le panneau, ouvert par le bouton ci-dessous ou par la tuile de l'accueil.
-// notifs : ce que rend useNotificationsAppareil.
+// Le panneau, ouvert par la tuile de l'accueil. notifs : ce que rend
+// useNotificationsAppareil.
 export function PanneauNotifications({ notifs, onFermer }) {
   const { etat, actif, enCours, activer, tester, desactiver } = notifs;
 
@@ -115,35 +116,7 @@ export function PanneauNotifications({ notifs, onFermer }) {
   );
 }
 
-export default function NotificationsAppareil({ etablissementId, user }) {
-  const notifs = useNotificationsAppareil(etablissementId, user);
-  const [ouvert, setOuvert] = useState(false);
-  const fermer = useCallback(() => setOuvert(false), []);
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOuvert((o) => !o)}
-        aria-expanded={ouvert}
-        title="Être prévenu sur cet appareil à chaque réservation en ligne"
-        style={{
-          ...s.bouton,
-          ...(notifs.actif ? { borderColor: 'var(--success-bd)', color: 'var(--success-text)', background: 'var(--success-bg-soft)' } : null),
-        }}
-      >
-        {notifs.actif ? 'Notifications activées' : 'Notifications'}
-      </button>
-      {ouvert && <PanneauNotifications notifs={notifs} onFermer={fermer} />}
-    </>
-  );
-}
-
 const s = {
-  bouton: {
-    padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500,
-    fontFamily: 'var(--font)', cursor: 'pointer',
-  },
   voile: {
     position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.45)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,

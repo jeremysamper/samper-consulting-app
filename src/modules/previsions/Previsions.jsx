@@ -1,8 +1,10 @@
-import { lazy, Suspense, useState } from 'react';
-import { SectionHeader } from '../../components/ui/index.jsx';
-import SearchToggle from '../../components/ui/SearchToggle.jsx';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Input } from '../../components/ui/index.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { canManageModule } from '../../data/demoData.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
+import AccueilReservations from './AccueilReservations.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import RechercheResas from './RechercheResas.jsx';
@@ -10,10 +12,11 @@ import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
-import NotificationsAppareil from './NotificationsAppareil.jsx';
+import { PanneauNotifications, useNotificationsAppareil } from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { useReservationsJour } from './useReservationsJour.js';
+import { listerDemandes } from './reservationEnLigne.js';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
@@ -21,7 +24,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 // l'iPad de l'entrée, ne porte pas le poids des statistiques.
 const RapportReservations = lazy(() => import('./rapport/RapportReservations.jsx'));
 
-// Onglet Rapport (statistiques, lecture seule) : la direction, l'hôte et le
+// Écran Le rapport (statistiques, lecture seule) : la direction, l'hôte et le
 // responsable cuisine (anticipation des couverts). Masqué pour le service, la
 // cuisine et le spa, même quand le module leur est ouvert (décision de Jérémy,
 // 15.10.2026). La base ne filtre que par établissement : c'est un choix
@@ -30,7 +33,7 @@ const ROLES_RAPPORT = ['consultant', 'patron', 'resp_cuisine', 'hote'];
 
 // Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
 // L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)
-// retombe dans le mode service du jour au lieu de la semaine.
+// retombe dans le mode service du jour au lieu de l'accueil du module.
 const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 
 // Réglages de la réservation en ligne : la direction, comme pour le Spa (et la
@@ -41,10 +44,15 @@ const ROLES_EN_LIGNE = ['consultant', 'patron'];
 // Réservé pour les futurs affichages de chiffre d'affaires estimé.
 const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 
-// Boutons de la barre d'actions : un plein (l'action principale), les autres
-// en secondaire uniforme.
-const btnPrincipal = { padding: '9px 16px', borderRadius: 8, border: 'none', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)' };
-const btnSecondaire = { padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer' };
+// Écrans du parcours (l'accueil a ses tuiles, sans en-tête de tâche).
+const TITRES_ECRAN = {
+  planning: 'Le planning',
+  plan: 'Le plan de salle',
+  demandes: 'Les demandes en ligne',
+  chercher: 'Je cherche une réservation',
+  clients: 'Les clients',
+  rapport: 'Le rapport',
+};
 
 export default function Previsions({ user, etablissement }) {
   const [showForm,     setShowForm]     = useState(false);
@@ -54,8 +62,13 @@ export default function Previsions({ user, etablissement }) {
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
   const [reglagesEnLigne, setReglagesEnLigne] = useState(false);
-  // Planning (semaine, jour) ou fichier clients.
-  const [onglet, setOnglet] = useState('planning');
+  const [notificationsOuvertes, setNotificationsOuvertes] = useState(false);
+  // Le champ de « Je cherche une réservation » prend la main quand on vient de
+  // toucher sa tuile.
+  const [champAuToucher, setChampAuToucher] = useState(false);
+  // Demandes en ligne à confirmer, pour la tuile de l'accueil : null tant
+  // qu'elles ne sont pas lues.
+  const [nbDemandes, setNbDemandes] = useState(null);
   // Date affichée en mode service (écran scindé plan + réservations), null
   // quand il est fermé.
   const [modeService, setModeService] = useState(() => (
@@ -68,6 +81,19 @@ export default function Previsions({ user, etablissement }) {
     setRechercheKey((k) => k + 1);
     setRefreshKey((k) => k + 1);
   };
+
+  // Écran du parcours : l'accueil (une tuile par tâche), puis un écran par
+  // tâche. Aucun écran n'est repris à l'ouverture suivante : seul le mode
+  // service du jour se rouvre, par sa propre clé. Revenir à l'accueil referme
+  // le jour ouvert, la recherche et la fiche trouvée.
+  const { ecran, setEcran, retourAccueil } = useEcranModule('reservations', {
+    surRetour: () => {
+      setSelectedDate(null);
+      setRecherche('');
+      setResaTrouvee(null);
+      setChampAuToucher(false);
+    },
+  });
 
   // Fiche ouverte depuis la recherche : statuts et demandes en ligne passent
   // par la même source que la vue jour (le jour de la réservation trouvée),
@@ -87,8 +113,48 @@ export default function Previsions({ user, etablissement }) {
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = canManageModule(user?.role, 'previsions');
   const voitRapport    = ROLES_RAPPORT.includes(user?.role);
+  const voitReglages   = ROLES_EN_LIGNE.includes(user?.role);
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
+
+  const surAccueil = ecran === ECRAN_ACCUEIL;
+  const aujourdhui = zurichToday();
+
+  // Lignes d'état de l'accueil : couverts du jour (no-shows exclus, comme la
+  // vue jour) et demandes en ligne à confirmer (lues seulement pour qui peut
+  // les traiter, comme le bandeau du planning). Lectures seules, à l'accueil.
+  const jourAccueil = useReservationsJour(etabId, surAccueil ? aujourdhui : null, { refreshKey });
+  const couvertsDuJour = jourAccueil.resas && !jourAccueil.error
+    ? jourAccueil.resas.filter((r) => r.statut !== 'no_show').reduce((s, r) => s + (r.nb_couverts || 0), 0)
+    : null;
+  const lireDemandes = useCallback(async () => {
+    if (!etabId || !canEdit || !surAccueil) return;
+    const { data } = await listerDemandes(etabId);
+    setNbDemandes(data.length);
+  }, [etabId, canEdit, surAccueil]);
+  useEffect(() => { lireDemandes(); }, [lireDemandes, refreshKey]);
+  useResumeRefresh(lireDemandes);
+
+  const notifications = useNotificationsAppareil(etabId, user);
+  const fermerNotifications = useCallback(() => setNotificationsOuvertes(false), []);
+
+  // Échap sur un écran de tâche ramène à l'accueil du module (useEcranModule),
+  // sauf quand une fenêtre du module est ouverte par-dessus : formulaire,
+  // fiche, mode service, fiche de table, gestion des salles. Elles ne sont pas
+  // des Fenetre : on les reconnaît à leur couche de retour (useBackLayer, en
+  // tête de l'historique) ou à leur voile fixe posé dans <main>. Échap n'y fait
+  // alors rien, comme avant les écrans. Phase de capture : passe avant
+  // useEcranModule, qui laisse la main à un Échap déjà traité.
+  useEffect(() => {
+    if (surAccueil) return undefined;
+    const echap = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const calque = window.history.state?.layer;
+      if ((calque && calque !== 'reservations-ecran') || document.querySelector('main [style*="position: fixed"]')) e.preventDefault();
+    };
+    document.addEventListener('keydown', echap, true);
+    return () => document.removeEventListener('keydown', echap, true);
+  }, [surAccueil]);
 
   // Fait relire les vues (semaine ou jour, via refreshKey) et rien d'autre : le
   // formulaire se ferme lui-même s'il est encore ouvert. Le fermer ici cassait
@@ -112,65 +178,24 @@ export default function Previsions({ user, etablissement }) {
     setRefreshKey((k) => k + 1);
   }
 
+  // Un jour choisi ailleurs (demande en ligne, résultat de recherche) s'ouvre
+  // dans Le planning.
+  function allerAuJour(date) {
+    setRecherche('');
+    setSelectedDate(date);
+    setEcran('planning');
+  }
+
+  const etatEcran = {
+    planning: selectedDate ? null : <>la semaine, service par service</>,
+    demandes: <>à confirmer ou à refuser</>,
+    chercher: <>par le nom ou le téléphone, toutes dates</>,
+    clients: <>le fichier, rempli par les réservations</>,
+    rapport: <>l'activité des réservations, en lecture seule</>,
+  };
+
   return (
     <section style={{ padding: '20px 24px', position: 'relative', minHeight: '100%' }}>
-      <div className="module-toolbar">
-        <SectionHeader
-          sub={onglet === 'clients'
-            ? 'Fichier clients, rempli par les réservations'
-            : onglet === 'rapport'
-              ? 'Activité des réservations, en lecture seule'
-              : selectedDate ? null : 'Planning de la semaine, service par service'}
-        />
-        {/* Les notifications de l'appareil d'abord, puis l'action principale,
-            le mode service et la recherche ; les réglages (en ligne, e-mails)
-            ferment la rangée. Un seul style de bouton secondaire. */}
-        <div className="module-actions">
-          {/* Prévenir ce téléphone / cette tablette à chaque réservation en
-              ligne. En tête : visible sur téléphone sans faire défiler. */}
-          {etabId && <NotificationsAppareil etablissementId={etabId} user={user} />}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => etabId ? setShowForm(true) : null}
-              disabled={!etabId}
-              title={etabId ? 'Nouvelle réservation' : "Sélectionnez un établissement d'abord"}
-              style={{ ...btnPrincipal, background: etabId ? 'var(--accent)' : 'var(--border)', color: etabId ? 'var(--on-accent)' : 'var(--text3)', cursor: etabId ? 'pointer' : 'not-allowed', opacity: etabId ? 1 : 0.6 }}>
-              Nouvelle réservation
-            </button>
-          )}
-          {/* Le plan de salle en un tap : écran scindé plan + réservations du
-              service en cours. */}
-          {etabId && (
-            <button
-              type="button"
-              onClick={() => ouvrirModeService(zurichToday())}
-              title="Plan de salle et réservations attendues, côte à côte"
-              style={btnSecondaire}>
-              Mode service
-            </button>
-          )}
-          {/* La loupe cherche dans les réservations ; l'onglet Clients a sa
-              propre recherche. */}
-          {etabId && onglet === 'planning' && (
-            <SearchToggle
-              value={recherche}
-              onChange={setRecherche}
-              placeholder="Nom ou téléphone…"
-            />
-          )}
-          {etabId && ROLES_EN_LIGNE.includes(user?.role) && (
-            <button
-              type="button"
-              onClick={() => setReglagesEnLigne(true)}
-              title="Réservation en ligne et e-mails aux clients"
-              style={btnSecondaire}>
-              Réglages
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Bannière si pas d'établissement */}
       {!etabId && (
         <div style={{
@@ -181,47 +206,35 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
-      {etabId && (
-        <SegmentedTabs
-          tabs={[
-            { id: 'planning', label: 'Planning' },
-            { id: 'clients', label: 'Clients' },
-            ...(voitRapport ? [{ id: 'rapport', label: 'Rapport' }] : []),
-          ]}
-          active={onglet}
-          onChange={(id) => { setOnglet(id); setRecherche(''); }}
-          style={{ marginTop: 14 }}
+      {etabId && surAccueil && (
+        <AccueilReservations
+          couverts={couvertsDuJour}
+          demandes={nbDemandes}
+          notificationsActives={notifications.actif}
+          canEdit={canEdit}
+          voitRapport={voitRapport}
+          voitReglages={voitReglages}
+          onReserver={() => setShowForm(true)}
+          onService={() => ouvrirModeService(zurichToday())}
+          onDemandes={() => setEcran('demandes')}
+          onPlanning={() => setEcran('planning')}
+          onPlan={() => setEcran('plan')}
+          onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
+          onClients={() => setEcran('clients')}
+          onRapport={() => setEcran('rapport')}
+          onNotifications={() => setNotificationsOuvertes(true)}
+          onReglages={() => setReglagesEnLigne(true)}
         />
       )}
 
-      {etabId && onglet === 'clients' && (
-        <ClientsResa etablissementId={etabId} canEdit={canEdit} refreshKey={refreshKey} />
+      {etabId && !surAccueil && (
+        <EcranTache titre={TITRES_ECRAN[ecran]} etat={etatEcran[ecran] || null} onRetour={retourAccueil} />
       )}
 
-      {etabId && onglet === 'rapport' && voitRapport && (
-        <Suspense fallback={<div style={{ marginTop: 28, fontSize: 14, color: 'var(--text2)' }}>Chargement du rapport…</div>}>
-          <RapportReservations key={etabId} etablissementId={etabId} />
-        </Suspense>
-      )}
-
-      {/* ── Recherche : elle prend toute la place tant qu'elle est ouverte,
-             plutôt que de s'ajouter sous la semaine où on la perdrait de vue.
-             Fermer la loupe efface le filtre et rend la vue normale. ── */}
-      {etabId && onglet === 'planning' && recherche.trim() !== '' && (
-        <RechercheResas
-          etablissementId={etabId}
-          terme={recherche}
-          refreshKey={rechercheKey}
-          onOuvrir={setResaTrouvee}
-          onAllerAuJour={(d) => { setRecherche(''); setSelectedDate(d); }}
-        />
-      )}
-
-      {/* ── Routeur local : vue semaine ↔ vue jour ── */}
-      {etabId && onglet === 'planning' && recherche.trim() === '' && (
+      {/* ── Le planning : la semaine, puis le jour, tels qu'avant ; les
+             demandes venues du site en tête, quel que soit le jour affiché. ── */}
+      {etabId && ecran === 'planning' && (
         <>
-          {/* Demandes venues du site, à confirmer : en tête, quel que soit le
-              jour affiché. */}
           {canEdit && (
             <DemandesEnLigne
               etablissementId={etabId}
@@ -254,6 +267,67 @@ export default function Previsions({ user, etablissement }) {
         </>
       )}
 
+      {/* ── Le plan de salle : le jour d'aujourd'hui, ouvert sur le plan. ── */}
+      {etabId && ecran === 'plan' && (
+        <VueJour
+          etablissementId={etabId}
+          date={aujourdhui}
+          vueInitiale="plan"
+          onResaUpdated={() => setRefreshKey((k) => k + 1)}
+          refreshKey={refreshKey}
+          canEdit={canEdit}
+          onModeService={ouvrirModeService}
+          onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
+        />
+      )}
+
+      {etabId && ecran === 'demandes' && canEdit && (
+        <DemandesEnLigne
+          etablissementId={etabId}
+          refreshKey={refreshKey}
+          onTraitee={() => setRefreshKey((k) => k + 1)}
+          onAllerAuJour={allerAuJour}
+          siVide={<div style={st.vide}>Aucune demande à confirmer.</div>}
+        />
+      )}
+
+      {/* ── Je cherche une réservation : le champ ouvert, puis les résultats
+             d'aujourd'hui (fiche, Voir le jour). ── */}
+      {etabId && ecran === 'chercher' && (
+        <>
+          <Input
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoFocus={champAuToucher}
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Nom ou téléphone"
+            aria-label="Nom ou téléphone"
+            style={st.champ}
+          />
+          {recherche.trim() !== '' && (
+            <RechercheResas
+              etablissementId={etabId}
+              terme={recherche}
+              refreshKey={rechercheKey}
+              onOuvrir={setResaTrouvee}
+              onAllerAuJour={allerAuJour}
+            />
+          )}
+        </>
+      )}
+
+      {etabId && ecran === 'clients' && (
+        <ClientsResa etablissementId={etabId} canEdit={canEdit} refreshKey={refreshKey} />
+      )}
+
+      {etabId && ecran === 'rapport' && voitRapport && (
+        <Suspense fallback={<div style={{ marginTop: 28, fontSize: 14, color: 'var(--text2)' }}>Chargement du rapport…</div>}>
+          <RapportReservations key={etabId} etablissementId={etabId} />
+        </Suspense>
+      )}
+
       {/* État vide si pas d'établissement */}
       {!etabId && (
         <div style={{
@@ -280,9 +354,9 @@ export default function Previsions({ user, etablissement }) {
         />
       )}
 
-      {/* Fiche ouverte depuis un résultat de recherche. Modifiable : décaler
-          une résa qu'on vient de retrouver au téléphone est précisément ce
-          pour quoi on l'a cherchée. */}
+      {/* Fiche ouverte depuis un résultat de recherche ou un nom de la
+          semaine. Modifiable : décaler une résa qu'on vient de retrouver au
+          téléphone est précisément ce pour quoi on l'a cherchée. */}
       {resaTrouvee && (
         <ReservationDetailModal
           resa={jourTrouvee.resas?.find((r) => r.id === resaTrouvee.id) || resaTrouvee}
@@ -305,8 +379,12 @@ export default function Previsions({ user, etablissement }) {
         />
       )}
 
-      {reglagesEnLigne && etabId && (
+      {reglagesEnLigne && etabId && voitReglages && (
         <ReglagesTableEnLigne etablissement={etablissement} consultant={user?.role === 'consultant'} onClose={() => setReglagesEnLigne(false)} />
+      )}
+
+      {notificationsOuvertes && etabId && (
+        <PanneauNotifications notifs={notifications} onFermer={fermerNotifications} />
       )}
 
       {canEdit && resaEnEdition && etabId && (
@@ -320,3 +398,9 @@ export default function Previsions({ user, etablissement }) {
     </section>
   );
 }
+
+const st = {
+  // 16 px : iOS ne zoome pas sur le champ quand il prend la main.
+  champ: { marginTop: 16, fontSize: 16, padding: '12px 14px', minHeight: 44 },
+  vide: { marginTop: 24, fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font)' },
+};
