@@ -930,6 +930,18 @@ export const UI_GLOSSARY_ES = {
   'Aucune demande à confirmer.': 'Ninguna solicitud por confirmar.',
   'Nom ou téléphone': 'Nombre o teléfono',
 
+  // ── Plan de salle : déplacer ce soir, dessiner la salle ──
+  'Déplacer des tables': 'Mover mesas',
+  'ce service seulement': 'solo este servicio',
+  'Dessiner la salle': 'Dibujar la sala',
+  'pour tous les services': 'para todos los servicios',
+  'J’ai fini': 'He terminado',
+  'Tout remettre en place': 'Volver a colocar todo',
+  'Vous déplacez des tables pour ce service seulement.': 'Está moviendo mesas solo para este servicio.',
+  'Glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.': 'Arrastre una mesa para moverla, suéltela sobre otra para juntarlas, tóquela para separarlas, ⟳ para girarla.',
+  'Vous dessinez la salle : chaque service repartira de ce plan.': 'Está dibujando la sala: cada servicio partirá de este plano.',
+  'Un responsable doit le dessiner depuis « Dessiner la salle ».': 'Un responsable debe dibujarlo desde « Dibujar la sala ».',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',

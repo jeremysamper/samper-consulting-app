@@ -22,7 +22,7 @@ import { metaStatut } from './statutsReservation.js';
 // s'ouvre comme une seule table, sous le numéro choisi parmi les siens
 // (« Numéro de la tablée ») : c'est lui qu'on annonce au passe.
 //
-// En mode « Ajuster la salle », la même fiche ne propose que les gestes sur
+// En mode « Déplacer des tables », la même fiche ne propose que les gestes sur
 // la table elle-même : la séparer de sa tablée, la remettre à sa place.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -190,7 +190,7 @@ export default function TableServiceSheet({
             </div>
           )}
 
-          {/* ── Ajuster la salle : gestes sur le meuble ── */}
+          {/* ── Déplacer des tables : gestes sur le meuble ── */}
           {ajuster && (
             <>
               {groupe && (

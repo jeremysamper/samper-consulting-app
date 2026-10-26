@@ -949,6 +949,18 @@ export const UI_GLOSSARY = {
   'Aucune demande à confirmer.': 'No request to confirm.',
   'Nom ou téléphone': 'Name or phone',
 
+  // ── Plan de salle : déplacer ce soir, dessiner la salle ──
+  'Déplacer des tables': 'Move tables',
+  'ce service seulement': 'this service only',
+  'Dessiner la salle': 'Draw the room',
+  'pour tous les services': 'for every service',
+  'J’ai fini': "I'm done",
+  'Tout remettre en place': 'Put everything back',
+  'Vous déplacez des tables pour ce service seulement.': 'You are moving tables for this service only.',
+  'Glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.': 'Drag a table to move it, drop it on another to join them, tap it to separate them, ⟳ to rotate it.',
+  'Vous dessinez la salle : chaque service repartira de ce plan.': 'You are drawing the room: every service will start from this plan.',
+  'Un responsable doit le dessiner depuis « Dessiner la salle ».': 'A manager must draw it from « Draw the room ».',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',

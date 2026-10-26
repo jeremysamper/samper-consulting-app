@@ -4,7 +4,7 @@ import { PLAN_W, PLAN_H, PLAN_GRID } from '../../hooks/usePlanSalle.js';
 // Décor du plan de salle : murs, baies vitrées, porte, bar, banque d'accueil,
 // pilier, plante, zone nommée (cuisine, WC, vestiaire...).
 // ───────────────────────────────────────────────────────────────────────────
-// Le décor se dessine dans « Modifier le plan » et s'affiche partout ailleurs
+// Le décor se dessine dans « Dessiner la salle » et s'affiche partout ailleurs
 // SOUS les tables, sans réagir au doigt : en service, seules les tables se
 // touchent, et un mur ne doit jamais intercepter le geste qui place un client.
 //
@@ -183,7 +183,7 @@ function Libelle({ el, coin = false }) {
 }
 
 // ── Un élément sur le canevas ─────────────────────────────────────────────
-// `editable` : mode « Modifier le plan ». Ailleurs l'élément est un simple
+// `editable` : mode « Dessiner la salle ». Ailleurs l'élément est un simple
 // dessin (pointerEvents none) : le toucher passe aux tables et au canevas.
 export function ElementDecor({
   el, editable = false, selectionne = false,
@@ -258,7 +258,7 @@ export function ElementDecor({
   );
 }
 
-// ── Quadrillage du mode « Modifier le plan » ──────────────────────────────
+// ── Quadrillage du mode « Dessiner la salle » ─────────────────────────────
 // Une ligne fine à chaque pas d'aimantation (10) : une table ou un mur posé
 // tombe toujours sur une ligne visible. Une ligne marquée tous les 50 pour
 // se repérer. `fine` est faux quand le plan est trop petit à l'écran pour

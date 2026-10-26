@@ -31,11 +31,15 @@ import { serviceAffiche } from './statutsReservation.js';
 // Les mélanger reviendrait à déplacer une table en croyant placer un client.
 //
 // PLAN DE BASE ET AJUSTEMENTS DU SERVICE
-// Le plan dessiné (« Modifier le plan ») est le plan de base : chaque service
-// repart de lui. Pendant un service, « Ajuster la salle » permet de déplacer
-// une table ou d'en rapprocher plusieurs en une tablée (lâcher une table sur
-// une autre) : ces écarts sont datés (salle_tables_service, date + service)
-// et ne touchent jamais au plan de base. Le service suivant n'en a aucun.
+// Le plan dessiné (« Dessiner la salle », pour tous les services) est le plan
+// de base : chaque service repart de lui. Pendant un service, « Déplacer des
+// tables » (ce service seulement) permet de déplacer une table ou d'en
+// rapprocher plusieurs en une tablée (lâcher une table sur une autre) : ces
+// écarts sont datés (salle_tables_service, date + service) et ne touchent
+// jamais au plan de base. Le service suivant n'en a aucun. Les deux boutons
+// disent leur portée sous leur libellé, un bandeau rappelle le mode en cours,
+// et « Dessiner la salle » n'est pas proposé pendant un déplacement : les
+// deux se confondaient.
 // Une tablée rapprochée se place comme une seule table : y poser une
 // réservation l'assied sur toutes ses tables.
 //
@@ -44,11 +48,11 @@ import { serviceAffiche } from './statutsReservation.js';
 //
 // DÉCOR ET PLACES DE BAR
 // Murs, baies, porte, bar, accueil... (salle_elements, voir planDecor.jsx) se
-// dessinent dans « Modifier le plan » et restent inertes partout ailleurs,
+// dessinent dans « Dessiner la salle » et restent inertes partout ailleurs,
 // sous les tables. Une place de bar est une table de forme 'tabouret' :
 // petite, numérotée à part (B1, B2...), placée comme une table, jamais
-// rapprochée en tablée. Le quadrillage n'apparaît que dans « Modifier le
-// plan » : en service, il brouillait la lecture de la salle.
+// rapprochée en tablée. Le quadrillage n'apparaît que dans « Dessiner la
+// salle » : en service, il brouillait la lecture de la salle.
 //
 // GLISSER-DÉPOSER AU POINTEUR, PAS EN HTML5
 // L'API HTML5 (draggable + dragstart) ne produit rien au doigt : elle
@@ -95,6 +99,28 @@ const puce = {
   background: 'var(--surface)', color: 'var(--text)',
   fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
   whiteSpace: 'nowrap',
+};
+
+// « Déplacer des tables » et « Dessiner la salle » : le verbe, puis la portée
+// sur une seconde ligne, plus petite. Plein quand le mode est en cours.
+// Contour en longhands : l'état actif ne change que borderColor.
+const boutonMode = (actif) => ({
+  minHeight: 44, padding: '6px 14px', borderRadius: 8,
+  borderWidth: 1, borderStyle: 'solid',
+  borderColor: actif ? 'var(--accent)' : 'var(--border)',
+  background: actif ? 'var(--accent)' : 'var(--surface)',
+  color: actif ? 'var(--on-accent)' : 'var(--text)',
+  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
+  gap: 1, textAlign: 'left', lineHeight: 1.2,
+  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+});
+const portee = { fontSize: 11, fontWeight: 500, opacity: 0.8 };
+// Le mode en cours, dit en clair au-dessus du plan.
+const bandeauMode = {
+  flex: '1 1 100%', minWidth: 0, padding: '8px 12px', borderRadius: 8,
+  background: 'var(--info-bg-soft)', color: 'var(--info-text)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--info-bd)',
+  fontSize: 12, lineHeight: 1.45,
 };
 
 // Table dont la tablée porte le numéro. La clé de fusion EST l'id de cette
@@ -436,7 +462,7 @@ export default function PlanSalle({
   // Vrai tant que la migration 20261005_plan_salle_pivot n'est pas passée :
   // la rotation reste possible sur le plan de base, pas pour un service.
   const [pivotIndispo, setPivotIndispo] = useState(false);
-  const [ajuster,      setAjuster]      = useState(false);   // « Ajuster la salle »
+  const [ajuster,      setAjuster]      = useState(false);   // « Déplacer des tables »
   const [tableOuverte, setTableOuverte] = useState(null);    // id de la table touchée
   const [reserverSur,  setReserverSur]  = useState(null);    // table de « Réserver la table »
   const reservePoseeRef = useRef(false);
@@ -629,7 +655,7 @@ export default function PlanSalle({
   const editionBase  = mode === 'plan' && canEdit;
 
   // ── Plan effectif du service ────────────────────────────────────────
-  // Plan de base + écarts du service affiché. En « Modifier le plan », on
+  // Plan de base + écarts du service affiché. En « Dessiner la salle », on
   // dessine le plan de base : les écarts du jour n'y apparaissent pas.
   const ajustParTable = useMemo(() => {
     const m = new Map();
@@ -898,7 +924,7 @@ export default function PlanSalle({
     });
   }
 
-  // Ajuster la salle : on traîne la tablée entière (une table seule, ou
+  // Déplacer des tables : on traîne la tablée entière (une table seule, ou
   // toutes les tables déjà rapprochées), positions de départ figées à
   // l'appui. Le dépôt écrit l'écart du service, jamais le plan de base.
   function onPointerDownTableService(e, table) {
@@ -912,7 +938,7 @@ export default function PlanSalle({
     demarrerGeste(e, { kind: 'tableService', tableId: table.id, membres, grabX: p.x, grabY: p.y, dx: 0, dy: 0 });
   }
 
-  // Décor (« Modifier le plan ») : glisser l'élément, ou tirer sa poignée.
+  // Décor (« Dessiner la salle ») : glisser l'élément, ou tirer sa poignée.
   // La géométrie d'avant le geste voyage avec lui : si l'écriture échoue, on
   // la remet sans dépendre d'une relecture qui peut échouer aussi.
   const geometrie = (el) => ({
@@ -1164,7 +1190,7 @@ export default function PlanSalle({
     const tablee = tableeDe(tableId);
     const actives = tablee.filter((t) => t.actif !== false);
     if (!actives.length) {
-      notify(`${tablee[0]?.nom ?? 'Cette table'} est inactive : réactivez-la dans « Modifier le plan ».`, 'warning');
+      notify(`${tablee[0]?.nom ?? 'Cette table'} est inactive : réactivez-la dans « Dessiner la salle ».`, 'warning');
       return false;
     }
     const nouveaux = [];
@@ -1398,7 +1424,7 @@ export default function PlanSalle({
     };
   }
 
-  // Plan de base (« Modifier le plan ») : la table elle-même change de sens.
+  // Plan de base (« Dessiner la salle ») : la table elle-même change de sens.
   async function tournerTableBase(tableId) {
     const t = (tablesRef.current || []).find((x) => x.id === tableId);
     if (!t) return;
@@ -1417,7 +1443,7 @@ export default function PlanSalle({
     if (e) { notify(`Table ${t.nom} non tournée : ${e}`, 'error'); load(); }
   }
 
-  // Service (ou « Ajuster la salle ») : un écart de plus, daté, le plan de
+  // Service (ou « Déplacer des tables ») : un écart de plus, daté, le plan de
   // base ne bouge pas. Revenue dans son sens et à sa place, seule, la table
   // n'a plus d'écart : la ligne est effacée.
   async function tournerTableService(tableId) {
@@ -1810,7 +1836,7 @@ export default function PlanSalle({
     ? elementsSalle.find((el) => el.id === selection) || null
     : null;
   const defChoisi = elementChoisi ? ELEMENT_PAR_TYPE.get(elementChoisi.type) : null;
-  // « Ajuster la salle » : même dérivation du droit, et seulement une fois
+  // « Déplacer des tables » : même dérivation du droit, et seulement une fois
   // la migration des ajustements passée.
   const ajusterActif = ajuster && canEdit && !modePlan && !ajustIndispo;
   const modeTable    = modePlan ? 'plan' : ajusterActif ? 'ajuster' : 'service';
@@ -1930,7 +1956,7 @@ export default function PlanSalle({
         <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
           {canEdit
             ? 'Ajoutez les tables une à une, placez-les au doigt, puis glissez les réservations dessus.'
-            : 'Un responsable doit le dessiner depuis « Modifier le plan ».'}
+            : 'Un responsable doit le dessiner depuis « Dessiner la salle ».'}
         </div>
         {canEdit && (
           <button type="button" onClick={() => { setMode('plan'); ajouterTable(); }} style={{
@@ -1945,7 +1971,8 @@ export default function PlanSalle({
   );
 
   // En mode service, les onglets de service sont dans la barre de l'écran
-  // parent : la barre d'ici ne sert plus qu'au bouton « Modifier le plan ».
+  // parent : la barre d'ici ne sert plus qu'aux boutons « Déplacer des
+  // tables » et « Dessiner la salle ».
   const barre = !serviceControle || canEdit;
 
   return (
@@ -1964,8 +1991,14 @@ export default function PlanSalle({
         flexWrap: 'wrap', marginBottom: 10,
       }}>
         {ajusterActif && (
-          <div style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12, color: 'var(--text2)', order: 2 }}>
-            Ce service seulement : glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.
+          <div style={bandeauMode}>
+            <div style={{ fontWeight: 700 }}>Vous déplacez des tables pour ce service seulement.</div>
+            <div>Glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.</div>
+          </div>
+        )}
+        {modePlan && (
+          <div style={bandeauMode}>
+            <div style={{ fontWeight: 700 }}>Vous dessinez la salle : chaque service repartira de ce plan.</div>
           </div>
         )}
         {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
@@ -2000,7 +2033,7 @@ export default function PlanSalle({
                 background: 'var(--surface)', color: 'var(--text)',
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
-                Plan de base
+                Tout remettre en place
               </button>
             )}
             {!modePlan && !ajustIndispo && (
@@ -2008,16 +2041,10 @@ export default function PlanSalle({
                 type="button"
                 onClick={() => setAjuster((v) => !v)}
                 aria-pressed={ajusterActif}
-                style={{
-                  minHeight: 40, padding: '8px 14px', borderRadius: 8,
-                  borderWidth: 1, borderStyle: 'solid',
-                  borderColor: ajusterActif ? 'var(--accent)' : 'var(--border)',
-                  background: ajusterActif ? 'var(--accent)' : 'var(--surface)',
-                  color: ajusterActif ? 'var(--on-accent)' : 'var(--text)',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
-                }}
+                style={boutonMode(ajusterActif)}
               >
-                {ajusterActif ? 'Terminer l’ajustement' : 'Ajuster la salle'}
+                <span>{ajusterActif ? 'J’ai fini' : 'Déplacer des tables'}</span>
+                <span style={portee}>ce service seulement</span>
               </button>
             )}
             {modePlan && (
@@ -2030,19 +2057,19 @@ export default function PlanSalle({
                 Salles
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => { setAjuster(false); setMode(modePlan ? 'service' : 'plan'); }}
-              style={{
-                padding: '8px 14px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid',
-                borderColor: modePlan ? 'var(--accent)' : 'var(--border)',
-                background: modePlan ? 'var(--accent)' : 'var(--surface)',
-                color: modePlan ? 'var(--on-accent)' : 'var(--text)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
-              }}>
-              {modePlan ? 'Terminer' : 'Modifier le plan'}
-            </button>
+            {/* Pas pendant un déplacement de tables : on finit l'un avant
+                d'ouvrir l'autre. */}
+            {!ajusterActif && (
+              <button
+                type="button"
+                onClick={() => { setAjuster(false); setMode(modePlan ? 'service' : 'plan'); }}
+                aria-pressed={modePlan}
+                style={boutonMode(modePlan)}
+              >
+                <span>{modePlan ? 'J’ai fini' : 'Dessiner la salle'}</span>
+                <span style={portee}>pour tous les services</span>
+              </button>
+            )}
           </div>
         )}
       </div>
