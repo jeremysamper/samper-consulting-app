@@ -995,6 +995,16 @@ export const UI_GLOSSARY_ES = {
   'Les droits partent de ceux du rôle': 'Los derechos parten de los del rol',
   'Modules non enregistrés.': 'Módulos no guardados.',
 
+  // ── SOP par tâche ──
+  "L'historique": 'El historial',
+  'ce qui est fait': 'lo que está hecho',
+  'Nouvelle procédure': 'Nuevo procedimiento',
+  'étapes, photos': 'pasos, fotos',
+  'Modèles': 'Plantillas',
+  'à importer': 'para importar',
+  'Lancer': 'Iniciar',
+  'Créez une procédure avec « Nouvelle procédure », ou importez-en une depuis « Modèles ».': 'Cree un procedimiento con «Nuevo procedimiento», o importe uno desde «Plantillas».',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',

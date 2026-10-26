@@ -1014,6 +1014,16 @@ export const UI_GLOSSARY = {
   'Les droits partent de ceux du rôle': 'The rights start from those of the role',
   'Modules non enregistrés.': 'Modules not saved.',
 
+  // ── SOP par tâche ──
+  "L'historique": 'History',
+  'ce qui est fait': "what's done",
+  'Nouvelle procédure': 'New procedure',
+  'étapes, photos': 'steps, photos',
+  'Modèles': 'Templates',
+  'à importer': 'to import',
+  'Lancer': 'Start',
+  'Créez une procédure avec « Nouvelle procédure », ou importez-en une depuis « Modèles ».': 'Create a procedure with "New procedure", or import one from "Templates".',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',
