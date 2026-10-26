@@ -26,8 +26,8 @@ import { useAbsences } from '../../hooks/useAbsences.js';
 import { useUnreadPrivateMessages } from '../../hooks/useUnreadPrivateMessages.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
-import { generateUuid } from '../../services/offline/offlineNet.js';
 import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
+import { envoyerHorsPlanning, horaireHorsPlanning } from '../planning/pointageDuJour.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
@@ -133,28 +133,16 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   }
 
   // Arrivée sans horaire prévu : l'horaire du jour est créé au nom de
-  // l'équipier (RPC pointer_hors_planning), identifiant généré ici pour que la
-  // file hors-ligne et un double tap retombent sur le même horaire.
+  // l'équipier (pointageDuJour.js, partagé avec le module Planning).
   async function pointerHorsPlanning() {
     setErreurPointage('');
     const bridge = dbService.getBridge();
     if (!bridge?.db) { setErreurPointage('Connexion à la base indisponible.'); return; }
-    const heure = zurichClock();
-    const provisoire = {
-      id: generateUuid(), etablissementId: etabId, userId: user?.id, date: aujourdhui,
-      debut: heure, fin: heure, pointageDebut: heure, pointageFin: null, typeShift: 'simple', note: 'Pointage hors planning',
-    };
+    const provisoire = horaireHorsPlanning({ etablissementId: etabId, userId: user?.id, date: aujourdhui });
     d.remplacerShift(provisoire);
     setEnCours(provisoire.id);
     try {
-      const res = await punchOnlineOrQueue({
-        call: () => bridge.db.pointerHorsPlanning(provisoire.id, etabId),
-        shiftId: provisoire.id,
-        type: 'arrivee',
-        userId: user?.id || null,
-        etablissementId: etabId,
-        horsPlanning: true,
-      });
+      const res = await envoyerHorsPlanning(bridge, provisoire);
       if (res.mode === 'online') {
         const confirme = bridge.db.mapShiftFromDB(res.row);
         d.remplacerShift(confirme);
