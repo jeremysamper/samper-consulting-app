@@ -352,6 +352,14 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
   };
 }
 
+// Document « à compléter » : la lecture n'a pas tout rendu. Règle calculée,
+// aucune colonne : une facture sans total TTC, ou tout document sans
+// fournisseur ou sans date. Il reste signalé (accueil du module, écran
+// « Vérifier la lecture », liste des documents) jusqu'à ce qu'on le complète.
+export const estACompleter = (d) => (d.typeDocument === 'facture' && d.totalTTC == null)
+  || !String(d.fournisseurNom || '').trim()
+  || !d.dateDocument;
+
 // ── Rattachement : produit créé depuis une ligne lue, décision propagée ──
 
 // Unité de comptage d'un produit créé depuis une ligne de document. Un

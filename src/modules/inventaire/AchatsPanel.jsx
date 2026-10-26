@@ -10,7 +10,6 @@ import {
   SEUIL_ECART_PRIX_PCT,
 } from './achatsLogic.js';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
-import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
 import LignesARattacher from './LignesARattacher.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
@@ -43,7 +42,7 @@ const qte = (n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
 
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,
-  canImport, canEditLignes, canAppliquerPrix = canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats,
+  canEditLignes, canAppliquerPrix = canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats,
 }) {
   const legacySB = dbService.getBridge();
   // Documents partagés avec l'onglet Factures (useAchatsDocuments, tenu par Inventaire.jsx).
@@ -202,25 +201,6 @@ export default function AchatsPanel({
           </ul>
         )}
       </div>
-
-      {/* ── Import ── */}
-      {canImport ? (
-        <ImportDocumentsAchats
-          user={user}
-          etabId={etabId}
-          perimetreActif={perimetreActif}
-          docsRef={docsRef}
-          tableAbsente={tableAbsente}
-          onImporte={(doc, pieceGardee) => {
-            majDocs(liste => [doc, ...liste]);
-            if (pieceGardee) setAvecPieces(s => new Set(s).add(doc.id));
-          }}
-          titre="Importer les factures et bons de la période"
-          sousTitre="Sélectionnez tous les documents d'un coup : PDF reçus par mail ou photos. Chaque document est lu automatiquement, ses lignes sont rattachées aux produits de l'inventaire. Rien n'est modifié dans le catalogue."
-        />
-      ) : (
-        <div style={st.info}>La lecture des factures n'est pas disponible pour votre compte. Les documents déjà importés et le calcul restent consultables ici.</div>
-      )}
 
       {/* ── Lignes à rattacher ── */}
       <LignesARattacher

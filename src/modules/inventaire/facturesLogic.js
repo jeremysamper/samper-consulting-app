@@ -21,6 +21,9 @@ export const MODES_REGLEMENT = [
 ];
 export const libelleMode = (id) => MODES_REGLEMENT.find(m => m.id === id)?.label || '';
 
+// Une facture reste une facture même si son type change après règlement.
+export const estFacture = (d) => d.typeDocument === 'facture' || !!d.regleLe;
+
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const premierDuMois = (iso) => `${iso.slice(0, 7)}-01`;
 

@@ -4,8 +4,9 @@ import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { removeStorageKeys } from '../../utils/storage.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
 import {
@@ -19,8 +20,12 @@ import {
   recalcInventaire, parseQuantite, estCompte, cleProduit,
   ligneDepuisProduit, ligneLibre, lignesReprises,
 } from './inventaireLignes.js';
-import ComptageRapide from './ComptageRapide.jsx';
+import AccueilInventaire from './AccueilInventaire.jsx';
+import ChoixPerimetre from './ChoixPerimetre.jsx';
+import EnTeteEcran from './EnTeteEcran.jsx';
+import EcranComptage from './EcranComptage.jsx';
 import EcartsPanel from './EcartsPanel.jsx';
+import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
 import ProduitsMaisonModal from './ProduitsMaisonModal.jsx';
 import {
@@ -43,14 +48,14 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10);
 // inventaire créé dans la session est simplement empilé en tête.
 const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date || ''));
 
-// Vues du module. « Comptage » est la vue par défaut : c'est ce que la
-// brigade fait 95 % du temps dans ce module.
-const VUES = [
-  { id: 'comptage', label: 'Comptage' },
-  { id: 'ecarts', label: 'Écarts & valeur' },
-  { id: 'achats', label: 'Achats & consommation' },
-  { id: 'factures', label: 'Factures' },
-];
+// Écrans du module : l'accueil (une tuile par tâche), puis un écran par tâche
+// ('perimetre', 'comptage', 'import', 'verification', 'reglement', 'ecarts').
+// Mémorisé sous sc_inventaire_ecran ; seuls les écrans qui se suffisent à
+// eux-mêmes sont repris à l'ouverture suivante, un import ou un choix de
+// périmètre repart de l'accueil.
+const ECRANS_REPRIS = ['accueil', 'comptage', 'ecarts', 'reglement'];
+// Clé des anciens onglets de vues : lue une fois pour être effacée.
+const ANCIENNE_CLE_VUE = 'sc_inventaire_vue';
 
 const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 
@@ -136,31 +141,38 @@ const Inventaire = ({ user, etablissement }) => {
   const [showAjout, setShowAjout] = React.useState(false);
   // Liaison aux fiches recettes (produits maison).
   const [showMaison, setShowMaison] = React.useState(false);
-  const [vue, setVue] = React.useState(() => {
-    const memo = readLegacyStorage('sc_inventaire_vue', 'comptage');
-    return VUES.some(v => v.id === memo) ? memo : 'comptage';
-  });
-  // L'onglet Achats reste monté une fois ouvert : une lecture de factures en
-  // cours ne doit pas s'arrêter parce qu'on repasse au comptage.
-  const [achatsOuvert, setAchatsOuvert] = React.useState(vue === 'achats');
-  const [facturesOuvert, setFacturesOuvert] = React.useState(vue === 'factures');
-  // Factures et bons d'achat : une seule liste pour les deux onglets, lue
-  // seulement quand l'un d'eux a été ouvert (cf. useAchatsDocuments).
-  const achats = useAchatsDocuments(etabId, { actif: achatsOuvert || facturesOuvert });
-  const importXlsxRef = React.useRef(null);
-  // Export de l'état d'inventaire en cours (Excel ou PDF).
-  const [exportEnCours, setExportEnCours] = React.useState(false);
   const perms = getPermissionsForRole(user.role);
   const canManage = !!perms.inventaire && canManageModule(user.role, 'inventaire');
   // Import d'un classeur Excel (et son modèle) réservé à consultant + patron.
-  // L'onglet Achats (photos et PDF des factures), l'impression et l'état
-  // d'inventaire en PDF comme en Excel sont ouverts à toute l'équipe qui a
-  // accès à l'inventaire.
+  // Compter, déposer des documents, voir les écarts et exporter sont ouverts
+  // à toute l'équipe qui a accès à l'inventaire.
   const canImportXlsx = ['consultant', 'patron'].includes(user.role);
   // Marquer une facture réglée : droit à part (Rôles & accès, « Régler les
   // factures »), donné au comptable sans lui ouvrir le reste. La base applique
-  // la même règle (déclencheur achats_documents_garde_reglement).
+  // la même règle (déclencheur achats_documents_garde_reglement). Hors de ce
+  // droit, aucun statut de paiement n'apparaît dans le module.
   const canRegler = canManageModule(user.role, 'factures_achat');
+  const [ecran, setEcran] = React.useState(() => {
+    // Les onglets de vues n'existent plus : la clé est effacée, sa valeur
+    // n'est pas reprise, tout le monde découvre l'accueil du module.
+    if (readLegacyStorage(ANCIENNE_CLE_VUE, null) != null) removeStorageKeys([ANCIENNE_CLE_VUE]);
+    const memo = readLegacyStorage('sc_inventaire_ecran', 'accueil');
+    if (memo === 'reglement' && !canRegler) return 'accueil';
+    return ECRANS_REPRIS.includes(memo) ? memo : 'accueil';
+  });
+  // Type du document qu'on dépose, donné par la tuile d'entrée.
+  const [importType, setImportType] = React.useState('facture');
+  // Les écrans d'import et de règlement restent montés une fois ouverts : une
+  // lecture de documents en cours ne s'arrête pas parce qu'on revient à
+  // l'accueil du module.
+  const [importOuvert, setImportOuvert] = React.useState(ecran === 'import');
+  const [reglementOuvert, setReglementOuvert] = React.useState(ecran === 'reglement');
+  // Factures et bons d'achat : une seule liste pour tout le module, lue dès
+  // le montage (l'accueil compte les documents à compléter et à régler).
+  const achats = useAchatsDocuments(etabId);
+  const importXlsxRef = React.useRef(null);
+  // Export de l'état d'inventaire en cours (Excel ou PDF).
+  const [exportEnCours, setExportEnCours] = React.useState(false);
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
   // Quantités comptées pas encore parties. Affiché DANS le module en plus du
@@ -252,10 +264,31 @@ const Inventaire = ({ user, etablissement }) => {
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_selected', selectedId); }, [selectedId]);
   React.useEffect(() => { writeLegacyStorage('sc_inventaire_perimetre', perimetreActif); }, [perimetreActif]);
   React.useEffect(() => {
-    writeLegacyStorage('sc_inventaire_vue', vue);
-    if (vue === 'achats') setAchatsOuvert(true);
-    if (vue === 'factures') setFacturesOuvert(true);
-  }, [vue]);
+    writeLegacyStorage('sc_inventaire_ecran', ecran);
+    if (ecran === 'import') setImportOuvert(true);
+    if (ecran === 'reglement') setReglementOuvert(true);
+  }, [ecran]);
+  // Geste retour, Échap et le bouton « Retour » ramènent à l'accueil du
+  // module ; le retour à l'accueil de l'app reste celui de la coque.
+  const retourAccueil = React.useCallback(() => setEcran('accueil'), []);
+  useBackLayer(ecran !== 'accueil', retourAccueil, 'inventaire-ecran');
+  // Échap aussi, sauf quand une fenêtre est ouverte (elle se ferme seule,
+  // Fenetres.jsx) ou qu'un champ a la main (Échap y annule la frappe).
+  React.useEffect(() => {
+    if (ecran === 'accueil') return undefined;
+    const echap = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('[data-fenetre], [role="dialog"]')) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      retourAccueil();
+    };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
+  }, [ecran, retourAccueil]);
+
+  // Pile d'inventaires de chaque périmètre, la plus récente d'abord : accueil
+  // du module, « Quel périmètre ? » et ouverture directe du comptage.
+  const pilesParPerimetre = new Map(perimetres.map(p => [p, inventairesEtab.filter(i => perimetreOf(i) === p).sort(parDateDesc)]));
 
   // Helper pour push un inventaire modifié vers Supabase.
   // Porte les modifications de STRUCTURE (création, validation, ajout ou
@@ -354,9 +387,12 @@ const Inventaire = ({ user, etablissement }) => {
     (newInv.nom === '__autre__' ? newInv.nomLibre : newInv.nom) || ''
   ).trim() || PERIMETRE_DEFAUT;
 
-  const createInventory = async () => {
-    const nom = nomPerimetreSaisi();
-    const date = newInv.date || aujourdhui();
+  // Crée un inventaire et ouvre son comptage. `base` : 'dupliquer' (reprise
+  // du dernier inventaire du même périmètre), 'catalogue' (le choix des
+  // produits s'ouvre juste après) ou 'vierge'. Appelée par la fenêtre
+  // « Nouvel inventaire » et, sans fenêtre, par « Commencer un nouveau
+  // comptage » depuis « Quel périmètre ? ».
+  const creerInventaire = async ({ nom, date, base }) => {
     // Deux comptages du même stock le même jour = double saisie neuf fois sur
     // dix. On laisse passer, mais après confirmation explicite.
     const doublon = inventairesEtab.find(i => perimetreOf(i) === nom && i.date === date);
@@ -364,7 +400,7 @@ const Inventaire = ({ user, etablissement }) => {
 
     // Modèle : le dernier inventaire DU MÊME périmètre. Dupliquer la cuisine
     // dans les boissons n'aurait aucun sens.
-    const source = newInv.base === 'dupliquer'
+    const source = base === 'dupliquer'
       ? inventairesEtab.filter(i => perimetreOf(i) === nom).sort(parDateDesc)[0]
       : null;
     const clone = source ? JSON.parse(JSON.stringify(source)) : { lignes: [] };
@@ -383,15 +419,52 @@ const Inventaire = ({ user, etablissement }) => {
     setPerimetre(nom);
     setSelectedId(clone.id);
     setShowNew(false);
-    setVue('comptage');
+    setEcran('comptage');
     // Parti du catalogue : on enchaîne directement sur le choix des produits.
-    if (newInv.base === 'catalogue') setShowAjout(true);
+    if (base === 'catalogue') setShowAjout(true);
     try {
       if (!await saveInvAvecPerimetre(clone)) alertePerimetreNonEnregistre();
     } catch (err) {
       console.error('[createInventory]', err);
       notifyLegacy('Inventaire non créé. ' + messageErreur(err, 'inventaire'), 'error');
     }
+  };
+
+  const createInventory = () => creerInventaire({
+    nom: nomPerimetreSaisi(),
+    date: newInv.date || aujourdhui(),
+    base: newInv.base,
+  });
+
+  // « Je compte » : un seul périmètre dont le dernier inventaire est en cours,
+  // le comptage s'ouvre directement ; sinon « Quel périmètre ? ».
+  const ouvrirJeCompte = () => {
+    const seul = perimetres.length === 1 ? pilesParPerimetre.get(perimetres[0])?.[0] : null;
+    if (seul && seul.statut !== 'validé') {
+      setPerimetre(perimetres[0]);
+      setSelectedId(seul.id);
+      setEcran('comptage');
+      return;
+    }
+    setEcran('perimetre');
+  };
+
+  // Tuile d'un périmètre dans « Quel périmètre ? » : son inventaire en cours,
+  // sinon un nouveau comptage du jour, repris du dernier, sans fenêtre.
+  const ouvrirComptagePerimetre = async (nom) => {
+    const dernier = pilesParPerimetre.get(nom)?.[0];
+    if (dernier && dernier.statut !== 'validé') {
+      setPerimetre(nom);
+      setSelectedId(dernier.id);
+      setEcran('comptage');
+      return;
+    }
+    await creerInventaire({ nom, date: aujourdhui(), base: 'dupliquer' });
+  };
+
+  const ouvrirImport = (type) => {
+    setImportType(type);
+    setEcran('import');
   };
 
   // ─── Renommer le périmètre affiché ───
@@ -627,8 +700,12 @@ const Inventaire = ({ user, etablissement }) => {
     return `${c.prix.toFixed(2)} CHF/${unite === 'kg' ? 'kg' : 'portion'}${c.estime ? ' (estimé)' : ''}`;
   }, [refsPrix]);
 
-  if (!inv) {
-    return (
+  // Aucun inventaire dans l'établissement : l'accueil du module se rend quand
+  // même (on peut déjà déposer des documents) ; les écrans qui ont besoin
+  // d'un inventaire le disent et proposent d'en créer un.
+  const renderSansInventaire = () => (
+    <>
+      <EnTeteEcran titre={<span data-no-translate>{perimetreActif}</span>} onRetour={retourAccueil} />
       <div style={{ padding: 40, textAlign: 'center' }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
@@ -636,17 +713,15 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
         {loadError && <div style={invs.loadError}>Données indisponibles pour le moment. Ne créez pas d'inventaire avant d'avoir réessayé.</div>}
         <button style={invs.addBtn} onClick={() => openNewInventory()} type="button">Créer le premier inventaire</button>
-        {/* Pas de renommage ici : sans inventaire, il n'y a aucun périmètre à renommer. */}
-        {renderNewInventoryModal()}
       </div>
-    );
-  }
+    </>
+  );
 
   // ─── Validation ───
   // Un inventaire validé est une pièce comptable : il se fige. Les lignes ne
   // bougent plus tant qu'il n'est pas explicitement rouvert, sinon la valeur
   // de stock validée le mois dernier peut changer après coup sans trace.
-  const estValide = inv.statut === 'validé';
+  const estValide = inv?.statut === 'validé';
   // Règle du 25.10.2026 : compter, ajouter un produit, ranger, reprendre les
   // restants et terminer le comptage reviennent à tout rôle qui voit le
   // module. La base le permettait déjà (RPC de saisie SECURITY INVOKER, RLS
@@ -655,10 +730,10 @@ const Inventaire = ({ user, etablissement }) => {
   // la case « Modifier » du module.
   const canEditLignes = !estValide;
   const canGererLignes = canManage && !estValide;
-  const validateurNom = inv.validePar ? userDisplayName(inv.validePar) : '';
+  const validateurNom = inv?.validePar ? userDisplayName(inv.validePar) : '';
 
   const validerInventaire = async () => {
-    if (estValide) return;
+    if (!inv || estValide) return;
     const nonComptes = (invCourant()?.lignes || []).filter(l => !estCompte(l)).length;
     const question = nonComptes > 0
       ? `${nonComptes} produit${nonComptes > 1 ? 's ne sont' : ' n\'est'} pas encore compté${nonComptes > 1 ? 's' : ''} : ${nonComptes > 1 ? 'ils seront validés' : 'il sera validé'} à 0.\n\nValider quand même l'inventaire « ${perimetreActif} » du ${inv.date} ? Les lignes seront figées jusqu'à réouverture.`
@@ -792,7 +867,7 @@ const Inventaire = ({ user, etablissement }) => {
   // un inventaire matériel créé par erreur) est légitime tant qu'il reste au
   // moins un inventaire ailleurs.
   const deleteInventory = async () => {
-    if (!canManage || inventairesEtab.length <= 1) return;
+    if (!canManage || !inv || inventairesEtab.length <= 1) return;
     const dernierDuPerimetre = inventaires.length === 1;
     const question = dernierDuPerimetre
       ? `Supprimer cet inventaire ?\nC'est le dernier du périmètre « ${perimetreActif} » : le périmètre disparaîtra de la liste.`
@@ -1183,13 +1258,13 @@ const Inventaire = ({ user, etablissement }) => {
 
   // Le périmètre fait partie de l'identité du document : un PDF « Inventaire »
   // sans mention Cuisine / Boissons / Matériel n'est pas exploitable en archive.
-  const titreDocument = `Inventaire ${perimetreActif} - ${inv.date}`;
+  const titreDocument = `Inventaire ${perimetreActif} - ${inv?.date || ''}`;
 
-  // Le document imprimé est le tableau de la vue « Écarts » : on y bascule
-  // avant de capturer, sinon l'élément n'est pas dans le DOM.
-  const avecVueEcarts = (action) => {
-    if (vue === 'ecarts') { action(); return; }
-    setVue('ecarts');
+  // Le document imprimé est le tableau de l'écran « Écarts et documents » :
+  // on s'y rend avant de capturer, sinon l'élément n'est pas dans le DOM.
+  const avecEcranEcarts = (action) => {
+    if (ecran === 'ecarts') { action(); return; }
+    setEcran('ecarts');
     setTimeout(action, 80);
   };
 
@@ -1198,17 +1273,15 @@ const Inventaire = ({ user, etablissement }) => {
       notifyLegacy('Export PDF indisponible pour le moment.', 'error');
       return;
     }
-    avecVueEcarts(() => pdfUtils.printElement('inventaire-print', titreDocument, { etablissement, orientation: 'landscape' }));
+    avecEcranEcarts(() => pdfUtils.printElement('inventaire-print', titreDocument, { etablissement, orientation: 'landscape' }));
   };
-
-  const nbComptes = (inv.lignes || []).filter(estCompte).length;
 
   // ─── État d'inventaire (Excel + PDF) au format du classeur établissement ───
   // Reprend report, achats de la période et relevé : les documents lus dans
   // l'onglet Achats sont relus ici, au moment de l'export, pour qu'un document
   // ajouté sur une autre tablette soit pris en compte.
   const exporterEtat = async (format) => {
-    if (exportEnCours) return;
+    if (exportEnCours || !inv) return;
     setExportEnCours(true);
     try {
       const [{ construireEtatInventaire }, documents, aliasCatalogue] = await Promise.all([
@@ -1247,23 +1320,6 @@ const Inventaire = ({ user, etablissement }) => {
 
   return (
     <div style={invs.root}>
-      {/* Périmètres : une pile d'inventaires par zone comptée. L'onglet actif
-          commande tout le reste de l'écran. */}
-      <div style={invs.perimetreBar} className="no-print">
-        <SegmentedTabs
-          size="sm"
-          active={perimetreActif}
-          onChange={(id) => (id === '__new__' ? openNewInventory('') : setPerimetre(id))}
-          tabs={[
-            ...perimetres.map(p => ({
-              id: p,
-              label: `${p} (${inventairesEtab.filter(i => perimetreOf(i) === p).length})`,
-            })),
-            { id: '__new__', label: 'Nouveau périmètre' },
-          ]}
-        />
-      </div>
-
       {loadError && (
         <div style={invs.loadError} className="no-print">
           Données indisponibles pour le moment. La liste affichée peut être incomplète.
@@ -1279,99 +1335,124 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
       )}
 
-      <div style={invs.header} className="no-print">
-        <div style={invs.headerLeft}>
-          <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)}>
-            {(inventaires || []).map(i => <option key={i.id} value={i.id}>{dateCH(i.date)}, {i.statut}</option>)}
-          </select>
-          <span style={{...invs.badge, color: estValide ? 'var(--success-text)' : 'var(--text2)'}}>
-            {estValide ? (validateurNom ? `Validé par ${validateurNom}` : 'Validé') : `${nbComptes}/${(inv.lignes || []).length} comptés`}
-          </span>
-        </div>
-        <div className="module-actions">
-          {canEditLignes && <Btn onClick={() => setShowAjout(true)}>Ajouter des produits</Btn>}
-          {/* Juste après « Ajouter des produits » : visible sur téléphone sans faire défiler la barre. */}
-          <BoutonActions
-            id="inventaire-exporter"
-            label={exportEnCours ? 'Export en cours…' : 'Exporter'}
-            style={invs.exportBtn}
-            disabled={exportEnCours}
-            titre="Exporter l'inventaire"
-            sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}${estValide ? ', validé' : ', en cours'}`}
-            sections={[{
-              items: [
-                { titre: 'PDF', detail: "L'état d'inventaire complet, prêt à envoyer ou à archiver.", onClick: () => exporterEtat('pdf') },
-                { titre: 'Excel', detail: 'Le même état au format du classeur, à reprendre dans un tableur.', onClick: () => exporterEtat('xlsx') },
-                { titre: 'Imprimer', detail: "Le tableau des écarts et des valeurs, envoyé à l'imprimante.", onClick: printInventory },
-              ],
-            }]}
-          />
-          {/* Valider : le seul bouton principal de l'en-tête (plus de vert). */}
-          {!estValide && <Btn variant="primary" onClick={validerInventaire}>Valider</Btn>}
-          {canManage && estValide && <Btn onClick={rouvrirInventaire}>Rouvrir</Btn>}
-          <BoutonActions
-            id="inventaire-gerer"
-            label="Gérer"
-            style={invs.exportBtn}
-            titre="Gérer l'inventaire"
-            sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}`}
-            sections={[
-              {
-                titre: 'Inventaires',
-                items: [
-                  { titre: 'Nouvel inventaire', detail: 'Choisir le périmètre, la date et le point de départ du comptage.', onClick: () => openNewInventory(perimetreActif) },
-                  canManage && { titre: 'Renommer le périmètre', detail: `Change le nom « ${perimetreActif} » sur tous ses inventaires.`, onClick: openRename },
-                ],
-              },
-              {
-                titre: 'Lignes',
-                items: [
-                  canGererLignes && !sel.active && { titre: 'Sélectionner des lignes', detail: 'Pour en supprimer, les ranger par zone ou en exporter une partie en Excel.', onClick: () => { setVue('ecarts'); sel.enter(); } },
-                  canManage && recettes.length > 0 && { titre: 'Produits maison (fiches recettes)', detail: 'Relier les préparations maison à leur fiche, chiffrées au coût matière.', onClick: () => setShowMaison(true) },
-                ],
-              },
-              {
-                titre: 'Import Excel',
-                items: [
-                  canImportXlsx && { titre: 'Importer un classeur XLSX', detail: 'Met à jour les produits de cet inventaire, ou crée un inventaire complet depuis un classeur Sec / Positif / Négatif.', onClick: () => importXlsxRef.current?.click() },
-                  canImportXlsx && { titre: 'Télécharger le modèle XLSX', detail: 'Le fichier à remplir avant un import.', onClick: downloadInventoryTemplate },
-                ],
-              },
-              {
-                items: [
-                  canManage && inventairesEtab.length > 1 && { titre: 'Supprimer cet inventaire', onClick: deleteInventory, danger: true },
-                ],
-              },
-            ]}
-          />
-          {canImportXlsx && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
-        </div>
-      </div>
-
-      <SegmentedTabs
-        active={vue}
-        onChange={setVue}
-        tabs={VUES.map(v => ({ id: v.id, label: v.label }))}
-      />
-
-      {vue === 'comptage' && (
-        <ComptageRapide
-          lignes={inv.lignes || []}
-          canEdit={canEditLignes}
-          stockDraft={stockDraft}
-          setStockDraft={setStockDraft}
-          stockRefs={stockRefs}
-          commitStockReel={commitStockReel}
-          onAjoutRapide={ajoutRapide}
-          onChangerUnite={changerUnite}
-          onChangerZone={(ligneId, zone) => changerZone([ligneId], zone)}
-          onReprendreRestants={reprendreRestants}
-          catalogue={catalogue}
+      {ecran === 'accueil' && (
+        <AccueilInventaire
+          perimetreActif={perimetreActif}
+          perimetres={perimetres}
+          pilesParPerimetre={pilesParPerimetre}
+          inv={inv}
+          docs={achats.tousLesDocs}
+          canManage={canManage}
+          canRegler={canRegler}
+          canImportXlsx={canImportXlsx}
+          onJeCompte={ouvrirJeCompte}
+          onImport={ouvrirImport}
+          onReglement={() => setEcran('reglement')}
+          onEcarts={() => setEcran('ecarts')}
+          onChoisirPerimetre={setPerimetre}
+          onNouveauPerimetre={() => openNewInventory('')}
+          gerer={{
+            aInventaire: !!inv,
+            estValide,
+            peutSelectionner: canGererLignes && !sel.active,
+            aRecettes: recettes.length > 0,
+            peutSupprimer: inventairesEtab.length > 1,
+            onRenommer: openRename,
+            onRouvrir: rouvrirInventaire,
+            onSelectionnerLignes: () => { setEcran('ecarts'); sel.enter(); },
+            onProduitsMaison: () => setShowMaison(true),
+            onImporterXlsx: () => importXlsxRef.current?.click(),
+            onModeleXlsx: downloadInventoryTemplate,
+            onSupprimer: deleteInventory,
+          }}
         />
       )}
 
-      {achatsOuvert && (
-        <div style={{ display: vue === 'achats' ? 'block' : 'none' }}>
+      {ecran === 'perimetre' && (
+        <ChoixPerimetre
+          perimetres={perimetres}
+          pilesParPerimetre={pilesParPerimetre}
+          onRetour={retourAccueil}
+          onOuvrir={ouvrirComptagePerimetre}
+          onAutre={() => openNewInventory(perimetreActif)}
+        />
+      )}
+
+      {ecran === 'comptage' && (inv ? (
+        <EcranComptage
+          inv={inv}
+          perimetreActif={perimetreActif}
+          estValide={estValide}
+          validateurNom={validateurNom}
+          canManage={canManage}
+          canEditLignes={canEditLignes}
+          onRetour={retourAccueil}
+          onAjouter={() => setShowAjout(true)}
+          onTerminer={validerInventaire}
+          onRouvrir={rouvrirInventaire}
+          comptage={{
+            lignes: inv.lignes || [],
+            canEdit: canEditLignes,
+            stockDraft,
+            setStockDraft,
+            stockRefs,
+            commitStockReel,
+            onAjoutRapide: ajoutRapide,
+            onChangerUnite: changerUnite,
+            onChangerZone: (ligneId, zone) => changerZone([ligneId], zone),
+            onReprendreRestants: reprendreRestants,
+            catalogue,
+          }}
+        />
+      ) : renderSansInventaire())}
+
+      {ecran === 'ecarts' && (inv ? (
+        <>
+          <EnTeteEcran titre="Écarts et documents" sousTitre={<span data-no-translate>{perimetreActif}</span>} onRetour={retourAccueil}>
+            <select style={invs.invSelect} value={inv.id} onChange={e => setSelectedId(e.target.value)} aria-label="Inventaire affiché">
+              {(inventaires || []).map(i => <option key={i.id} value={i.id}>{dateCH(i.date)}, {i.statut}</option>)}
+            </select>
+            <BoutonActions
+              id="inventaire-exporter"
+              label={exportEnCours ? 'Export en cours…' : 'Exporter'}
+              style={invs.exportBtn}
+              disabled={exportEnCours}
+              titre="Exporter l'inventaire"
+              sousTitre={`${perimetreActif}, inventaire du ${dateCH(inv.date)}${estValide ? ', validé' : ', en cours'}`}
+              sections={[{
+                items: [
+                  { titre: 'PDF', detail: "L'état d'inventaire complet, prêt à envoyer ou à archiver.", onClick: () => exporterEtat('pdf') },
+                  { titre: 'Excel', detail: 'Le même état au format du classeur, à reprendre dans un tableur.', onClick: () => exporterEtat('xlsx') },
+                  { titre: 'Imprimer', detail: "Le tableau des écarts et des valeurs, envoyé à l'imprimante.", onClick: printInventory },
+                ],
+              }]}
+            />
+          </EnTeteEcran>
+          <EcartsPanel
+            inv={inv}
+            previousInv={previousInv}
+            perimetreActif={perimetreActif}
+            perimetres={perimetres}
+            estValide={estValide}
+            validateurNom={validateurNom}
+            valeurTousPerimetres={valeurTousPerimetres}
+            canManage={canManage}
+            canEditLignes={canEditLignes}
+            canGererLignes={canGererLignes}
+            sel={sel}
+            bulkBusy={bulkBusy}
+            stockDraft={stockDraft}
+            setStockDraft={setStockDraft}
+            stockRefs={stockRefs}
+            commitStockReel={commitStockReel}
+            focusLigneSuivante={focusLigneSuivante}
+            onDeleteLine={deleteLine}
+            onSupprimerSelection={supprimerLignesSelection}
+            onExporterSelection={exporterLignesSelection}
+            onChangerZone={changerZone}
+          />
+          {/* Consommation de la période et documents : la lecture de PDF et le
+              rapprochement restent dans un chunk à part, chargé ici seulement. */}
           <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
             <AchatsPanel
               user={user}
@@ -1381,7 +1462,6 @@ const Inventaire = ({ user, etablissement }) => {
               inv={inv}
               previousInv={previousInv}
               catalogue={catalogue}
-              canImport
               canEditLignes={canEditLignes}
               canAppliquerPrix={canGererLignes}
               canRegler={canRegler}
@@ -1390,12 +1470,37 @@ const Inventaire = ({ user, etablissement }) => {
               onMajPrix={majPrixDepuisAchats}
             />
           </React.Suspense>
+        </>
+      ) : renderSansInventaire())}
+
+      {importOuvert && (
+        <div style={{ display: ecran === 'import' ? 'flex' : 'none', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <EnTeteEcran
+            titre={importType === 'facture' ? 'Facture reçue' : 'Livraison reçue'}
+            sousTitre={<span data-no-translate>{perimetreActif}</span>}
+            onRetour={retourAccueil}
+          />
+          <ImportDocumentsAchats
+            key={importType}
+            user={user}
+            etabId={etabId}
+            perimetreActif={perimetreActif}
+            docsRef={achats.docsRef}
+            tableAbsente={achats.tableAbsente}
+            typeParDefaut={importType}
+            onImporte={(doc, pieceGardee) => {
+              achats.majDocs(liste => [doc, ...liste]);
+              if (pieceGardee) achats.setAvecPieces(s => new Set(s).add(doc.id));
+            }}
+            titre={importType === 'facture' ? 'Importer des factures' : 'Importer des bons de livraison'}
+            sousTitre="PDF reçus par mail ou photos. Chaque document est lu automatiquement et rangé dans le périmètre affiché ; ses lignes servent au calcul des achats."
+          />
         </div>
       )}
 
-      {/* Factures : gardé monté une fois ouvert, comme Achats (import en cours). */}
-      {facturesOuvert && (
-        <div style={{ display: vue === 'factures' ? 'block' : 'none' }}>
+      {reglementOuvert && canRegler && (
+        <div style={{ display: ecran === 'reglement' ? 'flex' : 'none', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <EnTeteEcran titre="Je règle les factures" sousTitre={<span data-no-translate>{perimetreActif}</span>} onRetour={retourAccueil} />
           <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
             <FacturesPanel
               user={user}
@@ -1410,36 +1515,12 @@ const Inventaire = ({ user, etablissement }) => {
         </div>
       )}
 
-      {vue === 'ecarts' && (
-        <EcartsPanel
-          inv={inv}
-          previousInv={previousInv}
-          perimetreActif={perimetreActif}
-          perimetres={perimetres}
-          estValide={estValide}
-          validateurNom={validateurNom}
-          valeurTousPerimetres={valeurTousPerimetres}
-          canManage={canManage}
-          canEditLignes={canEditLignes}
-          canGererLignes={canGererLignes}
-          sel={sel}
-          bulkBusy={bulkBusy}
-          stockDraft={stockDraft}
-          setStockDraft={setStockDraft}
-          stockRefs={stockRefs}
-          commitStockReel={commitStockReel}
-          focusLigneSuivante={focusLigneSuivante}
-          onDeleteLine={deleteLine}
-          onSupprimerSelection={supprimerLignesSelection}
-          onExporterSelection={exporterLignesSelection}
-          onChangerZone={changerZone}
-        />
-      )}
+      {canImportXlsx && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}
 
       {renderNewInventoryModal()}
       {renderRenameModal()}
 
-      {showMaison && (
+      {showMaison && inv && (
         <ProduitsMaisonModal
           lignes={inv.lignes || []}
           recettes={recettes}
@@ -1451,7 +1532,7 @@ const Inventaire = ({ user, etablissement }) => {
         />
       )}
 
-      {showAjout && canEditLignes && (
+      {showAjout && canEditLignes && inv && (
         <AjoutProduitsModal
           catalogue={catalogue}
           lignesExistantes={inv.lignes || []}
