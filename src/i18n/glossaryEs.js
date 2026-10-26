@@ -855,6 +855,28 @@ export const UI_GLOSSARY_ES = {
   'Pas de photo conservée pour cette facture': 'No se conservó ninguna foto de esta factura',
   'Aucune facture importée pour cette période': 'Ninguna factura importada en este periodo',
 
+  // ── Planning par tâche : accueil du module ──
+  "J'arrive": 'Llego',
+  'Je pars': 'Me voy',
+  'Mes horaires': 'Mis horarios',
+  "L'équipe aujourd'hui": 'El equipo hoy',
+  'Faire le planning': 'Hacer el horario',
+  "La semaine de l'équipe": 'La semana del equipo',
+  'prévu à': 'previsto a las',
+  'journée pointée': 'jornada fichada',
+  'hors planning, ajouté au planning à votre nom': 'fuera del horario, añadido al horario a tu nombre',
+  'aucun service prévu': 'ningún turno previsto',
+  'pointés': 'fichados',
+  "aucun horaire aujourd'hui": 'ningún turno hoy',
+  'horaires cette semaine': 'turnos esta semana',
+  'horaire cette semaine': 'turno esta semana',
+  'aucun horaire cette semaine': 'ningún turno esta semana',
+  'absences, modèles, groupes, export': 'ausencias, plantillas, grupos, exportación',
+  'Corriger un pointage': 'Corregir un fichaje',
+  'Touchez ensuite la ligne de la personne.': 'Luego toca la fila de la persona.',
+  'Dupliquer la semaine': 'Duplicar la semana',
+  'Pointage enregistré : il sera synchronisé au retour du réseau': 'Fichaje guardado: se sincronizará cuando vuelva la red',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',

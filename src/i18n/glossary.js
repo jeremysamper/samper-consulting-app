@@ -874,6 +874,28 @@ export const UI_GLOSSARY = {
   'Pas de photo conservée pour cette facture': 'No photo kept for this invoice',
   'Aucune facture importée pour cette période': 'No invoice imported for this period',
 
+  // ── Planning par tâche : accueil du module ──
+  "J'arrive": "I'm arriving",
+  'Je pars': "I'm leaving",
+  'Mes horaires': 'My hours',
+  "L'équipe aujourd'hui": 'The team today',
+  'Faire le planning': 'Make the schedule',
+  "La semaine de l'équipe": "The team's week",
+  'prévu à': 'planned at',
+  'journée pointée': 'day clocked',
+  'hors planning, ajouté au planning à votre nom': 'off schedule, added to the schedule under your name',
+  'aucun service prévu': 'no shift planned',
+  'pointés': 'clocked in',
+  "aucun horaire aujourd'hui": 'no shift today',
+  'horaires cette semaine': 'shifts this week',
+  'horaire cette semaine': 'shift this week',
+  'aucun horaire cette semaine': 'no shift this week',
+  'absences, modèles, groupes, export': 'absences, templates, groups, export',
+  'Corriger un pointage': 'Correct a clock-in',
+  'Touchez ensuite la ligne de la personne.': "Then tap the person's row.",
+  'Dupliquer la semaine': 'Duplicate the week',
+  'Pointage enregistré : il sera synchronisé au retour du réseau': 'Clock-in saved: it will sync when the network is back',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',
