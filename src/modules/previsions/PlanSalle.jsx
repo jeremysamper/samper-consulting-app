@@ -436,6 +436,9 @@ export default function PlanSalle({
   // Une réservation créée depuis le plan (client de passage, « Réserver la
   // table ») : le parent relit ses réservations (et sa semaine).
   onResasModifiees,
+  // Écran Le plan de salle : service et salle sur la même ligne que les
+  // boutons, pour que le plan se voie sans descendre la page.
+  compact = false,
 }) {
   const isMobile = useIsMobile();
   const plan     = usePlanSalle(etablissementId);
@@ -1974,6 +1977,8 @@ export default function PlanSalle({
   // parent : la barre d'ici ne sert plus qu'aux boutons « Déplacer des
   // tables » et « Dessiner la salle ».
   const barre = !serviceControle || canEdit;
+  // Écran compact, hors dessin : les salles rejoignent la barre du service.
+  const sallesEnLigne = compact && !modePlan && !serviceControle;
 
   return (
     <div style={ajusteHauteur
@@ -2003,7 +2008,7 @@ export default function PlanSalle({
         )}
         {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
         {!modePlan && !serviceControle && (
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: sallesEnLigne ? '0 1 auto' : 1, minWidth: 0 }}>
             <SegmentedTabs
               tabs={SERVICES.map((s) => ({
                 id: s.id,
@@ -2014,6 +2019,21 @@ export default function PlanSalle({
               size="sm"
             />
           </div>
+        )}
+        {sallesEnLigne && (
+          <>
+            {(salles || []).length > 1 && (
+              <div style={{ flex: '0 1 auto', minWidth: 0 }}>
+                <SegmentedTabs
+                  tabs={(salles || []).map((s) => ({ id: s.id, label: s.nom }))}
+                  active={salleId}
+                  onChange={setSalleId}
+                  size="sm"
+                />
+              </div>
+            )}
+            <div style={{ flex: 1 }} />
+          </>
         )}
         {modePlan && (
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text2)' }}>
@@ -2163,8 +2183,8 @@ export default function PlanSalle({
         </div>
       )}
 
-      {/* ── Onglets de salle ── */}
-      {(salles || []).length > 1 && (
+      {/* ── Onglets de salle (dans la barre en écran compact, hors dessin) ── */}
+      {(salles || []).length > 1 && !sallesEnLigne && (
         <SegmentedTabs
           tabs={(salles || []).map((s) => ({
             id: s.id,

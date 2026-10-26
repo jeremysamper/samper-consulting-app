@@ -268,6 +268,7 @@ export default function Previsions({ user, etablissement }) {
           etablissementId={etabId}
           date={aujourdhui}
           vueInitiale="plan"
+          compact
           onResaUpdated={() => setRefreshKey((k) => k + 1)}
           refreshKey={refreshKey}
           canEdit={canEdit}

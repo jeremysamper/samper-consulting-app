@@ -171,9 +171,14 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
 // vueInitiale : « plan » pour l'écran Le plan de salle, qui s'ouvre sur le plan
 // du jour. onBack absent : pas de « Retour à la semaine » (l'écran a déjà son
 // Retour vers l'accueil du module).
+// compact (écran Le plan de salle) : Liste / Plan, la date et les chiffres du
+// jour sur une seule ligne, sans « Mode service » ni « Nouvelle réservation »
+// (les tuiles Ce soir et Je réserve une table de l'accueil, un geste plus
+// loin) ; le plan range service et salle sur une seule ligne. Le plan se voit
+// sans descendre la page, téléphone compris.
 export default function VueJour({
   etablissementId, date, onBack = null, onResaUpdated, refreshKey, canEdit = true, onModeService, onNouvelle = null,
-  vueInitiale = 'liste',
+  vueInitiale = 'liste', compact = false,
 }) {
   const isMobile    = useIsMobile();
   const {
@@ -205,33 +210,65 @@ export default function VueJour({
     .reduce((s, r) => s + (r.nb_couverts || 0), 0);
   const serviceEnCours = actives.some((r) => !estPresent(r.statut) || r.statut === 'arrive');
 
+  const dateDuJour = (
+    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+      {formatDateLongue(date)}
+    </div>
+  );
+  const chiffresDuJour = !loading && actives.length > 0 && (
+    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 1 }}>
+      {totalCouverts} couvert{totalCouverts > 1 ? 's' : ''}
+      {totalGroupes > 0 ? `, ${totalGroupes} groupe${totalGroupes > 1 ? 's' : ''}` : ''}
+      {serviceEnCours && attables > 0 && (
+        <>
+          {', '}
+          <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>
+            {attables} à table
+          </span>
+          {resteAVenir > 0 ? `, ${resteAVenir} attendu${resteAVenir > 1 ? 's' : ''}` : ''}
+        </>
+      )}
+    </div>
+  );
+  const listeOuPlan = (style) => (
+    <SegmentedTabs
+      tabs={[
+        { id: 'liste', label: 'Liste' },
+        { id: 'plan',  label: 'Plan de salle' },
+      ]}
+      active={vue}
+      onChange={setVue}
+      size="sm"
+      style={style}
+    />
+  );
+
   return (
     <div>
+      {compact && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0,
+          marginTop: 12, marginBottom: 10,
+        }}>
+          {listeOuPlan()}
+          <div style={{ minWidth: 0 }}>
+            {dateDuJour}
+            {chiffresDuJour}
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
+      {!compact && (
+      <>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         marginTop: 16, marginBottom: 14, flexWrap: 'wrap',
       }}>
         {onBack && <Btn small onClick={onBack}>Retour à la semaine</Btn>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
-            {formatDateLongue(date)}
-          </div>
-          {!loading && actives.length > 0 && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 1 }}>
-              {totalCouverts} couvert{totalCouverts > 1 ? 's' : ''}
-              {totalGroupes > 0 ? `, ${totalGroupes} groupe${totalGroupes > 1 ? 's' : ''}` : ''}
-              {serviceEnCours && attables > 0 && (
-                <>
-                  {', '}
-                  <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>
-                    {attables} à table
-                  </span>
-                  {resteAVenir > 0 ? `, ${resteAVenir} attendu${resteAVenir > 1 ? 's' : ''}` : ''}
-                </>
-              )}
-            </div>
-          )}
+          {dateDuJour}
+          {chiffresDuJour}
         </div>
         {/* Plan de salle et réservations côte à côte, en plein écran, pour
             le jour affiché. */}
@@ -269,16 +306,9 @@ export default function VueJour({
       </div>
 
       {/* ── Liste ↔ plan de salle ── */}
-      <SegmentedTabs
-        tabs={[
-          { id: 'liste', label: 'Liste' },
-          { id: 'plan',  label: 'Plan de salle' },
-        ]}
-        active={vue}
-        onChange={setVue}
-        size="sm"
-        style={{ marginBottom: 12 }}
-      />
+      {listeOuPlan({ marginBottom: 12 })}
+      </>
+      )}
 
       {/* ── Erreur ── */}
       {error && (
@@ -317,6 +347,7 @@ export default function VueJour({
           onStatut={canEdit ? changerStatut : undefined}
           onTraiter={canEdit ? traiter : undefined}
           onResasModifiees={() => { load(); onResaUpdated?.(); }}
+          compact={compact}
         />
       )}
 
