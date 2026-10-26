@@ -2,15 +2,15 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
-import { cleProduit } from './inventaireLignes.js';
 import {
   TYPES_DOCUMENT, libelleType, periodeInventaire, dansPeriode,
-  statutsDocuments, appliquerDecision,
-  construireContexteRapprochement, rapprocherLigneDoc, calculerConsommation,
+  statutsDocuments, appliquerDecision, estACompleter,
+  rapprocherLigneDoc, calculerConsommation,
   SEUIL_ECART_PRIX_PCT,
 } from './achatsLogic.js';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import LignesARattacher from './LignesARattacher.jsx';
+import { useRapprochement } from './useRapprochement.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,29 +42,19 @@ const qte = (n) => (n == null ? '-' : String(+Number(n).toFixed(3)));
 
 export default function AchatsPanel({
   user, etabId, perimetreActif, perimetres, inv, previousInv, catalogue,
-  canEditLignes, canAppliquerPrix = canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats,
+  canEditLignes, canAppliquerPrix = canEditLignes, canRegler, onAjouterLignes, onMajPrix, achats, onCompleter,
 }) {
   const legacySB = dbService.getBridge();
   // Documents partagés avec l'onglet Factures (useAchatsDocuments, tenu par Inventaire.jsx).
   const {
     docs, tousLesDocs, tableAbsente, loadError, docsRef, majDocs, reload, avecPieces, setAvecPieces,
   } = achats;
-  const [aliasCatalogue, setAliasCatalogue] = React.useState([]);
-
   const [tousDocs, setTousDocs] = React.useState(false);
   const [docOuvert, setDocOuvert] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   // Document dont on regarde la photo ou le PDF, ou null.
   const [apercu, setApercu] = React.useState(null);
   const fermerApercu = React.useCallback(() => setApercu(null), []);
-
-  React.useEffect(() => {
-    if (!legacySB) return;
-    let vivant = true;
-    legacySB.db.listProduitAliasEtab(etabId).then(a => { if (vivant) setAliasCatalogue(a || []); }).catch(() => {});
-    return () => { vivant = false; };
-  }, [etabId]);
-
 
   // ── Période et documents du périmètre ──
   const periode = periodeInventaire(inv, previousInv);
@@ -80,20 +70,7 @@ export default function AchatsPanel({
   const statuts = React.useMemo(() => statutsDocuments(docsPeriode), [docsPeriode]);
 
   // ── Rapprochement + calcul ──
-  const produits = React.useMemo(() => {
-    const m = new Map();
-    [...(inv?.lignes || []), ...(previousInv?.lignes || [])].forEach(l => {
-      const cle = cleProduit(l.produit);
-      // Produits maison exclus : aucune facture ne peut les concerner.
-      if (cle && !l.recetteId && !m.has(cle)) m.set(cle, { cle, nom: l.produit, unite: l.unite, prixUnit: Number(l.prixUnit) || 0 });
-    });
-    return Array.from(m.values());
-  }, [inv, previousInv]);
-
-  const ctx = React.useMemo(
-    () => construireContexteRapprochement({ produits, documents: tousLesDocs, aliasCatalogue, catalogue }),
-    [produits, docs, aliasCatalogue, catalogue],
-  );
+  const { produits, ctx } = useRapprochement({ etabId, inv, previousInv, documents: tousLesDocs, catalogue });
 
   const calcul = React.useMemo(
     () => calculerConsommation({ inv, previousInv, documents: docsPeriode, statuts, ctx }),
@@ -321,6 +298,10 @@ export default function AchatsPanel({
                   </span>
                   {avecPieces.has(d.id) && (
                     <button type="button" style={st.btnVoir} onClick={() => setApercu(d)}>{libelleVoir(d)}</button>
+                  )}
+                  {/* La lecture n'a pas tout rendu : « Vérifier la lecture » sur ce document. */}
+                  {onCompleter && estACompleter(d) && (
+                    <button type="button" style={st.btnVoir} onClick={() => onCompleter(d)}>À compléter</button>
                   )}
                 </div>
               </div>

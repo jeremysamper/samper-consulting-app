@@ -1,4 +1,5 @@
 import React from 'react';
+import { FolderOpen, ScanLine } from 'lucide-react';
 import { dbService } from '../../services/dbService.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { TYPES_DOCUMENT, devinerTypeDocument, trouverDoublon } from './achatsLogic.js';
@@ -6,11 +7,16 @@ import { estPdfFichier, preparerPieces } from './achatsPieces.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Import des factures et bons : on dépose d'un coup les PDF reçus par mail ou
-// les photos, l'IA lit chaque document, et le document est enregistré dans
-// achats_documents avec sa pièce. Partagé par les onglets « Achats &
-// consommation » et « Factures » : un document importé d'un côté apparaît
-// dans l'autre.
+// Dépôt des bons et des factures : deux grandes tuiles, « Photographier »
+// (appareil photo de la tablette ou du téléphone) et « Choisir un PDF ou une
+// photo » (reçus par mail ou déjà sur l'appareil, plusieurs à la fois). L'IA
+// lit chaque document, qui est enregistré dans achats_documents avec sa pièce
+// (pièce AVANT l'upsert : quand le document apparaît sur une autre tablette,
+// sa photo est déjà là) ; l'appelant l'envoie ensuite à « Vérifier la lecture ».
+//
+// `type` : type donné par la tuile d'entrée (bon de livraison, facture).
+// « Autre type de document » déplie la liste complète (bon de commande,
+// type deviné d'après le nom du fichier).
 //
 // Principe de sûreté : l'IA ne fait que LIRE. Elle n'écrit ni dans le
 // catalogue ni dans les prix. La lecture est ouverte à toute l'équipe qui a
@@ -21,25 +27,21 @@ const CONCURRENCE = 3;
 const dateCH = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 
 export default function ImportDocumentsAchats({
-  user, etabId, perimetreActif, docsRef, onImporte, tableAbsente,
-  typeParDefaut = 'auto', titre, sousTitre,
+  user, etabId, perimetreActif, docsRef, onImporte, tableAbsente, type = 'facture', fournisseurs = [],
 }) {
   const legacySB = dbService.getBridge();
   const [file, setFile] = React.useState([]); // travaux de lecture
-  const [typeImport, setTypeImport] = React.useState(typeParDefaut);
+  const [typeImport, setTypeImport] = React.useState(type);
+  const [autreType, setAutreType] = React.useState(false);
   const [grouper, setGrouper] = React.useState(false);
-  const [fournisseurs, setFournisseurs] = React.useState([]);
   const fileRef = React.useRef(null);
   const cameraRef = React.useRef(null);
   const enCoursRef = React.useRef(0);
   const attenteRef = React.useRef([]);
 
-  React.useEffect(() => {
-    if (!legacySB) return undefined;
-    let vivant = true;
-    legacySB.db.listFournisseurs(etabId).then(f => { if (vivant) setFournisseurs(f || []); }).catch(() => {});
-    return () => { vivant = false; };
-  }, [etabId]);
+  // La tuile d'entrée change (Livraison reçue puis Facture reçue) : le type
+  // suit, la liste repliée.
+  React.useEffect(() => { setTypeImport(type); setAutreType(false); }, [type]);
 
   const majTravail = (key, patch) => setFile(f => f.map(t => (t.key === key ? { ...t, ...patch } : t)));
 
@@ -161,30 +163,59 @@ export default function ImportDocumentsAchats({
   };
 
   const enAttente = file.filter(t => t.statut === 'attente' || t.statut === 'lecture').length;
+  const typeCourant = TYPES_DOCUMENT.find(t => t.id === typeImport);
 
   return (
-    <div style={st.carte}>
-      <div style={st.titre}>{titre}</div>
-      {sousTitre && <div style={st.sousTitre}>{sousTitre}</div>}
-      <div style={st.importLigne}>
-        <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }}
-          onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-          onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
-        <button type="button" style={st.btnPrimaire} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>Choisir des documents</button>
-        <button type="button" style={st.btn} disabled={tableAbsente} onClick={() => cameraRef.current?.click()}>Photographier</button>
-        <select value={typeImport} onChange={e => setTypeImport(e.target.value)} style={st.select} aria-label="Type des documents">
-          <option value="auto">Type : deviner</option>
-          {TYPES_DOCUMENT.map(t => <option key={t.id} value={t.id}>Type : {t.pluriel}</option>)}
-        </select>
+    <div style={st.root}>
+      <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }}
+        onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+        onChange={e => { deposer(e.target.files); e.target.value = ''; }} />
+
+      <div className="accueil-grille">
+        <button type="button" className="accueil-tuile" data-cadre="" data-tuile-import="photo" style={st.tuile} disabled={tableAbsente} onClick={() => cameraRef.current?.click()}>
+          <ScanLine size={28} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={st.libelle}>Photographier</span>
+            <span style={st.etat}>une page après l’autre, avec l’appareil photo</span>
+          </span>
+        </button>
+        <button type="button" className="accueil-tuile" data-cadre="" data-tuile-import="fichier" style={st.tuile} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>
+          <FolderOpen size={28} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={st.libelle}>Choisir un PDF ou une photo</span>
+            <span style={st.etat}>reçus par mail ou déjà sur l’appareil, plusieurs à la fois</span>
+          </span>
+        </button>
+      </div>
+
+      <div style={st.options}>
         <label style={st.caseLabel}>
           <input type="checkbox" checked={grouper} onChange={e => setGrouper(e.target.checked)} style={{ width: 18, height: 18 }} />
-          Photos = pages d'un même document
+          Plusieurs pages d’un même document
         </label>
+        {autreType ? (
+          <select value={typeImport} onChange={e => setTypeImport(e.target.value)} style={st.select} aria-label="Type des documents">
+            <option value="auto">Type : deviner</option>
+            {TYPES_DOCUMENT.map(t => <option key={t.id} value={t.id}>Type : {t.pluriel}</option>)}
+          </select>
+        ) : (
+          <button type="button" style={st.lien} onClick={() => setAutreType(true)}>
+            Autre type de document{typeCourant ? <> <span>({typeCourant.pluriel})</span></> : null}
+          </button>
+        )}
       </div>
+
+      {tableAbsente && (
+        <div style={st.alerte}>
+          La table des documents d'achat n'existe pas encore sur la base : la migration
+          « 20260928_achats_documents » est à appliquer. En attendant, rien ne peut être enregistré ici.
+        </div>
+      )}
+
       {file.length > 0 && (
         <div style={st.file}>
-          {enAttente > 0 && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Lecture en cours : {enAttente} document{enAttente > 1 ? 's' : ''}. Vous pouvez continuer à compter en attendant.</div>}
+          {enAttente > 0 && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Lecture en cours : <span>{enAttente}</span> {enAttente > 1 ? 'documents' : 'document'}. Vous pouvez continuer à compter en attendant.</div>}
           {file.map(t => (
             <div key={t.key} style={st.travail}>
               <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
@@ -205,16 +236,21 @@ export default function ImportDocumentsAchats({
 }
 
 const st = {
-  carte: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sousTitre: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  importLigne: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  btnPrimaire: { padding: '10px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  btn: { padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  root: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
+  // Tuile de l'accueil du module (AccueilInventaire.jsx) : même hauteur, même fond.
+  tuile: {
+    position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 72, width: '100%',
+    padding: '22px 14px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--accent)',
+    border: 'none', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500, lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
+  },
+  libelle: { display: 'block' },
+  etat: { display: 'block', marginTop: 4, fontSize: 12, fontWeight: 400, color: 'var(--text2)', lineHeight: 1.35 },
+  options: { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', minWidth: 0 },
+  caseLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', minHeight: 44, cursor: 'pointer' },
+  select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 44 },
+  lien: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 0 10px 12px', color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)' },
   btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
-  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 40 },
-  caseLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)', minHeight: 44, cursor: 'pointer' },
-  file: { display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--border)', paddingTop: 10 },
+  file: { display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', minWidth: 0 },
   travail: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '4px 0', color: 'var(--text)' },
 };

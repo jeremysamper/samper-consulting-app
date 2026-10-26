@@ -26,6 +26,10 @@ import EnTeteEcran from './EnTeteEcran.jsx';
 import EcranComptage from './EcranComptage.jsx';
 import EcartsPanel from './EcartsPanel.jsx';
 import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
+import VerifierLecture from './VerifierLecture.jsx';
+import { useRapprochement } from './useRapprochement.js';
+import { estACompleter } from './achatsLogic.js';
+import { normalizeName } from '../../services/recipeProductMatching.js';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
 import ProduitsMaisonModal from './ProduitsMaisonModal.jsx';
 import {
@@ -170,6 +174,13 @@ const Inventaire = ({ user, etablissement }) => {
   // Factures et bons d'achat : une seule liste pour tout le module, lue dès
   // le montage (l'accueil compte les documents à compléter et à régler).
   const achats = useAchatsDocuments(etabId);
+  // File des documents à vérifier après lecture (ids), dans l'ordre d'import ;
+  // les documents déjà « à compléter » passent en tête à l'ouverture d'une
+  // tuile d'import. `suiteVerification` : l'écran repris une fois la file vide.
+  const [aVerifier, setAVerifier] = React.useState([]);
+  const [suiteVerification, setSuiteVerification] = React.useState('accueil');
+  // Fournisseurs connus : suggestions de « Vérifier la lecture », rattachement à l'import.
+  const [fournisseurs, setFournisseurs] = React.useState([]);
   const importXlsxRef = React.useRef(null);
   // Export de l'état d'inventaire en cours (Excel ou PDF).
   const [exportEnCours, setExportEnCours] = React.useState(false);
@@ -252,6 +263,13 @@ const Inventaire = ({ user, etablissement }) => {
     return () => { mounted = false; unsub && unsub(); };
   }, [etabId]);
 
+  React.useEffect(() => {
+    if (!legacySB) return undefined;
+    let vivant = true;
+    legacySB.db.listFournisseurs(etabId).then(f => { if (vivant) setFournisseurs(f || []); }).catch(() => {});
+    return () => { vivant = false; };
+  }, [etabId]);
+
   // Si l'inventaire sélectionné n'appartient pas au périmètre affiché (changement
   // d'onglet, d'établissement, suppression), basculer sur le plus récent.
   React.useEffect(() => {
@@ -270,7 +288,7 @@ const Inventaire = ({ user, etablissement }) => {
   }, [ecran]);
   // Geste retour, Échap et le bouton « Retour » ramènent à l'accueil du
   // module ; le retour à l'accueil de l'app reste celui de la coque.
-  const retourAccueil = React.useCallback(() => setEcran('accueil'), []);
+  const retourAccueil = React.useCallback(() => { setAVerifier([]); setEcran('accueil'); }, []);
   useBackLayer(ecran !== 'accueil', retourAccueil, 'inventaire-ecran');
   // Échap aussi, sauf quand une fenêtre est ouverte (elle se ferme seule,
   // Fenetres.jsx) ou qu'un champ a la main (Échap y annule la frappe).
@@ -289,6 +307,14 @@ const Inventaire = ({ user, etablissement }) => {
   // Pile d'inventaires de chaque périmètre, la plus récente d'abord : accueil
   // du module, « Quel périmètre ? » et ouverture directe du comptage.
   const pilesParPerimetre = new Map(perimetres.map(p => [p, inventairesEtab.filter(i => perimetreOf(i) === p).sort(parDateDesc)]));
+
+  // File réelle de « Vérifier la lecture » : les ids encore présents (un
+  // document supprimé ailleurs en sort), le premier à l'écran. Ses lignes se
+  // rapprochent des produits de SON périmètre, pas forcément celui affiché.
+  const fileVerification = aVerifier.filter(id => (achats.tousLesDocs || []).some(d => d.id === id));
+  const docAVerifier = (achats.tousLesDocs || []).find(d => d.id === fileVerification[0]) || null;
+  const perimetreDoc = docAVerifier ? ((docAVerifier.perimetre || '').trim() || PERIMETRE_DEFAUT) : perimetreActif;
+  const pileDoc = pilesParPerimetre.get(perimetreDoc) || [];
 
   // Helper pour push un inventaire modifié vers Supabase.
   // Porte les modifications de STRUCTURE (création, validation, ajout ou
@@ -462,9 +488,104 @@ const Inventaire = ({ user, etablissement }) => {
     await creerInventaire({ nom, date: aujourdhui(), base: 'dupliquer' });
   };
 
+  // ─── Documents : import, file de vérification, écritures ───
+  // Documents de l'établissement que la lecture n'a pas complétés, les plus
+  // anciens d'abord (règle estACompleter, calculée, aucune colonne).
+  const idsACompleter = () => (achats.tousLesDocs || [])
+    .filter(estACompleter)
+    .sort((a, b) => String(a.dateDocument || '').localeCompare(String(b.dateDocument || '')))
+    .map(d => d.id);
+
+  const ouvrirVerification = (ids, suite) => {
+    setAVerifier(ids);
+    setSuiteVerification(suite);
+    setEcran('verification');
+  };
+
+  // Tuile « Livraison reçue » ou « Facture reçue » : les documents encore à
+  // compléter passent d'abord par « Vérifier la lecture », puis l'import.
   const ouvrirImport = (type) => {
     setImportType(type);
-    setEcran('import');
+    setImportOuvert(true);
+    const enAttente = idsACompleter();
+    if (enAttente.length) ouvrirVerification(enAttente, 'import');
+    else setEcran('import');
+  };
+
+  // Un document vient d'être lu et enregistré (pièce puis upsert) : il entre
+  // dans la file et l'écran de vérification s'ouvre.
+  const documentLu = (doc, pieceGardee) => {
+    achats.majDocs(liste => [doc, ...liste]);
+    if (pieceGardee) achats.setAvecPieces(s => new Set(s).add(doc.id));
+    setAVerifier(file => (file.includes(doc.id) ? file : [...file, doc.id]));
+    setSuiteVerification('import');
+    setEcran('verification');
+  };
+
+  const passerAuSuivant = () => {
+    const reste = fileVerification.slice(1);
+    setAVerifier(reste);
+    if (!reste.length) setEcran(suiteVerification);
+  };
+  const terminerVerification = () => { setAVerifier([]); setEcran('accueil'); };
+  // « Retour » avant « Enregistrer » : les champs tapés sont perdus, le
+  // document et sa photo restent, et il reste signalé « à compléter ».
+  const quitterVerification = () => {
+    if (docAVerifier && estACompleter(docAVerifier)) notifyLegacy('Document gardé, à compléter plus tard.', 'info');
+    setAVerifier([]);
+    setEcran('accueil');
+  };
+
+  // Document entier réécrit (lignes rattachées, type, périmètre) : jamais
+  // regle_*, jamais le TTC ni l'échéance (upsertAchatsDocument les ignore).
+  const enregistrerDocument = async (doc) => {
+    achats.majDocs(liste => liste.map(d => (d.id === doc.id ? doc : d)));
+    try {
+      await legacySB.db.upsertAchatsDocument(doc);
+    } catch (err) {
+      notifyLegacy('Document non enregistré. ' + messageErreur(err, 'achats'), 'error');
+      achats.reload();
+    }
+  };
+
+  // « Enregistrer » de « Vérifier la lecture » : l'identité du document par
+  // l'upsert entier (fournisseur, numéro, date, total HT, périmètre), puis le
+  // montant à payer et l'échéance par l'écriture ciblée des factures
+  // (majFactureAchat, seuls champs passés). Optimiste : l'état d'avant est
+  // restauré avant toute relecture si l'une des deux échoue.
+  const enregistrerLecture = async (doc, v) => {
+    const avant = (achats.docsRef.current || []).find(d => d.id === doc.id) || doc;
+    const n = normalizeName(v.fournisseurNom);
+    const fournisseur = n && (fournisseurs.find(f => normalizeName(f.nom) === n)
+      || fournisseurs.find(f => { const y = normalizeName(f.nom); return y && (y.includes(n) || n.includes(y)); }));
+    const identite = {
+      ...avant,
+      fournisseurNom: v.fournisseurNom,
+      fournisseurId: fournisseur?.id || null,
+      numero: v.numero,
+      dateDocument: v.dateDocument,
+      totalHT: v.totalHT,
+      perimetre: v.perimetre,
+    };
+    const facture = doc.typeDocument === 'facture';
+    const apres = facture
+      ? { ...identite, totalTTC: v.totalTTC ?? avant.totalTTC, dateEcheance: v.dateEcheance === undefined ? avant.dateEcheance : v.dateEcheance }
+      : identite;
+    achats.majDocs(liste => liste.map(d => (d.id === doc.id ? apres : d)));
+    try {
+      await legacySB.db.upsertAchatsDocument(identite);
+      if (facture) {
+        const patch = { totalTTC: v.totalTTC };
+        if (v.dateEcheance !== undefined) patch.dateEcheance = v.dateEcheance;
+        await legacySB.db.majFactureAchat(doc.id, patch);
+      }
+      return true;
+    } catch (err) {
+      achats.majDocs(liste => liste.map(d => (d.id === doc.id ? avant : d)));
+      notifyLegacy('Document non enregistré. ' + messageErreur(err, 'achats'), 'error');
+      achats.reload();
+      return false;
+    }
   };
 
   // ─── Renommer le périmètre affiché ───
@@ -672,6 +793,13 @@ const Inventaire = ({ user, etablissement }) => {
       .sort((a, b) => b.date.localeCompare(a.date));
     return candidates[0] || null;
   }, [inv?.id, inv?.date, perimetreActif, inventaires.length]);
+
+  // Rapprochement des lignes lues avec les produits de l'inventaire du
+  // périmètre du document vérifié (« Écarts et documents » a le sien, sur
+  // le périmètre affiché).
+  const rapprochement = useRapprochement({
+    etabId, inv: pileDoc[0] || inv, previousInv: pileDoc[1] || null, documents: achats.tousLesDocs, catalogue,
+  });
 
   // Prix de référence pour chiffrer les fiches : catalogue, puis produits de
   // l'inventaire affiché et du précédent (prix des factures de la maison).
@@ -1468,10 +1596,45 @@ const Inventaire = ({ user, etablissement }) => {
               achats={achats}
               onAjouterLignes={ajouterLignes}
               onMajPrix={majPrixDepuisAchats}
+              onCompleter={(d) => ouvrirVerification([d.id], 'ecarts')}
             />
           </React.Suspense>
         </>
       ) : renderSansInventaire())}
+
+      {/* Créer un produit ou reporter un prix écrit dans l'inventaire AFFICHÉ :
+          seulement quand le document vérifié est du même périmètre. */}
+      {ecran === 'verification' && (docAVerifier ? (
+        <VerifierLecture
+          key={docAVerifier.id}
+          doc={docAVerifier}
+          position={1}
+          total={fileVerification.length}
+          libelleSuivant={fileVerification.length > 1 ? 'Document suivant' : suiteVerification === 'import' ? 'Déposer d’autres documents' : 'Terminer'}
+          perimetres={perimetres}
+          fournisseurs={fournisseurs}
+          avecPiece={achats.avecPieces.has(docAVerifier.id)}
+          etabId={etabId}
+          canRegler={canRegler}
+          canManage={canManage && perimetreDoc === perimetreActif}
+          canCreer={canEditLignes && perimetreDoc === perimetreActif}
+          rapprochement={rapprochement}
+          catalogue={catalogue}
+          docsRef={achats.docsRef}
+          enregistrerDoc={enregistrerDocument}
+          onAjouterLignes={ajouterLignes}
+          onAppliquerPrix={majPrixDepuisAchats}
+          onEnregistrer={(valeurs) => enregistrerLecture(docAVerifier, valeurs)}
+          onRetour={quitterVerification}
+          onSuivant={passerAuSuivant}
+          onTerminer={terminerVerification}
+        />
+      ) : (
+        <>
+          <EnTeteEcran titre="Vérifier la lecture" onRetour={retourAccueil} />
+          <div style={{ fontSize: 13, color: 'var(--text2)', padding: '12px 14px' }}>Rien à vérifier.</div>
+        </>
+      ))}
 
       {importOuvert && (
         <div style={{ display: ecran === 'import' ? 'flex' : 'none', flexDirection: 'column', gap: 16, minWidth: 0 }}>
@@ -1481,19 +1644,14 @@ const Inventaire = ({ user, etablissement }) => {
             onRetour={retourAccueil}
           />
           <ImportDocumentsAchats
-            key={importType}
             user={user}
             etabId={etabId}
             perimetreActif={perimetreActif}
             docsRef={achats.docsRef}
             tableAbsente={achats.tableAbsente}
-            typeParDefaut={importType}
-            onImporte={(doc, pieceGardee) => {
-              achats.majDocs(liste => [doc, ...liste]);
-              if (pieceGardee) achats.setAvecPieces(s => new Set(s).add(doc.id));
-            }}
-            titre={importType === 'facture' ? 'Importer des factures' : 'Importer des bons de livraison'}
-            sousTitre="PDF reçus par mail ou photos. Chaque document est lu automatiquement et rangé dans le périmètre affiché ; ses lignes servent au calcul des achats."
+            type={importType}
+            fournisseurs={fournisseurs}
+            onImporte={documentLu}
           />
         </div>
       )}

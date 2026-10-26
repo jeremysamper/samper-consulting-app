@@ -401,3 +401,20 @@ export function appliquerDecision(docs, cleLibelle, patch) {
       lignes: d.lignes.map(l => (normalizeName(l.libelle) === cleLibelle ? { ...l, ...patch } : l)),
     }));
 }
+
+// Prix lus sur UN document, par produit rattaché : montant de la ligne divisé
+// par la quantité dans l'unité de comptage du produit (même conversion que la
+// consommation). Rend [{ cle, prixUnit }], la dernière ligne d'un produit
+// l'emporte. Sert à « Appliquer les prix lus » après une lecture.
+export function prixLusDuDocument(doc, ctx) {
+  const parCle = new Map();
+  (doc?.lignes || []).forEach(l => {
+    const r = rapprocherLigneDoc(l, ctx);
+    if (!r.produit) return;
+    const q = quantiteEnUniteInventaire(l, r.produit.unite);
+    const montant = Number(l.montantLigne);
+    if (!q || q <= 0 || !Number.isFinite(montant) || montant <= 0) return;
+    parCle.set(r.produit.cle, +(montant / q).toFixed(4));
+  });
+  return Array.from(parCle, ([cle, prixUnit]) => ({ cle, prixUnit }));
+}
