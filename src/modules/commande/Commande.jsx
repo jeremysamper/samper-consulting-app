@@ -5,9 +5,9 @@ import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { Fenetre } from '../../components/ui/Fenetres.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import AccueilCommande from './AccueilCommande.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { AUTRES, RAYONS, classerProduit, trierRayons } from './classerProduit.js';
 import { messageErreur } from '../../utils/messageErreur.js';
@@ -20,7 +20,9 @@ const rayonDe = (item) => classerProduit(item?.nom, null, item?.categorie);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMANDE - liste de produits a commander, partagee par etablissement.
-// Visible de tous : cocher + saisir une quantite (optionnelle), ajouter un produit.
+// Le module s'ouvre sur la liste, les autres taches en gros boutons au-dessus
+// (AccueilCommande.jsx). Visible de tous : cocher + saisir une quantite
+// (optionnelle), ajouter un produit, envoyer la liste (PDF, imprimante).
 // Bouton de generation (agrege les produits de toutes les cartes) : consultant only.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -34,7 +36,6 @@ const Commande = ({ user, etablissement }) => {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
-  const [catFilter, setCatFilter] = React.useState('Tous');
   const [collapsed, setCollapsed] = React.useState(new Set());
   const [busy, setBusy] = React.useState(false);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -193,6 +194,7 @@ const Commande = ({ user, etablissement }) => {
   };
 
   const removeItem = async (item) => {
+    if (!confirmLegacy('Retirer ce produit de la liste ?')) return;
     setItems(prev => prev.filter(i => i.id !== item.id));
     if (legacySB) {
       try { await legacySB.db.deleteCommandeItem(item.id); }
@@ -228,11 +230,9 @@ const Commande = ({ user, etablissement }) => {
 
   // ── Derives ──
   const searchVal = normalizeSearch(search.trim());
-  const filtered = items.filter(i =>
-    (catFilter === 'Tous' || rayonDe(i) === catFilter) &&
-    (searchVal === '' || normalizeSearch(i.nom).includes(searchVal))
-  );
-  const categories = ['Tous', ...[...new Set(items.map(rayonDe))].sort(trierRayons)];
+  // Plus d'onglets de rayon : les rayons se replient dans la liste, la loupe
+  // filtre par le nom.
+  const filtered = items.filter(i => searchVal === '' || normalizeSearch(i.nom).includes(searchVal));
   const groups = groupByCategorie(filtered);
   const totalCount = items.length;
   const cocheCount = items.filter(i => i.coche).length;
@@ -274,60 +274,28 @@ const Commande = ({ user, etablissement }) => {
           (aria-labelledby de la case et de la quantité). */}
       <span id="commande-lbl-coche" hidden>Commandé :</span>
       <span id="commande-lbl-qte" hidden>Quantité</span>
-      {/* Barre d'actions */}
-      <div className="module-toolbar no-print">
-        <div style={s.left}>
-          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
-          <SegmentedTabs
-            size="sm"
-            retourLigne
-            active={catFilter}
-            onChange={setCatFilter}
-            tabs={categories.map(c => ({ id: c, label: c }))}
-          />
-        </div>
-        {/* Ajouter d'abord ; sortir la liste (PDF, imprimante) dans « Exporter » ;
-            générer et vider, réservés au consultant, dans « Gérer ». */}
-        <div className="module-actions">
-          <button style={s.ghostBtn} onClick={() => setShowAdd(true)}>Ajouter</button>
-          {totalCount > 0 && (
-            <BoutonActions
-              id="commande-exporter"
-              label="Exporter"
-              style={s.ghostBtn}
-              titre="Exporter la commande"
-              sections={[{ items: [
-                { titre: 'Télécharger le PDF', detail: 'La liste rangée par rayon, prête à envoyer.', onClick: exportPdf },
-                { titre: 'Imprimer', detail: 'La même liste, envoyée à l\'imprimante.', onClick: printList },
-              ] }]}
-            />
-          )}
-          {isConsultant && (
-            busy
-              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)' }}>Génération…</span>
-              : (
-                <BoutonActions
-                  id="commande-gerer"
-                  label="Gérer"
-                  style={s.ghostBtn}
-                  titre="Gérer la commande"
-                  sections={[{ items: [
-                    { titre: 'Générer depuis les cartes', detail: 'Les produits des recettes de la carte, aux bonnes quantités.', onClick: openGenModal },
-                    totalCount > 0 && { titre: 'Vider la liste', detail: 'Retire les produits ajoutés automatiquement.', danger: true, onClick: viderAuto },
-                  ] }]}
-                />
-              )
-          )}
-        </div>
-      </div>
+      {/* Gros boutons : ajouter, envoyer (liste non vide), gérer (consultant). */}
+      <AccueilCommande
+        listeVide={totalCount === 0}
+        isConsultant={isConsultant}
+        busy={busy}
+        onAjouter={() => setShowAdd(true)}
+        onPdf={exportPdf}
+        onImprimer={printList}
+        onGenerer={openGenModal}
+        onVider={viderAuto}
+      />
 
-      {/* Compteur */}
-      {totalCount > 0 && (
-        <div style={s.progress} className="no-print">
-          <div style={s.progressBar}><div style={{ ...s.progressFill, width: `${totalCount ? (cocheCount / totalCount) * 100 : 0}%` }} /></div>
-          <span style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{cocheCount} / {totalCount} coché{cocheCount > 1 ? 's' : ''}</span>
-        </div>
-      )}
+      {/* Ligne d'état : la loupe, puis le compteur. */}
+      <div style={s.ligneEtat} className="no-print">
+        <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
+        {totalCount > 0 && (
+          <div style={{ ...s.progress, flex: 1, minWidth: 0 }}>
+            <div style={s.progressBar}><div style={{ ...s.progressFill, width: `${totalCount ? (cocheCount / totalCount) * 100 : 0}%` }} /></div>
+            <span style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{cocheCount} / {totalCount} coché{cocheCount > 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
 
       {/* Liste */}
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -599,9 +567,8 @@ function groupByCategorie(list) {
 const s = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
   toolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
-  // Une seule ligne (pas de wrap) : la loupe reste à gauche et les onglets de
-  // catégories coulissent dans l'espace restant au lieu de s'empiler.
-  left: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
+  // Une seule ligne : la loupe à gauche, le compteur dans l'espace restant.
+  ligneEtat: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
   cats: { display: 'flex', gap: 4, flexWrap: 'wrap' },
   catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' },
   catActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
