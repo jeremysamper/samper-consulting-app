@@ -481,7 +481,7 @@ const Documents = ({ user, etablissement }) => {
           ))}
         </nav>
         <div className="module-actions">
-          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher dans tous les dossiers…" />
+          <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un document…" />
           {canWrite && !sel.active && liste.length > 0 && (
             <button type="button" style={ds.btnGhost} onClick={sel.enter}>Sélectionner</button>
           )}
@@ -489,14 +489,16 @@ const Documents = ({ user, etablissement }) => {
             <>
               <button type="button" style={ds.btnGhost} onClick={() => setNouveauDossier('')}>Nouveau dossier</button>
               {/* Un vrai bouton (clavier, lecteur d'écran) ; le champ fichier
-                  reste masqué et s'ouvre par lui. */}
+                  reste masqué et s'ouvre par lui. Les actions restent dans
+                  l'en-tête : une rangée de gros boutons repoussait le dernier
+                  dossier d'un mois hors de l'écran du téléphone. */}
               <button
                 type="button"
                 style={{ ...ds.btnPrimaire, cursor: upload ? 'wait' : 'pointer', opacity: upload ? 0.7 : 1 }}
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!!upload}
               >
-                {upload ? `Import ${upload.fait + 1}/${upload.total}…` : 'Importer'}
+                {upload ? `Import ${upload.fait + 1}/${upload.total}…` : 'Ajouter'}
               </button>
               <input
                 ref={fileInputRef}
