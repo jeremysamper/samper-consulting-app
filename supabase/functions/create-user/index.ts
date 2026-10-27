@@ -1,43 +1,51 @@
-// ═══════════════════════════════════════════════════════════════
-// SAMPER CONSULTING — Edge Function : create-user
-// À déployer dans : Supabase Dashboard > Edge Functions > New function
-// Nom de la fonction : create-user
-// ═══════════════════════════════════════════════════════════════
+// SAMPER CONSULTING - Edge Function : create-user
+// Slug : create-user, verify_jwt = true
 //
-// Cette fonction permet au consultant de créer un nouvel utilisateur
-// (compte auth + profil) depuis l'app sans déconnexion ni accès
-// manuel à Supabase.
+// Crée un compte (auth + profil) depuis l'écran Rôles & accès, sans passer
+// par le dashboard. Appelée par legacySupabase.js > createUserViaEdge.
 //
-// Sécurité : n'accepte que les requêtes authentifiées d'un consultant.
-// ═══════════════════════════════════════════════════════════════
+// Sécurité (L0, 27.10.2026) :
+//   - JWT vérifié par la passerelle, puis relu ici (auth.getUser) ;
+//   - appelant relu dans profiles : consultant ET actif ;
+//   - rôle dans la liste fermée des rôles de l'app, établissements inclus
+//     dans ceux de l'appelant (validation.ts) ;
+//   - CORS limité aux origines de l'app ;
+//   - erreurs internes journalisées, jamais renvoyées.
+// Dry-run : { "dryRun": true } valide la demande et rend ce qui serait créé,
+// sans rien créer.
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validerCreation } from "./validation.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Origines admises : l'app, ses previews Vercel, le développement local.
+const ORIGINES = ["https://samperconsulting-app.com", "https://www.samperconsulting-app.com"];
+const ORIGINE_PREVIEW = /^https:\/\/sc-app-[a-z0-9-]+-samper-consulting\.vercel\.app$/;
+const ORIGINE_LOCALE = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/;
+
+function enTetesCors(req: Request): Record<string, string> {
+  const origine = req.headers.get("Origin") ?? "";
+  const admise = ORIGINES.includes(origine) || ORIGINE_PREVIEW.test(origine) || ORIGINE_LOCALE.test(origine);
+  return {
+    ...(admise ? { "Access-Control-Allow-Origin": origine } : {}),
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 serve(async (req) => {
-  // Gérer preflight CORS
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const cors = enTetesCors(req);
+  const json = (corps: unknown, status = 200) =>
+    new Response(JSON.stringify(corps), { status, headers: { ...cors, "Content-Type": "application/json" } });
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    // 1. Vérifier que l'appelant est authentifié
+    // 1. Appelant authentifié
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!authHeader) return json({ error: "Missing authorization header" }, 401);
 
-    // 2. Créer 2 clients : un avec le token du caller pour vérifier son rôle,
-    //    et un avec le service_role pour créer l'utilisateur
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -45,80 +53,68 @@ serve(async (req) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 3. Récupérer le profil du caller
     const { data: { user: caller } } = await userClient.auth.getUser();
-    if (!caller) {
-      return new Response(
-        JSON.stringify({ error: "Unauthenticated" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!caller) return json({ error: "Unauthenticated" }, 401);
 
-    const { data: callerProfile } = await adminClient
+    // 2. Consultant actif, relu en base avec ses établissements
+    const { data: callerProfile, error: profErr } = await adminClient
       .from("profiles")
-      .select("role")
+      .select("role, actif, etablissement_ids")
       .eq("id", caller.id)
       .maybeSingle();
-
-    if (!callerProfile || callerProfile.role !== "consultant") {
-      return new Response(
-        JSON.stringify({ error: "Only consultants can create users" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (profErr) {
+      console.error("[create-user] lecture profil appelant", profErr.message);
+      return json({ error: "Lecture du profil impossible" }, 500);
+    }
+    if (!callerProfile || callerProfile.role !== "consultant" || callerProfile.actif === false) {
+      return json({ error: "Only consultants can create users" }, 403);
     }
 
-    // 4. Lire le body
-    const { email, password, prenom, nom, role, poste, etablissement_ids } = await req.json();
+    // 3. Demande validée : rôle connu, établissements de l'appelant
+    let corps: unknown;
+    try { corps = await req.json(); } catch { return json({ error: "Corps JSON invalide" }, 400); }
+    const etabsAppelant = Array.isArray(callerProfile.etablissement_ids) ? callerProfile.etablissement_ids : [];
+    const verdict = validerCreation(corps, etabsAppelant);
+    if (!verdict.ok) return json({ error: verdict.erreur }, verdict.statut);
+    const { email, password, prenom, nom, role, poste, etablissement_ids } = verdict.valeurs;
 
-    if (!email || !password || !prenom || !nom) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if ((corps as { dryRun?: unknown })?.dryRun === true) {
+      return json({ ok: true, dryRun: true, email, prenom, nom, role, poste, etablissement_ids });
     }
 
-    // 5. Créer l'utilisateur dans auth (auto-confirmed)
+    // 4. Compte auth (confirmé d'office : le consultant transmet les identifiants)
     const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // pas besoin de valider par email
-      user_metadata: { prenom, nom, role: role || "cuisinier" },
+      email_confirm: true,
+      user_metadata: { prenom, nom, role },
     });
-
     if (createErr) {
-      return new Response(
-        JSON.stringify({ error: createErr.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Message d'Auth destiné à l'utilisateur (adresse déjà prise, mot de passe refusé).
+      return json({ error: createErr.message }, 400);
     }
 
-    // 6. Compléter le profil (le trigger l'a déjà créé avec les données de base)
+    // 5. Profil complété (handle_new_user l'a créé avec l'id et l'e-mail)
     const avatar = (prenom[0] + nom[0]).toUpperCase();
-    await adminClient
+    const { error: majErr } = await adminClient
       .from("profiles")
-      .update({
-        prenom, nom, role: role || "cuisinier",
-        poste: poste || null,
-        etablissement_ids: etablissement_ids || [],
-        avatar,
-        actif: true,
-      })
+      .update({ prenom, nom, role, poste, etablissement_ids, avatar, actif: true })
       .eq("id", newUser.user.id);
+    if (majErr) {
+      console.error("[create-user] profil incomplet", newUser.user.id, majErr.message);
+      return json({
+        error: "Compte créé, mais son profil n'a pas pu être complété : poser son rôle et ses établissements dans Rôles & accès.",
+        user_id: newUser.user.id,
+      }, 500);
+    }
 
-    return new Response(
-      JSON.stringify({ success: true, user_id: newUser.user.id, email }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return json({ success: true, user_id: newUser.user.id, email });
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("[create-user] erreur inattendue", (err as Error)?.message || String(err));
+    return json({ error: "Erreur inattendue" }, 500);
   }
 });

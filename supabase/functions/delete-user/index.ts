@@ -16,6 +16,7 @@
 //   - Réservé au rôle consultant (lu dans public.profiles, pas dans le JWT).
 //   - Interdit de se supprimer soi-même et de supprimer un consultant.
 //   - La clé service_role reste côté serveur (variable injectée).
+//   - CORS limité aux origines de l'app (L0, 27.10.2026).
 //
 // Ordre : profil d'abord, compte auth ensuite. Si le profil est encore
 // référencé par une table en ON DELETE NO ACTION (reservations,
@@ -26,21 +27,32 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// Origines admises : l'app, ses previews Vercel, le développement local.
+const ORIGINES = ['https://samperconsulting-app.com', 'https://www.samperconsulting-app.com'];
+const ORIGINE_PREVIEW = /^https:\/\/sc-app-[a-z0-9-]+-samper-consulting\.vercel\.app$/;
+const ORIGINE_LOCALE = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/;
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function enTetesCors(req: Request): Record<string, string> {
+  const origine = req.headers.get('Origin') ?? '';
+  const admise = ORIGINES.includes(origine) || ORIGINE_PREVIEW.test(origine) || ORIGINE_LOCALE.test(origine);
+  return {
+    ...(admise ? { 'Access-Control-Allow-Origin': origine } : {}),
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = enTetesCors(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Méthode non autorisée' }, 405);
 
