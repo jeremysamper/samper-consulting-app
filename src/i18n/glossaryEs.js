@@ -1019,6 +1019,9 @@ export const UI_GLOSSARY_ES = {
   'Le registre de la période affichée.': 'El registro del periodo mostrado.',
   "Le même registre, envoyé à l'imprimante.": 'El mismo registro, enviado a la impresora.',
 
+  // ── Messages par tâche ──
+  'Mes messages': 'Mis mensajes',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',

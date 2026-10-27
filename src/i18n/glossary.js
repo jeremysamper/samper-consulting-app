@@ -1038,6 +1038,9 @@ export const UI_GLOSSARY = {
   'Le registre de la période affichée.': 'The log for the period shown.',
   "Le même registre, envoyé à l'imprimante.": 'The same log, sent to the printer.',
 
+  // ── Messages par tâche ──
+  'Mes messages': 'My messages',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',
