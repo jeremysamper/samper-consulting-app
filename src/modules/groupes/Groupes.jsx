@@ -5,6 +5,7 @@ import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { useGroupes } from '../../hooks/useGroupes.js';
 import { useGroupeMenus } from '../../hooks/useGroupeMenus.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { dbService } from '../../services/dbService.js';
 import { formatDateCourte, formatJourSemaine, isoDate } from '../../utils/dateHelpers.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -194,6 +195,14 @@ export default function Groupes({ user, etablissement }) {
     setVue({ annee: a, mois: m - 1 });
   };
   const surMoisCourant = aujourdhui.startsWith(prefixeMois);
+
+  // Le geste retour (iPad, Android) referme la fiche, le formulaire ou la
+  // feuille du jour au lieu de quitter le module : une entrée d'historique par
+  // fenêtre ouverte. Passer de l'une à l'autre (fiche vers formulaire, feuille
+  // vers fiche) en retire une et en pose une, jamais deux retirées d'un coup.
+  useBackLayer(Boolean(fiche) && !formulaire, fermerFiche, 'groupes-fiche');
+  useBackLayer(Boolean(formulaire) && canEdit, () => setFormulaire(null), 'groupes-formulaire');
+  useBackLayer(Boolean(jourOuvert), () => setJourOuvert(null), 'groupes-jour');
 
   const ouvrirFiche = useCallback((g) => {
     setJourOuvert(null);
