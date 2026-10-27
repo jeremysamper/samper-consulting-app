@@ -221,10 +221,12 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'POST requis' }, 405);
 
-  // Auth via CRON_SECRET
+  // Auth via CRON_SECRET. Sans secret configuré, tout appel est refusé : la
+  // fonction écrit en service_role et appelle Lightspeed, sans autre garde.
   const cronSecret = env('CRON_SECRET');
   const authHeader = req.headers.get('Authorization') ?? '';
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret) console.error('[pos-sync] CRON_SECRET non défini : appel refusé');
     return json({ error: 'Unauthorized' }, 401);
   }
 

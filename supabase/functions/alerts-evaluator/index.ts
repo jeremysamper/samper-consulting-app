@@ -102,13 +102,13 @@ function shouldRunDaily(rule: AlertRule): boolean {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  // Vérification CRON_SECRET
+  // Vérification CRON_SECRET. Sans secret configuré, tout appel est refusé :
+  // la fonction écrit en service_role et n'a pas d'autre garde.
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (cronSecret) {
-    const authHeader = req.headers.get('authorization') ?? '';
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return json({ error: 'Unauthorized' }, 401);
-    }
+  const authHeader = req.headers.get('authorization') ?? '';
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret) console.error('[alerts] CRON_SECRET non défini : appel refusé');
+    return json({ error: 'Unauthorized' }, 401);
   }
 
   const sb = adminClient();

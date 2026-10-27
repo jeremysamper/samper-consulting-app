@@ -46,10 +46,11 @@ export default async function handler(
   const cronSecret  = process.env.CRON_SECRET;
   const authHeader  = readAuthHeader(req);
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Sans secret configuré, tout appel est refusé (comme spa-anniversaires).
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     // Diagnostic sans jamais journaliser le secret lui-même.
     console.warn(
-      `[cron/alerts-evaluator] rejet 401 - en-tête authorization ${authHeader ? 'présent mais différent' : 'absent'}`,
+      `[cron/alerts-evaluator] rejet 401 - ${!cronSecret ? 'CRON_SECRET non défini' : `en-tête authorization ${authHeader ? 'présent mais différent' : 'absent'}`}`,
     );
     return res.status(401).json({ error: 'Unauthorized' });
   }
