@@ -15,44 +15,10 @@ import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
-import { normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-
-const MAX_LENGTH = 4000;
-
-function formatTime(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDay(iso) {
-  const d = new Date(iso);
-  const today = new Date();
-  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
-  if (d.toDateString() === yesterday.toDateString()) return 'Hier';
-  return d.toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
-}
-
-// Date courte pour la liste : heure si aujourd'hui, sinon jour.
-function formatListDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (d.toDateString() === new Date().toDateString()) return formatTime(iso);
-  return d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' });
-}
-
-function initialsOf(profile) {
-  if (profile?.avatar) return profile.avatar;
-  const p = (profile?.prenom || '')[0] || '';
-  const n = (profile?.nom || '')[0] || '';
-  return (p + n).toUpperCase() || '?';
-}
-
-function fullName(profile) {
-  if (!profile) return 'Compte inconnu';
-  return `${profile.prenom || ''} ${profile.nom || ''}`.trim() || profile.email || 'Compte inconnu';
-}
+import {
+  MAX_LENGTH, buildContacts, formatDay, formatListDate, formatTime, fullName, groupConversations, initialsOf,
+} from './conversations.js';
 
 const Messages = ({ user, isActive = true }) => {
   const isMobile = useIsMobile();
@@ -98,39 +64,11 @@ const Messages = ({ user, isActive = true }) => {
 
   const profileById = React.useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
 
-  // Conversations : messages regroupés par interlocuteur, du plus récent au plus ancien.
-  const conversations = React.useMemo(() => {
-    const map = new Map();
-    for (const m of messages) {
-      const otherId = m.senderId === user.id ? m.recipientId : m.senderId;
-      if (!map.has(otherId)) map.set(otherId, []);
-      map.get(otherId).push(m);
-    }
-    return map;
-  }, [messages, user.id]);
-
-  // Contacts : conversations existantes d'abord (dernier message en tête),
-  // puis les autres comptes actifs par ordre alphabétique.
-  const contacts = React.useMemo(() => {
-    const ids = new Set(conversations.keys());
-    profiles.forEach((p) => { if (p.id !== user.id && p.actif !== false) ids.add(p.id); });
-    ids.delete(user.id);
-    const rows = [...ids].map((id) => {
-      const msgs = conversations.get(id) || [];
-      const last = msgs[0] || null;
-      const unread = msgs.filter((m) => m.recipientId === user.id && !m.readAt).length;
-      return { id, profile: profileById.get(id) || null, last, unread };
-    });
-    rows.sort((a, b) => {
-      if (a.last && b.last) return new Date(b.last.createdAt) - new Date(a.last.createdAt);
-      if (a.last) return -1;
-      if (b.last) return 1;
-      return fullName(a.profile).localeCompare(fullName(b.profile), 'fr');
-    });
-    if (!search.trim()) return rows;
-    const q = normalizeSearch(search.trim());
-    return rows.filter((r) => normalizeSearch(`${fullName(r.profile)} ${r.profile?.email || ''}`).includes(q));
-  }, [conversations, profiles, profileById, search, user.id]);
+  const conversations = React.useMemo(() => groupConversations(messages, user.id), [messages, user.id]);
+  const contacts = React.useMemo(
+    () => buildContacts({ conversations, profiles, profileById, userId: user.id, search }),
+    [conversations, profiles, profileById, search, user.id],
+  );
 
   const selected = selectedId ? (profileById.get(selectedId) || null) : null;
   const thread = React.useMemo(
@@ -368,7 +306,7 @@ const ms = {
   contactDate: { fontSize: 11, color: 'var(--text3)', flexShrink: 0 },
   contactBottom: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
   contactPreview: { flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  unreadBadge: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--surface)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  unreadBadge: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
   // Fil de discussion
   threadPanel: { display: 'flex', flexDirection: 'column', minWidth: 0 },

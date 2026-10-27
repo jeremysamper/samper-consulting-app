@@ -22,6 +22,7 @@ import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
 import AccountButton from '../components/nav/AccountButton.jsx';
 import AccountModal from '../modules/auth/AccountModal.jsx';
 import NavBadge from '../components/nav/NavBadge.jsx';
+import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
 import { ShellProvider } from './ShellContext.js';
 import { applyNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage } from '../services/navigationService.js';
@@ -81,6 +82,7 @@ export default function AppLayout({
   // qui change de pointeur) ne la touche pas.
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const [msgOpen, setMsgOpen] = React.useState(false);
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
@@ -193,6 +195,35 @@ export default function AppLayout({
   // Badge d'un module (messages non lus, groupes à préparer) : NavBadge, le
   // même composant que sur la page d'accueil tactile.
   const renderNavBadge = (itemId) => <NavBadge itemId={itemId} badges={badges} />;
+
+  // ── Messagerie de la barre du haut ─────────────────────────────
+  // Même garde que la tuile et l'entrée de menu : le module Messages est dans
+  // le menu de la personne. Ouvrir la messagerie referme les alertes, et
+  // inversement.
+  const messagerieVisible = visibleNav.some((item) => item.id === 'messages');
+  const toggleNotif = () => {
+    const opening = !notifOpen;
+    setNotifOpen(opening);
+    if (opening) setMsgOpen(false);
+    if (opening && unreadCount > 0) markAllRead();
+  };
+  const changerMessagerie = React.useCallback((ouvert) => {
+    setMsgOpen(ouvert);
+    if (ouvert) setNotifOpen(false);
+  }, []);
+  const renderMessagerie = (btnStyle, dotStyle, iconSize) => (messagerieVisible ? (
+    <MessagerieBarre
+      user={user}
+      open={msgOpen}
+      onOpenChange={changerMessagerie}
+      unread={badges.messages}
+      shellMode={shellMode}
+      onToutVoir={() => { handleSetPage('messages'); setMsgOpen(false); }}
+      btnStyle={btnStyle}
+      dotStyle={dotStyle}
+      iconSize={iconSize}
+    />
+  ) : null);
 
   const handleSetPage = (p) => setPage(p);
   // Bouton Accueil et glissé depuis le bord (coque tactile) : retour à
@@ -330,24 +361,33 @@ export default function AppLayout({
     onToggleSidebar: tactile ? null : toggleSidebar,
   });
 
-  // Échap referme ce que la coque a ouvert (panneau d'alertes, menu du logo).
+  // Échap referme ce que la coque a ouvert (alertes, messagerie, menu du logo).
   // Les modales des modules gèrent leur propre Échap.
   React.useEffect(() => {
-    if (!notifOpen && !logoMenuOpen) return undefined;
+    if (!notifOpen && !msgOpen && !logoMenuOpen) return undefined;
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       setNotifOpen(false);
+      setMsgOpen(false);
       setLogoMenuOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [notifOpen, logoMenuOpen]);
+  }, [notifOpen, msgOpen, logoMenuOpen]);
 
   // Une navigation (clic, raccourci, retour) referme les panneaux flottants.
   React.useEffect(() => {
     setNotifOpen(false);
+    setMsgOpen(false);
     setHelpOpen(false);
   }, [currentPage]);
+
+  // Un clic dans la page referme les panneaux de la barre du haut.
+  const fermerPanneaux = () => {
+    if (notifOpen) setNotifOpen(false);
+    if (msgOpen) setMsgOpen(false);
+    if (logoMenuOpen) setLogoMenuOpen(false);
+  };
 
   // Défilement de <main>, seul conteneur qui défile dans les trois coques. Un
   // module ouvert part du haut, en-tête en vue : sans remise, il gardait le
@@ -672,11 +712,12 @@ export default function AppLayout({
               >
                 {isDark ? <Sun size={20} strokeWidth={2} aria-hidden="true" /> : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
               </button>
+              {renderMessagerie(mls.iconBtn, mls.notifDot, 20)}
               <button
                 type="button"
                 className="app-bar-btn"
                 style={mls.iconBtn}
-                onClick={() => { const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+                onClick={toggleNotif}
                 aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
                 aria-expanded={notifOpen}
               >
@@ -687,7 +728,7 @@ export default function AppLayout({
             </div>
           </header>
 
-          <main ref={mainRef} style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+          <main ref={mainRef} style={mls.content} className="mobile-module-content" onClick={fermerPanneaux}>
             {children}
           </main>
         </div>
@@ -707,7 +748,7 @@ export default function AppLayout({
   // en bas d'écran qui doivent commencer après elle (sélection du Planning).
   return (
     <ShellProvider value={shellValue}>
-    <div style={{ ...ls.root, '--largeur-menu': sidebarOpen ? '234px' : '0px' }} onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+    <div style={{ ...ls.root, '--largeur-menu': sidebarOpen ? '234px' : '0px' }} onClick={fermerPanneaux}>
       {/* Barre au strict minimum : logo en haut, modules, nom de l'utilisateur
           en bas. L'établissement est dans le header, les actions de compte
           dans le menu du nom, le repli dans le bouton du header.
@@ -787,9 +828,9 @@ export default function AppLayout({
                 onSelect={setEtablissement}
               />
             </div>
-            {/* Quatre boutons, rien d'autre : langue, recherche, thème,
-                alertes. La déconnexion est dans « Mon compte » (clic sur le
-                nom, en bas de la barre latérale). */}
+            {/* Langue, recherche, thème, messages, alertes, rien d'autre.
+                La déconnexion est dans « Mon compte » (clic sur le nom, en
+                bas de la barre latérale). */}
             <div style={ls.topbarRight} className="topbar-right">
               <LanguageToggle compact etablissementId={etablissement?.id || null} />
               <button
@@ -813,12 +854,13 @@ export default function AppLayout({
               >
                 {isDark ? <Sun size={18} strokeWidth={2} aria-hidden="true" /> : <Moon size={18} strokeWidth={2} aria-hidden="true" />}
               </button>
+              {renderMessagerie(ls.iconBtn, ls.notifDot, 18)}
               <div style={{ position: 'relative' }}>
                 <button
                   type="button"
                   className="app-bar-btn"
                   style={ls.iconBtn}
-                  onClick={(e) => { e.stopPropagation(); const opening = !notifOpen; setNotifOpen(opening); if (opening && unreadCount > 0) markAllRead(); }}
+                  onClick={(e) => { e.stopPropagation(); toggleNotif(); }}
                   aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : 'Alertes'}
                   aria-expanded={notifOpen}
                   title="Alertes"

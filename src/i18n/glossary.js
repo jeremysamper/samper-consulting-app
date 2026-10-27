@@ -52,6 +52,11 @@ export const UI_GLOSSARY = {
   'Mettez l\'app à jour pour profiter des dernières corrections. Cela prend quelques secondes ; ce qui est déjà enregistré ne se perd pas.': 'Update the app to get the latest fixes. It takes a few seconds; nothing already saved is lost.',
   'Messages privés': 'Private messages',
   'Messages': 'Messages',
+  // Messagerie de la barre du haut.
+  'Tout voir': 'See all',
+  'Fermer la messagerie': 'Close messages',
+  'Aucun contact disponible.': 'No contact available.',
+  'Aucun message pour l\'instant. Écrivez le premier.': 'No message yet. Write the first one.',
   'Catalogue produits': 'Product catalogue',
   'Catalogue': 'Catalogue',
   'Paramètres': 'Settings',
