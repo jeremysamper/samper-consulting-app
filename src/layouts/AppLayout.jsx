@@ -59,7 +59,10 @@ export default function AppLayout({
   permissions: permissionsOverride,
   // Mode de présentation de la coque (useShellMode, posé par App.jsx) :
   // 'ordinateur' | 'tablette' | 'telephone'.
-  shellMode = 'ordinateur'
+  shellMode = 'ordinateur',
+  // Page dont le contenu est à l'écran (visiblePage d'App.jsx) : suit
+  // currentPage, 300 ms plus tard quand le module demandé charge encore.
+  pageAffichee = currentPage
 }) {
   // Tablette et téléphone partagent la coque tactile (page d'accueil, bouton
   // Accueil) ; l'ordinateur garde barre latérale et raccourcis.
@@ -345,6 +348,35 @@ export default function AppLayout({
     setNotifOpen(false);
     setHelpOpen(false);
   }, [currentPage]);
+
+  // Défilement de <main>, seul conteneur qui défile dans les trois coques. Un
+  // module ouvert part du haut, en-tête en vue : sans remise, il gardait le
+  // défilement de la page quittée (accueil tactile défilé, en-tête hors de
+  // l'écran). Une page retrouvée par l'historique (retour, bouton Accueil)
+  // reprend sa place : gardée montée par App.jsx, elle est restée telle quelle.
+  // La remise suit la page affichée et non la page demandée : la page quittée
+  // reste à l'écran le temps que le module demandé charge, sans sauter en haut.
+  const mainRef = React.useRef(null);
+  const positionsRef = React.useRef(new Map());
+  const pageAfficheeRef = React.useRef(pageAffichee);
+  const pageRetrouveeRef = React.useRef(null);
+  React.useEffect(() => {
+    const onPop = (e) => { pageRetrouveeRef.current = e.state?.page || null; };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // Place de la page affichée, notée quand une autre est demandée : elle est
+  // encore à l'écran, le module demandé est monté masqué.
+  React.useLayoutEffect(() => {
+    if (mainRef.current) positionsRef.current.set(pageAfficheeRef.current, mainRef.current.scrollTop);
+  }, [currentPage]);
+  React.useLayoutEffect(() => {
+    if (pageAfficheeRef.current === pageAffichee) return;
+    pageAfficheeRef.current = pageAffichee;
+    const retrouvee = pageRetrouveeRef.current === pageAffichee;
+    pageRetrouveeRef.current = null;
+    if (mainRef.current) mainRef.current.scrollTop = retrouvee ? (positionsRef.current.get(pageAffichee) || 0) : 0;
+  }, [pageAffichee]);
 
   // En coque tactile, la page d'accueil est une entrée de la palette comme un
   // module (elle n'est pas dans visibleNav : pas un module, pas de permission).
@@ -655,7 +687,7 @@ export default function AppLayout({
             </div>
           </header>
 
-          <main style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
+          <main ref={mainRef} style={mls.content} className="mobile-module-content" onClick={() => { notifOpen && setNotifOpen(false); logoMenuOpen && setLogoMenuOpen(false); }}>
             {children}
           </main>
         </div>
@@ -799,7 +831,7 @@ export default function AppLayout({
             </div>
           </header>
 
-          <main style={ls.content}>{children}</main>
+          <main ref={mainRef} style={ls.content}>{children}</main>
         </div>
       </div>
 
