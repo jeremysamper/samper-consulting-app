@@ -1044,6 +1044,9 @@ export const UI_GLOSSARY = {
   // ── Documents par tâche ──
   'Je cherche un document…': 'Search for a document…',
 
+  // ── Fiches salle par tâche ──
+  'Je cherche un plat…': 'Search for a dish…',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',
