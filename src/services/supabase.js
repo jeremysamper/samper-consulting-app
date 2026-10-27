@@ -222,6 +222,66 @@ export const authService = {
   onAuthChange(callback) {
     const { data } = supabase.auth.onAuthStateChange((event, session) => callback(event, session));
     return () => data.subscription.unsubscribe();
+  },
+
+  // ─── Double authentification (TOTP) ───
+  // Session aal1 d'un compte qui a un facteur vérifié : renvoie l'id du facteur
+  // TOTP dont le code est dû, sinon null. Lecture locale (jeton et facteurs de
+  // la session enregistrée), aucune requête ; un compte sans facteur s'arrête
+  // à la première ligne, sans même lire le niveau.
+  async pendingTotpFactorId(session) {
+    const factor = (session?.user?.factors || []).find((f) => f.factor_type === 'totp' && f.status === 'verified');
+    if (!factor) return null;
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) throw error;
+    if (data?.currentLevel !== 'aal1' || data?.nextLevel !== 'aal2') return null;
+    return factor.id;
+  },
+
+  async listTotpFactors() {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) throw error;
+    return {
+      verified: data?.totp || [],
+      unverified: (data?.all || []).filter((f) => f.factor_type === 'totp' && f.status !== 'verified'),
+    };
+  },
+
+  // Nouveau facteur. Les inscriptions laissées en plan (code jamais saisi) sont
+  // retirées d'abord : elles ne servent à rien et Supabase en limite le nombre.
+  async enrollTotp() {
+    const { unverified } = await authService.listTotpFactors();
+    for (const factor of unverified) {
+      try { await supabase.auth.mfa.unenroll({ factorId: factor.id }); } catch (err) {
+        console.warn('[MFA] facteur non vérifié impossible à retirer', err);
+      }
+    }
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'Samper Consulting',
+      // Jamais affiché ; unique parce que Supabase refuse deux facteurs du même nom.
+      friendlyName: `Samper ${new Date().toISOString()}`,
+    });
+    if (error) throw error;
+    // auth-js colle le SVG brut derrière « data:image/svg+xml;utf-8, » : un « # »
+    // y couperait l'image. On le réencode pour ne pas dépendre de son contenu.
+    const prefix = 'data:image/svg+xml;utf-8,';
+    const qr = data.totp.qr_code || '';
+    const qrCode = qr.startsWith(prefix) ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.slice(prefix.length))}` : qr;
+    return { id: data.id, qrCode, secret: data.totp.secret };
+  },
+
+  // Défi + vérification. Un code juste fait passer la session en aal2
+  // (événement MFA_CHALLENGE_VERIFIED).
+  async verifyTotp(factorId, code) {
+    const { data, error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+    if (error) throw error;
+    return data;
+  },
+
+  async unenrollFactor(factorId) {
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    if (error) throw error;
   }
 };
 

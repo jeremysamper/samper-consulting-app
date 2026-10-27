@@ -320,7 +320,7 @@ export default function App() {
   } else if (auth.loading) {
     content = null;
   } else if (!auth.profile) {
-    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} onNavigateToDashboard={() => setPage(pageAccueil(null, {}, shellMode))} />;
+    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} mfa={auth.mfa} onVerifyMfa={auth.verifyMfa} onCancelMfa={auth.signOut} onNavigateToDashboard={() => setPage(pageAccueil(null, {}, shellMode))} />;
   } else if (auth.profile.actif === false) {
     content = <DisabledAccount onLogout={handleLogout} />;
   } else if (legacyState.loading) {

@@ -27,5 +27,7 @@ export const authStyles = {
   // Spécifique à l'écran « nouveau mot de passe »
   hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 18 },
   emailBadge: { display: 'inline-block', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 500, color: 'var(--text)', marginTop: 4 },
+  // Étape « code » de la double authentification
+  codeInput: { fontFamily: 'var(--font-num)', fontSize: 22, letterSpacing: 6, textAlign: 'center' },
   toggleReveal: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 500, fontFamily: 'var(--font)', padding: 0, marginTop: 6 },
 };

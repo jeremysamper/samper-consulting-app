@@ -60,6 +60,19 @@ async function loadProfileSafe(authUser) {
   }
 }
 
+// ─── Code TOTP dû ? ───
+// Session aal1 d'un compte qui a un facteur vérifié → id du facteur, sinon null.
+// Une lecture qui échoue ou tarde laisse entrer : la base reste la vraie garde
+// des écritures sensibles.
+async function pendingFactorSafe(session) {
+  try {
+    return await withTimeout(authService.pendingTotpFactorId(session), null, 5000);
+  } catch (err) {
+    console.warn('[Auth] niveau d\'authentification illisible, entrée sans code', err);
+    return null;
+  }
+}
+
 export function useAuth() {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -88,6 +101,23 @@ export function useAuth() {
   // Vrai pendant signIn() : empêche le handler SIGNED_IN de recharger le profil
   // que signIn charge déjà (évite un second getProfile au login = dédup à la source).
   const signingInRef = useRef(false);
+
+  // Étape « code » en attente : { factorId }, sinon null. Le profil déjà lu
+  // reste de côté dans mfaPendingRef ; tant que le code n'est pas saisi, le
+  // profil exposé est null et l'app affiche l'écran de connexion.
+  const [mfa, setMfa] = useState(null);
+  const mfaPendingRef = useRef(null);
+  const finishMfaRef = useRef(() => false);
+
+  const holdForMfa = (factorId, nextProfile, userId) => {
+    mfaPendingRef.current = { factorId, profile: nextProfile, userId };
+    setMfa(prev => (prev && prev.factorId === factorId ? prev : { factorId }));
+  };
+
+  const clearMfa = () => {
+    mfaPendingRef.current = null;
+    setMfa(null);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -134,6 +164,21 @@ export function useAuth() {
       const nextProfile = await loadProfileSafe(nextSession.user);
       if (!mounted || myEpoch !== epoch) return;
 
+      // Ouverture de l'app (aucun profil en mémoire) sur une session aal1 dont
+      // le compte a un facteur vérifié : le code passe avant l'entrée. Une
+      // session déjà dans l'app n'en est jamais sortie en cours de travail, et
+      // un démarrage hors ligne (profil illisible) entre comme avant.
+      if (!profileRef.current && nextProfile && nextProfile !== PROFILE_LOAD_FAILED && nextProfile.actif !== false) {
+        const factorId = await pendingFactorSafe(nextSession);
+        if (!mounted || myEpoch !== epoch) return;
+        if (factorId) {
+          holdForMfa(factorId, nextProfile, nextSession.user.id);
+          globalThis.clearTimeout(safetyTimer);
+          setLoading(false);
+          return;
+        }
+      }
+
       setSession(nextSession);
       setUser(nextSession.user);
 
@@ -148,6 +193,22 @@ export function useAuth() {
       globalThis.clearTimeout(safetyTimer);
       setLoading(false);
     };
+
+    // Code accepté : la session est passée en aal2, le compte en attente entre
+    // avec le profil déjà lu. Rend false s'il n'y avait rien en attente.
+    const finishMfa = (nextSession) => {
+      const pending = mfaPendingRef.current;
+      if (!pending || nextSession?.user?.id !== pending.userId) return false;
+      epoch += 1;
+      lastProfileLoadAt = Date.now();
+      clearMfa();
+      setSession(nextSession);
+      setUser(nextSession.user);
+      applyProfile(pending.profile);
+      writeProfileSnapshot(pending.profile);
+      return true;
+    };
+    finishMfaRef.current = finishMfa;
 
     let unsubscribe = () => {};
     try {
@@ -197,12 +258,20 @@ export function useAuth() {
           return;
         }
 
+        // ─── Code TOTP accepté (connexion, ou Mon compte) ───
+        // Synchrone : l'état est posé, rien n'est attendu sous le verrou.
+        if (event === 'MFA_CHALLENGE_VERIFIED') {
+          finishMfa(nextSession);
+          return;
+        }
+
         // ─── Déconnexion explicite : on vide tout ───
         if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
           // L'état est déterminé (personne de connecté) : le login peut s'afficher,
           // y compris si un chargement de profil en cours vient d'être périmé.
           epoch += 1;
           globalThis.clearTimeout(safetyTimer);
+          clearMfa();
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -284,6 +353,13 @@ export function useAuth() {
         throw new Error('Ce compte a été désactivé. Contactez le consultant.');
       }
 
+      // Compte protégé par un code : l'entrée attend l'étape « code ».
+      const factorId = await pendingFactorSafe(data.session);
+      if (factorId) {
+        holdForMfa(factorId, nextProfile, data.user.id);
+        return { mfaRequired: true };
+      }
+
       setSession(data.session);
       setUser(data.user);
       setProfile(nextProfile);
@@ -296,9 +372,21 @@ export function useAuth() {
     }
   }
 
+  // Étape « code » : le défi est vérifié, puis MFA_CHALLENGE_VERIFIED fait
+  // entrer (finishMfa). L'appel direct ensuite est un filet sans effet si
+  // l'événement est déjà passé.
+  async function verifyMfa(code) {
+    const pending = mfaPendingRef.current;
+    if (!pending) throw new Error('Reconnectez-vous pour saisir un nouveau code.');
+    const data = await withTimeout(authService.verifyTotp(pending.factorId, code), null, 15000);
+    if (!data) throw new Error('Connexion trop lente. Vérifiez votre connexion internet puis réessayez.');
+    finishMfaRef.current(data);
+  }
+
   async function signOut() {
     await authService.signOut();
     removeStorageKeys([PROFILE_SNAPSHOT_KEY]);
+    clearMfa();
     setSession(null);
     setUser(null);
     setProfile(null);
@@ -310,7 +398,9 @@ export function useAuth() {
     profile,
     loading,
     error,
+    mfa,
     signIn,
+    verifyMfa,
     signOut,
     resetPassword: authService.resetPassword
   };
