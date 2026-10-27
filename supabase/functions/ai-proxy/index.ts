@@ -614,10 +614,12 @@ Deno.serve(async (req: Request) => {
   if (!cfg) return json({ error: `Tâche inconnue : ${task}` }, 400);
 
   // ── Contrôle d'accès par rôle ──
-  // L'utilisateur peut lire sa propre ligne profiles via RLS (id = auth.uid()::text).
+  // L'utilisateur peut lire sa propre ligne profiles via RLS (id = auth.uid()::text),
+  // y compris quand son compte est désactivé : actif est donc relu ici, et un compte
+  // désactivé n'a aucun rôle.
   const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).maybeSingle();
-  const role = profile?.role ?? '';
+    .from('profiles').select('role, actif').eq('id', user.id).maybeSingle();
+  const role = profile && profile.actif !== false ? (profile.role ?? '') : '';
   const allowedRoles = TASK_ROLES[task] ?? CONSULTANT_ONLY;
   if (!allowedRoles.includes(role)) {
     return json({ error: 'Accès refusé : rôle non autorisé pour cette tâche.' }, 403);

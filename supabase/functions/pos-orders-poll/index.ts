@@ -114,9 +114,11 @@ Deno.serve(async (req: Request) => {
   if (!etablissementId) return json({ error: 'etablissementId ou connectionId requis' }, 400);
 
   // ── Garde IDOR + rôle (le service_role bypass la RLS : on filtre ici) ──
+  // Un compte désactivé (actif = false) est refusé, comme par les helpers RLS.
   const { data: prof, error: profErr } = await admin
-    .from('profiles').select('role, etablissement_ids').eq('id', user.id).maybeSingle();
+    .from('profiles').select('role, etablissement_ids, actif').eq('id', user.id).maybeSingle();
   if (profErr) return json({ error: `Profil illisible : ${profErr.message}` }, 500);
+  if (prof?.actif === false) return json({ error: 'Compte désactivé' }, 403);
   const callerEtabs: string[] = Array.isArray(prof?.etablissement_ids) ? prof!.etablissement_ids : [];
   if (!callerEtabs.includes(etablissementId)) return json({ error: 'Accès refusé pour cet établissement' }, 403);
   if (!KITCHEN_ROLES.includes(prof?.role)) return json({ error: 'Rôle non autorisé' }, 403);

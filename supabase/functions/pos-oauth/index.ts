@@ -159,8 +159,8 @@ Deno.serve(async (req: Request) => {
       const { data: { user: pingUser } } = await userClient(req.headers.get('Authorization') ?? '').auth.getUser();
       if (!pingUser) return json({ error: 'Non authentifié' }, 401);
       const { data: pingProf } = await adminClient()
-        .from('profiles').select('role').eq('id', pingUser.id).maybeSingle();
-      if (pingProf?.role !== 'consultant') return json({ error: 'Accès refusé' }, 403);
+        .from('profiles').select('role, actif').eq('id', pingUser.id).maybeSingle();
+      if (pingProf?.role !== 'consultant' || pingProf?.actif === false) return json({ error: 'Accès refusé' }, 403);
       const configured = !!(
         Deno.env.get('LS_CLIENT_ID') &&
         Deno.env.get('LS_CLIENT_SECRET') &&
@@ -316,9 +316,12 @@ ${errMsg.replace(/</g, '&lt;')}</p></div>
 
     // Verifier que le caller a acces a l'etablissement cible (evite l'IDOR cross-tenant :
     // toutes les actions ci-dessous operent via le client service-role, qui bypass la RLS).
+    // Un compte desactive (actif = false) est refuse : un ancien patron ne debranche
+    // plus la caisse de son ancien etablissement.
     const { data: callerProfile, error: profErr } = await admin
-      .from('profiles').select('etablissement_ids').eq('id', user.id).maybeSingle();
+      .from('profiles').select('etablissement_ids, actif').eq('id', user.id).maybeSingle();
     if (profErr) return json({ error: `Profil illisible : ${profErr.message}` }, 500);
+    if (callerProfile?.actif === false) return json({ error: 'Compte desactive' }, 403);
     const callerEtabs: string[] = Array.isArray(callerProfile?.etablissement_ids) ? callerProfile!.etablissement_ids : [];
     if (!callerEtabs.includes(etablissementId)) return json({ error: 'Acces refuse pour cet etablissement' }, 403);
 

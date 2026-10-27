@@ -112,9 +112,12 @@ Deno.serve(async (req: Request) => {
 
   // Verifier que le caller a acces a l'etablissement de cette connexion (evite l'IDOR :
   // conn est charge via service-role, sans filtrage RLS par etablissement).
+  // Un compte desactive (actif = false) est refuse : le service-role ne passe pas par
+  // les helpers RLS qui l'ecartent.
   const { data: callerProfile, error: profErr } = await admin
-    .from('profiles').select('etablissement_ids').eq('id', user.id).maybeSingle();
+    .from('profiles').select('etablissement_ids, actif').eq('id', user.id).maybeSingle();
   if (profErr) return json({ error: `Profil illisible : ${profErr.message}` }, 500);
+  if (callerProfile?.actif === false) return json({ error: 'Compte desactive' }, 403);
   const callerEtabs: string[] = Array.isArray(callerProfile?.etablissement_ids) ? callerProfile!.etablissement_ids : [];
   if (!callerEtabs.includes(conn.etablissement_id)) return json({ error: 'Acces refuse pour cet etablissement' }, 403);
 

@@ -4,7 +4,8 @@
 // Upload des photos de plats/recettes cote serveur. Le client envoie le
 // fichier + (etabId, type, id) en multipart avec son JWT. La fonction :
 //   1. valide le token (getUser)
-//   2. verifie l'acces de l'utilisateur a l'etablissement (profiles)
+//   2. verifie l'acces de l'utilisateur a l'etablissement (profiles) ; un
+//      compte desactive (actif = false) est refuse
 //   3. ecrit dans le bucket recette-photos avec la cle SERVICE (bypass RLS)
 //   4. renvoie l'URL publique permanente
 //
@@ -60,8 +61,9 @@ Deno.serve(async (req: Request) => {
 
   // 3) Verifier l'acces de l'utilisateur a l'etablissement
   const { data: profile, error: pErr } = await admin
-    .from('profiles').select('etablissement_ids').eq('id', user.id).maybeSingle();
+    .from('profiles').select('etablissement_ids, actif').eq('id', user.id).maybeSingle();
   if (pErr) return json({ error: `Profil illisible : ${pErr.message}` }, 500);
+  if (profile?.actif === false) return json({ error: 'Compte desactive' }, 403);
   const etabs: string[] = Array.isArray(profile?.etablissement_ids) ? profile!.etablissement_ids : [];
   if (!etabs.includes(etabId)) return json({ error: 'Acces refuse pour cet etablissement' }, 403);
 
