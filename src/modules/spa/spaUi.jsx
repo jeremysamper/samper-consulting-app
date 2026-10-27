@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,11 +213,16 @@ export function TitreSection({ children, action }) {
 // titreBrut : le titre est une donnée (nom d'un client), jamais traduite.
 // feuille : contenu court, en feuille remontant du bas sur téléphone (sinon
 // plein écran).
+// Le geste retour (iPad, Android) referme la fenêtre au lieu de quitter le
+// module : une entrée d'historique tant qu'elle est montée. Le module n'en
+// montre qu'une à la fois ; passer de l'une à l'autre en retire une et en
+// pose une.
 export function Modale({
   titre, surTitre, sousTitre, onClose, children, pied, largeur = 560, titreBrut = false,
   variante = 'modale', entete = null, feuille = false,
 }) {
   const mobile = useIsMobile();
+  useBackLayer(true, onClose, 'spa-fenetre');
   const tiroir = variante === 'tiroir' && !mobile;
   const plein = mobile && !feuille;
   return (
