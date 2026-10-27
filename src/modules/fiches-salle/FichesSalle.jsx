@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
@@ -16,6 +17,7 @@ import {
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -37,11 +39,11 @@ const ALLERGENES_COLORS = {
 // ses propres cocktails, ses spiritueux et une carte de thés n'avait aucun
 // endroit où les poser, tout finissait empilé sous « Sans alcool ».
 const ACCORD_TYPES = [
-  { id: 'vin', label: 'Vins', icon: '🍷' },
-  { id: 'cocktail', label: 'Cocktails', icon: '🍹' },
-  { id: 'spiritueux', label: 'Spiritueux', icon: '🥃' },
-  { id: 'the', label: 'Thés & infusions', icon: '🍵' },
-  { id: 'sans_alcool', label: 'Sans alcool', icon: '🥤' },
+  { id: 'vin', label: 'Vins' },
+  { id: 'cocktail', label: 'Cocktails' },
+  { id: 'spiritueux', label: 'Spiritueux' },
+  { id: 'the', label: 'Thés & infusions' },
+  { id: 'sans_alcool', label: 'Sans alcool' },
 ];
 const ACCORD_TYPE_IDS = ACCORD_TYPES.map(t => t.id);
 const accordLabel = (type) => (ACCORD_TYPES.find(t => t.id === type) || {}).label || 'Boisson';
@@ -160,6 +162,32 @@ const FichesSalle = ({ user, etablissement }) => {
   const [showBulkCartes, setShowBulkCartes] = React.useState(false);
   const sel = useSelection();
 
+  // Le détail d'une fiche est un écran du module : le geste retour et Échap
+  // reviennent à la grille au lieu de quitter le module. Aucun écran repris :
+  // une fiche ne se rouvre pas d'elle-même à l'ouverture suivante.
+  const { ecran, setEcran, retourAccueil } = useEcranModule('fiches_salle', { surRetour: () => setSelected(null) });
+  // Au retour, la grille revient sur la fiche quittée plutôt qu'au défilement
+  // du détail (on reprenait la recherche du plat depuis le haut).
+  const ficheQuitteeRef = React.useRef(null);
+  const carteQuitteeRef = React.useRef(null);
+  const ouvrirFiche = (f) => { ficheQuitteeRef.current = f.id; setSelected(f); setEcran('fiche'); };
+  React.useLayoutEffect(() => {
+    if (ecran !== ECRAN_ACCUEIL || !ficheQuitteeRef.current) return;
+    const carte = carteQuitteeRef.current;
+    const r = carte?.getBoundingClientRect();
+    if (r && (r.top < 0 || r.bottom > window.innerHeight)) carte.scrollIntoView({ block: 'center' });
+    ficheQuitteeRef.current = null;
+  }, [ecran]);
+
+  // Formulaire ouvert depuis le détail : Échap ne referme pas l'écran, la
+  // saisie serait perdue (le crochet partagé ignore un Échap déjà annulé).
+  React.useEffect(() => {
+    if (ecran === ECRAN_ACCUEIL || !showForm) return undefined;
+    const garde = (e) => { if (e.key === 'Escape') e.preventDefault(); };
+    document.addEventListener('keydown', garde, true);
+    return () => document.removeEventListener('keydown', garde, true);
+  }, [ecran, showForm]);
+
   // Cartes (menus) - onglets de filtrage. '__all__' = toutes les fiches.
   const ALL_TAB = '__all__';
   // Rôle transmis au hook : une carte cachée depuis « Cartes & Recettes »
@@ -275,7 +303,7 @@ const FichesSalle = ({ user, etablissement }) => {
       catch (err) { notifyLegacy(messageErreur(err, 'fiches salle'), 'error'); return; }
     }
     setFiches(prev => prev.filter(f => f.id !== id));
-    if (selected?.id === id) setSelected(null);
+    if (selected?.id === id) retourAccueil();
   };
 
   // ── Suppression multiple des fiches salle sélectionnées ──
@@ -472,7 +500,7 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (selected) return <FicheDetail fiche={selected} user={user} canEdit={canEdit} onBack={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
+  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
 
   return (
     <div style={fss.root}>
@@ -491,7 +519,7 @@ const FichesSalle = ({ user, etablissement }) => {
       />
       <div style={fss.toolbar}>
         <div style={fss.left}>
-          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat…" />
+          <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un plat…" />
           <SegmentedTabs
             size="sm"
             active={catFilter}
@@ -569,12 +597,13 @@ const FichesSalle = ({ user, etablissement }) => {
         {(filtered || []).map(f => (
           <div
             key={f.id}
+            ref={f.id === ficheQuitteeRef.current ? carteQuitteeRef : undefined}
             style={{
               ...fss.card,
               position:'relative',
               ...(sel.active && sel.isSelected(f.id) ? { outline:'2px solid var(--accent)', outlineOffset:-2 } : {}),
             }}
-            onClick={()=> sel.active ? sel.toggle(f.id) : setSelected(f)}
+            onClick={()=> sel.active ? sel.toggle(f.id) : ouvrirFiche(f)}
           >
             {sel.active && (
               <input
@@ -648,16 +677,28 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
       .map(t => ({ ...t, items: parType.get(t.id) }));
     const inconnus = [...parType.keys()]
       .filter(id => !ACCORD_TYPE_IDS.includes(id))
-      .map(id => ({ id, label: id, icon: '🥤', items: parType.get(id) }));
+      .map(id => ({ id, label: id, items: parType.get(id) }));
     return [...connus, ...inconnus];
   }, [fiche.accords]);
   const [accordTab, setAccordTab] = React.useState(null);
   const groupeActif = groupes.find(g => g.id === accordTab) || groupes[0] || null;
 
+  // La fiche s'ouvre en haut de page (Retour, nom du plat), pas au défilement
+  // laissé par la grille : ouverte depuis le bas de la grille, elle cachait
+  // Retour.
+  const hautRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    for (let el = hautRef.current?.parentElement; el; el = el.parentElement) if (el.scrollTop > 0) el.scrollTop = 0;
+    if (window.scrollY > 0) window.scrollTo(0, 0);
+  }, [fiche.id]);
+
   return (
-    <div style={fss.detailRoot}>
+    <div ref={hautRef} style={fss.detailRoot}>
       <div style={fss.detailHeader}>
-        <button style={fss.backBtn} onClick={onBack}>Retour</button>
+        <Btn variant="ghost" onClick={onBack} style={fss.retourBtn}>
+          <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+          <span>Retour</span>
+        </Btn>
         <div style={{flex:1}}>
           <div style={fss.detailCat}>{fiche.categorie}</div>
           <div style={fss.detailTitre}>{fiche.nom}</div>
@@ -1117,7 +1158,8 @@ const fss = {
   // Detail
   detailRoot:{display:'flex',flexDirection:'column',gap:16},
   detailHeader:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'},
-  backBtn:{background:'none',border:'1px solid var(--border)',borderRadius:7,padding:'6px 12px',cursor:'pointer',fontSize:12,color:'var(--text2)',fontFamily:'var(--font)',flexShrink:0},
+  // 44 px au toucher comme à la souris, comme le Retour des écrans de tâche.
+  retourBtn:{minHeight:44,flexShrink:0},
   detailCat:{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
   detailTitre:{fontSize:22,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)',marginTop:2},
   editBtn:{padding:'6px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
@@ -1133,7 +1175,6 @@ const fss = {
   accordTab:{padding:'5px 14px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
   accordTabActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   accordCard:{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',display:'flex',gap:10,alignItems:'flex-start'},
-  accordIcon:{fontSize:22,flexShrink:0},
   accordNom:{fontSize:13,fontWeight:700,color:'var(--text)'},
   accordRegion:{fontSize:11,color:'var(--accent)',fontWeight:500,marginTop:1},
   accordAlt:{fontSize:11,color:'var(--text2)',fontStyle:'italic',marginTop:3},
