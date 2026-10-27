@@ -1024,6 +1024,13 @@ export const UI_GLOSSARY = {
   'Lancer': 'Start',
   'Créez une procédure avec « Nouvelle procédure », ou importez-en une depuis « Modèles ».': 'Create a procedure with "New procedure", or import one from "Templates".',
 
+  // ── Mise en place par tâche ──
+  'Ma liste du service': 'My service list',
+  'pour un service': 'for a service',
+  'Modifier la liste': 'Edit the list',
+  'Nouvelle liste de mise en place': 'New prep list',
+  'Aucune liste de mise en place pour le moment.': 'No prep list yet.',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',

@@ -1005,6 +1005,13 @@ export const UI_GLOSSARY_ES = {
   'Lancer': 'Iniciar',
   'Créez une procédure avec « Nouvelle procédure », ou importez-en une depuis « Modèles ».': 'Cree un procedimiento con «Nuevo procedimiento», o importe uno desde «Plantillas».',
 
+  // ── Mise en place par tâche ──
+  'Ma liste du service': 'Mi lista del servicio',
+  'pour un service': 'para un servicio',
+  'Modifier la liste': 'Modificar la lista',
+  'Nouvelle liste de mise en place': 'Nueva lista de mise en place',
+  'Aucune liste de mise en place pour le moment.': 'Todavía no hay ninguna lista de mise en place.',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',
