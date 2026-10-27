@@ -197,7 +197,7 @@ const Messages = ({ user, isActive = true }) => {
   const listPanel = (
     <div style={{ ...ms.listPanel, ...(isMobile ? null : ms.listPanelBureau) }}>
       <div style={ms.listHead}>
-        <span style={ms.listTitle}>Conversations</span>
+        <span style={ms.listTitle}>Mes messages</span>
         <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une personne…" />
       </div>
       <div style={ms.contactList}>
@@ -250,10 +250,12 @@ const Messages = ({ user, isActive = true }) => {
   ) : (
     <div style={ms.threadPanel}>
       <div style={ms.threadHead}>
+        {/* Téléphone : « Retour » en toutes lettres, comme les écrans de tâche. */}
         {isMobile && (
-          <button type="button" style={ms.backBtn} onClick={closeThread} aria-label="Retour aux conversations">
-            <ArrowLeft size={18} aria-hidden="true" />
-          </button>
+          <Btn variant="ghost" onClick={closeThread} style={ms.retourBtn}>
+            <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>Retour</span>
+          </Btn>
         )}
         <span style={ms.avatar}>
           {initialsOf(selected)}
@@ -372,7 +374,7 @@ const ms = {
   threadPanel: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   threadEmpty: { background: 'var(--surface)', border: '2px dashed var(--border)', borderRadius: 12, padding: '44px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   threadHead: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' },
-  backBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', cursor: 'pointer', flexShrink: 0, fontFamily: 'var(--font)' },
+  retourBtn: { minHeight: 44, flexShrink: 0 },
   threadName: { fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   threadSub: { fontSize: 11, color: 'var(--text2)' },
   threadMessages: { display: 'flex', flexDirection: 'column', gap: 8, padding: 14, minHeight: 160, maxHeight: '52vh', overflowY: 'auto', background: 'var(--bg)' },
