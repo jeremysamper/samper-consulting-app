@@ -7,7 +7,9 @@
 //   2. verifie l'acces de l'utilisateur a l'etablissement (profiles) ; un
 //      compte desactive (actif = false) est refuse
 //   3. ecrit dans le bucket haccp-photos avec la cle SERVICE (bypass RLS),
-//      sous <etabId>/<YYYY>/<MM>/<DD>/<timestamp>.<ext> (heure Zurich)
+//      sous <etabId>/<YYYY>/<MM>/<DD>/<timestamp>-<uuid>.<ext> (heure Zurich) ;
+//      l'uuid rend le nom imprevisible : le bucket est public, l'URL ne doit
+//      pas se deviner a partir du jour et de l'heure
 //   4. renvoie l'URL publique permanente
 //
 // Supporte aussi la SUPPRESSION (body JSON { action: 'delete', id }) : la ligne
@@ -110,7 +112,7 @@ Deno.serve(async (req: Request) => {
   const localDate = utcToLocalDateString(new Date().toISOString(), 'Europe/Zurich');
   const [yyyy, mm, dd] = localDate.split('-');
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = `${etabId}/${yyyy}/${mm}/${dd}/${Date.now()}.${ext}`;
+  const path = `${etabId}/${yyyy}/${mm}/${dd}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
   const { error: upErr } = await admin.storage.from('haccp-photos').upload(path, bytes, {
     contentType: mime, cacheControl: '31536000', upsert: true,
