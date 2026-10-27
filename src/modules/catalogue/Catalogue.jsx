@@ -476,7 +476,7 @@ const Catalogue = ({ user, etablissement }) => {
         <>
           {/* Filtres */}
           <div style={cat.filters}>
-            <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher produit ou fournisseur…" />
+            <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un produit ou un fournisseur…" />
             <SegmentedTabs
               size="sm"
               active={catFilter}
