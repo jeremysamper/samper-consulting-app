@@ -6,12 +6,10 @@ export const s = {
 
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
   headerLeft: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
-  title: { fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: 0 },
   sub: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
 
   addBtn: { padding: '10px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   ghostBtn: { padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  backBtn: { background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: 'var(--text2)', fontFamily: 'var(--font)', flexShrink: 0 },
   dangerBtn: { padding: '9px 14px', background: 'var(--danger-bg-soft)', border: '1px solid transparent', color: 'var(--danger-strong)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
 
   // Liste des listes

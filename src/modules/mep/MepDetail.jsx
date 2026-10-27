@@ -5,6 +5,7 @@ import { pdfUtils } from '../../services/pdf.js';
 import { s, formatDateService, formatFaitAt } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
 
 // Detail d'une liste : deux sections (Urgent non congelable en premier, puis
 // Grosse production congelable), case a cocher en temps reel, barre d'avancement
@@ -130,48 +131,49 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
     );
   };
 
+  // Écran de tâche : Retour, le nom et la date de la liste, puis les deux
+  // boutons nommés d'avant, « Exporter » (le PDF) et « Gérer » (modifier, supprimer).
   return (
     <div style={s.root}>
-      <div className="module-actions no-print" style={s.moduleActions}>
-        <button style={s.backBtn} onClick={onBack}>Retour</button>
-        {/* Deux boutons nommés : « Exporter » (le PDF) et « Gérer » (modifier, supprimer). */}
-        <BoutonActions
-          id="mep-exporter"
-          label="Exporter"
-          style={s.ghostBtn}
-          titre="Exporter la liste"
-          sections={[{ items: [
-            { titre: 'Télécharger le PDF', detail: 'La liste de mise en place, prête à imprimer.', onClick: exportPdf },
-          ] }]}
-        />
-        {canEdit && (
-          <BoutonActions
-            id="mep-gerer"
-            label="Gérer"
-            style={s.ghostBtn}
-            titre="Gérer la liste"
-            sections={[{ items: [
-              { titre: 'Modifier', detail: 'Le nom, la date, la carte et les préparations.', onClick: onEdit },
-              { titre: 'Supprimer', detail: 'La liste et ses cases cochées, sans retour possible.', onClick: onDelete, danger: true },
-            ] }]}
-          />
+      <EcranTache
+        titre={listeMeta?.nom || 'Liste'}
+        etat={formatDateService(listeMeta?.dateService)}
+        onRetour={onBack}
+        actions={(
+          <>
+            <BoutonActions
+              id="mep-exporter"
+              label="Exporter"
+              style={s.ghostBtn}
+              titre="Exporter la liste"
+              sections={[{ items: [
+                { titre: 'Télécharger le PDF', detail: 'La liste de mise en place, prête à imprimer.', onClick: exportPdf },
+              ] }]}
+            />
+            {canEdit && (
+              <BoutonActions
+                id="mep-gerer"
+                label="Gérer"
+                style={s.ghostBtn}
+                titre="Gérer la liste"
+                sections={[{ items: [
+                  { titre: 'Modifier', detail: 'Le nom, la date, la carte et les préparations.', onClick: onEdit },
+                  { titre: 'Supprimer', detail: 'La liste et ses cases cochées, sans retour possible.', onClick: onDelete, danger: true },
+                ] }]}
+              />
+            )}
+          </>
         )}
-
-      </div>
-
-      <div>
-        <h2 style={s.title}>{listeMeta?.nom || 'Liste'}</h2>
-        <div style={s.listeDate}>{formatDateService(listeMeta?.dateService)}</div>
-      </div>
-
-      {loading ? (
-        <div style={s.empty}>Chargement des préparations…</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {renderSection('Urgent, non congelable', 'À produire au plus près du service (J-1 / J-0).', urgent, 'urgent')}
-          {renderSection('Grosse production, congelable', 'À batcher en avance les jours calmes.', grosse, 'grosse')}
-        </div>
-      )}
+      >
+        {loading ? (
+          <div style={s.empty}>Chargement des préparations…</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {renderSection('Urgent, non congelable', 'À produire au plus près du service (J-1 / J-0).', urgent, 'urgent')}
+            {renderSection('Grosse production, congelable', 'À batcher en avance les jours calmes.', grosse, 'grosse')}
+          </div>
+        )}
+      </EcranTache>
     </div>
   );
 };

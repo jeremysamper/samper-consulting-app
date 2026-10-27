@@ -5,6 +5,7 @@ import { useCartes } from '../../hooks/useCartes.js';
 import { s } from './MiseEnPlace.styles.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import EcranTache from '../../components/parcours/EcranTache.jsx';
 
 let _tmpSeq = 0;
 const tmpKey = () => `tmp-${Date.now()}-${_tmpSeq++}`;
@@ -190,10 +191,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
 
   return (
     <div style={s.root}>
-      <div className="module-actions" style={s.moduleActions}>
-        <button style={s.backBtn} onClick={onClose}>Retour</button>
-      </div>
-      <h2 style={s.title}>{isEdit ? 'Modifier la liste' : 'Nouvelle liste de mise en place'}</h2>
+      <EcranTache titre={isEdit ? 'Modifier la liste' : 'Nouvelle liste de mise en place'} onRetour={onClose} />
 
       {/* Meta */}
       <div style={s.editorCard}>
