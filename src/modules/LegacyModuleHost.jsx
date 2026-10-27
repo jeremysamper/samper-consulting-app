@@ -19,6 +19,7 @@ const loadFichesSalle = () => import('./fiches-salle/FichesSalle.jsx');
 const loadGroupes = () => import('./groupes/Groupes.jsx');
 const loadHACCP = () => import('./haccp/HACCP.jsx');
 const loadInventaire = () => import('./inventaire/Inventaire.jsx');
+const loadFacturesAchats = () => import('./factures-achats/FacturesAchats.jsx');
 const loadJournal = () => import('./journal/Journal.jsx');
 const loadKds = () => import('./kds/Kds.jsx');
 const loadMep = () => import('./mep/MiseEnPlace.jsx');
@@ -47,6 +48,7 @@ const FichesSalle = lazy(loadFichesSalle);
 const Groupes = lazy(loadGroupes);
 const HACCP = lazy(loadHACCP);
 const Inventaire = lazy(loadInventaire);
+const FacturesAchats = lazy(loadFacturesAchats);
 const Journal = lazy(loadJournal);
 const Kds = lazy(loadKds);
 const Mep = lazy(loadMep);
@@ -199,6 +201,12 @@ export default function LegacyModuleHost({
       const InventaireComponent = Inventaire;
       return permissions.inventaire !== false
         ? wrap('Inventaire', <InventaireComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'achats': {
+      // Factures & achats : mêmes droits que l'Inventaire (clé inventaire).
+      return permissions.inventaire !== false
+        ? wrap('Factures & achats', <FacturesAchats user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'pertes': {

@@ -35,7 +35,8 @@ import Interrupteur from './Interrupteur.jsx';
 // Modules réglables : ceux du menu. Les outils du consultant (et ses pages
 // Factures, Établissements, Rôles & accès) sont réservés à son rôle par
 // LegacyModuleHost : aucune case ne pourrait les ouvrir à quelqu'un d'autre.
-const MODULES = navItems.filter((n) => n.permKey !== 'consultant_tools');
+// Une entrée rattachée (Factures & achats) suit la ligne de son module.
+const MODULES = navItems.filter((n) => n.permKey !== 'consultant_tools' && !n.rattacheA);
 const GERABLES = new Set(manageableModules.map((m) => m.id));
 
 // Droits d'action (moduleConfig.droitsAction), rangés sous leur module : une

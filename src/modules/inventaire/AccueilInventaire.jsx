@@ -1,5 +1,5 @@
 import React from 'react';
-import { Banknote, ChartColumn, ClipboardList, Receipt, Settings2, Truck } from 'lucide-react';
+import { Banknote, CalendarClock, ChartColumn, ChartLine, ClipboardList, Receipt, Settings2, Truck } from 'lucide-react';
 import { Btn } from '../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
@@ -7,6 +7,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import { dateCH, estCompte } from './inventaireLignes.js';
 import { estACompleter } from './achatsLogic.js';
 import { estFacture, totauxFactures } from './facturesLogic.js';
+import { depensesParMois, echeancier, trierDocuments } from '../factures-achats/analysesAchats.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Inventaire : une tuile par tâche, dans l'ordre où la
@@ -14,16 +15,26 @@ import { estFacture, totauxFactures } from './facturesLogic.js';
 // page d'accueil tactile, sur les trois coques). Une tuile hors droit n'est
 // pas rendue, jamais grisée.
 //
+// Le même accueil sert Factures & achats (vue 'achats') : TUILES_PAR_VUE dit
+// quelles tâches chaque module affiche.
+//
 // Nombres, dates et noms dans leurs propres nœuds : la phrase autour reste
 // une entrée du glossaire au lieu de partir à l'IA à chaque valeur.
 // ─────────────────────────────────────────────────────────────────────────────
 
+const TUILES_PAR_VUE = {
+  inventaire: ['compte', 'livraison', 'facture', 'reglement', 'ecarts', 'gerer'],
+  achats: ['livraison', 'facture', 'reglement', 'echeances', 'analyses'],
+};
+
+const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument || '').localeCompare(String(a.dateDocument || '')))[0];
 
 export default function AccueilInventaire({
-  perimetreActif, perimetres, pilesParPerimetre, inv, docs,
+  vue = 'inventaire', perimetreActif, perimetres, pilesParPerimetre, inv, docs,
   canManage, canRegler, canImportXlsx,
-  onJeCompte, onImport, onReglement, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
+  onJeCompte, onImport, onReglement, onEcheances, onAnalyses, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
 }) {
   const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | 'gerer' | null
   const fermer = React.useCallback(() => setFenetre(null), []);
@@ -39,6 +50,14 @@ export default function AccueilInventaire({
   const dernierBon = plusRecent(bons);
   const derniereFacture = plusRecent(factures);
   const totaux = canRegler ? totauxFactures(factures, aujourdhui) : null;
+  const achatsVue = vue === 'achats';
+  // Tuiles de Factures & achats : dépenses des 12 mois (tous périmètres) et
+  // échéances (droit « Régler les factures »).
+  const depenses = achatsVue ? depensesParMois(trierDocuments(docs).factures, aujourdhui).total : null;
+  const echeances = achatsVue && canRegler ? echeancier(docs, aujourdhui) : null;
+  const enRetard = echeances?.tranches.find(t => t.id === 'retard')?.factures.length || 0;
+  const prochaine = echeances?.tranches.filter(t => t.id !== 'retard' && t.id !== 'sans')
+    .flatMap(t => t.factures).map(f => f.dateEcheance).sort()[0];
 
   const tuiles = [
     {
@@ -69,6 +88,18 @@ export default function AccueilInventaire({
           {totaux.enRetard.n ? <>, <span>{totaux.enRetard.n}</span> en retard</> : null}
         </>
         : <>tout est réglé</>,
+    },
+    {
+      id: 'echeances', Icone: CalendarClock, libelle: 'Échéances', onClick: onEcheances, visible: canRegler,
+      etat: !echeances ? null : enRetard
+        ? <><span>{enRetard}</span> {enRetard > 1 ? 'factures en retard' : 'facture en retard'}</>
+        : prochaine ? <>prochaine le <span>{dateCH(prochaine)}</span></> : <>aucune échéance à venir</>,
+    },
+    {
+      id: 'analyses', Icone: ChartLine, libelle: 'Analyses des dépenses', onClick: onAnalyses,
+      etat: !depenses ? null : depenses.montant == null
+        ? <>aucune facture chiffrée sur 12 mois</>
+        : <><span>CHF</span> <span>{chf(depenses.montant)}</span> sur 12 mois</>,
     },
     {
       id: 'ecarts', Icone: ChartColumn, libelle: 'Écarts et documents', onClick: onEcarts,
@@ -103,7 +134,7 @@ export default function AccueilInventaire({
         </div>
       )}
 
-      <AccueilModule tuiles={tuiles} />
+      <AccueilModule tuiles={tuiles.filter(t => TUILES_PAR_VUE[vue].includes(t.id))} />
 
       {fenetre === 'perimetre' && (
         <Fenetre id="inventaire-perimetre" titre="Changer de périmètre" sousTitre="Chaque périmètre a sa propre pile d'inventaires et ses propres documents." onClose={fermer}>

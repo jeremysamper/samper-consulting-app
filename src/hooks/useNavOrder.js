@@ -38,7 +38,12 @@ export function applyNavOrder(items, order) {
     .map((item) => ({ ...item, group: groupOf.get(item.id) || item.group }))
     .sort((a, b) => pos.get(a.id) - pos.get(b.id));
   items.filter((item) => !pos.has(item.id)).forEach((item) => {
-    let at = -1;
+    // Entrée rattachée à un module (moduleConfig, rattacheA) : juste après lui.
+    let at = item.rattacheA ? result.findIndex((r) => r.id === item.rattacheA) : -1;
+    if (at !== -1) {
+      result.splice(at + 1, 0, { ...item, group: result[at].group });
+      return;
+    }
     for (let k = result.length - 1; k >= 0; k -= 1) {
       if (result[k].group === item.group) { at = k; break; }
     }

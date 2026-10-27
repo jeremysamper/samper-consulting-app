@@ -118,6 +118,12 @@ export const tousLesNavItems = [
   { id: 'journal', label: "Journal d'activité", mobileLabel: 'Journal', icon: '☰', group: 'Général', permKey: 'journal' },
   { id: 'cartes', label: 'Cartes & Recettes', mobileLabel: 'Recettes', icon: '◈', group: 'Cuisine', permKey: 'recettes' },
   { id: 'inventaire', label: 'Inventaire', icon: '▦', group: 'Cuisine', permKey: 'inventaire' },
+  // Factures & achats : entrée à part, rattachée aux droits de l'Inventaire
+  // (même clé, comme le pointage sur le planning) : visible pour les mêmes
+  // personnes, dans les mêmes établissements. `rattacheA` : pas de case à
+  // elle dans Paramètres ni dans Rôles & accès, pas de chiffre Alt, placée
+  // juste après son module tant que l'ordre du menu ne la range pas.
+  { id: 'achats', label: 'Factures & achats', icon: '▧', group: 'Cuisine', permKey: 'inventaire', rattacheA: 'inventaire' },
   { id: 'pertes', label: 'Pertes', icon: '◬', group: 'Cuisine', permKey: 'pertes' },
   { id: 'haccp', label: 'HACCP', mobileLabel: 'HACCP', icon: '◎', group: 'Cuisine', permKey: 'haccp' },
   { id: 'sop', label: 'SOPs & Checklists', icon: '◻', group: 'Documents', permKey: 'sop' },
@@ -150,7 +156,8 @@ export const navItems = tousLesNavItems.filter((item) => !modulesEnPause.include
 export const alwaysOnModuleKeys = ['dashboard', 'consultant_tools', 'faq', 'journal'];
 
 // Modules que le consultant peut activer ou non, dans l'ordre du menu par défaut.
-export const etabToggleableModules = navItems.filter((item) => !alwaysOnModuleKeys.includes(item.permKey));
+// Une entrée rattachée suit la case de son module.
+export const etabToggleableModules = navItems.filter((item) => !alwaysOnModuleKeys.includes(item.permKey) && !item.rattacheA);
 
 // Modules « à activer » : hors du périmètre restaurant, ils ne s'affichent que
 // dans un établissement qui les a explicitement cochés. Un établissement jamais

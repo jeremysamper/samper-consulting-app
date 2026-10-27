@@ -8,6 +8,7 @@ import { removeStorageKeys } from '../../utils/storage.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
+import { zurichToday } from '../../utils/zurichTime.js';
 import {
   getPendingSaisieCount,
   listPendingSaisies,
@@ -46,6 +47,9 @@ import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 const AchatsPanel = React.lazy(() => import('./AchatsPanel.jsx'));
 // Même principe pour « Je règle les factures ».
 const FacturesPanel = React.lazy(() => import('./FacturesPanel.jsx'));
+// Factures & achats : analyses des dépenses et échéances, à la demande.
+const AnalysesAchats = React.lazy(() => import('../factures-achats/AnalysesAchats.jsx'));
+const Echeancier = React.lazy(() => import('../factures-achats/Echeancier.jsx'));
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
@@ -59,8 +63,24 @@ const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date |
 // eux-mêmes sont repris à l'ouverture suivante, un import ou un choix de
 // périmètre repart de l'accueil.
 const ECRANS_REPRIS = ['comptage', 'ecarts', 'reglement'];
+// Vue « achats » (module Factures & achats, src/modules/factures-achats) :
+// même composant, son accueil et sa mémoire d'écran (sc_achats_ecran).
+const ECRANS_REPRIS_ACHATS = ['reglement', 'echeances', 'analyses'];
+// Écrans soumis au droit « Régler les factures » (factures_achat).
+const ECRANS_REGLEMENT = ['reglement', 'echeances'];
 // Clé des anciens onglets de vues : effacée à l'ouverture du module.
 const ANCIENNE_CLE_VUE = 'sc_inventaire_vue';
+
+// « Je règle les factures » était un écran de l'Inventaire : mémorisé sous
+// sc_inventaire_ecran, il est repris une fois par Factures & achats. Lu avant
+// que l'Inventaire ne réécrive sa propre clé (première instance montée).
+let repriseReglementFaite = false;
+const repriseReglement = () => {
+  if (repriseReglementFaite) return;
+  repriseReglementFaite = true;
+  if (readLegacyStorage('sc_inventaire_ecran', null) !== 'reglement') return;
+  if (readLegacyStorage('sc_achats_ecran', null) == null) writeLegacyStorage('sc_achats_ecran', 'reglement');
+};
 
 // Actions rares du module, rangées derrière deux boutons nommés : « Exporter »
 // (PDF, Excel, impression, ouverts à toute l'équipe) et « Gérer » (création,
@@ -92,7 +112,9 @@ const recouvrirSaisiesEnAttente = (liste, saisies) => {
 };
 
 // INVENTAIRE - plusieurs périmètres en parallèle (cuisine, boissons, matériel...)
-const Inventaire = ({ user, etablissement }) => {
+// `vue` : 'inventaire' (module Inventaire) ou 'achats' (module Factures & achats).
+const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
+  const achatsVue = vue === 'achats';
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
@@ -164,8 +186,10 @@ const Inventaire = ({ user, etablissement }) => {
   // « Je règle les factures » n'est repris que si le droit est là. « Retour »
   // vide la file de vérification : un document laissé à moitié reste signalé
   // « à compléter », il n'est pas rouvert d'office.
-  const { ecran, setEcran, retourAccueil } = useEcranModule('inventaire', {
-    repris: canRegler ? ECRANS_REPRIS : ECRANS_REPRIS.filter(e => e !== 'reglement'),
+  repriseReglement();
+  const reprisVue = achatsVue ? ECRANS_REPRIS_ACHATS : ECRANS_REPRIS;
+  const { ecran, setEcran, retourAccueil } = useEcranModule(achatsVue ? 'achats' : 'inventaire', {
+    repris: canRegler ? reprisVue : reprisVue.filter(e => !ECRANS_REGLEMENT.includes(e)),
     surRetour: () => setAVerifier([]),
   });
   // Les onglets de vues n'existent plus : la clé est effacée, sa valeur
@@ -235,8 +259,10 @@ const Inventaire = ({ user, etablissement }) => {
     () => (cartesPlats ? cartesDesFiches(cartesPlats.cartes, cartesPlats.plats) : new Map()),
     [cartesPlats],
   );
+  // Vue achats : ni fiches ni cartes (elles servent au comptage et à Gérer),
+  // donc jamais d'ajout des recettes des cartes depuis Factures & achats.
   React.useEffect(() => {
-    if (!legacySB) return undefined;
+    if (!legacySB || achatsVue) return undefined;
     let vivant = true;
     legacySB.db.listRecettes(etabId)
       .then(rs => { if (vivant) { setRecettes(fichesActives(rs)); setRecettesChargees(true); } })
@@ -247,7 +273,7 @@ const Inventaire = ({ user, etablissement }) => {
       .then(([cartes, plats]) => { if (vivant) setCartesPlats({ cartes: cartes || [], plats: plats || [] }); })
       .catch(err => console.warn('[Inventaire] cartes indisponibles', err));
     return () => { vivant = false; };
-  }, [etabId]);
+  }, [etabId, achatsVue]);
 
   // ─── Catalogue produits (pour autocomplétion à l'ajout de ligne) ───
   const [catalogue, setCatalogue] = React.useState([]);
@@ -1456,6 +1482,7 @@ const Inventaire = ({ user, etablissement }) => {
 
       {ecran === ECRAN_ACCUEIL && (
         <AccueilInventaire
+          vue={vue}
           perimetreActif={perimetreActif}
           perimetres={perimetres}
           pilesParPerimetre={pilesParPerimetre}
@@ -1467,6 +1494,8 @@ const Inventaire = ({ user, etablissement }) => {
           onJeCompte={ouvrirJeCompte}
           onImport={ouvrirImport}
           onReglement={() => setEcran('reglement')}
+          onEcheances={() => setEcran('echeances')}
+          onAnalyses={() => setEcran('analyses')}
           onEcarts={() => setEcran('ecarts')}
           onChoisirPerimetre={setPerimetre}
           onNouveauPerimetre={() => openNewInventory('')}
@@ -1670,6 +1699,29 @@ const Inventaire = ({ user, etablissement }) => {
             </React.Suspense>
           </EcranTache>
         </div>
+      )}
+
+      {ecran === 'echeances' && canRegler && (
+        <EcranTache titre="Échéances" onRetour={retourAccueil}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+            <Echeancier docs={achats.tousLesDocs} aujourdhui={zurichToday()} onRegler={() => setEcran('reglement')} />
+          </React.Suspense>
+        </EcranTache>
+      )}
+
+      {ecran === 'analyses' && (
+        <EcranTache titre="Analyses des dépenses" onRetour={retourAccueil}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+            <AnalysesAchats
+              docs={achats.tousLesDocs}
+              perimetres={perimetres}
+              catalogue={catalogue}
+              aujourdhui={zurichToday()}
+              loadError={achats.loadError}
+              onVerifier={(ids) => ouvrirVerification(ids, 'analyses')}
+            />
+          </React.Suspense>
+        </EcranTache>
       )}
 
       {canImportXlsx && <input ref={importXlsxRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportInventoryXLSX} />}

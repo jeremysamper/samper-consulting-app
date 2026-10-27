@@ -32,6 +32,10 @@ export function isEditableTarget(target) {
   return !['button', 'checkbox', 'radio', 'submit', 'reset', 'range', 'color', 'file'].includes(type);
 }
 
+// Alt + chiffre : une entrée rattachée à un module (Factures & achats, sur
+// l'Inventaire) n'a pas de chiffre, ceux des modules suivants ne bougent pas.
+const avecChiffre = (item) => !item.rattacheA;
+
 // Une modale de module ouverte garde la main : les raccourcis de navigation ne
 // doivent pas changer de module sous une saisie en cours.
 function hasOpenModuleDialog() {
@@ -65,7 +69,7 @@ export function useGlobalShortcuts({ navItems, onNavigate, onTogglePalette, onOp
       }
 
       if (e.altKey && !mod && !e.shiftKey && /^Digit[1-9]$/.test(e.code)) {
-        const item = h.navItems[Number(e.code.slice(5)) - 1];
+        const item = h.navItems.filter(avecChiffre)[Number(e.code.slice(5)) - 1];
         if (item) {
           e.preventDefault();
           h.onNavigate(item.id);
@@ -307,13 +311,15 @@ export function ShortcutsHelp({ open, onClose, touch }) {
 
 // Construit les entrées de la palette depuis l'état de la coque.
 export function buildPaletteEntries({ navItems, getLabel, currentPage, onNavigate, etabs, currentEtabId, onSelectEtab, isDark, onToggleTheme, onToggleSidebar, sidebarOpen, onOpenHelp, onBack, canGoBack, onOrganize }) {
-  const entries = navItems.map((item, i) => ({
+  const chiffres = navItems.filter(avecChiffre);
+  const rang = (item) => chiffres.indexOf(item);
+  const entries = navItems.map((item) => ({
     id: `nav:${item.id}`,
     group: 'Modules',
     label: getLabel(item.id, item.label),
     keywords: `${item.label} ${item.mobileLabel || ''} ${item.group || ''}`,
     badge: item.id === currentPage ? 'Actuel' : null,
-    hint: i < 9 ? `${ALT_LABEL} ${i + 1}` : null,
+    hint: rang(item) > -1 && rang(item) < 9 ? `${ALT_LABEL} ${rang(item) + 1}` : null,
     run: () => onNavigate(item.id),
   }));
   if (etabs.length > 1) {
