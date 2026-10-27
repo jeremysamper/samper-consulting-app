@@ -242,8 +242,9 @@ const pageAliases = {
 const consultantToolsTabAliases = {
   outils: 'recettes',
   outils_consultant: 'recettes',
-  simulation: 'simulation',
-  simulation_carte: 'simulation'
+  // Onglet Simulation retiré le 27.10.2026 : ses anciens liens ouvrent Plats & Recettes.
+  simulation: 'recettes',
+  simulation_carte: 'recettes'
 };
 
 export function normalizePage(page) {

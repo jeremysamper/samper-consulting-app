@@ -44,7 +44,6 @@ const EXCLUS = [
 const EN_ATTENTE = [
   'modules/planning/Planning.styles.js',
   'modules/factures/Factures.jsx',
-  'modules/consultant-tools/CarteCreator.jsx',
 ];
 
 const FONDS = /var\(--(accent|danger-strong|danger-text|success-strong|success-text)\)/;
