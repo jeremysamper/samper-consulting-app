@@ -57,12 +57,14 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10);
 // inventaire créé dans la session est simplement empilé en tête.
 const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date || ''));
 
-// Écrans du module : l'accueil (une tuile par tâche), puis un écran par tâche
-// ('perimetre', 'comptage', 'import', 'verification', 'reglement', 'ecarts').
+// Écrans du module : l'accueil (une tuile par tâche), puis un écran par tâche.
+// Inventaire : 'perimetre', 'comptage', 'ecarts', et 'verification' ouverte
+// depuis la liste des documents d'Écarts et documents. Factures & achats :
+// 'import', 'verification', 'reglement', 'echeances', 'analyses'.
 // Mémorisé sous sc_inventaire_ecran ; seuls les écrans qui se suffisent à
 // eux-mêmes sont repris à l'ouverture suivante, un import ou un choix de
 // périmètre repart de l'accueil.
-const ECRANS_REPRIS = ['comptage', 'ecarts', 'reglement'];
+const ECRANS_REPRIS = ['comptage', 'ecarts'];
 // Vue « achats » (module Factures & achats, src/modules/factures-achats) :
 // même composant, son accueil et sa mémoire d'écran (sc_achats_ecran).
 const ECRANS_REPRIS_ACHATS = ['reglement', 'echeances', 'analyses'];

@@ -16,14 +16,16 @@ import { depensesParMois, echeancier, trierDocuments } from '../factures-achats/
 // pas rendue, jamais grisée.
 //
 // Le même accueil sert Factures & achats (vue 'achats') : TUILES_PAR_VUE dit
-// quelles tâches chaque module affiche.
+// quelles tâches chaque module affiche. L'Inventaire garde le comptage, les
+// écarts et Gérer ; les documents (livraison, facture, à compléter), le
+// règlement, les échéances et les analyses sont dans Factures & achats.
 //
 // Nombres, dates et noms dans leurs propres nœuds : la phrase autour reste
 // une entrée du glossaire au lieu de partir à l'IA à chaque valeur.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TUILES_PAR_VUE = {
-  inventaire: ['compte', 'livraison', 'facture', 'reglement', 'ecarts', 'gerer'],
+  inventaire: ['compte', 'ecarts', 'gerer'],
   achats: ['livraison', 'facture', 'reglement', 'echeances', 'analyses'],
 };
 
@@ -125,7 +127,7 @@ export default function AccueilInventaire({
         {perimetres.length > 1 && <Btn variant="ghost" onClick={() => setFenetre('perimetre')} style={{ minHeight: 44 }}>Changer de périmètre</Btn>}
       </div>
 
-      {aCompleter > 0 && (
+      {achatsVue && aCompleter > 0 && (
         <div style={st.bandeau} data-bandeau-a-completer="">
           <span style={{ flex: '1 1 240px', minWidth: 0 }}>
             <span>{aCompleter}</span> {aCompleter > 1 ? 'documents à compléter' : 'document à compléter'} : la lecture n’a pas tout trouvé (fournisseur, date ou montant TTC).
