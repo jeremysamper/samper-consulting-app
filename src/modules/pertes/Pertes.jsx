@@ -9,11 +9,41 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
-import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
+import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { Printer, Trash2 } from 'lucide-react';
+
+// Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
+// liste déroulante, même valeur écrite. data-cadre : chaque tuile garde son
+// cadre (un bouton se voit) ; data-choix-<nom> : crochet du banc.
+function ChoixTuiles({ nom, libelle, valeur, options, onChange }) {
+  const idLibelle = `pertes-${nom}`;
+  return (
+    <div style={{ ...pts.field, gridColumn: '1/-1' }}>
+      <div id={idLibelle} style={pts.fieldLabel}>{libelle}</div>
+      <div role="radiogroup" aria-labelledby={idLibelle} style={pts.tuilesChoix}>
+        {options.map(o => {
+          const choisi = valeur === o;
+          return (
+            <button key={o} type="button" role="radio" aria-checked={choisi} data-cadre="" {...{ [`data-choix-${nom}`]: o }}
+              onClick={() => onChange(o)}
+              style={{ ...stFenetre.choix, ...pts.tuileChoix, ...(choisi ? pts.tuileChoisie : null) }}>
+              <span style={{ ...stFenetre.choixTitre, fontSize: 13, lineHeight: 1.25 }}>{o}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // PERTES
+// Le module s'ouvre sur le registre, comme avant. Au-dessus, deux gros
+// boutons : « Je jette » (le formulaire de déclaration, même droit qu'avant)
+// et « Exporter » (même fenêtre de choix que l'ancien bouton). Valider,
+// supprimer et sélectionner restent au droit « gérer ».
 const Pertes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -21,6 +51,7 @@ const Pertes = ({ user, etablissement }) => {
   const demoData = getDemoData();
   const [pertes, setPertes] = React.useState(() => legacySB ? [] : readLegacyStorage('sc_pertes', demoData.pertes));
   const [showForm, setShowForm] = React.useState(false);
+  const [fenetreExport, setFenetreExport] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [motifFilter, setMotifFilter] = React.useState('Tous');
   const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
@@ -205,23 +236,28 @@ const Pertes = ({ user, etablissement }) => {
             tabs={MOTIFS.map(m => ({ id: m, label: m }))}
           />
         </div>
-        <div className="module-actions">
-          {perms.pertes && <button style={pts.addBtn} onClick={() => setShowForm(true)}>Déclarer une perte</button>}
-          {canManage && !sel.active && (
+        {canManage && !sel.active && (
+          <div className="module-actions">
             <button style={pts.exportBtn} onClick={sel.enter}>Sélectionner</button>
-          )}
-          <BoutonActions
-            id="pertes-exporter"
-            label="Exporter"
-            style={pts.exportBtn}
-            titre="Exporter le registre des pertes"
-            sections={[{ items: [
-              { titre: 'Télécharger le PDF', detail: 'Le registre de la période affichée.', onClick: exportPertes },
-              { titre: 'Imprimer', detail: 'Le même registre, envoyé à l\'imprimante.', onClick: printPertes },
-            ] }]}
-          />
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Les tâches, en gros boutons au-dessus du registre (hors impression). */}
+      <div className="no-print">
+        <AccueilModule tuiles={[
+          { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true) },
+          { id: 'exporter', Icone: Printer, libelle: 'Exporter', etat: <>PDF ou imprimante</>, onClick: () => setFenetreExport(true) },
+        ]} />
+      </div>
+      {fenetreExport && (
+        <Fenetre id="pertes-exporter" titre="Exporter le registre des pertes" onClose={() => setFenetreExport(false)}>
+          <div style={stFenetre.section}>
+            <Choix titre="Télécharger le PDF" detail="Le registre de la période affichée." onClick={() => { setFenetreExport(false); exportPertes(); }} />
+            <Choix titre="Imprimer" detail="Le même registre, envoyé à l'imprimante." onClick={() => { setFenetreExport(false); printPertes(); }} />
+          </div>
+        </Fenetre>
+      )}
 
       {/* KPI bar */}
       <div style={pts.kpiBar}>
@@ -367,17 +403,10 @@ const Pertes = ({ user, etablissement }) => {
               <button type="button" className="ui-fermer" aria-label="Fermer" style={pts.closeBtn} onClick={()=>setShowForm(false)}>×</button>
             </div>
             <div style={pts.modalBody}>
+              {/* Les champs obligatoires d'abord (produit, quantité, valeur), puis
+                  l'unité et le motif en tuiles, la date et le reste : la barre
+                  « Enregistrer » reste en bas de la fenêtre, sans défilement. */}
               <div style={pts.formGrid}>
-                <div style={pts.field}>
-                  <label style={pts.fieldLabel}>Date *</label>
-                  <input type="date" style={pts.fieldInput} value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
-                </div>
-                <div style={pts.field}>
-                  <label style={pts.fieldLabel}>Motif *</label>
-                  <select style={pts.fieldInput} value={form.motif} onChange={e=>setForm({...form,motif:e.target.value})}>
-                    {MOTIFS.slice(1).map(m => <option key={m}>{m}</option>)}
-                  </select>
-                </div>
                 <div style={{...pts.field, gridColumn:'1/-1', position: 'relative'}}>
                   <label style={pts.fieldLabel}>
                     Produit *
@@ -494,14 +523,14 @@ const Pertes = ({ user, etablissement }) => {
                   <input type="number" style={pts.fieldInput} placeholder="0" value={form.quantite} onChange={e=>setForm({...form,quantite:e.target.value})}/>
                 </div>
                 <div style={pts.field}>
-                  <label style={pts.fieldLabel}>Unité</label>
-                  <select style={pts.fieldInput} value={form.unite} onChange={e=>setForm({...form,unite:e.target.value})}>
-                    {UNITES.map(u => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div style={pts.field}>
                   <label style={pts.fieldLabel}>Valeur unitaire (CHF) *</label>
                   <input type="number" step="0.01" style={pts.fieldInput} placeholder="0.00" value={form.valeurUnit} onChange={e=>setForm({...form,valeurUnit:e.target.value})}/>
+                </div>
+                <ChoixTuiles nom="unite" libelle="Unité" valeur={form.unite} options={UNITES} onChange={u => setForm({ ...form, unite: u })} />
+                <ChoixTuiles nom="motif" libelle="Motif *" valeur={form.motif} options={MOTIFS.slice(1)} onChange={m => setForm({ ...form, motif: m })} />
+                <div style={pts.field}>
+                  <label style={pts.fieldLabel}>Date *</label>
+                  <input type="date" style={pts.fieldInput} value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
                 </div>
                 <div style={pts.field}>
                   <label style={pts.fieldLabel}>Catégorie</label>
@@ -519,10 +548,10 @@ const Pertes = ({ user, etablissement }) => {
                   Valeur estimée : <strong style={{color:'var(--danger-strong)'}}>−CHF {(parseFloat(form.quantite||0)*parseFloat(form.valeurUnit||0)).toFixed(2)}</strong>
                 </div>
               )}
-              <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:16}}>
-                <button style={pts.exportBtn} onClick={()=>setShowForm(false)}>Annuler</button>
-                <button style={pts.addBtn} onClick={handleSubmit}>Enregistrer la perte</button>
-              </div>
+            </div>
+            <div style={pts.barreForm}>
+              <button style={pts.exportBtn} onClick={()=>setShowForm(false)}>Annuler</button>
+              <button style={pts.addBtn} onClick={handleSubmit}>Enregistrer la perte</button>
             </div>
           </div>
         </div>
@@ -566,10 +595,14 @@ const pts = {
   barVal:{fontSize:12,color:'var(--danger-strong)',fontWeight:500,textAlign:'right'},
   barPct:{fontSize:11,color:'var(--text2)',textAlign:'right'},
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000},
-  modal:{background:'var(--surface)',borderRadius:14,width:520,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'},
-  modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)'},
+  // Les champs défilent, la barre d'action reste au bas de la fenêtre (les
+  // tuiles allongent le formulaire) ; sur téléphone, .modal-full la passe en
+  // plein écran.
+  modal:{background:'var(--surface)',borderRadius:14,width:520,maxWidth:'90vw',maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'},
+  barreForm:{display:'flex',gap:10,justifyContent:'flex-end',padding:'12px 22px',borderTop:'1px solid var(--border)',flexShrink:0},
+  modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)',flexShrink:0},
   closeBtn:{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'},
-  modalBody:{padding:'22px'},
+  modalBody:{padding:'22px',flex:'1 1 auto',minHeight:0,overflowY:'auto'},
   // Plancher a 200px : un input[type=date] rendu par iOS occupe ~192px et
   // refuse de rétrécir sous cette taille. Avec deux colonnes cote a cote sur
   // un telephone, la colonne de droite (Motif, Unite, Categorie) partait hors
@@ -579,6 +612,10 @@ const pts = {
   field:{display:'flex',flexDirection:'column',gap:6},
   fieldLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
   fieldInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none'},
+  // Tuiles du motif et de l'unité : celles du rôle dans Rôles & accès (44 px).
+  tuilesChoix:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 104px), 1fr))',gap:6},
+  tuileChoix:{minHeight:44,padding:'6px 8px',justifyContent:'center'},
+  tuileChoisie:{borderColor:'var(--accent)',background:'var(--accent-light)'},
   previewVal:{ borderLeft: '2px solid var(--danger-bd)', padding: '10px 0 10px 12px',fontSize:13,color:'var(--text)',marginTop:8},
 };
 
