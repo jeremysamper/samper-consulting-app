@@ -1031,6 +1031,13 @@ export const UI_GLOSSARY = {
   'Nouvelle liste de mise en place': 'New prep list',
   'Aucune liste de mise en place pour le moment.': 'No prep list yet.',
 
+  // ── Pertes par tâche ──
+  'Je jette': 'I throw away',
+  'produit, quantité, motif': 'product, quantity, reason',
+  'Exporter le registre des pertes': 'Export the waste log',
+  'Le registre de la période affichée.': 'The log for the period shown.',
+  "Le même registre, envoyé à l'imprimante.": 'The same log, sent to the printer.',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',

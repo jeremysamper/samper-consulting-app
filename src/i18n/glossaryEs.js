@@ -1012,6 +1012,13 @@ export const UI_GLOSSARY_ES = {
   'Nouvelle liste de mise en place': 'Nueva lista de mise en place',
   'Aucune liste de mise en place pour le moment.': 'Todavía no hay ninguna lista de mise en place.',
 
+  // ── Pertes par tâche ──
+  'Je jette': 'Tiro',
+  'produit, quantité, motif': 'producto, cantidad, motivo',
+  'Exporter le registre des pertes': 'Exportar el registro de pérdidas',
+  'Le registre de la période affichée.': 'El registro del periodo mostrado.',
+  "Le même registre, envoyé à l'imprimante.": 'El mismo registro, enviado a la impresora.',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',
