@@ -1028,6 +1028,12 @@ export const UI_GLOSSARY_ES = {
   // ── Fiches salle par tâche ──
   'Je cherche un plat…': 'Busco un plato…',
 
+  // ── Catalogue par tâche ──
+  'Je cherche un produit ou un fournisseur…': 'Busco un producto o un proveedor…',
+  // La loupe repliable de chaque module (SearchToggle).
+  'Ouvrir la recherche': 'Abrir la búsqueda',
+  'Fermer la recherche': 'Cerrar la búsqueda',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',

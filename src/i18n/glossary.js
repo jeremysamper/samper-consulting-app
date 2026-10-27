@@ -1047,6 +1047,12 @@ export const UI_GLOSSARY = {
   // ── Fiches salle par tâche ──
   'Je cherche un plat…': 'Search for a dish…',
 
+  // ── Catalogue par tâche ──
+  'Je cherche un produit ou un fournisseur…': 'Search for a product or a supplier…',
+  // La loupe repliable de chaque module (SearchToggle).
+  'Ouvrir la recherche': 'Open search',
+  'Fermer la recherche': 'Close search',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'My schedule',
   'Gérer': 'Manage',
