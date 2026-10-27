@@ -1022,6 +1022,9 @@ export const UI_GLOSSARY_ES = {
   // ── Messages par tâche ──
   'Mes messages': 'Mis mensajes',
 
+  // ── Documents par tâche ──
+  'Je cherche un document…': 'Busco un documento…',
+
   // ── Planning : modèles d'horaires, duplication, export ──
   'Mon planning': 'Mi horario',
   'Gérer': 'Gestionar',
