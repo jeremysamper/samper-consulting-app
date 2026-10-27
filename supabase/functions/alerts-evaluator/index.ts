@@ -7,6 +7,12 @@
 //
 // Sécurité : verify_jwt=false - auth via header CRON_SECRET.
 //
+// Notifications : en fin de passage, la fonction notifications (action
+// alertes, secret interne de push_config) envoie les instances neuves
+// aux appareils abonnés de leurs destinataires. Un échec de cet appel
+// ne fait pas échouer l'évaluation : les instances restent 'a_envoyer'
+// et partent au passage suivant (moins de 3 h après leur création).
+//
 // POST body optionnel :
 //   { ruleId?: string }   - évaluer une règle précise (debug)
 // ================================================================
@@ -96,6 +102,38 @@ function shouldRunDaily(rule: AlertRule): boolean {
   }
 
   return true;
+}
+
+// ── Envoi des notifications ──────────────────────────────────────
+/**
+ * Demande à la fonction notifications d'envoyer les instances en attente
+ * (push_etat = 'a_envoyer'). Le secret interne ne quitte pas les
+ * fonctions : lu ici en service_role, vérifié là-bas. Ne lève jamais.
+ */
+async function envoyerNotifications(
+  sb: ReturnType<typeof adminClient>,
+): Promise<unknown> {
+  try {
+    const { data: cfg } = await sb
+      .from('push_config')
+      .select('secret_interne')
+      .eq('id', 1)
+      .maybeSingle();
+    if (!cfg?.secret_interne) return { error: 'push_config absent' };
+
+    const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notifications`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ action: 'alertes', secret: cfg.secret_interne }),
+      signal:  AbortSignal.timeout(25_000),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) console.error(`[alerts] notifications a répondu ${res.status}`);
+    return body;
+  } catch (err) {
+    console.error('[alerts] appel notifications :', err);
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 // ── Handler principal ────────────────────────────────────────────
@@ -205,5 +243,8 @@ Deno.serve(async (req: Request) => {
     `[alerts] évaluation terminée - ${fired} fired, ${resolved} resolved, ${skipped} skipped`,
   );
 
-  return json({ ok: true, fired, resolved, skipped, details: results });
+  const push = await envoyerNotifications(sb);
+  console.log('[alerts] notifications :', JSON.stringify(push).slice(0, 300));
+
+  return json({ ok: true, fired, resolved, skipped, details: results, push });
 });

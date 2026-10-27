@@ -8,6 +8,12 @@
 // dedupeKey = sujet de l'alerte (ex: "shift:sh-123"). Sans clé, on
 // retombe sur le comportement historique : une seule instance active
 // par règle.
+//
+// Une instance neuve part avec push_etat = 'a_envoyer' : l'action
+// alertes de la fonction notifications l'enverra une fois, en fin de
+// passage. L'index unique alert_instances_sujet_actif_uniq refuse une
+// seconde instance active du même sujet (deux passages simultanés) :
+// ce refus vaut « déjà active ».
 // ================================================================
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -59,8 +65,10 @@ export async function createInstanceIfNeeded(
     target_user_ids: targetUserIds ?? [],
     dedupe_key:      dedupeKey ?? null,
     status:          'active',
+    push_etat:       'a_envoyer',
   });
 
+  if (error?.code === '23505') return; // créée entre-temps par un autre passage
   if (error) {
     console.error(`[alerts] createInstanceIfNeeded rule=${ruleId}:`, error.message);
   }

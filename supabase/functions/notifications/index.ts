@@ -2,10 +2,13 @@
 // Edge Function « notifications » : notifications push (Web Push) sur les
 // téléphones et tablettes de l'équipe.
 //
-// Aujourd'hui un seul événement : une nouvelle réservation de table en ligne.
-// La base appelle cette fonction elle-même (déclencheur push_nouvelle_resa sur
-// reservations, migration 20261002_push_notifications) : peu importe le chemin
-// qui a créé la réservation, la notification part.
+// Deux événements :
+// - une nouvelle réservation de table en ligne. La base appelle cette fonction
+//   elle-même (déclencheur push_nouvelle_resa sur reservations, migration
+//   20261002_push_notifications) : peu importe le chemin qui a créé la
+//   réservation, la notification part ;
+// - une nouvelle alerte (alert_instances), à la fin de chaque passage de
+//   alerts-evaluator (migration 20261027_alertes_notification_push).
 //
 // Actions (POST JSON { action, ... }) :
 //   cle            session  → { cle } : clé publique VAPID, pour abonner un
@@ -18,13 +21,23 @@
 //                             abonnés à l'établissement DE LA RÉSERVATION.
 //                             secret = push_config.secret_interne (seule la base
 //                             le connaît : c'est elle qui appelle).
+//   alertes        interne  → { secret, dryRun?, instanceIds? } : envoie les
+//                             instances d'alerte en attente (push_etat
+//                             'a_envoyer'), chacune une seule fois, aux appareils
+//                             abonnés de ses destinataires (rôle dans
+//                             target_roles ou id dans target_user_ids, profil
+//                             actif, établissement de l'instance). Appelée par
+//                             alerts-evaluator avec le même secret.
+//                             dryRun : rien n'est pris, envoyé ni écrit ; rend
+//                             l'aperçu (titre, corps, nombre d'appareils) des
+//                             instances en attente, ou de instanceIds.
 //
 // Les abonnements (push_abonnements) sont écrits par l'app sous RLS : un
 // appareil, un utilisateur, un établissement. Un abonnement que le service de
 // push déclare expiré (404 / 410) est supprimé.
 //
 // Sécurité : verify_jwt=false (l'appel de la base n'a pas de session) ; cle et
-// test vérifient eux-mêmes le JWT, nouvelle_resa le secret interne.
+// test vérifient eux-mêmes le JWT, nouvelle_resa et alertes le secret interne.
 // ================================================================
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import * as webpush from 'jsr:@negrel/webpush@0.5.0';
@@ -124,18 +137,134 @@ async function appelant(req: Request, sb: Admin) {
 }
 
 // Seuls les membres actifs ayant encore accès à l'établissement sont notifiés :
-// un abonnement survit à un départ de l'équipe, pas la notification.
-async function abonnesDeLEtab(sb: Admin, etabId: string): Promise<Abonnement[]> {
+// un abonnement survit à un départ de l'équipe, pas la notification. Même règle
+// que user_can_access_etab (actif IS NOT FALSE, sans passe-droit consultant).
+// garde : filtre de plus sur le profil (destinataires d'une alerte).
+type Profil = { id: string; role: string | null; actif: boolean | null; etablissement_ids: string[] | null };
+async function abonnesDeLEtab(sb: Admin, etabId: string, garde?: (p: Profil) => boolean): Promise<Abonnement[]> {
   const { data: abos } = await sb.from('push_abonnements')
     .select('id, user_id, endpoint, p256dh, auth').eq('etablissement_id', etabId);
   const liste = (abos || []) as Abonnement[];
   if (!liste.length) return [];
   const ids = [...new Set(liste.map((a) => a.user_id))];
-  const { data: profils } = await sb.from('profiles').select('id, actif, etablissement_ids').in('id', ids);
-  const ok = new Set((profils || [])
+  const { data: profils } = await sb.from('profiles').select('id, role, actif, etablissement_ids').in('id', ids);
+  const ok = new Set(((profils || []) as Profil[])
     .filter((p) => p.actif !== false && Array.isArray(p.etablissement_ids) && p.etablissement_ids.includes(etabId))
+    .filter((p) => !garde || garde(p))
     .map((p) => String(p.id)));
   return liste.filter((a) => ok.has(a.user_id));
+}
+
+// ── Alertes ───────────────────────────────────────────────────────
+type Instance = {
+  id: string; rule_id: string; etablissement_id: string; title: string | null; status: string;
+  link_module: string | null; target_roles: string[] | null; target_user_ids: string[] | null;
+  dedupe_key: string | null; created_at: string;
+};
+
+// Une instance plus vieille ne part plus (reprise après une panne : on ne
+// réveille pas l'équipe pour une alerte de la veille).
+const ALERTE_PERIMEE_MS = 3 * 3600 * 1000;
+// Une alerte horaire écartée dont le sujet est toujours en défaut est recréée
+// au passage suivant (relevé du 27.10.2026) : la nouvelle instance ne sonne
+// pas si l'écarter date de moins de 20 h. Une règle quotidienne n'est pas
+// concernée : son instance du lendemain est un nouvel événement (relevé du
+// jour, rappel du jour), même si celle de la veille a été écartée.
+const REBOND_MS = 20 * 3600 * 1000;
+
+// Écran verrouillé : le titre ne nomme personne. Le pointage nomme l'employé
+// (« Pointage manquant - Prénom Nom ») : seul le motif part. Les autres titres
+// nomment une zone, un produit ou un nombre ; celui d'une alerte personnalisée
+// est le texte choisi par l'auteur de la règle. Type inconnu : titre neutre.
+const TITRE_SANS_PERSONNE = new Set([
+  'haccp_manquant', 'reservation_non_confirmee', 'stock_critique',
+  'ventes_inactives', 'pertes_elevees', 'personnalisee',
+]);
+function titreAlerte(ruleType: string | undefined, titre: string | null): string {
+  if (ruleType === 'pointage_manquant') return 'Pointage manquant';
+  const t = String(titre || '').trim();
+  return ruleType && TITRE_SANS_PERSONNE.has(ruleType) && t ? t : 'Nouvelle alerte';
+}
+
+async function recreeeApresEcarter(sb: Admin, inst: Instance): Promise<boolean> {
+  let q = sb.from('alert_instances').select('status, dismissed_at')
+    .eq('rule_id', inst.rule_id).neq('id', inst.id).lt('created_at', inst.created_at);
+  q = inst.dedupe_key ? q.eq('dedupe_key', inst.dedupe_key) : q.is('dedupe_key', null);
+  const { data } = await q.order('created_at', { ascending: false }).limit(1);
+  const prev = data?.[0] as { status: string; dismissed_at: string | null } | undefined;
+  return prev?.status === 'dismissed' && !!prev.dismissed_at
+    && Date.now() - Date.parse(prev.dismissed_at) < REBOND_MS;
+}
+
+async function envoyerAlertes(sb: Admin, dryRun: boolean, instanceIds: string[] | null) {
+  let q = sb.from('alert_instances')
+    .select('id, rule_id, etablissement_id, title, status, link_module, target_roles, target_user_ids, dedupe_key, created_at');
+  q = instanceIds ? q.in('id', instanceIds) : q.eq('push_etat', 'a_envoyer');
+  const { data, error } = await q.order('created_at', { ascending: true }).limit(100);
+  if (error) throw new Error(error.message);
+  const instances = (data || []) as Instance[];
+  const bilan = { traitees: 0, envoyees: 0, sans_envoi: 0, appareils: 0, echecs: 0, expires: 0 };
+  if (!instances.length) return { ...bilan, dryRun, apercu: [] as unknown[] };
+
+  const { data: regles } = await sb.from('alert_rules').select('id, rule_type, schedule_type')
+    .in('id', [...new Set(instances.map((i) => i.rule_id))]);
+  const typeRegle = new Map((regles || []).map((r) => [String(r.id), String(r.rule_type)] as [string, string]));
+  const quotidienne = new Set((regles || []).filter((r) => r.schedule_type === 'daily').map((r) => String(r.id)));
+  const { data: etabs } = await sb.from('etablissements').select('id, nom')
+    .in('id', [...new Set(instances.map((i) => i.etablissement_id))]);
+  const nomEtab = new Map((etabs || []).map((e) => [String(e.id), String(e.nom || '')] as [string, string]));
+
+  const apercu: unknown[] = [];
+  for (const inst of instances) {
+    // Prise : une seule exécution passe a_envoyer à en_cours. Un passage
+    // doublé, ou une reprise après un envoi interrompu, ne renvoie jamais.
+    if (!dryRun) {
+      const { data: prise } = await sb.from('alert_instances')
+        .update({ push_etat: 'en_cours', push_at: new Date().toISOString() })
+        .eq('id', inst.id).eq('push_etat', 'a_envoyer').select('id');
+      if (!prise?.length) continue;
+    }
+    bilan.traitees++;
+
+    let motif = '';
+    if (inst.status !== 'active') motif = 'close';
+    else if (Date.now() - Date.parse(inst.created_at) > ALERTE_PERIMEE_MS) motif = 'perimee';
+    else if (!quotidienne.has(inst.rule_id) && await recreeeApresEcarter(sb, inst)) motif = 'ecartee';
+
+    const roles = inst.target_roles || [];
+    const nominatifs = inst.target_user_ids || [];
+    const abonnes = motif && !dryRun ? [] : await abonnesDeLEtab(sb, inst.etablissement_id,
+      (p) => roles.includes(String(p.role || '')) || nominatifs.includes(String(p.id)));
+    if (!motif && !abonnes.length) motif = 'aucun_abonne';
+
+    const message: Message = {
+      titre: titreAlerte(typeRegle.get(inst.rule_id), inst.title),
+      corps: nomEtab.get(inst.etablissement_id) || '',
+      url: `/?page=${encodeURIComponent(inst.link_module || 'dashboard')}&etab=${encodeURIComponent(inst.etablissement_id)}`,
+      tag: `alerte-${inst.id}`,
+    };
+
+    if (dryRun) {
+      apercu.push({
+        instance: inst.id, regle: typeRegle.get(inst.rule_id) || null, titre: message.titre,
+        corps: message.corps, url: message.url, appareils: abonnes.length,
+        personnes: new Set(abonnes.map((a) => a.user_id)).size, motif: motif || null,
+      });
+      continue;
+    }
+    if (motif) {
+      await sb.from('alert_instances').update({ push_etat: 'sans_envoi' }).eq('id', inst.id);
+      bilan.sans_envoi++;
+      console.log('[notifications] alerte', inst.id, 'sans envoi :', motif);
+      continue;
+    }
+    const res = await envoyer(sb, abonnes, message);
+    await sb.from('alert_instances').update({ push_etat: res.envoyes > 0 ? 'envoye' : 'sans_envoi' }).eq('id', inst.id);
+    if (res.envoyes > 0) bilan.envoyees++; else bilan.sans_envoi++;
+    bilan.appareils += res.envoyes; bilan.echecs += res.echecs; bilan.expires += res.expires;
+    console.log('[notifications] alerte', inst.id, JSON.stringify(res));
+  }
+  return { ...bilan, dryRun, apercu };
 }
 
 Deno.serve(async (req: Request) => {
@@ -161,7 +290,7 @@ Deno.serve(async (req: Request) => {
     const n = Number(r.nb_couverts || 0);
     const res = await envoyer(sb, abonnes, {
       titre: demande ? 'Nouvelle demande de réservation' : 'Nouvelle réservation en ligne',
-      corps: `${r.nom || 'Client'} · ${n} pers. · ${jourCourt(r.date_service)} à ${String(r.heure_arrivee).slice(0, 5)}`
+      corps: `${r.nom || 'Client'}, ${n} pers., ${jourCourt(r.date_service)} à ${String(r.heure_arrivee).slice(0, 5)}`
         + (etab?.nom ? `\n${etab.nom}` : '')
         + (demande ? '\nÀ confirmer dans Réservations' : ''),
       url: `/?page=previsions&etab=${encodeURIComponent(r.etablissement_id)}`,
@@ -169,6 +298,20 @@ Deno.serve(async (req: Request) => {
     });
     console.log('[notifications] nouvelle_resa', r.id, JSON.stringify(res));
     return json({ ok: true, ...res });
+  }
+
+  // ── Appel de alerts-evaluator : nouvelles alertes ──
+  if (action === 'alertes') {
+    const cfg = await lireConfig(sb);
+    if (!cfg || !body.secret || String(body.secret) !== cfg.secret_interne) return json({ error: 'Non autorisé.' }, 401);
+    const dryRun = body.dryRun === true;
+    const ids = dryRun && Array.isArray(body.instanceIds) ? body.instanceIds.map(String).slice(0, 50) : null;
+    try {
+      return json({ ok: true, ...(await envoyerAlertes(sb, dryRun, ids)) });
+    } catch (e) {
+      console.error('[notifications] alertes', e instanceof Error ? e.message : String(e));
+      return json({ error: 'Lecture des alertes impossible.' }, 500);
+    }
   }
 
   // ── Actions de l'équipe : session obligatoire ──
@@ -188,7 +331,7 @@ Deno.serve(async (req: Request) => {
     if (!liste.length) return json({ error: 'Aucun appareil abonné pour ce compte.' }, 400);
     const res = await envoyer(sb, liste, {
       titre: 'Notifications activées',
-      corps: 'Vous serez prévenu ici à chaque nouvelle réservation en ligne.',
+      corps: 'Vous serez prévenu ici des réservations en ligne et des alertes qui vous sont destinées.',
       url: '/?page=previsions',
       tag: 'test',
     });
