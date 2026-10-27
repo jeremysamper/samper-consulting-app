@@ -4,7 +4,7 @@ import { cts } from '../ConsultantTools.styles.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EtablissementTransferModal - envoi groupé de recettes vers un autre
-// établissement, depuis le mode sélection de « Plats & Recettes ».
+// établissement, depuis le mode sélection du Chiffrage (Outils consultant).
 //
 // Deux modes :
 //   copie       - les recettes sont dupliquées ; l'établissement de départ ne

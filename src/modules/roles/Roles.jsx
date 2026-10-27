@@ -596,7 +596,12 @@ const Roles = ({ user }) => {
                       const da = etatDroitAction(rolePerms, u, ecarts, d.id, e.acces);
                       // Module fermé : le droit n'est rendu que s'il porte un écart, pour rester visible.
                       if (!e.acces && !da.ajuste) return null;
-                      const noteDroit = da.ajuste ? `Ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})` : null;
+                      // Droit qui demande aussi « Modifier » (fiches) : sans lui,
+                      // la case est vide et inactive, la valeur stockée reste.
+                      const sansGerer = d.requiertGerer && !e.gerer;
+                      const noteDroit = sansGerer
+                        ? 'Demande le droit Modifier'
+                        : (da.ajuste ? `Ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})` : null);
                       return (
                         <div key={d.id} style={ros.droitRow}>
                           <div style={{ flex: 1, minWidth: 0, padding: '6px 0' }}>
@@ -606,8 +611,8 @@ const Roles = ({ user }) => {
                             )}
                           </div>
                           <Case
-                            checked={da.actif}
-                            disabled={!casesActives || !e.acces}
+                            checked={da.actif && !sansGerer}
+                            disabled={!casesActives || !e.acces || sansGerer}
                             label={`${d.label} dans ${label} pour ${u.prenom}`}
                             onChange={() => basculer(u, cleGerer(d.id), da.duRole, da.actif)}
                           />

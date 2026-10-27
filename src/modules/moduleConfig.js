@@ -79,8 +79,13 @@ export const defaultManageRoles = ['consultant', 'patron'];
 //   factures_achat : marquer une facture d'achat réglée (Inventaire, onglet
 //   Factures). Vérifié en base par le déclencheur achats_documents_garde_reglement
 //   (migration 20261007), avec les mêmes rôles par défaut : les tenir en phase.
+//   fiches : créer, modifier et dupliquer les fiches et les plats dans
+//   Cartes & Recettes. Demande aussi « Modifier » du module (requiertGerer).
+//   Garde de présentation seulement : recettes, plats, plat_recettes et
+//   carte_plats ne vérifient en base que l'établissement (user_can_access_etab).
 export const droitsAction = [
   { id: 'factures_achat', module: 'inventaire', label: 'Régler les factures', defaultRoles: ['consultant', 'patron'] },
+  { id: 'fiches', module: 'recettes', label: 'Créer et modifier les fiches', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
 ];
 
 // Rôles par défaut du droit « gérer » d'un module ou d'un droit d'action
@@ -240,11 +245,11 @@ const pageAliases = {
 };
 
 const consultantToolsTabAliases = {
-  outils: 'recettes',
-  outils_consultant: 'recettes',
-  // Onglet Simulation retiré le 27.10.2026 : ses anciens liens ouvrent Plats & Recettes.
-  simulation: 'recettes',
-  simulation_carte: 'recettes'
+  outils: 'chiffrage',
+  outils_consultant: 'chiffrage',
+  // Onglet Simulation retiré le 27.10.2026 : ses anciens liens ouvrent Chiffrage.
+  simulation: 'chiffrage',
+  simulation_carte: 'chiffrage'
 };
 
 export function normalizePage(page) {

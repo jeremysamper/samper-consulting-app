@@ -40,6 +40,8 @@ let pendingBacks = 0;
 let deferredPage = null;
 // Calques ouverts pendant qu'un retour interne est en route : posés au popstate.
 const deferredLayers = [];
+// Gestes à faire une fois les retours internes arrivés (quandRetoursArrives).
+const apresRetours = [];
 const listeners = new Set();
 
 function emit() {
@@ -79,6 +81,11 @@ function onPopState(event) {
   if (pendingBacks === 0 && deferredLayers.length) {
     const enAttente = deferredLayers.splice(0);
     enAttente.forEach((poser) => poser());
+  }
+  if (pendingBacks === 0 && apresRetours.length) {
+    apresRetours.splice(0).forEach((fn) => {
+      try { fn(); } catch { /* un geste différé ne bloque pas les suivants */ }
+    });
   }
   emit();
 }
@@ -198,6 +205,22 @@ export function pushLayer(id, close) {
       win.history.back();
     }
   };
+}
+
+// Lance `fn` quand plus aucun retour interne n'est en route : tout de suite,
+// ou au popstate qui arrive. Pour refermer un calque juste après un autre
+// (une fenêtre, puis l'écran qui la portait) : refermés dans le même rendu, le
+// second ne trouverait pas son entrée en tête et la laisserait orpheline. À
+// appeler après le rendu qui referme le premier (son retour est alors parti).
+export function quandRetoursArrives(fn) {
+  if (pendingBacks === 0) { fn(); return; }
+  // Filet : un retour qui ne revient jamais ne bloque pas le geste.
+  const filet = setTimeout(() => {
+    const i = apresRetours.indexOf(lancer);
+    if (i !== -1) { apresRetours.splice(i, 1); fn(); }
+  }, 1500);
+  const lancer = () => { clearTimeout(filet); fn(); };
+  apresRetours.push(lancer);
 }
 
 export function canGoBack() {

@@ -19,13 +19,22 @@ import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalc
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { navigateToPage } from '../../services/navigationService.js';
 import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import AccueilRecettes from './AccueilRecettes.jsx';
 import ChoixEtiquette, { champRecherche } from './ChoixEtiquette.jsx';
+import FicheEditeur from './editeur/FicheEditeur.jsx';
+import PlatFenetre from './editeur/PlatFenetre.jsx';
+import PlatPicker from './editeur/PlatPicker.jsx';
+import DetectionAllergenes from './editeur/DetectionAllergenes.jsx';
+import { useSelection } from '../../hooks/useSelection.js';
+import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
+import { copieRecette, effacerBrouillon } from '../../utils/brouillonRecette.js';
+import { quandRetoursArrives } from '../../services/historyNav.js';
+import { readText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
+import { confirmLegacy, getBrowserWindow } from '../../legacy/legacyApi.js';
 
 
 // CARTES & RECETTES
@@ -130,7 +139,6 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
     ingredients: true,
     etapes: true,
     photos: true,
-    prix: false,        // désactivé par défaut (prix fournisseurs varient par étab)
     allergenes: true,
   });
   const [saving, setSaving] = React.useState(false);
@@ -199,8 +207,10 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
       nom: overrideNom || recette.nom,
       categorie: recette.categorie,
       portions: recette.portions,
-      // Prix : si opts.prix désactivé, on remet à 0 pour forcer une revue par l'établissement
-      prixVente: opts.prix ? (recette.prixVente || 0) : 0,
+      // Aucun prix ne part d'ici (décision du 27.10.2026) : le prix de vente
+      // n'est pas transmis (enregistré à 0) et les prix des lignes repartent à
+      // 0, à chiffrer dans l'établissement d'arrivée. Recopier les prix : Outils
+      // consultant, Chiffrage, Transférer.
       tempsPreparation: recette.tempsPreparation || 0,
       tempsCuisson: recette.tempsCuisson || 0,
       tempsTotal: recette.tempsTotal || 0,
@@ -212,9 +222,8 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
       conservation: recette.conservation || '',
       // Flag congélation : suit la recette source (null = à qualifier).
       congelable: recette.congelable ?? null,
-      // Ingrédients : si opts.prix désactivé, on remet prixUnit à 0 sur chaque ingrédient
       ingredients: opts.ingredients
-        ? (recette.ingredients || []).map(i => ({ ...i, prixUnit: opts.prix ? (i.prixUnit || 0) : 0 }))
+        ? (recette.ingredients || []).map(i => ({ ...i, prixUnit: 0 }))
         : [],
       etapes: opts.etapes ? (recette.etapes || []) : [],
       modifiePar: user?.id || null,
@@ -341,21 +350,12 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                     { key: 'ingredients', label: 'Ingrédients' },
                     { key: 'etapes', label: 'Étapes de préparation' },
                     { key: 'photos', label: 'Photo' },
-                    // Chiffrage : consultant uniquement, le budget vit dans Outils
-                    // consultant. Pour les autres rôles l'option reste à false, donc
-                    // les prix ne sont pas copiés : c'est déjà le défaut historique.
-                    ...(user?.role === 'consultant'
-                      ? [{ key: 'prix', label: 'Food cost / prix', warn: 'Les prix varient par établissement' }]
-                      : []),
                     { key: 'allergenes', label: 'Allergènes & HACCP' },
                   ].map(o => (
                     <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!opts[o.key]}
                         onChange={e => setOpts(prev => ({ ...prev, [o.key]: e.target.checked }))} />
-                      <span>
-                        {o.label}
-                        {o.warn && <span style={{ fontSize: 11, color: 'var(--text3)', display: 'block', lineHeight: 1.2 }}>{o.warn}</span>}
-                      </span>
+                      <span>{o.label}</span>
                     </label>
                   ))}
                 </div>
@@ -391,7 +391,9 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 };
 
 // ─── RecetteDetail : composant global (extrait hors de Recettes) ───
-const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = false }) => {
+// canFiches : droit « Créer et modifier les fiches » ; la fiche ouvre alors
+// l'éditeur (Modifier), en fait une copie (Dupliquer) ou la sort des archives.
+const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = false, canFiches = false, onModifier, onDupliquer, onDesarchiver }) => {
   const [showDuplicate, setShowDuplicate] = React.useState(false);
   const [showEtiquette, setShowEtiquette] = React.useState(false);
   const isMobile = useIsMobile();
@@ -592,6 +594,15 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
       )}
       <div className="module-actions no-print" style={{ marginBottom: 16 }}>
         <button style={rs.backBtn} onClick={onBack}>Retour</button>
+        {canFiches && recette.statut === 'archivée' && (
+          <button style={rs.etiquetteBtn} onClick={onDesarchiver}>Désarchiver</button>
+        )}
+        {canFiches && (
+          <button style={rs.etiquetteBtn} onClick={onModifier}>Modifier</button>
+        )}
+        {canFiches && (
+          <button style={rs.printBtn} onClick={onDupliquer}>Dupliquer</button>
+        )}
         {canEtiqueter && (
           <button style={rs.etiquetteBtn} onClick={() => setShowEtiquette(true)}>Étiquette DLC</button>
         )}
@@ -1399,6 +1410,11 @@ const Recettes = ({ user, etablissement }) => {
   const [catFilter, setCatFilter] = React.useState('Tous');
   const perms = getPermissionsForRole(user.role);
   const canManageCartes = canManageModule(user.role, 'recettes');
+  // Créer, modifier, dupliquer les fiches et les plats (éditeur venu des Outils
+  // consultant le 27.10.2026) : droit d'action « fiches » ET « Modifier » du
+  // module. Garde de présentation : la base n'en vérifie pas d'autre que
+  // l'établissement.
+  const canFiches = canManageCartes && canManageModule(user.role, 'fiches');
   // Cacher une carte est réservé au consultant : lui seul continue de la voir.
   const isConsultant = user.role === 'consultant';
   // Le raccourci suit aussi l'accès au module HACCP : un rôle à qui on a retiré
@@ -1406,6 +1422,18 @@ const Recettes = ({ user, etablissement }) => {
   const canEtiqueter = ROLES_ETIQUETTE.includes(user.role) && perms.haccp !== false;
   // Recette dont la fenêtre d'étiquette est ouverte depuis la liste.
   const [etiquetteRecette, setEtiquetteRecette] = React.useState(null);
+  // Éditeur ouvert : { id, nomEnMain } (nom sélectionné pour une fiche neuve
+  // ou une copie). Il se pose au-dessus de l'écran ou de la fiche ouverte, avec
+  // sa propre entrée d'historique : un retour le referme, un second referme la
+  // fiche.
+  const [edition, setEdition] = React.useState(null);
+  // Fenêtre du plat : { plat } pour modifier, { carteId } pour un plat neuf.
+  const [platEdite, setPlatEdite] = React.useState(null);
+  // Bibliothèque de Gérer : sélection de fiches (rattacher, archiver, supprimer).
+  const selection = useSelection();
+  const [selectionOccupee, setSelectionOccupee] = React.useState(false);
+  const [rattacherSelection, setRattacherSelection] = React.useState(false);
+  const [voirArchivees, setVoirArchivees] = React.useState(false);
 
   // Cartes (menus) de l'établissement - source unique partagée + realtime.
   // `cartesStatus` distingue « pas encore chargé / lecture en échec » de
@@ -1443,6 +1471,7 @@ const Recettes = ({ user, etablissement }) => {
     surRetour: () => {
       setSearch('');
       setEtiquetteRecette(null);
+      selection.exit();
       setActiveTab(t => (t === LIBRARY_TAB ? '' : t));
     },
   });
@@ -1459,21 +1488,31 @@ const Recettes = ({ user, etablissement }) => {
   // le module (<main>), là où une Fenetre passe en portail sous <body>.
   const fermerFiche = React.useCallback(() => setSelectedRecette(null), []);
   useBackLayer(Boolean(selectedRecette), fermerFiche, 'recettes-fiche');
+  const fermerEditeur = React.useCallback(() => setEdition(null), []);
+  useBackLayer(Boolean(edition), fermerEditeur, 'recettes-editeur');
   React.useEffect(() => {
-    if (!selectedRecette && !etiquetteRecette) return undefined;
+    if (!selectedRecette && !etiquetteRecette && !edition) return undefined;
     const echap = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       if (document.querySelector('[data-fenetre]')) return;
-      if (document.querySelector('main .modal-sheet-overlay')) { e.preventDefault(); return; }
-      if (!selectedRecette || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      if (document.querySelector('main .modal-sheet-overlay, main .modal-full-overlay')) { e.preventDefault(); return; }
+      if ((!selectedRecette && !edition) || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
       e.preventDefault();
-      fermerFiche();
+      // L'éditeur d'abord : Échap revient à la fiche, un second Échap la referme.
+      if (edition) fermerEditeur(); else fermerFiche();
     };
     // Phase de capture : passe avant le retour à l'accueil du module
     // (useEcranModule), qui laisse la main à un Échap déjà traité.
     document.addEventListener('keydown', echap, true);
     return () => document.removeEventListener('keydown', echap, true);
-  }, [selectedRecette, etiquetteRecette, fermerFiche]);
+  }, [selectedRecette, etiquetteRecette, edition, fermerFiche, fermerEditeur]);
+
+  // Fiche supprimée depuis l'éditeur : l'éditeur se referme d'abord, la fiche
+  // ensuite, une fois le retour de l'éditeur arrivé. Deux calques refermés dans
+  // le même geste laisseraient une entrée d'historique orpheline.
+  const fermerFicheApresEditeur = React.useCallback(() => {
+    setTimeout(() => quandRetoursArrives(() => setSelectedRecette(null)), 0);
+  }, []);
 
   const toggleDefaultCarte = async (carteId) => {
     const next = defaultCarteId === carteId ? null : carteId;
@@ -1573,6 +1612,157 @@ const Recettes = ({ user, etablissement }) => {
   // cacher une préparation ne doit jamais retirer un allergène d'un plat servi.
   const recettesEtab = recettesActives.filter(r => r.masquee !== true);
   const recettesCachees = recettesActives.filter(r => r.masquee === true);
+  // Archivées : pour qui a le droit « fiches », une section repliée de la
+  // bibliothèque, d'où on les rouvre et les désarchive. Les cachées n'y
+  // figurent pas plus qu'ailleurs.
+  const recettesArchivees = canFiches
+    ? recettes.filter(r => (r.etablissementId || 'etab-1') === etabId && r.statut === 'archivée' && r.masquee !== true)
+    : [];
+
+  // ─── Éditeur de fiches (droit « fiches ») ────────────────────────────────
+  // Mise à jour immédiate de la liste du module : la fiche rouverte après
+  // l'éditeur montre la saisie sans attendre la relecture realtime.
+  const majRecetteLocale = React.useCallback((r) => {
+    setRecettes(prev => (prev.some(x => x.id === r.id) ? prev.map(x => (x.id === r.id ? r : x)) : [r, ...prev]));
+  }, []);
+
+  const enregistrerNouvelle = async (r, messageEchec) => {
+    majRecetteLocale(r);
+    if (!legacySB) return true;
+    try { await legacySB.db.upsertRecette(r); return true; }
+    catch (err) {
+      setRecettes(prev => prev.filter(x => x.id !== r.id));
+      notifyLegacy(messageEchec + ' ' + messageErreur(err, 'recettes'), 'error');
+      return false;
+    }
+  };
+
+  // Nouvelle fiche : créée tout de suite (brouillon), ouverte nom en main.
+  const creerFiche = async () => {
+    const r = {
+      id: 'rec-' + Date.now(),
+      etablissementId: etabId,
+      nom: 'Nouvelle recette',
+      portions: 4,
+      categorie: 'Plats',
+      statut: 'brouillon',
+      version: 1,
+      tempsPreparation: 0,
+      tempsCuisson: 0,
+      tempsTotal: 0,
+      allergenesIds: [],
+      notesConsultant: '',
+      modifie: new Date().toISOString().slice(0, 10),
+      modifiePar: user.id,
+      ingredients: [],
+      etapes: [],
+      dressage: '',
+      conservation: '',
+    };
+    setEdition({ id: r.id, nomEnMain: true });
+    if (!(await enregistrerNouvelle(r, 'Création impossible.'))) setEdition(null);
+  };
+
+  // Dupliquer : la copie (prix compris) s'ouvre dans l'éditeur, nom en main ;
+  // l'originale ne change pas. L'abandonner, c'est la supprimer.
+  const dupliquerFiche = async (r) => {
+    const copie = copieRecette(r, user.id);
+    setEdition({ id: copie.id, nomEnMain: true });
+    if (await enregistrerNouvelle(copie, 'Duplication impossible.')) {
+      notifyLegacy(`Copie de « ${r.nom} » créée.`, 'success');
+    } else {
+      setEdition(null);
+    }
+  };
+
+  const desarchiverFiche = async (r) => {
+    const next = { ...r, statut: 'brouillon', modifiePar: user.id };
+    try {
+      if (legacySB) await legacySB.db.upsertRecette(next);
+      majRecetteLocale(next);
+      notifyLegacy(`« ${r.nom} » restaurée en brouillon.`, 'success');
+    } catch (err) {
+      notifyLegacy('Restauration impossible. ' + messageErreur(err, 'recettes'), 'error');
+    }
+  };
+
+  const surSuppression = (id) => {
+    setRecettes(prev => prev.filter(r => r.id !== id));
+    setEdition(null);
+    if (selectedRecette?.id === id) fermerFicheApresEditeur();
+    reloadDataRef.current && reloadDataRef.current();
+  };
+
+  // « Modifier la fiche » du Chiffrage (Outils consultant) : clé ponctuelle
+  // lue à l'arrivée, ou événement quand le module est déjà monté.
+  React.useEffect(() => {
+    if (!canFiches) return undefined;
+    const ouvrir = (id) => { if (id) setEdition({ id, nomEnMain: false }); };
+    const cle = readText(UI_STORAGE_KEYS.recettesEditer, '');
+    if (cle) { removeStorageKeys([UI_STORAGE_KEYS.recettesEditer]); ouvrir(cle); }
+    const w = getBrowserWindow();
+    if (!w) return undefined;
+    const surEvenement = (e) => { removeStorageKeys([UI_STORAGE_KEYS.recettesEditer]); ouvrir(e?.detail?.id); };
+    w.addEventListener('sc:recettes-editer', surEvenement);
+    return () => w.removeEventListener('sc:recettes-editer', surEvenement);
+  }, [canFiches]);
+
+  // Sélection de la bibliothèque : archiver, supprimer, rattacher à des plats.
+  const archiverSelection = async () => {
+    if (!selection.count) return;
+    if (!confirmLegacy(`Archiver ${selection.count} fiche(s) ?\n\nElles sortent de la bibliothèque et des plats, sans être supprimées. Restaurables depuis la section Archivées.`)) return;
+    setSelectionOccupee(true);
+    let ok = 0;
+    for (const id of selection.ids) {
+      const r = recettes.find(x => x.id === id);
+      if (!r || r.statut === 'archivée') continue;
+      try { if (legacySB) await legacySB.db.upsertRecette({ ...r, statut: 'archivée', modifiePar: user.id }); ok += 1; }
+      catch (err) { console.error('[archiverSelection]', err); }
+    }
+    setRecettes(prev => prev.map(r => (selection.ids.has(r.id) ? { ...r, statut: 'archivée' } : r)));
+    setSelectionOccupee(false);
+    selection.exit();
+    notifyLegacy(`${ok} fiche(s) archivée(s).`, 'success');
+  };
+
+  const supprimerSelection = async () => {
+    if (!selection.count) return;
+    if (!confirmLegacy(`Supprimer ${selection.count} fiche(s) ? La suppression est définitive.`)) return;
+    setSelectionOccupee(true);
+    let ok = 0;
+    for (const id of selection.ids) {
+      try { if (legacySB) await legacySB.db.deleteRecette(id); effacerBrouillon(id); ok += 1; }
+      catch (err) { console.error('[supprimerSelection]', err); }
+    }
+    setRecettes(prev => prev.filter(r => !selection.ids.has(r.id)));
+    setSelectionOccupee(false);
+    selection.exit();
+    reloadDataRef.current && reloadDataRef.current();
+    notifyLegacy(`${ok} fiche(s) supprimée(s).`, 'success');
+  };
+
+  const rattacherSelectionAuxPlats = async (platsCibles) => {
+    if (!legacySB || !platsCibles.length) return;
+    setSelectionOccupee(true);
+    let total = 0, deja = 0, ko = 0;
+    for (const plat of platsCibles) {
+      const dejaLiees = new Set((plat.recettes || []).map(pr => pr.recetteId));
+      for (const rid of selection.ids) {
+        if (dejaLiees.has(rid)) { deja += 1; continue; }
+        try { await legacySB.db.linkRecetteToPlat(plat.id, rid, 'composant', 0); total += 1; }
+        catch (err) { console.error('[linkRecetteToPlat]', err); ko += 1; }
+      }
+    }
+    setSelectionOccupee(false);
+    setRattacherSelection(false);
+    selection.exit();
+    reloadDataRef.current && reloadDataRef.current();
+    const parts = [];
+    if (total) parts.push(`${total} rattachement${total > 1 ? 's' : ''}`);
+    if (deja) parts.push(`${deja} déjà lié${deja > 1 ? 's' : ''}`);
+    if (ko) parts.push(`${ko} en erreur`);
+    notifyLegacy(parts.join(', ') || 'Aucune fiche à rattacher.', ko ? 'warning' : 'success');
+  };
 
   // Onglet carte actif (ou bibliothèque). On garde toujours un onglet valide.
   const isLibrary = activeTab === LIBRARY_TAB;
@@ -1639,7 +1829,58 @@ const Recettes = ({ user, etablissement }) => {
     </button>
   ) : null;
 
-  if (selectedRecette) return <RecetteDetail recette={selectedRecette} user={user} etablissement={etablissement} canEtiqueter={canEtiqueter} onBack={() => setSelectedRecette(null)}/>;
+  // Éditeur : au-dessus de tout le reste. Il n'est monté qu'une fois la fiche
+  // dans la liste (arrivée depuis le Chiffrage avant la fin de la lecture).
+  if (edition) {
+    const ficheEditee = recettes.find(r => r.id === edition.id);
+    if (!ficheEditee && dataStatus !== 'ready') {
+      return (
+        <div style={rs.root}>
+          <EcranTache titre="Fiche" etat={lectureEnCours(dataStatus)} onRetour={fermerEditeur} />
+        </div>
+      );
+    }
+    return (
+      <div style={rs.root}>
+        {ficheEditee ? (
+          <FicheEditeur
+            key={edition.id}
+            recette={ficheEditee}
+            user={user}
+            etablissement={etablissement}
+            plats={plats}
+            cartes={cartes}
+            reloadCartes={reloadCartes}
+            nomEnMain={edition.nomEnMain}
+            onChange={majRecetteLocale}
+            onFermer={fermerEditeur}
+            onSupprimee={surSuppression}
+            onRecharger={() => reloadDataRef.current && reloadDataRef.current()}
+          />
+        ) : (
+          <EcranTache titre="Fiche introuvable" etat={<>supprimée ou déplacée</>} onRetour={fermerEditeur} />
+        )}
+      </div>
+    );
+  }
+
+  if (selectedRecette) {
+    // Relue dans la liste : après l'éditeur, la fiche montre la saisie.
+    const ouverte = recettes.find(r => r.id === selectedRecette.id) || selectedRecette;
+    return (
+      <RecetteDetail
+        recette={ouverte}
+        user={user}
+        etablissement={etablissement}
+        canEtiqueter={canEtiqueter}
+        canFiches={canFiches}
+        onModifier={() => setEdition({ id: ouverte.id, nomEnMain: false })}
+        onDupliquer={() => dupliquerFiche(ouverte)}
+        onDesarchiver={() => desarchiverFiche(ouverte)}
+        onBack={() => setSelectedRecette(null)}
+      />
+    );
+  }
 
   // Fenêtres du module (étiquette, export, recherche allergène) : les mêmes sur
   // chaque écran, posées avant son contenu.
@@ -1671,6 +1912,31 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowIngredientSearch(false)}
         />
       )}
+      {platEdite && (
+        <PlatFenetre
+          key={platEdite.plat?.id || 'nouveau'}
+          plat={platEdite.plat || null}
+          carteIdDefaut={platEdite.carteId || null}
+          etabId={etabId}
+          cartes={cartes}
+          recettes={recettesEtab}
+          onClose={() => setPlatEdite(null)}
+          onEnregistre={() => reloadDataRef.current && reloadDataRef.current()}
+        />
+      )}
+      {rattacherSelection && (
+        <PlatPicker
+          title="Rattacher la sélection à des plats"
+          subtitle={`${selection.count} fiche${selection.count > 1 ? 's' : ''} sélectionnée${selection.count > 1 ? 's' : ''} : cochez les plats qui les recevront comme composants.`}
+          plats={plats}
+          cartes={cartes}
+          confirmLabel={(n) => `Rattacher à ${n} plat${n > 1 ? 's' : ''}`}
+          emptyHint="Aucun plat. « Ajouter un plat » sur une carte en crée un."
+          busy={selectionOccupee}
+          onConfirm={(ids) => rattacherSelectionAuxPlats(plats.filter(p => ids.includes(p.id)))}
+          onClose={() => setRattacherSelection(false)}
+        />
+      )}
     </>
   );
 
@@ -1684,7 +1950,9 @@ const Recettes = ({ user, etablissement }) => {
         lectureCartes={lectureEnCours(cartesStatus)}
         canEtiqueter={canEtiqueter}
         canGerer={canManageCartes}
+        canFiches={canFiches}
         consultant={isConsultant}
+        onNouvelle={creerFiche}
         onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
         onCarte={() => setEcran('carte')}
         onAllergenes={() => setShowIngredientSearch(true)}
@@ -1764,9 +2032,19 @@ const Recettes = ({ user, etablissement }) => {
                   en icône seule (une loupe), il se confondait avec la loupe de recherche. */}
               <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
               <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
+              {/* Bibliothèque, droit « fiches » : un plat sans carte, la
+                  sélection de fiches ; IA en lot pour le consultant. */}
+              {isLibrary && canFiches && (
+                <>
+                  <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: null })}>Ajouter un plat</button>
+                  {!selection.active && <button style={rs.printBtn} onClick={selection.enter}>Sélectionner</button>}
+                </>
+              )}
+              {isLibrary && isConsultant && (
+                <DetectionAllergenes recettes={recettesActives} style={rs.printBtn} onFini={() => reloadDataRef.current && reloadDataRef.current()} />
+              )}
             </div>
           )}
-          {/* Le bouton "+ Nouveau plat" a été retiré : la création de plats passe par Outils consultant */}
         </div>
       )}
 
@@ -1806,10 +2084,15 @@ const Recettes = ({ user, etablissement }) => {
               onRetry={dataStatus === 'error' ? retryAll : null}
             />
           ) : (
-            <PanneauEtat
-              titre={`Aucun plat sur « ${activeCarte.nom} »`}
-              texte={'Rattachez des plats à cette carte depuis le module "Outils consultant".'}
-            />
+            <>
+              <PanneauEtat
+                titre={`Aucun plat sur « ${activeCarte.nom} »`}
+                texte={canFiches ? 'Ajoutez le premier plat de cette carte.' : 'Aucun plat sur cette carte pour le moment.'}
+              />
+              {canFiches && (
+                <button style={{ ...rs.etiquetteBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+              )}
+            </>
           )
         ) : (
         <div style={rs.carteWrap}>
@@ -1823,6 +2106,11 @@ const Recettes = ({ user, etablissement }) => {
               </div>
             </div>
             <div style={rs.carteHeaderRight} className="no-print">
+              {/* Le plat neuf naît sur la carte affichée ; décocher la carte
+                  dans sa fenêtre retire ce seul lien. */}
+              {canFiches && (
+                <button style={rs.etiquetteBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+              )}
               {canManageCartes && (
                 <button
                   style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
@@ -1910,11 +2198,14 @@ const Recettes = ({ user, etablissement }) => {
                           <div style={rs.platAllergenes}>
                             {allergsList.length > 0 && <span style={rs.allergenesTexte}>{nomsAllergenes(allergsList)}</span>}
                           </div>
-                          {recettesPlat.length > 0 && (
+                          {(recettesPlat.length > 0 || canFiches) && (
                             <div style={rs.platFooter}>
                               <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                                {recettesPlat.length} recette{recettesPlat.length > 1 ? 's' : ''}
+                                {recettesPlat.length > 0 && <>{recettesPlat.length} recette{recettesPlat.length > 1 ? 's' : ''}</>}
                               </div>
+                              {canFiches && (
+                                <button style={rs.printBtn} onClick={() => setPlatEdite({ plat })} aria-label={`Modifier le plat ${plat.nom}`}>Modifier</button>
+                              )}
                             </div>
                           )}
                           {recettesPlat.length > 0 && (
@@ -1955,7 +2246,22 @@ const Recettes = ({ user, etablissement }) => {
                       : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
                   onRetry={dataStatus === 'error' ? retryAll : null}
                 />
-              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucune recette pour cet établissement. Créez-en depuis "Outils consultant".</div>
+              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
+          )}
+
+          {selection.active && (
+            <SelectionToolbar
+              count={selection.count}
+              total={recettesEtab.length}
+              allSelected={selection.count > 0 && selection.count === recettesEtab.length}
+              onToggleAll={() => (selection.count === recettesEtab.length ? selection.clear() : selection.selectAll(recettesEtab.map(r => r.id)))}
+              onDelete={supprimerSelection}
+              onCancel={selection.exit}
+              busy={selectionOccupee}
+            >
+              <button style={rs.printBtn} onClick={() => setRattacherSelection(true)} disabled={!selection.count || selectionOccupee}>Rattacher</button>
+              <button style={rs.printBtn} onClick={archiverSelection} disabled={!selection.count || selectionOccupee}>Archiver</button>
+            </SelectionToolbar>
           )}
 
           {/* ─── Hiérarchie plats avec leurs recettes ─── */}
@@ -1983,7 +2289,8 @@ const Recettes = ({ user, etablissement }) => {
             // le contrat d'accessibilité d'un bouton - rôle, focus au clavier,
             // activation par Entrée et Espace - sans toucher au rendu. Sans ça
             // la ligne était invisible au clavier et aux lecteurs d'écran.
-            const activerRecette = (r) => setSelectedRecette(r);
+            // En sélection, toucher une fiche la coche au lieu de l'ouvrir.
+            const activerRecette = (r) => (selection.active ? selection.toggle(r.id) : setSelectedRecette(r));
             const togglePlat = (platId, estDeplie) => {
               const next = new Set(expandedPlats);
               estDeplie ? next.delete(platId) : next.add(platId);
@@ -2002,6 +2309,16 @@ const Recettes = ({ user, etablissement }) => {
                     activerRecette(r);
                   }
                 }}>
+                {selection.active && (
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(r.id)}
+                    onChange={() => selection.toggle(r.id)}
+                    onClick={e => e.stopPropagation()}
+                    aria-label={`Sélectionner ${r.nom}`}
+                    style={{ width: 20, height: 20, flexShrink: 0, accentColor: 'var(--accent)', cursor: 'pointer' }}
+                  />
+                )}
                 <RecettePhoto src={r.photoUrl} alt={r.nom} style={rs.thumb} />
                 <div style={rs.recetteInfo}>
                   <div style={rs.recetteName}>{r.nom}</div>
@@ -2034,7 +2351,7 @@ const Recettes = ({ user, etablissement }) => {
 
             return (
               <>
-                {q && visiblePlats.length === 0 && orphelines.length === 0 && (
+                {q && visiblePlats.length === 0 && orphelines.length === 0 && !recettesArchivees.some(r => match(r.nom)) && (
                   <div style={rs.searchEmpty}>
                     Aucun plat ni recette ne correspond à « {search.trim()} ».
                   </div>
@@ -2067,6 +2384,15 @@ const Recettes = ({ user, etablissement }) => {
                             {', '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
                           </div>
                         </div>
+                        {canFiches && (
+                          <button
+                            type="button"
+                            style={rs.printBtn}
+                            aria-label={`Modifier le plat ${plat.nom}`}
+                            onClick={e => { e.stopPropagation(); setPlatEdite({ plat }); }}
+                            onKeyDown={e => e.stopPropagation()}
+                          >Modifier</button>
+                        )}
                       </div>
                       {isExpanded && platRecettes.length > 0 && (
                         <div style={rs.sousListe}>
@@ -2076,10 +2402,9 @@ const Recettes = ({ user, etablissement }) => {
                       {isExpanded && platRecettes.length === 0 && (
                         <div style={rs.sousListeVide}>
                           Aucune recette rattachée à ce plat.
-                          {/* Les fiches se relient aux plats dans les Outils
-                              consultant, onglet Recettes. */}
-                          {user?.role === 'consultant' && (
-                            <>{' '}<button type="button" style={rs.lienAction} onClick={() => navigateToPage('outils')}>Rattacher une recette</button></>
+                          {/* Ouvre la fenêtre du plat, section « Recettes du plat ». */}
+                          {canFiches && (
+                            <>{' '}<button type="button" style={rs.lienAction} onClick={() => setPlatEdite({ plat })}>Rattacher une recette</button></>
                           )}
                         </div>
                       )}
@@ -2096,6 +2421,27 @@ const Recettes = ({ user, etablissement }) => {
                     {orphelines.map(r => renderRecetteCard(r, false))}
                   </div>
                 )}
+
+                {/* ─── Archivées (droit « fiches ») : repliées, ouvertes
+                    d'office par une recherche qui en trouve ─── */}
+                {(() => {
+                  const archivees = recettesArchivees.filter(r => match(r.nom));
+                  if (!archivees.length || selection.active) return null;
+                  const ouvert = voirArchivees || q;
+                  return (
+                    <>
+                      <button type="button" style={{ ...rs.orphelinTitle, ...rs.archiveesTitre }} aria-expanded={!!ouvert} onClick={() => setVoirArchivees(v => !v)}>
+                        {ouvert ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
+                        <span>Archivées ({archivees.length})</span>
+                      </button>
+                      {ouvert && (
+                        <div style={{ ...rs.orphelinListe, opacity: 0.75 }}>
+                          {archivees.map(r => renderRecetteCard(r, false))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             );
           })()}
@@ -2198,6 +2544,8 @@ const rs = {
   platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' },
   platName: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
   orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
+  // Titre repliable de la section Archivées : la même ligne, en bouton.
+  archiveesTitre: { display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 44, borderLeft: 'none', borderRight: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)' },
   recetteName: {fontSize:14,fontWeight:500,color:'var(--text)'},
   recetteMeta: {fontSize:11,color:'var(--text2)',marginTop:2},
   recetteBadges: {display:'flex',gap:4,flexShrink:0},

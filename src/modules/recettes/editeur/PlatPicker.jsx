@@ -1,11 +1,14 @@
 import React from 'react';
 import { grouperParCategorie, categorieDuPlat } from '../../../utils/categoriesPlat.js';
 import { makeSearchMatcher, normalizeSearch } from '../../../utils/searchText.js';
-import { cts } from '../ConsultantTools.styles.js';
+import { useBackLayer } from '../../../hooks/useBackLayer.js';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PlatPicker - modale « Rattacher à un plat », rangée comme une carte.
+// Venue des Outils consultant avec l'éditeur de fiches (27.10.2026) : sans
+// prix de plat (aucun montant dans Cartes & Recettes), refermable par le geste
+// retour.
 //
 // Remplace les deux listes à plat (une recette / une sélection de recettes) qui
 // déroulaient tous les plats de l'établissement dans l'ordre de la base : sans
@@ -51,6 +54,7 @@ export default function PlatPicker({
   onClose,
   onCreatePlat,
 }) {
+  useBackLayer(true, () => { if (!busy) onClose?.(); }, 'plat-picker');
   const locked = React.useMemo(() => new Set(lockedIds), [lockedIds]);
   // Point de départ figé : la sélection de l'utilisateur ne doit pas être
   // réinitialisée par un rafraîchissement realtime pendant qu'il coche.
@@ -112,10 +116,10 @@ export default function PlatPicker({
   const changements = ajouts + retraits;
 
   return (
-    <div className="modal-full-overlay" style={cts.overlay} onClick={() => { if (!busy) onClose?.(); }}>
+    <div className="modal-full-overlay" style={ps.overlay} onClick={() => { if (!busy) onClose?.(); }}>
       <div
         className="modal-full"
-        style={{ ...cts.modal, width: 520, maxWidth: '94vw', maxHeight: '84vh', display: 'flex', flexDirection: 'column' }}
+        style={{ ...ps.modal, width: 520, maxWidth: '94vw', maxHeight: '84vh', display: 'flex', flexDirection: 'column' }}
         onClick={e => e.stopPropagation()}
       >
         <div style={ps.header}>
@@ -221,7 +225,6 @@ export default function PlatPicker({
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={ps.platNom}>{p.nom}</div>
                                 <div style={ps.platMeta}>
-                                  {p.prixVente != null ? `CHF ${Number(p.prixVente).toFixed(2)}, ` : ''}
                                   {(p.recettes || []).length} composant{(p.recettes || []).length > 1 ? 's' : ''}
                                 </div>
                               </div>
@@ -241,16 +244,16 @@ export default function PlatPicker({
         <div style={ps.footer}>
           {onCreatePlat && (
             <button
-              style={cts.ghostBtn}
+              style={ps.ghostBtn}
               onClick={onCreatePlat}
               disabled={busy}
               title="Créer le plat manquant, puis rouvrir ce rattachement"
             >Nouveau plat</button>
           )}
           <div style={{ flex: 1 }} />
-          <button style={cts.ghostBtn} onClick={() => onClose?.()} disabled={busy}>Annuler</button>
+          <button style={ps.ghostBtn} onClick={() => onClose?.()} disabled={busy}>Annuler</button>
           <button
-            style={{ ...cts.newBtn, padding: '8px 16px', opacity: changements === 0 || busy ? 0.5 : 1, cursor: changements === 0 || busy ? 'default' : 'pointer' }}
+            style={{ ...ps.newBtn, padding: '8px 16px', opacity: changements === 0 || busy ? 0.5 : 1, cursor: changements === 0 || busy ? 'default' : 'pointer' }}
             onClick={() => onConfirm?.([...sel])}
             disabled={changements === 0 || busy}
           >{busy ? 'Rattachement…' : confirmLabel(changements)}</button>
@@ -261,6 +264,11 @@ export default function PlatPicker({
 }
 
 const ps = {
+  // Repris des styles des Outils consultant (overlay, modal, ghostBtn, newBtn).
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modal: { background: 'var(--surface)', borderRadius: 14, width: 420, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  ghostBtn: { padding: '7px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
+  newBtn: { padding: '9px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   title: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
   subtitle: { fontSize: 11, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },

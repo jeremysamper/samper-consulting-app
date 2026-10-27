@@ -723,6 +723,30 @@ export function installLegacySupabase() {
       return data.length;
     },
 
+    // Chiffrage (Outils consultant) : prix de vente et prix d'une ligne, par
+    // des écritures ciblées. L'éditeur de Cartes & Recettes sauvegarde la
+    // recette entière : un upsert complet depuis le Chiffrage écraserait une
+    // saisie faite là-bas entre deux lectures.
+    async setRecettePrixVente(id, prixVente) {
+      const { data, error } = await client.from('recettes')
+        .update({ prix_vente: Number(prixVente) || 0 })
+        .eq('id', id)
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Aucune recette modifiée (droits insuffisants ?)');
+    },
+
+    // Relit les lignes juste avant d'écrire : seule la ligne visée change.
+    async setRecetteIngredientPrix(id, ingredientId, prixUnit) {
+      const { data: row, error: e1 } = await client.from('recettes').select('ingredients').eq('id', id).single();
+      if (e1) throw e1;
+      const ingredients = (row?.ingredients || []).map(i => (i && i.id === ingredientId ? { ...i, prixUnit: Number(prixUnit) || 0 } : i));
+      const { data, error } = await client.from('recettes').update({ ingredients }).eq('id', id).select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Aucune recette modifiée (droits insuffisants ?)');
+      return ingredients;
+    },
+
     async deleteRecette(id) {
       const { error } = await client.from('recettes').delete().eq('id', id);
       if (error) throw error;

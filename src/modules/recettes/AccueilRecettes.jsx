@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, FileDown, Search, Settings2, Tag, Wheat } from 'lucide-react';
+import { BookOpen, FilePlus2, FileDown, Search, Settings2, Tag, Wheat } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -14,11 +14,14 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 // s'ouvrira, null s'il n'y en a aucune ou tant que lectureCartes est posé.
 // Nombres dans leurs propres nœuds : la phrase autour reste une entrée du
 // glossaire.
+//
+// Nouvelle fiche (droit « fiches ») : crée la recette et ouvre l'éditeur, nom
+// en main ; posée juste avant Gérer.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AccueilRecettes({
-  fiches, lectureFiches, carte, lectureCartes, canEtiqueter, canGerer, consultant,
-  onChercher, onCarte, onAllergenes, onEtiquette, onExporter, onGerer,
+  fiches, lectureFiches, carte, lectureCartes, canEtiqueter, canGerer, canFiches = false, consultant,
+  onChercher, onCarte, onAllergenes, onEtiquette, onExporter, onNouvelle, onGerer,
 }) {
   const tuiles = [
     {
@@ -33,6 +36,7 @@ export default function AccueilRecettes({
     { id: 'allergenes', Icone: Wheat, libelle: 'Allergènes', onClick: onAllergenes, etat: <>ou un ingrédient, dans quelles fiches</> },
     { id: 'etiquette', Icone: Tag, libelle: 'Une étiquette', onClick: onEtiquette, etat: <>DLC d'une préparation</>, visible: canEtiqueter },
     { id: 'exporter', Icone: FileDown, libelle: 'Exporter', onClick: onExporter, etat: <>une carte, des plats ou des fiches en PDF</> },
+    { id: 'nouvelle', Icone: FilePlus2, libelle: 'Nouvelle fiche', onClick: onNouvelle, etat: <>ingrédients, étapes, allergènes</>, visible: canFiches },
     {
       id: 'gerer', Icone: Settings2, libelle: 'Gérer', onClick: onGerer, visible: canGerer,
       etat: consultant ? <>ajouter, renommer, archiver, ordre, cacher</> : <>ajouter, renommer, archiver, ordre</>,
