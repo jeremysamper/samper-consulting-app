@@ -34,6 +34,9 @@ const loadPrevisions = () => import('./previsions/Previsions.jsx');
 const loadVentesPos = () => import('./pos/VentesPos.jsx');
 const loadSOP = () => import('./sop/SOP.jsx');
 const loadSpa = () => import('./spa/Spa.jsx');
+// Branche Hôtel (lot H0) : modules « à activer » des établissements hôteliers.
+const loadHebergement = () => import('./hebergement/Hebergement.jsx');
+const loadEtages = () => import('./etages/Etages.jsx');
 // Page d'accueil de la coque tactile (gros boutons) ; sur ordinateur, la même
 // page affiche le tableau de bord.
 const loadAccueilTactile = () => import('../layouts/AccueilTactile.jsx');
@@ -64,6 +67,8 @@ const Previsions = lazy(loadPrevisions);
 const VentesPos = lazy(loadVentesPos);
 const SOP = lazy(loadSOP);
 const Spa = lazy(loadSpa);
+const Hebergement = lazy(loadHebergement);
+const Etages = lazy(loadEtages);
 const AccueilTactile = lazy(loadAccueilTactile);
 
 // Modules du quotidien, préchargés en idle après le login pour que la première
@@ -236,6 +241,16 @@ export default function LegacyModuleHost({
     case 'groupes': {
       return permissions.groupes !== false
         ? wrap('Groupes', <Groupes user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'hebergement': {
+      return permissions.hebergement !== false
+        ? wrap('Hébergement', <Hebergement user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'etages': {
+      return permissions.etages !== false
+        ? wrap('Étages', <Etages user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'fiches_salle': {

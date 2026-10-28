@@ -5,7 +5,7 @@ import { alertLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import {
   navItems as NAV_ITEMS, defaultEtabModuleKeys, etabToggleableModules, optInModuleKeys,
-  TYPES_ETABLISSEMENT, estTypeSpa, modulesParDefautDuType,
+  TYPES_ETABLISSEMENT, estTypeSpa, estTypeHotel, modulesParDefautDuType,
 } from '../../modules/moduleConfig.js';
 import { useModuleLabels } from '../../hooks/useModuleLabels.js';
 import PosIntegrationsCard from './PosIntegrationsCard.jsx';
@@ -143,11 +143,13 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
 
   // Un type ancien ou saisi ailleurs reste proposé tel quel.
   const TYPES = TYPES_ETABLISSEMENT.includes(f.type) || !f.type ? TYPES_ETABLISSEMENT : [f.type, ...TYPES_ETABLISSEMENT];
-  // Choisir « Spa » coche d'office Spa & clients + Planning & Pointage ;
-  // quitter « Spa » rend les modules standard.
+  // Choisir « Spa » coche d'office Spa & clients + Planning & Pointage ; un type
+  // hôtel coche les modules standard plus Hébergement et Étages ; quitter l'un
+  // de ces types rend les modules standard.
+  const typeAvecDefauts = (type) => estTypeSpa(type) || estTypeHotel(type);
   const changerType = (type) => setF((prec) => {
-    if (estTypeSpa(type)) return { ...prec, type, modulesActifs: modulesParDefautDuType(type) };
-    if (estTypeSpa(prec.type)) return { ...prec, type, modulesActifs: null };
+    if (typeAvecDefauts(type)) return { ...prec, type, modulesActifs: modulesParDefautDuType(type) };
+    if (typeAvecDefauts(prec.type)) return { ...prec, type, modulesActifs: null };
     return { ...prec, type };
   });
   const COULEURS = ['#003042','#1a5276','#1e6b40','#6c3483','#2e7ab8','#c0392b','#16a085','#7f8c8d'];

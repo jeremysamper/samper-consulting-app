@@ -18,7 +18,7 @@
 import React from 'react';
 import './tableau.css';
 import { getPermissionsForRole } from '../../data/demoData.js';
-import { isPageActiveForEtab } from '../moduleConfig.js';
+import { estEtablissementHotel, isPageActiveForEtab } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
@@ -41,6 +41,7 @@ import MotConsultant from './MotConsultant.jsx';
 import AFaire from './AFaire.jsx';
 import ASavoir from './ASavoir.jsx';
 import ChiffresGestion from './ChiffresGestion.jsx';
+import CarteHotel from './CarteHotel.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
@@ -82,6 +83,10 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const avecHaccp = actif('haccp') && perms.haccp !== false;
   const avecPertes = direction && actif('pertes');
   const avecStock = direction && actif('inventaire');
+  // Branche Hôtel (lot H0) : la carte « Aujourd'hui à l'hôtel » n'existe que
+  // pour un établissement de type hôtel dont le module Hébergement est activé
+  // et permis au rôle. Rien d'autre ne change pour un restaurant.
+  const avecHotel = estEtablissementHotel(etablissement) && actif('hebergement') && perms.hebergement !== false;
 
   const d = useDonneesTableau({ etablissementId: etabId, aujourdhui, avecHaccp, avecPertes, avecStock, avecCouverts, avecGroupes });
   const abs = useAbsences(avecPlanning ? etabId : null, { depuis: aujourdhui });
@@ -240,6 +245,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
             )}
             <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />
           </div>
+
+          {avecHotel && <CarteHotel etabId={etabId} aujourdhui={aujourdhui} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />}
 
           <MotConsultant message={d.message} consultant={consultant} onPublier={publierMessage} />
 

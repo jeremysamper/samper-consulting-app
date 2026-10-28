@@ -9,15 +9,15 @@ export const roles = {
 };
 
 export const defaultPermissions = {
-  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: true },
-  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true, journal: true },
-  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false },
-  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false },
-  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false },
-  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false },
+  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true },
+  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true },
+  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: false },
+  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false },
+  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false },
+  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: true },
   // Praticien(ne) spa : les soins en cabine. Spa & clients, son planning et la
   // messagerie ; rien de la cuisine ni de la salle.
-  praticien_spa: { dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false },
+  praticien_spa: { dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false, hebergement: false, etages: false },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -50,6 +50,13 @@ export const manageableModules = [
   // spa : prendre les rendez-vous, tenir les fiches clients, rédiger les
   // comptes rendus de séance. Ouvert à toute l'équipe du spa par défaut.
   { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'] },
+  // Branche Hôtel (lot H0). hebergement : créer et modifier les séjours, les
+  // chambres et leurs catégories. etages : changer le statut de ménage d'une
+  // chambre, l'attribuer à quelqu'un, noter un motif hors service. La base lit
+  // les mêmes cases (user_peut_gerer, migration 20261028_hotel_h0) : cochables
+  // pour n'importe qui, sans verrou rolesEcritureBase.
+  { id: 'hebergement', label: 'Hébergement', defaultRoles: ['consultant', 'patron'] },
+  { id: 'etages', label: 'Étages', defaultRoles: ['consultant', 'patron'] },
 ];
 
 // Rôles que la BASE laisse écrire dans un module (RLS fondée sur le rôle, relevée
@@ -138,6 +145,10 @@ export const tousLesNavItems = [
   { id: 'pos', label: 'Ventes POS', icon: '◑', group: 'Cuisine', permKey: 'pos' },
   { id: 'kds', label: 'KDS Cuisine', mobileLabel: 'KDS', icon: '▣', group: 'Cuisine', permKey: 'kds' },
   { id: 'spa', label: 'Spa & clients', mobileLabel: 'Spa', icon: '❀', group: 'Spa', permKey: 'spa' },
+  // Branche Hôtel (lot H0) : modules « à activer », cochés d'office quand le
+  // type de l'établissement est Hôtel ou Hôtel-Restaurant (TYPES_HOTEL).
+  { id: 'hebergement', label: 'Hébergement', icon: '⌂', group: 'Hôtel', permKey: 'hebergement' },
+  { id: 'etages', label: 'Étages', icon: '▥', group: 'Hôtel', permKey: 'etages' },
   { id: 'faq', label: 'FAQ & Assistant', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' }
 ];
 
@@ -162,8 +173,9 @@ export const etabToggleableModules = navItems.filter((item) => !alwaysOnModuleKe
 // Modules « à activer » : hors du périmètre restaurant, ils ne s'affichent que
 // dans un établissement qui les a explicitement cochés. Un établissement jamais
 // réglé (modules_actifs NULL) ne les voit donc pas : le spa n'apparaît pas au
-// Rucher le jour de sa mise en ligne.
-export const optInModuleKeys = ['spa'];
+// Rucher le jour de sa mise en ligne, ni Hébergement et Étages aux hôtels déjà
+// en base tant que le consultant ne les a pas cochés.
+export const optInModuleKeys = ['spa', 'hebergement', 'etages'];
 
 // Modules d'un établissement jamais réglé (modules_actifs NULL).
 export const defaultEtabModuleKeys = etabToggleableModules
@@ -184,11 +196,25 @@ export const TYPES_ETABLISSEMENT = [
 ];
 export const MODULES_SPA = ['spa', 'planning'];
 
-export const estTypeSpa = (type) => String(type || '').trim().toLowerCase() === TYPE_SPA.toLowerCase();
+const normaliserType = (type) => String(type || '').trim().toLowerCase();
+export const estTypeSpa = (type) => normaliserType(type) === TYPE_SPA.toLowerCase();
 export const estEtablissementSpa = (etablissement) => estTypeSpa(etablissement?.type);
 
+// Branche Hôtel (lot H0) : un hôtel garde tout l'outillage restaurant et reçoit
+// en plus Hébergement et Étages. Le type ne ferme rien : il préremplit
+// modules_actifs au choix du type, le consultant ajuste ensuite. Un hôtel déjà
+// en base ne change pas tant que ses modules ne sont pas recochés.
+export const TYPES_HOTEL = ['Hôtel', 'Hôtel-Restaurant'];
+export const MODULES_HOTEL = ['hebergement', 'etages'];
+export const estTypeHotel = (type) => TYPES_HOTEL.some((t) => t.toLowerCase() === normaliserType(type));
+export const estEtablissementHotel = (etablissement) => estTypeHotel(etablissement?.type);
+
 // Modules cochés d'office quand on choisit un type (null = modules standard).
-export const modulesParDefautDuType = (type) => (estTypeSpa(type) ? [...MODULES_SPA] : null);
+export const modulesParDefautDuType = (type) => {
+  if (estTypeSpa(type)) return [...MODULES_SPA];
+  if (estTypeHotel(type)) return [...defaultEtabModuleKeys, ...MODULES_HOTEL];
+  return null;
+};
 
 // modulesActifs null / absent = tous les modules sauf ceux « à activer ».
 export function isModuleActiveForEtab(etablissement, permKey) {
