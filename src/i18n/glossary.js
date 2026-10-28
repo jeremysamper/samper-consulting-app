@@ -82,6 +82,7 @@ export const UI_GLOSSARY = {
   'Changer mon mot de passe': 'Change my password',
   'Organiser le menu': 'Arrange the menu',
   'Mon compte': 'My account',
+  'Compte': 'Account',
   "Changer d'établissement": 'Switch site',
   'Masquer le menu': 'Hide menu',
   'Afficher le menu': 'Show menu',

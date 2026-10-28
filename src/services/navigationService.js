@@ -37,3 +37,14 @@ export function navigateToPage(page) {
   writeText(UI_STORAGE_KEYS.page, normalizePage(page));
   getBrowserWindow()?.location?.reload();
 }
+
+// Espace Compte sur un onglet donné : clé ponctuelle lue au montage, événement
+// pour un Compte déjà monté (keep-alive), puis la page.
+export function ouvrirCompte(onglet) {
+  if (onglet) {
+    writeText(UI_STORAGE_KEYS.compteTab, onglet);
+    const browserWindow = getBrowserWindow();
+    browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:compte-tab', { detail: { tab: onglet } }));
+  }
+  navigateToPage('compte');
+}

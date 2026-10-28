@@ -3,6 +3,12 @@ export const DATA_VERSION = '4';
 export const UI_STORAGE_KEYS = {
   page: 'sc_page',
   consultantToolsTab: 'sc_consultant_tools_tab',
+  // Dernier onglet des Outils consultant (préférence locale).
+  consultantToolsLastTab: 'sc_consultant_tools_last_tab',
+  // Onglet de l'espace Compte à ouvrir (clé ponctuelle, lue puis effacée), et
+  // dernier onglet visité.
+  compteTab: 'sc_compte_tab',
+  compteLastTab: 'sc_compte_last_tab',
   // Fiche à ouvrir dans l'éditeur de Cartes & Recettes (clé ponctuelle posée
   // par « Modifier la fiche » du Chiffrage, lue puis effacée à l'arrivée).
   recettesEditer: 'sc_recettes_editer',

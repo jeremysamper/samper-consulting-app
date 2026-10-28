@@ -1,5 +1,5 @@
 import React from 'react';
-import { navItems as NAV_ITEMS } from '../modules/moduleConfig.js';
+import { navItems as NAV_ITEMS, ENTREE_COMPTE, peutOuvrirCompte } from '../modules/moduleConfig.js';
 import { getDemoData } from '../data/demoData.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
@@ -20,6 +20,7 @@ import { goBack, goHome as goHomeHistory } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
 import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
 import AccountButton from '../components/nav/AccountButton.jsx';
+import CompteButton from '../components/nav/CompteButton.jsx';
 import AccountModal from '../modules/auth/AccountModal.jsx';
 import NavBadge from '../components/nav/NavBadge.jsx';
 import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
@@ -33,7 +34,7 @@ import { messageErreur } from '../utils/messageErreur.js';
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // et la page d'accueil de la coque tactile.
-const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', accueil: 'Accueil' };
+const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Compte', accueil: 'Accueil' };
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {
@@ -318,13 +319,19 @@ export default function AppLayout({
   // la synchro post-login (App.jsx) ; le profil réel suit au prochain
   // rechargement naturel (retour au premier plan, connexion suivante).
   const accountUser = identityOverride?.id === user.id ? { ...user, ...identityOverride } : user;
-  const renderAccountButton = (variant) => (
+  const renderAccountButton = (variant, style) => (
     <AccountButton
       user={accountUser}
       variant={variant}
       onOpen={() => setAccountOpen(true)}
+      style={style}
     />
   );
+  // Espace Compte (paramètres, rôles, alertes) : bouton sur la ligne de « Mon
+  // compte », entrée de la palette et de l'accueil tactile, pour qui ouvre les
+  // Outils consultant (peutOuvrirCompte, la garde de LegacyModuleHost).
+  const compteOuvrable = peutOuvrirCompte(user, perms);
+  const ouvrirCompte = compteOuvrable ? () => handleSetPage('compte') : null;
   const accountModal = accountOpen ? (
     <AccountModal
       user={accountUser}
@@ -344,6 +351,7 @@ export default function AppLayout({
     mode: shellMode, visibleNav, groupedNav, badges, getLabelForModule,
     setPage: handleSetPage, etablissement, etabs, accountUser,
     openAccount: () => setAccountOpen(true),
+    openCompte: ouvrirCompte, compteActif: currentPage === 'compte',
   };
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
@@ -420,10 +428,11 @@ export default function AppLayout({
 
   // En coque tactile, la page d'accueil est une entrée de la palette comme un
   // module (elle n'est pas dans visibleNav : pas un module, pas de permission).
-  const paletteNav = React.useMemo(
-    () => (tactile ? [{ id: 'accueil', label: 'Accueil', group: 'Général' }, ...visibleNav] : visibleNav),
-    [tactile, visibleNav],
-  );
+  // L'espace Compte aussi, en fin de liste, pour qui peut l'ouvrir.
+  const paletteNav = React.useMemo(() => {
+    const liste = tactile ? [{ id: 'accueil', label: 'Accueil', group: 'Général' }, ...visibleNav] : visibleNav;
+    return compteOuvrable ? [...liste, ENTREE_COMPTE] : liste;
+  }, [tactile, visibleNav, compteOuvrable]);
   const paletteEntries = React.useMemo(() => (paletteOpen ? buildPaletteEntries({
     navItems: paletteNav,
     getLabel: getLabelForModule,
@@ -784,7 +793,13 @@ export default function AppLayout({
         </nav>
 
         <div style={ls.userArea}>
-          {renderAccountButton('desktop')}
+          {ouvrirCompte ? (
+            // Une seule ligne : la hauteur du pied, donc celle du menu, ne change pas.
+            <div style={ls.userRow}>
+              {renderAccountButton('desktop', ls.userRowAccount)}
+              <CompteButton onOpen={ouvrirCompte} actif={currentPage === 'compte'} />
+            </div>
+          ) : renderAccountButton('desktop')}
         </div>
       </aside>
 
@@ -911,6 +926,8 @@ const ls = {
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
   userArea: { padding: '8px 6px 10px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
+  userRow: { display: 'flex', alignItems: 'center', gap: 6 },
+  userRowAccount: { flex: 1, minWidth: 0, width: 'auto' },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   // Scène du header « verre » : il est posé en absolu, <main> défile dessous.
   // --app-header-h = hauteur du header, reprise par le padding haut de <main>.

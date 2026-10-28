@@ -5,11 +5,10 @@ import SafeModule from '../../legacy/SafeModule.jsx';
 import { getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { Factures } from '../factures/index.js';
-import { Parametres } from '../parametres/index.js';
-import { Roles } from '../roles/index.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
-import { navigateToPage } from '../../services/navigationService.js';
+import { navigateToPage, ouvrirCompte } from '../../services/navigationService.js';
+import { ongletCompteDepuisOutils } from '../moduleConfig.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 
@@ -39,17 +38,19 @@ import { Btn } from '../../components/ui/index.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { buildRecettePdfData, slug } from '../../utils/recettePdfData.js';
-import AlertRules from './AlertRules.jsx';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // Onglets retirés le 27.10.2026 : 'vue', 'creation_carte', 'simulation' ; le
 // même jour « Plats & Recettes » ('recettes') est devenu « Chiffrage ». Un
 // ancien lien ou un onglet mémorisé qui les nomme retombe sur 'chiffrage'.
-const CONSULTANT_TOOLS_TABS = ['chiffrage', 'roles', 'etablissements', 'factures', 'alertes'];
+// Le 28.10.2026, Rôles & accès, Établissements et Alertes sont passés dans
+// l'espace Compte : un lien vers l'un d'eux y mène (ongletCompteDepuisOutils),
+// un onglet mémorisé qui en nomme un retombe sur 'chiffrage'.
+const CONSULTANT_TOOLS_TABS = ['chiffrage', 'factures'];
 const ongletValide = (t) => (t === 'recettes' ? 'chiffrage' : t);
 // Dernier onglet visité, restauré à l'ouverture du module (préférence UI locale).
-const LAST_TAB_KEY = 'sc_consultant_tools_last_tab';
+const LAST_TAB_KEY = UI_STORAGE_KEYS.consultantToolsLastTab;
 
 // La liaison ingrédient -> produit vit dans prixResolution : elle est partagée
 // avec AmbiguousMatchReview et ne doit surtout pas diverger d'un écran à l'autre.
@@ -121,6 +122,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Priorité : redirection ponctuelle (ancien lien /factures par ex., clé
   // one-shot) > dernier onglet visité (persisté) > Chiffrage. Une valeur hors
   // de la liste (onglet retiré) passe à la suivante.
+  // Clé ponctuelle qui nomme un onglet passé dans Compte : lue avant activeTab
+  // (qui l'efface), renvoyée vers Compte une fois le module monté.
+  const [renvoiCompte] = React.useState(() => ongletCompteDepuisOutils(ongletValide(readText('sc_consultant_tools_tab', ''))));
   const [activeTab, setActiveTab] = React.useState(() => {
     try {
       const pre = ongletValide(readText('sc_consultant_tools_tab', ''));
@@ -132,10 +136,15 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       }
       const last = ongletValide(readText(LAST_TAB_KEY, ''));
       if (CONSULTANT_TOOLS_TABS.includes(last)) return last;
+      // Dernier onglet passé dans Compte : Compte s'ouvrira dessus, avant que
+      // l'effet ci-dessous ne remplace ce souvenir par 'chiffrage'.
+      const versCompte = ongletCompteDepuisOutils(last);
+      if (versCompte && !readText(UI_STORAGE_KEYS.compteLastTab, '')) writeText(UI_STORAGE_KEYS.compteLastTab, versCompte);
     } catch(e) {}
     return 'chiffrage';
   });
   React.useEffect(() => { writeText(LAST_TAB_KEY, activeTab); }, [activeTab]);
+  React.useEffect(() => { if (renvoiCompte) ouvrirCompte(renvoiCompte); }, [renvoiCompte]);
   React.useEffect(() => {
     const browserWindow = getBrowserWindow();
     if (!browserWindow) return undefined;
@@ -144,6 +153,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       const nextTab = ongletValide(event?.detail?.tab);
       if (CONSULTANT_TOOLS_TABS.includes(nextTab)) {
         setActiveTab(nextTab);
+      } else if (ongletCompteDepuisOutils(nextTab)) {
+        ouvrirCompte(ongletCompteDepuisOutils(nextTab));
       }
     };
 
@@ -539,7 +550,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Barre d'onglets - deux groupes : chiffrage | administration */}
+      {/* Barre d'onglets - deux groupes : chiffrage | facturation client.
+          L'administration (paramètres, rôles, alertes) vit dans l'espace Compte. */}
       <div className="no-print" style={{ marginBottom: 14 }}>
         <SegmentedTabs
           active={activeTab}
@@ -547,38 +559,19 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           tabs={[
             { id: 'chiffrage', label: 'Chiffrage' },
             { divider: true },
-            { id: 'roles', label: 'Rôles & accès' },
-            { id: 'etablissements', label: 'Établissements' },
             { id: 'factures', label: 'Factures' },
-            { id: 'alertes', label: 'Alertes' },
           ]}
         />
       </div>
 
       {/* Routage des onglets - reutilise les composants migres via imports.
           Chaque onglet est isolé dans un SafeModule pour qu'un crash n'affecte pas les autres. */}
-      {activeTab === 'roles' ? (
-        Roles
-          ? (SafeModule
-              ? <SafeModule name="Rôles & accès">{React.createElement(Roles, { user })}</SafeModule>
-              : React.createElement(Roles, { user }))
-          : <div style={cts.fallback}>Module Rôles & accès non chargé.</div>
-      ) : activeTab === 'etablissements' ? (
-        Parametres
-          ? (SafeModule
-              ? <SafeModule name="Établissements">{React.createElement(Parametres, { user })}</SafeModule>
-              : React.createElement(Parametres, { user }))
-          : <div style={cts.fallback}>Module Établissements non chargé.</div>
-      ) : activeTab === 'factures' ? (
+      {activeTab === 'factures' ? (
         Factures
           ? (SafeModule
               ? <SafeModule name="Factures">{React.createElement(Factures, { user, etablissement })}</SafeModule>
               : React.createElement(Factures, { user, etablissement }))
           : <div style={cts.fallback}>Module Factures non chargé.</div>
-      ) : activeTab === 'alertes' ? (
-        SafeModule
-          ? <SafeModule name="Alertes"><AlertRules user={user} etablissement={etablissement} /></SafeModule>
-          : <AlertRules user={user} etablissement={etablissement} />
       ) : (
     <div style={cts.root}>
       {showImport && (

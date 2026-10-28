@@ -1,5 +1,6 @@
 import SamperMark from '../components/brand/SamperMark.jsx';
 import AccountButton from '../components/nav/AccountButton.jsx';
+import CompteButton from '../components/nav/CompteButton.jsx';
 import NavBadge from '../components/nav/NavBadge.jsx';
 import { getModuleIcon } from '../modules/moduleIcons.js';
 import { zurichNowMinutes } from '../utils/zurichTime.js';
@@ -25,7 +26,7 @@ import { useShell } from './ShellContext.js';
 export default function AccueilTactile() {
   const shell = useShell();
   if (!shell) return null;
-  const { mode, groupedNav, badges, getLabelForModule, setPage, etablissement, accountUser, openAccount } = shell;
+  const { mode, groupedNav, badges, getLabelForModule, setPage, etablissement, accountUser, openAccount, openCompte, compteActif } = shell;
   const salutation = zurichNowMinutes() >= 18 * 60 ? 'Bonsoir' : 'Bonjour';
   const logo = etablissement?.logo_url || null;
   const prenom = accountUser?.prenom || '';
@@ -47,12 +48,21 @@ export default function AccueilTactile() {
             {prenom && <>{' '}<span data-no-translate="">{prenom}</span></>}
           </p>
         </div>
-        <AccountButton
-          user={accountUser}
-          variant="accueil"
-          onOpen={openAccount}
-          style={mode === 'telephone' ? { width: '100%' } : undefined}
-        />
+        {openCompte ? (
+          // Espace Compte sur la ligne de « Mon compte » : aucune tuile de
+          // plus, rien ne descend sous le pli.
+          <div style={{ ...s.ligneCompte, ...(mode === 'telephone' ? { width: '100%' } : null) }}>
+            <AccountButton user={accountUser} variant="accueil" onOpen={openAccount} style={s.compteFlexible} />
+            <CompteButton variant="accueil" onOpen={openCompte} actif={compteActif} />
+          </div>
+        ) : (
+          <AccountButton
+            user={accountUser}
+            variant="accueil"
+            onOpen={openAccount}
+            style={mode === 'telephone' ? { width: '100%' } : undefined}
+          />
+        )}
       </header>
 
       {groupedNav.map((group) => (
@@ -95,6 +105,8 @@ const s = {
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   bonjour: { margin: '3px 0 0', fontSize: 15, lineHeight: 1.4, color: 'var(--text2)' },
+  ligneCompte: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
+  compteFlexible: { flex: '1 1 auto', minWidth: 0 },
   rubriqueTitre: { margin: '0 0 8px 2px', fontSize: 12, fontWeight: 500, color: 'var(--text3)', letterSpacing: 0.2 },
   tuile: {
     position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 72, width: '100%',

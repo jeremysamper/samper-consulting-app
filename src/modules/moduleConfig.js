@@ -236,7 +236,31 @@ export function isPageActiveForEtab(etablissement, page) {
 //   • factures    → Facturation client        src/modules/factures/
 //   • parametres  → Paramètres établissement  src/modules/parametres/
 //   • roles       → Gestion rôles & accès     src/modules/roles/
+//   • compte      → Espace Compte             src/modules/compte/
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Espace Compte (D18) : l'administration de l'app des brigades, sortie des
+// Outils consultant le 28.10.2026 (Paramètres, Rôles & accès, Alertes, plus
+// tard Abonnement). Ouvert à qui ouvre les Outils consultant aujourd'hui, et à
+// personne d'autre. L7 l'ouvrira au patron (D16) : cette fonction, et la liste
+// des rôles de chaque onglet dans Compte.jsx, sont les deux seuls endroits à
+// changer. Le bouton « Compte » (barre latérale, accueil tactile, palette) et
+// LegacyModuleHost lisent cette fonction.
+export function peutOuvrirCompte(user, permissions = {}) {
+  return user?.role === 'consultant' && permissions?.consultant_tools !== false;
+}
+
+// Entrée « Compte » de la palette Ctrl+K : hors du menu (pas de case de droit,
+// pas de chiffre Alt), rattachée aux Outils consultant comme Factures & achats
+// l'est à l'Inventaire.
+export const ENTREE_COMPTE = { id: 'compte', label: 'Compte', group: 'Consultant', rattacheA: 'consultant_tools' };
+
+// Onglets d'administration des Outils consultant passés dans Compte : un
+// ancien lien vers l'un d'eux ouvre Compte sur l'onglet correspondant.
+const ongletsCompteDepuisOutils = { roles: 'roles', etablissements: 'parametres', alertes: 'alertes' };
+export function ongletCompteDepuisOutils(tab) {
+  return ongletsCompteDepuisOutils[tab] || null;
+}
 
 const pageAliases = {
   recettes: 'cartes',

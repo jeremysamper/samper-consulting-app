@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil } from './moduleConfig.js';
+import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirCompte } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 import { messageErreur } from '../utils/messageErreur.js';
@@ -9,6 +9,7 @@ import { Btn } from '../components/ui/index.jsx';
 // Un même import() est dédupliqué par Vite → précharger ne coûte qu'un fetch.
 const loadCatalogue = () => import('./catalogue/Catalogue.jsx');
 const loadCommande = () => import('./commande/Commande.jsx');
+const loadCompte = () => import('./compte/Compte.jsx');
 const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
 // Tableau de bord (les établissements de type Spa n'en ont pas, cf. moduleConfig).
 const loadTableauDeBord = () => import('./dashboard/TableauDeBord.jsx');
@@ -39,6 +40,7 @@ const loadAccueilTactile = () => import('../layouts/AccueilTactile.jsx');
 
 const Catalogue = lazy(loadCatalogue);
 const Commande = lazy(loadCommande);
+const Compte = lazy(loadCompte);
 const ConsultantTools = lazy(loadConsultantTools);
 const TableauDeBord = lazy(loadTableauDeBord);
 const Documents = lazy(loadDocuments);
@@ -272,6 +274,14 @@ export default function LegacyModuleHost({
       // Outils IA : réservés au consultant culinaire (garde dure, indépendante de la BDD).
       return user.role === 'consultant' && permissions.consultant_tools !== false
         ? wrap('Outils consultant', <ConsultantToolsComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'compte': {
+      // Espace Compte (paramètres, rôles, alertes) : même accès que les Outils
+      // consultant, lu dans peutOuvrirCompte (le bouton « Compte » lit la même).
+      const CompteComponent = Compte;
+      return peutOuvrirCompte(user, permissions)
+        ? wrap('Compte', <CompteComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'factures': {
