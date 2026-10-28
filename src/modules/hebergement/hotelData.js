@@ -286,3 +286,50 @@ export function useTableHotel(table, etabId, { map, filtres = [], cle = '', orde
 export const useChambres = (etabId, options = {}) => useTableHotel('chambres', etabId, { map: mapChambre, order: [['ordre', true], ['numero', true]], ...options });
 export const useSejours = (etabId, options = {}) => useTableHotel('sejours', etabId, { map: mapSejour, order: [['arrivee', true]], limit: 10000, ...options });
 export const useJournalChambres = (etabId, options = {}) => useTableHotel('chambres_statut_journal', etabId, { map: mapJournal, order: [['at', false]], limit: 2000, ...options });
+
+// ── Lot H1 : housekeeping complet ───────────────────────────────────────────
+export const TYPES_LINGE = [
+  { id: 'draps', label: 'Draps' },
+  { id: 'serviettes', label: 'Serviettes' },
+  { id: 'peignoirs', label: 'Peignoirs' },
+  { id: 'tapis', label: 'Tapis de bain' },
+  { id: 'autre', label: 'Autre' },
+];
+export const STATUTS_OBJET = [
+  { id: 'trouve', label: 'Trouvé', ton: 'warning' },
+  { id: 'rendu', label: 'Rendu', ton: 'success' },
+  { id: 'jete', label: 'Jeté', ton: 'neutre' },
+];
+
+export function mapMinibar(r) {
+  return { id: r.id, chambreId: r.chambre_id, sejourId: r.sejour_id || null, article: r.article || '', quantite: Number(r.quantite) || 1, note: r.note || '', par: r.par || null, createdAt: r.created_at || null };
+}
+export function mapObjet(r) {
+  return {
+    id: r.id, chambreId: r.chambre_id || null, sejourId: r.sejour_id || null, description: r.description || '', lieu: r.lieu || '',
+    trouveLe: r.trouve_le || '', statut: r.statut || 'trouve', renduLe: r.rendu_le || null, renduA: r.rendu_a || '', note: r.note || '',
+    par: r.par || null, createdAt: r.created_at || null,
+  };
+}
+export function mapLinge(r) {
+  return { id: r.id, chambreId: r.chambre_id || null, jour: r.jour || '', sens: r.sens || 'sale', type: r.type || 'autre', quantite: Number(r.quantite) || 1, note: r.note || '', par: r.par || null, createdAt: r.created_at || null };
+}
+export function mapTurndown(r) {
+  return { id: r.id, chambreId: r.chambre_id, jour: r.jour || '', faitPar: r.fait_par || null, at: r.at || null };
+}
+
+export const useMinibar = (etabId, options = {}) => useTableHotel('chambres_minibar', etabId, { map: mapMinibar, order: [['created_at', false]], limit: 3000, ...options });
+export const useObjetsTrouves = (etabId, options = {}) => useTableHotel('objets_trouves', etabId, { map: mapObjet, order: [['trouve_le', false]], limit: 2000, ...options });
+export const useLinge = (etabId, options = {}) => useTableHotel('linge_mouvements', etabId, { map: mapLinge, order: [['created_at', false]], limit: 3000, ...options });
+export const useTurndown = (etabId, options = {}) => useTableHotel('chambres_turndown', etabId, { map: mapTurndown, order: [['at', false]], limit: 2000, ...options });
+
+// Totaux de linge d'un jour, par type et par sens.
+export function totauxLinge(mouvements, jour) {
+  const t = {};
+  for (const m of mouvements) {
+    if (m.jour !== jour) continue;
+    const e = t[m.type] || (t[m.type] = { sale: 0, propre: 0 });
+    e[m.sens] += m.quantite;
+  }
+  return t;
+}

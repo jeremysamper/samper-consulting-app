@@ -25,7 +25,7 @@ const REFUS_GROUPES = 'Seules les personnes qui gèrent le planning peuvent modi
 const REFUS_POSTES = 'Seuls le patron et le consultant peuvent régler les comptes de pointage partagés.';
 
 export function familleDuRole(role) {
-  if (role === 'serveur' || role === 'hote') return 'salle';
+  if (role === 'serveur' || role === 'hote' || role === 'receptionniste') return 'salle';
   if (role === 'cuisinier' || role === 'resp_cuisine') return 'cuisine';
   return null;
 }

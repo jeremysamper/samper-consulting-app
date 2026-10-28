@@ -6,6 +6,13 @@ export const roles = {
   serveur:      { label: 'Serveur / Serveuse',    color: '#2e7ab8' },
   hote:         { label: 'Hôte / Réception',      color: '#0e7490' },
   praticien_spa: { label: 'Praticien(ne) spa',    color: '#2f6f77' },
+  // Branche Hôtel (lot H1) : réception, gouvernante, femmes et valets de
+  // chambre, technique. Mêmes listes dans create-user (validation.ts),
+  // ai-proxy (ALL_ROLES) et spa-mailer (ROLES_EQUIPE).
+  receptionniste:   { label: 'Réceptionniste',       color: '#2874a6' },
+  gouvernante:      { label: 'Gouvernante',          color: '#7d6608' },
+  femme_de_chambre: { label: 'Femme / valet de chambre', color: '#b7950b' },
+  technicien:       { label: 'Technicien(ne)',       color: '#616a6b' },
 };
 
 export const defaultPermissions = {
@@ -18,6 +25,15 @@ export const defaultPermissions = {
   // Praticien(ne) spa : les soins en cabine. Spa & clients, son planning et la
   // messagerie ; rien de la cuisine ni de la salle.
   praticien_spa: { dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false, hebergement: false, etages: false },
+  // Rôles hôtel (lot H1). La réception tient les séjours, les réservations de
+  // table et les groupes ; la gouvernante et les femmes et valets de chambre
+  // tiennent les étages (la gouvernante lit aussi les séjours pour préparer
+  // les arrivées) ; la technique lit les étages (chambres hors service) en
+  // attendant son module (lot H8).
+  receptionniste:   { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: false, journal: false, hebergement: true,  etages: true },
+  gouvernante:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: true,  etages: true },
+  femme_de_chambre: { dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true },
+  technicien:       { dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -55,8 +71,11 @@ export const manageableModules = [
   // chambre, l'attribuer à quelqu'un, noter un motif hors service. La base lit
   // les mêmes cases (user_peut_gerer, migration 20261028_hotel_h0) : cochables
   // pour n'importe qui, sans verrou rolesEcritureBase.
-  { id: 'hebergement', label: 'Hébergement', defaultRoles: ['consultant', 'patron'] },
-  { id: 'etages', label: 'Étages', defaultRoles: ['consultant', 'patron'] },
+  // Lot H1 : la réception gère les séjours ; gouvernante, femmes et valets de
+  // chambre et réception changent les statuts (migration 20261028_hotel_h1,
+  // mêmes rôles par défaut dans les policies).
+  { id: 'hebergement', label: 'Hébergement', defaultRoles: ['consultant', 'patron', 'receptionniste'] },
+  { id: 'etages', label: 'Étages', defaultRoles: ['consultant', 'patron', 'gouvernante', 'femme_de_chambre', 'receptionniste'] },
 ];
 
 // Rôles que la BASE laisse écrire dans un module (RLS fondée sur le rôle, relevée
@@ -93,6 +112,10 @@ export const defaultManageRoles = ['consultant', 'patron'];
 export const droitsAction = [
   { id: 'factures_achat', module: 'inventaire', label: 'Régler les factures', defaultRoles: ['consultant', 'patron'] },
   { id: 'fiches', module: 'recettes', label: 'Créer et modifier les fiches', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
+  //   inspection : passer une chambre « inspectée » (Étages, lot H1). Vérifié
+  //   en base par le déclencheur chambres_garde_colonnes (migration
+  //   20261028_hotel_h1), mêmes rôles par défaut : les tenir en phase.
+  { id: 'inspection', module: 'etages', label: 'Inspecter les chambres', defaultRoles: ['consultant', 'patron', 'gouvernante'], requiertGerer: true },
 ];
 
 // Rôles par défaut du droit « gérer » d'un module ou d'un droit d'action
