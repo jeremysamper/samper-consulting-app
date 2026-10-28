@@ -15,7 +15,7 @@ import {
 // étages le note par déclencheur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], note = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
+export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], note = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
   const s = sejour;
   const [chambreId, setChambreId] = React.useState(s.chambreId || '');
   const [erreur, setErreur] = React.useState('');
@@ -125,6 +125,8 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
           const prix = s.prixNuit != null ? s.prixNuit : t ? t.prixNuit : null;
           return ligne('Tarif', <>{t && <><span data-no-translate>{t.nom}</span>, </>}{prix != null && <><span data-no-translate>CHF {chf(prix)}</span> <span>par nuit</span>{s.prixNuit != null && t ? <> <span>(prix convenu)</span></> : null}</>}</>, false);
         })()}
+        {s.forfaitId && ligne('Forfait', forfaits.find((x) => x.id === s.forfaitId)?.nom || '', true)}
+        {s.identifiant && ligne('Bracelet ou carte', s.identifiant, true)}
         {s.origine && ligne('Origine', s.origine, true)}
         {s.demandesSpeciales && ligne('Demandes spéciales', s.demandesSpeciales, true)}
         {s.notes && ligne('Notes', s.notes, true)}

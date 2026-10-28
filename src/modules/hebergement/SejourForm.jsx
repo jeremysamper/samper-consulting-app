@@ -12,12 +12,12 @@ import { PENSIONS, chf, dateCourte, sejourEnConflit, tarifsApplicables, trierCha
 
 const vide = (aujourdhui) => ({
   nomHote: '', arrivee: aujourdhui, depart: zurichAjouterJours(aujourdhui, 1), nbAdultes: 2, nbEnfants: 0,
-  pension: 'petit_dejeuner', chambreId: '', origine: '', demandesSpeciales: '', notes: '', tarifId: '', prixNuit: '',
+  pension: 'petit_dejeuner', chambreId: '', origine: '', demandesSpeciales: '', notes: '', tarifId: '', prixNuit: '', forfaitId: '', identifiant: '',
 });
 
-export default function SejourForm({ sejour, chambres, sejours, tarifs = [], aujourdhui, onEnregistrer, onClose }) {
+export default function SejourForm({ sejour, chambres, sejours, tarifs = [], forfaits = [], aujourdhui, onEnregistrer, onClose }) {
   const [f, setF] = React.useState(() => (sejour
-    ? { ...sejour, chambreId: sejour.chambreId || '', tarifId: sejour.tarifId || '', prixNuit: sejour.prixNuit == null ? '' : String(sejour.prixNuit) }
+    ? { ...sejour, chambreId: sejour.chambreId || '', tarifId: sejour.tarifId || '', prixNuit: sejour.prixNuit == null ? '' : String(sejour.prixNuit), forfaitId: sejour.forfaitId || '', identifiant: sejour.identifiant || '' }
     : vide(aujourdhui)));
   const [erreur, setErreur] = React.useState('');
   const [enCours, setEnCours] = React.useState(false);
@@ -57,6 +57,8 @@ export default function SejourForm({ sejour, chambres, sejours, tarifs = [], auj
       chambre_id: f.chambreId || null,
       tarif_id: f.tarifId || null,
       prix_nuit: prixNuit,
+      forfait_id: f.forfaitId || null,
+      identifiant: f.identifiant.trim() || null,
       origine: f.origine.trim() || null,
       demandes_speciales: f.demandesSpeciales.trim() || null,
       notes: f.notes.trim() || null,
@@ -118,6 +120,17 @@ export default function SejourForm({ sejour, chambres, sejours, tarifs = [], auj
         </Champ>
         <Champ label="Prix par nuit convenu (CHF)">
           <input type="number" min="0" step="0.05" inputMode="decimal" style={h.saisie} value={f.prixNuit} onChange={champ('prixNuit')} placeholder={f.tarifId ? 'Prix du tarif' : ''} />
+        </Champ>
+        {forfaits.length > 0 && (
+          <Champ label="Forfait">
+            <select style={h.saisie} value={f.forfaitId} onChange={champ('forfaitId')} data-no-translate>
+              <option value="">{'Aucun forfait'}</option>
+              {forfaits.filter((x) => x.actif || x.id === f.forfaitId).map((x) => <option key={x.id} value={x.id}>{x.nom}{x.prixParNuit ? ` (CHF ${chf(x.prixParNuit)} par nuit)` : ''}</option>)}
+            </select>
+          </Champ>
+        )}
+        <Champ label="Bracelet ou carte">
+          <input style={h.saisie} value={f.identifiant} onChange={champ('identifiant')} placeholder="Numéro du bracelet ou de la carte" />
         </Champ>
         <Champ label="Origine">
           <input style={h.saisie} value={f.origine} onChange={champ('origine')} placeholder="Site, téléphone, agence…" />

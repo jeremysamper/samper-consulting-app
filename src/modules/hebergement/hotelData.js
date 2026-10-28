@@ -3,7 +3,7 @@ import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
 import { getDemoData } from '../../data/demoData.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import { zurichAjouterJours, zurichDateHeure } from '../../utils/zurichTime.js';
+import { zurichAjouterJours, zurichDateHeure, zurichMinuitIso } from '../../utils/zurichTime.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Données de la branche Hôtel (migration 20261028_hotel_h0) : chambres, séjours
@@ -145,6 +145,8 @@ export function mapSejour(r) {
     clientId: r.client_id || null,
     hoteId: r.hote_id || null,
     tarifId: r.tarif_id || null,
+    forfaitId: r.forfait_id || null,
+    identifiant: r.identifiant || '',
     prixNuit: r.prix_nuit == null ? null : Number(r.prix_nuit),
     nomHote: r.nom_hote || '',
     nbAdultes: Number(r.nb_adultes) || 0,
@@ -194,6 +196,17 @@ export function messageErreur(error) {
   if (error.code === '23505' && /uq_hotes_email/.test(error.message || '')) {
     return 'Une fiche hôte active porte déjà cet e-mail. Ouvre-la, ou laisse l\'e-mail vide sur la seconde personne.';
   }
+  // Lot H5 : bracelets, inscriptions, capacité, droits des forfaits.
+  const msg = String(error.message || '');
+  if (error.code === '23505' && /uq_sejours_identifiant_actif/.test(msg)) return 'Ce numéro de bracelet ou de carte est déjà porté par un autre séjour en cours.';
+  if (error.code === '23505' && /uq_activite_inscriptions/.test(msg)) return 'Ce séjour est déjà inscrit à cette activité.';
+  if (/^ACTIVITE_COMPLETE:/.test(msg)) return msg.replace(/^ACTIVITE_COMPLETE:\s*/, 'Activité complète : ') + '.';
+  if (/^DROIT_EPUISE:/.test(msg)) return msg.replace(/^DROIT_EPUISE:\s*/, 'Droit épuisé : ') + '.';
+  if (/^ACTIVITE_ANNULEE:/.test(msg)) return 'Cette activité est annulée.';
+  if (/^SEJOUR_INACTIF:/.test(msg)) return 'Ce séjour est annulé ou terminé.';
+  if (/^SEJOUR_AVEC_HISTORIQUE:/.test(msg)) return 'Ce séjour porte une note, un registre, des inscriptions ou des consommations : il s\'annule, il ne se supprime pas.';
+  if (/^INSCRIPTION_RESERVEE:/.test(msg)) return 'Déplacer une inscription demande le droit Modifier d\'Activités.';
+  if (/^DROIT_INCONNU:/.test(msg)) return 'Ce droit n\'est pas dans le forfait du séjour.';
   if (error.code === '42501' && /CHAMBRE_FICHE_RESERVEE/.test(error.message || '')) {
     return 'La fiche de la chambre se modifie avec le droit Hébergement.';
   }
@@ -654,8 +667,14 @@ export function registreDuMois({ sejours, occupants, chambres, mois }) {
 }
 
 // CSV à points-virgules (Excel suisse), guillemets doublés, BOM pour les accents.
+// Une cellule qui commence par =, +, -, @, tabulation ou retour chariot est
+// précédée d'une apostrophe : un tableur ne l'exécute pas comme une formule.
 export function versCsv(entetes, lignes) {
-  const cellule = (v) => { const s = v == null ? '' : String(v); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const cellule = (v) => {
+    let s = v == null ? '' : String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return /[";\n']/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
   return `﻿${[entetes, ...lignes].map((l) => l.map(cellule).join(';')).join('\r\n')}`;
 }
 export function telechargerTexte(nomFichier, contenu, type = 'text/csv;charset=utf-8') {
@@ -668,4 +687,93 @@ export function telechargerTexte(nomFichier, contenu, type = 'text/csv;charset=u
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Lot H5 : forfaits, activités, inscriptions, consommations ──────────────
+export const CATEGORIES_DROIT = [
+  { id: 'restauration', label: 'Restauration' },
+  { id: 'boissons', label: 'Boissons' },
+  { id: 'spa', label: 'Spa' },
+  { id: 'activites', label: 'Activités' },
+  { id: 'autre', label: 'Autre' },
+];
+export const STATUTS_INSCRIPTION = [
+  { id: 'inscrit', label: 'Inscrit', ton: 'info' },
+  { id: 'present', label: 'Présent', ton: 'success' },
+  { id: 'annule', label: 'Annulé', ton: 'neutre' },
+];
+
+export function mapForfait(r) {
+  return { id: r.id, nom: r.nom || '', description: r.description || '', prixParNuit: Number(r.prix_par_nuit) || 0, actif: r.actif !== false, ordre: Number(r.ordre) || 0 };
+}
+export function mapDroit(r) {
+  return {
+    id: r.id, forfaitId: r.forfait_id, libelle: r.libelle || '', categorie: r.categorie || 'autre',
+    quantiteParSejour: r.quantite_par_sejour == null ? null : Number(r.quantite_par_sejour),
+    quantiteParJour: r.quantite_par_jour == null ? null : Number(r.quantite_par_jour), ordre: Number(r.ordre) || 0,
+  };
+}
+export function mapActivite(r) {
+  return {
+    id: r.id, titre: r.titre || '', description: r.description || '', lieu: r.lieu || '', debut: r.debut, fin: r.fin,
+    places: r.places == null ? null : Number(r.places), prix: Number(r.prix) || 0, inclusForfait: r.inclus_forfait !== false,
+    responsable: r.responsable || null, annulee: r.annulee === true, createdBy: r.created_by || null, createdAt: r.created_at || null,
+  };
+}
+export function mapInscription(r) {
+  return { id: r.id, activiteId: r.activite_id, sejourId: r.sejour_id, nbPersonnes: Number(r.nb_personnes) || 1, statut: r.statut || 'inscrit', note: r.note || '', createdBy: r.created_by || null, createdAt: r.created_at || null };
+}
+export function mapConsommation(r) {
+  return { id: r.id, sejourId: r.sejour_id, droitId: r.droit_id || null, libelle: r.libelle || '', quantite: Number(r.quantite) || 1, jour: r.jour || '', lieu: r.lieu || '', at: r.at || null, par: r.par || null };
+}
+export const useForfaits = (etabId, options = {}) => useTableHotel('forfaits', etabId, { map: mapForfait, order: [['ordre', true], ['nom', true]], limit: 200, ...options });
+export const useForfaitDroits = (etabId, options = {}) => useTableHotel('forfait_droits', etabId, { map: mapDroit, order: [['ordre', true], ['libelle', true]], limit: 2000, ...options });
+export const useActivites = (etabId, options = {}) => useTableHotel('activites', etabId, { map: mapActivite, order: [['debut', true]], limit: 5000, ...options });
+export const useInscriptions = (etabId, options = {}) => useTableHotel('activite_inscriptions', etabId, { map: mapInscription, order: [['created_at', true]], limit: 20000, ...options });
+export const useConsommations = (etabId, options = {}) => useTableHotel('consommations', etabId, { map: mapConsommation, order: [['at', false]], limit: 20000, ...options });
+
+// Jour de Zurich (YYYY-MM-DD) d'un horodatage, et heure « 07:00 ».
+export function jourZurich(iso) {
+  if (!iso) return '';
+  const { date } = zurichDateHeure(iso);
+  const [d, m, y] = date.split('.');
+  return `${y}-${m}-${d}`;
+}
+export const heureZurich = (iso) => (iso ? zurichDateHeure(iso).heure : '');
+// Horodatage ISO d'un jour de Zurich à une heure donnée (« 07:00 »).
+export function isoZurich(jour, heure) {
+  const [hh, mm] = String(heure || '00:00').split(':').map(Number);
+  return new Date(Date.parse(zurichMinuitIso(jour)) + ((hh || 0) * 60 + (mm || 0)) * 60000).toISOString();
+}
+export const activitesDuJour = (activites, jour) => activites.filter((a) => jourZurich(a.debut) === jour);
+export const inscriptionsActives = (inscriptions, activiteId) => inscriptions.filter((i) => i.activiteId === activiteId && i.statut !== 'annule');
+export function placesPrises(activite, inscriptions) {
+  return inscriptionsActives(inscriptions, activite.id).reduce((n, i) => n + i.nbPersonnes, 0);
+}
+export function placesRestantes(activite, inscriptions) {
+  if (activite.places == null) return null;
+  return Math.max(0, activite.places - placesPrises(activite, inscriptions));
+}
+export const sejoursActifs = (sejours) => sejours.filter((s) => s.statut === 'prevu' || s.statut === 'en_maison');
+// Séjour trouvé par son bracelet (exact, sans casse) ou par un bout de nom.
+export function trouverSejour(sejours, texte) {
+  const t = String(texte || '').trim().toLowerCase();
+  if (!t) return [];
+  const actifs = sejoursActifs(sejours);
+  const parBracelet = actifs.filter((s) => (s.identifiant || '').trim().toLowerCase() === t);
+  if (parBracelet.length) return parBracelet;
+  return actifs.filter((s) => s.nomHote.toLowerCase().includes(t) || (s.identifiant || '').toLowerCase().includes(t));
+}
+// État des droits d'un séjour : consommé sur le séjour, consommé le jour, et
+// ce qui reste (null = sans limite). Un droit est épuisé quand l'une des
+// deux limites est atteinte.
+export function droitsRestants(droits, consommations, sejour, jour) {
+  const miennes = consommations.filter((c) => c.sejourId === sejour.id);
+  return droits.filter((d) => d.forfaitId === sejour.forfaitId).map((d) => {
+    const surSejour = miennes.filter((c) => c.droitId === d.id).reduce((n, c) => n + c.quantite, 0);
+    const surJour = miennes.filter((c) => c.droitId === d.id && c.jour === jour).reduce((n, c) => n + c.quantite, 0);
+    const resteSejour = d.quantiteParSejour == null ? null : Math.max(0, d.quantiteParSejour - surSejour);
+    const resteJour = d.quantiteParJour == null ? null : Math.max(0, d.quantiteParJour - surJour);
+    return { droit: d, surSejour, surJour, resteSejour, resteJour, epuise: resteSejour === 0 || resteJour === 0 };
+  });
 }

@@ -9,7 +9,7 @@ import { canManageModule } from '../../data/demoData.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
   aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, totauxNote, trierChambres,
-  useChambres, useDemandes, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useSejours, useSpaClients, useTarifs,
+  useChambres, useDemandes, useForfaits, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useSejours, useSpaClients, useTarifs,
 } from './hotelData.js';
 import { LigneSejour, Liste, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
@@ -75,6 +75,8 @@ export default function Hebergement({ user, etablissement }) {
   const occupants = useOccupants(etabId, { actif: peutGerer });
   const lignes = useLignesSejour(etabId, { actif: peutGerer });
   const reglage = reglages.rows[0] || null;
+  // Lot H5 : les forfaits, pour le choix sur le séjour.
+  const forfaits = useForfaits(etabId);
 
   const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes'];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
@@ -247,6 +249,7 @@ export default function Hebergement({ user, etablissement }) {
           chambres={trierChambres(chambres.rows)}
           sejours={sejours.rows}
           tarifs={tarifs.rows}
+          forfaits={forfaits.rows}
           aujourdhui={aujourdhui}
           onEnregistrer={enregistrerSejour}
           onClose={() => setForm(null)}
@@ -259,6 +262,7 @@ export default function Hebergement({ user, etablissement }) {
           sejours={sejours.rows}
           hotes={hotes.rows}
           tarifs={tarifs.rows}
+          forfaits={forfaits.rows}
           note={resumeNote(fiche)}
           onNote={peutGerer ? (s) => setNoteId(s.id) : null}
           onOccupants={peutGerer ? (s) => setOccupantsId(s.id) : null}
