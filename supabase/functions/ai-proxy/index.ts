@@ -349,7 +349,11 @@ const CONSULTANT_ONLY = ['consultant'];
 // Traduction : ouverte à tous les rôles connectés. C'est le sens même du mode
 // English / Español - qu'un cuisinier anglophone ou hispanophone puisse lire
 // recettes, MEP et HACCP.
-const ALL_ROLES = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'];
+const ALL_ROLES = [
+  'consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa',
+  // Branche Hôtel (lot H1).
+  'receptionniste', 'gouvernante', 'femme_de_chambre', 'technicien',
+];
 const TASK_ROLES: Record<string, string[]> = {
   'ocr-recipe':               AUTHORING_ROLES,
   'detect-allergens':         AUTHORING_ROLES,

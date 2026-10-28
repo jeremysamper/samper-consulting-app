@@ -109,7 +109,11 @@ const json = (body: unknown, status = 200) =>
   });
 
 const TZ = 'Europe/Zurich';
-const ROLES_EQUIPE = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'];
+const ROLES_EQUIPE = [
+  'consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa',
+  // Branche Hôtel (lot H1).
+  'receptionniste', 'gouvernante', 'femme_de_chambre', 'technicien',
+];
 const ROLES_DIRECTION = ['consultant', 'patron'];
 const RESEND_URL = 'https://api.resend.com';
 const LOT_MAX = 100; // limite de l'API batch de Resend

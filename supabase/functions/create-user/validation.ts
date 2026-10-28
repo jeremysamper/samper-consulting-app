@@ -5,6 +5,8 @@
 // inconnu ne crée pas de compte.
 export const ROLES = [
   'consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa',
+  // Branche Hôtel (lot H1).
+  'receptionniste', 'gouvernante', 'femme_de_chambre', 'technicien',
 ];
 
 export type Creation = {
