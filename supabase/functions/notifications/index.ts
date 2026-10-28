@@ -17,10 +17,14 @@
 //                             la base (push_config, sans politique RLS).
 //   test           session  → notification d'essai sur les appareils abonnés
 //                             de l'utilisateur appelant
-//   nouvelle_resa  interne  → { reservationId, secret } : notifie les appareils
-//                             abonnés à l'établissement DE LA RÉSERVATION.
-//                             secret = push_config.secret_interne (seule la base
-//                             le connaît : c'est elle qui appelle).
+//   nouvelle_resa  interne  → { reservationId, secret, dryRun? } : notifie les
+//                             appareils abonnés à l'établissement DE LA
+//                             RÉSERVATION dont la personne voit Réservations
+//                             (gardeReservations). secret =
+//                             push_config.secret_interne (seule la base le
+//                             connaît : c'est elle qui appelle). dryRun : rien
+//                             n'est envoyé ; rend le nombre d'appareils et de
+//                             personnes qui recevraient.
 //   alertes        interne  → { secret, dryRun?, instanceIds? } : envoie les
 //                             instances d'alerte en attente (push_etat
 //                             'a_envoyer'), chacune une seule fois, aux appareils
@@ -155,6 +159,38 @@ async function abonnesDeLEtab(sb: Admin, etabId: string, garde?: (p: Profil) => 
   return liste.filter((a) => ok.has(a.user_id));
 }
 
+// ── Réservations en ligne ─────────────────────────────────────────
+// Le corps nomme le client : seuls les abonnés qui voient Réservations dans
+// l'établissement le reçoivent. Même règle que le menu (useVisibleNav) :
+// module actif pour l'établissement (modules_actifs, NULL = tous), puis écart
+// de la personne (permissions_utilisateurs), sinon réglage du rôle
+// (permissions), sinon défaut du code (defaultPermissions de moduleConfig.js).
+// Seul écart voulu : un rôle inconnu du code n'a rien, là où le menu
+// l'afficherait. Une lecture en échec rend null : la réservation ne part à
+// personne.
+const RESA_PAR_DEFAUT = ['consultant', 'patron', 'resp_cuisine', 'serveur', 'hote'];
+async function gardeReservations(sb: Admin, etabId: string): Promise<((p: Profil) => boolean) | null> {
+  const [etab, roles, abos] = await Promise.all([
+    sb.from('etablissements').select('modules_actifs').eq('id', etabId).maybeSingle(),
+    sb.from('permissions').select('role_key, perms'),
+    sb.from('push_abonnements').select('user_id').eq('etablissement_id', etabId),
+  ]);
+  if (etab.error || !etab.data || roles.error || abos.error) return null;
+  const actifs = etab.data.modules_actifs;
+  if (Array.isArray(actifs) && !actifs.includes('previsions')) return () => false;
+  const ids = [...new Set((abos.data || []).map((a) => String(a.user_id)))];
+  if (!ids.length) return () => false;
+  const perso = await sb.from('permissions_utilisateurs').select('user_id, perms').in('user_id', ids);
+  if (perso.error) return null;
+  const droit = (perms: unknown) => (perms as Record<string, unknown> | null)?.previsions;
+  const duRole = new Map((roles.data || []).map((r) => [String(r.role_key), droit(r.perms)] as [string, unknown]));
+  const ecart = new Map((perso.data || []).map((r) => [String(r.user_id), droit(r.perms)] as [string, unknown]));
+  return (p) => {
+    const v = [ecart.get(String(p.id)), duRole.get(String(p.role || ''))].find((x) => typeof x === 'boolean');
+    return typeof v === 'boolean' ? v : RESA_PAR_DEFAUT.includes(String(p.role || ''));
+  };
+}
+
 // ── Alertes ───────────────────────────────────────────────────────
 type Instance = {
   id: string; rule_id: string; etablissement_id: string; title: string | null; status: string;
@@ -285,7 +321,12 @@ Deno.serve(async (req: Request) => {
       .eq('id', String(body.reservationId || '')).maybeSingle();
     if (!r || r.origine !== 'en_ligne') return json({ ok: true, ignore: true });
     const { data: etab } = await sb.from('etablissements').select('id, nom').eq('id', r.etablissement_id).maybeSingle();
-    const abonnes = await abonnesDeLEtab(sb, r.etablissement_id);
+    const garde = await gardeReservations(sb, r.etablissement_id);
+    if (!garde) console.warn('[notifications] nouvelle_resa', r.id, 'droits illisibles : aucun envoi');
+    const abonnes = garde ? await abonnesDeLEtab(sb, r.etablissement_id, garde) : [];
+    if (body.dryRun === true) {
+      return json({ ok: true, dryRun: true, appareils: abonnes.length, personnes: new Set(abonnes.map((a) => a.user_id)).size });
+    }
     const demande = r.statut === 'demande';
     const n = Number(r.nb_couverts || 0);
     const res = await envoyer(sb, abonnes, {
