@@ -340,7 +340,9 @@ function DemandeFiche({ demande: dm, chambre, hote, equipe, journal, user, peutS
         {hote && <Ligne label="Hôte"><span data-no-translate>{hote}</span></Ligne>}
         {dm.echeance && <Ligne label="Pour le"><span data-no-translate>{dateHeureZurich(dm.echeance)}</span></Ligne>}
         {dm.detail && <Ligne label="Détail"><span data-no-translate>{dm.detail}</span></Ligne>}
-        {dm.photoUrl && <Ligne label="Photo"><a href={dm.photoUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Voir la photo</a></Ligne>}
+        {/* Seule une URL https (le bucket de l'app) devient un lien : jamais un
+            texte saisi, la base l'impose aussi (demandes_photo_url_https). */}
+        {dm.photoUrl && /^https:\/\//.test(dm.photoUrl) && <Ligne label="Photo"><a href={dm.photoUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Voir la photo</a></Ligne>}
         <Ligne label="Demandé par"><span data-no-translate>{nomPersonne(dm.creePar) || 'Système'}</span> <span data-no-translate>{dateHeureZurich(dm.createdAt)}</span></Ligne>
         {dm.faitePar && <Ligne label="Faite par"><span data-no-translate>{nomPersonne(dm.faitePar)}</span> <span data-no-translate>{dateHeureZurich(dm.faiteAt)}</span></Ligne>}
       </div>

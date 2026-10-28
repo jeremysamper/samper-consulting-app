@@ -9,9 +9,12 @@
 -- lit par chambre et par hôte.
 --
 -- Droits : toute l'équipe de l'établissement lit, crée et fait avancer les
--- demandes (c'est leur raison d'être : n'importe qui signale, le pôle traite) ;
--- la suppression demande la case Modifier de Demandes (consultant, patron,
--- réception par défaut). Le journal est écrit par déclencheur, lecture seule.
+-- demandes (c'est leur raison d'être : n'importe qui signale, le pôle traite ;
+-- la praticienne spa n'a pas le module à l'écran mais reste de l'équipe en
+-- base, choix assumé) ; la suppression demande la case Modifier de Demandes
+-- (consultant, patron, réception par défaut) et emporte le journal de la
+-- demande (cascade, assumé : une demande supprimée n'a plus d'historique).
+-- Le journal est écrit par déclencheur, lecture seule.
 -- Expand only, idempotente. Inverse : migrations-inverse/20261028_hotel_h2.sql.
 -- ════════════════════════════════════════════════════════════════════════════
 
@@ -39,7 +42,8 @@ create table if not exists public.demandes (
   faite_at         timestamptz,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now(),
-  constraint demandes_titre_non_vide check (btrim(titre) <> '')
+  constraint demandes_titre_non_vide check (btrim(titre) <> ''),
+  constraint demandes_photo_url_https check (photo_url is null or photo_url ~ '^https://')
 );
 create index if not exists idx_demandes_etab_statut on public.demandes(etablissement_id, statut, created_at desc);
 create index if not exists idx_demandes_chambre     on public.demandes(chambre_id);
@@ -88,20 +92,33 @@ begin
   ) then
     raise exception 'SEJOUR_INCONNU: le séjour n''appartient pas à cet établissement' using errcode = '23503';
   end if;
+  if new.assignee_a is not null and not exists (
+    select 1 from public.profiles p where p.id = new.assignee_a and new.etablissement_id = any (p.etablissement_ids)
+  ) then
+    raise exception 'ASSIGNEE_INCONNU: la personne n''appartient pas à cet établissement' using errcode = '23503';
+  end if;
   if tg_op = 'INSERT' then
     if (select auth.uid()) is not null then
       new.cree_par := (select auth.uid())::text;
     end if;
   else
-    if new.cree_par is distinct from old.cree_par and (select auth.uid()) is not null then
+    -- L'auteur ne se réécrit pas ; il peut être effacé (on delete set null du profil).
+    if new.cree_par is distinct from old.cree_par and new.cree_par is not null and (select auth.uid()) is not null then
       new.cree_par := old.cree_par;
     end if;
+  end if;
+  if tg_op = 'UPDATE' and new.etablissement_id <> old.etablissement_id then
+    raise exception 'DEMANDE_ETABLISSEMENT_FIXE: une demande ne change pas d''établissement' using errcode = '23514';
   end if;
   if new.statut = 'faite' and (tg_op = 'INSERT' or old.statut <> 'faite') then
     new.faite_at := coalesce(new.faite_at, now());
     if (select auth.uid()) is not null then
       new.faite_par := (select auth.uid())::text;
     end if;
+  elsif tg_op = 'UPDATE' and new.statut = 'faite' then
+    -- Déjà faite : qui et quand ne se réécrivent pas.
+    new.faite_par := old.faite_par;
+    new.faite_at := old.faite_at;
   end if;
   if new.statut <> 'faite' then
     new.faite_at := null;
@@ -132,7 +149,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  qui text := (select p.id from public.profiles p where p.id = auth.uid()::text);
+  qui text := (select p.id from public.profiles p where p.id = (select auth.uid())::text);
 begin
   if tg_op = 'INSERT' then
     insert into public.demandes_journal (etablissement_id, demande_id, action, detail, par)
@@ -153,7 +170,7 @@ begin
   end if;
   if new.echeance is distinct from old.echeance then
     insert into public.demandes_journal (etablissement_id, demande_id, action, detail, par)
-    values (new.etablissement_id, new.id, 'echeance', new.echeance::text, qui);
+    values (new.etablissement_id, new.id, 'echeance', to_char(new.echeance at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), qui);
   end if;
   if new.pole is distinct from old.pole then
     insert into public.demandes_journal (etablissement_id, demande_id, action, detail, par)
