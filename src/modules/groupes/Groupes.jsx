@@ -45,12 +45,11 @@ const MOIS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
-// Rôles que la BASE autorise à créer / modifier un groupe (politique INSERT et
-// trigger, migrations 20260920 et 20260926 pour le cuisinier) et à composer un
-// menu. Le droit « gérer » de Rôles & accès ne peut que RETIRER dans ces
-// listes : l'accorder à un autre rôle afficherait un bouton qui finit sur un
-// refus de la base.
-const ROLES_GESTION = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote'];
+// Créer / modifier un groupe : la case « Modifier » de Rôles & accès, lue par
+// canManageModule ici et par user_peut_gerer('groupes', …) en base (politique
+// INSERT et trigger, migration 20261028). Cochable pour n'importe qui, un
+// compte de salle par exemple.
+// Composer un menu : rôles que la RLS de groupe_menus autorise en dur.
 const ROLES_MENUS = ['consultant', 'patron', 'resp_cuisine'];
 // Prix par personne des menus : la gestion commerciale, pas la brigade.
 const ROLES_PRIX = ['consultant', 'patron', 'resp_cuisine', 'hote'];
@@ -134,7 +133,7 @@ function useLargeur() {
 
 export default function Groupes({ user, etablissement }) {
   const etabId = etablissement?.id || null;
-  const canEdit = ROLES_GESTION.includes(user?.role) && canManageModule(user?.role, 'groupes');
+  const canEdit = canManageModule(user?.role, 'groupes');
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
   const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
   const voirPrix = canEdit && ROLES_PRIX.includes(user?.role);
