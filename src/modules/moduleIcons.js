@@ -1,5 +1,5 @@
 import {
-  BedDouble, BookOpen, BrushCleaning, CalendarCheck, CalendarClock, CircleQuestionMark, CookingPot, Flower2, FolderOpen,
+  BedDouble, BookOpen, BrushCleaning, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
   LayoutDashboard, LayoutGrid, ListChecks, MessageSquare, Monitor, Package, Receipt, ReceiptSwissFranc, ScrollText,
   ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wrench,
 } from 'lucide-react';
@@ -32,6 +32,7 @@ const ICONES = {
   // Branche Hôtel (lot H0).
   hebergement: BedDouble,
   etages: BrushCleaning,
+  demandes: ConciergeBell,
   faq: CircleQuestionMark,
 };
 

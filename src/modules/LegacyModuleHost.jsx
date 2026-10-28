@@ -37,6 +37,7 @@ const loadSpa = () => import('./spa/Spa.jsx');
 // Branche Hôtel (lot H0) : modules « à activer » des établissements hôteliers.
 const loadHebergement = () => import('./hebergement/Hebergement.jsx');
 const loadEtages = () => import('./etages/Etages.jsx');
+const loadDemandes = () => import('./demandes/Demandes.jsx');
 // Page d'accueil de la coque tactile (gros boutons) ; sur ordinateur, la même
 // page affiche le tableau de bord.
 const loadAccueilTactile = () => import('../layouts/AccueilTactile.jsx');
@@ -69,6 +70,7 @@ const SOP = lazy(loadSOP);
 const Spa = lazy(loadSpa);
 const Hebergement = lazy(loadHebergement);
 const Etages = lazy(loadEtages);
+const Demandes = lazy(loadDemandes);
 const AccueilTactile = lazy(loadAccueilTactile);
 
 // Modules du quotidien, préchargés en idle après le login pour que la première
@@ -251,6 +253,11 @@ export default function LegacyModuleHost({
     case 'etages': {
       return permissions.etages !== false
         ? wrap('Étages', <Etages user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'demandes': {
+      return permissions.demandes !== false
+        ? wrap('Demandes', <Demandes user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'fiches_salle': {

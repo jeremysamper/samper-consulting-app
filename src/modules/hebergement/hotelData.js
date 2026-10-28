@@ -333,3 +333,56 @@ export function totauxLinge(mouvements, jour) {
   }
   return t;
 }
+
+// ── Lot H2 : demandes interpôles ────────────────────────────────────────────
+export const POLES = [
+  { id: 'reception', label: 'Réception' },
+  { id: 'etages', label: 'Étages' },
+  { id: 'technique', label: 'Technique' },
+  { id: 'cuisine', label: 'Cuisine' },
+  { id: 'restaurant', label: 'Restaurant' },
+  { id: 'spa', label: 'Spa' },
+  { id: 'direction', label: 'Direction' },
+];
+export const PRIORITES = [
+  { id: 'basse', label: 'Basse', ton: 'neutre' },
+  { id: 'normale', label: 'Normale', ton: 'info' },
+  { id: 'haute', label: 'Haute', ton: 'warning' },
+  { id: 'urgente', label: 'Urgente', ton: 'danger' },
+];
+export const STATUTS_DEMANDE = [
+  { id: 'ouverte', label: 'Ouverte', ton: 'warning' },
+  { id: 'en_cours', label: 'En cours', ton: 'info' },
+  { id: 'faite', label: 'Faite', ton: 'success' },
+  { id: 'annulee', label: 'Annulée', ton: 'neutre' },
+];
+export const ACTIONS_DEMANDE = { creee: 'Créée', statut: 'Statut', assignation: 'Attribuée à', escalade: 'Escalade', echeance: 'Échéance', pole: 'Pôle' };
+
+// Pôle par défaut d'une personne, d'après son rôle : l'écran s'ouvre dessus.
+export function poleDuRole(role) {
+  if (role === 'receptionniste' || role === 'hote') return 'reception';
+  if (role === 'gouvernante' || role === 'femme_de_chambre') return 'etages';
+  if (role === 'technicien') return 'technique';
+  if (role === 'cuisinier' || role === 'resp_cuisine') return 'cuisine';
+  if (role === 'serveur') return 'restaurant';
+  if (role === 'praticien_spa') return 'spa';
+  return null;
+}
+
+export const demandeOuverte = (d) => d.statut === 'ouverte' || d.statut === 'en_cours';
+export const demandeEnRetard = (d, maintenantIso) => demandeOuverte(d) && !!d.echeance && d.echeance < maintenantIso;
+
+export function mapDemande(r) {
+  return {
+    id: r.id, chambreId: r.chambre_id || null, sejourId: r.sejour_id || null, origine: r.origine || 'hote', pole: r.pole || 'reception',
+    titre: r.titre || '', detail: r.detail || '', photoUrl: r.photo_url || null, priorite: r.priorite || 'normale',
+    echeance: r.echeance || null, statut: r.statut || 'ouverte', escaladee: r.escaladee === true, escaladeeAt: r.escaladee_at || null,
+    assigneeA: r.assignee_a || null, creePar: r.cree_par || null, faitePar: r.faite_par || null, faiteAt: r.faite_at || null,
+    createdAt: r.created_at || null, updatedAt: r.updated_at || null,
+  };
+}
+export function mapDemandeJournal(r) {
+  return { id: r.id, demandeId: r.demande_id, action: r.action, detail: r.detail || null, par: r.par || null, at: r.at };
+}
+export const useDemandes = (etabId, options = {}) => useTableHotel('demandes', etabId, { map: mapDemande, order: [['created_at', false]], limit: 5000, ...options });
+export const useDemandesJournal = (etabId, options = {}) => useTableHotel('demandes_journal', etabId, { map: mapDemandeJournal, order: [['at', false]], limit: 5000, ...options });
