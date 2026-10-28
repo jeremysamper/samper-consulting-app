@@ -15,7 +15,7 @@ import {
 // étages le note par déclencheur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], note = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
+export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], restaurant = null, note = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
   const s = sejour;
   const [chambreId, setChambreId] = React.useState(s.chambreId || '');
   const [erreur, setErreur] = React.useState('');
@@ -131,6 +131,32 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
         {s.demandesSpeciales && ligne('Demandes spéciales', s.demandesSpeciales, true)}
         {s.notes && ligne('Notes', s.notes, true)}
       </div>
+
+      {/* Lot H7 : réservations de table et groupes reliés au séjour. */}
+      {restaurant && (
+        <div style={f.bloc}>
+          <div style={h.sousTitre}>Restaurant</div>
+          {!restaurant.liens.length && <div style={h.detail}>Aucune réservation ni groupe relié.</div>}
+          {restaurant.liens.map((l) => (
+            <div key={l.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, color: 'var(--text)' }}><span>{l.type === 'groupe' ? 'Groupe' : 'Table'}</span> <span data-no-translate>{l.libelle}</span></span>
+              {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 8px', fontSize: 12 }} onClick={() => restaurant.onDetacher(l)}>Détacher</button>}
+            </div>
+          ))}
+          {peutGerer && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <select style={{ ...h.saisie, width: 'auto', minHeight: 36, padding: '6px 8px' }} value="" onChange={(ev) => ev.target.value && restaurant.onLier('reservation', ev.target.value)} data-no-translate>
+                <option value="">{'Relier une réservation de table…'}</option>
+                {restaurant.reservations.map((r) => <option key={r.id} value={r.id}>{r.libelle}</option>)}
+              </select>
+              <select style={{ ...h.saisie, width: 'auto', minHeight: 36, padding: '6px 8px' }} value="" onChange={(ev) => ev.target.value && restaurant.onLier('groupe', ev.target.value)} data-no-translate>
+                <option value="">{'Relier un groupe…'}</option>
+                {restaurant.groupes.map((g) => <option key={g.id} value={g.id}>{g.libelle}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Lot H4 : note de séjour et registre des personnes hébergées (lecture avec le droit Modifier). */}
       {peutGerer && (onNote || onOccupants) && (

@@ -8,8 +8,9 @@ import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, totauxNote, trierChambres,
-  useChambres, useDemandes, useForfaits, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useSejours, useSpaClients, useTarifs,
+  aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, libelleGroupe, libelleReservation, totauxNote, trierChambres,
+  useChambres, useDemandes, useForfaits, useGroupesLegers, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useReservationsLegeres,
+  useSejourLiens, useSejours, useSpaClients, useTarifs,
 } from './hotelData.js';
 import { LigneSejour, Liste, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
@@ -77,6 +78,26 @@ export default function Hebergement({ user, etablissement }) {
   const reglage = reglages.rows[0] || null;
   // Lot H5 : les forfaits, pour le choix sur le séjour.
   const forfaits = useForfaits(etabId);
+  // Lot H7 : réservations de table et groupes reliés au séjour.
+  const liens = useSejourLiens(etabId);
+  const reservations = useReservationsLegeres(etabId);
+  const groupes = useGroupesLegers(etabId);
+  const restaurantDe = (s) => {
+    if (!s) return null;
+    const mesLiens = liens.rows.filter((l) => l.sejourId === s.id).map((l) => {
+      const cible = l.type === 'groupe' ? groupes.rows.find((g) => g.id === l.cibleId) : reservations.rows.find((r) => r.id === l.cibleId);
+      return { ...l, libelle: cible ? (l.type === 'groupe' ? libelleGroupe(cible) : libelleReservation(cible)) : l.cibleId };
+    });
+    const dejaLies = new Set(mesLiens.map((l) => l.cibleId));
+    const autour = (d) => d >= s.arrivee && d <= s.depart;
+    return {
+      liens: mesLiens,
+      reservations: reservations.rows.filter((r) => !dejaLies.has(r.id) && autour(r.dateService) && r.statut !== 'annulee').slice(0, 100).map((r) => ({ id: r.id, libelle: libelleReservation(r) })),
+      groupes: groupes.rows.filter((g) => !dejaLies.has(g.id) && !g.annule && autour(g.dateEvenement)).slice(0, 100).map((g) => ({ id: g.id, libelle: libelleGroupe(g) })),
+      onLier: async (type, cibleId) => { const r = await liens.inserer({ sejour_id: s.id, type, cible_id: cibleId }); if (r.error) notify(r.error, 'error'); else notify(type === 'groupe' ? 'Groupe relié au séjour.' : 'Réservation reliée au séjour.', 'success'); },
+      onDetacher: async (l) => { const r = await liens.supprimer(l.id); if (r.error) notify(r.error, 'error'); else notify('Lien retiré.', 'success'); },
+    };
+  };
 
   const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes'];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
@@ -263,6 +284,7 @@ export default function Hebergement({ user, etablissement }) {
           hotes={hotes.rows}
           tarifs={tarifs.rows}
           forfaits={forfaits.rows}
+          restaurant={restaurantDe(fiche)}
           note={resumeNote(fiche)}
           onNote={peutGerer ? (s) => setNoteId(s.id) : null}
           onOccupants={peutGerer ? (s) => setOccupantsId(s.id) : null}

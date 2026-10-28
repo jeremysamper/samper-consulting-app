@@ -16,24 +16,24 @@ export const roles = {
 };
 
 export const defaultPermissions = {
-  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true },
-  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true },
-  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: false , demandes: true, activites: true, passations: true },
-  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true },
-  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true },
-  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: true , demandes: true, activites: true, passations: true },
+  consultant:   { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true },
+  patron:       { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true },
+  resp_cuisine: { dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: false , demandes: true, activites: true, passations: true, repas: true },
+  cuisinier:    { dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true, repas: true },
+  serveur:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true, repas: true },
+  hote:         { dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true },
   // Praticien(ne) spa : les soins en cabine. Spa & clients, son planning et la
   // messagerie ; rien de la cuisine ni de la salle.
-  praticien_spa: { dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false, hebergement: false, etages: false , demandes: false, activites: false, passations: false },
+  praticien_spa: { dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false, hebergement: false, etages: false , demandes: false, activites: false, passations: false, repas: false },
   // Rôles hôtel (lot H1). La réception tient les séjours, les réservations de
   // table et les groupes ; la gouvernante et les femmes et valets de chambre
   // tiennent les étages (la gouvernante lit aussi les séjours pour préparer
   // les arrivées) ; la technique lit les étages (chambres hors service) en
   // attendant son module (lot H8).
-  receptionniste:   { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: true, passations: true },
-  gouvernante:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: false, passations: true },
-  femme_de_chambre: { dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true },
-  technicien:       { dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true },
+  receptionniste:   { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: true, passations: true, repas: true },
+  gouvernante:      { dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: false, passations: true, repas: false },
+  femme_de_chambre: { dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false },
+  technicien:       { dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -88,6 +88,10 @@ export const manageableModules = [
   // supprimer la passation ou le message d'un autre ; écrire, lire et cocher
   // restent ouverts à toute l'équipe (RLS idem).
   { id: 'passations', label: 'Passations', defaultRoles: ['consultant', 'patron', 'receptionniste', 'gouvernante', 'resp_cuisine'] },
+  // repas (lot H7) : « gérer » = corriger les articles d'une commande de room
+  // service, la supprimer ; prendre une commande et la faire avancer restent
+  // ouverts à toute l'équipe (RLS et déclencheur hotel_h7_coherence).
+  { id: 'repas', label: 'Repas hôtel', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'receptionniste', 'serveur'] },
 ];
 
 // Rôles que la BASE laisse écrire dans un module (RLS fondée sur le rôle, relevée
@@ -190,6 +194,8 @@ export const tousLesNavItems = [
   { id: 'activites', label: 'Activités', icon: '✦', group: 'Hôtel', permKey: 'activites' },
   // Lot H6 : cahier de passation, canaux de pôle, tâches récurrentes.
   { id: 'passations', label: 'Passations', icon: '✎', group: 'Hôtel', permKey: 'passations' },
+  // Lot H7 : couverts des repas, room service, réservations liées au séjour.
+  { id: 'repas', label: 'Repas hôtel', icon: '◌', group: 'Hôtel', permKey: 'repas' },
   { id: 'faq', label: 'FAQ & Assistant', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' }
 ];
 
@@ -216,7 +222,7 @@ export const etabToggleableModules = navItems.filter((item) => !alwaysOnModuleKe
 // réglé (modules_actifs NULL) ne les voit donc pas : le spa n'apparaît pas au
 // Rucher le jour de sa mise en ligne, ni Hébergement et Étages aux hôtels déjà
 // en base tant que le consultant ne les a pas cochés.
-export const optInModuleKeys = ['spa', 'hebergement', 'etages', 'demandes', 'activites', 'passations'];
+export const optInModuleKeys = ['spa', 'hebergement', 'etages', 'demandes', 'activites', 'passations', 'repas'];
 
 // Modules d'un établissement jamais réglé (modules_actifs NULL).
 export const defaultEtabModuleKeys = etabToggleableModules
@@ -246,7 +252,7 @@ export const estEtablissementSpa = (etablissement) => estTypeSpa(etablissement?.
 // modules_actifs au choix du type, le consultant ajuste ensuite. Un hôtel déjà
 // en base ne change pas tant que ses modules ne sont pas recochés.
 export const TYPES_HOTEL = ['Hôtel', 'Hôtel-Restaurant'];
-export const MODULES_HOTEL = ['hebergement', 'etages', 'demandes', 'activites', 'passations'];
+export const MODULES_HOTEL = ['hebergement', 'etages', 'demandes', 'activites', 'passations', 'repas'];
 export const estTypeHotel = (type) => TYPES_HOTEL.some((t) => t.toLowerCase() === normaliserType(type));
 export const estEtablissementHotel = (etablissement) => estTypeHotel(etablissement?.type);
 

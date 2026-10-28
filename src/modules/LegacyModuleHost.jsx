@@ -40,6 +40,7 @@ const loadEtages = () => import('./etages/Etages.jsx');
 const loadDemandes = () => import('./demandes/Demandes.jsx');
 const loadActivites = () => import('./activites/Activites.jsx');
 const loadPassations = () => import('./passations/Passations.jsx');
+const loadRepas = () => import('./repas/Repas.jsx');
 // Page d'accueil de la coque tactile (gros boutons) ; sur ordinateur, la même
 // page affiche le tableau de bord.
 const loadAccueilTactile = () => import('../layouts/AccueilTactile.jsx');
@@ -75,6 +76,7 @@ const Etages = lazy(loadEtages);
 const Demandes = lazy(loadDemandes);
 const Activites = lazy(loadActivites);
 const Passations = lazy(loadPassations);
+const Repas = lazy(loadRepas);
 const AccueilTactile = lazy(loadAccueilTactile);
 
 // Modules du quotidien, préchargés en idle après le login pour que la première
@@ -272,6 +274,11 @@ export default function LegacyModuleHost({
     case 'passations': {
       return permissions.passations !== false
         ? wrap('Passations', <Passations user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'repas': {
+      return permissions.repas !== false
+        ? wrap('Repas hôtel', <Repas user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'fiches_salle': {

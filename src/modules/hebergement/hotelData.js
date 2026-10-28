@@ -838,3 +838,55 @@ export function passationsNonLues(passations, lectures, userId, aujourdhui) {
   const lues = new Set(lectures.filter((l) => l.userId === userId).map((l) => l.passationId));
   return passations.filter((p) => p.jour >= depuis && !lues.has(p.id) && p.createdBy !== userId);
 }
+
+// ── Lot H7 : repas, room service, liens restaurant ─────────────────────────
+export const STATUTS_ROOM_SERVICE = [
+  { id: 'recue', label: 'Reçue', ton: 'warning' },
+  { id: 'en_cuisine', label: 'En cuisine', ton: 'info' },
+  { id: 'livree', label: 'Livrée', ton: 'success' },
+  { id: 'annulee', label: 'Annulée', ton: 'neutre' },
+];
+export const REPAS = [
+  { id: 'petit_dejeuner', label: 'Petit-déjeuner' },
+  { id: 'dejeuner', label: 'Déjeuner' },
+  { id: 'diner', label: 'Dîner' },
+];
+// Ce qu'une pension comprend : demi-pension = petit-déjeuner et dîner.
+export function pensionComprend(pension, repas) {
+  if (pension === 'aucune') return false;
+  if (repas === 'petit_dejeuner') return true;
+  if (pension === 'petit_dejeuner') return false;
+  if (pension === 'demi') return repas === 'diner';
+  return true;
+}
+export function mapRoomService(r) {
+  return {
+    id: r.id, sejourId: r.sejour_id, chambreId: r.chambre_id || null,
+    articles: Array.isArray(r.articles) ? r.articles.map((a) => ({ libelle: a.libelle || '', quantite: Number(a.quantite) || 1, prix: Number(a.prix) || 0 })) : [],
+    total: Number(r.total) || 0, statut: r.statut || 'recue', souhaiteA: r.souhaite_a || null, note: r.note || '', porteeSurNote: r.portee_sur_note === true,
+    createdBy: r.created_by || null, livreePar: r.livree_par || null, livreeAt: r.livree_at || null, createdAt: r.created_at || null,
+  };
+}
+export const mapLien = (r) => ({ id: r.id, sejourId: r.sejour_id, type: r.type, cibleId: r.cible_id, createdBy: r.created_by || null });
+export const mapReservationLegere = (r) => ({ id: r.id, dateService: r.date_service || '', service: r.service || '', heure: r.heure_arrivee ? String(r.heure_arrivee).slice(0, 5) : '', nbCouverts: Number(r.nb_couverts) || 0, nom: r.nom || '', statut: r.statut || '' });
+export const mapGroupeLeger = (r) => ({ id: r.id, dateEvenement: r.date_evenement || '', heure: r.heure ? String(r.heure).slice(0, 5) : '', nom: r.nom || '', nbPax: Number(r.nb_pax) || 0, typeGroupe: r.type_groupe || '', annule: r.annule === true });
+export const useRoomService = (etabId, options = {}) => useTableHotel('room_service_commandes', etabId, { map: mapRoomService, order: [['created_at', false]], limit: 3000, ...options });
+export const useSejourLiens = (etabId, options = {}) => useTableHotel('sejour_liens', etabId, { map: mapLien, limit: 10000, ...options });
+export const useReservationsLegeres = (etabId, options = {}) => useTableHotel('reservations', etabId, { map: mapReservationLegere, order: [['date_service', false]], limit: 3000, ...options });
+export const useGroupesLegers = (etabId, options = {}) => useTableHotel('groupe_evenements', etabId, { map: mapGroupeLeger, order: [['date_evenement', false]], limit: 2000, ...options });
+
+export const totalArticles = (articles) => Math.round(articles.reduce((n, a) => n + (Number(a.quantite) || 0) * (Number(a.prix) || 0), 0) * 100) / 100;
+export const commandeOuverte = (c) => c.statut === 'recue' || c.statut === 'en_cuisine';
+
+// Couverts d'un repas un jour donné : les séjours en maison (ou arrivant ce
+// jour) dont la pension comprend ce repas et qui dorment la nuit concernée :
+// petit-déjeuner du jour J = nuit J-1 (arrivée avant J, départ >= J) ;
+// déjeuner et dîner du jour J = présents la nuit J (arrivée <= J, départ > J).
+export function couvertsRepas(sejours, jour, repas) {
+  return sejours
+    .filter((s) => (s.statut === 'en_maison' || s.statut === 'prevu') && pensionComprend(s.pension, repas))
+    .filter((s) => (repas === 'petit_dejeuner' ? s.arrivee < jour && s.depart >= jour : s.arrivee <= jour && s.depart > jour))
+    .sort((a, b) => a.nomHote.localeCompare(b.nomHote, 'fr'));
+}
+export const libelleReservation = (r) => `${dateCourte(r.dateService)}${r.heure ? ` ${r.heure}` : ''}, ${r.nbCouverts} couv., ${r.nom}`;
+export const libelleGroupe = (g) => `${dateCourte(g.dateEvenement)}${g.heure ? ` ${g.heure}` : ''}, ${g.nom}, ${g.nbPax} pax`;
