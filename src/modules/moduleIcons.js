@@ -36,6 +36,7 @@ const ICONES = {
   activites: Ticket,
   passations: NotebookPen,
   repas: Croissant,
+  technique: Wrench,
   faq: CircleQuestionMark,
 };
 

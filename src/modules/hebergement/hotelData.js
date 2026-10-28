@@ -207,6 +207,11 @@ export function messageErreur(error) {
   if (/^SEJOUR_AVEC_HISTORIQUE:/.test(msg)) return 'Ce séjour porte une note, un registre, des inscriptions ou des consommations : il s\'annule, il ne se supprime pas.';
   if (/^INSCRIPTION_RESERVEE:/.test(msg)) return 'Déplacer une inscription demande le droit Modifier d\'Activités.';
   if (/^DROIT_INCONNU:/.test(msg)) return 'Ce droit n\'est pas dans le forfait du séjour.';
+  // Lot H8 : ordres de travail, préventif ; verrou H7 des commandes portées sur la note.
+  if (/^ORDRE_RESERVE:/.test(msg)) return msg.replace(/^ORDRE_RESERVE:\s*/, '').replace(/^./, (c) => c.toUpperCase()) + '.';
+  if (/^COMMANDE_PORTEE:/.test(msg)) return 'Cette commande est portée sur la note : elle ne change plus. La note se corrige avec le droit Modifier d\'Hébergement.';
+  if (/^DATE_FUTURE:/.test(msg)) return 'La dernière fois ne peut pas être dans le futur.';
+  if (/^(EQUIPEMENT|PLAN|ASSIGNE)_INCONNU:|^DEMANDE_INCONNUE:/.test(msg)) return 'Cet élément n\'appartient pas à l\'établissement.';
   if (error.code === '42501' && /CHAMBRE_FICHE_RESERVEE/.test(error.message || '')) {
     return 'La fiche de la chambre se modifie avec le droit Hébergement.';
   }
@@ -890,3 +895,53 @@ export function couvertsRepas(sejours, jour, repas) {
 }
 export const libelleReservation = (r) => `${dateCourte(r.dateService)}${r.heure ? ` ${r.heure}` : ''}, ${r.nbCouverts} couv., ${r.nom}`;
 export const libelleGroupe = (g) => `${dateCourte(g.dateEvenement)}${g.heure ? ` ${g.heure}` : ''}, ${g.nom}, ${g.nbPax} pax`;
+
+// ── Lot H8 : technique ──────────────────────────────────────────────────────
+export const CATEGORIES_TECHNIQUE = [
+  { id: 'chauffage', label: 'Chauffage' },
+  { id: 'plomberie', label: 'Plomberie' },
+  { id: 'electricite', label: 'Électricité' },
+  { id: 'ascenseur', label: 'Ascenseur' },
+  { id: 'cuisine', label: 'Cuisine' },
+  { id: 'spa', label: 'Spa' },
+  { id: 'securite', label: 'Sécurité' },
+  { id: 'batiment', label: 'Bâtiment' },
+  { id: 'autre', label: 'Autre' },
+];
+export const STATUTS_ORDRE = [
+  { id: 'ouvert', label: 'Ouvert', ton: 'warning' },
+  { id: 'planifie', label: 'Planifié', ton: 'info' },
+  { id: 'en_cours', label: 'En cours', ton: 'info' },
+  { id: 'termine', label: 'Terminé', ton: 'success' },
+  { id: 'annule', label: 'Annulé', ton: 'neutre' },
+];
+export const ORDRE_PRIORITE = { urgente: 0, haute: 1, normale: 2, basse: 3 };
+export function mapEquipement(r) {
+  return { id: r.id, nom: r.nom || '', categorie: r.categorie || 'autre', lieu: r.lieu || '', chambreId: r.chambre_id || null, numeroSerie: r.numero_serie || '', fournisseur: r.fournisseur || '', actif: r.actif !== false, notes: r.notes || '' };
+}
+export function mapPlan(r) {
+  return {
+    id: r.id, titre: r.titre || '', detail: r.detail || '', categorie: r.categorie || 'autre', equipementId: r.equipement_id || null, chambreId: r.chambre_id || null, lieu: r.lieu || '',
+    periodiciteJours: Number(r.periodicite_jours) || 30, derniereFois: r.derniere_fois || '', prochaineFois: r.prochaine_fois || '', actif: r.actif !== false,
+  };
+}
+export function mapOrdre(r) {
+  return {
+    id: r.id, titre: r.titre || '', detail: r.detail || '', categorie: r.categorie || 'autre', priorite: r.priorite || 'normale', statut: r.statut || 'ouvert',
+    chambreId: r.chambre_id || null, equipementId: r.equipement_id || null, lieu: r.lieu || '', demandeId: r.demande_id || null, planId: r.plan_id || null,
+    prevuLe: r.prevu_le || '', assigneA: r.assigne_a || null, tempsMinutes: r.temps_minutes == null ? null : Number(r.temps_minutes), cout: r.cout == null ? null : Number(r.cout),
+    pieces: r.pieces || '', photoUrl: r.photo_url || null, compteRendu: r.compte_rendu || '', terminePar: r.termine_par || null, termineAt: r.termine_at || null,
+    createdBy: r.created_by || null, createdAt: r.created_at || null, updatedAt: r.updated_at || null,
+  };
+}
+export const useEquipements = (etabId, options = {}) => useTableHotel('equipements', etabId, { map: mapEquipement, order: [['categorie', true], ['nom', true]], limit: 2000, ...options });
+export const useMaintenancePlans = (etabId, options = {}) => useTableHotel('maintenance_plans', etabId, { map: mapPlan, order: [['prochaine_fois', true]], limit: 2000, ...options });
+export const useOrdresTravail = (etabId, options = {}) => useTableHotel('ordres_travail', etabId, { map: mapOrdre, order: [['created_at', false]], limit: 5000, ...options });
+export const ordreOuvert = (o) => o.statut === 'ouvert' || o.statut === 'planifie' || o.statut === 'en_cours';
+export const planEnRetard = (p, jour) => p.actif && p.prochaineFois && p.prochaineFois < jour;
+export const planDu = (p, jour) => p.actif && p.prochaineFois && p.prochaineFois <= jour;
+// Ordres ouverts, les plus pressants d'abord : urgence, puis date prévue, puis ancienneté.
+export function trierOrdres(ordres) {
+  return [...ordres].sort((a, b) => (ORDRE_PRIORITE[a.priorite] - ORDRE_PRIORITE[b.priorite])
+    || String(a.prevuLe || '9999').localeCompare(String(b.prevuLe || '9999')) || String(a.createdAt).localeCompare(String(b.createdAt)));
+}
