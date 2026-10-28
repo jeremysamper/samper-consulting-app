@@ -144,6 +144,8 @@ export function mapSejour(r) {
     chambreId: r.chambre_id || null,
     clientId: r.client_id || null,
     hoteId: r.hote_id || null,
+    tarifId: r.tarif_id || null,
+    prixNuit: r.prix_nuit == null ? null : Number(r.prix_nuit),
     nomHote: r.nom_hote || '',
     nbAdultes: Number(r.nb_adultes) || 0,
     nbEnfants: Number(r.nb_enfants) || 0,
@@ -199,7 +201,7 @@ export function messageErreur(error) {
 }
 
 // ── Lecture d'une table, en direct (realtime) ───────────────────────────────
-export function useTableHotel(table, etabId, { map, filtres = [], cle = '', order = [], limit = 5000, actif = true } = {}) {
+export function useTableHotel(table, etabId, { map, filtres = [], cle = '', order = [], limit = 5000, actif = true, colonneId = 'id' } = {}) {
   const [rows, setRows] = useState([]);
   const [status, setStatus] = useState(etabId && actif ? 'loading' : 'ready');
   const reloadRef = useRef(null);
@@ -269,21 +271,21 @@ export function useTableHotel(table, etabId, { map, filtres = [], cle = '', orde
         return { data: remplacer(data), error: null };
       },
       async modifier(id, valeurs) {
-        const { data, error } = await supabase.from(table).update(valeurs).eq('id', id).select().single();
+        const { data, error } = await supabase.from(table).update(valeurs).eq(colonneId, id).select().single();
         if (error) return { data: null, error: messageErreur(error) };
         return { data: remplacer(data), error: null };
       },
       // Une suppression refusée par la RLS ne lève pas d'erreur : elle touche
       // zéro ligne. On relit ce qui a été supprimé avant de l'annoncer.
       async supprimer(id) {
-        const { data, error } = await supabase.from(table).delete().eq('id', id).select('id');
+        const { data, error } = await supabase.from(table).delete().eq(colonneId, id).select(colonneId);
         if (error) return { error: messageErreur(error) };
         if (!data || !data.length) return { error: 'Suppression impossible : ton rôle ne le permet pas, ou l\'élément n\'existe plus.' };
         setRows((liste) => liste.filter((x) => x.id !== id));
         return { error: null };
       },
     };
-  }, [table, etabId]);
+  }, [table, etabId, colonneId]);
 
   return { rows, status, reload, ...actions };
 }
@@ -417,3 +419,253 @@ export const mapClientVoisin = (r) => ({ id: r.id, prenom: r.prenom || '', nom: 
 export const useHotes = (etabId, options = {}) => useTableHotel('hotes', etabId, { map: mapHote, order: [['nom', true], ['prenom', true]], limit: 10000, ...options });
 export const useResaClients = (etabId, options = {}) => useTableHotel('resa_clients', etabId, { map: mapClientVoisin, order: [['nom', true]], limit: 10000, ...options });
 export const useSpaClients = (etabId, options = {}) => useTableHotel('spa_clients', etabId, { map: mapClientVoisin, order: [['nom', true]], limit: 10000, ...options });
+
+// ── Lot H4 : tarifs, note de séjour, occupants et registre ─────────────────
+export const TYPES_LIGNE = [
+  { id: 'nuitee', label: 'Nuitée' },
+  { id: 'pension', label: 'Pension' },
+  { id: 'taxe_sejour', label: 'Taxe de séjour' },
+  { id: 'taxe_hebergement', label: 'Taxe d\'hébergement' },
+  { id: 'extra', label: 'Extra' },
+  { id: 'remise', label: 'Remise' },
+  { id: 'paiement', label: 'Encaissement' },
+];
+// Lignes que « Nuitées et taxes » recalcule ; les autres sont saisies à la main.
+export const TYPES_AUTOMATIQUES = ['nuitee', 'pension', 'taxe_sejour', 'taxe_hebergement'];
+export const PIECES_IDENTITE = [
+  { id: '', label: 'Aucune' },
+  { id: 'passeport', label: 'Passeport' },
+  { id: 'carte_identite', label: 'Carte d\'identité' },
+  { id: 'permis', label: 'Permis de séjour' },
+  { id: 'autre', label: 'Autre pièce' },
+];
+
+export function mapReglages(r) {
+  return {
+    id: r.etablissement_id, etablissementId: r.etablissement_id, commune: r.commune || '',
+    taxeSejourAdulte: Number(r.taxe_sejour_adulte) || 0, taxeSejourEnfant: Number(r.taxe_sejour_enfant) || 0,
+    ageEnfantExonere: Number(r.age_enfant_exonere) || 0, ageEnfantReduit: Number(r.age_enfant_reduit) || 0,
+    taxeHebergement: Number(r.taxe_hebergement) || 0, tvaTaux: r.tva_taux == null ? 3.8 : Number(r.tva_taux),
+    numeroHesta: r.numero_hesta || '', mentionNote: r.mention_note || '', updatedAt: r.updated_at || null,
+  };
+}
+export const REGLAGES_DEFAUT = { commune: '', taxeSejourAdulte: 0, taxeSejourEnfant: 0, ageEnfantExonere: 6, ageEnfantReduit: 16, taxeHebergement: 0, tvaTaux: 3.8, numeroHesta: '', mentionNote: '' };
+export function mapTarif(r) {
+  return {
+    id: r.id, nom: r.nom || '', categorie: r.categorie || '', pension: r.pension || 'petit_dejeuner', prixNuit: Number(r.prix_nuit) || 0,
+    personnesIncluses: Number(r.personnes_incluses) || 1, prixPersonneSup: Number(r.prix_personne_sup) || 0, prixEnfant: Number(r.prix_enfant) || 0,
+    valableDu: r.valable_du || '', valableAu: r.valable_au || '', actif: r.actif !== false, ordre: Number(r.ordre) || 0,
+  };
+}
+export function mapOccupant(r) {
+  return {
+    id: r.id, sejourId: r.sejour_id, hoteId: r.hote_id || null, prenom: r.prenom || '', nom: r.nom || '', dateNaissance: r.date_naissance || '',
+    nationalite: r.nationalite || '', domicileAdresse: r.domicile_adresse || '', domicileLocalite: r.domicile_localite || '', domicilePays: r.domicile_pays || '',
+    pieceType: r.piece_type || '', pieceNumero: r.piece_numero || '', arrivee: r.arrivee || '', depart: r.depart || '',
+    exonereTaxe: r.exonere_taxe === true, exonereMotif: r.exonere_motif || '', createdBy: r.created_by || null, createdAt: r.created_at || null,
+  };
+}
+export function mapLigne(r) {
+  return {
+    id: r.id, sejourId: r.sejour_id, jour: r.jour || '', type: r.type || 'extra', libelle: r.libelle || '', quantite: Number(r.quantite) || 0,
+    prixUnitaire: Number(r.prix_unitaire) || 0, montant: Number(r.montant) || 0, tvaTaux: r.tva_taux == null ? null : Number(r.tva_taux),
+    note: r.note || '', createdBy: r.created_by || null, createdAt: r.created_at || null,
+  };
+}
+export const useTarifs = (etabId, options = {}) => useTableHotel('tarifs', etabId, { map: mapTarif, order: [['ordre', true], ['nom', true]], limit: 500, ...options });
+// Une ligne par établissement, sans colonne id : la clé est etablissement_id.
+export const useReglagesHotel = (etabId, options = {}) => useTableHotel('hotel_reglages', etabId, { map: mapReglages, limit: 1, colonneId: 'etablissement_id', ...options });
+export const useOccupants = (etabId, options = {}) => useTableHotel('sejour_occupants', etabId, { map: mapOccupant, order: [['arrivee', true], ['nom', true]], limit: 20000, ...options });
+export const useLignesSejour = (etabId, options = {}) => useTableHotel('sejour_lignes', etabId, { map: mapLigne, order: [['jour', true], ['created_at', true]], limit: 50000, ...options });
+
+export const nuitsDe = (s) => Math.max(0, Math.round((Date.parse(`${s.depart}T12:00:00`) - Date.parse(`${s.arrivee}T12:00:00`)) / 86400000));
+// Montant en francs : « 1'234.50 ».
+export function chf(n) {
+  const v = Number(n) || 0;
+  const [ent, dec] = Math.abs(v).toFixed(2).split('.');
+  return `${v < 0 ? '-' : ''}${ent.replace(/\B(?=(\d{3})+(?!\d))/g, '\'')}.${dec}`;
+}
+// Âge révolu d'une personne à une date donnée, ou null sans date de naissance.
+export function ageAu(dateNaissance, jour) {
+  if (!dateNaissance || !jour) return null;
+  const [ny, nm, nd] = dateNaissance.split('-').map(Number);
+  const [jy, jm, jd] = jour.split('-').map(Number);
+  let age = jy - ny;
+  if (jm < nm || (jm === nm && jd < nd)) age -= 1;
+  return age;
+}
+// Tarifs utilisables pour un séjour : actifs, de la catégorie de la chambre
+// (ou sans catégorie), valables le jour d'arrivée.
+export function tarifsApplicables(tarifs, sejour, chambre) {
+  return tarifs.filter((t) => (t.actif || t.id === sejour?.tarifId)
+    && (!t.categorie || !chambre?.categorie || t.categorie === chambre.categorie)
+    && (!t.valableDu || !sejour?.arrivee || t.valableDu <= sejour.arrivee)
+    && (!t.valableAu || !sejour?.arrivee || t.valableAu >= sejour.arrivee));
+}
+export const prixNuitDe = (sejour, tarif) => (sejour?.prixNuit != null ? sejour.prixNuit : tarif ? tarif.prixNuit : null);
+
+// Lignes automatiques d'un séjour : une nuitée par nuit au prix convenu (ou du
+// tarif), le supplément des personnes au-delà des personnes incluses, les
+// enfants, puis les taxes par personne et par nuit. Les occupants enregistrés
+// font foi pour les taxes (âge, exonération) ; sans occupants, les nombres du
+// séjour (enfants au tarif enfant). Sans tarif ni prix convenu, aucune nuitée.
+export function lignesAutomatiques(sejour, tarif, reglages, occupants = []) {
+  const nuits = nuitsDe(sejour);
+  const lignes = [];
+  if (!nuits) return lignes;
+  const prix = prixNuitDe(sejour, tarif);
+  const r = reglages || REGLAGES_DEFAUT;
+  const tva = r.tvaTaux;
+  if (prix != null) {
+    lignes.push({ jour: sejour.arrivee, type: 'nuitee', libelle: `Nuitée${tarif ? `, ${tarif.nom}` : ''}`, quantite: nuits, prix_unitaire: prix, tva_taux: tva });
+    const incluses = tarif ? tarif.personnesIncluses : 2;
+    const adultesSup = Math.max(0, (sejour.nbAdultes || 0) - incluses);
+    if (tarif && adultesSup > 0 && tarif.prixPersonneSup > 0) {
+      lignes.push({ jour: sejour.arrivee, type: 'nuitee', libelle: 'Personne supplémentaire', quantite: nuits * adultesSup, prix_unitaire: tarif.prixPersonneSup, tva_taux: tva });
+    }
+    if (tarif && (sejour.nbEnfants || 0) > 0 && tarif.prixEnfant > 0) {
+      lignes.push({ jour: sejour.arrivee, type: 'nuitee', libelle: 'Enfant', quantite: nuits * sejour.nbEnfants, prix_unitaire: tarif.prixEnfant, tva_taux: tva });
+    }
+  }
+  const mesOccupants = occupants.filter((o) => o.sejourId === sejour.id);
+  let adultes = 0;
+  let enfants = 0;
+  if (mesOccupants.length) {
+    for (const o of mesOccupants) {
+      const age = ageAu(o.dateNaissance, sejour.arrivee);
+      if (o.exonereTaxe || (age != null && age < r.ageEnfantExonere)) continue;
+      if (age != null && age < r.ageEnfantReduit) enfants += 1;
+      else adultes += 1;
+    }
+  } else {
+    adultes = sejour.nbAdultes || 0;
+    enfants = sejour.nbEnfants || 0;
+  }
+  if (r.taxeSejourAdulte > 0 && adultes > 0) lignes.push({ jour: sejour.arrivee, type: 'taxe_sejour', libelle: 'Taxe de séjour, adulte', quantite: nuits * adultes, prix_unitaire: r.taxeSejourAdulte, tva_taux: null });
+  if (r.taxeSejourEnfant > 0 && enfants > 0) lignes.push({ jour: sejour.arrivee, type: 'taxe_sejour', libelle: 'Taxe de séjour, enfant', quantite: nuits * enfants, prix_unitaire: r.taxeSejourEnfant, tva_taux: null });
+  const assujettis = adultes + enfants;
+  if (r.taxeHebergement > 0 && assujettis > 0) lignes.push({ jour: sejour.arrivee, type: 'taxe_hebergement', libelle: 'Taxe d\'hébergement', quantite: nuits * assujettis, prix_unitaire: r.taxeHebergement, tva_taux: null });
+  return lignes;
+}
+
+// Totaux d'une note : total dû (hors encaissements), encaissé, solde, TVA incluse.
+export function totauxNote(lignes) {
+  let total = 0;
+  let encaisse = 0;
+  let tva = 0;
+  for (const l of lignes) {
+    if (l.type === 'paiement') encaisse += -l.montant;
+    else {
+      total += l.montant;
+      if (l.tvaTaux) tva += l.montant - l.montant / (1 + l.tvaTaux / 100);
+    }
+  }
+  const arrondi = (x) => Math.round(x * 100) / 100;
+  return { total: arrondi(total), encaisse: arrondi(encaisse), solde: arrondi(total - encaisse), tva: arrondi(tva) };
+}
+
+// ── Registre et statistiques d'un mois (YYYY-MM) ────────────────────────────
+export const premierDuMois = (mois) => `${mois}-01`;
+export function finDuMois(mois) {
+  const [y, m] = mois.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+export const joursDuMois = (mois) => Number(finDuMois(mois).slice(8, 10));
+// Nuits d'un intervalle [arrivee, depart) qui tombent dans le mois.
+export function nuitsDansLeMois(arrivee, depart, mois) {
+  const debut = premierDuMois(mois);
+  const fin = zurichAjouterJours(finDuMois(mois), 1);
+  const a = arrivee > debut ? arrivee : debut;
+  const d = depart < fin ? depart : fin;
+  return d > a ? nuitsDe({ arrivee: a, depart: d }) : 0;
+}
+const sejourCompte = (s) => s.statut === 'en_maison' || s.statut === 'parti';
+
+// Chiffres du mois : nuitées chambres (séjours en maison ou partis), nuitées
+// personnes (occupants, sinon personnes du séjour), arrivées, taux d'occupation
+// (nuitées chambres sur chambres actives fois jours), durée moyenne, prix
+// moyen par nuitée vendue (lignes nuitée du mois), taxes du mois, et la
+// répartition HESTA par pays de domicile.
+export function statsMois({ sejours, chambres, occupants, lignes, mois }) {
+  const debut = premierDuMois(mois);
+  const fin = finDuMois(mois);
+  const duMois = sejours.filter((s) => sejourCompte(s) && s.arrivee <= fin && s.depart > debut);
+  const nuiteesChambres = duMois.reduce((n, s) => n + nuitsDansLeMois(s.arrivee, s.depart, mois), 0);
+  const arrivees = duMois.filter((s) => s.arrivee >= debut && s.arrivee <= fin);
+  const idsDuMois = new Set(duMois.map((s) => s.id));
+  const parSejour = new Map();
+  for (const o of occupants) {
+    if (!idsDuMois.has(o.sejourId)) continue;
+    parSejour.set(o.sejourId, [...(parSejour.get(o.sejourId) || []), o]);
+  }
+  let nuiteesPersonnes = 0;
+  let arriveesPersonnes = 0;
+  const parPays = new Map();
+  const compter = (pays, nuitees, arriveesN) => {
+    const cle = (pays || '').trim() || 'Non renseigné';
+    const e = parPays.get(cle) || { pays: cle, arrivees: 0, nuitees: 0 };
+    e.nuitees += nuitees;
+    e.arrivees += arriveesN;
+    nuiteesPersonnes += nuitees;
+    arriveesPersonnes += arriveesN;
+    parPays.set(cle, e);
+  };
+  for (const s of duMois) {
+    const liste = parSejour.get(s.id);
+    if (liste && liste.length) {
+      for (const o of liste) {
+        const arr = o.arrivee || s.arrivee;
+        compter(o.domicilePays || o.nationalite, nuitsDansLeMois(arr, o.depart || s.depart, mois), arr >= debut && arr <= fin ? 1 : 0);
+      }
+    } else {
+      const p = personnes(s) || 1;
+      compter('', nuitsDansLeMois(s.arrivee, s.depart, mois) * p, s.arrivee >= debut && s.arrivee <= fin ? p : 0);
+    }
+  }
+  const chambresActives = chambres.filter((c) => c.actif).length;
+  const capacite = chambresActives * joursDuMois(mois);
+  const lignesDuMois = lignes.filter((l) => l.jour >= debut && l.jour <= fin);
+  const caNuitees = lignesDuMois.filter((l) => l.type === 'nuitee').reduce((n, l) => n + l.montant, 0);
+  const taxes = { sejour: 0, hebergement: 0 };
+  for (const l of lignesDuMois) {
+    if (l.type === 'taxe_sejour') taxes.sejour += l.montant;
+    if (l.type === 'taxe_hebergement') taxes.hebergement += l.montant;
+  }
+  const dureeMoyenne = arrivees.length ? arrivees.reduce((n, s) => n + nuitsDe(s), 0) / arrivees.length : 0;
+  return {
+    nuiteesChambres, nuiteesPersonnes, arrivees: arrivees.length, arriveesPersonnes,
+    tauxOccupation: capacite ? nuiteesChambres / capacite : 0, chambresActives,
+    dureeMoyenne, prixMoyen: nuiteesChambres ? caNuitees / nuiteesChambres : 0, caNuitees,
+    taxes, parPays: [...parPays.values()].sort((a, b) => b.nuitees - a.nuitees || a.pays.localeCompare(b.pays, 'fr')),
+  };
+}
+
+// Registre des nuitées du mois : une ligne par personne hébergée dont le
+// séjour touche le mois (LHR, RS 935.1 : le registre se tient par personne).
+export function registreDuMois({ sejours, occupants, chambres, mois }) {
+  const debut = premierDuMois(mois);
+  const fin = finDuMois(mois);
+  const parId = new Map(sejours.map((s) => [s.id, s]));
+  const numero = (id) => chambres.find((c) => c.id === id)?.numero || '';
+  return occupants
+    .filter((o) => { const s = parId.get(o.sejourId); return s && sejourCompte(s) && o.arrivee <= fin && o.depart > debut; })
+    .map((o) => ({ ...o, chambre: numero(parId.get(o.sejourId)?.chambreId), nomSejour: parId.get(o.sejourId)?.nomHote || '' }))
+    .sort((a, b) => a.arrivee.localeCompare(b.arrivee) || a.nom.localeCompare(b.nom, 'fr'));
+}
+
+// CSV à points-virgules (Excel suisse), guillemets doublés, BOM pour les accents.
+export function versCsv(entetes, lignes) {
+  const cellule = (v) => { const s = v == null ? '' : String(v); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  return `﻿${[entetes, ...lignes].map((l) => l.map(cellule).join(';')).join('\r\n')}`;
+}
+export function telechargerTexte(nomFichier, contenu, type = 'text/csv;charset=utf-8') {
+  const blob = new Blob([contenu], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomFichier;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

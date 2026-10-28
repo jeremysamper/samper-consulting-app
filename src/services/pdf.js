@@ -1773,6 +1773,179 @@ export const pdfUtils = {
   // payload : { groups:[{categorie, items:[{nom, besoinText, qtyText, coche}]}], totalCount, cocheCount }
   // options : { etablissement, autoPrint, filename, logoDataUrl }
   // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+  // HÔTEL (lot H4) - note de séjour et bulletin d'arrivée, vectoriels,
+  // construits à partir des données : ils restent en français quelle que
+  // soit la langue affichée, comme les autres documents de registre.
+  // payload note : { hote, chambre, arrivee, depart, nuits, personnes,
+  //   lignes:[{ jour, libelle, quantite, prixUnitaire, montant }],
+  //   total, encaisse, solde, tva, tvaTaux, mention }
+  // ═══════════════════════════════════════════════════════════════
+  async exportNoteSejourPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined ? options.logoDataUrl : await this._resolveLogoDataUrl(etab);
+      const doc = this._nouveauDocA4(jsPDF);
+      this._renderNoteSejour(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      doc.save(options.filename || 'note-de-sejour.pdf');
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportNoteSejourPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderNoteSejour(doc, payload, options = {}) {
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
+    const LINE_H = 4.6;
+    const bodyBottom = PAGE_H - M;
+    const fr = (d) => (d ? String(d).split('-').reverse().join('.') : '');
+    const chf = (n) => {
+      const v = Number(n) || 0;
+      const [ent, dec] = Math.abs(v).toFixed(2).split('.');
+      return `${v < 0 ? '-' : ''}${ent.replace(/\B(?=(\d{3})+(?!\d))/g, "'")}.${dec}`;
+    };
+    const drawHeader = () => this._enTeteDocument(doc, {
+      titre: 'Note de séjour',
+      sousTitre: pdfSafeText(String(payload.hote || '')),
+      meta: [`du ${fr(payload.arrivee)} au ${fr(payload.depart)}`, payload.nuits ? `${payload.nuits} nuit${payload.nuits > 1 ? 's' : ''}` : '', payload.chambre ? `chambre ${payload.chambre}` : '', payload.personnes || ''].filter(Boolean).join(', '),
+      etablissement: etabName,
+      logoDataUrl: options.logoDataUrl || null,
+    });
+    let y = drawHeader();
+    const ensureSpace = (h) => { if (y + h > bodyBottom) { doc.addPage(); y = drawHeader(); } };
+
+    const colDate = M + 2.5, colLib = M + 24, colQte = M + contentW - 52, colPrix = M + contentW - 30, colMont = M + contentW - 2.5;
+    y = this._bandeTableau(doc, [
+      { label: 'Date', x: colDate }, { label: 'Désignation', x: colLib },
+      { label: 'Quantité', x: colQte, align: 'right' }, { label: 'Prix', x: colPrix, align: 'right' }, { label: 'Montant', x: colMont, align: 'right' },
+    ], M, y - 4, contentW);
+    const lignes = Array.isArray(payload.lignes) ? payload.lignes : [];
+    if (!lignes.length) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      doc.text('Aucune ligne sur cette note.', M + 2.5, y + 2);
+      y += 8;
+    }
+    lignes.forEach((l, index) => {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+      const libLignes = doc.splitTextToSize(pdfSafeText(String(l.libelle || '')), colQte - colLib - 22);
+      const rowH = Math.max(7, libLignes.length * LINE_H + 2.4);
+      ensureSpace(rowH);
+      this._fondZebre(doc, index, M, y - 4, contentW, rowH);
+      doc.setTextColor(...PDF.ink);
+      doc.text(fr(l.jour), colDate, y);
+      libLignes.forEach((t, k) => doc.text(t, colLib, y + k * LINE_H));
+      const qte = Number(l.quantite) || 0;
+      this._texteDroite(doc, Number.isInteger(qte) ? String(qte) : qte.toFixed(2), colQte, y);
+      this._texteDroite(doc, chf(l.prixUnitaire), colPrix, y);
+      setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, chf(l.montant), colMont, y);
+      this._filetInterne(doc, M, y + rowH - 4, M + contentW);
+      y += rowH;
+    });
+
+    // Totaux : total de la note, encaissé, solde dû.
+    ensureSpace(30);
+    y += 2;
+    const totaux = [['Total de la note', payload.total], ['Encaissé', payload.encaisse], ['Solde dû', payload.solde]];
+    totaux.forEach(([label, montant], i) => {
+      const h = 7.5;
+      if (i === totaux.length - 1) this._fondTotal(doc, M, y - 4.5, contentW, h);
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, label, colPrix, y, BRAND.charSpace.label);
+      setBrandFont(doc, 'voice'); doc.setFontSize(i === totaux.length - 1 ? BRAND.size.amountLarge : BRAND.size.amount); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, `CHF ${chf(montant)}`, colMont, y);
+      y += h;
+    });
+    if (payload.tva != null && payload.tvaTaux) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+      this._texteDroite(doc, `dont TVA ${String(payload.tvaTaux).replace('.', ',')} % sur l'hébergement : CHF ${chf(payload.tva)} (taxes non soumises)`, colMont, y);
+      y += 6;
+    }
+    if (payload.mention) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      const lignesMention = doc.splitTextToSize(pdfSafeText(String(payload.mention)), contentW);
+      ensureSpace(lignesMention.length * LINE_H + 6);
+      y += 4;
+      lignesMention.forEach((t) => { doc.text(t, M, y); y += LINE_H; });
+    }
+  },
+
+  // payload : { commune, chambre, arrivee, depart, accompagnants,
+  //   occupants:[{ prenom, nom, dateNaissance, nationalite, domicileAdresse,
+  //   domicileLocalite, domicilePays, pieceType, pieceNumero, arrivee, depart }] }
+  // Une page par personne : le bulletin se signe individuellement.
+  async exportFichePolicePdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined ? options.logoDataUrl : await this._resolveLogoDataUrl(etab);
+      const doc = this._nouveauDocA4(jsPDF);
+      this._renderFichePolice(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      doc.save(options.filename || 'bulletin-arrivee.pdf');
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportFichePolicePdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderFichePolice(doc, payload, options = {}) {
+    const PAGE_W = 210, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
+    const fr = (d) => (d ? String(d).split('-').reverse().join('.') : '');
+    const PIECES = { passeport: 'Passeport', carte_identite: "Carte d'identité", permis: 'Permis de séjour', autre: 'Autre pièce' };
+    const occupants = Array.isArray(payload.occupants) && payload.occupants.length ? payload.occupants : [{}];
+    occupants.forEach((o, index) => {
+      if (index > 0) doc.addPage();
+      let y = this._enTeteDocument(doc, {
+        titre: "Bulletin d'arrivée",
+        sousTitre: payload.commune ? `Registre des nuitées, commune de ${pdfSafeText(String(payload.commune))}` : 'Registre des nuitées',
+        meta: `du ${fr(o.arrivee || payload.arrivee)} au ${fr(o.depart || payload.depart)}${payload.chambre ? `, chambre ${payload.chambre}` : ''}`,
+        etablissement: etabName,
+        logoDataUrl: options.logoDataUrl || null,
+      });
+      const bloc = (titre, lignes) => {
+        y = this._titreSection(doc, titre, M, y, contentW);
+        lignes.forEach(([label, valeur]) => {
+          setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.stone);
+          doc.text(label, M + 3.2, y, { charSpace: BRAND.charSpace.label });
+          setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+          const v = pdfSafeText(String(valeur || ''));
+          doc.text(v || ' ', M + 52, y);
+          this._filetInterne(doc, M + 52, y + 1.6, M + contentW);
+          y += 7.5;
+        });
+        y += 4;
+      };
+      bloc('Personne hébergée', [
+        ['Nom', o.nom], ['Prénom', o.prenom], ['Date de naissance', fr(o.dateNaissance)], ['Nationalité', o.nationalite],
+        ['Domicile', [o.domicileAdresse, o.domicileLocalite, o.domicilePays].filter(Boolean).join(', ')],
+        ["Pièce d'identité", [PIECES[o.pieceType] || '', o.pieceNumero].filter(Boolean).join(', ')],
+      ]);
+      bloc('Séjour', [
+        ['Établissement', etabName], ['Arrivée', fr(o.arrivee || payload.arrivee)], ['Départ', fr(o.depart || payload.depart)],
+        ['Chambre', payload.chambre || ''], ['Accompagnants', payload.accompagnants || ''],
+      ]);
+      y += 6;
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.stone);
+      doc.text('Lieu et date', M, y); doc.text('Signature', M + contentW / 2 + 6, y);
+      doc.setDrawColor(...PDF.rule); doc.setLineWidth(RULE.medium);
+      doc.line(M, y + 12, M + contentW / 2 - 6, y + 12);
+      doc.line(M + contentW / 2 + 6, y + 12, M + contentW, y + 12);
+      y += 20;
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+      const mention = "Données relevées au titre de la loi sur l'hébergement, la restauration et le commerce de détail de boissons alcoolisées (LHR, RS 935.1) ; conservées le temps prescrit, communiquées à la police sur demande, jamais utilisées à d'autres fins.";
+      doc.splitTextToSize(mention, contentW).forEach((t) => { doc.text(t, M, y); y += 3.8; });
+    });
+  },
+
   async exportCommandePdf(payload, options = {}) {
     try {
       const jsPDF = await this._loadJsPdf();

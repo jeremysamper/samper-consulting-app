@@ -2,7 +2,7 @@ import React from 'react';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { zurichAjouterJours } from '../../utils/zurichTime.js';
 import { Champ, h } from './hotelUi.jsx';
-import { PENSIONS, dateCourte, sejourEnConflit, trierChambres } from './hotelData.js';
+import { PENSIONS, chf, dateCourte, sejourEnConflit, tarifsApplicables, trierChambres } from './hotelData.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Créer ou modifier un séjour. La chambre est facultative (elle s'affecte aussi
@@ -12,11 +12,13 @@ import { PENSIONS, dateCourte, sejourEnConflit, trierChambres } from './hotelDat
 
 const vide = (aujourdhui) => ({
   nomHote: '', arrivee: aujourdhui, depart: zurichAjouterJours(aujourdhui, 1), nbAdultes: 2, nbEnfants: 0,
-  pension: 'petit_dejeuner', chambreId: '', origine: '', demandesSpeciales: '', notes: '',
+  pension: 'petit_dejeuner', chambreId: '', origine: '', demandesSpeciales: '', notes: '', tarifId: '', prixNuit: '',
 });
 
-export default function SejourForm({ sejour, chambres, sejours, aujourdhui, onEnregistrer, onClose }) {
-  const [f, setF] = React.useState(() => (sejour ? { ...sejour, chambreId: sejour.chambreId || '' } : vide(aujourdhui)));
+export default function SejourForm({ sejour, chambres, sejours, tarifs = [], aujourdhui, onEnregistrer, onClose }) {
+  const [f, setF] = React.useState(() => (sejour
+    ? { ...sejour, chambreId: sejour.chambreId || '', tarifId: sejour.tarifId || '', prixNuit: sejour.prixNuit == null ? '' : String(sejour.prixNuit) }
+    : vide(aujourdhui)));
   const [erreur, setErreur] = React.useState('');
   const [enCours, setEnCours] = React.useState(false);
   const champ = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
@@ -26,6 +28,13 @@ export default function SejourForm({ sejour, chambres, sejours, aujourdhui, onEn
   const conflit = sejourEnConflit(sejours, candidat);
   const chambresTriees = trierChambres(chambres.filter((c) => c.actif || c.id === f.chambreId));
   const libre = (c) => !sejourEnConflit(sejours, { ...candidat, chambreId: c.id });
+  // Lot H4 : tarifs de la catégorie de la chambre choisie, valables à l'arrivée.
+  const chambreChoisie = chambres.find((c) => c.id === f.chambreId) || null;
+  const tarifsPossibles = tarifsApplicables(tarifs, { ...f, tarifId: f.tarifId || null }, chambreChoisie);
+  const choisirTarif = (e) => {
+    const t = tarifs.find((x) => x.id === e.target.value) || null;
+    setF((p) => ({ ...p, tarifId: e.target.value, pension: t ? t.pension : p.pension }));
+  };
 
   const enregistrer = async () => {
     setErreur('');
@@ -35,6 +44,8 @@ export default function SejourForm({ sejour, chambres, sejours, aujourdhui, onEn
       setErreur(`Chambre déjà prise du ${dateCourte(conflit.arrivee)} au ${dateCourte(conflit.depart)} (${conflit.nomHote}).`);
       return;
     }
+    const prixNuit = String(f.prixNuit ?? '').trim() === '' ? null : Number(String(f.prixNuit).replace(',', '.'));
+    if (prixNuit != null && !(prixNuit >= 0)) { setErreur('Le prix par nuit convenu doit être un montant positif.'); return; }
     setEnCours(true);
     const res = await onEnregistrer({
       nom_hote: f.nomHote.trim(),
@@ -44,6 +55,8 @@ export default function SejourForm({ sejour, chambres, sejours, aujourdhui, onEn
       nb_enfants: f.nbEnfants,
       pension: f.pension,
       chambre_id: f.chambreId || null,
+      tarif_id: f.tarifId || null,
+      prix_nuit: prixNuit,
       origine: f.origine.trim() || null,
       demandes_speciales: f.demandesSpeciales.trim() || null,
       notes: f.notes.trim() || null,
@@ -96,6 +109,15 @@ export default function SejourForm({ sejour, chambres, sejours, aujourdhui, onEn
               </option>
             ))}
           </select>
+        </Champ>
+        <Champ label="Tarif">
+          <select style={h.saisie} value={f.tarifId} onChange={choisirTarif} data-no-translate>
+            <option value="">{tarifs.length ? 'Aucun tarif' : 'Aucun tarif défini'}</option>
+            {tarifsPossibles.map((t) => <option key={t.id} value={t.id}>{t.nom} (CHF {chf(t.prixNuit)})</option>)}
+          </select>
+        </Champ>
+        <Champ label="Prix par nuit convenu (CHF)">
+          <input type="number" min="0" step="0.05" inputMode="decimal" style={h.saisie} value={f.prixNuit} onChange={champ('prixNuit')} placeholder={f.tarifId ? 'Prix du tarif' : ''} />
         </Champ>
         <Champ label="Origine">
           <input style={h.saisie} value={f.origine} onChange={champ('origine')} placeholder="Site, téléphone, agence…" />

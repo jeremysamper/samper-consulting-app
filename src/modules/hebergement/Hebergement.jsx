@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, DoorOpen, LogIn, LogOut, Plus, Users } from 'lucide-react';
+import { BedDouble, BookOpen, DoorOpen, LogIn, LogOut, Plus, Tag, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -8,14 +8,18 @@ import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
-  aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, trierChambres,
-  useChambres, useDemandes, useHotes, useResaClients, useSejours, useSpaClients,
+  aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, totauxNote, trierChambres,
+  useChambres, useDemandes, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useSejours, useSpaClients, useTarifs,
 } from './hotelData.js';
 import { LigneSejour, Liste, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
 import SejourFiche from './SejourFiche.jsx';
 import ChambresGestion from './ChambresGestion.jsx';
 import HotesGestion, { HoteForm } from './HotesGestion.jsx';
+import SejourNote from './SejourNote.jsx';
+import SejourOccupants from './SejourOccupants.jsx';
+import TarifsGestion from './TarifsGestion.jsx';
+import RegistreMois from './RegistreMois.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hébergement (branche Hôtel, lot H0) : l'accueil à tuiles du socle des
@@ -34,6 +38,8 @@ const TITRES = {
   en_maison: 'En maison',
   chambres: 'Les chambres',
   hotes: 'Les hôtes',
+  tarifs: 'Tarifs et taxes',
+  registre: 'Registre et statistiques',
 };
 
 // Date de Zurich, relue chaque minute : un écran ouvert à minuit change de jour.
@@ -62,12 +68,21 @@ export default function Hebergement({ user, etablissement }) {
   const spaClients = useSpaClients(etabId);
   const demandes = useDemandes(etabId);
   const peutSupprimerHote = role === 'consultant';
+  // Lot H4 : tarifs et réglages (lus par l'équipe), note de séjour et
+  // personnes hébergées (lus avec le droit Modifier : la base refuse le reste).
+  const tarifs = useTarifs(etabId);
+  const reglages = useReglagesHotel(etabId);
+  const occupants = useOccupants(etabId, { actif: peutGerer });
+  const lignes = useLignesSejour(etabId, { actif: peutGerer });
+  const reglage = reglages.rows[0] || null;
 
-  const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes'] : ['arrivees', 'departs', 'en_maison', 'hotes'];
+  const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes'];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
   const [form, setForm] = React.useState(null); // { sejour: null | sejour }
   const [ficheId, setFicheId] = React.useState(null);
   const [hoteForm, setHoteForm] = React.useState(null); // { nomInitial, sejour }
+  const [noteId, setNoteId] = React.useState(null);
+  const [occupantsId, setOccupantsId] = React.useState(null);
 
   const arrivees = arriveesDu(sejours.rows, aujourdhui);
   const departs = departsDu(sejours.rows, aujourdhui);
@@ -76,6 +91,13 @@ export default function Hebergement({ user, etablissement }) {
   const couverts = couvertsPetitDejeuner(sejours.rows, aujourdhui);
   const chambreDe = (s) => chambres.rows.find((c) => c.id === s.chambreId) || null;
   const fiche = ficheId ? sejours.rows.find((s) => s.id === ficheId) || null : null;
+  const sejourNote = noteId ? sejours.rows.find((s) => s.id === noteId) || null : null;
+  const sejourOccupants = occupantsId ? sejours.rows.find((s) => s.id === occupantsId) || null : null;
+  const resumeNote = (s) => {
+    if (!peutGerer || !s) return null;
+    const mesLignes = lignes.rows.filter((l) => l.sejourId === s.id);
+    return { nbLignes: mesLignes.length, solde: totauxNote(mesLignes).solde, nbOccupants: occupants.rows.filter((o) => o.sejourId === s.id).length };
+  };
 
   // ── Gestes ──
   const enregistrerSejour = async (valeurs) => {
@@ -129,6 +151,8 @@ export default function Hebergement({ user, etablissement }) {
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
     { id: 'chambres', libelle: 'Chambres', Icone: DoorOpen, visible: direction, etat: etat(chambres.rows.filter((c) => c.actif).length, 'chambre active', 'chambres actives'), onClick: () => setEcran('chambres') },
+    { id: 'tarifs', libelle: 'Tarifs et taxes', Icone: Tag, visible: direction, etat: etat(tarifs.rows.filter((t) => t.actif).length, 'tarif actif', 'tarifs actifs'), onClick: () => setEcran('tarifs') },
+    { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
   ];
   const lierHote = async (s, hoteId) => {
     const res = await sejours.modifier(s.id, { hote_id: hoteId || null });
@@ -163,7 +187,7 @@ export default function Hebergement({ user, etablissement }) {
           titre={TITRES[ecran] || ''}
           etat={ecran === 'en_maison' ? <><span>{couverts}</span> <span>{couverts === 1 ? 'couvert petit-déjeuner demain' : 'couverts petit-déjeuner demain'}</span></> : null}
           onRetour={retourAccueil}
-          actions={peutGerer && ecran !== 'chambres' && ecran !== 'hotes' ? (
+          actions={peutGerer && !['chambres', 'hotes', 'tarifs', 'registre'].includes(ecran) ? (
             <Btn variant="primary" onClick={() => setForm({ sejour: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
               <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>Nouveau séjour</span>
@@ -202,6 +226,13 @@ export default function Hebergement({ user, etablissement }) {
         />
       )}
 
+      {etabId && ecran === 'tarifs' && direction && (
+        <TarifsGestion tarifs={tarifs} reglages={reglages} chambres={chambres.rows} etabId={etabId} />
+      )}
+      {etabId && ecran === 'registre' && direction && (
+        <RegistreMois sejours={sejours.rows} chambres={chambres.rows} occupants={occupants.rows} lignes={lignes.rows} reglages={reglage} />
+      )}
+
       {hoteForm && (
         <HoteForm
           hote={null} nomInitial={hoteForm.nomInitial} hotes={hotes} resaClients={resaClients.rows} spaClients={spaClients.rows}
@@ -215,6 +246,7 @@ export default function Hebergement({ user, etablissement }) {
           sejour={form.sejour}
           chambres={trierChambres(chambres.rows)}
           sejours={sejours.rows}
+          tarifs={tarifs.rows}
           aujourdhui={aujourdhui}
           onEnregistrer={enregistrerSejour}
           onClose={() => setForm(null)}
@@ -226,6 +258,10 @@ export default function Hebergement({ user, etablissement }) {
           chambres={chambres.rows}
           sejours={sejours.rows}
           hotes={hotes.rows}
+          tarifs={tarifs.rows}
+          note={resumeNote(fiche)}
+          onNote={peutGerer ? (s) => setNoteId(s.id) : null}
+          onOccupants={peutGerer ? (s) => setOccupantsId(s.id) : null}
           onLierHote={lierHote}
           onCreerHote={(s) => setHoteForm({ nomInitial: s.nomHote, sejour: s })}
           aujourdhui={aujourdhui}
@@ -235,6 +271,22 @@ export default function Hebergement({ user, etablissement }) {
           onStatut={changerStatut}
           onCheckOut={checkOut}
           onClose={() => setFicheId(null)}
+        />
+      )}
+      {sejourNote && peutGerer && (
+        <SejourNote
+          sejour={sejourNote} chambre={chambreDe(sejourNote)} tarif={tarifs.rows.find((t) => t.id === sejourNote.tarifId) || null}
+          reglages={reglage} occupants={occupants.rows} lignes={lignes}
+          peutGerer={peutGerer} peutSupprimer={direction} etablissement={etablissement}
+          onClose={() => setNoteId(null)}
+        />
+      )}
+      {sejourOccupants && peutGerer && (
+        <SejourOccupants
+          sejour={sejourOccupants} chambre={chambreDe(sejourOccupants)} hote={hotes.rows.find((x) => x.id === sejourOccupants.hoteId) || null}
+          hotes={hotes.rows} occupants={occupants} reglages={reglage}
+          peutGerer={peutGerer} peutSupprimer={direction} etablissement={etablissement}
+          onClose={() => setOccupantsId(null)}
         />
       )}
     </section>

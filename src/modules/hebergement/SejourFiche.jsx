@@ -3,7 +3,7 @@ import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import { Champ, h } from './hotelUi.jsx';
 import {
-  PENSIONS, STATUTS_SEJOUR, dateCourte, libelleDe, personnes, sejourEnConflit, tonDe, trierChambres,
+  PENSIONS, STATUTS_SEJOUR, chf, dateCourte, libelleDe, personnes, sejourEnConflit, tonDe, trierChambres,
 } from './hotelData.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ import {
 // étages le note par déclencheur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SejourFiche({ sejour, chambres, sejours, hotes = [], onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
+export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], note = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
   const s = sejour;
   const [chambreId, setChambreId] = React.useState(s.chambreId || '');
   const [erreur, setErreur] = React.useState('');
@@ -120,10 +120,31 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], onL
         {ligne('Chambre', chambre ? chambre.numero : 'Pas encore affectée', !!chambre)}
         {ligne('Personnes', <><span>{s.nbAdultes}</span> <span>{s.nbAdultes > 1 ? 'adultes' : 'adulte'}</span>{s.nbEnfants ? <>, <span>{s.nbEnfants}</span> <span>{s.nbEnfants > 1 ? 'enfants' : 'enfant'}</span></> : null}</>)}
         {ligne('Pension', libelleDe(PENSIONS, s.pension))}
+        {(s.tarifId || s.prixNuit != null) && (() => {
+          const t = tarifs.find((x) => x.id === s.tarifId) || null;
+          const prix = s.prixNuit != null ? s.prixNuit : t ? t.prixNuit : null;
+          return ligne('Tarif', <>{t && <><span data-no-translate>{t.nom}</span>, </>}{prix != null && <><span data-no-translate>CHF {chf(prix)}</span> <span>par nuit</span>{s.prixNuit != null && t ? <> <span>(prix convenu)</span></> : null}</>}</>, false);
+        })()}
         {s.origine && ligne('Origine', s.origine, true)}
         {s.demandesSpeciales && ligne('Demandes spéciales', s.demandesSpeciales, true)}
         {s.notes && ligne('Notes', s.notes, true)}
       </div>
+
+      {/* Lot H4 : note de séjour et registre des personnes hébergées (lecture avec le droit Modifier). */}
+      {peutGerer && (onNote || onOccupants) && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {onNote && (
+            <button type="button" style={st.secondaire} onClick={() => onNote(s)} disabled={!!enCours}>
+              <span>Note de séjour</span>{note && <> <span data-no-translate>({note.nbLignes ? `CHF ${chf(note.solde)}` : '0'})</span></>}
+            </button>
+          )}
+          {onOccupants && (
+            <button type="button" style={st.secondaire} onClick={() => onOccupants(s)} disabled={!!enCours}>
+              <span>Personnes hébergées</span>{note && <> <span data-no-translate>({note.nbOccupants})</span></>}
+            </button>
+          )}
+        </div>
+      )}
 
       {peutGerer && occupe && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
