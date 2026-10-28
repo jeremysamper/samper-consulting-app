@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useReservations } from '../../hooks/useReservations.js';
+import { ouvrirGroupe } from '../../services/navigationService.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { STATUTS, metaStatut } from './statutsReservation.js';
 import ClientFiche from './ClientFiche.jsx';
@@ -9,6 +10,9 @@ export default function ReservationDetailModal({
   resa, onClose, onResaUpdated, onEdit, onStatut, onTraiter, canEdit = true,
 }) {
   const demande = resa.statut === 'demande';
+  // Réservation tenue à jour par un groupe du module Groupes : date, couverts,
+  // nom et annulation se changent là-bas, la base réécrirait ici.
+  const groupeLie = Boolean(resa.groupe_evenement_id);
   const reservations  = useReservations(resa.etablissement_id);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting,    setDeleting]    = useState(false);
@@ -240,7 +244,7 @@ export default function ReservationDetailModal({
           />
           {resa.origine === 'en_ligne' && <LigneDetail label="Origine" valeur="Réservée en ligne" />}
           {resa.origine === 'passage' && <LigneDetail label="Origine" valeur="Client de passage" />}
-          {resa.est_groupe && <LigneDetail label="Type" valeur="Groupe" />}
+          {resa.est_groupe && <LigneDetail label="Type" valeur={groupeLie ? 'Groupe, saisi dans Groupes' : 'Groupe'} />}
           <LigneDetail label="Notes"     valeur={resa.notes_libres} />
           {tags.length > 0 && (
             <div style={{
@@ -305,7 +309,20 @@ export default function ReservationDetailModal({
             padding: '12px 18px', borderTop: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
           }}>
-            {canEdit && (
+            {canEdit && groupeLie && (
+              <button
+                type="button" onClick={() => { onClose?.(); ouvrirGroupe(resa.groupe_evenement_id, resa.date_service); }}
+                style={{
+                  padding: '9px 18px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text)', cursor: 'pointer',
+                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                }}
+              >
+                Modifier dans Groupes
+              </button>
+            )}
+            {canEdit && !groupeLie && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button" onClick={() => onEdit?.(resa)}

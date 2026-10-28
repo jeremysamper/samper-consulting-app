@@ -6,8 +6,10 @@ import { canManageModule } from '../../data/demoData.js';
 import { useGroupes } from '../../hooks/useGroupes.js';
 import { useGroupeMenus } from '../../hooks/useGroupeMenus.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { formatDateCourte, formatJourSemaine, isoDate } from '../../utils/dateHelpers.js';
+import { UI_STORAGE_KEYS, readJson, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import AlerteAnticipation from './AlerteAnticipation.jsx';
 import { choixEstVide } from './choixMenu.js';
@@ -209,6 +211,35 @@ export default function Groupes({ user, etablissement }) {
     const [a, m] = g.dateEvenement.split('-').map(Number);
     setVue({ annee: a, mois: m - 1 });
   }, []);
+
+  // « Modifier dans Groupes » d'une réservation de groupe (Réservations) : clé
+  // ponctuelle lue à l'arrivée, événement si le module est déjà monté. La fiche
+  // s'ouvre une fois les groupes lus ; un groupe plus ancien que la fenêtre
+  // chargée l'élargit d'abord, une seule fois.
+  const demandeFiche = useRef(null);
+  const [tourDemande, setTourDemande] = useState(0);
+  useEffect(() => {
+    const prendre = (d) => {
+      removeStorageKeys([UI_STORAGE_KEYS.groupesOuvrir]);
+      if (!d?.id) return;
+      demandeFiche.current = { id: d.id, date: d.date || null, elargi: false };
+      setTourDemande((n) => n + 1);
+    };
+    prendre(readJson(UI_STORAGE_KEYS.groupesOuvrir));
+    const w = getBrowserWindow();
+    if (!w) return undefined;
+    const surEvenement = (e) => prendre(e?.detail);
+    w.addEventListener('sc:groupes-ouvrir', surEvenement);
+    return () => w.removeEventListener('sc:groupes-ouvrir', surEvenement);
+  }, []);
+  useEffect(() => {
+    const d = demandeFiche.current;
+    if (!d || status !== 'ready') return;
+    const g = groupes.find((x) => x.id === d.id);
+    if (g) { demandeFiche.current = null; ouvrirFiche(g); return; }
+    if (d.date && !d.elargi) { d.elargi = true; assurerDepuis(d.date); return; }
+    demandeFiche.current = null;
+  }, [status, groupes, tourDemande, ouvrirFiche, assurerDepuis]);
 
   function tapJour(iso, duJour) {
     if (duJour.length === 1) { setFicheId(duJour[0].id); return; }

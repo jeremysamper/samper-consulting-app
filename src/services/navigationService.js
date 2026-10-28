@@ -1,6 +1,6 @@
 import { getBrowserWindow } from '../legacy/legacyApi.js';
 import { getConsultantToolsTabForPage, normalizePage } from '../modules/moduleConfig.js';
-import { UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
+import { UI_STORAGE_KEYS, writeJson, writeText } from '../utils/storage.js';
 
 let navigationHandler = null;
 
@@ -47,4 +47,17 @@ export function ouvrirCompte(onglet) {
     browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:compte-tab', { detail: { tab: onglet } }));
   }
   navigateToPage('compte');
+}
+
+// Fiche d'un groupe dans Groupes (réservation tenue à jour par un groupe) :
+// clé ponctuelle lue au montage, événement pour un Groupes déjà monté, puis la
+// page. La date sert à élargir la lecture à un groupe plus ancien.
+export function ouvrirGroupe(id, date) {
+  if (id) {
+    const demande = { id, date: date || null };
+    writeJson(UI_STORAGE_KEYS.groupesOuvrir, demande);
+    const browserWindow = getBrowserWindow();
+    browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:groupes-ouvrir', { detail: demande }));
+  }
+  navigateToPage('groupes');
 }

@@ -12,6 +12,9 @@ export const UI_STORAGE_KEYS = {
   // Fiche à ouvrir dans l'éditeur de Cartes & Recettes (clé ponctuelle posée
   // par « Modifier la fiche » du Chiffrage, lue puis effacée à l'arrivée).
   recettesEditer: 'sc_recettes_editer',
+  // Groupe dont ouvrir la fiche dans Groupes ({ id, date }, clé ponctuelle
+  // posée par une réservation de groupe, lue puis effacée à l'arrivée).
+  groupesOuvrir: 'sc_groupes_ouvrir',
   theme: 'sc_theme',
   lang: 'sc_lang',
   // Version d'icônes pour laquelle l'appareil a lu le rappel « rafraîchir la
