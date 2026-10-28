@@ -777,3 +777,64 @@ export function droitsRestants(droits, consommations, sejour, jour) {
     return { droit: d, surSejour, surJour, resteSejour, resteJour, epuise: resteSejour === 0 || resteJour === 0 };
   });
 }
+
+// ── Lot H6 : passations, canaux, tâches récurrentes ────────────────────────
+export const SERVICES_PASSATION = [
+  { id: 'matin', label: 'Matin' },
+  { id: 'apres_midi', label: 'Après-midi' },
+  { id: 'soir', label: 'Soir' },
+  { id: 'nuit', label: 'Nuit' },
+];
+export const RECURRENCES = [
+  { id: 'quotidien', label: 'Chaque jour' },
+  { id: 'hebdomadaire', label: 'Chaque semaine' },
+  { id: 'mensuel', label: 'Chaque mois' },
+];
+export const JOURS_SEMAINE = [
+  { id: 1, label: 'Lundi' }, { id: 2, label: 'Mardi' }, { id: 3, label: 'Mercredi' }, { id: 4, label: 'Jeudi' },
+  { id: 5, label: 'Vendredi' }, { id: 6, label: 'Samedi' }, { id: 7, label: 'Dimanche' },
+];
+export const CANAL_TOUS = { id: 'tous', label: 'Toute l\'équipe' };
+
+export function mapPassation(r) {
+  return { id: r.id, pole: r.pole || 'reception', jour: r.jour || '', service: r.service || 'matin', contenu: r.contenu || '', important: r.important === true, createdBy: r.created_by || null, createdAt: r.created_at || null, updatedAt: r.updated_at || null };
+}
+export const mapLecture = (r) => ({ id: r.id, passationId: r.passation_id, userId: r.user_id, at: r.at || null });
+export function mapMessageCanal(r) {
+  return { id: r.id, canal: r.canal || 'tous', contenu: r.contenu || '', mentions: Array.isArray(r.mentions) ? r.mentions : [], createdBy: r.created_by || null, createdAt: r.created_at || null };
+}
+export function mapTacheRecurrente(r) {
+  return {
+    id: r.id, pole: r.pole || 'reception', titre: r.titre || '', detail: r.detail || '', recurrence: r.recurrence || 'quotidien',
+    jourSemaine: r.jour_semaine == null ? null : Number(r.jour_semaine), jourMois: r.jour_mois == null ? null : Number(r.jour_mois),
+    heure: r.heure ? String(r.heure).slice(0, 5) : '', actif: r.actif !== false, ordre: Number(r.ordre) || 0,
+  };
+}
+export const mapTacheFaite = (r) => ({ id: r.id, tacheId: r.tache_id, jour: r.jour || '', faitPar: r.fait_par || null, at: r.at || null });
+export const usePassations = (etabId, options = {}) => useTableHotel('passations', etabId, { map: mapPassation, order: [['jour', false], ['created_at', false]], limit: 3000, ...options });
+export const usePassationLectures = (etabId, options = {}) => useTableHotel('passation_lectures', etabId, { map: mapLecture, limit: 20000, ...options });
+export const useMessagesCanaux = (etabId, options = {}) => useTableHotel('canaux_messages', etabId, { map: mapMessageCanal, order: [['created_at', false]], limit: 3000, ...options });
+export const useTachesRecurrentes = (etabId, options = {}) => useTableHotel('taches_recurrentes', etabId, { map: mapTacheRecurrente, order: [['ordre', true], ['titre', true]], limit: 1000, ...options });
+export const useTachesFaites = (etabId, options = {}) => useTableHotel('taches_faites', etabId, { map: mapTacheFaite, order: [['jour', false]], limit: 20000, ...options });
+
+// Une tâche récurrente tombe-t-elle ce jour (YYYY-MM-DD) ? Semaine ISO : lundi = 1.
+export function tacheDueLe(t, jour) {
+  if (!t.actif) return false;
+  if (t.recurrence === 'quotidien') return true;
+  const [y, m, d] = jour.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (t.recurrence === 'hebdomadaire') return ((date.getUTCDay() + 6) % 7) + 1 === t.jourSemaine;
+  if (t.recurrence === 'mensuel') {
+    const dernier = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return d === Math.min(t.jourMois, dernier);
+  }
+  return false;
+}
+export const libelleRecurrence = (t) => (t.recurrence === 'hebdomadaire' ? `${libelleDe(RECURRENCES, t.recurrence)}, ${libelleDe(JOURS_SEMAINE, t.jourSemaine).toLowerCase()}`
+  : t.recurrence === 'mensuel' ? `${libelleDe(RECURRENCES, t.recurrence)}, le ${t.jourMois}` : libelleDe(RECURRENCES, t.recurrence));
+// Passations non lues par une personne : celles des sept derniers jours qu'elle n'a pas marquées lues.
+export function passationsNonLues(passations, lectures, userId, aujourdhui) {
+  const depuis = zurichAjouterJours(aujourdhui, -7);
+  const lues = new Set(lectures.filter((l) => l.userId === userId).map((l) => l.passationId));
+  return passations.filter((p) => p.jour >= depuis && !lues.has(p.id) && p.createdBy !== userId);
+}

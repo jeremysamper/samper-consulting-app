@@ -1,5 +1,5 @@
 import {
-  BedDouble, BookOpen, BrushCleaning, Ticket, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
+  BedDouble, BookOpen, BrushCleaning, NotebookPen, Ticket, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
   LayoutDashboard, LayoutGrid, ListChecks, MessageSquare, Monitor, Package, Receipt, ReceiptSwissFranc, ScrollText,
   ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wrench,
 } from 'lucide-react';
@@ -34,6 +34,7 @@ const ICONES = {
   etages: BrushCleaning,
   demandes: ConciergeBell,
   activites: Ticket,
+  passations: NotebookPen,
   faq: CircleQuestionMark,
 };
 
