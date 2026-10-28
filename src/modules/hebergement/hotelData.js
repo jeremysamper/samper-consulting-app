@@ -143,6 +143,7 @@ export function mapSejour(r) {
     id: r.id,
     chambreId: r.chambre_id || null,
     clientId: r.client_id || null,
+    hoteId: r.hote_id || null,
     nomHote: r.nom_hote || '',
     nbAdultes: Number(r.nb_adultes) || 0,
     nbEnfants: Number(r.nb_enfants) || 0,
@@ -386,3 +387,29 @@ export function mapDemandeJournal(r) {
 }
 export const useDemandes = (etabId, options = {}) => useTableHotel('demandes', etabId, { map: mapDemande, order: [['created_at', false]], limit: 5000, ...options });
 export const useDemandesJournal = (etabId, options = {}) => useTableHotel('demandes_journal', etabId, { map: mapDemandeJournal, order: [['at', false]], limit: 5000, ...options });
+
+// ── Lot H3 : fiche hôte unique ──────────────────────────────────────────────
+export const LANGUES = [
+  { id: 'fr', label: 'Français' },
+  { id: 'de', label: 'Allemand' },
+  { id: 'it', label: 'Italien' },
+  { id: 'en', label: 'Anglais' },
+  { id: 'es', label: 'Espagnol' },
+  { id: 'autre', label: 'Autre langue' },
+];
+export const nomHote = (h) => (h ? `${h.prenom || ''} ${h.nom || ''}`.trim() : '');
+export function mapHote(r) {
+  return {
+    id: r.id, prenom: r.prenom || '', nom: r.nom || '', email: r.email || '', telephone: r.telephone || '', langue: r.langue || 'fr',
+    dateNaissance: r.date_naissance || '', nationalite: r.nationalite || '', allergies: r.allergies || '', preferences: r.preferences || '',
+    occasions: r.occasions || '', vip: r.vip === true, notes: r.notes || '', consentementMarketing: r.consentement_marketing === true,
+    consentementAt: r.consentement_at || null, consentementSource: r.consentement_source || null, desinscritAt: r.desinscrit_at || null,
+    resaClientId: r.resa_client_id || null, spaClientId: r.spa_client_id || null, archive: r.archive === true,
+    createdBy: r.created_by || null, createdAt: r.created_at || null, updatedAt: r.updated_at || null,
+  };
+}
+// Fiches des fichiers voisins (restaurant, spa), pour relier la même personne.
+export const mapClientVoisin = (r) => ({ id: r.id, prenom: r.prenom || '', nom: r.nom || '', email: r.email || '', telephone: r.telephone || '', archive: r.archive === true });
+export const useHotes = (etabId, options = {}) => useTableHotel('hotes', etabId, { map: mapHote, order: [['nom', true], ['prenom', true]], limit: 10000, ...options });
+export const useResaClients = (etabId, options = {}) => useTableHotel('resa_clients', etabId, { map: mapClientVoisin, order: [['nom', true]], limit: 10000, ...options });
+export const useSpaClients = (etabId, options = {}) => useTableHotel('spa_clients', etabId, { map: mapClientVoisin, order: [['nom', true]], limit: 10000, ...options });

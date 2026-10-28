@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, DoorOpen, LogIn, LogOut, Plus } from 'lucide-react';
+import { BedDouble, DoorOpen, LogIn, LogOut, Plus, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -9,12 +9,13 @@ import { canManageModule } from '../../data/demoData.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
   aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, trierChambres,
-  useChambres, useSejours,
+  useChambres, useDemandes, useHotes, useResaClients, useSejours, useSpaClients,
 } from './hotelData.js';
 import { LigneSejour, Liste, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
 import SejourFiche from './SejourFiche.jsx';
 import ChambresGestion from './ChambresGestion.jsx';
+import HotesGestion, { HoteForm } from './HotesGestion.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hébergement (branche Hôtel, lot H0) : l'accueil à tuiles du socle des
@@ -32,6 +33,7 @@ const TITRES = {
   departs: 'Les départs du jour',
   en_maison: 'En maison',
   chambres: 'Les chambres',
+  hotes: 'Les hôtes',
 };
 
 // Date de Zurich, relue chaque minute : un écran ouvert à minuit change de jour.
@@ -53,11 +55,19 @@ export default function Hebergement({ user, etablissement }) {
 
   const chambres = useChambres(etabId);
   const sejours = useSejours(etabId);
+  // Lot H3 : le fichier des hôtes et les fichiers voisins (restaurant, spa) ;
+  // lot H2 : les demandes, pour l'historique d'un hôte.
+  const hotes = useHotes(etabId);
+  const resaClients = useResaClients(etabId);
+  const spaClients = useSpaClients(etabId);
+  const demandes = useDemandes(etabId);
+  const peutSupprimerHote = role === 'consultant';
 
-  const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres'] : ['arrivees', 'departs', 'en_maison'];
+  const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes'] : ['arrivees', 'departs', 'en_maison', 'hotes'];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
   const [form, setForm] = React.useState(null); // { sejour: null | sejour }
   const [ficheId, setFicheId] = React.useState(null);
+  const [hoteForm, setHoteForm] = React.useState(null); // { nomInitial, sejour }
 
   const arrivees = arriveesDu(sejours.rows, aujourdhui);
   const departs = departsDu(sejours.rows, aujourdhui);
@@ -117,8 +127,15 @@ export default function Hebergement({ user, etablissement }) {
       onClick: () => setEcran('en_maison'),
     },
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
+    { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
     { id: 'chambres', libelle: 'Chambres', Icone: DoorOpen, visible: direction, etat: etat(chambres.rows.filter((c) => c.actif).length, 'chambre active', 'chambres actives'), onClick: () => setEcran('chambres') },
   ];
+  const lierHote = async (s, hoteId) => {
+    const res = await sejours.modifier(s.id, { hote_id: hoteId || null });
+    if (res.error) notify(res.error, 'error');
+    else notify(hoteId ? 'Séjour relié à la fiche hôte.' : 'Fiche hôte détachée du séjour.', 'success');
+    return res;
+  };
 
   const listeDe = (liste, vide) => (
     liste.length
@@ -146,7 +163,7 @@ export default function Hebergement({ user, etablissement }) {
           titre={TITRES[ecran] || ''}
           etat={ecran === 'en_maison' ? <><span>{couverts}</span> <span>{couverts === 1 ? 'couvert petit-déjeuner demain' : 'couverts petit-déjeuner demain'}</span></> : null}
           onRetour={retourAccueil}
-          actions={peutGerer && ecran !== 'chambres' ? (
+          actions={peutGerer && ecran !== 'chambres' && ecran !== 'hotes' ? (
             <Btn variant="primary" onClick={() => setForm({ sejour: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
               <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>Nouveau séjour</span>
@@ -177,6 +194,22 @@ export default function Hebergement({ user, etablissement }) {
         />
       )}
 
+      {etabId && ecran === 'hotes' && (
+        <HotesGestion
+          hotes={hotes} sejours={sejours.rows} demandes={demandes.rows} resaClients={resaClients.rows} spaClients={spaClients.rows} chambres={chambres.rows}
+          peutGerer={peutGerer} peutSupprimer={peutSupprimerHote}
+          onOuvrirSejour={(s) => setFicheId(s.id)}
+        />
+      )}
+
+      {hoteForm && (
+        <HoteForm
+          hote={null} nomInitial={hoteForm.nomInitial} hotes={hotes} resaClients={resaClients.rows} spaClients={spaClients.rows}
+          onClose={() => setHoteForm(null)}
+          onEnregistre={(ho) => { if (ho && hoteForm.sejour) lierHote(hoteForm.sejour, ho.id); }}
+        />
+      )}
+
       {form && (
         <SejourForm
           sejour={form.sejour}
@@ -187,11 +220,14 @@ export default function Hebergement({ user, etablissement }) {
           onClose={() => setForm(null)}
         />
       )}
-      {fiche && !form && (
+      {fiche && !form && !hoteForm && (
         <SejourFiche
           sejour={fiche}
           chambres={chambres.rows}
           sejours={sejours.rows}
+          hotes={hotes.rows}
+          onLierHote={lierHote}
+          onCreerHote={(s) => setHoteForm({ nomInitial: s.nomHote, sejour: s })}
           aujourdhui={aujourdhui}
           peutGerer={peutGerer}
           onModifier={(s) => setForm({ sejour: s })}

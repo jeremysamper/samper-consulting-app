@@ -15,7 +15,7 @@ import {
 // étages le note par déclencheur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SejourFiche({ sejour, chambres, sejours, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
+export default function SejourFiche({ sejour, chambres, sejours, hotes = [], onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
   const s = sejour;
   const [chambreId, setChambreId] = React.useState(s.chambreId || '');
   const [erreur, setErreur] = React.useState('');
@@ -51,7 +51,7 @@ export default function SejourFiche({ sejour, chambres, sejours, aujourdhui, peu
   });
 
   const ligne = (label, valeur, brut = false) => (
-    <div style={f.ligne}>
+    <div key={label} style={f.ligne}>
       <span style={f.label}>{label}</span>
       <span style={f.valeur} data-no-translate={brut ? '' : undefined}>{valeur}</span>
     </div>
@@ -95,6 +95,28 @@ export default function SejourFiche({ sejour, chambres, sejours, aujourdhui, peu
       </div>
 
       <div style={f.bloc}>
+        {/* Lot H3 : la fiche hôte du séjour (VIP, langue, préférences en un coup d'œil). */}
+        {(() => {
+          const ho = hotes.find((x) => x.id === s.hoteId) || null;
+          if (ho) {
+            return ligne('Fiche hôte', <>
+              {ho.vip && <><Puce ton="warning">VIP</Puce> </>}
+              <span data-no-translate>{`${ho.prenom} ${ho.nom}`.trim()}</span>
+              {ho.preferences && <> <span style={h.detail} data-no-translate>{ho.preferences}</span></>}
+              {ho.allergies && <> <span style={{ ...h.detail, color: 'var(--danger-text)' }} data-no-translate>{ho.allergies}</span></>}
+              {peutGerer && onLierHote && <> <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }} onClick={() => onLierHote(s, null)}>Détacher</button></>}
+            </>);
+          }
+          if (!peutGerer) return ligne('Fiche hôte', 'Aucune');
+          const candidats = hotes.filter((x) => !x.archive).sort((a, b) => `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`, 'fr')).slice(0, 500);
+          return ligne('Fiche hôte', <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select style={{ ...h.saisie, width: 'auto', minHeight: 36, padding: '6px 8px' }} value="" onChange={(ev) => ev.target.value && onLierHote?.(s, ev.target.value)}>
+              <option value="">Relier à une fiche…</option>
+              {candidats.map((x) => <option key={x.id} value={x.id}>{`${x.prenom} ${x.nom}`.trim()}{x.email ? ` (${x.email})` : ''}</option>)}
+            </select>
+            <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => onCreerHote?.(s)}>Créer la fiche</button>
+          </span>, false);
+        })()}
         {ligne('Chambre', chambre ? chambre.numero : 'Pas encore affectée', !!chambre)}
         {ligne('Personnes', <><span>{s.nbAdultes}</span> <span>{s.nbAdultes > 1 ? 'adultes' : 'adulte'}</span>{s.nbEnfants ? <>, <span>{s.nbEnfants}</span> <span>{s.nbEnfants > 1 ? 'enfants' : 'enfant'}</span></> : null}</>)}
         {ligne('Pension', libelleDe(PENSIONS, s.pension))}
