@@ -188,6 +188,10 @@ export function messageErreur(error) {
   if (RELATION_ABSENTE.has(error.code)) return 'Le socle hôtel n\'est pas encore activé sur la base de données.';
   // Déclencheur anti-chevauchement : le message de la base dit quel séjour gêne.
   if (error.code === '23P01') return String(error.message || '').replace(/^SEJOUR_CHEVAUCHEMENT:\s*/, 'Chambre déjà prise : ');
+  // Fichier des hôtes : un e-mail actif par fiche (uq_hotes_email).
+  if (error.code === '23505' && /uq_hotes_email/.test(error.message || '')) {
+    return 'Une fiche hôte active porte déjà cet e-mail. Ouvre-la, ou laisse l\'e-mail vide sur la seconde personne.';
+  }
   if (error.code === '42501' && /CHAMBRE_FICHE_RESERVEE/.test(error.message || '')) {
     return 'La fiche de la chambre se modifie avec le droit Hébergement.';
   }

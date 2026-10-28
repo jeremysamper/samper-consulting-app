@@ -89,13 +89,13 @@ export function HoteForm({ hote, nomInitial, hotes, resaClients, spaClients, onC
         <Champ label="Préférences" large><textarea style={{ ...h.saisie, minHeight: 56 }} value={f.preferences} onChange={champ('preferences')} placeholder="Étage calme, oreiller ferme, café au réveil…" /></Champ>
         <Champ label="Notes" large><textarea style={{ ...h.saisie, minHeight: 56 }} value={f.notes} onChange={champ('notes')} /></Champ>
         <Champ label="Même personne au restaurant">
-          <select style={h.saisie} value={f.resaClientId} onChange={champ('resaClientId')}>
+          <select style={h.saisie} value={f.resaClientId} onChange={champ('resaClientId')} data-no-translate>
             <option value="">Aucune fiche reliée</option>
             {resaClients.filter((c) => !c.archive || c.id === f.resaClientId).map((c) => <option key={c.id} value={c.id}>{libelleClient(c)}</option>)}
           </select>
         </Champ>
         <Champ label="Même personne au spa">
-          <select style={h.saisie} value={f.spaClientId} onChange={champ('spaClientId')}>
+          <select style={h.saisie} value={f.spaClientId} onChange={champ('spaClientId')} data-no-translate>
             <option value="">Aucune fiche reliée</option>
             {spaClients.filter((c) => !c.archive || c.id === f.spaClientId).map((c) => <option key={c.id} value={c.id}>{libelleClient(c)}</option>)}
           </select>

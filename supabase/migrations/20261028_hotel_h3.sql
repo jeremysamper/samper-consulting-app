@@ -37,7 +37,9 @@ begin
   ) then
     raise exception 'SEJOUR_INCONNU: le séjour n''appartient pas à cet établissement' using errcode = '23503';
   end if;
-  if new.assignee_a is not null and not exists (
+  -- L'assignation ne se revérifie que quand elle change : une personne partie
+  -- de l'établissement ne bloque pas les autres mises à jour de la demande.
+  if new.assignee_a is not null and (tg_op = 'INSERT' or new.assignee_a is distinct from old.assignee_a) and not exists (
     select 1 from public.profiles p where p.id = new.assignee_a and new.etablissement_id = any (p.etablissement_ids)
   ) then
     raise exception 'ASSIGNEE_INCONNU: la personne n''appartient pas à cet établissement' using errcode = '23503';
@@ -62,7 +64,12 @@ begin
       new.faite_par := (select auth.uid())::text;
     end if;
   elsif tg_op = 'UPDATE' and new.statut = 'faite' then
-    new.faite_par := old.faite_par;
+    -- Déjà faite : qui et quand ne se réécrivent pas, sauf effacement de
+    -- l'auteur par la suppression de son profil (on delete set null).
+    if not (new.faite_par is null and old.faite_par is not null
+            and not exists (select 1 from public.profiles p where p.id = old.faite_par)) then
+      new.faite_par := old.faite_par;
+    end if;
     new.faite_at := old.faite_at;
   end if;
   if new.statut <> 'faite' then
@@ -80,6 +87,12 @@ end;
 $$;
 
 revoke all on function public.demandes_avant_ecriture() from public, anon, authenticated;
+
+-- Lignes déjà orphelines (faite_par pointant vers un profil disparu) : aucune
+-- attendue, la mise à jour est sans effet s'il n'y en a pas.
+update public.demandes d set faite_par = null
+where d.faite_par is not null
+  and not exists (select 1 from public.profiles p where p.id = d.faite_par);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1. Table
@@ -136,8 +149,10 @@ create or replace trigger trg_hotes_updated_at
   for each row execute function public.set_updated_at();
 
 -- Cohérence : les fiches restaurant et spa liées sont de l'établissement ;
--- l'établissement d'une fiche ne change pas ; le consentement est daté quand
--- il est donné et sa date effacée quand il est retiré.
+-- l'établissement d'une fiche ne change pas. Consentement nLPD traçable : la
+-- base pose elle-même la date et la source quand il est donné, pose la date de
+-- retrait quand il est retiré et garde la date d'accord comme preuve ; le
+-- client ne réécrit aucun de ces champs, ni l'auteur de la fiche.
 create or replace function public.hotes_avant_ecriture()
 returns trigger
 language plpgsql
@@ -158,17 +173,38 @@ begin
   ) then
     raise exception 'CLIENT_SPA_INCONNU: la fiche spa n''appartient pas à cet établissement' using errcode = '23503';
   end if;
-  if new.consentement_marketing and (tg_op = 'INSERT' or not old.consentement_marketing) then
-    new.consentement_at := coalesce(new.consentement_at, now());
-    new.consentement_source := coalesce(new.consentement_source, 'equipe');
+  if tg_op = 'INSERT' then
+    if (select auth.uid()) is not null then
+      -- Compte connecté : la base date et signe elle-même.
+      new.created_by := (select auth.uid())::text;
+      new.consentement_at := case when new.consentement_marketing then now() end;
+      new.consentement_source := case when new.consentement_marketing then 'equipe' end;
+    else
+      -- Chemin de confiance (import, formulaire en ligne par fonction) : les
+      -- valeurs fournies sont gardées, sinon datées maintenant.
+      new.consentement_at := case when new.consentement_marketing then coalesce(new.consentement_at, now()) end;
+      new.consentement_source := case when new.consentement_marketing then coalesce(new.consentement_source, 'equipe') end;
+    end if;
     new.desinscrit_at := null;
-  end if;
-  if not new.consentement_marketing then
-    new.consentement_at := null;
-    new.consentement_source := null;
-  end if;
-  if tg_op = 'INSERT' and (select auth.uid()) is not null then
-    new.created_by := (select auth.uid())::text;
+  else
+    -- L'auteur ne se réécrit pas ; il ne s'efface que par la suppression de son profil.
+    if new.created_by is distinct from old.created_by and (select auth.uid()) is not null
+       and (new.created_by is not null or exists (select 1 from public.profiles p where p.id = old.created_by)) then
+      new.created_by := old.created_by;
+    end if;
+    if new.consentement_marketing and not old.consentement_marketing then
+      new.consentement_at := now();
+      new.consentement_source := case when (select auth.uid()) is null then coalesce(new.consentement_source, 'equipe') else 'equipe' end;
+      new.desinscrit_at := null;
+    elsif not new.consentement_marketing and old.consentement_marketing then
+      new.desinscrit_at := now();
+      new.consentement_at := old.consentement_at;
+      new.consentement_source := old.consentement_source;
+    else
+      new.consentement_at := old.consentement_at;
+      new.consentement_source := old.consentement_source;
+      new.desinscrit_at := old.desinscrit_at;
+    end if;
   end if;
   return new;
 end;
@@ -249,6 +285,7 @@ create or replace trigger trg_sejours_sans_chevauchement
 -- ─────────────────────────────────────────────────────────────────────────────
 alter table public.hotes enable row level security;
 revoke all on table public.hotes from anon;
+revoke truncate, references, trigger on table public.hotes from authenticated;
 
 drop policy if exists hotes_select on public.hotes;
 create policy hotes_select on public.hotes

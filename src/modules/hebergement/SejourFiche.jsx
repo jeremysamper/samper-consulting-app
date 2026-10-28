@@ -110,7 +110,7 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], onL
           if (!peutGerer) return ligne('Fiche hôte', 'Aucune');
           const candidats = hotes.filter((x) => !x.archive).sort((a, b) => `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`, 'fr')).slice(0, 500);
           return ligne('Fiche hôte', <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select style={{ ...h.saisie, width: 'auto', minHeight: 36, padding: '6px 8px' }} value="" onChange={(ev) => ev.target.value && onLierHote?.(s, ev.target.value)}>
+            <select style={{ ...h.saisie, width: 'auto', minHeight: 36, padding: '6px 8px' }} value="" onChange={(ev) => ev.target.value && onLierHote?.(s, ev.target.value)} data-no-translate>
               <option value="">Relier à une fiche…</option>
               {candidats.map((x) => <option key={x.id} value={x.id}>{`${x.prenom} ${x.nom}`.trim()}{x.email ? ` (${x.email})` : ''}</option>)}
             </select>

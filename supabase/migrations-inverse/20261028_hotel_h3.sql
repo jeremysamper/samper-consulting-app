@@ -4,6 +4,8 @@
 -- Jamais appliquée par outil : à jouer à la main, par Jérémy, après export JSON
 -- de hotes. Retire la colonne hote_id des séjours, la table hotes et rend au
 -- déclencheur de chevauchement sa version du lot H0 (sans contrôle de hote_id).
+-- Ne revient pas sur la section 0 de la migration (correction du déclencheur
+-- demandes_avant_ecriture du lot H2) : cette correction reste en place.
 -- ════════════════════════════════════════════════════════════════════════════
 
 do $$
