@@ -1,5 +1,5 @@
 import React from 'react';
-import { navItems as NAV_ITEMS, ENTREE_COMPTE, peutOuvrirCompte } from '../modules/moduleConfig.js';
+import { navItems as NAV_ITEMS, ENTREE_COMPTE, peutOuvrirCompte, pageAccueil } from '../modules/moduleConfig.js';
 import { getDemoData } from '../data/demoData.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
@@ -24,6 +24,7 @@ import CompteButton from '../components/nav/CompteButton.jsx';
 import AccountModal from '../modules/auth/AccountModal.jsx';
 import NavBadge from '../components/nav/NavBadge.jsx';
 import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
+import CarteAlertes from '../components/CarteAlertes.jsx';
 import { ShellProvider } from './ShellContext.js';
 import { applyNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage } from '../services/navigationService.js';
@@ -226,6 +227,17 @@ export default function AppLayout({
     />
   ) : null);
 
+  // ── Carte d'activation des alertes ─────────────────────────────
+  // Un seul exemplaire : l'accueil tactile la pose sous son en-tête
+  // (ShellContext) ; à l'ordinateur elle ouvre la page d'accueil de
+  // l'établissement (tableau de bord, sinon premier module), gardée montée
+  // et masquée ailleurs pour ne pas relire à chaque retour.
+  const voitReservations = visibleNav.some((item) => item.id === 'previsions');
+  const carteAlertes = (
+    <CarteAlertes user={user} etablissement={etablissement} voitReservations={voitReservations} bas={tactile ? 0 : 16} />
+  );
+  const surAccueilOrdinateur = pageAffichee === 'accueil' || pageAffichee === pageAccueil(etablissement, perms, 'ordinateur');
+
   const handleSetPage = (p) => setPage(p);
   // Bouton Accueil et glissé depuis le bord (coque tactile) : retour à
   // l'entrée « accueil » déjà dans l'historique, sinon nouvelle entrée.
@@ -352,6 +364,7 @@ export default function AppLayout({
     setPage: handleSetPage, etablissement, etabs, accountUser,
     openAccount: () => setAccountOpen(true),
     openCompte: ouvrirCompte, compteActif: currentPage === 'compte',
+    carteAlertes: tactile ? carteAlertes : null,
   };
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
@@ -888,7 +901,10 @@ export default function AppLayout({
             </div>
           </header>
 
-          <main ref={mainRef} style={ls.content}>{children}</main>
+          <main ref={mainRef} style={ls.content}>
+            <div hidden={!surAccueilOrdinateur}>{carteAlertes}</div>
+            {children}
+          </main>
         </div>
       </div>
 

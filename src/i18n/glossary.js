@@ -52,6 +52,14 @@ export const UI_GLOSSARY = {
   'Mettez l\'app à jour pour profiter des dernières corrections. Cela prend quelques secondes ; ce qui est déjà enregistré ne se perd pas.': 'Update the app to get the latest fixes. It takes a few seconds; nothing already saved is lost.',
   'Messages privés': 'Private messages',
   'Messages': 'Messages',
+  // Carte d'activation des alertes.
+  'Alertes sur cet appareil': 'Alerts on this device',
+  'Recevez en notification les alertes de l\'établissement et les nouvelles réservations en ligne, même app fermée.': 'Get the establishment\'s alerts and new online bookings as notifications, even with the app closed.',
+  'Activation…': 'Activating…',
+  'Compris': 'Got it',
+  'Sur iPhone et iPad, ajoutez d\'abord l\'app à l\'écran d\'accueil : dans Safari, touchez Partager, puis « Sur l\'écran d\'accueil ». Ouvrez-la ensuite depuis son icône pour activer les alertes.': 'On iPhone and iPad, first add the app to the Home Screen: in Safari, tap Share, then “Add to Home Screen”. Then open it from its icon to turn on alerts.',
+  'Notifications bloquées sur cet appareil': 'Notifications blocked on this device',
+  'Pour recevoir les alertes, autorisez les notifications de l\'app dans les réglages du navigateur ou de l\'appareil, puis revenez ici.': 'To receive alerts, allow the app\'s notifications in the browser or device settings, then come back here.',
   // Messagerie de la barre du haut.
   'Tout voir': 'See all',
   'Fermer la messagerie': 'Close messages',

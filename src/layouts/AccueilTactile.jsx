@@ -26,7 +26,7 @@ import { useShell } from './ShellContext.js';
 export default function AccueilTactile() {
   const shell = useShell();
   if (!shell) return null;
-  const { mode, groupedNav, badges, getLabelForModule, setPage, etablissement, accountUser, openAccount, openCompte, compteActif } = shell;
+  const { mode, groupedNav, badges, getLabelForModule, setPage, etablissement, accountUser, openAccount, openCompte, compteActif, carteAlertes } = shell;
   const salutation = zurichNowMinutes() >= 18 * 60 ? 'Bonsoir' : 'Bonjour';
   const logo = etablissement?.logo_url || null;
   const prenom = accountUser?.prenom || '';
@@ -64,6 +64,9 @@ export default function AccueilTactile() {
           />
         )}
       </header>
+
+      {/* Carte d'activation des alertes (AppLayout), tant qu'elle a lieu d'être. */}
+      {carteAlertes}
 
       {groupedNav.map((group) => (
         <section key={group.label} role="group" aria-label={group.label}>
