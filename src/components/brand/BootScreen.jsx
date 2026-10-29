@@ -89,13 +89,13 @@ function decode(src) {
     .catch(() => {});
 }
 
-// Satoshi chargée avant le texte : sans ça, « Bienvenue » s'affiche d'abord
-// dans la police de secours puis saute à l'arrivée de Satoshi.
+// Plex Sans chargée avant le texte : sans ça, « Bienvenue » s'affiche d'abord
+// dans la police de secours puis saute à l'arrivée de Plex.
 function fontsReady() {
   try {
     return Promise.all([
-      document.fonts.load('700 56px Satoshi'),
-      document.fonts.load('500 12px Satoshi'),
+      document.fonts.load('700 56px "IBM Plex Sans"'),
+      document.fonts.load('500 12px "IBM Plex Sans"'),
     ]).catch(() => {});
   } catch {
     return Promise.resolve();
@@ -232,7 +232,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
   );
 }
 
-// Satoshi, la police de l'app (jeton --font de app.css), pour tout l'écran.
+// Plex Sans, la police de l'app (jeton --font de app.css), pour tout l'écran.
 const FONT = 'var(--font)';
 
 const s = {

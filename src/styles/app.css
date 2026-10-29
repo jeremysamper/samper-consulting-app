@@ -5,16 +5,15 @@
 }
 
 :root {
-  /* Satoshi pour le texte, Zodiak pour les titres (Fontshare, chargées dans
-     vite-index.html et reserver.html), pour toute l'app, module Spa compris. */
-  --font: "Satoshi", system-ui, sans-serif;
-  /* "SC Chiffres" ne couvre que 0-9 (Satoshi, déclarée au boot par
-     src/design/installDigitFont.js) : chiffres des titres en Satoshi,
-     lettres en Zodiak. Tant qu'elle n'est pas déclarée, elle est ignorée. */
-  --font-serif: "SC Chiffres", "Zodiak", Georgia, serif;
+  /* IBM Plex Sans pour le texte, IBM Plex Serif pour les titres, pour toute
+     l'app, module Spa compris. Fichiers servis par l'app (public/fonts/ui,
+     déclarés dans src/styles/fonts.css), précachés par le service worker. */
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "IBM Plex Serif", Georgia, serif;
   /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
-     quantités) : Satoshi, les chiffres d'affichage de Zodiak détonnent. */
-  --font-num: "Satoshi", system-ui, sans-serif;
+     quantités) : la même famille que le texte. Les chiffres de Plex sont
+     tabulaires par défaut ; le zéro barré est posé par la règle « Chiffres ». */
+  --font-num: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   /* Fond légèrement creusé (96 vs surface 99.4) : c'est cet écart, et non une
      ombre, qui détache les cartes en mode clair. Neutres froids, teintés vers
      le pétrole de la marque : jamais de crème (le fond crème est la signature
@@ -887,6 +886,16 @@ body {
   background: var(--ambient) no-repeat, var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Chiffres : zéro barré (0 et O distincts) et chiffres de largeur égale sur
+   tout ce qui est chiffré, soit les valeurs en --font-num (KPI, montants,
+   températures, heures) et les cellules de tableau. Plex a des chiffres
+   tabulaires par défaut ; tabular-nums reste posé pour une police de repli. */
+[style*="var(--font-num)"],
+td,
+th {
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
 #root {

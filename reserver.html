@@ -5,20 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <title>Réservation en ligne</title>
-    <!-- Satoshi (texte) + Zodiak (titres) : les mêmes liens que vite-index.html. -->
-    <link rel="preconnect" href="https://api.fontshare.com" />
-    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
-    <!-- Une feuille par famille : l'API Fontshare ne renvoie que la première
-         famille d'une requête qui en demande plusieurs (Zodiak manquait). -->
-    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap" rel="stylesheet" />
-    <link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700,800&display=swap" rel="stylesheet" />
+    <!-- IBM Plex Sans (texte) + IBM Plex Serif (titres) : les mêmes fichiers que
+         vite-index.html, déclarés par src/styles/fonts.css via src/reservation/main.jsx. -->
+    <link rel="preload" href="/fonts/ui/IBMPlexSans-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
     <style>
       /* Page publique autonome : n'embarque ni app.css ni le bundle de l'app.
-         Mêmes jetons de police que app.css (chiffres des titres en Satoshi). */
+         Mêmes jetons de police que app.css. */
       :root {
-        --font: "Satoshi", system-ui, sans-serif;
-        --font-serif: "SC Chiffres", "Zodiak", Georgia, serif;
-        --font-num: "Satoshi", system-ui, sans-serif;
+        --font: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+        --font-serif: "IBM Plex Serif", Georgia, serif;
+        --font-num: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
       }
       html, body { margin: 0; padding: 0; overflow-x: hidden; }
       *, *::before, *::after { box-sizing: border-box; }

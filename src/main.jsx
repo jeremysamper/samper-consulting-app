@@ -4,7 +4,7 @@ import App from './App.jsx';
 import { initPwa } from './pwa/registerPwa.js';
 import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
 import { installBrandPrintStyles } from './design/installPrintStyles.js';
-import { installDigitFont } from './design/installDigitFont.js';
+import './styles/fonts.css';
 import './styles/app.css';
 
 // Filet anti-crash après release : un chunk lazy introuvable (ancienne
@@ -15,9 +15,6 @@ installPreloadErrorRecovery();
 // src/design/brandTokens.js. Couvre le Ctrl+P sur l'app ; les boutons d'export
 // ont leur propre feuille, écrite par pdfUtils dans la fenêtre d'impression.
 installBrandPrintStyles();
-
-// Chiffres des titres (Zodiak) rendus en Satoshi : voir installDigitFont.js.
-installDigitFont();
 
 class RootErrorBoundary extends React.Component {
   constructor(props) {

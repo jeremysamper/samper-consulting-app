@@ -1,0 +1,33 @@
+/* Polices de l'interface : IBM Plex Sans (texte et chiffres) et IBM Plex Serif
+   (titres), servies par l'app. Licence OFL : public/fonts/ui/OFL-IBMPlex.txt.
+   Les fichiers viennent de google/fonts (ofl/ibmplexsans, ofl/ibmplexserif) et
+   sont réduits au latin (U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153,
+   U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212, U+2215), ce qui
+   couvre le français et l'espagnol, l'espace fine insécable U+202F des montants
+   fr-CH et l'espace U+00A0. Plex Sans est variable sur l'axe de graisse 400-700
+   (axe de chasse figé à 100) ; Plex Serif est en deux fichiers statiques, 400 et
+   700 (les titres de l'app sont à 700 dans 109 cas sur 130).
+   Les fichiers sont précachés par le service worker (vite.config.js,
+   globPatterns : woff2) : l'app garde sa typographie hors-ligne dès la première
+   ouverture. Un autre caractère retombe sur la police de repli du jeton. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/ui/IBMPlexSans-latin-wght.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Serif";
+  src: url("/fonts/ui/IBMPlexSerif-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Serif";
+  src: url("/fonts/ui/IBMPlexSerif-latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

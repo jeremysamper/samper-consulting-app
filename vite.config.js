@@ -105,6 +105,10 @@ export default defineConfig({
         // ttf : les polices de marque embarquées dans les PDF (public/fonts).
         // Sans elles dans le précache, un export lancé hors-ligne sortirait
         // dans la police de repli - la cuisine imprime sans réseau.
+        // woff2 : les polices de l'interface (public/fonts/ui, IBM Plex), même
+        // logique : l'app garde sa typographie hors-ligne dès la première ouverture.
+        // woff2 : les polices de l'interface (public/fonts/ui, IBM Plex), même
+        // logique : l'app garde sa typographie hors-ligne dès la première ouverture.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,ttf}'],
         // Navigation offline → app shell précaché, l'app boote sans réseau.
         // Pas '/index.html' : la copie dist est faite par productionIndexPlugin
@@ -122,18 +126,6 @@ export default defineConfig({
         // Tout est NetworkFirst (online strictement identique à avant, le
         // cache ne sert qu'en secours) ; /auth/ n'est volontairement JAMAIS caché.
         runtimeCaching: [
-          {
-            // Police Satoshi (Fontshare) : feuille + fichiers woff2, externes
-            // donc hors précache. CacheFirst après le premier chargement pour
-            // que l'app garde sa typographie hors-ligne.
-            urlPattern: /^https:\/\/(api|cdn)\.fontshare\.com\//i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'fontshare',
-              cacheableResponse: { statuses: [0, 200] },
-              expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
-            },
-          },
           {
             // Photos de l'écran « Bienvenue » (src/components/brand/boot-photos).
             // Hors précache exprès : seules les six photos de la semaine sont

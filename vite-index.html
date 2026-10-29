@@ -28,13 +28,10 @@
     <!-- Android Chrome (bannière d'installation) -->
     <meta name="mobile-web-app-capable" content="yes" />
 
-    <!-- Satoshi (texte) + Zodiak (titres) : polices de toute l'app. -->
-    <link rel="preconnect" href="https://api.fontshare.com" />
-    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
-    <!-- Une feuille par famille : l'API Fontshare ne renvoie que la première
-         famille d'une requête qui en demande plusieurs (Zodiak manquait). -->
-    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap" rel="stylesheet" />
-    <link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,700,800&display=swap" rel="stylesheet" />
+    <!-- IBM Plex Sans (texte, chiffres) + IBM Plex Serif (titres) : servies par
+         l'app (public/fonts/ui, déclarées dans src/styles/fonts.css) et précachées
+         par le service worker. Un seul préchargement : la police du texte. -->
+    <link rel="preload" href="/fonts/ui/IBMPlexSans-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- Pré-splash : comble le trou blanc entre l'écran natif (manifest,
          fond #003042) et le premier rendu React (BootScreen, même fond).
