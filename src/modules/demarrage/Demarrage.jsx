@@ -9,6 +9,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import { etabToggleableModules, isModuleActiveForEtab, isPageActiveForEtab, navItems } from '../moduleConfig.js';
 import { EVENEMENT_DEMARRAGE } from './CarteDemarrage.jsx';
 import { lireMiseEnRoute, marquerEtapes } from './demarrageService.js';
+import { chargerExemple, effacerExemple, telechargerModele } from './exempleService.js';
 
 // L'importeur de recettes lit aussi les photos par l'IA : réservé au
 // consultant, comme dans les Outils consultant où il vit.
@@ -74,6 +75,23 @@ export default function Demarrage({ user, etablissement, setPage }) {
     });
   };
 
+  const modele = (nom) => {
+    telechargerModele(nom).catch((err) => notify(messageErreur(err, 'modèle Excel'), 'error'));
+  };
+
+  const charger = () => agir('exemple', async () => {
+    const { echecs } = await chargerExemple(etabId);
+    notify(echecs ? "Une partie de l'exemple n'a pas été chargée. Réessayez." : "L'exemple est chargé.", echecs ? 'warning' : 'success');
+  });
+
+  const effacer = () => {
+    if (!confirmLegacy("Effacer les recettes, la carte et les produits d'exemple ? Ce que vous avez saisi reste en place.")) return;
+    agir('exemple', async () => {
+      const { restes } = await effacerExemple(etabId);
+      notify(restes ? "Une partie de l'exemple est utilisée ailleurs et reste en place." : "L'exemple est effacé.", restes ? 'warning' : 'success');
+    });
+  };
+
   const pret = etat.status === 'ready' || (etat.status === 'error' && etat.faites);
   const faites = etat.faites || new Set();
   const modules = etabToggleableModules.filter((item) => isModuleActiveForEtab(etablissement, item.permKey));
@@ -125,9 +143,15 @@ export default function Demarrage({ user, etablissement, setPage }) {
 
           <Etape numero={2} titre="Recettes" fait={faites.has('recettes')}>
             <p style={s.texte}>Une fiche suffit pour cocher l'étape.</p>
+            <p style={s.texte}>
+              {consultant
+                ? 'Le modèle Excel se réimporte tel quel par « Importer des recettes ».'
+                : 'Remplissez le modèle Excel et confiez-le à votre consultant pour l\'import, ou écrivez vos fiches dans Cartes & Recettes.'}
+            </p>
             <div style={s.actions}>
               {consultant && <Btn variant="primary" onClick={() => setImportOuvert(true)}>Importer des recettes</Btn>}
               {peutOuvrir('cartes') && <Btn onClick={() => setPage('cartes')}>Ouvrir Cartes & Recettes</Btn>}
+              <Btn onClick={() => modele('modele-recettes.xlsx')}>Modèle Excel des recettes</Btn>
             </div>
           </Etape>
 
@@ -137,6 +161,7 @@ export default function Demarrage({ user, etablissement, setPage }) {
               {peutOuvrir('catalogue')
                 ? <Btn onClick={() => setPage('catalogue')}>Ouvrir le catalogue</Btn>
                 : <span style={s.texte}>Le catalogue n'est pas activé pour cet établissement.</span>}
+              <Btn onClick={() => modele('modele-catalogue.xlsx')}>Modèle Excel du catalogue</Btn>
             </div>
           </Etape>
 
@@ -151,6 +176,12 @@ export default function Demarrage({ user, etablissement, setPage }) {
 
           <Etape numero={5} titre="Données d'exemple" fait={faites.has('exemple')} dernier>
             <p style={s.texte}>Douze recettes de bistrot, une carte et trente produits, pour voir l'app remplie. Un geste les efface, sans toucher à ce que vous avez saisi.</p>
+            <div style={s.actions}>
+              {etat.registre?.length
+                ? <Btn variant="danger" disabled={enCours === 'exemple'} onClick={effacer}>Effacer l'exemple</Btn>
+                : <Btn variant="primary" disabled={enCours === 'exemple'} onClick={charger}>Charger l'exemple</Btn>}
+              {enCours === 'exemple' && <span style={s.texte} aria-live="polite">Un instant…</span>}
+            </div>
           </Etape>
         </ol>
       )}
