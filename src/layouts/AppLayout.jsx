@@ -57,8 +57,9 @@ const LARGEUR_CONTENU = 1440;
 const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
-// et la page d'accueil de la coque tactile.
-const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Réglages', accueil: 'Accueil' };
+// la mise en route (widget du tableau de bord) et la page d'accueil de la
+// coque tactile.
+const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Réglages', accueil: 'Accueil', demarrage: 'Mise en route' };
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {

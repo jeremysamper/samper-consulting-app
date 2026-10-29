@@ -60,6 +60,9 @@ export function origine(poste, ctx) {
   const liste = [];
   const pose = (id, taille) => { if (vu(id)) liste.push({ id, taille }); };
 
+  // Établissement neuf : la mise en route avant tout le reste.
+  pose('mise-en-route', 'pleine');
+
   let reperes = ['repere-couverts', 'repere-groupes', 'repere-equipe', 'mes-points'].filter(vu);
   if (tel && vu('equipe')) reperes = reperes.filter((id) => id !== 'repere-equipe');
   taillesDeGroupe(reperes.length, poste).forEach((taille, i) => liste.push({ id: reperes[i], taille }));

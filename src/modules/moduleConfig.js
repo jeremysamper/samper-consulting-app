@@ -380,6 +380,14 @@ export function peutAdministrerCompte(user, permissions = {}) {
   return user?.role === 'consultant' && permissions?.consultant_tools !== false;
 }
 
+// Mise en route d'un établissement (lot LD) : page `demarrage`, hors menu,
+// ouverte par la carte du tableau de bord. Consultant et patron, comme la RLS
+// de demarrage_etapes et donnees_exemple. normalizePage la laisse passer
+// telle quelle, comme `compte`.
+export function peutOuvrirDemarrage(user) {
+  return user?.role === 'consultant' || user?.role === 'patron';
+}
+
 // La page s'ouvre à toute personne connectée : chacune y a au moins ses
 // préférences (thème, langue, son compte) et n'y voit que ses sections.
 export function peutOuvrirCompte(user) {
@@ -414,6 +422,7 @@ export function peutOuvrirPage(page, user, permissions = {}) {
   const droits = permissions || {};
   if (page === 'dashboard' || page === 'accueil') return true;
   if (page === 'compte') return peutOuvrirCompte(user);
+  if (page === 'demarrage') return peutOuvrirDemarrage(user);
   if (page === 'faq') return role === 'consultant';
   if (PAGES_DU_CONSULTANT.includes(page)) return peutAdministrerCompte(user, droits);
   if (page === 'journal') return ['consultant', 'patron'].includes(role) && droits.journal !== false;

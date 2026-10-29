@@ -4,7 +4,7 @@ import { CATALOGUE } from './catalogue.js';
 import {
   WidgetAbsences, WidgetAFaire, WidgetAVenir, WidgetChiffre, WidgetEquipe, WidgetGroupes, WidgetHaussesPrix, WidgetHotel, WidgetMesPoints, WidgetMessages,
   WidgetMot, WidgetPertesSemaines, WidgetPointage, WidgetQuiTravaille, WidgetRaccourcis, WidgetRegularite, WidgetReleves,
-  WidgetRepere, WidgetReservations, WidgetSemaine, WidgetTempsGagne,
+  WidgetMiseEnRoute, WidgetRepere, WidgetReservations, WidgetSemaine, WidgetTempsGagne,
 } from './Widgets.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,6 +34,7 @@ const COMPOSANTS = {
   'regularite': WidgetRegularite,
   'hausses-prix': WidgetHaussesPrix,
   'temps-gagne': WidgetTempsGagne,
+  'mise-en-route': WidgetMiseEnRoute,
   'haccp-releves': WidgetReleves,
   'pertes-semaines': WidgetPertesSemaines,
   'groupes': WidgetGroupes,

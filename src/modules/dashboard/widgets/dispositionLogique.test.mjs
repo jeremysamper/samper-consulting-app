@@ -122,6 +122,16 @@ test('hausses de prix : la direction sous la garde de Factures & achats, posé �
   assert.ok(ids(origine('ordinateur', avec)).indexOf('hausses-prix') > ids(origine('ordinateur', avec)).indexOf('qui-travaille'));
 });
 
+test('mise en route : en tête à l\'origine tant qu\'elle n\'est pas terminée', () => {
+  assert.equal(estVisible('mise-en-route', CONSULTANT), false, 'garde fermée sans lecture');
+  const neuf = { ...CONSULTANT, avecMiseEnRoute: true };
+  POSTES.forEach((p) => {
+    const l = origine(p, neuf);
+    assert.deepEqual(l[0], { id: 'mise-en-route', taille: 'pleine' }, p);
+    assert.deepEqual(ids(l).slice(1), ids(origine(p, CONSULTANT)), p);
+  });
+});
+
 test('temps gagné : la direction, posé avec les chiffres seulement quand la semaine a un gain', () => {
   assert.equal(estVisible('temps-gagne', CONSULTANT), false, 'garde fermée sans lecture aboutie');
   assert.equal(estVisible('temps-gagne', { ...CUISINIER, avecTempsGagne: true }), false, 'jamais hors direction');

@@ -48,6 +48,13 @@ export const CATALOGUE = [
     famille: 'aujourdhui', page: 'planning', tailles: ['petit', 'moyen'], origine: partout('petit'),
     visible: (c) => c.reperes.includes('equipe'),
   },
+  // Mise en route d'un établissement neuf (lot A1) : consultant et patron,
+  // jusqu'à « Terminer la mise en route ». Posée en tête à l'origine.
+  {
+    id: 'mise-en-route', nom: 'Mise en route', description: 'Les étapes qui rendent l'app prête pour l'équipe.',
+    famille: 'aujourdhui', page: 'demarrage', tailles: ['moyen', 'pleine'], origine: partout('pleine'),
+    visible: (c) => Boolean(c.avecMiseEnRoute),
+  },
   {
     id: 'pointage', nom: 'Votre service', description: 'Pointer votre arrivée et votre départ.',
     famille: 'aujourdhui', page: 'planning', tailles: ['grand', 'pleine'], origine: { ordinateur: 'grand', tablette: 'grand', telephone: 'pleine' },

@@ -18,6 +18,7 @@ import { CAPACITE_RACCOURCIS } from './dispositionLogique.js';
 import { chiffresDuMois, formatPoints, libelleAction, prochainCadeau } from '../../points/bareme.js';
 import { BAREME, GESTES, formatDuree, formatDureeGeste } from '../../../services/tempsGagneBareme.js';
 import { Fenetre } from '../../../components/ui/Fenetres.jsx';
+import CarteDemarrage from '../../demarrage/CarteDemarrage.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composants des widgets du tableau de bord. Chacun reçoit :
@@ -426,6 +427,11 @@ export function WidgetTempsGagne({ t, taille }) {
       {fenetre}
     </Section>
   );
+}
+
+// Mise en route (lot A1) : la carte lit ce que le tableau de bord a lu.
+export function WidgetMiseEnRoute({ t }) {
+  return <CarteDemarrage etat={t.miseEnRoute} onContinuer={t.direction ? () => t.ouvrir('demarrage') : null} />;
 }
 
 export function WidgetMessages({ t }) {

@@ -58,6 +58,8 @@ import { useResumePoints } from '../points/useResumePoints.js';
 import { useHaussesTableau } from '../factures-achats/haussesTableau.js';
 import { demanderEcran } from '../../services/demandeEcran.js';
 import { useTempsGagne } from '../../hooks/useTempsGagne.js';
+import { useMiseEnRoute } from '../demarrage/CarteDemarrage.jsx';
+import { peutOuvrirDemarrage } from '../moduleConfig.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
 // retour sur l'app. Le jour suit : passé minuit, tout se relit sur le nouveau.
@@ -134,6 +136,9 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // Temps gagné de la semaine (lot T) : consultant et patron, seuls à lire la
   // table temps_gagne (RLS).
   const tempsGagne = useTempsGagne({ etabId, aujourdhui, enabled: direction });
+  // Mise en route d'un établissement neuf (lot LD, repris au lot A1) :
+  // consultant et patron, tant que la ligne « termine » n'est pas posée.
+  const miseEnRoute = useMiseEnRoute({ etabId, enabled: peutOuvrirDemarrage(user) });
   // Points & boutique : l'état est celui du filtre du menu (même lecture en
   // cache) ; le solde n'est lu que si le système est allumé et que la personne
   // participe.
@@ -318,13 +323,14 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     avecHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret',
     nbHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret' ? haussesPrix.hausses.length : 0,
     avecTempsGagne: direction && tempsGagne.statut === 'pret',
+    avecMiseEnRoute: miseEnRoute.statut === 'pret' && !miseEnRoute.termine,
     tempsGagneSecondes: direction && tempsGagne.statut === 'pret' ? tempsGagne.totalSecondes : 0,
     modulesDuMenu: menu,
   };
 
   const t = {
     user, aujourdhui, maintenant, mobile, etabId, consultant, direction, d, absences, absencesLues, telephones, nbMessages,
-    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points, haussesPrix, tempsGagne,
+    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points, haussesPrix, tempsGagne, miseEnRoute,
     avecPlanning, avecGroupes, avecCouvertsLus, avecGroupesLus,
     versPlanning: peutOuvrir('planning') ? () => ouvrir('planning') : null,
     versReservations: peutOuvrir('previsions') ? () => ouvrir('previsions') : null,
@@ -343,6 +349,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         onAssistant={consultant && peutOuvrir('faq') ? () => ouvrir('faq') : null}
         onPersonnaliser={d.pret && !personnaliser ? () => setPersonnaliser(true) : null}
       />
+
 
       {enEchec && <BandeauNonActualise onRetry={d.recharger} />}
 
