@@ -35,8 +35,9 @@ import { dbService } from '../services/dbService.js';
 import { messageErreur } from '../utils/messageErreur.js';
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
-// et la page d'accueil de la coque tactile.
-const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Compte', accueil: 'Accueil' };
+// la mise en route (carte du tableau de bord) et la page d'accueil de la
+// coque tactile.
+const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Compte', accueil: 'Accueil', demarrage: 'Mise en route' };
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {

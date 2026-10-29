@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirCompte } from './moduleConfig.js';
+import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirCompte, peutOuvrirDemarrage } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 import { messageErreur } from '../utils/messageErreur.js';
@@ -11,6 +11,8 @@ const loadCatalogue = () => import('./catalogue/Catalogue.jsx');
 const loadCommande = () => import('./commande/Commande.jsx');
 const loadCompte = () => import('./compte/Compte.jsx');
 const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
+// Mise en route d'un établissement neuf (page hors menu, lot LD).
+const loadDemarrage = () => import('./demarrage/Demarrage.jsx');
 // Tableau de bord (les établissements de type Spa n'en ont pas, cf. moduleConfig).
 const loadTableauDeBord = () => import('./dashboard/TableauDeBord.jsx');
 const loadDocuments = () => import('./documents/Documents.jsx');
@@ -50,6 +52,7 @@ const Catalogue = lazy(loadCatalogue);
 const Commande = lazy(loadCommande);
 const Compte = lazy(loadCompte);
 const ConsultantTools = lazy(loadConsultantTools);
+const Demarrage = lazy(loadDemarrage);
 const TableauDeBord = lazy(loadTableauDeBord);
 const Documents = lazy(loadDocuments);
 const Factures = lazy(loadFactures);
@@ -332,6 +335,15 @@ export default function LegacyModuleHost({
       const CompteComponent = Compte;
       return peutOuvrirCompte(user, permissions)
         ? wrap('Compte', <CompteComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'demarrage': {
+      // Mise en route (lot LD) : ouverte par la carte du tableau de bord,
+      // consultant et patron seulement (peutOuvrirDemarrage, même règle que
+      // la RLS des tables de mise en route).
+      const DemarrageComponent = Demarrage;
+      return peutOuvrirDemarrage(user)
+        ? wrap('Mise en route', <DemarrageComponent user={user} etablissement={etablissement} setPage={setPage} />)
         : accessDenied;
     }
     case 'factures': {

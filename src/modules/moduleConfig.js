@@ -330,6 +330,14 @@ export function peutOuvrirCompte(user, permissions = {}) {
   return user?.role === 'consultant' && permissions?.consultant_tools !== false;
 }
 
+// Mise en route d'un établissement (lot LD) : page `demarrage`, hors menu,
+// ouverte par la carte du tableau de bord. Consultant et patron, comme la RLS
+// de demarrage_etapes et donnees_exemple. normalizePage la laisse passer
+// telle quelle, comme `compte`.
+export function peutOuvrirDemarrage(user) {
+  return user?.role === 'consultant' || user?.role === 'patron';
+}
+
 // Entrée « Compte » de la palette Ctrl+K : hors du menu (pas de case de droit,
 // pas de chiffre Alt), rattachée aux Outils consultant comme Factures & achats
 // l'est à l'Inventaire.

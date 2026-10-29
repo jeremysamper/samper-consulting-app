@@ -42,6 +42,7 @@ import AFaire from './AFaire.jsx';
 import ASavoir from './ASavoir.jsx';
 import ChiffresGestion from './ChiffresGestion.jsx';
 import CarteHotel from './CarteHotel.jsx';
+import CarteDemarrage from '../demarrage/CarteDemarrage.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
@@ -222,6 +223,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         resume={resume}
         onAssistant={consultant && peutOuvrir('faq') ? () => ouvrir('faq') : null}
       />
+
+      <CarteDemarrage user={user} etablissement={etablissement} setPage={setPage} />
 
       {enEchec && <BandeauNonActualise onRetry={d.recharger} />}
 
