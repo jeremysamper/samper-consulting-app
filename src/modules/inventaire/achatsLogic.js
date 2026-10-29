@@ -16,6 +16,7 @@
 
 import { matchIngredient, normalizeName, tokenize } from '../../services/recipeProductMatching.js';
 import { cleProduit, estCompte, ligneLibre } from './inventaireLignes.js';
+import { tvaIncoherente } from './tvaAchats.js';
 
 export const TYPES_DOCUMENT = [
   { id: 'facture', label: 'Facture', pluriel: 'factures' },
@@ -352,13 +353,16 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
   };
 }
 
-// Document « à compléter » : la lecture n'a pas tout rendu. Règle calculée,
-// aucune colonne : une facture sans total TTC, ou tout document sans
-// fournisseur ou sans date. Il reste signalé (accueil du module, écran
-// « Vérifier la lecture », liste des documents) jusqu'à ce qu'on le complète.
+// Document « à compléter » : la lecture n'a pas tout rendu, ou s'est
+// contredite. Règle calculée, aucune colonne : une facture sans total TTC,
+// tout document sans fournisseur ou sans date, et une pièce dont HT, TTC et
+// taux de TVA lus ne s'accordent pas (tvaAchats.js). Il reste signalé (accueil
+// du module, écran « Vérifier la lecture », liste des documents) jusqu'à ce
+// qu'on le complète ou qu'on corrige le taux.
 export const estACompleter = (d) => (d.typeDocument === 'facture' && d.totalTTC == null)
   || !String(d.fournisseurNom || '').trim()
-  || !d.dateDocument;
+  || !d.dateDocument
+  || tvaIncoherente(d);
 
 // ── Rattachement : produit créé depuis une ligne lue, décision propagée ──
 

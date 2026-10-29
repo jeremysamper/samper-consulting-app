@@ -30,6 +30,7 @@ import ImportDocumentsAchats from './ImportDocumentsAchats.jsx';
 import VerifierLecture from './VerifierLecture.jsx';
 import { useRapprochement } from './useRapprochement.js';
 import { estACompleter } from './achatsLogic.js';
+import { montantTvaAEnregistrer } from './tvaAchats.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import AjoutProduitsModal from './AjoutProduitsModal.jsx';
 import ProduitsMaisonModal from './ProduitsMaisonModal.jsx';
@@ -562,15 +563,17 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
   };
 
   // « Enregistrer » de « Vérifier la lecture » : l'identité du document par
-  // l'upsert entier (fournisseur, numéro, date, total HT, périmètre), puis le
-  // montant à payer et l'échéance par l'écriture ciblée des factures
-  // (majFactureAchat, seuls champs passés). Optimiste : l'état d'avant est
-  // restauré avant toute relecture si l'une des deux échoue.
+  // l'upsert entier (fournisseur, numéro, date, total HT, périmètre, taux et
+  // montant de TVA), puis le montant à payer et l'échéance par l'écriture
+  // ciblée des factures (majFactureAchat, seuls champs passés). Optimiste :
+  // l'état d'avant est restauré avant toute relecture si l'une des deux échoue.
   const enregistrerLecture = async (doc, v) => {
     const avant = (achats.docsRef.current || []).find(d => d.id === doc.id) || doc;
     const n = normalizeName(v.fournisseurNom);
     const fournisseur = n && (fournisseurs.find(f => normalizeName(f.nom) === n)
       || fournisseurs.find(f => { const y = normalizeName(f.nom); return y && (y.includes(n) || n.includes(y)); }));
+    const facture = doc.typeDocument === 'facture';
+    const totalTTCApres = facture && v.totalTTC !== undefined ? v.totalTTC : avant.totalTTC;
     const identite = {
       ...avant,
       fournisseurNom: v.fournisseurNom,
@@ -579,8 +582,11 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
       dateDocument: v.dateDocument,
       totalHT: v.totalHT,
       perimetre: v.perimetre,
+      // Le taux ne change qu'avec le droit de régler (champ absent sinon) ; le
+      // montant suit toujours les totaux saisis.
+      tvaTaux: v.tvaTaux === undefined ? avant.tvaTaux : v.tvaTaux,
+      montantTva: montantTvaAEnregistrer({ totalHT: v.totalHT, totalTTC: totalTTCApres }),
     };
-    const facture = doc.typeDocument === 'facture';
     const apres = facture
       ? { ...identite, totalTTC: v.totalTTC ?? avant.totalTTC, dateEcheance: v.dateEcheance === undefined ? avant.dateEcheance : v.dateEcheance }
       : identite;

@@ -14,6 +14,7 @@
     "lint:capture": "node scripts/check-capture-colors.mjs",
     "lint:on-color": "node scripts/check-on-color.mjs",
     "lint:glossary": "node scripts/check-glossary-parity.mjs",
+    "test:unit": "node --test \"src/**/*.test.mjs\"",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

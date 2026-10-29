@@ -2693,7 +2693,10 @@ export function installLegacySupabase() {
     //     ciblées (reglerFacturesAchat), sinon un rattachement de ligne fait
     //     depuis un état un peu ancien effacerait un règlement tout juste posé ;
     //   - le TTC et l'échéance seulement à la création (`creation: true`, la
-    //     lecture IA) ; ensuite ils se corrigent par majFactureAchat.
+    //     lecture IA) ; ensuite ils se corrigent par majFactureAchat ;
+    //   - le taux et le montant de TVA (migration 20261029) passent avec
+    //     l'identité : ils décrivent la pièce, pas son règlement, et
+    //     majFactureAchat les corrige aussi depuis l'onglet Factures.
     async upsertAchatsDocument(d, { creation = false } = {}) {
       const payload = {
         id: d.id || ('achat-' + Date.now() + Math.floor(Math.random() * 1000)),
@@ -2709,6 +2712,8 @@ export function installLegacySupabase() {
         exclu: !!d.exclu,
         source: d.source || null,
         nom_fichier: d.nomFichier || null,
+        tva_taux: d.tvaTaux != null && d.tvaTaux !== '' ? Number(d.tvaTaux) : null,
+        montant_tva: d.montantTva != null && d.montantTva !== '' ? Number(d.montantTva) : null,
         created_by: d.createdBy || null,
       };
       if (creation) {
@@ -2723,13 +2728,16 @@ export function installLegacySupabase() {
       const { error } = await client.from('achats_documents').delete().eq('id', id);
       if (error) throw error;
     },
-    // Montant à payer, échéance ou date d'une facture, corrigés à la main
-    // depuis l'onglet Factures : seuls les champs passés sont écrits.
-    async majFactureAchat(id, { totalTTC, dateEcheance, dateDocument }) {
+    // Montant à payer, échéance, date, taux ou montant de TVA d'une facture,
+    // corrigés à la main depuis l'onglet Factures : seuls les champs passés
+    // sont écrits.
+    async majFactureAchat(id, { totalTTC, dateEcheance, dateDocument, tvaTaux, montantTva }) {
       const patch = {};
       if (totalTTC !== undefined) patch.total_ttc = totalTTC != null && totalTTC !== '' ? Number(totalTTC) : null;
       if (dateEcheance !== undefined) patch.date_echeance = dateEcheance || null;
       if (dateDocument !== undefined) patch.date_document = dateDocument || null;
+      if (tvaTaux !== undefined) patch.tva_taux = tvaTaux != null && tvaTaux !== '' ? Number(tvaTaux) : null;
+      if (montantTva !== undefined) patch.montant_tva = montantTva != null && montantTva !== '' ? Number(montantTva) : null;
       const { data, error } = await client.from('achats_documents').update(patch).eq('id', id).select().single();
       if (error) throw error;
       return this.mapAchatsDocumentFromDB(data);
@@ -2833,6 +2841,8 @@ export function installLegacySupabase() {
         numero: row.numero || '', dateDocument: row.date_document,
         totalHT: row.total_ht != null ? Number(row.total_ht) : null,
         totalTTC: row.total_ttc != null ? Number(row.total_ttc) : null,
+        tvaTaux: row.tva_taux != null ? Number(row.tva_taux) : null,
+        montantTva: row.montant_tva != null ? Number(row.montant_tva) : null,
         dateEcheance: row.date_echeance || null,
         regleLe: row.regle_le || null, regleMode: row.regle_mode || '', regleNote: row.regle_note || '',
         lignes: row.lignes || [], exclu: !!row.exclu,

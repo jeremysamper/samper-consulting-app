@@ -4,6 +4,7 @@ import { dbService } from '../../services/dbService.js';
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { TYPES_DOCUMENT, devinerTypeDocument, trouverDoublon } from './achatsLogic.js';
 import { estPdfFichier, preparerPieces } from './achatsPieces.jsx';
+import { montantTvaAEnregistrer } from './tvaAchats.js';
 import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
@@ -70,6 +71,10 @@ export default function ImportDocumentsAchats({
         totalHT: res.totalHT,
         totalTTC: res.totalTTC,
         dateEcheance: res.dateEcheance || null,
+        // Taux lu par l'IA (2.6 alimentaire, 8.1 sinon), nombre ou null ; le
+        // montant n'est écrit que quand les deux totaux sont lus.
+        tvaTaux: res.tauxTva != null && Number.isFinite(Number(res.tauxTva)) ? Number(res.tauxTva) : null,
+        montantTva: montantTvaAEnregistrer({ totalHT: res.totalHT, totalTTC: res.totalTTC }),
         lignes: (res.lignes || []).map(l => ({
           libelle: l.libelle,
           referenceFourn: l.referenceFourn || '',

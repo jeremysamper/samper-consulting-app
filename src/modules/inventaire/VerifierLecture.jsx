@@ -5,6 +5,8 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import LignesARattacher from './LignesARattacher.jsx';
 import { libelleVoir, VisionneusePieces } from './achatsPieces.jsx';
 import { libelleType, prixLusDuDocument } from './achatsLogic.js';
+import { libelleTaux, montantTvaDepuisTotaux } from './tvaAchats.js';
+import ChampTauxTva from './ChampTauxTva.jsx';
 import { dateCH } from './inventaireLignes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +46,7 @@ export default function VerifierLecture({
     totalHT: doc.totalHT != null ? String(doc.totalHT) : '',
     totalTTC: doc.totalTTC != null ? String(doc.totalTTC) : '',
     dateEcheance: doc.dateEcheance || '',
+    tvaTaux: doc.tvaTaux != null ? Number(doc.tvaTaux) : null,
     perimetre: (doc.perimetre || '').trim() || 'Général',
   }));
   const [etape, setEtape] = React.useState('champs'); // 'champs' | 'rattachement'
@@ -60,11 +63,14 @@ export default function VerifierLecture({
     totalHT: doc.totalHT == null && !v.totalHT.trim(),
     totalTTC: facture && doc.totalTTC == null && !v.totalTTC.trim(),
     echeance: facture && !doc.dateEcheance && !v.dateEcheance,
+    tva: facture && doc.tvaTaux == null && v.tvaTaux == null,
   };
   const nbLignes = (doc.lignes || []).length;
   const somme = (doc.lignes || []).reduce((t, l) => t + (Number(l.montantLigne) || 0), 0);
   const totalHTSaisi = lireMontant(v.totalHT);
   const ecart = totalHTSaisi != null && totalHTSaisi > 0 ? Math.round((somme - totalHTSaisi) * 100) / 100 : 0;
+  // TVA recalculée à la volée depuis les totaux saisis et le taux choisi.
+  const tva = facture ? montantTvaDepuisTotaux({ totalHT: totalHTSaisi, totalTTC: lireMontant(v.totalTTC), tvaTaux: v.tvaTaux }) : null;
 
   const manque = [];
   if (!v.fournisseurNom.trim()) manque.push('le fournisseur');
@@ -82,8 +88,9 @@ export default function VerifierLecture({
       dateDocument: v.dateDocument,
       totalHT: lireMontant(v.totalHT),
       totalTTC: facture ? lireMontant(v.totalTTC) : undefined,
-      // L'échéance reste à qui règle les factures.
+      // L'échéance et le taux de TVA restent à qui règle les factures.
       dateEcheance: facture && canRegler ? (v.dateEcheance || null) : undefined,
+      tvaTaux: facture && canRegler ? v.tvaTaux : undefined,
       perimetre: v.perimetre,
     });
     setBusy(false);
@@ -162,6 +169,9 @@ export default function VerifierLecture({
               {facture && champ('totalTTC', 'Total TTC', (
                 <input type="text" inputMode="decimal" value={v.totalTTC} onChange={e => maj({ totalTTC: e.target.value })} placeholder="0.00" style={styleChamp('totalTTC')} />
               ))}
+              {facture && champ('tva', 'Taux de TVA', canRegler
+                ? <ChampTauxTva valeur={v.tvaTaux} onChange={t => maj({ tvaTaux: t })} style={styleChamp('tva')} />
+                : <span style={st.lecture} data-no-translate>{libelleTaux(v.tvaTaux) || '-'}</span>)}
               {facture && canRegler && champ('echeance', 'Échéance', (
                 <input type="date" value={v.dateEcheance} min="2000-01-01" max="2099-12-31" onChange={e => maj({ dateEcheance: e.target.value })} style={styleChamp('echeance')} />
               ))}
@@ -174,6 +184,16 @@ export default function VerifierLecture({
                 </label>
               )}
             </div>
+            {facture && (
+              <div style={st.tvaLigne}>
+                {tva.montantTva != null
+                  ? <>Montant de TVA : <span data-no-translate>CHF {chf(tva.montantTva)}</span>{tva.estime ? <>, <span>estimé depuis le taux</span></> : null}</>
+                  : <>Montant de TVA : <span>non calculable</span></>}
+                {tva.coherent === false && (
+                  <span style={st.alerte}> Le taux ne correspond pas aux totaux : vérifiez sur le document.</span>
+                )}
+              </div>
+            )}
             <div style={st.pied}>
               <span style={st.aide}>
                 {/* Chaque champ manquant dans son nœud : la phrase reste au glossaire. */}
@@ -232,6 +252,8 @@ const st = {
   label: { fontSize: 12, fontWeight: 500, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 8 },
   nonLu: { fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 10, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)' },
   input: { padding: '9px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', minHeight: 44, boxSizing: 'border-box', width: '100%', minWidth: 0 },
+  lecture: { display: 'flex', alignItems: 'center', minHeight: 44, fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font-num)' },
+  tvaLigne: { fontSize: 12, color: 'var(--text)', lineHeight: 1.5 },
   pied: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' },
   aide: { fontSize: 12, color: 'var(--text2)', flex: '1 1 220px', minWidth: 0, lineHeight: 1.45 },
   enregistre: { fontSize: 13, color: 'var(--success-text)' },

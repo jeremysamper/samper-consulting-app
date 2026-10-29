@@ -16,6 +16,8 @@ import {
   MODES_REGLEMENT, libelleMode, periodesFactures, rangerParPeriode, statutPaiement,
   totauxFactures, trierParEcheance, joursEntre, dateLongue, intervalleLong, lendemainIso,
 } from './facturesLogic.js';
+import { libelleTaux, montantTvaAEnregistrer, montantTvaDepuisTotaux } from './tvaAchats.js';
+import ChampTauxTva from './ChampTauxTva.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran « Je règle les factures » de l'inventaire (demande de Jérémy,
@@ -35,6 +37,9 @@ import {
 // Mêmes documents que « Écarts et documents » (achats_documents) : seules les
 // factures y sont listées, les bons de livraison et de commande ne se paient
 // pas. Une facture réglée reste listée même si son type change ensuite.
+//
+// Depuis le lot LC (29.10.2026) : la fiche dépliée montre le taux et le montant
+// de TVA (le taux se corrige avec le droit de régler).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -567,8 +572,18 @@ function LigneFacture({
     const v = lireMontant(montant);
     if (v === undefined) { notifyLegacy('Montant illisible : écrivez par exemple 454.50', 'warning'); return; }
     if (v === (f.totalTTC != null ? Number(f.totalTTC) : null)) return;
-    onMaj({ totalTTC: v });
+    // Le montant de TVA suit le TTC corrigé (TTC moins HT, quand les deux sont connus).
+    onMaj({ totalTTC: v, montantTva: montantTvaAEnregistrer({ totalHT: f.totalHT, totalTTC: v }) });
   };
+  const tva = montantTvaDepuisTotaux(f);
+  const ligneTva = (
+    <div style={st.detailTexte}>
+      {tva.montantTva != null
+        ? <>TVA{f.tvaTaux != null ? <> <span data-no-translate>{libelleTaux(f.tvaTaux)}</span></> : null} : <span data-no-translate>CHF {chf(tva.montantTva)}</span>{tva.estime ? <>, <span>estimée depuis le taux</span></> : null}.</>
+        : <>TVA : <span>taux ou montant non lu</span>.</>}
+      {tva.coherent === false && <span style={st.incoherent}> Le taux ne correspond pas aux totaux : à vérifier.</span>}
+    </div>
+  );
 
   return (
     <div style={{ ...st.facture, ...(coche ? st.factureCochee : {}) }}>
@@ -649,6 +664,13 @@ function LigneFacture({
                   style={{ ...st.input, ...(f.dateDocument ? {} : { borderColor: 'var(--warning-bd)' }) }}
                 />
               </label>
+              {/* Le taux se corrige avec le droit de régler ; les autres le lisent. */}
+              <div style={st.champ}>
+                <span style={st.champLabel}>Taux de TVA</span>
+                {canRegler
+                  ? <ChampTauxTva valeur={f.tvaTaux} onChange={t => onMaj({ tvaTaux: t, montantTva: montantTvaAEnregistrer(f) })} style={st.input} />
+                  : <span style={st.lecture} data-no-translate>{libelleTaux(f.tvaTaux) || '-'}</span>}
+              </div>
             </div>
           ) : (
             <div style={st.detailTexte}>
@@ -660,6 +682,7 @@ function LigneFacture({
           {f.totalHT != null && f.totalTTC != null && canModifier && (!f.regleLe || canRegler) && (
             <div style={st.detailTexte}>Total hors taxes lu sur la facture : <span data-no-translate>CHF {chf(f.totalHT)}</span>.</div>
           )}
+          {ligneTva}
 
           {statut === 'reglee' && (
             <div style={st.detailTexte}>
@@ -816,6 +839,8 @@ const st = {
   champ: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   champLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   input: { padding: '9px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', minHeight: 44, boxSizing: 'border-box', width: '100%', minWidth: 0 },
+  lecture: { display: 'flex', alignItems: 'center', minHeight: 44, fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font-num)' },
+  incoherent: { color: 'var(--warning-text)', fontWeight: 500 },
   detailTexte: { fontSize: 12, color: 'var(--text)', lineHeight: 1.5 },
   detailActions: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   detailNote: { fontSize: 11, color: 'var(--text2)' },
