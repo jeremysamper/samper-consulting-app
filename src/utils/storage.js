@@ -17,6 +17,10 @@ export const UI_STORAGE_KEYS = {
   groupesOuvrir: 'sc_groupes_ouvrir',
   theme: 'sc_theme',
   lang: 'sc_lang',
+  // Rappel d'activation du code à usage unique (consultants sans facteur
+  // vérifié) : instant ISO jusqu'auquel « Plus tard » le cache (lendemain
+  // 06:00 à Zurich).
+  totpRappelJusqua: 'sc_totp_rappel_jusqua',
   // Version d'icônes pour laquelle l'appareil a lu le rappel « rafraîchir la
   // vignette de l'écran d'accueil » (iOS uniquement).
   iconTipAck: 'sc_icon_tip_ack'

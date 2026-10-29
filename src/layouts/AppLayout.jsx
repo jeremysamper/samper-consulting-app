@@ -21,6 +21,7 @@ import NavOrganizer from '../components/nav/NavOrganizer.jsx';
 import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
 import AccountButton from '../components/nav/AccountButton.jsx';
 import CompteButton from '../components/nav/CompteButton.jsx';
+import TotpRappel from '../components/nav/TotpRappel.jsx';
 import AccountModal from '../modules/auth/AccountModal.jsx';
 import NavBadge from '../components/nav/NavBadge.jsx';
 import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
@@ -356,6 +357,9 @@ export default function AppLayout({
       onLogout={onLogout}
     />
   ) : null;
+  // Rappel du code à usage unique (consultant sans facteur vérifié) : même
+  // rangée que les autres bandeaux, « Activer » ouvre Mon compte.
+  const rappelTotp = <TotpRappel user={user} onActiver={() => setAccountOpen(true)} compteOuvert={accountOpen} />;
 
   // Ce que la page d'accueil tactile lit (ShellContext) : la même liste de
   // modules et les mêmes badges que la barre latérale, le compte, la navigation.
@@ -692,6 +696,7 @@ export default function AppLayout({
       <div style={mls.root}>
         <OfflineBanner />
         <HomeScreenIconBanner />
+        {rappelTotp}
 
         <div style={mls.stage}>
           <header style={mls.topbar} className="app-glass-bar">
@@ -826,6 +831,7 @@ export default function AppLayout({
         {/* Bandeau d'état hors-ligne / sync pointages / mise à jour */}
         <OfflineBanner />
         <HomeScreenIconBanner />
+        {rappelTotp}
         {/* Scène : le header « verre » est posé en absolu sur la zone qui
             défile, le contenu passe dessous (--app-header-h, app.css). */}
         <div style={ls.stage}>
