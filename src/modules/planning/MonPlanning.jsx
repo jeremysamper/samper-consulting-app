@@ -1,6 +1,7 @@
 import React from 'react';
 import { ajouterJours, filetType, formatDuree, heuresSegment, typeHoraire } from './planningModeles.js';
 import { jourLong, libellePeriode } from './planningExport.js';
+import { formatSolde } from './soldesHeures.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mon planning : ce qu'un employé veut savoir en ouvrant le module. Quand est
@@ -16,7 +17,7 @@ const quand = (date, aujourdhui) => {
   return jourLong(date).toLowerCase();
 };
 
-export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale, aujourdhui, maintenant, onExporter }) {
+export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale, aujourdhui, maintenant, solde, onExporter }) {
   const [semaine, setSemaine] = React.useState(semaineInitiale);
   const mesShifts = shifts.filter(s => s.userId === userId);
   const jours = Array.from({ length: 7 }, (_, i) => ajouterJours(semaine, i));
@@ -44,6 +45,8 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
           <div style={s.prochainQuand}>Aucun service prévu pour l'instant.</div>
         )}
       </div>
+
+      {solde && <LigneSolde solde={solde} />}
 
       <div style={s.navigation}>
         <button type="button" style={s.fleche} onClick={() => setSemaine(ajouterJours(semaine, -7))} aria-label="Semaine précédente">‹</button>
@@ -93,8 +96,36 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
   );
 }
 
+// Solde du mois (du 1er à hier) et retards, en une ligne. Nombres et mots dans
+// des nœuds séparés : les libellés restent des entrées du glossaire.
+function LigneSolde({ solde }) {
+  const { retards } = solde;
+  return (
+    <div style={s.solde} data-solde="">
+      <span style={s.soldeLabel}>{solde.periode.complet ? 'Solde du mois dernier' : 'Solde du mois, à hier'}</span>
+      {solde.avecContrat ? (
+        <span style={{ ...s.soldeValeur, color: solde.solde < 0 ? 'var(--warning-text)' : 'var(--text)' }}>{formatSolde(solde.solde)}</span>
+      ) : (
+        <span style={s.soldeSans}>Pas de contrat</span>
+      )}
+      {retards.nombre > 0 ? (
+        <span style={s.soldeRetards}>
+          <span>{retards.nombre}</span> <span>{retards.nombre > 1 ? 'retards' : 'retard'}</span>, <span>{retards.minutes}</span> <span>min</span>
+        </span>
+      ) : (
+        <span style={s.soldeRetards}>Aucun retard</span>
+      )}
+    </div>
+  );
+}
+
 const s = {
   racine: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 },
+  solde: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 12px', padding: '0 0 12px', borderBottom: '1px solid var(--border)' },
+  soldeLabel: { fontSize: 13, fontWeight: 500, color: 'var(--text2)' },
+  soldeValeur: { fontSize: 18, fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
+  soldeSans: { fontSize: 14, color: 'var(--text2)' },
+  soldeRetards: { fontSize: 13, color: 'var(--text2)', marginLeft: 'auto' },
   prochain: { padding: '4px 0 12px', borderBottom: '1px solid var(--border)' },
   prochainLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
   prochainQuand: { fontSize: 20, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginTop: 2 },

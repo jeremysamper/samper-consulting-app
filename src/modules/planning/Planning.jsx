@@ -33,6 +33,9 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import AccueilPlanning from './AccueilPlanning.jsx';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
+import ContratsModal from './ContratsModal.jsx';
+import { useContrats } from './contratsService.js';
+import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -172,6 +175,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const modelesEtab = usePlanningModeles(etabId);
   const modeles = modelesEtab.modeles;
   const [showModeles, setShowModeles] = React.useState(false);
+
+  // Contrats de travail (taux, heures par semaine) : heures dues du solde du
+  // mois. La RLS ne rend à chacun que le sien, à qui gère le planning tous.
+  const contratsEtab = useContrats(etabId);
+  const [showContrats, setShowContrats] = React.useState(false);
 
   // Fenêtres de la refonte : saisie en un geste, remplissage, duplication, export.
   const [saisieRapide, setSaisieRapide] = React.useState(null); // { userId, date } | null
@@ -334,15 +342,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const getShift = (userId, date) => planningVisible.find(s => s.userId === userId && s.date === date);
   const getShiftsDay = (userId, date) => planningVisible.filter(s => s.userId === userId && s.date === date);
 
-  const calcHeures = (debut, fin, pause) => {
-    if (!debut || !fin) return null;
-    const [dh, dm] = debut.split(':').map(Number);
-    const [fh, fm] = fin.split(':').map(Number);
-    const total = (fh * 60 + fm) - (dh * 60 + dm) - (pause || 0);
-    // En heures, sans arrondi : l'affichage passe par formatDuree (« 4 h 45 »),
-    // un arrondi au dixième aurait écrit 4 h 48.
-    return total / 60;
-  };
+  // calcHeures (durée du relevé CCNT) vient de soldesHeures.js : le solde du
+  // mois et l'export salaires comptent les heures faites avec la même mesure.
   const dureeLisible = (h) => {
     if (h == null || !Number.isFinite(Number(h))) return '-';
     return Number(h) < 0 ? `${Number(h).toFixed(1)} h` : formatDuree(h);
@@ -1347,6 +1348,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const choixModeles = canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => setShowModeles(true) };
   const choixGroupes = groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => setShowGroupes(true) };
   const choixMasques = canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => setShowMasques(true) };
+  const choixContrats = canWrite && contratsEtab.status !== 'absent' && { titre: 'Contrats', detail: 'Taux, heures par semaine et vacances de chacun, pour le solde d\'heures.', onClick: () => setShowContrats(true) };
+
+  // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
+  // le 1er le mois précédent. Rien tant que contrats et absences ne sont pas lus.
+  const periodeSolde = periodeEnCours(zurichToday());
+  const monSolde = contratsEtab.status === 'ready' && absencesEtab.status !== 'loading' && absencesEtab.status !== 'error'
+    ? { ...soldePersonne({ userId: user.id, ...periodeSolde, contrats: contratsEtab.contrats, shifts: planningEtab, absences: absencesVisibles }), periode: periodeSolde }
+    : null;
   const titreEcran = { horaires: 'Mes horaires', equipe: 'L\'équipe aujourd\'hui', planning: canWrite ? 'Faire le planning' : 'La semaine de l\'équipe' }[ecran];
 
   return (
@@ -1362,7 +1371,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           gerer={[
             // Sur téléphone, les cartes du pointage n'ouvrent pas le détail : pas de correction.
             !isMobile && { titre: 'Corriger un pointage', detail: 'Touchez ensuite la ligne de la personne.', onClick: () => setEcran('equipe') },
-            choixAbsences, choixModeles, choixGroupes, choixMasques,
+            choixAbsences, choixModeles, choixGroupes, choixMasques, choixContrats,
             { titre: 'Dupliquer la semaine', onClick: () => setShowDupliquer(true) },
             canExport && { titre: 'Exporter', onClick: () => setExportOuvert(true) },
           ]}
@@ -1438,6 +1447,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             choixModeles,
             choixGroupes,
             choixMasques,
+            choixContrats,
           ] }]}
         />
       </div>
@@ -1478,6 +1488,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           semaineInitiale={getMondayOfCurrentWeek()}
           aujourdhui={zurichToday()}
           maintenant={zurichClock()}
+          solde={monSolde}
           onExporter={() => setExportOuvert(true)}
         />
       ) : activeTab === 'planning' ? (
@@ -2118,8 +2129,21 @@ const Planning = ({ user, etablissement, initialTab }) => {
           absenceDe={(uid, d) => { const a = absenceDe(absencesVisibles, uid, d); return a ? metaMotif(a.motif).label : null; }}
           nomDe={nomDe}
           etablissement={etablissement}
+          contrats={contratsEtab.status === 'ready' ? contratsEtab.contrats : null}
           onCCNT={openCCNTModal}
           onClose={() => setExportOuvert(false)}
+        />
+      )}
+
+      {showContrats && canWrite && (
+        <ContratsModal
+          personnes={equipe}
+          contrats={contratsEtab.contrats}
+          status={contratsEtab.status}
+          enregistrer={contratsEtab.enregistrer}
+          aujourdhui={zurichToday()}
+          heuresDefaut={getHeuresContractuelles()}
+          onClose={() => setShowContrats(false)}
         />
       )}
 

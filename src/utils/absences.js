@@ -2,17 +2,20 @@
 // Absences de l'équipe : motifs et lecture « qui est absent tel jour ».
 //
 // Source unique pour le Planning (saisie, grille) et le tableau de bord. Les ids
-// sont ceux de la contrainte CHECK de la migration 20260929 : en ajouter un ici
-// sans toucher à la base ferait échouer l'enregistrement.
+// sont ceux de la contrainte CHECK des migrations 20260929 et 20261030 : en
+// ajouter un ici sans toucher à la base ferait échouer l'enregistrement.
 //
 // « Absence » couvre volontairement maladie, accident ou raison personnelle sans
-// la nommer : la ligne est lue par toute l'équipe.
+// la nommer : la ligne est lue par toute l'équipe. C'est le seul motif qui ne
+// crédite pas d'heures au solde (soldesHeures.js).
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { parseLocalDate } from './dateHelpers.js';
 
 export const MOTIFS_ABSENCE = [
   { id: 'conge',     label: 'Congé',     etat: 'en congé',     fond: 'var(--info-bg)',    texte: 'var(--info-text)',    bordure: 'var(--info-bd)' },
+  { id: 'vacances',  label: 'Vacances',  etat: 'en vacances',  fond: 'var(--success-bg)', texte: 'var(--success-text)', bordure: 'var(--success-bd)' },
+  { id: 'ferie',     label: 'Jour férié', etat: 'jour férié',  fond: 'var(--warning-bg)', texte: 'var(--warning-text)', bordure: 'var(--warning-bd)' },
   { id: 'formation', label: 'Formation', etat: 'en formation', fond: 'var(--accent-light)', texte: 'var(--accent)',    bordure: 'var(--accent-bd)' },
   { id: 'absence',   label: 'Absence',   etat: 'absence',       fond: 'var(--surface2)',   texte: 'var(--text2)',        bordure: 'var(--border2)' },
 ];
