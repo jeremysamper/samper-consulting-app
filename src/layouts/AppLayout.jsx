@@ -523,7 +523,7 @@ export default function AppLayout({
 
   const handleLogoRemove = async () => {
     if (!etablissement?.id) return;
-    if (!confirmLegacy('Revenir au logo Samper par défaut pour ' + etablissement.nom + ' ?')) return;
+    if (!confirmLegacy('Revenir au logo Ritmo par défaut pour ' + etablissement.nom + ' ?')) return;
     if (legacySB) {
       try {
         await legacySB.db.updateEtablissementLogo(etablissement.id, null);
@@ -553,7 +553,7 @@ export default function AppLayout({
         } : {})}
         style={{
           width: size, height: size, borderRadius: 8, padding: 0,
-          // Sans logo d'établissement, on affiche la marque Samper (fond pétrole
+          // Sans logo d'établissement, on affiche la marque Ritmo (fond pétrole
           // intégré au SVG) : le conteneur reste transparent, sinon le --accent
           // clair du mode sombre déborderait en liseré.
           background: 'transparent',
@@ -574,7 +574,7 @@ export default function AppLayout({
       >
         {appLogo
           ? <img src={appLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <SamperMark size={size} radius={0} title="Samper Consulting" style={{ width: '100%', height: '100%', display: 'block' }} />}
+          : <SamperMark size={size} radius={0} title="Ritmo" style={{ width: '100%', height: '100%', display: 'block' }} />}
         {canEditLogo && logoHover && (
           <div style={{
             position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',

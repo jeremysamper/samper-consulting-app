@@ -1,12 +1,12 @@
 /**
- * Génère les icônes PWA + favicons de Samper Consulting à partir de la
- * géométrie du logo (src/components/brand/markGeometry.js), qui est aussi
- * celle rendue par le composant React. Un seul endroit à modifier.
+ * Génère les icônes PWA + favicons de Ritmo à partir de la géométrie du logo
+ * (src/components/brand/markGeometry.js), qui est aussi celle rendue par le
+ * composant React. Un seul endroit à modifier.
  *
  * Usage : npm run brand:icons
  *
  * VERSIONNAGE DES FICHIERS (ICON_VERSION, défini dans markGeometry.js)
- * Les PNG portent un suffixe de version (icon-192-v2.png). C'est ce qui rend la
+ * Les PNG portent un suffixe de version (icon-192-v3.png). C'est ce qui rend la
  * mise à jour automatique chez les utilisateurs qui ont déjà installé l'app :
  * Chrome ne compare pas les octets des icônes, il compare le manifest. Tant que
  * l'URL reste identique, l'icône installée ne bouge jamais. En changeant l'URL,
@@ -40,11 +40,11 @@ mkdirSync(iconsDir, { recursive: true });
 // 180 = apple-touch-icon iOS ; 192 et 512 sont les tailles maskable du manifest.
 const SIZES = [72, 96, 128, 144, 180, 192, 512];
 
-// Motif un peu agrandi sur les favicons : à 16 px, chaque pale ne fait que
-// quelques pixels, le logo a besoin d'occuper davantage la boîte pour rester
-// lisible dans l'onglet.
+// Motif un peu agrandi sur les favicons : à 16 px, le trait ne fait qu'un
+// pixel, le logo a besoin d'occuper davantage la boîte pour rester lisible
+// dans l'onglet.
 const FAVICON_SCALE = 1.12;
-const FAVICON_RADIUS = 192; // sur la viewBox 1024, soit ~19 % du côté
+const FAVICON_RADIUS = 4.5; // sur la grille 24, soit ~19 % du côté
 
 const appIconSvg = (size) => buildMarkSvg({ size, background: BRAND_COLORS.petrol, radius: 0 });
 const faviconSvg = (size) =>

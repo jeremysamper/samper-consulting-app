@@ -111,8 +111,8 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard,
     <div style={as.logoWrap}>
       <SamperMark size={48} radius={10} title={null} />
       <div style={as.brandText}>
-        <div style={as.brandTitle}>Samper Consulting</div>
-        <div style={as.brandSub}>Gestion culinaire professionnelle</div>
+        <div style={as.brandTitle} data-no-translate="">Ritmo</div>
+        <div style={as.brandSub}>Gestion culinaire, par Samper Consulting</div>
       </div>
     </div>
   );

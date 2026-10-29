@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Samper Consulting - Gestion culinaire</title>
+    <title>Ritmo - Gestion culinaire</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.ico" />
 
@@ -16,14 +16,14 @@
     <!-- iOS Safari — mode standalone (plein écran sans barre Safari) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Samper" />
+    <meta name="apple-mobile-web-app-title" content="Ritmo" />
 
-    <!-- iOS touch icons (PNG requis, pas SVG). Le suffixe -v2 est volontaire :
+    <!-- iOS touch icons (PNG requis, pas SVG). Le suffixe -v3 est volontaire :
          il force la relecture des icônes chez les utilisateurs deja installes
          (voir scripts/gen-icons.mjs). -->
-    <link rel="apple-touch-icon" href="/icons/icon-180-v2.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-144-v2.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180-v2.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-180-v3.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-144-v3.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180-v3.png" />
 
     <!-- Android Chrome (bannière d'installation) -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -38,8 +38,9 @@
 
     <!-- Pré-splash : comble le trou blanc entre l'écran natif (manifest,
          fond #003042) et le premier rendu React (BootScreen, même fond).
-         Retiré par src/main.jsx dès que React a peint. Les polygones sont
-         la géométrie exacte de src/components/brand/markGeometry.js. -->
+         Retiré par src/main.jsx dès que React a peint. Le tracé est la
+         géométrie exacte de src/components/brand/markGeometry.js (losange à
+         pales, grille 24, motif à 66 % de la boîte). -->
     <style>
       #pre-splash {
         position: fixed;
@@ -59,13 +60,10 @@
   </head>
   <body>
     <div id="pre-splash" aria-hidden="true">
-      <svg width="112" height="112" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-        <polygon points="512,512 683,341 853,512" fill="#175C82"/>
-        <polygon points="512,512 853,512 683,683" fill="#EFE8DD"/>
-        <polygon points="512,512 683,683 512,853" fill="#04222D"/>
-        <polygon points="512,512 512,853 341,683" fill="#175C82"/>
-        <polygon points="512,512 171,512 341,341" fill="#C9BCA3"/>
-        <polygon points="512,512 341,341 512,171" fill="#175C82"/>
+      <svg width="112" height="112" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(4.08 4.08) scale(0.66)">
+          <path d="M12 4.41L12 7A1.5 1.5 0 0 0 13.5 8.5L17.88 8.5A1.5 1.5 0 0 1 18.94 8.94L20.94 10.94A1.5 1.5 0 0 1 20.94 13.06L13.06 20.94A1.5 1.5 0 0 1 10.94 20.94L8.94 18.94A1.5 1.5 0 0 1 8.5 17.88L8.5 13.5A1.5 1.5 0 0 0 7 12L4.41 12A1 1 0 0 1 3.71 10.29L10.29 3.71A1 1 0 0 1 12 4.41Z" fill="none" stroke="#EFE8DD" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
       </svg>
     </div>
     <div id="root"></div>

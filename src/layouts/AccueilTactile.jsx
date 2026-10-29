@@ -37,7 +37,7 @@ export default function AccueilTactile() {
         <div style={s.logo} aria-hidden="true">
           {logo
             ? <img src={logo} alt="" style={s.logoImg} />
-            : <SamperMark size={48} radius={0} title="Samper Consulting" style={{ width: '100%', height: '100%', display: 'block' }} />}
+            : <SamperMark size={48} radius={0} title="Ritmo" style={{ width: '100%', height: '100%', display: 'block' }} />}
         </div>
         <div style={s.qui}>
           <h2 style={s.nomEtab} data-no-translate="">{etablissement?.nom || ''}</h2>

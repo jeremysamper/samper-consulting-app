@@ -33,7 +33,7 @@ export default function HomeScreenIconBanner() {
   return (
     <div role="status" style={s.band}>
       <span style={s.text}>
-        Nouveau logo Samper. Sur l&apos;écran d&apos;accueil, la vignette garde l&apos;ancien :
+        Nouveau logo <span data-no-translate="">Ritmo</span>. Sur l&apos;écran d&apos;accueil, la vignette garde l&apos;ancien :
         iOS la fige au moment de l&apos;ajout. Pour l&apos;actualiser, appui long sur
         l&apos;icône pour la supprimer, puis rouvrir l&apos;app dans Safari et
         « Partager » puis « Sur l&apos;écran d&apos;accueil ».

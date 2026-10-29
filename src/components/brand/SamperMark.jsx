@@ -1,7 +1,7 @@
-import { MARK_SECTORS, MARK_VIEWBOX, sectorPoints, BRAND_COLORS } from './markGeometry.js';
+import { MARK_GRID, MARK_PATH, MARK_STROKE, markTransform, BRAND_COLORS } from './markGeometry.js';
 
 /**
- * Logo Samper Consulting, rendu en SVG inline.
+ * Logo Ritmo (losange à pales, au trait), rendu en SVG inline.
  *
  * Inline et non `<img src="/icons/...">` : aucune requête réseau, aucun risque
  * de cache navigateur périmé, et le logo s'affiche donc immédiatement, hors
@@ -10,23 +10,26 @@ import { MARK_SECTORS, MARK_VIEWBOX, sectorPoints, BRAND_COLORS } from './markGe
  * (voir public/manifest.json).
  *
  * @param {number} size       côté en px
- * @param {string} background fond du carré, ou 'none' pour ne rendre que les pales
+ * @param {string} background fond du carré, ou 'none' pour ne rendre que le trait
  * @param {number} radius     arrondi des coins en px (ignoré si background 'none')
  * @param {number} scale      agrandissement du motif (utile quand il n'y a pas de fond)
+ * @param {string} stroke     couleur du trait : crème sur un fond, currentColor sans fond
  */
 export default function SamperMark({
   size = 40,
   background = BRAND_COLORS.petrol,
   radius = Math.round(size * 0.22),
   scale = 1,
+  stroke,
   className,
   style,
-  title = 'Samper Consulting',
+  title = 'Ritmo',
 }) {
-  const V = MARK_VIEWBOX;
-  const hasBackground = background && background !== 'none';
-  // Rayon exprimé en px converti dans le repère de la viewBox.
-  const rx = hasBackground ? (radius * V) / size : 0;
+  const V = MARK_GRID;
+  const hasBackground = Boolean(background) && background !== 'none';
+  // Rayon exprimé en px converti dans le repère de la grille.
+  const rx = hasBackground ? Math.round(((radius * V) / size) * 1000) / 1000 : 0;
+  const color = stroke || (hasBackground ? BRAND_COLORS.cream : 'currentColor');
   // `title={null}` = marque décorative : le nom est déjà écrit à côté, inutile
   // de le faire annoncer deux fois par un lecteur d'écran.
   const a11y = title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': 'true' };
@@ -45,13 +48,16 @@ export default function SamperMark({
       {...a11y}
     >
       {hasBackground && <rect width={V} height={V} rx={rx} ry={rx} fill={background} />}
-      {MARK_SECTORS.map((sector) => (
-        <polygon
-          key={`${sector.from}-${sector.to}`}
-          points={sectorPoints(sector, scale)}
-          fill={sector.color}
+      <g transform={markTransform(scale)}>
+        <path
+          d={MARK_PATH}
+          fill="none"
+          stroke={color}
+          strokeWidth={MARK_STROKE}
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
-      ))}
+      </g>
     </svg>
   );
 }

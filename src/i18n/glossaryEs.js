@@ -444,6 +444,7 @@ export const UI_GLOSSARY_ES = {
   'Gestion culinaire': 'Gestión culinaria',
   "J'ai compris": 'Entendido',
   'Gestion culinaire professionnelle': 'Gestión culinaria profesional',
+  'Gestion culinaire, par Samper Consulting': 'Gestión culinaria, por Samper Consulting',
   'Enregistrement': 'Guardando',
   'Génération': 'Generando',
   'Traitement': 'Procesando',

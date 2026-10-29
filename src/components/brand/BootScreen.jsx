@@ -214,7 +214,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
           <div className="bv-text" style={s.textRow}>
             <p style={s.word}>Bienvenue</p>
             <p style={s.sign} aria-hidden="true">
-              Samper Consulting
+              Ritmo
               <br />
               Gestion culinaire
             </p>

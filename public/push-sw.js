@@ -13,8 +13,8 @@ self.addEventListener('push', (event) => {
     body: m.corps || '',
     tag: m.tag || undefined,
     renotify: Boolean(m.tag),
-    icon: '/icons/icon-192-v2.png',
-    badge: '/icons/icon-192-v2.png',
+    icon: '/icons/icon-192-v3.png',
+    badge: '/icons/icon-192-v3.png',
     data: { url: m.url || '/' },
   }));
 });
