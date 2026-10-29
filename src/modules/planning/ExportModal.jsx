@@ -5,6 +5,8 @@ import { exporterExcel, libellePeriode, payloadEquipe, payloadPersonnes, payload
 import { pdfUtils } from '../../services/pdf.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { lireAbsences } from './contratsService.js';
+import { soldePersonne } from './soldesHeures.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Exporter : un seul endroit pour tous les documents du planning. On choisit
@@ -20,7 +22,7 @@ const finDuMois = (iso) => {
 
 export default function ExportModal({
   semaine, horizon, user, peutExporterEquipe, personnes, groupes, groupeDe, groupeNomDe,
-  shifts, absenceDe, nomDe, etablissement, onCCNT, onClose,
+  shifts, absenceDe, nomDe, etablissement, contrats, onCCNT, onClose,
 }) {
   const [doc, setDoc] = React.useState(peutExporterEquipe ? 'equipe' : 'personnes');
   const [periode, setPeriode] = React.useState('affichee');
@@ -79,8 +81,16 @@ export default function ExportModal({
           { etablissement, filename: `pointages-${base}.pdf` },
         );
       } else if (doc === 'excel') {
-        const res = await exporterExcel({ nomFichier: `heures-${base}.xlsx`, debut, fin, personnes: choisis, shifts, nomDe, groupeNomDe });
+        // Feuille « Soldes » : contrats lus par le Planning, absences relues
+        // sur la période exportée (elle peut remonter avant celles chargées).
+        let soldes;
+        if (contrats && etablissement?.id) {
+          const absences = await lireAbsences(etablissement.id, debut, fin);
+          soldes = choisis.map(p => soldePersonne({ userId: p.id, debut, fin, contrats, shifts, absences }));
+        }
+        const res = await exporterExcel({ nomFichier: `heures-${base}.xlsx`, debut, fin, personnes: choisis, shifts, nomDe, groupeNomDe, soldes });
         if (!res.lignes) notifyLegacy('Aucun horaire sur cette période : le classeur est vide.', 'warning');
+        if (!soldes) notifyLegacy('Contrats pas encore lus : le classeur part sans la feuille des soldes.', 'warning');
       }
       onClose();
     } catch (err) {
@@ -96,7 +106,7 @@ export default function ExportModal({
         { v: 'equipe', label: 'Planning de l\'équipe', detail: 'PDF, une semaine par page, toute l\'équipe ou un groupe.' },
         { v: 'personnes', label: 'Planning par personne', detail: 'PDF, une page par personne, à remettre ou à afficher.' },
         { v: 'pointages', label: 'Pointages', detail: 'PDF, arrivées, départs et écarts, jour par jour.' },
-        { v: 'excel', label: 'Heures pour les salaires', detail: 'Excel, le total par personne et le détail des horaires.' },
+        { v: 'excel', label: 'Heures pour les salaires', detail: 'Excel, le total par personne, le détail des horaires et le solde selon le contrat.' },
         { v: 'ccnt', label: 'Relevé CCNT', detail: 'Le relevé mensuel d\'une personne, conforme CCNT.' },
       ]
     : [{ v: 'personnes', label: 'Mon planning', detail: 'PDF de mes horaires.' }];
@@ -122,6 +132,7 @@ export default function ExportModal({
         <div>
           <div style={st.label}>Document</div>
           <Options nom="export-doc" valeur={doc} onChange={setDoc} options={optionsDoc} />
+          <div style={{ ...st.remarque, marginTop: 4 }}>Ces chiffres préparent les salaires ; la fiche de paie reste chez votre fiduciaire.</div>
         </div>
       )}
 

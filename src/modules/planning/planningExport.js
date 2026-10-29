@@ -4,6 +4,7 @@
 // passe le résultat à pdfUtils.exportPlanningPdf ou à XLSX.
 // ─────────────────────────────────────────────────────────────────────────────
 import { ajouterJours, formatDuree, heuresSegment, typeHoraire } from './planningModeles.js';
+import { MOTIFS_ABSENCE } from '../../utils/absences.js';
 
 export const datesEntre = (debut, fin) => {
   const out = [];
@@ -125,7 +126,9 @@ export function payloadPointages({ titre, sousTitre, debut, fin, personnesIds, s
 }
 
 // ─── Classeur Excel : le détail et les totaux, pour les salaires ───────────
-export async function exporterExcel({ nomFichier, debut, fin, personnes, shifts, nomDe, groupeNomDe }) {
+// soldes (facultatif) : un soldePersonne par personne (soldesHeures.js), rangé
+// dans une troisième feuille « Soldes ». Les deux premières ne changent pas.
+export async function exporterExcel({ nomFichier, debut, fin, personnes, shifts, nomDe, groupeNomDe, soldes }) {
   const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
   const ids = new Set(personnes.map(p => p.id));
   const dates = new Set(datesEntre(debut, fin));
@@ -171,6 +174,22 @@ export async function exporterExcel({ nomFichier, debut, fin, personnes, shifts,
   feuilleDetail['!cols'] = [{ wch: 11 }, { wch: 10 }, { wch: 26 }, { wch: 14 }, { wch: 10 }, { wch: 7 }, { wch: 7 }, { wch: 11 }, { wch: 15 }, { wch: 9 }, { wch: 9 }, { wch: 15 }, { wch: 18 }];
   XLSX.utils.book_append_sheet(wb, feuilleTotaux, 'Totaux');
   XLSX.utils.book_append_sheet(wb, feuilleDetail, 'Horaires');
+  if (soldes) {
+    // Heures faites = mesure du relevé CCNT ; sans contrat, pas de solde.
+    const lignesSoldes = soldes.map(r => ({
+      Personne: nomDe(r.userId),
+      'Taux (%)': r.contrat ? r.contrat.taux : '',
+      'Heures dues': r.avecContrat ? arrondi(r.heuresDues) : '',
+      'Heures faites': arrondi(r.heuresFaites),
+      Solde: r.avecContrat ? arrondi(r.solde) : 'Pas de contrat',
+      Retards: r.retards.nombre,
+      'Minutes de retard': r.retards.minutes,
+      ...Object.fromEntries(MOTIFS_ABSENCE.map(m => [`${m.label} (jours)`, r.joursParMotif[m.id] || 0])),
+    }));
+    const feuilleSoldes = XLSX.utils.json_to_sheet(lignesSoldes);
+    feuilleSoldes['!cols'] = [{ wch: 26 }, { wch: 9 }, { wch: 12 }, { wch: 13 }, { wch: 15 }, { wch: 8 }, { wch: 17 }, ...MOTIFS_ABSENCE.map(() => ({ wch: 18 }))];
+    XLSX.utils.book_append_sheet(wb, feuilleSoldes, 'Soldes');
+  }
   XLSX.writeFile(wb, nomFichier);
   return { lignes: detail.length, personnes: totaux.length };
 }
