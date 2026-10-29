@@ -71,8 +71,8 @@ export default function CarteDemarrage({ user, etablissement, setPage }) {
         </div>
         <p style={s.texte}>
           {exempleCharge
-            ? "L'exemple est encore chargé : effacez-le depuis la mise en route quand vos données sont là."
-            : "L'établissement, les recettes, le catalogue et le planning : l'équipe trouvera l'app prête."}
+            ? "L'exemple est encore chargé. Effacez-le depuis la mise en route quand vos données sont là."
+            : "L'établissement, les recettes, le catalogue et le planning, pour que l'équipe trouve l'app prête."}
         </p>
       </div>
       {typeof setPage === 'function' && (

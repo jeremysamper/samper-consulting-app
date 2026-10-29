@@ -2753,8 +2753,8 @@ export const UI_GLOSSARY = {
   // ── Mise en route d'un établissement (lot LD) ──
   'Mise en route': 'Getting started',
   'sur 5': 'of 5',
-  "L'exemple est encore chargé : effacez-le depuis la mise en route quand vos données sont là.": 'The sample data is still loaded: clear it from Getting started once your own data is in.',
-  "L'établissement, les recettes, le catalogue et le planning : l'équipe trouvera l'app prête.": 'Site, recipes, catalogue and schedule: the team will find the app ready.',
+  "L'exemple est encore chargé. Effacez-le depuis la mise en route quand vos données sont là.": 'The sample data is still loaded. Clear it from Getting started once your own data is in.',
+  "L'établissement, les recettes, le catalogue et le planning, pour que l'équipe trouve l'app prête.": 'Site, recipes, catalogue and schedule, so the team finds the app ready.',
   "Cinq étapes pour que l'équipe trouve l'app prête. Chacune se fait en un ou deux gestes.": 'Five steps so the team finds the app ready. Each one takes one or two taps.',
   'Chargement de la mise en route…': 'Loading getting started…',
   "La mise en route n'a pas pu être lue.": 'Getting started could not be loaded.',
@@ -2776,6 +2776,18 @@ export const UI_GLOSSARY = {
   'Terminer la mise en route': 'Finish getting started',
   "La carte du tableau de bord disparaît. Elle disparaît aussi d'elle-même quand les étapes 1 à 4 sont faites.": 'The dashboard card goes away. It also goes away on its own once steps 1 to 4 are done.',
   'Fait': 'Done',
+  'Le modèle Excel se réimporte tel quel par « Importer des recettes ».': 'The Excel template can be imported as is with “Import recipes”.',
+  "Remplissez le modèle Excel et confiez-le à votre consultant pour l'import, ou écrivez vos fiches dans Cartes & Recettes.": 'Fill in the Excel template and give it to your consultant to import, or write your recipe sheets in Menus & Recipes.',
+  'Modèle Excel des recettes': 'Recipe Excel template',
+  'Modèle Excel du catalogue': 'Catalogue Excel template',
+  "Charger l'exemple": 'Load sample data',
+  "Effacer l'exemple": 'Clear sample data',
+  'Un instant…': 'One moment…',
+  "L'exemple est chargé.": 'Sample data loaded.',
+  "L'exemple est effacé.": 'Sample data cleared.',
+  "Une partie de l'exemple n'a pas été chargée. Réessayez.": 'Part of the sample data was not loaded. Try again.',
+  "Une partie de l'exemple est utilisée ailleurs et reste en place.": 'Part of the sample data is used elsewhere and stays in place.',
+  'Modèle introuvable. Réessayez plus tard.': 'Template not found. Try again later.',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
