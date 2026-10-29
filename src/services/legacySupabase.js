@@ -2694,9 +2694,11 @@ export function installLegacySupabase() {
     //     depuis un état un peu ancien effacerait un règlement tout juste posé ;
     //   - le TTC et l'échéance seulement à la création (`creation: true`, la
     //     lecture IA) ; ensuite ils se corrigent par majFactureAchat ;
-    //   - le taux et le montant de TVA (migration 20261029) passent avec
-    //     l'identité : ils décrivent la pièce, pas son règlement, et
-    //     majFactureAchat les corrige aussi depuis l'onglet Factures.
+    //   - le taux et le montant de TVA (migration 20261029) aussi, seulement à
+    //     la création : ensuite majFactureAchat les corrige, et la base réserve
+    //     le taux au droit de régler (déclencheur achats_documents_garde_tva).
+    //     Renvoyés à chaque rattachement depuis un état ancien, ils réécriraient
+    //     un taux tout juste corrigé sur un autre appareil, ou seraient refusés.
     async upsertAchatsDocument(d, { creation = false } = {}) {
       const payload = {
         id: d.id || ('achat-' + Date.now() + Math.floor(Math.random() * 1000)),
@@ -2712,13 +2714,13 @@ export function installLegacySupabase() {
         exclu: !!d.exclu,
         source: d.source || null,
         nom_fichier: d.nomFichier || null,
-        tva_taux: d.tvaTaux != null && d.tvaTaux !== '' ? Number(d.tvaTaux) : null,
-        montant_tva: d.montantTva != null && d.montantTva !== '' ? Number(d.montantTva) : null,
         created_by: d.createdBy || null,
       };
       if (creation) {
         payload.total_ttc = d.totalTTC != null && d.totalTTC !== '' ? Number(d.totalTTC) : null;
         payload.date_echeance = d.dateEcheance || null;
+        payload.tva_taux = d.tvaTaux != null && d.tvaTaux !== '' ? Number(d.tvaTaux) : null;
+        payload.montant_tva = d.montantTva != null && d.montantTva !== '' ? Number(d.montantTva) : null;
       }
       const { data, error } = await client.from('achats_documents').upsert(payload).select().single();
       if (error) throw error;

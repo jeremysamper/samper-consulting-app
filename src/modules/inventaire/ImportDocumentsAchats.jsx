@@ -27,6 +27,13 @@ import { messageErreur } from '../../utils/messageErreur.js';
 
 const CONCURRENCE = 3;
 
+// Taux de TVA lu : nombre de 0 à moins de 100, sinon null (contrainte
+// achats_documents_tva_taux_chk).
+const tauxLu = (v) => {
+  const n = v != null && v !== '' ? Number(v) : NaN;
+  return Number.isFinite(n) && n >= 0 && n < 100 ? n : null;
+};
+
 export default function ImportDocumentsAchats({
   user, etabId, perimetreActif, docsRef, onImporte, tableAbsente, type = 'facture', fournisseurs = [],
 }) {
@@ -71,9 +78,11 @@ export default function ImportDocumentsAchats({
         totalHT: res.totalHT,
         totalTTC: res.totalTTC,
         dateEcheance: res.dateEcheance || null,
-        // Taux lu par l'IA (2.6 alimentaire, 8.1 sinon), nombre ou null ; le
-        // montant n'est écrit que quand les deux totaux sont lus.
-        tvaTaux: res.tauxTva != null && Number.isFinite(Number(res.tauxTva)) ? Number(res.tauxTva) : null,
+        // Taux lu par l'IA (2.6 alimentaire, 8.1 sinon), nombre ou null ; un
+        // taux hors de 0 à 100 % est une lecture fausse, gardé non lu (la base
+        // le refuserait et toute la pièce avec). Le montant n'est écrit que
+        // quand les deux totaux sont lus.
+        tvaTaux: tauxLu(res.tauxTva),
         montantTva: montantTvaAEnregistrer({ totalHT: res.totalHT, totalTTC: res.totalTTC }),
         lignes: (res.lignes || []).map(l => ({
           libelle: l.libelle,

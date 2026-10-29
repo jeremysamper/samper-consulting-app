@@ -16,8 +16,9 @@ import { TAUX_AUTRE, TAUX_TVA, choixPourTaux } from './tvaAchats.js';
 const lireTaux = (texte) => {
   const t = String(texte ?? '').replace(',', '.').replace(/[^\d.]/g, '');
   if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) && n >= 0 && n < 100 ? Math.round(n * 100) / 100 : undefined;
+  // Arrondi d'abord : 99.996 deviendrait 100, que la base refuse.
+  const n = Math.round(Number(t) * 100) / 100;
+  return Number.isFinite(n) && n >= 0 && n < 100 ? n : undefined;
 };
 
 export default function ChampTauxTva({ valeur, onChange, disabled = false, style, ariaLabel = 'Taux de TVA' }) {

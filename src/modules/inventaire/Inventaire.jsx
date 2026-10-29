@@ -563,10 +563,11 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
   };
 
   // « Enregistrer » de « Vérifier la lecture » : l'identité du document par
-  // l'upsert entier (fournisseur, numéro, date, total HT, périmètre, taux et
-  // montant de TVA), puis le montant à payer et l'échéance par l'écriture
-  // ciblée des factures (majFactureAchat, seuls champs passés). Optimiste :
-  // l'état d'avant est restauré avant toute relecture si l'une des deux échoue.
+  // l'upsert entier (fournisseur, numéro, date, total HT, périmètre), puis le
+  // montant à payer, l'échéance, le montant de TVA et, pour qui règle les
+  // factures, le taux, par l'écriture ciblée des factures (majFactureAchat,
+  // seuls champs passés). Optimiste : l'état d'avant est restauré avant toute
+  // relecture si l'une des deux échoue.
   const enregistrerLecture = async (doc, v) => {
     const avant = (achats.docsRef.current || []).find(d => d.id === doc.id) || doc;
     const n = normalizeName(v.fournisseurNom);
@@ -574,6 +575,9 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
       || fournisseurs.find(f => { const y = normalizeName(f.nom); return y && (y.includes(n) || n.includes(y)); }));
     const facture = doc.typeDocument === 'facture';
     const totalTTCApres = facture && v.totalTTC !== undefined ? v.totalTTC : avant.totalTTC;
+    // Facture réglée, sans le droit de régler : son montant de TVA ne change
+    // plus (déclencheur achats_documents_garde_tva), il n'est pas renvoyé.
+    const tvaVerrouillee = !!avant.regleLe && !canRegler;
     const identite = {
       ...avant,
       fournisseurNom: v.fournisseurNom,
@@ -583,9 +587,9 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
       totalHT: v.totalHT,
       perimetre: v.perimetre,
       // Le taux ne change qu'avec le droit de régler (champ absent sinon) ; le
-      // montant suit toujours les totaux saisis.
+      // montant suit les totaux saisis, sauf sur une facture réglée sans ce droit.
       tvaTaux: v.tvaTaux === undefined ? avant.tvaTaux : v.tvaTaux,
-      montantTva: montantTvaAEnregistrer({ totalHT: v.totalHT, totalTTC: totalTTCApres }),
+      montantTva: tvaVerrouillee ? avant.montantTva : montantTvaAEnregistrer({ totalHT: v.totalHT, totalTTC: totalTTCApres }),
     };
     const apres = facture
       ? { ...identite, totalTTC: v.totalTTC ?? avant.totalTTC, dateEcheance: v.dateEcheance === undefined ? avant.dateEcheance : v.dateEcheance }
@@ -595,7 +599,10 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
       await legacySB.db.upsertAchatsDocument(identite);
       if (facture) {
         const patch = { totalTTC: v.totalTTC };
+        if (!tvaVerrouillee) patch.montantTva = identite.montantTva;
         if (v.dateEcheance !== undefined) patch.dateEcheance = v.dateEcheance;
+        // Le taux ne part que s'il a été choisi (champ réservé au droit de régler).
+        if (v.tvaTaux !== undefined) patch.tvaTaux = v.tvaTaux;
         await legacySB.db.majFactureAchat(doc.id, patch);
       }
       return true;
