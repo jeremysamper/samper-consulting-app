@@ -16,8 +16,9 @@ import {
   MODES_REGLEMENT, libelleMode, periodesFactures, rangerParPeriode, statutPaiement,
   totauxFactures, trierParEcheance, joursEntre, dateLongue, intervalleLong, lendemainIso,
 } from './facturesLogic.js';
-import { libelleTaux, montantTvaAEnregistrer, montantTvaDepuisTotaux } from './tvaAchats.js';
+import { libelleTaux, montantTvaAEnregistrer, montantTvaDepuisTotaux, tvaAVerifier } from './tvaAchats.js';
 import ChampTauxTva from './ChampTauxTva.jsx';
+import FenetreExportFiduciaire from './FenetreExportFiduciaire.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran « Je règle les factures » de l'inventaire (demande de Jérémy,
@@ -39,7 +40,10 @@ import ChampTauxTva from './ChampTauxTva.jsx';
 // pas. Une facture réglée reste listée même si son type change ensuite.
 //
 // Depuis le lot LC (29.10.2026) : la fiche dépliée montre le taux et le montant
-// de TVA (le taux se corrige avec le droit de régler).
+// de TVA (le taux se corrige avec le droit de régler), le filtre « À vérifier »
+// isole les factures dont HT, TTC ou taux manque ou se contredit, et « Export
+// fiduciaire » (même droit) sort le CSV, le classeur Excel et le dossier des
+// pièces d'une période (FenetreExportFiduciaire.jsx).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -59,6 +63,7 @@ const FILTRES = [
   { id: 'a_regler', label: 'À régler' },
   { id: 'en_retard', label: 'En retard' },
   { id: 'reglees', label: 'Réglées' },
+  { id: 'a_verifier', label: 'À vérifier' },
 ];
 
 export default function FacturesPanel({
@@ -83,6 +88,9 @@ export default function FacturesPanel({
   const [reglement, setReglement] = React.useState(null);
   const fermerReglement = React.useCallback(() => setReglement(null), []);
   useBackLayer(!!reglement, fermerReglement, 'factures-reglement');
+  // « Export fiduciaire » : la fenêtre porte sa propre entrée d'historique (Fenetre).
+  const [exportOuvert, setExportOuvert] = React.useState(false);
+  const fermerExport = React.useCallback(() => setExportOuvert(false), []);
   const sel = useSelection();
 
   // Une sélection ne survit pas à un changement de ce qui est affiché :
@@ -113,6 +121,7 @@ export default function FacturesPanel({
   const cleDates = (datesInventaires || []).join('|');
   const periodes = React.useMemo(() => periodesFactures(datesInventaires), [cleDates]);
   const totaux = React.useMemo(() => totauxFactures(factures, aujourdhui), [factures, aujourdhui]);
+  const nbAVerifier = React.useMemo(() => factures.filter(tvaAVerifier).length, [factures]);
 
   const match = makeSearchMatcher(recherche);
   const visible = (f) => {
@@ -120,6 +129,7 @@ export default function FacturesPanel({
     if (filtre === 'a_regler' && s === 'reglee') return false;
     if (filtre === 'en_retard' && s !== 'en_retard') return false;
     if (filtre === 'reglees' && s !== 'reglee') return false;
+    if (filtre === 'a_verifier' && !tvaAVerifier(f)) return false;
     return match(f.fournisseurNom, f.numero, f.regleNote);
   };
   const facturesVisibles = factures.filter(visible);
@@ -322,7 +332,8 @@ export default function FacturesPanel({
             const n = f.id === 'toutes' ? totaux.n
               : f.id === 'a_regler' ? totaux.aRegler.n
                 : f.id === 'en_retard' ? totaux.enRetard.n
-                  : totaux.reglees.n;
+                  : f.id === 'a_verifier' ? nbAVerifier
+                    : totaux.reglees.n;
             // Compteur dans son propre nœud : le libellé reste une entrée du
             // glossaire au lieu de partir à l'IA à chaque nouveau nombre.
             return { id: f.id, label: <>{f.label} <span>({n})</span></> };
@@ -330,6 +341,9 @@ export default function FacturesPanel({
         />
         <div style={st.barreDroite}>
           <SearchToggle value={recherche} onChange={setRecherche} placeholder="Fournisseur, numéro…" />
+          {canRegler && !sel.active && (
+            <Btn small variant="ghost" onClick={() => setExportOuvert(true)}>Export fiduciaire</Btn>
+          )}
           {canRegler && !sel.active && factures.length > 0 && (
             <Btn small variant="ghost" onClick={sel.enter}>Sélectionner</Btn>
           )}
@@ -378,7 +392,8 @@ export default function FacturesPanel({
           {match.active ? 'Aucune facture ne correspond à la recherche.'
             : filtre === 'a_regler' ? 'Aucune facture à régler : tout est réglé.'
               : filtre === 'en_retard' ? 'Aucune facture en retard.'
-                : 'Aucune facture réglée pour l\'instant.'}
+                : filtre === 'a_verifier' ? 'Aucune facture à vérifier : HT, TTC et taux de TVA sont lus et s’accordent.'
+                  : 'Aucune facture réglée pour l\'instant.'}
         </div>
       )}
 
@@ -472,6 +487,18 @@ export default function FacturesPanel({
       })}
 
       {apercu && <VisionneusePieces doc={apercu} etabId={etabId} onClose={fermerApercu} />}
+
+      {exportOuvert && canRegler && (
+        <FenetreExportFiduciaire
+          docs={tousLesDocs}
+          periodes={periodes}
+          avecPieces={avecPieces}
+          etabId={etabId}
+          aujourdhui={aujourdhui}
+          onFiltrerAVerifier={() => setFiltre('a_verifier')}
+          onClose={fermerExport}
+        />
+      )}
 
       {reglement && createPortal(
         <ModaleReglement

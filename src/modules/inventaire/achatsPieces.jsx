@@ -1,9 +1,11 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { zipSync, strToU8 } from 'fflate';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { libelleType } from './achatsLogic.js';
+import { dossierPiece } from './exportFiduciaire.js';
 import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
@@ -55,6 +57,51 @@ export const libelleVoir = (d) => {
   const pages = /\(\+(\d+) pages?\)$/.exec(nom);
   return pages ? `Voir les ${Number(pages[1]) + 1} photos` : 'Voir la photo';
 };
+
+// Dossier zip des pièces d'une liste de factures (export fiduciaire) :
+// <AAAA-MM>/<date>_<fournisseur>_<numero>/<fichier>, chaque pièce téléchargée
+// par son URL signée. `onProgress(n, total)` après chaque facture ; `signal`
+// (AbortController) interrompt. Une pièce absente, sans lien ou en échec est
+// notée dans erreurs.txt à la racine du zip, jamais tue : la fiduciaire sait ce
+// qui manque. Rend { octets, nbPieces, erreurs }.
+export async function zipPiecesFiduciaire(factures, { etabId, onProgress, signal } = {}) {
+  const legacySB = dbService.getBridge();
+  const annule = () => { const e = new Error('Export annulé'); e.name = 'AbortError'; return e; };
+  const entrees = {};
+  const erreurs = [];
+  let nbPieces = 0;
+  const total = (factures || []).length;
+  for (let i = 0; i < total; i += 1) {
+    if (signal?.aborted) throw annule();
+    const f = factures[i];
+    const dossier = dossierPiece(f);
+    try {
+      const pieces = await legacySB.db.listAchatsPieces(etabId, f.id);
+      if (!pieces.length) erreurs.push(`${dossier} : aucune pièce conservée`);
+      for (let k = 0; k < pieces.length; k += 1) {
+        const p = pieces[k];
+        if (!p.url) { erreurs.push(`${dossier}/${p.nom} : lien indisponible`); continue; }
+        try {
+          const rep = await fetch(p.url, { signal });
+          if (!rep.ok) { erreurs.push(`${dossier}/${p.nom} : téléchargement refusé (${rep.status})`); continue; }
+          // Plusieurs pages d'un même document portent souvent le même nom : l'ordre des pages les distingue.
+          const nom = String(p.nom || 'piece').replace(/[^A-Za-z0-9._-]+/g, '_');
+          entrees[`${dossier}/${pieces.length > 1 ? `${k + 1}-${nom}` : nom}`] = [new Uint8Array(await rep.arrayBuffer()), { level: 0 }];
+          nbPieces += 1;
+        } catch (err) {
+          if (err?.name === 'AbortError') throw annule();
+          erreurs.push(`${dossier}/${p.nom} : ${messageErreur(err, 'pièces des achats')}`);
+        }
+      }
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      erreurs.push(`${dossier} : ${messageErreur(err, 'pièces des achats')}`);
+    }
+    onProgress?.(i + 1, total);
+  }
+  if (erreurs.length) entrees['erreurs.txt'] = strToU8(erreurs.join('\n') + '\n');
+  return { octets: zipSync(entrees), nbPieces, erreurs };
+}
 
 // Visionneuse plein écran : toutes les pages à la suite, à faire défiler.
 // Montée seulement quand un document est ouvert ; `onClose` la referme
