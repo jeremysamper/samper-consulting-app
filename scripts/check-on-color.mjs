@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Texte blanc posé sur un aplat qui s'éclaircit en mode sombre.
 //
-// En sombre, --accent vaut un aqua clair (#74aec3) : du blanc dessus tombe à
-// 2,45:1, sous le seuil de 4,5:1. Les jetons de statut (--danger-strong,
+// En sombre, --accent vaut un crimson éclairci (#ff5d51) : du blanc dessus
+// tombe à 3,0:1, sous le seuil de 4,5:1. Les jetons de statut (--danger-strong,
 // --danger-text, --success-strong, --success-text) font pire, jusqu'à 1,79:1.
 // Chaque aplat a son jeton de texte, qui suit le thème :
 //
