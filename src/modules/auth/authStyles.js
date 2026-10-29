@@ -3,9 +3,9 @@
 // restent rigoureusement identiques : c'est la première chose que voit un
 // nouveau membre de brigade.
 export const authStyles = {
-  // Même champ navy que le pré-splash de vite-index.html : l'écran de connexion
-  // reste sombre dans les deux thèmes (palette du 29.10.2026).
-  screen: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'radial-gradient(120% 95% at 50% 36%, #1b1E4A 0%, #1b1E4A 38%, #090731 100%)', fontFamily: 'var(--font)' },
+  // Même champ pétrole abyssal que le pré-splash de vite-index.html (l'ancien
+  // dégradé gris anthracite cassait la marque).
+  screen: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'radial-gradient(120% 95% at 50% 36%, #00394c 0%, #003042 38%, #001620 100%)', fontFamily: 'var(--font)' },
   panel: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 36px', width: 440, maxWidth: '100%', boxShadow: 'var(--sh-lg)' },
   logoWrap: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
   brandText: { flex: 1 },

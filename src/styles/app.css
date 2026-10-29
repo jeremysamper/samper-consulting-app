@@ -15,54 +15,52 @@
   /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
      quantités) : Satoshi, les chiffres d'affichage de Zodiak détonnent. */
   --font-num: "Satoshi", system-ui, sans-serif;
-  /* Palette claire du 29.10.2026 : fond rose posé tel quel, surfaces en rose
-     éclairci (98 et 96 de luminance oklch), filets en rose assombri. C'est cet
-     écart de fond, et non une ombre, qui détache les cartes. Jamais de crème,
-     jamais de blanc pur. Chaque dérivée garde la teinte oklch de sa source. */
-  --bg: #E7B0DE;
-  --bg2: oklch(79.5% 0.087 332);
-  --surface: oklch(98% 0.015 332);
-  --surface2: oklch(96.1% 0.030 332);
-  --border: oklch(72% 0.089 332);
-  --border2: oklch(66.9% 0.087 332);
+  /* Fond légèrement creusé (96 vs surface 99.4) : c'est cet écart, et non une
+     ombre, qui détache les cartes en mode clair. Neutres froids, teintés vers
+     le pétrole de la marque : jamais de crème (le fond crème est la signature
+     la plus reconnaissable des interfaces générées), jamais de blanc pur. */
+  --bg: oklch(96% 0.005 230);
+  --bg2: oklch(93.5% 0.006 230);
+  --surface: oklch(99.4% 0.002 230);
+  --surface2: oklch(97.6% 0.004 230);
+  --border: oklch(87% 0.008 230);
+  --border2: oklch(83% 0.009 230);
   /* Filet doux sous les éléments d'une liste aplatie (« Plus de carrés », en
      fin de feuille) : la teinte de --border à 80 %, sans color-mix(), que
      html2canvas ne sait pas lire. Une vue capturée en PDF le reprend en hex
      (règle .pdf-render-root, même endroit). */
-  --rule-soft: oklch(72% 0.089 332 / 0.8);
-  --text: #400849;
-  --text2: oklch(40.1% 0.118 322);
-  --text3: oklch(44% 0.118 321);
-  --accent: #400849;
-  --accent2: #FF540A;
-  --accent-light: #f3e1f6;
-  --accent-bd: #814a8b;
-  /* Texte posé sur un aplat accent (bouton principal) : rose sur l'aubergine
-     du clair, navy sur le crimson éclairci du sombre (le blanc y tombe sous
-     4,5). --accent2 porte l'orange et le crimson exacts, pour les aplats et
-     les filets seulement : en texte ils font 1,8 et 2,9. */
-  --on-accent: #E7B0DE;
-  /* ─── Chrome de navigation ────────────────────────────────────────────
-     La sidebar et le tiroir mobile sont en aubergine en clair, en navy
-     assombri en sombre. L'orange (clair) et le crimson (sombre), portés par
-     --nav-accent, sont la seule lumière posée dessus : filet et aplat, jamais
-     du texte (4,8 et 2,9 sur leur fond). La sidebar
+  --rule-soft: oklch(87% 0.008 230 / 0.8);
+  --text: oklch(19% 0.012 235);
+  --text2: oklch(47% 0.012 235);
+  --text3: oklch(53% 0.010 235);
+  --accent: #003042;
+  --accent2: #2e6d84;
+  --accent-light: #e4eef3;
+  --accent-bd: #9fc0cd;
+  /* Texte posé sur un aplat accent (bouton principal) : blanc sur le pétrole
+     du clair, encre foncée sur l'aqua du sombre (le blanc y manque de
+     contraste). */
+  --on-accent: #ffffff;
+  /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
+     La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
+     thèmes : c'est le geste signature de la refonte profondeur. L'aqua
+     (--nav-accent) est la seule lumière posée sur cette encre. La sidebar
      est en aplat uni de --nav, sans dégradé (décision du 16.10.2026) ;
      --nav-grad reste défini, égal à --nav, pour ce qui le lirait encore. */
-  --nav: #400849;
+  --nav: #032a3a;
   --nav-grad: var(--nav);
-  --nav-text: rgba(231, 176, 222, 0.66);
-  --nav-text-active: #E7B0DE;
-  --nav-active: rgba(255, 84, 10, 0.10);
+  --nav-text: rgba(214, 230, 236, 0.66);
+  --nav-text-active: #eaf4f7;
+  --nav-active: rgba(116, 174, 195, 0.09);
   --nav-border: rgba(255, 255, 255, 0.07);
-  --nav-accent: #FF540A;
+  --nav-accent: #74aec3;
   /* Sélection posée, pas lumineuse : un filet intérieur plutôt qu'un halo. */
-  --nav-glow: inset 0 0 0 1px rgba(255, 84, 10, 0.35);
+  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.12);
   /* ─── Header « verre » (façon barres iOS récentes) ─────────────────────
      Surface translucide : le contenu défile dessous, flouté (.app-glass-bar). */
-  --glass-bg: rgba(255, 245, 253, 0.72);
-  --glass-border: rgba(64, 8, 73, 0.10);
-  --glass-hover: rgba(64, 8, 73, 0.07);
+  --glass-bg: rgba(248, 250, 251, 0.72);
+  --glass-border: rgba(10, 30, 40, 0.08);
+  --glass-hover: rgba(10, 30, 40, 0.06);
   /* Rayons resserrés : des coins très arrondis sur chaque bloc font gabarit.
      Les pilules (999px) restent réservées aux étiquettes. */
   --r: 8px;
@@ -71,32 +69,31 @@
   --r-xl: 12px;
   --r-full: 999px;
 
-  /* ─── Échelle d'élévation (teintée aubergine, jamais noir pur) ─────────
+  /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
      Une ombre dit « cet objet flotte » : seuls les menus, fenêtres et
      tiroirs flottent (--sh, --sh-lg). Les cartes posées sur la page n'ont
      pas d'ombre (--sh-xs vide) : leur filet et l'écart de fond suffisent. */
   --sh-xs: none;
-  --sh-sm: 0 1px 2px rgba(29, 6, 33, 0.08);
-  --sh: 0 2px 6px rgba(29, 6, 33, 0.09), 0 12px 32px rgba(29, 6, 33, 0.11);
-  --sh-lg: 0 8px 24px rgba(29, 6, 33, 0.14), 0 24px 64px rgba(29, 6, 33, 0.18);
+  --sh-sm: 0 1px 2px rgba(9, 30, 40, 0.08);
+  --sh: 0 2px 6px rgba(9, 30, 40, 0.09), 0 12px 32px rgba(9, 30, 40, 0.11);
+  --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.14), 0 24px 64px rgba(9, 30, 40, 0.18);
 
   /* ─── Mise en avant ───────────────────────────────────────────────────
      glow-accent = liseré accent des surfaces mises en avant (chips KPI,
      cartes actives). Un filet, pas de halo lumineux : le halo coloré est
      l'effet qui trahit le plus vite une interface générée. glow-soft reste
      déclaré, vide, pour ses lecteurs. */
-  --glow-accent: 0 0 0 1px rgba(255, 84, 10, 0.55);
+  --glow-accent: 0 0 0 1px var(--accent-bd);
   --glow-soft: none;
-  --focus-ring: rgba(255, 84, 10, 0.20);
+  --focus-ring: rgba(0, 48, 66, 0.14);
 
   /* ─── Aplats de marque (noms historiques « grad- » conservés) ─────────
-     grad-brand   : aplat de marque des vignettes sans photo (aubergine en
-                    clair, crimson en sombre)
+     grad-brand   : encre pétrole (splash, login, vignettes sans photo)
      grad-scrim   : voile posé sur une photo pour y écrire (tuiles plats) ;
                     seul dégradé gardé, il sert la lisibilité, pas le décor
      grad-accent-wash : fond accent pâle (blocs mis en avant) */
-  --grad-brand: #400849;
-  --grad-scrim: linear-gradient(180deg, rgba(13, 1, 17, 0) 30%, rgba(13, 1, 17, 0.42) 60%, rgba(13, 1, 17, 0.85) 100%);
+  --grad-brand: #003042;
+  --grad-scrim: linear-gradient(180deg, rgba(0, 22, 32, 0) 30%, rgba(0, 22, 32, 0.42) 60%, rgba(0, 22, 32, 0.85) 100%);
   --grad-accent-wash: var(--accent-light);
 
   /* Ambiance de page : plus de lueur décorative en haut du contenu, le fond
@@ -171,44 +168,42 @@
    ─────────────────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* Palette sombre du 29.10.2026 : fond navy posé tel quel, neutres dérivés
-       du navy en oklch (teinte 276), texte stone. L'accent est un crimson
-       éclairci jusqu'à 4,5 sur le fond et la surface (134 sites le lisent en
-       texte) ; le crimson exact vit dans --accent2 et dans la nav. */
-    --bg: #1b1E4A;
-    --bg2: oklch(23% 0.081 277);
-    --surface: oklch(29.1% 0.079 276);
-    --surface2: oklch(31.9% 0.081 277);
-    --border: oklch(39% 0.081 277);
-    --border2: oklch(44.1% 0.081 276);
-    --rule-soft: oklch(39% 0.081 277 / 0.8);
-    --text: #AFAEA2;
-    --text2: oklch(70% 0.017 103);
-    --text3: oklch(66.1% 0.017 103);
-    --accent: #ff5d51;
-    --accent2: #D21319;
-    --accent-light: #4f1310;
-    --accent-bd: #e12b29;
-    --on-accent: #1b1E4A;
-    --nav: #151642;
+    /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
+       pour la teinte de la marque (~225). C'est ce virage qui donne au dark
+       son atmosphère « Opal » : profondeur froide, lumière aqua. */
+    --bg: oklch(19.5% 0.024 225);
+    --bg2: oklch(16.5% 0.02 225);
+    --surface: oklch(22.5% 0.024 225);
+    --surface2: oklch(26% 0.022 225);
+    --border: oklch(33% 0.022 225);
+    --border2: oklch(38% 0.02 225);
+    --rule-soft: oklch(33% 0.022 225 / 0.8);
+    --text: oklch(94% 0.007 210);
+    --text2: oklch(78% 0.014 215);
+    --text3: oklch(62% 0.014 220);
+    --accent: #74aec3;
+    --accent2: #90bfd0;
+    --accent-light: #1d3440;
+    --accent-bd: #335c6b;
+    --on-accent: #06202b;
+    --nav: #04222f;
     --nav-grad: var(--nav);
-    --nav-text: rgba(175, 174, 162, 0.60);
-    --nav-text-active: #c9c8bc;
-    --nav-active: rgba(210, 19, 25, 0.10);
+    --nav-text: rgba(200, 222, 230, 0.60);
+    --nav-text-active: #e6f2f6;
+    --nav-active: rgba(116, 174, 195, 0.08);
     --nav-border: rgba(255, 255, 255, 0.06);
-    --nav-accent: #D21319;
-    --nav-glow: inset 0 0 0 1px rgba(210, 19, 25, 0.35);
-    --glass-bg: rgba(21, 22, 66, 0.72);
+    --nav-accent: #74aec3;
+    --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
+    --glass-bg: rgba(8, 18, 22, 0.72);
     --glass-border: rgba(255, 255, 255, 0.07);
     --glass-hover: rgba(255, 255, 255, 0.08);
     --sh-xs: none;
     --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
     --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
-    --glow-accent: 0 0 0 1px rgba(210, 19, 25, 0.50);
+    --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
     --glow-soft: none;
-    --focus-ring: rgba(210, 19, 25, 0.30);
-    --grad-brand: #D21319;
+    --focus-ring: rgba(116, 174, 195, 0.30);
     --ambient: none;
     --success-bg: oklch(28% 0.06 150);
     --success-bg-soft: oklch(22% 0.04 150);
@@ -251,40 +246,39 @@
 
 html[data-theme="dark"] {
   /* Contenu identique au bloc @media ci-dessus, voir le commentaire là-haut. */
-  --bg: #1b1E4A;
-  --bg2: oklch(23% 0.081 277);
-  --surface: oklch(29.1% 0.079 276);
-  --surface2: oklch(31.9% 0.081 277);
-  --border: oklch(39% 0.081 277);
-  --border2: oklch(44.1% 0.081 276);
-  --rule-soft: oklch(39% 0.081 277 / 0.8);
-  --text: #AFAEA2;
-  --text2: oklch(70% 0.017 103);
-  --text3: oklch(66.1% 0.017 103);
-  --accent: #ff5d51;
-  --accent2: #D21319;
-  --accent-light: #4f1310;
-  --accent-bd: #e12b29;
-  --on-accent: #1b1E4A;
-  --nav: #151642;
+  --bg: oklch(19.5% 0.024 225);
+  --bg2: oklch(16.5% 0.02 225);
+  --surface: oklch(22.5% 0.024 225);
+  --surface2: oklch(26% 0.022 225);
+  --border: oklch(33% 0.022 225);
+  --border2: oklch(38% 0.02 225);
+  --rule-soft: oklch(33% 0.022 225 / 0.8);
+  --text: oklch(94% 0.007 210);
+  --text2: oklch(78% 0.014 215);
+  --text3: oklch(62% 0.014 220);
+  --accent: #74aec3;
+  --accent2: #90bfd0;
+  --accent-light: #1d3440;
+  --accent-bd: #335c6b;
+  --on-accent: #06202b;
+  --nav: #04222f;
   --nav-grad: var(--nav);
-  --nav-text: rgba(175, 174, 162, 0.60);
-  --nav-text-active: #c9c8bc;
-  --nav-active: rgba(210, 19, 25, 0.10);
+  --nav-text: rgba(200, 222, 230, 0.60);
+  --nav-text-active: #e6f2f6;
+  --nav-active: rgba(116, 174, 195, 0.08);
   --nav-border: rgba(255, 255, 255, 0.06);
-  --nav-accent: #D21319;
-  --nav-glow: inset 0 0 0 1px rgba(210, 19, 25, 0.35);
-  --glass-bg: rgba(21, 22, 66, 0.72);
+  --nav-accent: #74aec3;
+  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
+  --glass-bg: rgba(8, 18, 22, 0.72);
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-hover: rgba(255, 255, 255, 0.08);
   --sh-xs: none;
   --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
   --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
-  --glow-accent: 0 0 0 1px rgba(210, 19, 25, 0.50);
+  --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
   --glow-soft: none;
-  --focus-ring: rgba(210, 19, 25, 0.30);
-  --grad-brand: #D21319;
+  --focus-ring: rgba(116, 174, 195, 0.30);
   --ambient: none;
 
   /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
