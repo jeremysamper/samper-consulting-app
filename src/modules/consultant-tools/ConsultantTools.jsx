@@ -27,9 +27,9 @@ import { BoutonActions, Fenetre, st as fst } from '../../components/ui/Fenetres.
 import {
   applyProductToIngredient,
   buildProduitIndex,
-  computeCoutMatiere,
   describePrixIngredient,
 } from '../../services/prixResolution.js';
+import { chiffrerFiche } from '../../utils/chiffrage.js';
 import AmbiguousMatchReview from '../recettes/AmbiguousMatchReview.jsx';
 import BulkProductLinker from './components/BulkProductLinker.jsx';
 import EtablissementTransferModal from './components/EtablissementTransferModal.jsx';
@@ -223,10 +223,12 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // Recalcul des dérivés (foodCost, etc.) - local, pas de persistance auto
   React.useEffect(() => {
     recettes.forEach(r => {
-      r.coutMatiere = computeCoutMatiere(r.ingredients, produitIndex);
-      r.coutPortion = r.portions ? r.coutMatiere / r.portions : 0;
-      r.foodCost = r.prixVente ? (r.coutPortion / r.prixVente * 100) : null;
-      r.margeGrossePct = r.prixVente ? ((r.prixVente - r.coutPortion) / r.prixVente * 100) : null;
+      // Calcul partagé avec les Marges de la Comptabilité (src/utils/chiffrage.js).
+      const c = chiffrerFiche(r, produitIndex);
+      r.coutMatiere = c.coutMatiere;
+      r.coutPortion = c.coutPortion;
+      r.foodCost = c.foodCost;
+      r.margeGrossePct = c.margeGrossePct;
       if (r.tempsPreparation != null && r.tempsCuisson != null) {
         r.tempsTotal = Number(r.tempsPreparation) + Number(r.tempsCuisson);
       }
@@ -543,10 +545,11 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   const [showBulkLinker, setShowBulkLinker] = React.useState(false);
 
   // ── Calculs dérivés pour affichage live
-  const coutMatiere = selected ? computeCoutMatiere(selected.ingredients, produitIndex) : 0;
-  const coutPortion = (selected?.portions > 0) ? coutMatiere / Number(selected.portions) : 0;
-  const foodCost = selected && selected.prixVente ? (coutPortion / selected.prixVente * 100) : null;
-  const margeBrute = selected && selected.prixVente ? selected.prixVente - coutPortion : 0;
+  const chiffrage = selected ? chiffrerFiche(selected, produitIndex) : null;
+  const coutMatiere = chiffrage ? chiffrage.coutMatiere : 0;
+  const coutPortion = chiffrage ? chiffrage.coutPortion : 0;
+  const foodCost = chiffrage ? chiffrage.foodCost : null;
+  const margeBrute = chiffrage ? chiffrage.margeBrute : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
