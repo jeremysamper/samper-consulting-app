@@ -746,7 +746,7 @@ export const UI_GLOSSARY_ES = {
   'À faire maintenant': 'Por hacer ahora',
   'points à traiter': 'puntos por tratar',
   'point à traiter': 'punto por tratar',
-  ', dont': 'de ellos',
+  ', dont': 'incluyendo',
   'urgents': 'urgentes',
   'Rien en attente': 'Nada pendiente',
   'autres points': 'otros puntos',
