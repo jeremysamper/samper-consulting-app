@@ -35,6 +35,12 @@ import { copieRecette, effacerBrouillon } from '../../utils/brouillonRecette.js'
 import { quandRetoursArrives } from '../../services/historyNav.js';
 import { readText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { confirmLegacy, getBrowserWindow } from '../../legacy/legacyApi.js';
+import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
+import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
+import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
+import { photoDeRecette } from '../../components/fiches/rangementFiches.js';
+import VitrineCarte, { clePlat } from './VitrineCarte.jsx';
+import VitrineFiches from './VitrineFiches.jsx';
 
 
 // CARTES & RECETTES
@@ -54,8 +60,12 @@ const RETRY_MAX_MS = 30000;
 const STATUTS_RECETTE = {
   brouillon: { label: 'Brouillon', couleur: 'var(--text2)' },
   'validée': { label: 'Validée', couleur: 'var(--success-text)' },
+  // « Active » : ce que l'éditeur de fiches écrit (brouillon, active, archivée).
+  active: { label: 'Active', couleur: 'var(--success-text)' },
   'archivée': { label: 'Archivée', couleur: 'var(--text3)' },
 };
+// État normal d'une fiche en service : aucune pastille sur sa photo.
+const STATUTS_EN_SERVICE = ['validée', 'active'];
 const statutRecette = (s) => STATUTS_RECETTE[s] || { label: s || '', couleur: 'var(--text2)' };
 // Date ISO (2026-09-29) en date suisse (29.09.2026) ; un autre texte passe tel quel.
 const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('.') : (v || ''));
@@ -393,10 +403,26 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 // ─── RecetteDetail : composant global (extrait hors de Recettes) ───
 // canFiches : droit « Créer et modifier les fiches » ; la fiche ouvre alors
 // l'éditeur (Modifier), en fait une copie (Dupliquer) ou la sort des archives.
-const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = false, canFiches = false, onModifier, onDupliquer, onDesarchiver }) => {
+// photo : calculée par Recettes (photoDeRecette : la sienne, sinon celle du
+// plat dont elle est la première fiche) ; null = visuel de remplacement.
+// Ordre de lecture du service : héros, allergènes, puis ingrédients à gauche
+// et étapes à droite dès 760 px de fiche (iPad portrait compris) ; la
+// conservation (congélation, durées de vie : des réglages) vient ensuite.
+const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, canEtiqueter = false, canFiches = false, onModifier, onDupliquer, onDesarchiver }) => {
   const [showDuplicate, setShowDuplicate] = React.useState(false);
   const [showEtiquette, setShowEtiquette] = React.useState(false);
   const isMobile = useIsMobile();
+  // Coque tactile (iPad, téléphone) : ingrédients et étapes en 16 px.
+  const tactile = estTactile(useShellMode());
+
+  // La fiche s'ouvre en haut (Retour, nom du plat), pas au défilement laissé
+  // par la liste : ouverte depuis le bas de la carte, elle cachait son titre.
+  // Même motif que la fiche des Fiches salle.
+  const hautRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    for (let el = hautRef.current?.parentElement; el; el = el.parentElement) if (el.scrollTop > 0) el.scrollTop = 0;
+    if (window.scrollY > 0) window.scrollTo(0, 0);
+  }, [recette.id]);
 
   // ─── Recalcul des quantités, dans la fiche ────────────────────────────────
   // Il y avait une modale « Calculateur » : elle recouvrait les étapes et le
@@ -565,10 +591,12 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
   // Colonne quantité élargie : elle porte un champ, et sur tablette la règle
   // globale « pointer: coarse » impose 16px de police (anti-zoom iOS).
   const ingCols = isMobile ? '1fr 78px 34px' : '1fr 96px 60px';
-  const sIngName = { ...rs.ingName, ...(isMobile ? { fontSize: 15 } : null) };
+  const sIngName = { ...rs.ingName, ...(tactile ? { fontSize: 16 } : (isMobile ? { fontSize: 15 } : null)) };
+  const portionsFiche = Number(recette.portions) || 0;
+  const statutAffiche = recette.statut && !STATUTS_EN_SERVICE.includes(recette.statut) ? statutRecette(recette.statut).label : null;
 
   return (
-    <div style={rs.detailRoot}>
+    <div ref={hautRef} style={rs.detailRoot}>
       {showDuplicate && (
         <DuplicateRecetteModal
           recette={recette}
@@ -621,46 +649,38 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
           <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
         )}
       </div>
-      <div id='fiche-recette-print'>
-      {recette.photoUrl ? (
-        /* Bandeau héros : la photo porte la fiche, titre et méta posés sur le
-           voile. L'export PDF et Imprimer passent par le jsPDF vectoriel
-           (buildRecettePdfData) : ce héros est purement écran. */
-        <div style={{ ...rs.detailHero, height: isMobile ? 190 : 240 }}>
-          <RecettePhoto src={recette.photoUrl} alt={recette.nom} style={rs.detailHeroImg} />
-          <div style={rs.detailHeroScrim} aria-hidden="true" />
-          <span style={{...rs.badge, ...rs.detailHeroBadge, background:'var(--surface)', color: statutRecette(recette.statut).couleur}}>{statutRecette(recette.statut).label}</span>
-          <div style={rs.detailHeroText}>
-            <div style={rs.detailHeroTitle}>{recette.nom}</div>
-            <div style={rs.detailHeroSub}>v{recette.version}, modifié le {dateSuisse(recette.modifie)}, {recette.categorie}</div>
-            {tempsFiche(recette).length > 0 && (
-              <div style={rs.detailHeroTimes}>
-                {tempsFiche(recette).map(([libelle, minutes]) => <span key={libelle}>{libelle} {minutes} min</span>)}
-              </div>
-            )}
-          </div>
+      <div id='fiche-recette-print' className={`fv fv-fiche${tactile ? ' fv-fiche--tactile' : ''}`}>
+      {/* Bandeau héros, toujours : la photo (ou le visuel de remplacement de
+          la catégorie) porte la fiche, catégorie, nom, temps et portions posés
+          sur le voile. Le statut ne s'écrit que s'il n'est pas « Validée ».
+          L'export PDF et Imprimer passent par le jsPDF vectoriel
+          (buildRecettePdfData) : ce héros est purement écran. */}
+      <header className="fv-heros" data-heros="">
+        <PhotoFiche src={photo} categorie={recette.categorie} nom={recette.nom} variante="heros" />
+        <span className="fv-voile" aria-hidden="true" />
+        {statutAffiche && <span className="fv-pastille">{statutAffiche}</span>}
+        <div className="fv-heros-texte">
+          {recette.categorie && <p className="fv-heros-cat">{recette.categorie}</p>}
+          <h2 className="fv-heros-titre">{recette.nom}</h2>
+          {(tempsFiche(recette).length > 0 || portionsFiche > 0) && (
+            <p className="fv-heros-meta">
+              {tempsFiche(recette).map(([libelle, minutes]) => (
+                <span key={libelle}>{libelle} <span data-no-translate="">{minutes}</span> min</span>
+              ))}
+              {portionsFiche > 0 && (
+                <span><span data-no-translate="">{fmtPortions(portionsFiche)}</span> {portionsFiche > 1 ? 'portions' : 'portion'}</span>
+              )}
+            </p>
+          )}
         </div>
-      ) : (
-        <div style={{...rs.detailHeader, ...(isMobile ? { flexDirection: 'column', alignItems: 'flex-start', gap: 12 } : null)}}>
-          <div style={rs.detailMeta}>
-            <div style={rs.detailTitle}>{recette.nom}</div>
-            <div style={rs.detailSub}>v{recette.version}, modifié le {dateSuisse(recette.modifie)}, {recette.categorie}</div>
-            {tempsFiche(recette).length > 0 && (
-              <div style={{display:'flex', gap:14, marginTop:8, fontSize:12, color:'var(--text2)', flexWrap:'wrap'}}>
-                {tempsFiche(recette).map(([libelle, minutes]) => <span key={libelle}>{libelle} : <strong style={{color: libelle === 'Total' ? 'var(--accent)' : 'var(--text)'}}>{minutes} min</strong></span>)}
-              </div>
-            )}
-          </div>
-          <div style={rs.detailBadges}>
-            <span style={{...rs.badge, background:'none', color: statutRecette(recette.statut).couleur}}>{statutRecette(recette.statut).label}</span>
-          </div>
-        </div>
-      )}
+      </header>
 
-      <div style={{...rs.detailGrid, gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr'}}>
-        <div style={rs.detailCard}>
-          <div style={{...rs.cardHeader, ...(isMobile ? { flexWrap: 'wrap', gap: 10 } : null)}}>
-            <span style={rs.cardTitle}>Ingrédients</span>
+      <AllergenesFiche ids={recette.allergenesIds} variante="bandeau" />
+
+      <div className="fv-fiche-cols">
+        <section className="fv-bloc" data-fiche-section="ingredients">
+          <div className="fv-bloc-tete">
+            <h3 className="fv-titre-section">Ingrédients</h3>
             <div className="no-print" style={rs.portionsCtrl}>
               <span style={{fontSize:12, color:'var(--text2)'}}>Portions :</span>
               <button type="button" className="touch-target" style={rs.portBtn} onClick={() => pasPortions(-1)} aria-label="Une portion de moins">−</button>
@@ -706,7 +726,7 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
               const estRef = isScaled && refIdx === idx;
               const enSaisie = saisieQte && saisieQte.idx === idx;
               return (
-                <div key={i.id || idx} style={{...rs.ingRow, gridTemplateColumns: ingCols, ...(estRef ? rs.ingRowRef : null)}}>
+                <div key={i.id || idx} data-ligne="" style={{...rs.ingRow, gridTemplateColumns: ingCols, ...(estRef ? rs.ingRowRef : null)}}>
                   <span style={sIngName}>{i.nom}{estRef ? ' (réf.)' : ''}</span>
                   {base > 0 ? (
                     <div style={{minWidth:0}}>
@@ -733,12 +753,40 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
               );
             })}
           </div>
-        </div>
+        </section>
 
-        <div style={{display:'flex', flexDirection:'column', gap:16}}>
-          <div style={rs.detailCard}>
-            <div style={rs.cardHeader}><span style={rs.cardTitle}>Congélation</span></div>
-            <div style={{padding:'12px 16px', display:'flex', flexDirection:'column', gap:10}}>
+        <div className="fv-col">
+          {(recette.etapes || []).length > 0 && (
+            <section className="fv-bloc" data-fiche-section="etapes">
+              <h3 className="fv-titre-section">Étapes</h3>
+              <ol className="fv-etapes">
+                {recette.etapes.map((e, i) => (
+                  <li key={i} className="fv-etape">
+                    <span className="fv-etape-num" data-no-translate="">{i + 1}</span>
+                    <span>{e}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+          {recette.dressage && (
+            <section className="fv-bloc">
+              <h3 className="fv-titre-section">Dressage</h3>
+              <p className="fv-texte-long">{recette.dressage}</p>
+            </section>
+          )}
+        </div>
+      </div>
+
+      {/* Conservation : le texte, puis Congélation et Durées de vie (des
+          réglages, lus par la Mise en place et le poste d'étiquetage). */}
+      <section className="fv-bloc" data-fiche-section="conservation">
+        <h3 className="fv-titre-section">Conservation</h3>
+        {recette.conservation && <p className="fv-texte-long">{recette.conservation}</p>}
+        <div className="fv-conservation-cols">
+          <div className="fv-bloc">
+            <h4 className="fv-sous-titre">Congélation</h4>
+            <div style={{display:'flex', flexDirection:'column', gap:10}}>
               <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                 {congelable === true && <span style={{...rs.badge, background:'var(--success-bg)', color:'var(--success-text)'}}>Congelable, grosse production</span>}
                 {congelable === false && <span style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)'}}>Non congelable, urgent</span>}
@@ -771,9 +819,9 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
             </div>
           </div>
           {/* Durées de vie : lues par le poste d'étiquetage DLC (module HACCP). */}
-          <div style={rs.detailCard}>
-            <div style={rs.cardHeader}><span style={rs.cardTitle}>Durées de vie (DLC)</span></div>
-            <div style={{padding:'12px 16px', display:'flex', flexDirection:'column', gap:10}}>
+          <div className="fv-bloc">
+            <h4 className="fv-sous-titre">Durées de vie (DLC)</h4>
+            <div style={{display:'flex', flexDirection:'column', gap:10}}>
               {canEditDurees ? (
                 <div className="no-print" style={{display:'flex', flexDirection:'column', gap:8}}>
                   {[
@@ -816,47 +864,20 @@ const RecetteDetail = ({ recette, user, etablissement, onBack, canEtiqueter = fa
               )}
             </div>
           </div>
-          <div style={rs.detailCard}>
-            <div style={rs.cardHeader}><span style={rs.cardTitle}>Allergènes</span></div>
-            <div style={{padding:'12px 16px', display:'flex', flexWrap:'wrap', gap:6}}>
-              {(recette.allergenesIds || []).map(a => (
-                <span key={a} style={{...rs.badge, background:'var(--warning-bg)', color:'var(--warning-text)'}}>{ALLERGENES_MAP[a] || a}</span>
-              ))}
-            </div>
-          </div>
-          {recette.notesConsultant && (
-            <div style={{...rs.detailCard, borderLeft:'3px solid var(--accent)'}}>
-              <div style={rs.cardHeader}><span style={rs.cardTitle}>Notes consultant</span></div>
-              <div style={{padding:'12px 16px', fontSize:13, color:'var(--text)', lineHeight:1.6}}>{recette.notesConsultant}</div>
-            </div>
-          )}
         </div>
+      </section>
 
-        <div style={{...rs.detailCard, gridColumn:'1/-1'}}>
-          <div style={rs.cardHeader}><span style={rs.cardTitle}>Préparation</span></div>
-          <div style={{padding:'16px'}}>
-            {(recette.etapes || []).map((e,i) => (
-              <div key={i} style={rs.etapeRow}>
-                <div style={rs.etapeNum}>{i+1}</div>
-                <div style={{...rs.etapeTxt, ...(isMobile ? { fontSize: 15 } : null)}}>{e}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {recette.notesConsultant && (
+        <section className="fv-bloc">
+          <h3 className="fv-titre-section">Notes consultant</h3>
+          <p className="fv-texte-long">{recette.notesConsultant}</p>
+        </section>
+      )}
 
-        {recette.dressage && (
-          <div style={rs.detailCard}>
-            <div style={rs.cardHeader}><span style={rs.cardTitle}>Dressage</span></div>
-            <div style={{padding:'12px 16px', fontSize:13, color:'var(--text)', lineHeight:1.6}}>{recette.dressage}</div>
-          </div>
-        )}
-        {recette.conservation && (
-          <div style={rs.detailCard}>
-            <div style={rs.cardHeader}><span style={rs.cardTitle}>Conservation</span></div>
-            <div style={{padding:'12px 16px', fontSize:13, color:'var(--text)', lineHeight:1.6}}>{recette.conservation}</div>
-          </div>
-        )}
-      </div>
+      <p className="fv-pied">
+        Version <span data-no-translate="">{recette.version || 1}</span>
+        {recette.modifie && <>, modifiée le <span data-no-translate="">{dateSuisse(recette.modifie)}</span></>}
+      </p>
       </div>
     </div>
   );
@@ -1488,6 +1509,41 @@ const Recettes = ({ user, etablissement }) => {
   // le module (<main>), là où une Fenetre passe en portail sous <body>.
   const fermerFiche = React.useCallback(() => setSelectedRecette(null), []);
   useBackLayer(Boolean(selectedRecette), fermerFiche, 'recettes-fiche');
+
+  // Au retour d'une fiche, l'écran revient là où on l'a quitté (la fiche
+  // s'ouvre en haut de page et remet à zéro le défilement de ses parents).
+  // À l'ouverture, le défilement de chaque parent qui défile est retenu ; au
+  // retour, il est remis tel quel : la liste de Gérer (Bibliothèque) et la
+  // recherche Allergènes retrouvent leur ligne. La clé dit en plus quelle
+  // vignette a été quittée : « plat:<id> » sur la carte du moment,
+  // « fiche:<id> » dans Je cherche une fiche ; si elle n'est plus à l'écran
+  // après la remise (liste relue entre-temps), elle y est ramenée. Même motif
+  // que les Fiches salle.
+  const racineRef = React.useRef(null);
+  const ficheQuitteeRef = React.useRef(null);
+  const vignetteQuitteeRef = React.useRef(null);
+  const defilementQuitteRef = React.useRef(null);
+  const ouvrirFiche = React.useCallback((r, cle = null) => {
+    const parents = [];
+    for (let el = racineRef.current?.parentElement; el; el = el.parentElement) if (el.scrollTop > 0) parents.push([el, el.scrollTop]);
+    defilementQuitteRef.current = { parents, fenetre: window.scrollY };
+    ficheQuitteeRef.current = cle;
+    setSelectedRecette(r);
+  }, []);
+  React.useLayoutEffect(() => {
+    if (selectedRecette || edition) return;
+    const defilement = defilementQuitteRef.current;
+    const cle = ficheQuitteeRef.current;
+    defilementQuitteRef.current = null;
+    ficheQuitteeRef.current = null;
+    if (defilement) {
+      defilement.parents.forEach(([el, haut]) => { if (el.isConnected) el.scrollTop = haut; });
+      if (defilement.fenetre > 0) window.scrollTo(0, defilement.fenetre);
+    }
+    const el = cle ? vignetteQuitteeRef.current : null;
+    const r = el?.getBoundingClientRect();
+    if (r && (r.top < 0 || r.bottom > window.innerHeight)) el.scrollIntoView({ block: 'center' });
+  }, [selectedRecette, edition]);
   const fermerEditeur = React.useCallback(() => setEdition(null), []);
   useBackLayer(Boolean(edition), fermerEditeur, 'recettes-editeur');
   React.useEffect(() => {
@@ -1870,6 +1926,7 @@ const Recettes = ({ user, etablissement }) => {
     return (
       <RecetteDetail
         recette={ouverte}
+        photo={photoDeRecette(ouverte, plats, recettesEtab)}
         user={user}
         etablissement={etablissement}
         canEtiqueter={canEtiqueter}
@@ -1908,7 +1965,7 @@ const Recettes = ({ user, etablissement }) => {
           recettes={recettesEtab}
           recettesCachees={recettesCachees}
           plats={plats}
-          onPick={(r) => setSelectedRecette(r)}
+          onPick={(r) => ouvrirFiche(r)}
           onClose={() => setShowIngredientSearch(false)}
         />
       )}
@@ -1941,7 +1998,7 @@ const Recettes = ({ user, etablissement }) => {
   );
 
   if (ecran === ECRAN_ACCUEIL) return (
-    <div style={rs.root}>
+    <div ref={racineRef} style={rs.root}>
       {fenetres}
       <AccueilRecettes
         fiches={dataStatus === 'ready' ? recettesEtab.length : null}
@@ -1981,7 +2038,7 @@ const Recettes = ({ user, etablissement }) => {
   // La loupe : dans l'en-tête de la carte du moment, dans la barre de Gérer.
   const loupe = <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />;
   return (
-    <div style={rs.root}>
+    <div ref={racineRef} style={rs.root}>
       {fenetres}
       <EcranTache
         titre={TITRES_ECRAN[ecran]}
@@ -2152,84 +2209,57 @@ const Recettes = ({ user, etablissement }) => {
           )}
           {q && filteredPlats.length > 0 && voirDansBibliotheque}
 
-          {/* Plats by category */}
-          {catsCarte.map(cat => {
-            const platsCat = filteredPlats.filter(p => categorieDuPlat(p) === cat);
-            if (!platsCat.length) return null;
-            return (
-              <div key={cat} style={rs.catSection}>
-                <div style={rs.catTitle}>{cat}</div>
-                <div style={rs.platGrid}>
-                  {platsCat.map(plat => {
-                    // Recettes rattachées au plat
-                    const recettesIds = (plat.recettes || []).map(pr => pr.recetteId);
-                    // Toutes les recettes du plat, cachées comprises : elles
-                    // nourrissent les allergènes et le temps. Seules les
-                    // visibles sont listées et ouvrables.
-                    const recettesDuPlat = recettesActives.filter(r => recettesIds.includes(r.id));
-                    const recettesPlat = recettesDuPlat.filter(r => r.masquee !== true);
-                    // Allergènes consolidés depuis toutes les recettes liées
-                    const allergsSet = new Set();
-                    recettesDuPlat.forEach(r => (r.allergenesIds || []).forEach(a => allergsSet.add(a)));
-                    const allergsList = [...allergsSet];
-                    // Temps le plus long des recettes liées : la donnée existe
-                    // depuis toujours mais n'était affichée nulle part en carte.
-                    const tempsMax = Math.max(0, ...recettesDuPlat.map(r => r.tempsTotal || 0));
-
-                    return (
-                      <div key={plat.id} style={rs.platCard}>
-                        {/* Tuile immersive : la photo remplit la zone, le nom se
-                            pose sur le voile (--grad-scrim). Le voile couvre
-                            aussi le placeholder : la crème reste lisible. */}
-                        <div style={rs.platImgZone}>
-                          <RecettePhoto src={plat.photoUrl} alt={plat.nom} style={rs.platImg} />
-                          <div style={rs.platScrim} aria-hidden="true" />
-                          <div style={rs.platOverlay}>
-                            <div style={rs.platCardName}>{plat.nom}</div>
-                            {tempsMax > 0 && <div style={rs.platOverlayMeta}>{tempsMax} min</div>}
-                          </div>
-                        </div>
-                        <div style={rs.platBody}>
-                          {plat.description && (
-                            <div style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4, marginBottom: 6 }}>
-                              {plat.description}
-                            </div>
-                          )}
-                          <div style={rs.platAllergenes}>
-                            {allergsList.length > 0 && <span style={rs.allergenesTexte}>{nomsAllergenes(allergsList)}</span>}
-                          </div>
-                          {(recettesPlat.length > 0 || canFiches) && (
-                            <div style={rs.platFooter}>
-                              <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                                {recettesPlat.length > 0 && <>{recettesPlat.length} recette{recettesPlat.length > 1 ? 's' : ''}</>}
-                              </div>
-                              {canFiches && (
-                                <button style={rs.printBtn} onClick={() => setPlatEdite({ plat })} aria-label={`Modifier le plat ${plat.nom}`}>Modifier</button>
-                              )}
-                            </div>
-                          )}
-                          {recettesPlat.length > 0 && (
-                            <div style={rs.recetteLinkListe}>
-                              {recettesPlat.map(r => (
-                                <button
-                                  key={r.id}
-                                  style={rs.recetteLink}
-                                  onClick={() => setSelectedRecette(r)}
-                                >
-                                  <span style={rs.recetteLinkNom}>{r.nom}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+          {/* Plats par catégorie, en vignettes : toucher un plat ouvre sa
+              première fiche (VitrineCarte). */}
+          <VitrineCarte
+            plats={filteredPlats}
+            categories={catsCarte}
+            recettesActives={recettesActives}
+            recettesVisibles={recettesEtab}
+            canFiches={canFiches}
+            onOuvrirRecette={(r, plat) => ouvrirFiche(r, clePlat(plat))}
+            onModifierPlat={(plat) => setPlatEdite({ plat })}
+            ficheQuitteeId={ficheQuitteeRef.current}
+            refQuittee={vignetteQuitteeRef}
+          />
         </div>
+        )
+      ) : ecran === 'chercher' ? (
+        // Je cherche une fiche : une grille de fiches (VitrineFiches). Une
+        // lecture en cours ou en échec ne s'annonce jamais comme une
+        // bibliothèque vide (cf. PanneauEtat) : sans aucune fiche lue, des
+        // plats déjà là (lecture des fiches en échec) ne suffisent pas à
+        // montrer la grille, elle les donnerait tous « à compléter ».
+        recettesEtab.length === 0 && recettesArchivees.length === 0 && (plats.length === 0 || dataStatus !== 'ready') ? (
+          dataStatus !== 'ready'
+            ? <PanneauEtat
+                titre={dataStatus === 'loading' ? 'Chargement des recettes…' : 'Recettes indisponibles'}
+                texte={dataStatus === 'loading'
+                  ? 'La bibliothèque de cet établissement arrive.'
+                  : (online
+                    ? 'La connexion a été interrompue. Rien n’est perdu : nouvel essai automatique en cours.'
+                    : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
+                onRetry={dataStatus === 'error' ? retryAll : null}
+              />
+            : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
+        ) : (
+          <VitrineFiches
+            recettesEtab={recettesEtab}
+            recettesArchivees={recettesArchivees}
+            plats={plats}
+            match={match}
+            q={q}
+            recherche={search}
+            canFiches={canFiches}
+            canEtiqueter={canEtiqueter}
+            voirArchivees={voirArchivees}
+            onBasculerArchivees={() => setVoirArchivees(v => !v)}
+            onOuvrir={ouvrirFiche}
+            onEtiquette={setEtiquetteRecette}
+            onModifierPlat={(plat) => setPlatEdite({ plat })}
+            ficheQuitteeId={ficheQuitteeRef.current}
+            refQuittee={vignetteQuitteeRef}
+          />
         )
       ) : (
         <div style={rs.recettesWrap}>
@@ -2290,7 +2320,7 @@ const Recettes = ({ user, etablissement }) => {
             // activation par Entrée et Espace - sans toucher au rendu. Sans ça
             // la ligne était invisible au clavier et aux lecteurs d'écran.
             // En sélection, toucher une fiche la coche au lieu de l'ouvrir.
-            const activerRecette = (r) => (selection.active ? selection.toggle(r.id) : setSelectedRecette(r));
+            const activerRecette = (r) => (selection.active ? selection.toggle(r.id) : ouvrirFiche(r));
             const togglePlat = (platId, estDeplie) => {
               const next = new Set(expandedPlats);
               estDeplie ? next.delete(platId) : next.add(platId);
@@ -2462,43 +2492,22 @@ const rs = {
   toolbarActionsMobile: {width:'100%',marginLeft:0},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
-  carteHeader: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'18px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',boxShadow:'var(--sh-xs)'},
+  // Sans cadre (la règle « Plus de carrés » l'aplatissait déjà) ni retrait
+  // vertical : la place rendue va aux vignettes des plats.
+  carteHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
   homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
   carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
-  catFilter: {display:'flex',gap:6,flexWrap:'wrap'},
-  catSection: {display:'flex',flexDirection:'column',gap:12},
-  catTitle: {fontSize:12,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.6,paddingLeft:2},
-  platGrid: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14},
-  platCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r-lg)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
-  // ─── Tuile immersive : la photo remplit la zone, le nom vit sur le voile ──
-  platImgZone: {position:'relative',height:172,overflow:'hidden'},
-  platImg: {position:'absolute',inset:0,width:'100%',height:'100%'},
-  platScrim: {position:'absolute',inset:0,background:'var(--grad-scrim)',pointerEvents:'none'},
-  platOverlay: {position:'absolute',left:12,right:12,bottom:10,pointerEvents:'none'},
-  platOverlayMeta: {fontSize:11,fontWeight:500,color:'rgba(241,235,225,0.82)',marginTop:3},
-  platBody: {padding:'12px'},
-  // Crème de marque sur voile sombre : identique quel que soit le thème.
-  platCardName: {fontSize:15,fontWeight:700,color:'#f1ebe1',fontFamily:'var(--font-serif)',lineHeight:1.25,letterSpacing:'-0.01em'},
-  platAllergenes: {display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'},
-  allergeneDot: {fontSize:11,fontWeight:700,background:'var(--warning-bg)',color:'var(--warning-text)',padding:'2px 5px',borderRadius:4},
+  // Les plats de la carte et les fiches de Je cherche une fiche sont des
+  // vignettes (VitrineCarte, VitrineFiches) : leur forme vit dans
+  // src/components/fiches/fiches.css, hors de portée de la règle « Plus de
+  // carrés » qui aplatissait les tuiles posées en style inline.
   lienAction: {background:'none',border:'none',padding:0,color:'var(--accent)',fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
   // Allergènes en texte simple, noms complets séparés par des virgules.
   allergenesTexte: {fontSize:12,fontWeight:400,color:'var(--text2)',lineHeight:1.4},
   // Dans une ligne de liste : une seule ligne, le reste au survol (title).
   allergenesLigne: {minWidth:0,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
-  platFooter: {display:'flex',alignItems:'center',justifyContent:'space-between'},
-  // ─── Recettes listées au pied d'une carte de plat ─────────────────────────
-  // Mesuré sur iPad paysage (1024px) : c'étaient des liens texte de 11px sans
-  // padding, soit 15px de haut séparés de 4px. Un doigt pose ~40px de contact :
-  // il couvrait deux à trois lignes à la fois, d'où les ouvertures à côté.
-  // La règle globale « min-height 44px » ne s'applique qu'en dessous de 768px,
-  // donc elle ne protégeait justement pas la tablette en paysage.
-  // Vraies lignes tactiles : 44px de haut, fond distinct, séparées de 6px.
-  recetteLinkListe: {marginTop:8,paddingTop:8,borderTop:'1px dashed var(--border)',display:'flex',flexDirection:'column',gap:6},
-  recetteLink: {display:'flex',alignItems:'center',gap:8,width:'100%',minHeight:44,padding:'8px 10px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,color:'var(--accent)',fontSize:12,fontWeight:500,textAlign:'left',cursor:'pointer',fontFamily:'var(--font)',transition:'background .12s'},
-  recetteLinkNom: {flex:1,minWidth:0,lineHeight:1.3},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
   etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
@@ -2550,38 +2559,24 @@ const rs = {
   recetteMeta: {fontSize:11,color:'var(--text2)',marginTop:2},
   recetteBadges: {display:'flex',gap:4,flexShrink:0},
   // Detail
+  // La fiche ouverte (héros, sections, colonnes) est en classes .fv-fiche de
+  // src/components/fiches/fiches.css ; restent ici les contrôles de la fiche.
   detailRoot: {display:'flex',flexDirection:'column',gap:18},
-  detailHeader: {display:'flex',alignItems:'center',gap:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'16px 20px',boxShadow:'var(--sh-xs)'},
-  // ─── Bandeau héros (fiche avec photo) ─────────────────────────────────────
-  detailHero: {position:'relative',borderRadius:'var(--r-lg)',overflow:'hidden',boxShadow:'var(--sh)'},
-  detailHeroImg: {position:'absolute',inset:0,width:'100%',height:'100%'},
-  detailHeroScrim: {position:'absolute',inset:0,background:'var(--grad-scrim)',pointerEvents:'none'},
-  detailHeroBadge: {position:'absolute',top:14,right:14},
-  detailHeroText: {position:'absolute',left:20,right:20,bottom:16},
-  detailHeroTitle: {fontSize:26,fontWeight:700,fontFamily:'var(--font-serif)',color:'#f1ebe1',letterSpacing:'-0.02em',lineHeight:1.12},
-  detailHeroSub: {fontSize:12,color:'rgba(241,235,225,0.75)',marginTop:4},
-  detailHeroTimes: {display:'flex',gap:12,marginTop:9,fontSize:12,fontWeight:500,color:'rgba(241,235,225,0.9)',flexWrap:'wrap'},
   backBtn: {background:'none',border:'1px solid var(--border)',borderRadius:7,padding:'6px 12px',cursor:'pointer',fontSize:12,color:'var(--text2)',fontFamily:'var(--font)',flexShrink:0},
-  detailMeta: {flex:1},
-  detailTitle: {fontSize:20,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)'},
-  detailSub: {fontSize:12,color:'var(--text2)',marginTop:3},
-  detailBadges: {display:'flex',gap:6,flexShrink:0},
-  detailGrid: {display:'grid',gridTemplateColumns:'1.2fr 1fr',gap:16},
-  detailCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
-  cardHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg)'},
-  cardTitle: {fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4},
   portionsCtrl: {display:'flex',alignItems:'center',gap:6},
   portBtn: {minWidth:30,height:30,borderRadius:8,borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontSize:16,fontWeight:700,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'var(--font)'},
   portInput: {width:64,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text)',fontSize:15,fontWeight:700,textAlign:'center',fontFamily:'var(--font)',flexShrink:0},
   // ─── Barre d'échelle sous l'en-tête des ingrédients ───────────────────────
   // Au repos : la phrase qui apprend le geste (taper sur une quantité).
   // Active : d'où l'on part, de combien, et le retour en arrière.
-  echelleBar: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 16px',background:'var(--bg)',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--border)',fontSize:11,color:'var(--text2)',lineHeight:1.4},
+  // Retraits latéraux réduits : la fiche n'est plus une carte, les lignes
+  // s'alignent sur le titre de la section.
+  echelleBar: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 10px',background:'var(--bg)',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--border)',fontSize:11,color:'var(--text2)',lineHeight:1.4},
   echelleBarActive: {background:'var(--warning-bg)',borderBottomColor:'var(--warning-bd)'},
   echelleReset: {marginLeft:'auto',padding:'5px 12px',background:'none',borderWidth:1,borderStyle:'solid',borderColor:'var(--warning-bd)',borderRadius:7,color:'var(--warning-text)',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   ingTable: {display:'flex',flexDirection:'column'},
-  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 16px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
-  ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'9px 16px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
+  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 2px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
+  ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'9px 2px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
   ingRowRef: {background:'var(--warning-bg-soft)'},
   ingName: {fontSize:13,color:'var(--text)'},
   // Ligne sans quantité chiffrée (« 1 feuille de laurier ») : pas de champ,
@@ -2592,9 +2587,6 @@ const rs = {
   ingQtyInput: {width:'100%',minWidth:0,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:7,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:500,textAlign:'right',fontFamily:'var(--font)'},
   ingQtyInputRef: {borderColor:'var(--warning-bd)',background:'var(--warning-bg)',color:'var(--warning-text)'},
   ingQtyBase: {fontSize:11,color:'var(--text3)',textAlign:'right',marginTop:2},
-  etapeRow: {display:'flex',gap:14,marginBottom:12,alignItems:'flex-start'},
-  etapeNum: {width:24,height:24,borderRadius:'50%',background:'var(--accent)',color:'var(--on-accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1},
-  etapeTxt: {fontSize:13,color:'var(--text)',lineHeight:1.6},
 };
 
 export default Recettes;

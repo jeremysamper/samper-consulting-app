@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Clock, Wine } from 'lucide-react';
 import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
@@ -18,6 +18,15 @@ import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
+import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
+import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
+import VignetteFiche from '../../components/fiches/VignetteFiche.jsx';
+import SectionFiches, { GrilleFiches } from '../../components/fiches/SectionFiches.jsx';
+import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
+import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
+import { estCategorieTechnique, photoDeFicheSalle } from '../../components/fiches/rangementFiches.js';
+import { categorieDuPlat, categoriesPresentes, grouperParCategorie } from '../../utils/categoriesPlat.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -25,14 +34,17 @@ import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcra
 // Lecture : serveurs / Édition : consultant, patron, resp_cuisine
 // ─────────────────────────────────────────────────────
 
-// Libellés et liste : référentiel partagé (src/utils/allergenes.js).
-// Seules les couleurs sont propres à ce module.
-const ALLERGENES_COLORS = {
-  gluten:'var(--warning-text)', lactose:'#0369a1', oeufs:'var(--warning-strong)', poissons:'#0891b2',
-  crustaces:'var(--danger-strong)', fruits_coque:'var(--ai-text)', sulfites:'#4f7942',
-  arachides:'#c2410c', soja:'#059669', celeri:'#84cc16', moutarde:'#ca8a04',
-  sesame:'#f97316', mollusques:'#8b5cf6', lupin:'#ec4899',
-};
+// Allergènes : référentiel partagé (src/utils/allergenes.js), affichés en
+// picto + libellé par AllergenesFiche, dans le langage allergènes de l'app
+// (jetons warning). Les couleurs propres au module, en dur, illisibles en
+// sombre et sous le seuil AA pour certaines (céleri, moutarde), ont disparu.
+
+// Nouvel essai de lecture des fiches après un échec : 4 s, doublé, 30 s au plus.
+const ESSAI_MIN_MS = 4000;
+const ESSAI_MAX_MS = 30000;
+
+// Date ISO (2026-10-14) en date suisse (14.10.2026) ; un autre texte passe tel quel.
+const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('.') : (v || ''));
 
 // Familles de boissons pour les accords. L'ordre est celui des onglets.
 // Les fiches n'avaient que « vin » et « sans_alcool » : une maison qui sert
@@ -48,17 +60,11 @@ const ACCORD_TYPES = [
 const ACCORD_TYPE_IDS = ACCORD_TYPES.map(t => t.id);
 const accordLabel = (type) => (ACCORD_TYPES.find(t => t.id === type) || {}).label || 'Boisson';
 
-// Catégories de recettes « techniques » qui ne sont pas des plats servis
-// au client - elles ne donnent pas lieu à une fiche salle.
-const RECETTE_CATS_NON_SERVIES = [
-  'sauce', 'sauces', 'fond', 'fonds', 'garniture', 'garnitures',
-  'base', 'bases', 'préparation', 'préparations', 'preparation', 'preparations',
-];
-const estRecetteServie = (categorie) => {
-  const c = (categorie || '').toLowerCase().trim();
-  if (!c) return true; // recette sans catégorie : on la garde par défaut
-  return !RECETTE_CATS_NON_SERVIES.some(x => c === x || c.startsWith(x + ' '));
-};
+// Catégories de recettes « techniques » (sauces, fonds, bases, garnitures,
+// préparations) : pas des plats servis au client, elles ne donnent pas lieu
+// à une fiche salle. Liste partagée avec la vitrine des fiches
+// (rangementFiches.js) ; une recette sans catégorie reste servie.
+const estRecetteServie = (categorie) => !estCategorieTechnique(categorie);
 
 const INITIAL_FICHES = [
   {
@@ -150,7 +156,15 @@ const FichesSalle = ({ user, etablissement }) => {
   const [fiches, setFiches] = React.useState([]);
   const [recettes, setRecettes] = React.useState([]);
   const [plats, setPlats] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  // Lecture des fiches : 'loading' | 'ready' | 'error'. Une lecture en échec
+  // ne s'affiche jamais comme une liste vide (« Aucune fiche pour ces
+  // critères. » faisait passer une panne pour un établissement sans fiche).
+  // fichesLues : une lecture a abouti au moins une fois ; un échec ensuite
+  // garde les fiches à l'écran, avec le bandeau « non actualisé ».
+  const [statutLecture, setStatutLecture] = React.useState(() => (legacySB ? 'loading' : 'ready'));
+  const [fichesLues, setFichesLues] = React.useState(!legacySB);
+  const lireFichesRef = React.useRef(null);
+  const online = useOnlineStatus();
   const [selected, setSelected] = React.useState(null);
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
@@ -198,51 +212,102 @@ const FichesSalle = ({ user, etablissement }) => {
   const canEdit = canManageModule(user.role, 'fiches_salle');
   const canManageCartes = canManageModule(user.role, 'recettes');
   const isConsultant = user.role === 'consultant';
+  // Catégories que le formulaire et la génération produisent.
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
-  // Les onglets couvrent toutes les catégories que le formulaire peut produire :
-  // « Boissons » manquait, une fiche boisson n'était donc filtrable que par « Tous ».
-  const cats = ['Tous', ...FICHE_CATS];
 
   // ═══ Chargement depuis Supabase + Realtime ═══
+  // Fiches en lecture stricte : une erreur remonte, la liste déjà à l'écran
+  // n'est jamais écrasée. Recettes et plats restent non stricts : ils ne
+  // servent qu'aux photos et au formulaire (un échec = visuel de remplacement,
+  // aucune information perdue).
   React.useEffect(() => {
     if (!legacySB) {
       setFiches(INITIAL_FICHES.filter(f => (f.etablissementId || 'etab-1') === etabId));
-      setLoading(false);
+      setStatutLecture('ready');
+      setFichesLues(true);
       return;
     }
     let mounted = true;
     const unsubs = [];
-    (async () => {
+    // Échec : nouvel essai programmé (4 s, puis 8, 16, 30 s au plus), comme
+    // Cartes & Recettes. L'écran « Fiches indisponibles » l'annonce.
+    // Une seule lecture à la fois : deux événements realtime rapprochés
+    // (fiches_salle, carte_fiches_salle) en lançaient deux, et deux échecs
+    // programmaient deux essais dont un seul était annulé à la fermeture.
+    // Un appel qui arrive pendant une lecture en demande une de plus, à la
+    // fin de celle-ci (la modification qu'il signale n'est pas perdue).
+    let essaiTimer = null;
+    let essaiDelai = ESSAI_MIN_MS;
+    let enCours = false;
+    let aRelire = false;
+    const lireFiches = async () => {
+      if (!mounted) return;
+      if (enCours) { aRelire = true; return; }
+      enCours = true;
+      aRelire = false;
+      if (essaiTimer) { clearTimeout(essaiTimer); essaiTimer = null; }
       try {
-        const [rows, recs, pls] = await Promise.all([
-          legacySB.db.listFichesSalle(etabId),
-          legacySB.db.listRecettes(etabId),
-          legacySB.db.listPlats(etabId),
-        ]);
-        if (mounted) { setFiches(rows); setRecettes(recs); setPlats(pls || []); }
-      } catch (err) { console.error('[FichesSalle]', err); }
-      finally { if (mounted) setLoading(false); }
-    })();
-    unsubs.push(legacySB.realtime.subscribeReload('fiches_salle', async () => {
-      try { const rows = await legacySB.db.listFichesSalle(etabId); if (mounted) setFiches(rows); }
-      catch (e) {}
-    }));
-    unsubs.push(legacySB.realtime.subscribeReload('recettes', async () => {
+        const rows = await legacySB.db.listFichesSalle(etabId, { strict: true });
+        if (mounted) {
+          essaiDelai = ESSAI_MIN_MS;
+          setFiches(rows);
+          setFichesLues(true);
+          setStatutLecture('ready');
+        }
+      } catch (err) {
+        if (mounted) {
+          console.error('[FichesSalle]', err);
+          setStatutLecture('error');
+          if (essaiTimer) clearTimeout(essaiTimer);
+          essaiTimer = setTimeout(lireFiches, essaiDelai);
+          essaiDelai = Math.min(essaiDelai * 2, ESSAI_MAX_MS);
+        }
+      }
+      enCours = false;
+      if (aRelire && mounted) lireFiches();
+    };
+    const lireRecettes = async () => {
       try { const recs = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(recs); }
       catch (e) {}
-    }));
-    const reloadPlats = async () => {
+    };
+    const lirePlats = async () => {
       try { const pls = await legacySB.db.listPlats(etabId); if (mounted) setPlats(pls || []); }
       catch (e) {}
     };
-    unsubs.push(legacySB.realtime.subscribeReload('plats', reloadPlats));
-    unsubs.push(legacySB.realtime.subscribeReload('plat_recettes', reloadPlats));
-    unsubs.push(legacySB.realtime.subscribeReload('carte_fiches_salle', async () => {
-      try { const rows = await legacySB.db.listFichesSalle(etabId); if (mounted) setFiches(rows); }
-      catch (e) {}
-    }));
-    return () => { mounted = false; unsubs.forEach(u => u && u()); };
+    lireFichesRef.current = lireFiches;
+    setStatutLecture('loading');
+    lireFiches();
+    lireRecettes();
+    lirePlats();
+    unsubs.push(legacySB.realtime.subscribeReload('fiches_salle', lireFiches));
+    unsubs.push(legacySB.realtime.subscribeReload('recettes', lireRecettes));
+    unsubs.push(legacySB.realtime.subscribeReload('plats', lirePlats));
+    unsubs.push(legacySB.realtime.subscribeReload('plat_recettes', lirePlats));
+    unsubs.push(legacySB.realtime.subscribeReload('carte_fiches_salle', lireFiches));
+    return () => {
+      mounted = false;
+      if (essaiTimer) clearTimeout(essaiTimer);
+      if (lireFichesRef.current === lireFiches) lireFichesRef.current = null;
+      unsubs.forEach(u => u && u());
+    };
   }, [etabId]);
+
+  // Réveil de la tablette, retour du réseau : le canal realtime est mort
+  // pendant la veille, on relit (resumeCoordinator attend une session saine).
+  const relireFiches = React.useCallback(() => (lireFichesRef.current ? lireFichesRef.current() : undefined), []);
+  useResumeRefresh(relireFiches);
+  // « Réessayer » de l'écran « Fiches indisponibles » (aucune fiche lue) :
+  // l'écran repasse en « Chargement des fiches… » le temps de la relecture,
+  // au moins un instant, sinon un échec immédiat (hors ligne) laisserait le
+  // toucher sans effet visible. Une grille déjà lue n'y passe jamais.
+  // La minuterie est gardée : annulée par un second toucher et à la fermeture.
+  const reessaiRef = React.useRef(null);
+  React.useEffect(() => () => clearTimeout(reessaiRef.current), []);
+  const reessayerLecture = () => {
+    setStatutLecture('loading');
+    clearTimeout(reessaiRef.current);
+    reessaiRef.current = setTimeout(relireFiches, 400);
+  };
 
   // Garde un onglet de carte valide quand les cartes changent.
   React.useEffect(() => {
@@ -251,12 +316,17 @@ const FichesSalle = ({ user, etablissement }) => {
     }
   }, [cartes]);
 
-    if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
-
+  // Onglets de catégories : celles réellement présentes dans l'onglet de carte
+  // affiché, dans l'ordre de service (Fromages et Boissons ne s'affichent plus
+  // vides). Un filtre qui pointe une catégorie absente de la carte choisie
+  // retombe sur « Tous » plutôt que d'afficher une grille vide.
+  const fichesCarte = fiches.filter(f => activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab));
+  const catsPresentes = categoriesPresentes(fichesCarte);
+  const cats = ['Tous', ...catsPresentes];
+  const catFilterEff = cats.includes(catFilter) ? catFilter : 'Tous';
   const matchFiche = makeSearchMatcher(search);
-  const filtered = fiches.filter(f =>
-    (catFilter === 'Tous' || f.categorie === catFilter) &&
-    (activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab)) &&
+  const filtered = fichesCarte.filter(f =>
+    (catFilterEff === 'Tous' || categorieDuPlat(f) === catFilterEff) &&
     matchFiche(f.nom)
   );
 
@@ -500,7 +570,7 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
+  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
 
   return (
     <div style={fss.root}>
@@ -520,12 +590,16 @@ const FichesSalle = ({ user, etablissement }) => {
       <div style={fss.toolbar}>
         <div style={fss.left}>
           <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un plat…" />
-          <SegmentedTabs
-            size="sm"
-            active={catFilter}
-            onChange={setCatFilter}
-            tabs={cats.map(c => ({ id: c, label: c }))}
-          />
+          {/* Une seule catégorie sur la carte : l'onglet ferait doublon avec
+              le titre de section. */}
+          {catsPresentes.length > 1 && (
+            <SegmentedTabs
+              size="sm"
+              active={catFilterEff}
+              onChange={setCatFilter}
+              tabs={cats.map(c => ({ id: c, label: c }))}
+            />
+          )}
         </div>
         {canEdit && !sel.active && (
           /* L'action principale d'abord ; générer (consultant) et sélectionner
@@ -583,67 +657,68 @@ const FichesSalle = ({ user, etablissement }) => {
         </div>
       )}
 
-      {/* Intro banner pour serveurs */}
-      {user.role === 'serveur' && (
-        <div style={fss.serverBanner}>
-          <div>
-            <div style={{fontWeight:700,fontSize:14,color:'var(--text)'}}>Fiches techniques salle</div>
-            <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>Descriptions plats, allergènes et accords mets & vins, pour vous aider à conseiller les clients avec assurance.</div>
-          </div>
+      {/* Pas de bandeau d'introduction pour le serveur : le titre du module le
+          dit, la place rendue va aux fiches. */}
+      {!fichesLues ? (
+        // Lecture en cours ou en échec : jamais annoncée comme une liste vide.
+        <div className="fv-etat" role="status">
+          <p className="fv-etat-titre">{statutLecture === 'error' ? 'Fiches indisponibles' : 'Chargement des fiches…'}</p>
+          {statutLecture === 'error' && (
+            <>
+              <p className="fv-etat-texte">
+                {online
+                  ? 'La connexion a été interrompue. Nouvel essai automatique en cours.'
+                  : 'Hors ligne : les fiches s\'afficheront au retour du réseau.'}
+              </p>
+              <button type="button" className="fv-action" onClick={reessayerLecture}>Réessayer</button>
+            </>
+          )}
         </div>
+      ) : (
+        <>
+          {statutLecture === 'error' && <BandeauNonActualise onRetry={relireFiches} />}
+          {fiches.length === 0 ? (
+            <div className="fv-etat">
+              <p className="fv-etat-titre">Aucune fiche salle pour le moment.</p>
+              {canEdit && <p className="fv-etat-texte">La première se crée avec « Nouvelle fiche ».</p>}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="fv-etat">
+              <p className="fv-etat-texte">Aucune fiche pour ces critères.</p>
+            </div>
+          ) : (
+            // Vignettes rangées par catégorie, dans l'ordre de service. En
+            // sélection, toucher une vignette la coche au lieu de l'ouvrir.
+            <GrilleFiches>
+              {grouperParCategorie(filtered).map(([cat, items]) => (
+                <SectionFiches key={cat} titre={cat} nombre={items.length}>
+                  {items.map(f => {
+                    const nbAccords = (f.accords || []).length;
+                    return (
+                      <VignetteFiche
+                        key={f.id}
+                        refVignette={f.id === ficheQuitteeRef.current ? carteQuitteeRef : undefined}
+                        titre={f.nom}
+                        photo={photoDeFicheSalle(f, plats, recettes)}
+                        categorie={categorieDuPlat(f)}
+                        texte={f.descriptionService}
+                        allergenes={f.allergenes}
+                        meta={[
+                          f.tempsPreparation && { cle: 'temps', Icone: Clock, contenu: f.tempsPreparation },
+                          nbAccords > 0 && { cle: 'accords', Icone: Wine, contenu: <><span data-no-translate="">{nbAccords}</span> {nbAccords > 1 ? 'accords' : 'accord'}</> },
+                        ]}
+                        pastille={f.statut === 'brouillon' ? 'Brouillon' : null}
+                        onOuvrir={() => ouvrirFiche(f)}
+                        selection={sel.active ? { coche: sel.isSelected(f.id), onBasculer: () => sel.toggle(f.id) } : null}
+                      />
+                    );
+                  })}
+                </SectionFiches>
+              ))}
+            </GrilleFiches>
+          )}
+        </>
       )}
-
-      <div style={fss.grid}>
-        {(filtered || []).map(f => (
-          <div
-            key={f.id}
-            ref={f.id === ficheQuitteeRef.current ? carteQuitteeRef : undefined}
-            style={{
-              ...fss.card,
-              position:'relative',
-              ...(sel.active && sel.isSelected(f.id) ? { outline:'2px solid var(--accent)', outlineOffset:-2 } : {}),
-            }}
-            onClick={()=> sel.active ? sel.toggle(f.id) : ouvrirFiche(f)}
-          >
-            {sel.active && (
-              <input
-                type="checkbox"
-                checked={sel.isSelected(f.id)}
-                onChange={()=>sel.toggle(f.id)}
-                onClick={e=>e.stopPropagation()}
-                style={{position:'absolute',top:8,left:8,width:18,height:18,zIndex:2,cursor:'pointer',accentColor:'var(--accent)'}}
-              />
-            )}
-            {/* Placeholder image */}
-            <div style={fss.cardImg}>
-              <div style={fss.cardImgPlaceholder}>
-                <span style={{fontSize:11,color:'rgba(255,255,255,0.3)',fontFamily:'var(--font)',marginTop:4}}>photo {f.categorie.toLowerCase()}</span>
-              </div>
-            </div>
-            <div style={fss.cardBody}>
-              <div style={fss.cardCat}>{f.categorie}</div>
-              <div style={fss.cardNom}>{f.nom}</div>
-              <div style={fss.cardDesc}>{f.descriptionService?.slice(0,90)}{f.descriptionService?.length>90?'…':''}</div>
-              {/* Allergènes */}
-              {f.allergenes?.length > 0 && (
-                <div style={fss.allergenesRow}>
-                  {(f.allergenes || []).map(a=>(
-                    <span key={a} style={{...fss.allergeneBadge, background:(ALLERGENES_COLORS[a]||'var(--text2)')+'22', color:ALLERGENES_COLORS[a]||'var(--text2)'}}>
-                      {ALLERGENES_LABELS[a]||a}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div style={fss.cardFooter}>
-                <span style={fss.tempBadge}>{f.tempsPreparation}</span>
-                <span style={{...fss.statutBadge,background:f.statut==='active'?'var(--success-bg)':'#f1f5f9',color:f.statut==='active'?'var(--success-text)':'var(--text2)'}}>{f.statut==='active'?'Active':'Brouillon'}</span>
-                <span style={fss.accordCount}>{f.accords?.length||0} accord{f.accords?.length!==1?'s':''}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-        {filtered.length===0&&<div style={fss.empty}>Aucune fiche pour ces critères.</div>}
-      </div>
 
       {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
       {showBulkCartes && (
@@ -660,7 +735,7 @@ const FichesSalle = ({ user, etablissement }) => {
 };
 
 // ── Détail d'une fiche ──
-const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], cartes = [] }) => {
+const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], cartes = [] }) => {
   // Un onglet par famille réellement présente sur la fiche. Un type inconnu
   // (import ancien, famille ajoutée plus tard) garde son propre onglet plutôt
   // que d'être avalé : sans ça l'accord n'a pas d'onglet, donc il est invisible
@@ -692,111 +767,115 @@ const FicheDetail = ({ fiche, user, canEdit, onBack, onEdit, onDelete, showForm,
     if (window.scrollY > 0) window.scrollTo(0, 0);
   }, [fiche.id]);
 
+  const familles = (fiche.accordsGeneraux || []).map(g => String(g || '').trim()).filter(Boolean);
+  // Température et temps écrits une seule fois, ici, en toutes lettres : la
+  // génération les rédige en phrases (« Chaud, assiette chaude. Servir dans
+  // les 2 minutes »), trop longues pour une ligne posée sur la photo.
+  const auService = [
+    fiche.temperatureService && ['Température de service', fiche.temperatureService],
+    fiche.tempsPreparation && ['Temps de préparation', fiche.tempsPreparation],
+    fiche.dressageNotes && ['Notes de dressage / service', fiche.dressageNotes],
+  ].filter(Boolean);
+
+  // Ordre de lecture du serveur : le plat (héros), ce qu'on en dit au client
+  // (description en accroche, au service), ce qu'il faut savoir avant de le
+  // proposer (allergènes, info service), puis les accords. Au téléphone,
+  // allergènes et info service passent en premier (fiches.css).
+  // Le formulaire reste hors de la racine .fv (conteneur de requête) : sa
+  // fenêtre fixe se cale sur l'écran, pas sur la fiche.
   return (
     <div ref={hautRef} style={fss.detailRoot}>
-      <div style={fss.detailHeader}>
+      <div style={fss.detailBarre}>
         <Btn variant="ghost" onClick={onBack} style={fss.retourBtn}>
           <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
           <span>Retour</span>
         </Btn>
-        <div style={{flex:1}}>
-          <div style={fss.detailCat}>{fiche.categorie}</div>
-          <div style={fss.detailTitre}>{fiche.nom}</div>
-          <div style={{fontSize:12,color:'var(--text2)',marginTop:3}}>Modifié le {fiche.modifie}</div>
-        </div>
         {canEdit && (
-          <div style={{display:'flex',gap:8,flexShrink:0}}>
+          <div style={{display:'flex',gap:8,flexShrink:0,marginLeft:'auto'}}>
             <button style={fss.editBtn} onClick={onEdit}>Modifier</button>
             <button style={fss.deleteBtn} onClick={onDelete}>Supprimer</button>
           </div>
         )}
       </div>
 
-      <div style={fss.detailGrid}>
-        {/* Description */}
-        <div style={fss.detailCard}>
-          <div style={fss.detailCardTitle}>Description pour l'équipe salle</div>
-          <div style={fss.descText}>{fiche.descriptionService}</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:14}}>
-            <div style={fss.infoBlock}>
-              <div style={fss.infoLabel}>Température de service</div>
-              <div style={fss.infoVal}>{fiche.temperatureService}</div>
-            </div>
-            <div style={fss.infoBlock}>
-              <div style={fss.infoLabel}>Temps de préparation</div>
-              <div style={fss.infoVal}>{fiche.tempsPreparation}</div>
-            </div>
+      <div className="fv fv-fiche">
+        <header className="fv-heros" data-heros="">
+          <PhotoFiche src={photo} categorie={fiche.categorie} nom={fiche.nom} variante="heros" />
+          <span className="fv-voile" aria-hidden="true" />
+          {fiche.statut === 'brouillon' && <span className="fv-pastille">Brouillon</span>}
+          <div className="fv-heros-texte">
+            {fiche.categorie && <p className="fv-heros-cat">{fiche.categorie}</p>}
+            <h2 className="fv-heros-titre">{fiche.nom}</h2>
           </div>
-          {fiche.dressageNotes && (
-            <div style={fss.infoBlock}>
-              <div style={fss.infoLabel}>Notes de dressage / service</div>
-              <div style={fss.infoVal}>{fiche.dressageNotes}</div>
-            </div>
-          )}
+        </header>
+
+        <div className="fv-fiche-cols fv-fiche-cols--salle">
+          <div className="fv-col fv-col-a">
+            {fiche.descriptionService && <p className="fv-accroche">{fiche.descriptionService}</p>}
+            {auService.length > 0 && (
+              <section className="fv-bloc">
+                <h3 className="fv-titre-section">Au service</h3>
+                <dl className="fv-infos">
+                  {auService.map(([libelle, valeur]) => (
+                    <div key={libelle}>
+                      <dt>{libelle}</dt>
+                      <dd>{valeur}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+          </div>
+          <div className="fv-col fv-col-b">
+            <AllergenesFiche ids={fiche.allergenes} variante="bandeau" />
+            {fiche.infosService && (
+              <div style={{...encadreStyle('alerte'),fontSize:13,lineHeight:1.5}}>
+                <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Allergènes */}
-        <div style={fss.detailCard}>
-          <div style={fss.detailCardTitle}>Allergènes</div>
-          {fiche.allergenes?.length > 0 ? (
-            <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
-              {(fiche.allergenes || []).map(a=>(
-                <div key={a} style={{...fss.allergeneFull, borderLeft:`3px solid ${ALLERGENES_COLORS[a]||'#888'}`}}>
-                  <span style={{fontWeight:700,color:ALLERGENES_COLORS[a]||'#888'}}>{ALLERGENES_LABELS[a]||a}</span>
-                </div>
+        {/* Accords : un onglet par famille présente, le nombre dans son
+            propre nœud ; liste à filets, en deux colonnes dès 600 px. */}
+        <section className="fv-bloc">
+          <h3 className="fv-titre-section">Accords mets & boissons</h3>
+          {familles.length > 0 && (
+            <p className="fv-familles">
+              <span>Familles recommandées :</span>{' '}
+              {familles.map((g, i) => (
+                <React.Fragment key={i}>{i > 0 && ', '}<span>{g}</span></React.Fragment>
               ))}
-            </div>
-          ) : <div style={{fontSize:13,color:'var(--success-text)',marginTop:8}}>Aucun allergène majeur déclaré</div>}
-          {fiche.infosService && (
-            <div style={{marginTop:14,...encadreStyle('alerte'),fontSize:12,lineHeight:1.5}}>
-              <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}
-            </div>
-          )}
-        </div>
-
-        {/* Accords */}
-        <div style={{...fss.detailCard,gridColumn:'1/-1'}}>
-          <div style={fss.detailCardTitle}>Accords mets & boissons</div>
-          {fiche.accordsGeneraux?.length > 0 && (
-            <div style={{marginTop:10,marginBottom:4}}>
-              <div style={{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3,marginBottom:6}}>
-                Familles recommandées
-              </div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                {(fiche.accordsGeneraux || []).map((g,i)=>(
-                  <span key={i} style={fss.familleBadge}>{g}</span>
-                ))}
-              </div>
-            </div>
+            </p>
           )}
           {groupeActif ? (
             <>
-              {/* Les onglets défilent horizontalement : sur mobile 4 familles
-                  ne tiennent pas sur une ligne et la page ne doit pas paner. */}
-              <div style={{display:'flex',gap:6,marginTop:10,marginBottom:14,overflowX:'auto',paddingBottom:2}}>
-                {groupes.map(g=>(
-                  <button
-                    key={g.id}
-                    style={{...fss.accordTab,flexShrink:0,...(groupeActif.id===g.id?fss.accordTabActive:{})}}
-                    onClick={()=>setAccordTab(g.id)}
-                  >{g.label} ({g.items.length})</button>
+              <SegmentedTabs
+                size="sm"
+                active={groupeActif.id}
+                onChange={setAccordTab}
+                tabs={groupes.map(g => ({
+                  id: g.id,
+                  label: <>{g.label}<span className="fv-onglet-nombre" data-no-translate="">{g.items.length}</span></>,
+                }))}
+              />
+              <ul className="fv-accords">
+                {groupeActif.items.map((a, i) => (
+                  <li key={i} className="fv-accord">
+                    <span className="fv-accord-nom">{a.nom}</span>
+                    {a.region && <span className="fv-accord-region">{a.region}</span>}
+                    {a.alternative && <span className="fv-accord-alt">{a.alternative}</span>}
+                    {a.notes && <span className="fv-accord-notes">{a.notes}</span>}
+                  </li>
                 ))}
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12}}>
-                {groupeActif.items.map((a,i)=>(
-                  <div key={i} style={fss.accordCard}>
-                    <div>
-                      <div style={fss.accordNom}>{a.nom}</div>
-                      {a.region && <div style={fss.accordRegion}>{a.region}</div>}
-                      {a.alternative && <div style={fss.accordAlt}>{a.alternative}</div>}
-                      <div style={fss.accordNotes}>{a.notes}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              </ul>
             </>
-          ) : <div style={{fontSize:13,color:'var(--text2)',marginTop:10}}>Aucun accord renseigné.</div>}
-        </div>
+          ) : <p className="fv-vide">Aucun accord renseigné.</p>}
+        </section>
+
+        {fiche.modifie && (
+          <p className="fv-pied">Modifiée le <span data-no-translate="">{dateSuisse(fiche.modifie)}</span></p>
+        )}
       </div>
 
       {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
@@ -953,7 +1032,9 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
               <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:4}}>
                 {allAllergs.map(a=>{
                   const sel = (fiche?.allergenes || []).includes(a);
-                  return <button key={a} onClick={()=>toggleAllerg(a)} style={{padding:'4px 10px',border:`1.5px solid ${sel?(ALLERGENES_COLORS[a]||'#888'):'var(--border)'}`,borderRadius:20,background:sel?(ALLERGENES_COLORS[a]||'#888')+'22':'var(--surface)',color:sel?(ALLERGENES_COLORS[a]||'#888'):'var(--text2)',fontSize:11,fontWeight:sel?700:400,cursor:'pointer',fontFamily:'var(--font)'}}>
+                  // Langage allergènes de l'app : jetons warning, lisibles
+                  // dans les deux thèmes.
+                  return <button key={a} onClick={()=>toggleAllerg(a)} style={{padding:'4px 10px',border:`1.5px solid ${sel?'var(--warning-bd)':'var(--border)'}`,borderRadius:20,background:sel?'var(--warning-bg)':'var(--surface)',color:sel?'var(--warning-text)':'var(--text2)',fontSize:11,fontWeight:sel?700:400,cursor:'pointer',fontFamily:'var(--font)'}}>
                     {ALLERGENES_LABELS[a]}
                   </button>;
                 })}
@@ -1133,53 +1214,20 @@ const fss = {
   toolbar:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'},
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   left:{display:'flex',alignItems:'center',gap:8,minWidth:0,maxWidth:'100%'},
-  cats:{display:'flex',gap:4,flexWrap:'wrap'},
-  catBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
-  catActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
   addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
-  serverBanner:{background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',gap:14},
-  grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14},
-  card:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden',cursor:'pointer',transition:'box-shadow .15s, transform .15s'},
-  cardImg:{height:120,overflow:'hidden'},
-  cardImgPlaceholder:{height:'100%',background:'#222',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'},
-  cardBody:{padding:'12px 14px',display:'flex',flexDirection:'column',gap:6},
-  cardCat:{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
-  cardNom:{fontSize:14,fontWeight:700,color:'var(--text)',lineHeight:1.3},
-  cardDesc:{fontSize:12,color:'var(--text2)',lineHeight:1.5},
-  allergenesRow:{display:'flex',flexWrap:'wrap',gap:4},
-  allergeneBadge:{fontSize:11,fontWeight:500,padding:'2px 7px',borderRadius:10},
-  cardFooter:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'},
-  tempBadge:{fontSize:11,color:'var(--text2)'},
-  statutBadge:{fontSize:11,fontWeight:500,padding:'2px 8px',borderRadius:10},
-  accordCount:{fontSize:11,color:'var(--text2)',marginLeft:'auto'},
-  empty:{gridColumn:'1/-1',padding:'24px',color:'var(--text2)',fontSize:13,textAlign:'center'},
+  // Liste et fiche en vitrine : vignettes, héros, sections et accords vivent
+  // dans src/components/fiches/fiches.css (classes .fv), hors de portée de la
+  // règle « Plus de carrés » qui aplatit les blocs posés en style inline.
   // Detail
   detailRoot:{display:'flex',flexDirection:'column',gap:16},
-  detailHeader:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'},
+  // Barre du haut de la fiche : Retour à gauche, actions de gestion à droite.
+  detailBarre:{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
   // 44 px au toucher comme à la souris, comme le Retour des écrans de tâche.
   retourBtn:{minHeight:44,flexShrink:0},
-  detailCat:{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:0.5},
-  detailTitre:{fontSize:22,fontWeight:700,color:'var(--text)',fontFamily:'var(--font-serif)',marginTop:2},
   editBtn:{padding:'6px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
   deleteBtn:{padding:'6px 14px',background: 'var(--danger-bg-soft)',border: '1px solid transparent',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
-  detailGrid:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14},
-  detailCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'16px 18px'},
-  detailCardTitle:{fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'},
-  descText:{fontSize:13,color:'var(--text)',lineHeight:1.7},
-  infoBlock:{marginTop:10,display:'flex',flexDirection:'column',gap:3},
-  infoLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.3},
-  infoVal:{fontSize:13,color:'var(--text)',lineHeight:1.5},
-  allergeneFull:{padding:'8px 12px',background:'var(--bg)',borderRadius:7,fontSize:13},
-  accordTab:{padding:'5px 14px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'},
-  accordTabActive:{background:'var(--nav)',color:'#fff',borderColor:'var(--nav)'},
-  accordCard:{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',display:'flex',gap:10,alignItems:'flex-start'},
-  accordNom:{fontSize:13,fontWeight:700,color:'var(--text)'},
-  accordRegion:{fontSize:11,color:'var(--accent)',fontWeight:500,marginTop:1},
-  accordAlt:{fontSize:11,color:'var(--text2)',fontStyle:'italic',marginTop:3},
-  accordNotes:{fontSize:12,color:'var(--text2)',marginTop:4,lineHeight:1.4},
-  familleBadge:{fontSize:11,fontWeight:500,padding:'3px 10px',borderRadius:12,background:'var(--accent-light)',color:'var(--accent)',border:'1px solid var(--accent)'},
   // Form modal
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
   modal:{background:'var(--surface)',borderRadius:14,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},

@@ -2275,11 +2275,12 @@ export function installLegacySupabase() {
     },
 
     // ─── FICHES SALLE ───
-    async listFichesSalle(etabId) {
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
+    async listFichesSalle(etabId, { strict = false } = {}) {
       let q = client.from('fiches_salle').select('*, carte_fiches_salle(carte_id)').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listFichesSalle]', error); return []; }
+      if (error) return _readFailed('[listFichesSalle]', error, strict);
       return (data || []).map(this.mapFicheSalleFromDB);
     },
     async upsertFicheSalle(fiche) {
