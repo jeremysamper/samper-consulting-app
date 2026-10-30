@@ -61,6 +61,20 @@ const pls = {
   dayCell: { minHeight: 72, padding: 6, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   // Fond neutre : le type (midi, soir, longue) se lit au filet gauche (ShiftCell).
   shiftCell: { borderRadius: 6, padding: '8px 6px', position: 'relative' },
+  // Glisser-déposer (useGlisserHoraires) : un horaire attrapable ne sélectionne
+  // pas de texte et n'ouvre pas le menu d'appui long ; l'horaire traîné pâlit,
+  // celui de l'appui long se soulève. Case visée : filet intérieur en ombre
+  // (jamais en bordure), fond et filet selon la règle de dépôt.
+  horaireAttrapable: { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
+  horaireOrigine: { opacity: 0.35, outline: '2px dashed var(--accent)', outlineOffset: -2 },
+  horaireSouleve: { transform: 'scale(1.04)', zIndex: 2 },
+  caseVisee: {
+    ok: { background: 'var(--accent-light)', boxShadow: 'inset 0 0 0 2px var(--accent)' },
+    avertir: { background: 'var(--warning-bg)', boxShadow: 'inset 0 0 0 2px var(--warning-text)' },
+    refus: { background: 'var(--danger-bg)', boxShadow: 'inset 0 0 0 2px var(--danger-strong)' },
+  },
+  enteteGrille: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 10 },
+  aideGrille: { flex: '1 1 260px', minWidth: 0, fontSize: 12, color: 'var(--text2)', textAlign: 'right' },
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   addHint: { fontSize: 18, color: 'var(--text2)' },
   ptTable: { display: 'flex', flexDirection: 'column' },
