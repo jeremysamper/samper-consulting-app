@@ -82,10 +82,12 @@ export default function CeQuiVousAttend(props) {
     );
   }
 
+  // Sans panneau autour : chaque colonne est le sien, pour qu'Aujourd'hui,
+  // Demain et Cette semaine se lisent comme trois blocs distincts.
   return (
-    <Section id="tdb-attend" titre="Ce qui vous attend">
+    <Section id="tdb-attend" titre="Ce qui vous attend" panneau={false}>
       <div className="tdb-jours">
-        <Colonne titre="Aujourd'hui" date={props.aujourdhui}>{panneau('aujourdhui')}</Colonne>
+        <Colonne titre="Aujourd'hui" date={props.aujourdhui} actuel>{panneau('aujourdhui')}</Colonne>
         <Colonne titre="Demain" date={decaler(props.aujourdhui, 1)}>{panneau('demain')}</Colonne>
         <Colonne titre="Cette semaine" sousTitre="Les sept prochains jours" semaine>{panneau('semaine')}</Colonne>
       </div>
@@ -93,12 +95,16 @@ export default function CeQuiVousAttend(props) {
   );
 }
 
-// Colonne titrée (tablette et ordinateur) : « Demain », samedi 31 octobre.
-function Colonne({ titre, date, sousTitre, semaine = false, children }) {
+// Colonne titrée (tablette et ordinateur) : « Demain », samedi 31 octobre, en
+// panneau ; la colonne du jour porte un liseré d'accent (tableau.css).
+function Colonne({ titre, date, sousTitre, semaine = false, actuel = false, children }) {
+  const classes = ['tdb-jour', 'tdb-panneau', semaine && 'tdb-jour-semaine', actuel && 'tdb-jour--actuel'].filter(Boolean).join(' ');
   return (
-    <div className={semaine ? 'tdb-jour tdb-jour-semaine' : 'tdb-jour'} style={{ minWidth: 0 }}>
-      <h3 style={s.colTitre}>{titre}</h3>
-      <p style={s.colDate}>{date ? <Mots texte={dateLongue(date)} /> : sousTitre}</p>
+    <div className={classes} style={{ minWidth: 0 }}>
+      <div className="tdb-tete">
+        <h3 style={{ ...s.colTitre, color: actuel ? 'var(--accent)' : s.colTitre.color }}>{titre}</h3>
+        <p style={s.colDate}>{date ? <Mots texte={dateLongue(date)} /> : sousTitre}</p>
+      </div>
       {children}
     </div>
   );
@@ -359,7 +365,7 @@ const s = {
   groupeTete: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, minWidth: 0 },
   absencesDemain: { margin: '8px 0 0', fontSize: 14, lineHeight: 1.5, color: 'var(--text2)' },
   colTitre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 18, lineHeight: 1.25, color: 'var(--text)' },
-  colDate: { margin: '2px 0 12px', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
+  colDate: { margin: '2px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
   services: { display: 'flex', flexWrap: 'wrap', gap: '8px 28px' },
   service: { display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 },
   serviceValeur: { fontFamily: 'var(--font-num)', fontSize: 28, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' },

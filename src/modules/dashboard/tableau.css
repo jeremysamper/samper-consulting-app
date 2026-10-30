@@ -79,6 +79,42 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* ── Panneaux : chaque section et chaque colonne sur son fond ────────────────
+   Retour de Jérémy (30.10.2026) : sans limite visible, on ne distinguait plus
+   Aujourd'hui, Demain et Cette semaine, ni le mot du consultant de l'équipe,
+   ni Midi de Soir. Une teinte sur le mot du consultant a été essayée : il
+   ressemblait au fond de page, donc moins détaché ; fond de surface pour tous. Un fond de surface, un filet fin et des coins doux posent
+   les limites sans revenir aux encadrés épais ; le titre se sépare du contenu
+   par un filet. Classes seulement : la règle globale « Plus de carrés »
+   (app.css) ne lit que les styles inline et ne les aplatit pas. */
+.tdb-panneau {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh-sm);
+  padding: 14px 14px 10px;
+  min-width: 0;
+}
+.tdb-panneau > .tdb-tete {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
+/* La colonne du jour : un liseré d'accent en haut et son titre en accent. */
+.tdb .tdb-jour--actuel {
+  box-shadow: inset 0 3px 0 var(--accent), 0 0 0 1px var(--rule-soft), var(--sh-sm);
+}
+/* Sous-titres (Midi, Soir, Réservations, Groupes...) sur un bandeau teinté. */
+.tdb-sous-tete {
+  background: var(--accent-light);
+  border-radius: var(--r-sm);
+  padding: 0 4px 0 10px;
+  margin-bottom: 6px;
+}
+.tdb-equipe-services { row-gap: 16px; }
+
+/* Les chiffres : le filet du titre suffit au-dessus de la première rangée. */
+.tdb-panneau .tdb-chiffres > .tdb-chiffre:nth-child(-n+2) { border-top: 0; }
+
 /* Lignes de liste : un filet entre deux lignes, pas de boîte. Les boutons
    perdent leur bordure et leur fond d'agent utilisateur par la classe, pas
    par le style inline : le filet peut se poser et le survol s'applique. */
@@ -88,6 +124,7 @@
 .tdb .tdb-chiffres > .tdb-chiffre { border-top: 1px solid var(--rule-soft); }
 
 @container tdb (min-width: 560px) {
+  .tdb-panneau { padding: 18px 20px 14px; }
   .tdb-hero { padding: 22px 26px; gap: 18px; }
   .tdb-hero-salut { font-size: 34px; }
   .tdb-repere-valeur { font-size: 40px; }
@@ -100,7 +137,7 @@
 @container tdb (min-width: 760px) {
   .tdb-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; }
   .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
-  .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; }
+  .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
   .tdb-jour-semaine { grid-column: 1 / -1; }
   /* La semaine sur toute la largeur : barres et absences à gauche, groupes
      à venir à droite. */
@@ -129,9 +166,17 @@
   }
   .tdb-equipe-services--deux > .tdb-equipe-groupe:first-child { grid-row: span 2; }
   .tdb-equipe-services--deux > button { grid-column: 1 / -1; }
-  .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+  /* Soir et les absences à droite d'un filet vertical : deux colonnes nettes. */
+  .tdb-equipe-services--deux { column-gap: 20px; }
+  .tdb-equipe-services--deux > .tdb-equipe-groupe:not(:first-child),
+  .tdb-equipe-services--deux > .tdb-equipe-absences {
+    padding-left: 20px;
+    border-left: 1px solid var(--rule-soft);
+  }
+  .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .tdb-panneau .tdb-chiffres > .tdb-chiffre:nth-child(-n+4) { border-top: 0; }
   .tdb-jour-semaine { grid-column: auto; }
-  .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; }
+  .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; align-items: stretch; }
   .tdb-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 

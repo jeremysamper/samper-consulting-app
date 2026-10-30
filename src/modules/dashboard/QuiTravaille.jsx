@@ -1,4 +1,5 @@
 import React from 'react';
+import { Moon, Sun } from 'lucide-react';
 import { metaMotif, resteAbsence } from '../../utils/absences.js';
 import { equipeParService, etatShift } from './tableauLogique.js';
 import { EtatEquipier, LienModule, Personne, Section, SousSection, Vide } from './tableauBriques.jsx';
@@ -26,6 +27,7 @@ import { EtatEquipier, LienModule, Personne, Section, SousSection, Vide } from '
 
 const LIGNES_MAX = 8;
 const NOMS_SERVICES = { midi: 'Midi', soir: 'Soir' };
+const ICONES_SERVICES = { midi: Sun, soir: Moon };
 
 export default function QuiTravaille({
   dansOnglet = false, aujourdhui, maintenant, shifts, absences, telephones = {},
@@ -68,7 +70,7 @@ export default function QuiTravaille({
     const lignes = g.personnes.map((p, i) => ligne(p.userId, p.shifts, i));
     if (groupes.length === 1) return <div key={g.id} className="tdb-equipe-groupe" style={{ minWidth: 0 }}>{lignes}</div>;
     return (
-      <SousSection key={g.id} className="tdb-equipe-groupe" titre={NOMS_SERVICES[g.id]} compte={g.personnes.length} niveau={dansOnglet ? 4 : 3}>
+      <SousSection key={g.id} className="tdb-equipe-groupe" titre={NOMS_SERVICES[g.id]} icone={ICONES_SERVICES[g.id]} compte={g.personnes.length} niveau={dansOnglet ? 4 : 3}>
         {lignes}
       </SousSection>
     );
@@ -118,7 +120,7 @@ export default function QuiTravaille({
   );
 
   if (dansOnglet) {
-    return <SousSection titre="Qui travaille aujourd'hui">{corps}</SousSection>;
+    return <SousSection titre="Qui travaille aujourd'hui" bandeau={false}>{corps}</SousSection>;
   }
   return (
     <Section id="tdb-equipe" titre="Qui travaille aujourd'hui" action={lien}>

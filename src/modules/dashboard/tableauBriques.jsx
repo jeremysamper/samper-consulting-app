@@ -23,12 +23,16 @@ import { duree } from './tableauLogique.js';
 // Section de premier niveau : `id` sur le <section>, `${id}-titre` sur son h2.
 // Avec un sous-titre, le lien se range au bout de la ligne du sous-titre :
 // le titre garde sa ligne, sans pousser le lien sur une ligne de plus.
-export function Section({ id, titre, sousTitre, action, children, style }) {
+// `panneau` (par défaut) : la section se pose sur un fond à elle, ses limites
+// se voient d'un coup d'œil (tableau.css, .tdb-panneau). Sans panneau, seul
+// le titre la porte : « Ce qui vous attend », dont chaque colonne est un
+// panneau.
+export function Section({ id, titre, sousTitre, action, panneau = true, children, style }) {
   const h2 = <h2 id={`${id}-titre`} className="tdb-titre" style={b.titre}>{titre}</h2>;
   return (
-    <section id={id} aria-labelledby={`${id}-titre`} style={{ ...b.section, ...style }}>
+    <section id={id} aria-labelledby={`${id}-titre`} className={panneau ? 'tdb-panneau' : undefined} style={{ ...b.section, ...style }}>
       {sousTitre ? (
-        <div style={b.tete}>
+        <div className="tdb-tete" style={b.tete}>
           {h2}
           <div style={b.teteLigne}>
             <p style={b.sousTitre}>{sousTitre}</p>
@@ -36,7 +40,7 @@ export function Section({ id, titre, sousTitre, action, children, style }) {
           </div>
         </div>
       ) : (
-        <div style={{ ...b.tete, ...b.teteLigne }}>
+        <div className="tdb-tete" style={{ ...b.tete, ...b.teteLigne }}>
           {h2}
           {action}
         </div>
@@ -47,13 +51,18 @@ export function Section({ id, titre, sousTitre, action, children, style }) {
 }
 
 // Sous-section : titre court (« Midi », « Réservations »), son compte, un lien.
-export function SousSection({ titre, compte, sousTitre, action, niveau = 3, children, style, className }) {
+// Le titre se pose sur un bandeau teinté (tableau.css, .tdb-sous-tete) pour
+// que Midi et Soir, ou Réservations et Groupes, se distinguent d'un regard.
+// `bandeau={false}` : un titre de niveau au-dessus, sans bandeau (« Qui
+// travaille aujourd'hui » dans l'onglet du téléphone, au-dessus de Midi).
+export function SousSection({ titre, icone: Icone, compte, sousTitre, action, niveau = 3, bandeau = true, children, style, className }) {
   const Titre = `h${niveau}`;
   return (
     <div className={className} style={{ minWidth: 0, ...style }}>
-      <div style={b.sousTete}>
+      <div className={bandeau ? 'tdb-sous-tete' : undefined} style={b.sousTete}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <Titre style={b.sousTitreTexte}>
+          <Titre style={bandeau ? b.sousTitreTexte : { ...b.sousTitreTexte, ...b.sousTitreFort }}>
+            {Icone && <Icone size={16} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--accent)', alignSelf: 'center', flexShrink: 0 }} />}
             <span>{titre}</span>
             {compte != null && <span style={b.compte} data-no-translate>{compte}</span>}
           </Titre>
@@ -268,6 +277,7 @@ export const b = {
   sousTitre: { margin: '2px 0 0', fontSize: 15, lineHeight: 1.45, color: 'var(--text2)', flex: '1 1 auto', minWidth: 0 },
   sousTete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0 12px', flexWrap: 'wrap', minWidth: 0, minHeight: 28 },
   sousTitreTexte: { margin: 0, display: 'flex', alignItems: 'baseline', gap: 8, fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, lineHeight: 1.3, color: 'var(--text)' },
+  sousTitreFort: { fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 400, marginBottom: 6 },
   sousDetail: { margin: '2px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
   compte: { fontFamily: 'var(--font-num)', fontWeight: 400, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
   lien: {
