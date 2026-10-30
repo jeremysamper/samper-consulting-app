@@ -743,7 +743,7 @@ export const UI_GLOSSARY_ES = {
   'Ensuite :': 'Después:',
   'Aucun service prévu dans les sept prochains jours.': 'Ningún turno previsto en los próximos siete días.',
   'Hors planning : votre arrivée sera ajoutée au planning du jour, à votre nom.': 'Fuera del horario: tu llegada se añadirá al horario del día, a tu nombre.',
-  'À faire maintenant': 'Pendiente ahora',
+  'À faire maintenant': 'Por hacer ahora',
   'points à traiter': 'puntos por tratar',
   'point à traiter': 'punto por tratar',
   ', dont': 'de ellos',
