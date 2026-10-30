@@ -12,8 +12,9 @@
 // stock de la fin, dernier inventaire validé de chaque périmètre à la date).
 //
 // Une valeur inconnue vaut null (affichée « n/a »), jamais 0. Sans coût du
-// personnel (hors direction, ou salaires pas encore lisibles), le résultat
-// est « avant personnel ».
+// personnel (hors direction, salaires pas encore lisibles, ou aucun salaire
+// ni coût moyen saisi), le résultat est « avant personnel » ; quand une partie
+// seulement du personnel est chiffrée, il est « personnel partiel ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { montantFacture, trierDocuments } from '../factures-achats/analysesAchats.js';
@@ -87,7 +88,8 @@ const pct = (part, tout) => (part != null && tout != null && tout > 0 ? (part / 
 //   charges     : charges fixes, ou null si la table n'est pas lisible
 //   personnel   : coutPersonnel(...) de personnelCompta.js, ou null
 //   inventaires : inventaires de l'établissement (période d'inventaire)
-//   tva         : etatTva(...) de tvaCompta.js ({ due }), facultatif
+//   tva         : etatTva(...) de tvaCompta.js ({ due, couverture,
+//                 ventesCompletes }), facultatif
 export function synthese({ periode, aujourdhui, ventes = null, docs = [], charges = null, personnel = null, inventaires = [], tva = null }) {
   const fin = finEffective(periode, aujourdhui);
   const ca = ventes?.ht ?? null;
@@ -143,10 +145,17 @@ export function synthese({ periode, aujourdhui, ventes = null, docs = [], charge
     chargesDetail: detailCharges,
     margeBrute,
     resultat,
-    avantPersonnel: personnel == null,
+    // Un coût du personnel sans total (personne n'a de salaire ni de coût
+    // moyen) n'est pas un personnel à zéro : le résultat reste avant personnel.
+    avantPersonnel: personnelTotal == null,
+    personnelPartiel: personnelTotal != null && (personnel?.sansCout || 0) > 0,
     avantCharges: chargesHt == null,
     ratios: { matierePct: pct(matiereHt, ca), personnelPct: pct(personnelTotal, ca) },
     tvaEstimee: tva?.due ?? null,
+    // Couverture des ventes de l'état TVA ({ avec, attendus }) ; une TVA
+    // calculée sur trop peu de jours de ventes n'est pas complète.
+    tvaCouverture: tva?.couverture ?? null,
+    tvaComplete: tva ? tva.ventesCompletes !== false : null,
     doublons,
     manques,
   };

@@ -73,7 +73,8 @@ export default function AccueilCompta({
     s.avantCharges
       ? <>avant charges fixes</>
       : <><span>après</span> <Chf v={s.charges} entier /> <span>de charges fixes</span></>,
-    s.avantPersonnel && <>avant personnel</>,
+    s.avantPersonnel && <span style={st.reserve}>avant personnel</span>,
+    s.personnelPartiel && <span style={st.reserve}>personnel partiel</span>,
     s.prorata && <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></>,
     s.resultat != null && <Comparaison a={s.resultat} b={p?.resultat} precedente={precedente} comparable={comparable} />,
   ];
@@ -105,7 +106,7 @@ export default function AccueilCompta({
       id: 'charges', libelle: 'Charges fixes', Icone: Building2, onClick: () => onOuvrir('charges'),
       etat: absenteCharges ? <>Pas encore activé</>
         : data.charges.status !== 'ready' ? null
-          : nCharges ? <><span>{nCharges}</span> <span>{pluriel(nCharges, 'charge,', 'charges,')}</span> <Chf v={moyenne.ttc} /> <span>par mois</span></> : <>Aucune charge saisie</>,
+          : nCharges ? <><span>{nCharges}</span> <span>{pluriel(nCharges, 'charge,', 'charges,')}</span> <Chf v={moyenne.ttc} /> <span>par mois</span> <span>TVA comprise</span></> : <>Aucune charge saisie</>,
     },
     direction && {
       id: 'personnel', libelle: 'Personnel', Icone: Users, onClick: () => onOuvrir('personnel'),
@@ -120,6 +121,8 @@ export default function AccueilCompta({
       etat: etats.tva !== 'ready' ? null : (() => {
         const d = data.tva.decomptes[data.tva.defaut];
         if (d.etat.due == null) return <span>{d.periode.libelle}</span>;
+        // Trop peu de jours de ventes : ni montant ni « crédit » (tvaCompta).
+        if (!d.etat.ventesCompletes) return <><span>chiffre d'affaires incomplet pour le</span> <span>{d.periode.libelle}</span></>;
         return d.etat.due < 0
           ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span></>
           : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span></>;
@@ -194,6 +197,7 @@ export default function AccueilCompta({
 }
 
 const st = {
+  reserve: { color: 'var(--warning-text)' },
   phrase: { margin: 0, fontSize: 14, color: 'var(--text2)', lineHeight: 1.5 },
   pied: { margin: '4px 0 0', fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
 };

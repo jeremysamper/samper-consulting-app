@@ -2,12 +2,13 @@ import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { Btn } from '../../components/ui/index.jsx';
+import { Fenetre, st as fs } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import EtatAbsent from './EtatAbsent.jsx';
 import FenetreReleve from './FenetreReleve.jsx';
 import FenetreChoixFacture from './FenetreChoixFacture.jsx';
 import { DescFacture, DescLigne } from './LigneBanque.jsx';
-import { delierLigne, ignorerLigne, rapprocher } from './comptaService.js';
+import { defaireRapprochement, ignorerLigne, rapprocher, regleeParLigne, supprimerReleve } from './comptaService.js';
 import { apparier, etatBanque, lireReleve } from './rapprochement.js';
 import { Chf, dateCH, pluriel, st as ui } from './comptaUi.jsx';
 
@@ -19,6 +20,10 @@ import { Chf, dateCH, pluriel, st as ui } from './comptaUi.jsx';
 // facture encore à régler, rapprochée ici, est marquée réglée à la date de la
 // ligne, par virement (comptaService.rapprocher) ; aucune autre colonne de la
 // facture n'est écrite. Les encaissements (crédits) ne se rapprochent pas.
+// Défaire un rapprochement qui avait réglé la facture propose de la remettre
+// à régler (sinon elle sortirait de l'échéancier sans être payée). Un relevé
+// importé par erreur se supprime avec ses lignes, s'il n'a aucun paiement
+// rapproché.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MESSAGE_CSV = 'Ce fichier CSV n\'a pas été reconnu. Téléchargez plutôt le relevé camt.053 dans votre e-banking : toutes les banques suisses le proposent.';
@@ -56,9 +61,11 @@ function Section({ titre, n, id, replie, onBasculer, children }) {
 
 export default function EcranBanque({ etabId, userId, releves, lignes, docs, onRetour, onChange }) {
   const inputRef = React.useRef(null);
-  const [fenetre, setFenetre] = React.useState(null); // { type: 'releve', releve, nomFichier } | { type: 'choix', ligne }
+  // { type: 'releve', releve, nomFichier } | { type: 'choix', ligne }
+  // | { type: 'defaire', ligne, facture } | { type: 'supprimer', releve, n }
+  const [fenetre, setFenetre] = React.useState(null);
   const [enCours, setEnCours] = React.useState(false);
-  const [plis, setPlis] = React.useState({ encaissements: true, rapprochees: true });
+  const [plis, setPlis] = React.useState({ encaissements: true, rapprochees: true, releves: true });
   const fermer = React.useCallback(() => setFenetre(null), []);
 
   const absente = releves.status === 'absente' || lignes.status === 'absente';
@@ -116,7 +123,33 @@ export default function EcranBanque({ etabId, userId, releves, lignes, docs, onR
   );
   const confirmer = (ligne, facture, mode = 'manuel') => agir(() => rapprocher([{ ligne, facture }], mode, userId), 'Rapprochement enregistré.');
   const ignorer = (ligne, oui = true) => agir(() => ignorerLigne(ligne.id, oui), oui ? 'Ligne ignorée.' : 'Ligne remise à rapprocher.');
-  const defaire = (ligne) => (ligne.ignoree ? ignorer(ligne, false) : agir(() => delierLigne(ligne.id), 'Rapprochement défait.'));
+  const defaire = (ligne) => {
+    if (ligne.ignoree) return ignorer(ligne, false);
+    const f = ligne.documentId ? parId.get(ligne.documentId) : null;
+    // Facture réglée par ce rapprochement : on demande si elle repart à régler.
+    if (regleeParLigne(f, ligne)) { setFenetre({ type: 'defaire', ligne, facture: f }); return undefined; }
+    return agir(() => defaireRapprochement(ligne, f), 'Rapprochement défait.');
+  };
+  const defaireEtFermer = async (remettreARegler) => {
+    const { ligne, facture } = fenetre;
+    const ok = await agir(
+      () => defaireRapprochement(ligne, facture, { remettreARegler }),
+      remettreARegler ? 'Rapprochement défait, facture remise à régler.' : 'Rapprochement défait.',
+    );
+    if (ok) fermer();
+  };
+  const lignesDuReleve = (r) => lignes.lignes.filter(l => l.releveId === r.id);
+  const demanderSuppression = (r) => {
+    const siennes = lignesDuReleve(r);
+    if (siennes.some(l => l.documentId)) { notify('Ce relevé a des paiements rapprochés : défaites-les d\'abord.', 'warning'); return; }
+    setFenetre({ type: 'supprimer', releve: r, n: siennes.length });
+  };
+  const supprimer = async () => {
+    const ok = await agir(() => supprimerReleve(fenetre.releve.id, lignes.lignes), 'Relevé supprimé.');
+    if (ok) fermer();
+  };
+  const relevesTries = React.useMemo(() => releves.lignes.slice()
+    .sort((a, b) => String(b.dateFin || '').localeCompare(String(a.dateFin || ''))), [releves.lignes]);
 
   const action = (texte, onClick, primaire = false) => (
     <Btn variant={primaire ? 'primary' : undefined} onClick={onClick} disabled={enCours} style={st.bouton}>{texte}</Btn>
@@ -241,7 +274,7 @@ export default function EcranBanque({ etabId, userId, releves, lignes, docs, onR
                       replie={plis.rapprochees}
                       onBasculer={() => setPlis(p => ({ ...p, rapprochees: !p.rapprochees }))}
                     >
-                      <p style={{ ...ui.remarque, margin: 0 }}>Défaire ne change pas le règlement de la facture : il se corrige dans Factures & achats.</p>
+                      <p style={{ ...ui.remarque, margin: 0 }}>Défaire un rapprochement qui a réglé la facture propose de la remettre à régler ; un règlement saisi dans Factures & achats ne change pas.</p>
                       {rapprochees.map((ligne) => {
                         const f = ligne.documentId ? parId.get(ligne.documentId) : null;
                         return (
@@ -260,6 +293,34 @@ export default function EcranBanque({ etabId, userId, releves, lignes, docs, onR
                       })}
                     </Section>
                   )}
+
+                  <Section
+                    titre="Relevés importés"
+                    n={relevesTries.length}
+                    id="releves"
+                    replie={plis.releves}
+                    onBasculer={() => setPlis(p => ({ ...p, releves: !p.releves }))}
+                  >
+                    {relevesTries.map((r) => {
+                      const n = lignesDuReleve(r).length;
+                      return (
+                        <div key={r.id} style={ui.ligne} data-releve={r.id}>
+                          <span style={ui.ligneGauche}>
+                            <span style={ui.ligneTitre}>
+                              <span>Relevé du</span> <span>{dateCH(r.dateDebut)}</span> <span>au</span> <span>{dateCH(r.dateFin)}</span>
+                            </span>
+                            <span style={{ ...ui.ligneDetail, overflowWrap: 'anywhere' }}>
+                              {r.iban ? <><span data-no-translate>{r.iban}</span>, </> : null}
+                              <span>{n}</span> <span>{pluriel(n, 'ligne', 'lignes')}</span>
+                              {r.soldeFin != null && <>, <span>solde</span> <Chf v={r.soldeFin} /></>}
+                              {r.nomFichier ? <>, <span data-no-translate>{r.nomFichier}</span></> : null}
+                            </span>
+                          </span>
+                          <span style={st.actions}>{action('Supprimer', () => demanderSuppression(r))}</span>
+                        </div>
+                      );
+                    })}
+                  </Section>
                 </>
               )}
       </div>
@@ -273,6 +334,45 @@ export default function EcranBanque({ etabId, userId, releves, lignes, docs, onR
           onClose={fermer}
           onImporte={onChange}
         />
+      )}
+      {fenetre?.type === 'defaire' && (
+        <Fenetre
+          id="compta-banque-defaire"
+          titre="Remettre la facture à régler ?"
+          onClose={fermer}
+          pied={(
+            <>
+              <button type="button" style={fs.secondaire} onClick={() => defaireEtFermer(false)} disabled={enCours}>Garder réglée</button>
+              <button type="button" style={{ ...fs.primaire, opacity: enCours ? 0.5 : 1 }} onClick={() => defaireEtFermer(true)} disabled={enCours}>Remettre à régler</button>
+            </>
+          )}
+        >
+          <p style={{ ...fs.apercu, margin: 0 }}><DescFacture facture={fenetre.facture} /></p>
+          <p style={{ ...fs.apercu, margin: 0 }}>
+            <span>La Banque l'a marquée réglée le</span> <span>{dateCH(fenetre.ligne.dateOperation)}</span> <span>en rapprochant ce paiement. Si le paiement ne la concerne pas, remettez-la à régler : elle revient dans l'échéancier.</span>
+          </p>
+        </Fenetre>
+      )}
+      {fenetre?.type === 'supprimer' && (
+        <Fenetre
+          id="compta-banque-supprimer"
+          titre="Supprimer ce relevé ?"
+          onClose={fermer}
+          pied={(
+            <>
+              <button type="button" style={fs.secondaire} onClick={fermer} disabled={enCours}>Annuler</button>
+              <Btn variant="danger" disabled={enCours} onClick={supprimer} style={{ minHeight: 44 }}>Supprimer</Btn>
+            </>
+          )}
+        >
+          <p style={{ ...fs.apercu, margin: 0 }}>
+            <span>Relevé du</span> <span>{dateCH(fenetre.releve.dateDebut)}</span> <span>au</span> <span>{dateCH(fenetre.releve.dateFin)}</span>
+            {fenetre.releve.iban ? <>, <span data-no-translate>{fenetre.releve.iban}</span></> : null}
+          </p>
+          <p style={{ ...fs.apercu, margin: 0 }}>
+            <span>{fenetre.n}</span> <span>{pluriel(fenetre.n, 'ligne disparaît de la Banque. Les factures ne changent pas.', 'lignes disparaissent de la Banque. Les factures ne changent pas.')}</span>
+          </p>
+        </Fenetre>
       )}
       {fenetre?.type === 'choix' && (
         <FenetreChoixFacture

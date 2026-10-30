@@ -6,7 +6,7 @@ import { lirePeriode, useContrats } from '../planning/contratsService.js';
 import { bornesMois } from '../planning/soldesHeures.js';
 import { REGLAGES_DEFAUT, lireToutesLesPages, useLecture, useTableCompta } from './comptaService.js';
 import { ajouterJours, finEffective, periodeMois } from './periodesCompta.js';
-import { resumeVentes, ventesParJour } from './ventesCompta.js';
+import { notesCouvrentJours, resumeVentes, ventesParJour } from './ventesCompta.js';
 import { synthese } from './syntheseCompta.js';
 import { coutPersonnel } from './personnelCompta.js';
 import { etatTva, periodeTva } from './tvaCompta.js';
@@ -23,6 +23,10 @@ import { etatBanque } from './rapprochement.js';
 // (écran TVA), jusqu'à aujourd'hui, ou la fin de la période si elle court
 // encore. Horaires lus mois par mois par lirePeriode du Planning (jours
 // ouverts, heures du personnel), sans le modifier.
+//
+// Couverture des ventes (D9) : un jour est couvert par une saisie ou la
+// caisse ; pour un hôtel sans saisie ni caisse dans la fenêtre lue, par ses
+// notes de séjour (notesCouvrentJours).
 //
 // Personnel (D4, D14) : salaires estimés et contrats lus pour la direction
 // seulement (consultant, patron) ; pour qui règle les factures sans être de la
@@ -92,6 +96,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   const reglages = useMemo(() => ({ ...REGLAGES_DEFAUT, ...(reglagesLus.lignes[0] || {}) }), [reglagesLus.lignes]);
   // Décompte de TVA précédent : le premier jour de vente dont l'écran TVA a besoin.
   const tvaPrecedente = periodeTva(aujourdhui, reglages.methodeTva, -1);
+  const tvaCourante = periodeTva(aujourdhui, reglages.methodeTva, 0);
   const debutLecture = [precedente?.debut, periode.debut, quinzaine, tvaPrecedente.debut, banque ? ajouterJours(aujourdhui, -45) : null]
     .filter(Boolean).sort()[0];
   const finLecture = periode.fin > aujourdhui ? periode.fin : aujourdhui;
@@ -117,10 +122,12 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
 
   // Horaires : mois de la période, des 14 derniers jours et de la période
   // précédente (jours ouverts de la comparaison), sauf l'année précédente
-  // (24 mois de lectures pour un écart).
+  // (24 mois de lectures pour un écart). Pour qui voit la TVA, aussi les mois
+  // des deux décomptes (jours attendus de la couverture des ventes).
   const intervalles = [[periode.debut, finEff], [quinzaine, aujourdhui]];
   if (precedente && precedente.type !== 'annee') intervalles.push([precedente.debut, finEffective(precedente, aujourdhui)]);
   if (banque && direction) intervalles.push([moisPasse.debut, moisPasse.fin]);
+  if (banque) intervalles.push([tvaPrecedente.debut, finEffective(tvaCourante, aujourdhui)]);
   const moisHoraires = moisDe(intervalles);
   const lireHoraires = useCallback(async () => {
     const parMois = await Promise.all(moisHoraires.map((cle) => {
@@ -151,11 +158,13 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   }), [ventesJour.lignes, caisse.data, notes.data]);
 
   const joursOuverts = useMemo(() => new Set((horaires.data || []).map(s => s.date)), [horaires.data]);
+  // Hôtel sans saisie ni caisse : ses notes de séjour couvrent les jours.
+  const notesCouvrent = notesCouvrentJours(parJourTout, hebergement);
 
   const calculs = useMemo(() => {
     const dans = (p) => (j) => j.jour >= p.debut && j.jour <= p.fin;
     const resume = (p) => resumeVentes({
-      parJour: parJourTout.filter(dans(p)), joursOuverts, debut: p.debut, finEffective: finEffective(p, aujourdhui), aujourdhui,
+      parJour: parJourTout.filter(dans(p)), joursOuverts, debut: p.debut, finEffective: finEffective(p, aujourdhui), aujourdhui, notesCouvrent,
     });
     // Personnes suivies : contrats qui couvrent une partie de la période.
     const personnel = (p) => {
@@ -164,7 +173,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
       const personnes = contratsLus.contrats.filter(c => c.debut <= fin && (!c.fin || c.fin >= p.debut)).map(c => c.profileId);
       return coutPersonnel({ personnes, salaires: salaires.lignes, shifts: horaires.data || [], reglages, debut: p.debut, fin: p.fin, aujourdhui });
     };
-    const tva = (p) => etatTva({ ventes: parJourTout, docs, charges: chargesListe, reglages, debut: p.debut, fin: p.fin, aujourdhui });
+    const tva = (p) => etatTva({ ventes: parJourTout, docs, charges: chargesListe, reglages, debut: p.debut, fin: p.fin, aujourdhui, joursOuverts, notesCouvrent });
 
     const ventes = resume(periode);
     const personnelCourant = personnel(periode);
@@ -173,15 +182,16 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
     let prec = null;
     if (precedente) {
       // Horaires de l'année précédente non lus (24 mois de lectures pour un
-      // écart) : pas de personnel, donc pas de résultat comparable.
+      // écart) : pas de personnel. Un résultat après personnel ne se compare
+      // pas à un résultat avant personnel, dans un sens comme dans l'autre.
       const personnelPrec = precedente.type === 'annee' ? null : personnel(precedente);
       prec = synthese({ periode: precedente, aujourdhui, ventes: resume(precedente), docs, charges: chargesListe, personnel: personnelPrec, inventaires: listeInventaires, tva: tva(precedente) });
-      if (personnelCourant && !personnelPrec) prec = { ...prec, resultat: null };
+      if ((personnelCourant?.total == null) !== (personnelPrec?.total == null)) prec = { ...prec, resultat: null };
     }
     // Salaires estimés d'un mois entier (trésorerie) : le mois précédent.
     const salaireMensuel = banque ? (personnel(moisPasse)?.total ?? null) : null;
     return { parJour: parJourTout.filter(dans(periode)), synthese: courante, precedente: prec, tvaPeriode, salaireMensuel };
-  }, [parJourTout, joursOuverts, periode, precedente, aujourdhui, docs, chargesListe, listeInventaires,
+  }, [parJourTout, joursOuverts, notesCouvrent, periode, precedente, aujourdhui, docs, chargesListe, listeInventaires,
     personnelPret, contratsLus.contrats, salaires.lignes, horaires.data, reglages, banque, moisPasse]);
 
   // Décomptes de TVA : le précédent (à déclarer) et celui en cours ; montré
@@ -189,10 +199,10 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   const tva = useMemo(() => {
     const decomptes = [-1, 0].map((decalage) => {
       const p = periodeTva(aujourdhui, reglages.methodeTva, decalage);
-      return { periode: p, etat: etatTva({ ventes: parJourTout, docs, charges: chargesListe, reglages, debut: p.debut, fin: p.fin, aujourdhui }) };
+      return { periode: p, etat: etatTva({ ventes: parJourTout, docs, charges: chargesListe, reglages, debut: p.debut, fin: p.fin, aujourdhui, joursOuverts, notesCouvrent }) };
     });
     return { decomptes, defaut: decomptes[0].periode.echeance >= aujourdhui ? 0 : 1 };
-  }, [aujourdhui, reglages, parJourTout, docs, chargesListe]);
+  }, [aujourdhui, reglages, parJourTout, docs, chargesListe, joursOuverts, notesCouvrent]);
 
   // ── États ──
   const achatsStatut = achats.docs === null ? 'loading' : (achats.loadError && !docs.length ? 'error' : 'ready');
@@ -208,7 +218,10 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   const pretOuAbsent = (s) => (s === 'absente' || s === 'inactif' ? 'ready' : s);
   etats.resultat = etatDe(etats.ventes, etats.matiere, pretOuAbsent(etats.charges), pretOuAbsent(personnelEtat));
   // TVA : ventes, achats et charges fixes (sans la migration, sans les charges).
-  etats.tva = etatDe(etats.ventes, achatsStatut, pretOuAbsent(etats.charges), pretOuAbsent(reglagesLus.status));
+  // Les horaires (jours attendus de la couverture) sont attendus pendant leur
+  // lecture ; en échec, tous les jours comptent (couverture prudente).
+  etats.tva = etatDe(etats.ventes, achatsStatut, pretOuAbsent(etats.charges), pretOuAbsent(reglagesLus.status),
+    horaires.status === 'loading' ? 'loading' : 'ready');
   const migrationAbsente = [ventesJour.status, charges.status, reglagesLus.status].includes('absente');
   const enEchec = [ventesJour, charges, reglagesLus, salaires, caisse, notes, horaires, inventaires, releves, lignesReleve].some(l => l?.enEchec)
     || (achats.loadError && docs.length > 0);
@@ -239,6 +252,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
     caisse,
     horaires,
     joursOuverts,
+    notesCouvrent,
     parJourTout,
     ...calculs,
     tva,

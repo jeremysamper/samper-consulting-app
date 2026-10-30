@@ -217,6 +217,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
             parJourTout={data.parJourTout}
             joursOuverts={data.joursOuverts}
             horairesPrets={etats.couverture === 'ready'}
+            notesCouvrent={data.notesCouvrent}
             onEnregistre={data.ventesJour.reload}
           />
         </EcranTache>
@@ -328,7 +329,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
               direction={direction}
               parJour={data.parJourTout}
               aujourdhui={aujourdhui}
-              dernierReleve={data.releves.status === 'ready' ? data.banque.dernier : null}
+              solde={data.releves.status === 'ready' ? data.banque.solde : null}
               onRegler={ouvrirReglement}
             />
           )}

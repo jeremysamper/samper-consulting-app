@@ -1,7 +1,7 @@
 // node --test : ventes de la Comptabilité (ventesCompta.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ventesParJour, totauxVentes, joursSansChiffre, couvertureVentes, resumeVentes } from './ventesCompta.js';
+import { ventesParJour, totauxVentes, joursSansChiffre, couvertureVentes, resumeVentes, notesCouvrentJours } from './ventesCompta.js';
 
 test('la saisie à la main du jour remplace la caisse ; la caisse seule compte à 8,1', () => {
   const parJour = ventesParJour({
@@ -89,4 +89,57 @@ test('aucun horaire sur la période : tous les jours comptent', () => {
   assert.equal(r.attendus, 4);
   assert.equal(r.manquants.length, 4);
   assert.equal(r.ttc, null);
+});
+
+test('hôtel sans saisie ni caisse : les notes de séjour couvrent leurs jours', () => {
+  const parJour = ventesParJour({ notes: [
+    { jour: '2026-10-26', type: 'nuitee', montant: 480, tvaTaux: 3.8 },
+    { jour: '2026-10-28', type: 'nuitee', montant: 240, tvaTaux: 3.8 },
+  ] });
+  const args = { parJour, joursOuverts: new Set(), debut: '2026-10-26', finEffective: '2026-10-29', aujourdhui: '2026-10-30' };
+  // Règle D9 : sans l'option, aucun jour n'est couvert.
+  assert.deepEqual(couvertureVentes(args), { avec: 0, attendus: 4, manquants: ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29'] });
+  assert.equal(notesCouvrentJours(parJour, true), true);
+  assert.deepEqual(couvertureVentes({ ...args, notesCouvrent: true }), { avec: 2, attendus: 4, manquants: ['2026-10-27', '2026-10-29'] });
+  const r = resumeVentes({ ...args, notesCouvrent: true });
+  assert.equal(r.avec, 2);
+  assert.equal(r.ttc, 720);
+  // Un restaurant qui saisit : les notes ne couvrent plus rien ; sans hébergement non plus.
+  const mixte = ventesParJour({ manuel: [{ jour: '2026-10-27', taux: 8.1, montantTtc: 500 }], notes: [{ jour: '2026-10-26', type: 'nuitee', montant: 480, tvaTaux: 3.8 }] });
+  assert.equal(notesCouvrentJours(mixte, true), false);
+  assert.equal(notesCouvrentJours(parJour, false), false);
+});
+
+test('nuitée ou remise sans taux : taux d\'hébergement du jour, sinon des nuitées lues, sinon 3,8', () => {
+  const parJour = ventesParJour({ notes: [
+    { jour: '2026-10-20', type: 'nuitee', montant: 480, tvaTaux: 3.8 },
+    { jour: '2026-10-20', type: 'remise', montant: -50, tvaTaux: null },
+    { jour: '2026-10-21', type: 'remise', montant: -20, tvaTaux: null },
+    { jour: '2026-10-21', type: 'extra', montant: 30, tvaTaux: 8.1 },
+    { jour: '2026-10-22', type: 'pension', montant: 40, tvaTaux: null },
+  ] });
+  assert.deepEqual(parJour[0].parTaux, { 3.8: 430 });
+  // Le 21 n'a pas de nuitée : taux des nuitées lues (3,8).
+  assert.deepEqual(parJour[1].parTaux, { 3.8: -20, 8.1: 30 });
+  // Une pension sans taux reste « autre taux » : elle n'est pas devinée.
+  assert.deepEqual(parJour[2].parTaux, { 0: 40 });
+  const t = totauxVentes(parJour);
+  assert.ok(!t.parTaux.some(l => l.taux === 0 && l.ttc < 0));
+  // Aucune nuitée avec un taux : 3,8.
+  const seule = ventesParJour({ notes: [{ jour: '2026-10-23', type: 'remise', montant: -15, tvaTaux: null }] });
+  assert.deepEqual(seule[0].parTaux, { 3.8: -15 });
+  // Taux de l'hôtel saisi à 3,7 : la remise le suit.
+  const autre = ventesParJour({ notes: [
+    { jour: '2026-10-24', type: 'nuitee', montant: 300, tvaTaux: 3.7 },
+    { jour: '2026-10-24', type: 'remise', montant: -30, tvaTaux: null },
+  ] });
+  assert.deepEqual(autre[0].parTaux, { 3.7: 270 });
+});
+
+test('un mois sans aucun horaire compte tous ses jours, même si un autre mois de la période en a', () => {
+  const parJour = ventesParJour({ manuel: [{ jour: '2026-09-15', taux: 8.1, montantTtc: 1000 }] });
+  const ouverts = new Set(['2026-09-14', '2026-09-15']);
+  const c = couvertureVentes({ parJour, joursOuverts: ouverts, debut: '2026-08-30', finEffective: '2026-09-16', aujourdhui: '2026-10-30' });
+  // 30 et 31 août (mois sans horaire) + 14 et 15 septembre (ouverts) ; le 16, fermé.
+  assert.deepEqual(c, { avec: 1, attendus: 4, manquants: ['2026-08-30', '2026-08-31', '2026-09-14'] });
 });

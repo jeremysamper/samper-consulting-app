@@ -69,10 +69,16 @@ function feuilleResume({ s, direction }) {
     rang(['Marge brute', s.margeBrute, ''], true),
     rang(['Coût du personnel estimé', s.personnel, personnelDetail]),
     rang(['Charges fixes hors TVA', s.charges, s.chargesDetail ? `${s.chargesDetail.lignes.length} charges réparties par mois` : 'pas encore lues']),
-    rang(['Résultat d\'exploitation estimé', s.resultat, [s.avantPersonnel ? 'avant personnel' : null, s.avantCharges ? 'avant charges fixes' : null].filter(Boolean).join(', ')], true),
+    rang(['Résultat d\'exploitation estimé', s.resultat, [
+      s.avantPersonnel ? 'avant personnel' : null, s.personnelPartiel ? 'personnel partiel' : null, s.avantCharges ? 'avant charges fixes' : null,
+    ].filter(Boolean).join(', ')], true),
     rang(['Coût matière en % du chiffre d\'affaires', pct(s.ratios.matierePct), '']),
     rang(['Coût du personnel en % du chiffre d\'affaires', pct(s.ratios.personnelPct), '']),
-    rang(['TVA estimée à payer sur la période', s.tvaEstimee, 'estimation ; la fiduciaire établit le décompte officiel']),
+    rang(['TVA estimée à payer sur la période', s.tvaEstimee, [
+      s.tvaComplete === false && s.tvaCouverture
+        ? `TVA incomplète, chiffre d'affaires connu ${s.tvaCouverture.avec} jours sur ${s.tvaCouverture.attendus}` : null,
+      'estimation ; la fiduciaire établit le décompte officiel',
+    ].filter(Boolean).join(' ; ')]),
   ];
   if (s.prorata) rangs.push(rang(['Période en cours', null, `au prorata des jours écoulés, ${s.prorata.ecoules} sur ${s.prorata.total}`]));
   if (s.manques?.length) {
@@ -185,6 +191,9 @@ function feuilleTva(e) {
       rang(['TVA estimée à payer', null, null, e.due], true),
     );
     if (e.achats.nonDeduites) rangs.push(rang([`${e.achats.nonDeduites} factures d'achat sans taux ne sont pas déduites : à vérifier dans Factures & achats.`, null, null, null]));
+  }
+  if (e && e.couverture && e.ventesCompletes === false) {
+    rangs.push(vide(), rang([`Chiffre d'affaires connu ${e.couverture.avec} jours sur ${e.couverture.attendus} : TVA incomplète.`, null, null, null], true));
   }
   rangs.push(vide(), rang(['Estimation pour préparer le décompte : votre fiduciaire établit le décompte officiel.', null, null, null]));
   return {

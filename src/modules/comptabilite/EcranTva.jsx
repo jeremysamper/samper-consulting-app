@@ -53,6 +53,8 @@ export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, cha
 
   const achats = e.achats;
   const lignesAchats = COLONNES_ACHATS.filter(([k]) => achats[k] != null);
+  const cv = e.couverture;
+  const incomplete = !!cv && e.ventesCompletes === false && e.ventes.ttc != null;
 
   return (
     <div style={ui.page} data-tva="">
@@ -140,16 +142,28 @@ export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, cha
         </section>
       )}
 
+      {/* Trop peu de jours de ventes : la TVA due (et un crédit) n'est pas à prendre telle quelle. */}
+      {incomplete && (
+        <p style={{ ...st.note, color: 'var(--warning-text)', fontWeight: 500 }} data-tva-incomplete="">
+          <span>Chiffre d'affaires connu</span> <span>{cv.avec}</span> <span>{pluriel(cv.avec, 'jour sur', 'jours sur')}</span> <span>{cv.attendus}</span> <span>: TVA incomplète.</span>
+        </p>
+      )}
       <div style={st.total} data-tva-due="">
-        {e.due != null && e.due < 0
-          ? <><span>Crédit de TVA estimé :</span> <Chf v={-e.due} /></>
-          : <><span>TVA estimée à payer :</span> <Chf v={e.due} /></>}
+        {e.due != null && incomplete
+          ? <><span>TVA estimée, ventes incomplètes :</span> <Chf v={e.due} /></>
+          : e.due != null && e.due < 0
+            ? <><span>Crédit de TVA estimé :</span> <Chf v={-e.due} /></>
+            : <><span>TVA estimée à payer :</span> <Chf v={e.due} /></>}
       </div>
 
       <section style={{ ...ui.section, gap: 6 }} data-tva-notes="">
-        <p style={st.note}>
-          <span>Chiffre d'affaires connu pour</span> <span>{e.ventes.nbJours}</span> <span>{pluriel(e.ventes.nbJours, 'jour de la période.', 'jours de la période.')}</span>
-        </p>
+        {!incomplete && (
+          <p style={st.note}>
+            {cv
+              ? <><span>Chiffre d'affaires connu</span> <span>{cv.avec}</span> <span>{pluriel(cv.avec, 'jour sur', 'jours sur')}</span> <span>{cv.attendus}</span>.</>
+              : <><span>Chiffre d'affaires connu pour</span> <span>{e.ventes.nbJours}</span> <span>{pluriel(e.ventes.nbJours, 'jour de la période.', 'jours de la période.')}</span></>}
+          </p>
+        )}
         {effective && achats.nonDeduites > 0 && (
           <p style={{ ...st.note, color: 'var(--warning-text)' }} data-non-deduites="">
             <span>{achats.nonDeduites}</span> <span>{pluriel(achats.nonDeduites, 'facture d\'achat sans taux n\'est pas déduite : à vérifier dans Factures & achats.', 'factures d\'achat sans taux ne sont pas déduites : à vérifier dans Factures & achats.')}</span>

@@ -241,3 +241,18 @@ test('factures proches d\'une ligne par écart de montant ; état de la banque',
   );
   assert.deepEqual([e.dernier.id, e.aRapprocher, e.nbReleves], ['r2', 1, 2]);
 });
+
+test('solde de la banque : dernier relevé de chaque compte, additionnés ; relevé sans IBAN écarté s\'il y a des IBAN', () => {
+  const r = (id, iban, dateFin, soldeFin) => ({ id, iban, dateFin, soldeFin, createdAt: dateFin });
+  const un = etatBanque([r('a1', 'CH11', '2026-09-30', 1000), r('a2', 'CH11', '2026-10-29', 1500)], []);
+  assert.deepEqual(un.solde, { montant: 1500, date: '2026-10-29', comptes: 1 });
+  const deux = etatBanque([r('a2', 'CH11', '2026-10-29', 1500), r('b1', 'CH22', '2026-10-20', 2500.5), r('c1', '', '2026-10-30', 9999)], []);
+  assert.equal(deux.dernier.id, 'c1');
+  assert.deepEqual(deux.comptes.map(x => x.id).sort(), ['a2', 'b1']);
+  assert.deepEqual(deux.solde, { montant: 4000.5, date: '2026-10-20', comptes: 2 });
+  const sansSolde = etatBanque([r('a2', 'CH11', '2026-10-29', 1500), r('b1', 'CH22', '2026-10-20', null)], []);
+  assert.equal(sansSolde.solde.montant, null);
+  const csvSeul = etatBanque([r('c1', '', '2026-10-30', 800)], []);
+  assert.deepEqual(csvSeul.solde, { montant: 800, date: '2026-10-30', comptes: 1 });
+  assert.equal(etatBanque([], []).solde, null);
+});

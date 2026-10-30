@@ -343,8 +343,11 @@ export async function lierLigne(ligneId, documentId, mode, userId) {
 // ligne, par virement, note « Relevé bancaire », par le même appel que
 // Factures & achats ; option `nouveau` : un règlement posé entre-temps sur un
 // autre appareil n'est pas écrasé. Aucune autre colonne de la facture n'est
-// écrite. Puis chaque ligne reçoit sa facture.
+// écrite. Puis chaque ligne reçoit sa facture. Une ligne qui ne peut pas
+// recevoir sa facture remet à régler la facture que cet appel vient de régler
+// (même appel, règlement null) : jamais une facture réglée sans ligne liée.
 //   paires : [{ ligne, facture }] → { liees, reglees, error }
+export const NOTE_RELEVE = 'Relevé bancaire';
 export async function rapprocher(paires, mode, userId) {
   const legacySB = dbService.getBridge();
   const parDate = new Map();
@@ -353,28 +356,77 @@ export async function rapprocher(paires, mode, userId) {
     if (!parDate.has(date)) parDate.set(date, []);
     if (!parDate.get(date).includes(p.facture.id)) parDate.get(date).push(p.facture.id);
   });
-  let reglees = 0;
+  const regleesIci = new Set();
   try {
     for (const [date, ids] of parDate) {
-      const faites = await legacySB.db.reglerFacturesAchat(ids, { regleLe: date, regleMode: 'virement', regleNote: 'Relevé bancaire' }, { nouveau: true });
-      reglees += (faites || []).length;
+      const faites = await legacySB.db.reglerFacturesAchat(ids, { regleLe: date, regleMode: 'virement', regleNote: NOTE_RELEVE }, { nouveau: true });
+      (faites || []).forEach(f => regleesIci.add(f.id));
     }
   } catch (error) {
-    return { liees: 0, reglees, error: messageCompta(error) };
+    // Une partie a pu être réglée avant l'échec : elle repart à régler.
+    if (regleesIci.size) await legacySB.db.reglerFacturesAchat([...regleesIci], null).catch(() => {});
+    return { liees: 0, reglees: 0, error: messageCompta(error) };
   }
   let liees = 0;
+  let premiereErreur = null;
+  const aRemettre = [];
   for (const p of paires || []) {
     const { error } = await lierLigne(p.ligne.id, p.facture.id, mode, userId);
-    if (error) return { liees, reglees, error };
+    if (error) {
+      premiereErreur = premiereErreur || error;
+      if (regleesIci.has(p.facture.id)) aRemettre.push(p.facture.id);
+      continue;
+    }
     liees += 1;
   }
-  return { liees, reglees, error: null };
+  if (aRemettre.length) {
+    try {
+      await legacySB.db.reglerFacturesAchat(aRemettre, null);
+    } catch (error) {
+      console.error('[comptabilité] remise à régler après un rapprochement en échec', error);
+      return { liees, reglees: regleesIci.size, error: 'Rapprochement impossible, et la facture est restée marquée réglée : corrigez-la dans Factures & achats.' };
+    }
+  }
+  return { liees, reglees: regleesIci.size - aRemettre.length, error: premiereErreur };
 }
 
 export async function delierLigne(ligneId) {
   const { error } = await supabase.from('releve_lignes')
     .update({ document_id: null, rapprochement: null, rapproche_le: null, rapproche_par: null })
     .eq('id', ligneId);
+  return { error: error ? messageCompta(error) : null };
+}
+
+// La facture a-t-elle été réglée par le rapprochement de cette ligne (même
+// date, note « Relevé bancaire ») ? Seule celle-là repart à régler quand on
+// défait le rapprochement ; un règlement posé à la main reste.
+export function regleeParLigne(facture, ligne) {
+  return !!facture && !!ligne && facture.regleNote === NOTE_RELEVE && facture.regleLe === ligne.dateOperation;
+}
+
+// Défait un rapprochement ; `remettreARegler` : la facture repart à régler
+// par le même appel que Factures & achats (règlement null, aucune autre
+// colonne). → { error }
+export async function defaireRapprochement(ligne, facture, { remettreARegler = false } = {}) {
+  const { error } = await delierLigne(ligne.id);
+  if (error) return { error };
+  if (!remettreARegler || !facture) return { error: null };
+  try {
+    await dbService.getBridge().db.reglerFacturesAchat([facture.id], null);
+    return { error: null };
+  } catch (err) {
+    console.error('[comptabilité] remise à régler', err);
+    return { error: 'Rapprochement défait, mais la facture n\'a pas pu être remise à régler : corrigez-la dans Factures & achats.' };
+  }
+}
+
+// Supprime un relevé importé et ses lignes (cascade en base). Refusé s'il a
+// une ligne rapprochée d'une facture : défaire d'abord.
+export async function supprimerReleve(releveId, lignes) {
+  if ((lignes || []).some(l => l.releveId === releveId && l.documentId)) {
+    return { error: 'Ce relevé a des paiements rapprochés : défaites-les d\'abord.' };
+  }
+  const { error } = await supabase.from('releves_bancaires').delete().eq('id', releveId);
   return { error: error ? messageCompta(error) : null };
 }
 

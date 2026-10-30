@@ -576,11 +576,27 @@ export function facturesProches(ligne, factures, lignes) {
       || String(b.facture.dateDocument || '').localeCompare(String(a.facture.dateDocument || '')));
 }
 
-// État de la banque pour l'accueil et l'écran : dernier relevé (par date de
-// fin) et nombre de paiements encore à rapprocher.
+// État de la banque pour l'accueil, l'écran et la trésorerie : dernier relevé
+// (par date de fin), nombre de paiements encore à rapprocher, et solde.
+// Solde : le dernier relevé de chaque compte (IBAN), leurs soldes de fin
+// additionnés ; un relevé sans IBAN ne compte que s'il n'y a aucun IBAN (il
+// peut être le même compte, importé en CSV). `date` est la plus ancienne des
+// dates de fin retenues (le solde n'est sûr que jusque-là) ; `montant` est
+// null si l'un des comptes n'a pas de solde de fin.
+//   → { dernier, aRapprocher, nbReleves, comptes: [relevé], solde: { montant, date, comptes } | null }
 export function etatBanque(releves, lignes) {
-  const dernier = (releves || []).slice().sort((a, b) => String(b.dateFin || '').localeCompare(String(a.dateFin || ''))
-    || String(b.createdAt || '').localeCompare(String(a.createdAt || '')))[0] || null;
+  const tries = (releves || []).slice().sort((a, b) => String(b.dateFin || '').localeCompare(String(a.dateFin || ''))
+    || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  const dernier = tries[0] || null;
   const aRapprocher = (lignes || []).filter(l => !l.documentId && !l.ignoree && Number(l.montant) < 0).length;
-  return { dernier, aRapprocher, nbReleves: (releves || []).length };
+  const parCompte = new Map();
+  tries.forEach((r) => { const k = r.iban || ''; if (!parCompte.has(k)) parCompte.set(k, r); });
+  if (parCompte.size > 1) parCompte.delete('');
+  const comptes = [...parCompte.values()];
+  const solde = comptes.length ? {
+    montant: comptes.every(r => r.soldeFin != null) ? round2(comptes.reduce((s, r) => s + Number(r.soldeFin), 0)) : null,
+    date: comptes.map(r => r.dateFin).filter(Boolean).sort()[0] || null,
+    comptes: comptes.length,
+  } : null;
+  return { dernier, aRapprocher, nbReleves: (releves || []).length, comptes, solde };
 }

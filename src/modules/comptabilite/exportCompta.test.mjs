@@ -164,3 +164,18 @@ test('hors direction : le coût du personnel est « réservé à la direction »
   const r = f.resume.rangs.find(x => x.cellules[0] === 'Coût du personnel estimé');
   assert.deepEqual(r.cellules.slice(1), [null, 'réservé à la direction']);
 });
+
+test('personnel partiel et TVA incomplète : le Résumé et l\'État TVA le disent', () => {
+  const { s, parJour, tva, lignesAchats } = donnees();
+  const incomplete = { ...tva, couverture: { avec: 1, attendus: 92 }, ventesCompletes: false };
+  const s2 = { ...s, personnelPartiel: true, avantPersonnel: false, tvaComplete: false, tvaCouverture: { avec: 1, attendus: 92 } };
+  const f = feuillesCompta({ periode: OCT, synthese: s2, parJour, lignesAchats, etatTva: incomplete });
+  const res = f.resume.rangs.find(x => x.cellules[0] === 'Résultat d\'exploitation estimé');
+  assert.ok(res.cellules[2].includes('personnel partiel'));
+  const tvaRang = f.resume.rangs.find(x => x.cellules[0] === 'TVA estimée à payer sur la période');
+  assert.ok(tvaRang.cellules[2].startsWith('TVA incomplète, chiffre d\'affaires connu 1 jours sur 92'));
+  assert.ok(f.etatTva.rangs.some(x => x.cellules[0] === 'Chiffre d\'affaires connu 1 jours sur 92 : TVA incomplète.'));
+  // Complète : aucune réserve.
+  const f2 = feuillesCompta({ periode: OCT, synthese: s, parJour, lignesAchats, etatTva: { ...tva, couverture: { avec: 20, attendus: 20 }, ventesCompletes: true } });
+  assert.ok(!f2.etatTva.rangs.some(x => String(x.cellules[0] || '').includes('TVA incomplète')));
+});

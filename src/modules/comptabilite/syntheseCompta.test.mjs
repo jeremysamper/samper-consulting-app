@@ -142,3 +142,31 @@ test('écart avec la période précédente', () => {
 });
 
 function round(n) { return Math.round(n * 100) / 100; }
+
+test('personnes sans salaire ni coût moyen : résultat avant personnel, jamais un personnel à zéro', () => {
+  const parJour = ventesParJour({ manuel: [{ jour: '2026-10-02', taux: 8.1, montantTtc: 21620 }] });
+  const ventes = resumeVentes({ parJour, joursOuverts: new Set(['2026-10-02']), debut: oct.debut, finEffective: '2026-10-30', aujourdhui: '2026-10-30' });
+  // coutPersonnel d'une personne avec des heures, sans salaire ni coût moyen.
+  const sansSalaire = { total: null, sansCout: 1, heuresPrevues: 0, apresMinuit: 0, lignes: [{ userId: 'u1', cout: null }] };
+  const s = synthese({ periode: oct, aujourdhui: '2026-10-30', ventes, docs, charges, personnel: sansSalaire });
+  assert.equal(s.personnel, null);
+  assert.equal(s.avantPersonnel, true);
+  assert.equal(s.personnelPartiel, false);
+  assert.equal(s.resultat, round(20000 - 5894.45 - 6723.01));
+  assert.ok(s.manques.some(m => m.id === 'sansCout'));
+  // Une personne chiffrée, une autre sans salaire : personnel partiel.
+  const partiel = synthese({ periode: oct, aujourdhui: '2026-10-30', ventes, docs, charges, personnel: { total: 3000, sansCout: 1, heuresPrevues: 0, apresMinuit: 0 } });
+  assert.equal(partiel.avantPersonnel, false);
+  assert.equal(partiel.personnelPartiel, true);
+  // Tout le monde chiffré.
+  const complet = synthese({ periode: oct, aujourdhui: '2026-10-30', ventes, docs, charges, personnel: { total: 3000, sansCout: 0, heuresPrevues: 0, apresMinuit: 0 } });
+  assert.equal(complet.personnelPartiel, false);
+});
+
+test('TVA de la synthèse : couverture et complétude reprises de l\'état TVA', () => {
+  const s = synthese({ periode: oct, aujourdhui: '2026-10-30', docs, charges, tva: { due: -207.01, couverture: { avec: 1, attendus: 92 }, ventesCompletes: false } });
+  assert.equal(s.tvaEstimee, -207.01);
+  assert.equal(s.tvaComplete, false);
+  assert.deepEqual(s.tvaCouverture, { avec: 1, attendus: 92 });
+  assert.equal(synthese({ periode: oct, aujourdhui: '2026-10-30', docs, charges }).tvaComplete, null);
+});

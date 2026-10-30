@@ -36,7 +36,7 @@ export default function LigneManques({ manques, onOuvrir }) {
         <React.Fragment key={m.id}>
           {i > 0 && ', '}
           <button type="button" style={ui.lien} onClick={() => onOuvrir(m.ecran)} data-manque={m.id}>
-            <TexteManque m={m} />
+            <span><TexteManque m={m} /></span>
           </button>
         </React.Fragment>
       ))}

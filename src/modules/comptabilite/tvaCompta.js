@@ -22,7 +22,8 @@ import { lignesFiduciaire, totauxFiduciaire } from '../inventaire/exportFiduciai
 import { round2 } from '../inventaire/tvaAchats.js';
 import { chargesSurPeriode } from './chargesFixes.js';
 import { ajouterJours, dernierJourDuMois, finEffective } from './periodesCompta.js';
-import { totauxVentes } from './ventesCompta.js';
+import { couvertureVentes, totauxVentes } from './ventesCompta.js';
+import { ventesComparables } from './syntheseCompta.js';
 
 export const DELAI_DECOMPTE_JOURS = 60;
 const COLONNES_TVA = ['tva26', 'tva81', 'tva38', 'tvaAutre'];
@@ -91,14 +92,25 @@ export function tvaAchats(docs, { debut, fin }) {
 //   reglages   : { methodeTva, tauxTdfn }
 //   debut, fin : la période ; aujourdhui : borne des charges d'une période en
 //                cours (D13), facultatif
+//   joursOuverts, notesCouvrent : couverture des ventes (couvertureVentes),
+//                avec aujourdhui ; sans aujourdhui, la couverture est inconnue
 // → { methode, tauxTdfn, ventes: { ttc, ht, tva, parTaux, jours, nbJours },
-//     achats, charges: [{ taux, ttc, tva }], chargesTva, prealable, due }
-export function etatTva({ ventes = [], docs = [], charges = null, reglages = {}, debut, fin, aujourdhui = null }) {
+//     achats, charges: [{ taux, ttc, tva }], chargesTva, prealable, due,
+//     couverture: { avec, attendus } | null, ventesCompletes }
+// ventesCompletes est faux quand moins de 80 % des jours attendus ont un
+// chiffre d'affaires (même seuil que la comparaison des périodes) : la TVA
+// due, et surtout un crédit de TVA, n'est alors pas à prendre telle quelle.
+export function etatTva({ ventes = [], docs = [], charges = null, reglages = {}, debut, fin, aujourdhui = null, joursOuverts = null, notesCouvrent = false }) {
   const methode = reglages?.methodeTva === 'tdfn' ? 'tdfn' : 'effective';
   const tauxTdfn = nombre(reglages?.tauxTdfn);
   const jours = (ventes || []).filter(j => j.jour >= debut && j.jour <= fin);
   const tv = totauxVentes(jours);
   const nbJours = jours.filter(j => j.source || j.avecNotes).length;
+  const cv = aujourdhui
+    ? couvertureVentes({ parJour: jours, joursOuverts: joursOuverts || new Set(), debut, finEffective: finEffective({ debut, fin }, aujourdhui), aujourdhui, notesCouvrent })
+    : null;
+  const couverture = cv ? { avec: cv.avec, attendus: cv.attendus } : null;
+  const ventesCompletes = couverture ? ventesComparables({ ht: tv.ht, ...couverture }) : true;
 
   const achats = tvaAchats(docs, { debut, fin });
   const finCharges = aujourdhui ? finEffective({ debut, fin }, aujourdhui) : fin;
@@ -127,5 +139,7 @@ export function etatTva({ ventes = [], docs = [], charges = null, reglages = {},
     chargesLues: detail != null,
     prealable,
     due,
+    couverture,
+    ventesCompletes,
   };
 }

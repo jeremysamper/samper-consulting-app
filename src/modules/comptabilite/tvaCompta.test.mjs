@@ -115,3 +115,40 @@ test('sans vente connue : TVA due inconnue ; charges illisibles : sans charges',
   assert.equal(e.chargesLues, false);
   assert.equal(e.prealable, 298.66);
 });
+
+test('couverture des ventes : un jour connu sur un trimestre, TVA incomplète', () => {
+  // 3e trimestre 2026 vu le 30.10 : un seul jour de ventes, aucun horaire lu (tous les jours comptent).
+  const unJour = ventesParJour({ manuel: [{ jour: '2026-09-15', taux: 8.1, montantTtc: 3134.9 }] });
+  const t3 = { debut: '2026-07-01', fin: '2026-09-30' };
+  const e = etatTva({ ventes: unJour, docs, charges, reglages: {}, ...t3, aujourdhui: '2026-10-30', joursOuverts: new Set() });
+  assert.deepEqual(e.couverture, { avec: 1, attendus: 92 });
+  assert.equal(e.ventesCompletes, false);
+  // Les jours ouverts du planning réduisent les jours attendus de leur mois ;
+  // juillet et août, sans aucun horaire, comptent en entier (31 + 31 + 3).
+  const ouverts = new Set(['2026-09-14', '2026-09-15', '2026-09-16']);
+  const e2 = etatTva({ ventes: unJour, docs, charges, reglages: {}, ...t3, aujourdhui: '2026-10-30', joursOuverts: ouverts });
+  assert.deepEqual(e2.couverture, { avec: 1, attendus: 65 });
+  assert.equal(e2.ventesCompletes, false);
+  // Dix jours sur dix ouverts : complète.
+  const dix = new Set(Array.from({ length: 10 }, (_, i) => `2026-10-${String(i + 1).padStart(2, '0')}`));
+  const e3 = etatTva({ ventes, docs, charges, reglages: {}, ...OCT, aujourdhui: '2026-10-30', joursOuverts: dix });
+  assert.deepEqual(e3.couverture, { avec: 10, attendus: 10 });
+  assert.equal(e3.ventesCompletes, true);
+  // Sans aujourd'hui : couverture inconnue, rien n'est retenu contre la TVA.
+  const e4 = etatTva({ ventes, docs, charges, reglages: {}, ...OCT });
+  assert.equal(e4.couverture, null);
+  assert.equal(e4.ventesCompletes, true);
+});
+
+test('hôtel : ses notes de séjour couvrent les jours de l\'état TVA', () => {
+  const notes = ventesParJour({ notes: [
+    { jour: '2026-10-01', type: 'nuitee', montant: 1038, tvaTaux: 3.8 },
+    { jour: '2026-10-02', type: 'nuitee', montant: 1038, tvaTaux: 3.8 },
+  ] });
+  const deuxJours = { debut: '2026-10-01', fin: '2026-10-02' };
+  const sans = etatTva({ ventes: notes, docs: [], charges: [], reglages: {}, ...deuxJours, aujourdhui: '2026-10-30', joursOuverts: new Set() });
+  assert.equal(sans.ventesCompletes, false);
+  const avec = etatTva({ ventes: notes, docs: [], charges: [], reglages: {}, ...deuxJours, aujourdhui: '2026-10-30', joursOuverts: new Set(), notesCouvrent: true });
+  assert.deepEqual(avec.couverture, { avec: 2, attendus: 2 });
+  assert.equal(avec.ventesCompletes, true);
+});

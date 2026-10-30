@@ -91,7 +91,7 @@ function Formulaire({ etabId, jour, lignes, taux, peutEcrire, posTtc, onEnregist
 }
 
 export default function EcranChiffreJour({
-  etabId, aujourdhui, jourInitial, peutEcrire, hebergement, absente, parJourTout, joursOuverts, horairesPrets, onEnregistre,
+  etabId, aujourdhui, jourInitial, peutEcrire, hebergement, absente, parJourTout, joursOuverts, horairesPrets, onEnregistre, notesCouvrent = false,
 }) {
   const hier = ajouterJours(aujourdhui, -1);
   const [choix, setChoix] = React.useState(() => (!jourInitial || jourInitial === aujourdhui ? 'aujourdhui' : jourInitial === hier ? 'hier' : 'autre'));
@@ -161,6 +161,8 @@ export default function EcranChiffreJour({
             const v = parJourTout.find(x => x.jour === j);
             const etat = v?.source
               ? <><Chf v={v.ttc} /> <span style={st.etatJour}>{v.source === 'manuel' ? 'saisi' : 'caisse'}</span></>
+              // Hôtel sans saisie ni caisse : les notes de séjour font le jour.
+              : notesCouvrent && v?.avecNotes ? <><Chf v={v.ttc} /> <span style={st.etatJour}>notes de séjour</span></>
               : j === aujourdhui ? <span style={st.etatJour}>pas encore saisi</span>
                 : ouvertsConnus && !joursOuverts.has(j) ? <span style={st.etatJour}>fermé</span>
                   : <span style={{ ...st.etatJour, color: 'var(--warning-text)' }}>manque</span>;

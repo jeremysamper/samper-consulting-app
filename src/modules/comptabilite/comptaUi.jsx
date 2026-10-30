@@ -52,5 +52,10 @@ export const st = {
   ligneDetail: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
   num: { fontFamily: 'var(--font-num)', fontSize: 14, color: 'var(--text)', whiteSpace: 'nowrap' },
   primaire: { minHeight: 44 },
-  lien: { background: 'none', border: 'none', padding: '6px 0', minHeight: 32, color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'inherit', textAlign: 'left' },
+  // Cible tactile de 44 px ; le texte du lien dans un seul <span> (une espace
+  // entre deux enfants d'un inline-flex disparaîtrait).
+  lien: {
+    display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: '0', minHeight: 44, color: 'var(--accent)',
+    textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'inherit', textAlign: 'left',
+  },
 };

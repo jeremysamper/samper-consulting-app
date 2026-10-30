@@ -9,7 +9,10 @@
 //     montant est compté à 8,1 % (dit à l'écran) ;
 //   - plus les lignes de note de séjour de l'hôtel, par taux de la ligne, hors
 //     encaissements et hors taxes de séjour et d'hébergement (perçues pour la
-//     commune). Une remise, négative, diminue le jour.
+//     commune). Une remise, négative, diminue le jour. Une nuitée ou une
+//     remise saisie à la main n'a pas de taux (SejourNote n'en pose un qu'aux
+//     extras) : elle prend le taux d'hébergement des nuitées du même jour (le
+//     plus fréquent), sinon celui des nuitées lues, sinon 3,8 %.
 // Montants saisis TVA comprise (le ticket Z du soir) ; le compte de résultat
 // est hors TVA. Le hors TVA d'un taux se calcule sur le total TTC du taux sur
 // la période, arrondi au centime une fois (D8), comme un décompte.
@@ -25,12 +28,28 @@ export const TAUX_VENTES = [
   { cle: '3.8', taux: 3.8, label: 'Hébergement (3,8 %)' },
 ];
 export const TAUX_CAISSE = 8.1;
+export const TAUX_HEBERGEMENT = 3.8;
 const NOTES_EXCLUES = new Set(['paiement', 'taxe_sejour', 'taxe_hebergement']);
+// Lignes de note qui suivent le taux d'hébergement quand elles n'en ont pas.
+const NOTES_HEBERGEMENT = new Set(['nuitee', 'remise']);
 const ORDRE_TAUX = TAUX_VENTES.map(t => t.taux);
 
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
 // Clé d'un taux : '8.1', '2.6', '3.8', '0'.
 export const cleTaux = (t) => String(nombre(t) ?? 0);
+
+// Taux d'hébergement d'un jour : le plus fréquent des nuitées qui ont un taux
+// ce jour-là, sinon sur toutes les nuitées lues, sinon 3,8 %.
+function tauxHebergementParJour(notes) {
+  const plusFrequent = (lignes) => {
+    const n = new Map();
+    lignes.forEach((l) => { const t = nombre(l.tvaTaux); n.set(t, (n.get(t) || 0) + 1); });
+    return [...n.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0] ?? null;
+  };
+  const nuitees = notes.filter(l => l.type === 'nuitee' && nombre(l.tvaTaux) != null);
+  const general = plusFrequent(nuitees) ?? TAUX_HEBERGEMENT;
+  return (j) => plusFrequent(nuitees.filter(l => l.jour === j)) ?? general;
+}
 
 // Une ligne par jour qui a au moins une source, triée par jour.
 //   manuel : [{ jour, taux, montantTtc }]   (ventes_jour)
@@ -59,13 +78,14 @@ export function ventesParJour({ manuel = [], pos = [], notes = [], debut = null,
     const x = jour(v.jour);
     x.pos = (x.pos || 0) + m;
   });
-  (notes || []).forEach((l) => {
-    const m = nombre(l.montant);
-    if (!dans(l.jour) || m == null || NOTES_EXCLUES.has(l.type)) return;
+  const notesRetenues = (notes || []).filter(l => dans(l.jour) && nombre(l.montant) != null && !NOTES_EXCLUES.has(l.type));
+  const tauxHebergement = tauxHebergementParJour(notesRetenues);
+  notesRetenues.forEach((l) => {
     const x = jour(l.jour);
     x.notes = x.notes || {};
-    const k = cleTaux(l.tvaTaux);
-    x.notes[k] = (x.notes[k] || 0) + m;
+    const taux = nombre(l.tvaTaux) == null && NOTES_HEBERGEMENT.has(l.type) ? tauxHebergement(l.jour) : l.tvaTaux;
+    const k = cleTaux(taux);
+    x.notes[k] = (x.notes[k] || 0) + nombre(l.montant);
   });
 
   return [...jours.values()].sort((a, b) => a.jour.localeCompare(b.jour)).map((x) => {
@@ -125,17 +145,24 @@ export function totauxVentes(parJour) {
 }
 
 // Jours attendus et jours manquants d'une période. Un jour est « ouvert »
-// quand il a au moins un horaire au planning ; s'il n'y a aucun horaire sur la
-// période, tous les jours comptent. Jusqu'à hier seulement : aujourd'hui ne
+// quand il a au moins un horaire au planning ; s'il n'y a aucun horaire sur le
+// mois, tous les jours du mois comptent. Jusqu'à hier seulement : aujourd'hui ne
 // compte que s'il est déjà saisi (la journée n'est pas finie). Un jour fermé
 // qui a un chiffre compte quand même.
+// Seule une saisie ou la caisse couvre un jour (D9), sauf `notesCouvrent` :
+// un hôtel sans saisie ni caisse (pas de restaurant suivi), dont les notes de
+// séjour sont tout le chiffre d'affaires ; un jour qui a des notes est alors
+// couvert.
 //   → { avec, attendus, manquants: [jour ISO] }
-export function couvertureVentes({ parJour, joursOuverts, debut, finEffective, aujourdhui }) {
+export function couvertureVentes({ parJour, joursOuverts, debut, finEffective, aujourdhui, notesCouvrent = false }) {
   const fin = finEffective && finEffective < aujourdhui ? finEffective : aujourdhui;
   const jours = listeJours(debut, fin);
   const ouverts = joursOuverts instanceof Set ? joursOuverts : new Set(joursOuverts || []);
-  const toutOuvert = !jours.some(j => ouverts.has(j));
-  const avecChiffre = new Set((parJour || []).filter(j => j.source).map(j => j.jour));
+  // Mois sans aucun horaire (planning pas encore tenu, ou pas lu) : tous ses
+  // jours comptent, sinon un trimestre dont seul le dernier mois a des
+  // horaires paraîtrait fermé deux mois sur trois.
+  const moisAvecHoraires = new Set([...ouverts].map(j => String(j).slice(0, 7)));
+  const avecChiffre = new Set((parJour || []).filter(j => j.source || (notesCouvrent && j.avecNotes)).map(j => j.jour));
   let avec = 0, attendus = 0;
   const manquants = [];
   jours.forEach((j) => {
@@ -144,7 +171,7 @@ export function couvertureVentes({ parJour, joursOuverts, debut, finEffective, a
       if (aChiffre) { avec += 1; attendus += 1; }
       return;
     }
-    const ouvert = toutOuvert || ouverts.has(j);
+    const ouvert = !moisAvecHoraires.has(j.slice(0, 7)) || ouverts.has(j);
     if (!ouvert && !aChiffre) return;
     attendus += 1;
     if (aChiffre) avec += 1;
@@ -159,8 +186,14 @@ export function joursSansChiffre(args) {
 }
 
 // Résumé d'une période pour la synthèse : totaux plus couverture.
-export function resumeVentes({ parJour, joursOuverts, debut, finEffective, aujourdhui }) {
-  return { ...totauxVentes(parJour), ...couvertureVentes({ parJour, joursOuverts, debut, finEffective, aujourdhui }) };
+export function resumeVentes({ parJour, joursOuverts, debut, finEffective, aujourdhui, notesCouvrent = false }) {
+  return { ...totauxVentes(parJour), ...couvertureVentes({ parJour, joursOuverts, debut, finEffective, aujourdhui, notesCouvrent }) };
+}
+
+// Les notes de séjour couvrent un jour (couvertureVentes) quand l'hébergement
+// est actif et qu'aucune saisie ni caisse n'existe dans les jours lus.
+export function notesCouvrentJours(parJour, hebergement) {
+  return !!hebergement && !(parJour || []).some(j => j.source);
 }
 
 // Les n derniers jours jusqu'à aujourd'hui, le plus récent d'abord

@@ -23,9 +23,16 @@ function Valeur({ v, pct, danger }) {
   );
 }
 
+// Un rang qui dépend du chiffre d'affaires (r.ventes) ne montre ni la valeur
+// de la période précédente ni l'écart quand celle-ci n'est pas comparable :
+// « 249,8 % » calculé sur 1 jour de ventes sur 9 serait faux. La colonne dit
+// « incomplet » à la place.
 function Rang({ r, libellePrec, comparable }) {
-  const avecEcart = !r.pct && !r.texte && !r.sansEcart && (comparable || !r.ventes);
+  const montrerB = comparable || !r.ventes;
+  const avecEcart = !r.pct && !r.texte && !r.sansEcart && montrerB;
   const e = avecEcart ? ecart(r.a, r.b) : null;
+  const prec = montrerB ? <Valeur v={r.b} pct={r.pct} />
+    : r.b == null ? <Valeur v={null} /> : <span style={{ fontSize: 12, color: 'var(--text2)' }}>incomplet</span>;
   return (
     <div className={`compta-rang${r.fort ? ' compta-rang--fort' : ''}`} data-rang={r.id}>
       <div style={{ minWidth: 0 }}>
@@ -36,14 +43,14 @@ function Rang({ r, libellePrec, comparable }) {
         {r.texte ? <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 400 }}>{r.texte}</span> : <Valeur v={r.a} pct={r.pct} danger={r.danger} />}
       </div>
       <div className="compta-col-prec" style={{ fontWeight: 400, color: 'var(--text2)' }}>
-        {r.texte ? null : <Valeur v={r.b} pct={r.pct} />}
+        {r.texte ? null : prec}
       </div>
       <div className="compta-col-ecart" style={{ fontSize: 13, fontWeight: 400, color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>
         {e && e !== 'n/a' ? e : null}
       </div>
       {!r.texte && libellePrec && (
         <div className="compta-sous-prec" style={{ ...ui.ligneDetail, fontWeight: 400 }}>
-          <span>{libellePrec}</span> : <Valeur v={r.b} pct={r.pct} />{e && e !== 'n/a' ? <>, <span>{e}</span></> : null}
+          <span>{libellePrec}</span> : {prec}{e && e !== 'n/a' ? <>, <span>{e}</span></> : null}
         </div>
       )}
     </div>
@@ -86,16 +93,26 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
     : etatPersonnel === 'absente' ? 'pas encore activé'
       : etatPersonnel === 'loading' ? 'chargement…'
         : etatPersonnel === 'error' ? 'lecture impossible' : null;
+  // Résultat : avant personnel (aucun coût chiffré), ou personnel partiel.
+  const detailResultat = s.avantPersonnel ? <span style={st.reserve}>avant personnel</span>
+    : s.personnelPartiel ? <span style={st.reserve}>personnel partiel</span> : null;
+  // TVA calculée sur trop peu de jours de ventes (tvaCompta, ventesCompletes).
+  const cvTva = s.tvaCouverture;
+  const detailTva = s.tvaEstimee != null && s.tvaComplete === false && cvTva ? (
+    <span style={st.reserve}>
+      <span>TVA incomplète, chiffre d'affaires connu</span> <span>{cvTva.avec}</span> <span>{pluriel(cvTva.avec, 'jour sur', 'jours sur')}</span> <span>{cvTva.attendus}</span>
+    </span>
+  ) : null;
   const rangs = [
     { id: 'ca', label: 'Chiffre d\'affaires hors TVA', a: s.ca, b: p?.ca, fort: true, ventes: true, detail: detailCa },
     { id: 'matiere', label: 'Coût matière', a: s.matiere.ht, b: p?.matiere.ht, detail: detailMatiere },
     { id: 'marge', label: 'Marge brute', a: s.margeBrute, b: p?.margeBrute, fort: true, danger: true, ventes: true },
     { id: 'personnel', label: 'Coût du personnel estimé', texte: textePersonnel, a: s.personnel, b: p?.personnel, detail: textePersonnel ? null : prorata },
     { id: 'charges', label: 'Charges fixes hors TVA', a: s.charges, b: p?.charges, detail: prorata },
-    { id: 'resultat', label: 'Résultat d\'exploitation estimé', a: s.resultat, b: p?.resultat, fort: true, danger: true, ventes: true, detail: s.avantPersonnel ? <>avant personnel</> : null },
-    { id: 'matierePct', label: 'Coût matière en % du chiffre d\'affaires', pct: true, a: s.ratios.matierePct, b: p?.ratios.matierePct },
-    { id: 'personnelPct', label: 'Coût du personnel en % du chiffre d\'affaires', pct: true, texte: textePersonnel, a: s.ratios.personnelPct, b: p?.ratios.personnelPct },
-    { id: 'tva', label: 'TVA estimée à payer sur la période', a: s.tvaEstimee, b: p?.tvaEstimee, pct: false, sansEcart: true },
+    { id: 'resultat', label: 'Résultat d\'exploitation estimé', a: s.resultat, b: p?.resultat, fort: true, danger: true, ventes: true, detail: detailResultat },
+    { id: 'matierePct', label: 'Coût matière en % du chiffre d\'affaires', pct: true, ventes: true, a: s.ratios.matierePct, b: p?.ratios.matierePct },
+    { id: 'personnelPct', label: 'Coût du personnel en % du chiffre d\'affaires', pct: true, ventes: true, texte: textePersonnel, a: s.ratios.personnelPct, b: p?.ratios.personnelPct },
+    { id: 'tva', label: 'TVA estimée à payer sur la période', a: s.tvaEstimee, b: p?.tvaEstimee, pct: false, sansEcart: true, ventes: true, detail: detailTva },
   ];
 
   const v = s.ventes || { jours: { manuel: 0, pos: 0, notes: 0 }, notesTtc: 0 };
@@ -117,7 +134,7 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
       {precedente && !comparable && p?.ventes?.attendus > 0 && (
         <p style={st.source} data-incomparable="">
           <span>{libellePrec}</span> : <span>chiffre d'affaires connu</span> <span>{p.ventes.avec}</span> <span>{pluriel(p.ventes.avec, 'jour sur', 'jours sur')}</span> <span>{p.ventes.attendus}</span> ;{' '}
-          <span>pas d'écart calculé sur le chiffre d'affaires, la marge et le résultat.</span>
+          <span>pas de comparaison pour ce qui dépend du chiffre d'affaires (marge, résultat, ratios, TVA).</span>
         </p>
       )}
 
@@ -163,5 +180,6 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
 }
 
 const st = {
+  reserve: { color: 'var(--warning-text)' },
   source: { margin: 0, fontSize: 13, color: 'var(--text2)', lineHeight: 1.55 },
 };
