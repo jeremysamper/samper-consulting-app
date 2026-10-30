@@ -65,7 +65,7 @@ export default function EcranMarges({ etabId, user, onRetour }) {
       legacySB.db.listRecettes(etabId, { strict: true }),
       legacySB.db.listPlats(etabId, { strict: true }),
       legacySB.db.listCartes(etabId, { strict: true }),
-      legacySB.db.listProduits(etabId),
+      legacySB.db.listProduits(etabId, { strict: true }),
     ]);
     return { recettes: recettes || [], plats: plats || [], cartes: cartes || [], produits: produits || [] };
   }, [etabId]);
