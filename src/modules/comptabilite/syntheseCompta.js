@@ -11,8 +11,9 @@
 // d'inventaire seulement, la variation de stock s'ajoute (stock du début moins
 // stock de la fin, dernier inventaire validé de chaque périmètre à la date).
 //
-// Une valeur inconnue vaut null (affichée « n/a »), jamais 0. Le personnel
-// arrive avec la partie 2 : sans lui, le résultat est « avant personnel ».
+// Une valeur inconnue vaut null (affichée « n/a »), jamais 0. Sans coût du
+// personnel (hors direction, ou salaires pas encore lisibles), le résultat
+// est « avant personnel ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { montantFacture, trierDocuments } from '../factures-achats/analysesAchats.js';
@@ -84,9 +85,9 @@ const pct = (part, tout) => (part != null && tout != null && tout > 0 ? (part / 
 //   ventes      : resumeVentes(...) de ventesCompta.js (ht null = inconnu)
 //   docs        : pièces d'achat (achats_documents mappés)
 //   charges     : charges fixes, ou null si la table n'est pas lisible
-//   personnel   : { total, ... } de la partie 2, ou null (« arrive bientôt »)
+//   personnel   : coutPersonnel(...) de personnelCompta.js, ou null
 //   inventaires : inventaires de l'établissement (période d'inventaire)
-//   tva         : état TVA de la partie 2 ({ due }), facultatif
+//   tva         : etatTva(...) de tvaCompta.js ({ due }), facultatif
 export function synthese({ periode, aujourdhui, ventes = null, docs = [], charges = null, personnel = null, inventaires = [], tva = null }) {
   const fin = finEffective(periode, aujourdhui);
   const ca = ventes?.ht ?? null;
@@ -110,7 +111,10 @@ export function synthese({ periode, aujourdhui, ventes = null, docs = [], charge
   if (achats.sansHt) ajouter('sansHt', achats.sansHt, pluriel(achats.sansHt, 'facture sans montant hors TVA', 'factures sans montant hors TVA'), 'achats');
   if (achats.sansTaux) ajouter('sansTaux', achats.sansTaux, pluriel(achats.sansTaux, 'facture sans taux de TVA', 'factures sans taux de TVA'), 'achats');
   if (personnel?.sansCout) ajouter('sansCout', personnel.sansCout, pluriel(personnel.sansCout, 'personne sans salaire ni coût moyen', 'personnes sans salaire ni coût moyen'), 'personnel');
-  if (personnel?.heuresPrevues) ajouter('nonPointees', personnel.heuresPrevues, pluriel(personnel.heuresPrevues, 'heure prévue non pointée', 'heures prévues non pointées'), 'personnel');
+  // Heures entières : « 12 heures prévues non pointées ».
+  const prevues = Math.round(personnel?.heuresPrevues || 0);
+  if (prevues) ajouter('nonPointees', prevues, pluriel(prevues, 'heure prévue non pointée', 'heures prévues non pointées'), 'personnel');
+  if (personnel?.apresMinuit) ajouter('apresMinuit', personnel.apresMinuit, pluriel(personnel.apresMinuit, 'horaire après minuit non compté', 'horaires après minuit non comptés'), 'personnel');
   if (charges && !charges.length) ajouter('aucuneCharge', 0, 'aucune charge fixe saisie', 'charges');
   if (doublons.length) ajouter('doublons', doublons.length, pluriel(doublons.length, 'possible doublon avec une charge fixe', 'possibles doublons avec une charge fixe'), 'achats');
   if (periode.type === 'inventaire' && stock.valeur == null) ajouter('inventaire', 0, 'pas d\'inventaire au début ou à la fin', 'ensemble');

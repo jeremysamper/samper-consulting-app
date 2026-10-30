@@ -14,6 +14,7 @@ const TEXTES = {
   sansTaux: ['facture sans taux de TVA', 'factures sans taux de TVA'],
   sansCout: ['personne sans salaire ni coût moyen', 'personnes sans salaire ni coût moyen'],
   nonPointees: ['heure prévue non pointée', 'heures prévues non pointées'],
+  apresMinuit: ['horaire après minuit non compté', 'horaires après minuit non comptés'],
   doublons: ['possible doublon avec une charge fixe', 'possibles doublons avec une charge fixe'],
   aucuneCharge: 'aucune charge fixe saisie',
   inventaire: 'pas d\'inventaire au début ou à la fin',

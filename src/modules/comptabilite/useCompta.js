@@ -2,12 +2,14 @@ import { useCallback, useMemo } from 'react';
 import { supabase } from '../../services/supabase.js';
 import { isModuleActiveForEtab } from '../moduleConfig.js';
 import { useAchatsDocuments } from '../inventaire/useAchatsDocuments.js';
-import { lirePeriode } from '../planning/contratsService.js';
+import { lirePeriode, useContrats } from '../planning/contratsService.js';
 import { bornesMois } from '../planning/soldesHeures.js';
 import { REGLAGES_DEFAUT, lireToutesLesPages, useLecture, useTableCompta } from './comptaService.js';
 import { ajouterJours, finEffective } from './periodesCompta.js';
 import { resumeVentes, ventesParJour } from './ventesCompta.js';
 import { synthese } from './syntheseCompta.js';
+import { coutPersonnel } from './personnelCompta.js';
+import { etatTva, periodeTva } from './tvaCompta.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Toutes les lectures de la Comptabilité pour une période, et les calculs qui
@@ -15,10 +17,15 @@ import { synthese } from './syntheseCompta.js';
 // par Comptabilite.jsx, seulement pour qui peut lire les chiffres (D5) : sans
 // ce droit, aucune lecture n'est lancée.
 //
-// Fenêtre de lecture des ventes : de la période précédente (comparaison) ou
-// des 14 derniers jours (écran Chiffre du jour) jusqu'à aujourd'hui, ou la fin
-// de la période si elle court encore. Horaires lus mois par mois par
-// lirePeriode du Planning (jours ouverts), sans le modifier.
+// Fenêtre de lecture des ventes : de la période précédente (comparaison), des
+// 14 derniers jours (écran Chiffre du jour) ou du décompte de TVA précédent
+// (écran TVA), jusqu'à aujourd'hui, ou la fin de la période si elle court
+// encore. Horaires lus mois par mois par lirePeriode du Planning (jours
+// ouverts, heures du personnel), sans le modifier.
+//
+// Personnel (D4, D14) : salaires estimés et contrats lus pour la direction
+// seulement (consultant, patron) ; pour qui règle les factures sans être de la
+// direction, le coût du personnel reste « réservé à la direction ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PRET = new Set(['ready', 'absente', 'inactif']);
@@ -67,18 +74,25 @@ async function lireCaisse(etabId, debut, fin) {
   return { connexions: conns.length, lignes };
 }
 
-export function useCompta({ etablissement, periode, precedente, aujourdhui, inventaires, actif = true }) {
+export function useCompta({ etablissement, periode, precedente, aujourdhui, inventaires, direction = false, actif = true }) {
   const etabId = etablissement?.id || null;
   const hebergement = isModuleActiveForEtab(etablissement, 'hebergement');
   const finEff = finEffective(periode, aujourdhui);
   const quinzaine = ajouterJours(aujourdhui, -13);
-  const debutLecture = [precedente?.debut, periode.debut, quinzaine].filter(Boolean).sort()[0];
-  const finLecture = periode.fin > aujourdhui ? periode.fin : aujourdhui;
 
   // ── Tables neuves ──
+  const reglagesLus = useTableCompta('compta_reglages', etabId, { actif, ordre: ['etablissement_id'] });
+  const reglages = useMemo(() => ({ ...REGLAGES_DEFAUT, ...(reglagesLus.lignes[0] || {}) }), [reglagesLus.lignes]);
+  // Décompte de TVA précédent : le premier jour de vente dont l'écran TVA a besoin.
+  const tvaPrecedente = periodeTva(aujourdhui, reglages.methodeTva, -1);
+  const debutLecture = [precedente?.debut, periode.debut, quinzaine, tvaPrecedente.debut].filter(Boolean).sort()[0];
+  const finLecture = periode.fin > aujourdhui ? periode.fin : aujourdhui;
+
   const ventesJour = useTableCompta('ventes_jour', etabId, { debut: debutLecture, fin: finLecture, colonneDate: 'jour', actif, ordre: ['jour', 'taux'] });
   const charges = useTableCompta('charges_fixes', etabId, { actif, ordre: ['debut', 'id'] });
-  const reglagesLus = useTableCompta('compta_reglages', etabId, { actif, ordre: ['etablissement_id'] });
+  // Salaires : direction seulement (RLS) ; pour un autre, une liste vide mentirait.
+  const salaires = useTableCompta('salaires_estimes', etabId, { actif: actif && direction, ordre: ['debut', 'id'] });
+  const contratsLus = useContrats(actif && direction ? etabId : null);
 
   // ── Lectures existantes ──
   const achats = useAchatsDocuments(etabId, { actif });
@@ -109,7 +123,14 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   const docs = Array.isArray(achats.docs) ? achats.docs : [];
   const listeInventaires = inventaires?.data || [];
   const chargesListe = charges.status === 'ready' ? charges.lignes : null;
-  const reglages = useMemo(() => ({ ...REGLAGES_DEFAUT, ...(reglagesLus.lignes[0] || {}) }), [reglagesLus.lignes]);
+
+  // Personnel : prêt quand horaires, salaires, contrats et réglages sont lus.
+  // Sans la migration (salaires absents), il n'est pas estimé.
+  const contratsStatut = contratsLus.status === 'absent' ? 'ready' : contratsLus.status;
+  const personnelEtat = !direction ? 'inactif'
+    : salaires.status === 'absente' ? 'absente'
+      : etatDe(horaires.status, salaires.status, contratsStatut, reglagesLus.status === 'absente' ? 'ready' : reglagesLus.status);
+  const personnelPret = personnelEtat === 'ready';
 
   const parJourTout = useMemo(() => ventesParJour({
     manuel: ventesJour.lignes,
@@ -124,14 +145,39 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
     const resume = (p) => resumeVentes({
       parJour: parJourTout.filter(dans(p)), joursOuverts, debut: p.debut, finEffective: finEffective(p, aujourdhui), aujourdhui,
     });
+    // Personnes suivies : contrats qui couvrent une partie de la période.
+    const personnel = (p) => {
+      if (!personnelPret) return null;
+      const fin = finEffective(p, aujourdhui);
+      const personnes = contratsLus.contrats.filter(c => c.debut <= fin && (!c.fin || c.fin >= p.debut)).map(c => c.profileId);
+      return coutPersonnel({ personnes, salaires: salaires.lignes, shifts: horaires.data || [], reglages, debut: p.debut, fin: p.fin, aujourdhui });
+    };
+    const tva = (p) => etatTva({ ventes: parJourTout, docs, charges: chargesListe, reglages, debut: p.debut, fin: p.fin, aujourdhui });
+
     const ventes = resume(periode);
-    const courante = synthese({ periode, aujourdhui, ventes, docs, charges: chargesListe, personnel: null, inventaires: listeInventaires });
-    const ventesPrec = precedente ? resume(precedente) : null;
-    const prec = precedente
-      ? synthese({ periode: precedente, aujourdhui, ventes: ventesPrec, docs, charges: chargesListe, personnel: null, inventaires: listeInventaires })
-      : null;
+    const personnelCourant = personnel(periode);
+    const courante = synthese({ periode, aujourdhui, ventes, docs, charges: chargesListe, personnel: personnelCourant, inventaires: listeInventaires, tva: tva(periode) });
+    let prec = null;
+    if (precedente) {
+      // Horaires de l'année précédente non lus (24 mois de lectures pour un
+      // écart) : pas de personnel, donc pas de résultat comparable.
+      const personnelPrec = precedente.type === 'annee' ? null : personnel(precedente);
+      prec = synthese({ periode: precedente, aujourdhui, ventes: resume(precedente), docs, charges: chargesListe, personnel: personnelPrec, inventaires: listeInventaires, tva: tva(precedente) });
+      if (personnelCourant && !personnelPrec) prec = { ...prec, resultat: null };
+    }
     return { parJour: parJourTout.filter(dans(periode)), synthese: courante, precedente: prec };
-  }, [parJourTout, joursOuverts, periode, precedente, aujourdhui, docs, chargesListe, listeInventaires]);
+  }, [parJourTout, joursOuverts, periode, precedente, aujourdhui, docs, chargesListe, listeInventaires,
+    personnelPret, contratsLus.contrats, salaires.lignes, horaires.data, reglages]);
+
+  // Décomptes de TVA : le précédent (à déclarer) et celui en cours ; montré
+  // d'abord, le précédent tant que son échéance n'est pas passée.
+  const tva = useMemo(() => {
+    const decomptes = [-1, 0].map((decalage) => {
+      const p = periodeTva(aujourdhui, reglages.methodeTva, decalage);
+      return { periode: p, etat: etatTva({ ventes: parJourTout, docs, charges: chargesListe, reglages, debut: p.debut, fin: p.fin, aujourdhui }) };
+    });
+    return { decomptes, defaut: decomptes[0].periode.echeance >= aujourdhui ? 0 : 1 };
+  }, [aujourdhui, reglages, parJourTout, docs, chargesListe]);
 
   // ── États ──
   const achatsStatut = achats.docs === null ? 'loading' : (achats.loadError && !docs.length ? 'error' : 'ready');
@@ -142,22 +188,29 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
     matiere: periode.type === 'inventaire' ? etatDe(achatsStatut, inventaires?.status || 'loading') : achatsStatut,
     charges: charges.status,
     reglages: reglagesLus.status,
+    personnel: personnelEtat,
   };
-  etats.resultat = etatDe(etats.ventes, etats.matiere, etats.charges === 'absente' ? 'ready' : etats.charges);
+  const pretOuAbsent = (s) => (s === 'absente' || s === 'inactif' ? 'ready' : s);
+  etats.resultat = etatDe(etats.ventes, etats.matiere, pretOuAbsent(etats.charges), pretOuAbsent(personnelEtat));
+  // TVA : ventes, achats et charges fixes (sans la migration, sans les charges).
+  etats.tva = etatDe(etats.ventes, achatsStatut, pretOuAbsent(etats.charges), pretOuAbsent(reglagesLus.status));
   const migrationAbsente = [ventesJour.status, charges.status, reglagesLus.status].includes('absente');
-  const enEchec = [ventesJour, charges, reglagesLus, caisse, notes, horaires, inventaires].some(l => l?.enEchec)
+  const enEchec = [ventesJour, charges, reglagesLus, salaires, caisse, notes, horaires, inventaires].some(l => l?.enEchec)
     || (achats.loadError && docs.length > 0);
 
   const reloadTout = useCallback(() => Promise.all([
-    ventesJour.reload(), charges.reload(), reglagesLus.reload(), caisse.reload(), notes.reload(), horaires.reload(),
+    ventesJour.reload(), charges.reload(), reglagesLus.reload(), salaires.reload(), caisse.reload(), notes.reload(), horaires.reload(),
     inventaires?.reload?.(), achats.reload(),
-  ]), [ventesJour.reload, charges.reload, reglagesLus.reload, caisse.reload, notes.reload, horaires.reload, inventaires, achats.reload]);
+  ]), [ventesJour.reload, charges.reload, reglagesLus.reload, salaires.reload, caisse.reload, notes.reload, horaires.reload, inventaires, achats.reload]);
 
   return {
     hebergement,
     ventesJour,
     charges,
+    salaires,
+    contrats: contratsLus,
     reglages,
+    reglagesLus,
     achats,
     docs,
     caisse,
@@ -165,6 +218,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
     joursOuverts,
     parJourTout,
     ...calculs,
+    tva,
     etats,
     migrationAbsente,
     enEchec,

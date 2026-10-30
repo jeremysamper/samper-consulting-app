@@ -106,6 +106,25 @@ test('période d\'inventaire : la variation de stock s\'ajoute aux achats', () =
   assert.ok(s2.manques.some(m => m.id === 'inventaire'));
 });
 
+test('avec le personnel et la TVA : résultat après personnel, ratio, TVA estimée, manques du personnel', () => {
+  const parJour = ventesParJour({ manuel: [{ jour: '2026-10-02', taux: 8.1, montantTtc: 21620 }] });
+  const ventes = resumeVentes({ parJour, joursOuverts: new Set(['2026-10-02']), debut: oct.debut, finEffective: '2026-10-30', aujourdhui: '2026-10-30' });
+  const personnel = { total: 5000, sansCout: 1, heuresPrevues: 11.6, apresMinuit: 2 };
+  const s = synthese({ periode: oct, aujourdhui: '2026-10-30', ventes, docs, charges, personnel, tva: { due: 1234.5 } });
+  assert.equal(s.ca, 20000);
+  assert.equal(s.personnel, 5000);
+  assert.equal(s.avantPersonnel, false);
+  assert.equal(s.resultat, round(20000 - 5894.45 - 5000 - 6723.01));
+  assert.equal(s.ratios.personnelPct, 25);
+  assert.equal(s.tvaEstimee, 1234.5);
+  const m = Object.fromEntries(s.manques.map(x => [x.id, x]));
+  assert.equal(m.sansCout.texte, '1 personne sans salaire ni coût moyen');
+  assert.equal(m.nonPointees.n, 12);
+  assert.equal(m.nonPointees.texte, '12 heures prévues non pointées');
+  assert.equal(m.apresMinuit.texte, '2 horaires après minuit non comptés');
+  assert.equal(m.apresMinuit.ecran, 'personnel');
+});
+
 test('période précédente incomplète : chiffre d\'affaires non comparable', () => {
   assert.equal(ventesComparables({ ht: 1000, avec: 1, attendus: 30 }), false);
   assert.equal(ventesComparables({ ht: 1000, avec: 24, attendus: 30 }), true);

@@ -17,6 +17,9 @@ import EcranChiffreJour from './EcranChiffreJour.jsx';
 import EcranVentes from './EcranVentes.jsx';
 import EcranAchats from './EcranAchats.jsx';
 import EcranCharges from './EcranCharges.jsx';
+import EcranPersonnel from './EcranPersonnel.jsx';
+import EcranMarges from './EcranMarges.jsx';
+import EcranTva from './EcranTva.jsx';
 import FenetreReglages from './FenetreReglages.jsx';
 import { useLecture } from './comptaService.js';
 import { useCompta } from './useCompta.js';
@@ -40,12 +43,15 @@ import {
 //
 // Écrans (socle des parcours) : accueil (période, quatre cartes, ce qui
 // manque, tuiles), Vue d'ensemble, Chiffre du jour, Ventes, Achats, Charges
-// fixes. Calculs dans des fonctions pures (periodesCompta, ventesCompta,
-// chargesFixes, syntheseCompta), lectures dans useCompta.
+// fixes, Personnel (consultant et patron), Marges, TVA (droit « Régler les
+// factures »). Calculs dans des fonctions pures (periodesCompta, ventesCompta,
+// chargesFixes, personnelCompta, tvaCompta, syntheseCompta et
+// src/utils/chiffrage.js), lectures dans useCompta (Marges lit ses fiches à
+// son ouverture seulement).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CLE_PERIODE = 'sc_comptabilite_periode';
-const ECRANS_REPRIS = ['ensemble', 'ventes', 'achats', 'charges'];
+const ECRANS_REPRIS = ['ensemble', 'ventes', 'achats', 'charges', 'marges'];
 
 export default function Comptabilite({ user, etablissement, setPage }) {
   const direction = ['consultant', 'patron'].includes(user?.role);
@@ -109,10 +115,12 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     writeJson(CLE_PERIODE, { type: t });
   };
 
-  const data = useCompta({ etablissement, periode: periodeCalcul, precedente, aujourdhui, inventaires });
+  const data = useCompta({ etablissement, periode: periodeCalcul, precedente, aujourdhui, inventaires, direction });
 
+  // Un écran soumis à un droit n'est repris que si le droit est là.
+  const repris = [...ECRANS_REPRIS, ...(direction ? ['personnel'] : []), ...(peutEcrire ? ['tva'] : [])];
   const { ecran, setEcran, retourAccueil } = useEcranModule('comptabilite', {
-    repris: ECRANS_REPRIS,
+    repris,
     surRetour: () => setJourSaisie(null),
   });
   const ouvrir = (e) => { if (e) setEcran(e); };
@@ -162,6 +170,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
           aujourdhui={aujourdhui}
           data={{ ...data, manquesVisibles }}
           direction={direction}
+          peutEcrire={peutEcrire}
           onOuvrir={ouvrir}
         />
       )}
@@ -175,6 +184,9 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
             precedente={precedente}
             hebergement={data.hebergement}
             comparable={etats.couverture === 'ready' && ventesComparables(data.precedente?.ventes)}
+            direction={direction}
+            etatPersonnel={etats.personnel}
+            reglages={data.reglages}
           />
         </EcranTache>
       )}
@@ -238,6 +250,42 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
           onRetour={retourAccueil}
           onChange={data.charges.reload}
         />
+      )}
+
+      {ecran === 'personnel' && direction && (
+        <EcranPersonnel
+          etabId={etabId}
+          libelle={libellePeriode(periodeCalcul)}
+          periode={periodeCalcul}
+          aujourdhui={aujourdhui}
+          personnel={s.personnelDetail}
+          etat={etats.personnel}
+          salaires={data.salaires.lignes}
+          onRetour={retourAccueil}
+          onChange={data.salaires.reload}
+        />
+      )}
+
+      {ecran === 'marges' && (
+        <EcranMarges etabId={etabId} user={user} onRetour={retourAccueil} />
+      )}
+
+      {ecran === 'tva' && peutEcrire && (
+        <EcranTache
+          titre="TVA"
+          etat={data.reglages.methodeTva === 'tdfn' ? 'Taux de la dette fiscale nette, décompte par semestre' : 'Méthode effective, décompte par trimestre'}
+          onRetour={retourAccueil}
+        >
+          <EcranTva
+            key={data.reglages.methodeTva}
+            decomptes={data.tva.decomptes}
+            defaut={data.tva.defaut}
+            etat={etats.tva}
+            chargesAbsentes={data.charges.status === 'absente'}
+            charges={data.charges.status === 'ready' ? data.charges.lignes : null}
+            docs={data.docs}
+          />
+        </EcranTache>
       )}
 
       {fenetre === 'reglages' && peutEcrire && (

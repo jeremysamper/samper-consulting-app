@@ -8,8 +8,8 @@ import { TAUX_VENTES } from './ventesCompta.js';
 // Vue d'ensemble : le compte de résultat estimé de la période, comparé à la
 // période précédente, puis d'où vient chaque chiffre. Quatre colonnes sur un
 // conteneur large ; sur téléphone, libellé et valeur, la période précédente
-// et l'écart en petit dessous (compta.css). Le personnel et la TVA estimée
-// arrivent avec la partie 2 : leur ligne le dit.
+// et l'écart en petit dessous (compta.css). Le coût du personnel n'est montré
+// qu'à la direction (consultant, patron).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NOMS_TAUX = { 8.1: 'sur place', 2.6: 'à l\'emporter', 3.8: 'hébergement' };
@@ -24,7 +24,7 @@ function Valeur({ v, pct, danger }) {
 }
 
 function Rang({ r, libellePrec, comparable }) {
-  const avecEcart = !r.pct && !r.texte && (comparable || !r.ventes);
+  const avecEcart = !r.pct && !r.texte && !r.sansEcart && (comparable || !r.ventes);
   const e = avecEcart ? ecart(r.a, r.b) : null;
   return (
     <div className={`compta-rang${r.fort ? ' compta-rang--fort' : ''}`} data-rang={r.id}>
@@ -50,7 +50,7 @@ function Rang({ r, libellePrec, comparable }) {
   );
 }
 
-export default function EcranEnsemble({ s, p, periode, precedente, hebergement, comparable }) {
+export default function EcranEnsemble({ s, p, periode, precedente, hebergement, comparable, direction, etatPersonnel, reglages }) {
   const libelleCourant = libellePeriode(periode);
   const libellePrec = precedente ? libellePeriode(precedente) : '';
 
@@ -80,20 +80,28 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
     </>
   );
 
+  const prorata = s.prorata ? <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></> : null;
+  // Personnel : hors direction, la ligne le dit au lieu d'un chiffre.
+  const textePersonnel = !direction ? 'réservé à la direction'
+    : etatPersonnel === 'absente' ? 'pas encore activé'
+      : etatPersonnel === 'loading' ? 'chargement…'
+        : etatPersonnel === 'error' ? 'lecture impossible' : null;
   const rangs = [
     { id: 'ca', label: 'Chiffre d\'affaires hors TVA', a: s.ca, b: p?.ca, fort: true, ventes: true, detail: detailCa },
     { id: 'matiere', label: 'Coût matière', a: s.matiere.ht, b: p?.matiere.ht, detail: detailMatiere },
     { id: 'marge', label: 'Marge brute', a: s.margeBrute, b: p?.margeBrute, fort: true, danger: true, ventes: true },
-    { id: 'personnel', label: 'Coût du personnel estimé', texte: 'arrive bientôt' },
-    { id: 'charges', label: 'Charges fixes hors TVA', a: s.charges, b: p?.charges, detail: s.prorata ? <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></> : null },
+    { id: 'personnel', label: 'Coût du personnel estimé', texte: textePersonnel, a: s.personnel, b: p?.personnel, detail: textePersonnel ? null : prorata },
+    { id: 'charges', label: 'Charges fixes hors TVA', a: s.charges, b: p?.charges, detail: prorata },
     { id: 'resultat', label: 'Résultat d\'exploitation estimé', a: s.resultat, b: p?.resultat, fort: true, danger: true, ventes: true, detail: s.avantPersonnel ? <>avant personnel</> : null },
     { id: 'matierePct', label: 'Coût matière en % du chiffre d\'affaires', pct: true, a: s.ratios.matierePct, b: p?.ratios.matierePct },
-    { id: 'personnelPct', label: 'Coût du personnel en % du chiffre d\'affaires', texte: 'arrive bientôt' },
-    { id: 'tva', label: 'TVA estimée à payer sur la période', texte: 'arrive bientôt' },
+    { id: 'personnelPct', label: 'Coût du personnel en % du chiffre d\'affaires', pct: true, texte: textePersonnel, a: s.ratios.personnelPct, b: p?.ratios.personnelPct },
+    { id: 'tva', label: 'TVA estimée à payer sur la période', a: s.tvaEstimee, b: p?.tvaEstimee, pct: false, sansEcart: true },
   ];
 
   const v = s.ventes || { jours: { manuel: 0, pos: 0, notes: 0 }, notesTtc: 0 };
   const nCharges = s.chargesDetail?.lignes.length || 0;
+  const pd = s.personnelDetail;
+  const tdfn = reglages?.methodeTva === 'tdfn';
 
   return (
     <div style={ui.page}>
@@ -131,12 +139,24 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
             <span>Variation de stock : inventaires validés du</span> <span>{dateCH(stock.dateDebut)}</span> <span>et du</span> <span>{dateCH(stock.dateFin)}</span>.
           </p>
         )}
+        {pd && (
+          <p style={st.source} data-source-personnel="">
+            <span>Personnel :</span> <span>{pd.parSource.mensuel + pd.parSource.horaire}</span>{' '}
+            <span>{pluriel(pd.parSource.mensuel + pd.parSource.horaire, 'salaire saisi,', 'salaires saisis,')}</span>{' '}
+            <span>{pd.parSource.moyen}</span> <span>au coût moyen, charges sociales de</span> <span>{pd.chargesPct}</span> <span>%.</span>
+          </p>
+        )}
         {s.chargesDetail && (
           <p style={st.source}>
             <span>Charges fixes :</span> <span>{nCharges}</span> <span>{pluriel(nCharges, 'charge répartie par mois.', 'charges réparties par mois.')}</span>
           </p>
         )}
-        <p style={st.source}>Le coût du personnel et la TVA estimée arrivent bientôt dans ce module.</p>
+        <p style={st.source} data-source-tva="">
+          {!tdfn ? <span>TVA : ventes moins TVA des achats et des charges fixes, méthode effective.</span>
+            : reglages?.tauxTdfn != null
+              ? <><span>TVA : chiffre d'affaires TVA comprise fois votre taux de la dette fiscale nette de</span> <span>{tauxTexte(reglages.tauxTdfn)}</span>.</>
+              : <span>TVA : saisissez votre taux de la dette fiscale nette dans les Réglages.</span>}
+        </p>
       </section>
     </div>
   );

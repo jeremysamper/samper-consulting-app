@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Coins, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
+import { Building2, ChartPie, Coins, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import BarrePeriode from './BarrePeriode.jsx';
 import CarteChiffre from './CarteChiffre.jsx';
@@ -15,7 +15,8 @@ import { moyenneMensuelle } from './chargesFixes.js';
 // chiffre (chiffre d'affaires, coût matière, coût du personnel, résultat
 // estimé), la ligne « Pour des chiffres justes », puis une tuile par tâche, et
 // la phrase qui dit ce que le module n'est pas. Une tuile hors droit n'est pas
-// rendue. Nombres et dates dans leurs propres nœuds.
+// rendue (Personnel : consultant et patron ; TVA : « Régler les factures »).
+// Nombres et dates dans leurs propres nœuds.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PIED = 'La comptabilité de l\'app prépare vos chiffres et vos pièces pour la fiduciaire. Elle ne tient pas les comptes et n\'établit ni le décompte TVA officiel ni les salaires.';
@@ -28,7 +29,7 @@ function Comparaison({ a, b, precedente, comparable = true }) {
 }
 
 export default function AccueilCompta({
-  barre, periode, precedente, aujourdhui, data, direction, onOuvrir,
+  barre, periode, precedente, aujourdhui, data, direction, peutEcrire, onOuvrir,
 }) {
   const s = data.synthese;
   const p = data.precedente;
@@ -50,6 +51,23 @@ export default function AccueilCompta({
       : <>sans variation de stock</>,
     s.matiere.ht != null && <Comparaison a={s.matiere.ht} b={p?.matiere.ht} precedente={precedente} />,
   ];
+  // Coût du personnel : direction seulement ; « Pas encore activé » sans la
+  // migration (salaires_estimes absente).
+  const etatPersonnel = etats.personnel;
+  // Rien à chiffrer : personne sur la période, ou aucun salaire ni coût moyen.
+  const personnelVide = s.personnel == null && s.personnelDetail
+    ? (s.personnelDetail.lignes.length ? <>salaires à saisir</> : <>aucun contrat ni horaire sur la période</>)
+    : null;
+  const personnelLignes = !direction ? [<>réservé à la direction</>]
+    : etatPersonnel === 'absente' ? [<>Pas encore activé</>]
+      : personnelVide ? [personnelVide]
+        : [
+          s.ratios.personnelPct != null && <><span>{pctTexte(s.ratios.personnelPct)}</span> <span>du chiffre d'affaires</span></>,
+          <>estimé, charges sociales comprises</>,
+          s.prorata && <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></>,
+          <Comparaison key="comparaison" a={s.personnel} b={p?.personnel} precedente={precedente} />,
+        ];
+
   const resultatLignes = [
     s.avantCharges
       ? <>avant charges fixes</>
@@ -88,7 +106,25 @@ export default function AccueilCompta({
         : data.charges.status !== 'ready' ? null
           : nCharges ? <><span>{nCharges}</span> <span>{pluriel(nCharges, 'charge,', 'charges,')}</span> <Chf v={moyenne.ttc} /> <span>par mois</span></> : <>Aucune charge saisie</>,
     },
-  ];
+    direction && {
+      id: 'personnel', libelle: 'Personnel', Icone: Users, onClick: () => onOuvrir('personnel'),
+      etat: etatPersonnel === 'absente' ? <>Pas encore activé</>
+        : etatPersonnel !== 'ready' ? null
+          : personnelVide || <><Chf v={s.personnel} /> <span>estimés</span></>,
+    },
+    // Pas de chiffre calculé : les fiches ne sont lues qu'à l'ouverture (D25).
+    { id: 'marges', libelle: 'Marges', Icone: ChartPie, onClick: () => onOuvrir('marges'), etat: <>par plat et par carte</> },
+    peutEcrire && {
+      id: 'tva', libelle: 'TVA', Icone: Percent, onClick: () => onOuvrir('tva'),
+      etat: etats.tva !== 'ready' ? null : (() => {
+        const d = data.tva.decomptes[data.tva.defaut];
+        if (d.etat.due == null) return <span>{d.periode.libelle}</span>;
+        return d.etat.due < 0
+          ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span></>
+          : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span></>;
+      })(),
+    },
+  ].filter(Boolean);
 
   return (
     <>
@@ -107,11 +143,18 @@ export default function AccueilCompta({
               id="matiere" titre="Coût matière" Icone={Receipt} etat={etats.matiere}
               valeur={<Chf v={s.matiere.ht} entier />} lignes={matiereLignes} onClick={() => onOuvrir('achats')}
             />
-            <CarteChiffre
-              id="personnel" titre="Coût du personnel" Icone={Users}
-              valeur={<span style={{ color: 'var(--text3)' }}>n/a</span>}
-              lignes={[direction ? <>arrive bientôt</> : <>réservé à la direction</>]}
-            />
+            {direction && etatPersonnel !== 'absente' ? (
+              <CarteChiffre
+                id="personnel" titre="Coût du personnel" Icone={Users} etat={etatPersonnel}
+                valeur={<Chf v={s.personnel} entier />} lignes={personnelLignes} onClick={() => onOuvrir('personnel')}
+              />
+            ) : (
+              <CarteChiffre
+                id="personnel" titre="Coût du personnel" Icone={Users}
+                valeur={<span style={{ color: 'var(--text2)' }}>n/a</span>}
+                lignes={personnelLignes}
+              />
+            )}
             <CarteChiffre
               id="resultat" titre="Résultat estimé" Icone={Scale} etat={etats.resultat}
               valeur={<Chf v={s.resultat} entier />} lignes={resultatLignes} onClick={() => onOuvrir('ensemble')}
