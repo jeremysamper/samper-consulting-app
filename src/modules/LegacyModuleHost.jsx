@@ -22,6 +22,8 @@ const loadHACCP = () => import('./haccp/HACCP.jsx');
 const loadInventaire = () => import('./inventaire/Inventaire.jsx');
 const loadFacturesAchats = () => import('./factures-achats/FacturesAchats.jsx');
 const loadJournal = () => import('./journal/Journal.jsx');
+// Comptabilité : module de la direction, pas de préchargement idle (D25).
+const loadComptabilite = () => import('./comptabilite/Comptabilite.jsx');
 const loadKds = () => import('./kds/Kds.jsx');
 const loadMep = () => import('./mep/MiseEnPlace.jsx');
 const loadMessages = () => import('./messages/Messages.jsx');
@@ -60,6 +62,7 @@ const HACCP = lazy(loadHACCP);
 const Inventaire = lazy(loadInventaire);
 const FacturesAchats = lazy(loadFacturesAchats);
 const Journal = lazy(loadJournal);
+const Comptabilite = lazy(loadComptabilite);
 const Kds = lazy(loadKds);
 const Mep = lazy(loadMep);
 const Messages = lazy(loadMessages);
@@ -206,6 +209,13 @@ export default function LegacyModuleHost({
       // Garde dure par rôle, miroir de la RLS de journal_activite.
       return ['consultant', 'patron'].includes(user.role) && permissions.journal !== false
         ? wrap("Journal d'activité", <Journal user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'comptabilite': {
+      // Une clé absente ne vaut jamais « ouvert » (comme Réservations) : la
+      // direction par défaut, un écart personnel possible (Rôles & accès).
+      return permissions.comptabilite === true
+        ? wrap('Comptabilité', <Comptabilite user={user} etablissement={etablissement} setPage={setPage} />)
         : accessDenied;
     }
     case 'cartes': {

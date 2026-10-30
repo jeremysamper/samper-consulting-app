@@ -1,7 +1,7 @@
 import {
   BedDouble, BookOpen, BrushCleaning, Croissant, NotebookPen, Ticket, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
   LayoutDashboard, LayoutGrid, ListChecks, MessageSquare, Monitor, Package, Receipt, ReceiptSwissFranc, ScrollText,
-  ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wrench,
+  ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wallet, Wrench,
 } from 'lucide-react';
 
 // Pictogramme au trait (lucide) de chaque module, pour les gros boutons de la
@@ -12,6 +12,7 @@ const ICONES = {
   planning: CalendarClock,
   messages: MessageSquare,
   journal: ScrollText,
+  comptabilite: Wallet,
   cartes: BookOpen,
   inventaire: Package,
   achats: ReceiptSwissFranc,
