@@ -2463,16 +2463,23 @@ export function installLegacySupabase() {
     // Lecture lourde (jointures imbriquées) → cache court + dédup in-flight.
     // Invalidée immédiatement par les écritures produits/fournisseurs ci-dessous
     // et par les events realtime (via subscribeReload → _invalidateForTables).
-    async listProduits(etabId) {
-      return _cachedRead('produits', etabId, async () => {
-        let q = client.from('produits')
-          .select(`*, fournisseurs(nom), produit_fournisseurs(id,fournisseur_id,prix_achat,conditionnement,quantite_cond,unite_cond,prix_unitaire,est_principal,reference,fournisseurs(nom))`)
-          .order('categorie').order('nom');
-        if (etabId) q = q.eq('etablissement_id', etabId);
-        const { data, error } = await q;
-        if (error) { console.error('[listProduits]', error); return []; }
-        return (data || []).map(r => this.mapProduitFromDB(r));
-      });
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer []. Une
+    // erreur n'est jamais gardée en cache (_cachedRead l'efface) : la lecture
+    // suivante repart vers la base.
+    async listProduits(etabId, { strict = false } = {}) {
+      try {
+        return await _cachedRead('produits', etabId, async () => {
+          let q = client.from('produits')
+            .select(`*, fournisseurs(nom), produit_fournisseurs(id,fournisseur_id,prix_achat,conditionnement,quantite_cond,unite_cond,prix_unitaire,est_principal,reference,fournisseurs(nom))`)
+            .order('categorie').order('nom');
+          if (etabId) q = q.eq('etablissement_id', etabId);
+          const { data, error } = await q;
+          if (error) throw error;
+          return (data || []).map(r => this.mapProduitFromDB(r));
+        });
+      } catch (error) {
+        return _readFailed('[listProduits]', error, strict);
+      }
     },
     async searchProduits(etabId, query) {
       // Recherche full-text rapide
