@@ -1,5 +1,6 @@
 import React from 'react';
-import { Building2, ChartPie, Coins, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
+import { Building2, CalendarRange, ChartPie, Coins, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
+import { echeancier } from '../factures-achats/analysesAchats.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import BarrePeriode from './BarrePeriode.jsx';
 import CarteChiffre from './CarteChiffre.jsx';
@@ -15,8 +16,8 @@ import { moyenneMensuelle } from './chargesFixes.js';
 // chiffre (chiffre d'affaires, coût matière, coût du personnel, résultat
 // estimé), la ligne « Pour des chiffres justes », puis une tuile par tâche, et
 // la phrase qui dit ce que le module n'est pas. Une tuile hors droit n'est pas
-// rendue (Personnel : consultant et patron ; TVA : « Régler les factures »).
-// Nombres et dates dans leurs propres nœuds.
+// rendue (Personnel : consultant et patron ; TVA, Banque et Trésorerie :
+// « Régler les factures »). Nombres et dates dans leurs propres nœuds.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PIED = 'La comptabilité de l\'app prépare vos chiffres et vos pièces pour la fiduciaire. Elle ne tient pas les comptes et n\'établit ni le décompte TVA officiel ni les salaires.';
@@ -122,6 +123,24 @@ export default function AccueilCompta({
         return d.etat.due < 0
           ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span></>
           : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span></>;
+      })(),
+    },
+    peutEcrire && {
+      id: 'banque', libelle: 'Banque', Icone: Landmark, onClick: () => onOuvrir('banque'),
+      etat: data.releves.status === 'absente' || data.lignesReleve.status === 'absente' ? <>Pas encore activé</>
+        : data.releves.status !== 'ready' || data.lignesReleve.status !== 'ready' ? null
+          : !data.banque.dernier ? <>Aucun relevé importé</>
+            : data.banque.aRapprocher
+              ? <><span>{data.banque.aRapprocher}</span> <span>{pluriel(data.banque.aRapprocher, 'paiement à rapprocher', 'paiements à rapprocher')}</span></>
+              : <>Tous les paiements sont rapprochés</>,
+    },
+    peutEcrire && {
+      id: 'tresorerie', libelle: 'Trésorerie', Icone: CalendarRange, onClick: () => onOuvrir('tresorerie'),
+      etat: etats.achats !== 'ready' ? null : (() => {
+        const { tranches, aRegler } = echeancier(data.docs, aujourdhui);
+        const retard = tranches.find(t => t.id === 'retard')?.factures.length || 0;
+        if (!aRegler) return <>Toutes les factures sont réglées.</>;
+        return <><span>{aRegler}</span> <span>{pluriel(aRegler, 'facture à régler,', 'factures à régler,')}</span> <span>{retard}</span> <span>en retard</span></>;
       })(),
     },
   ].filter(Boolean);

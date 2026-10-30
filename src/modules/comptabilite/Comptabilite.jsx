@@ -20,7 +20,11 @@ import EcranCharges from './EcranCharges.jsx';
 import EcranPersonnel from './EcranPersonnel.jsx';
 import EcranMarges from './EcranMarges.jsx';
 import EcranTva from './EcranTva.jsx';
+import EcranBanque from './EcranBanque.jsx';
+import EcranTresorerie from './EcranTresorerie.jsx';
 import FenetreReglages from './FenetreReglages.jsx';
+import FenetreExportCompta from './FenetreExportCompta.jsx';
+import { writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { useLecture } from './comptaService.js';
 import { useCompta } from './useCompta.js';
 import { ventesComparables } from './syntheseCompta.js';
@@ -43,11 +47,13 @@ import {
 //
 // Écrans (socle des parcours) : accueil (période, quatre cartes, ce qui
 // manque, tuiles), Vue d'ensemble, Chiffre du jour, Ventes, Achats, Charges
-// fixes, Personnel (consultant et patron), Marges, TVA (droit « Régler les
-// factures »). Calculs dans des fonctions pures (periodesCompta, ventesCompta,
-// chargesFixes, personnelCompta, tvaCompta, syntheseCompta et
+// fixes, Personnel (consultant et patron), Marges, puis TVA, Banque et
+// Trésorerie (droit « Régler les factures »), et la fenêtre « Exporter pour
+// la fiduciaire » (même droit). Calculs dans des fonctions pures
+// (periodesCompta, ventesCompta, chargesFixes, personnelCompta, tvaCompta,
+// syntheseCompta, rapprochement, tresorerie, exportCompta et
 // src/utils/chiffrage.js), lectures dans useCompta (Marges lit ses fiches à
-// son ouverture seulement).
+// son ouverture seulement ; relevés bancaires lus pour ce même droit).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CLE_PERIODE = 'sc_comptabilite_periode';
@@ -90,7 +96,8 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     return TYPES_PERIODE.some(x => x.id === t) ? t : 'mois';
   });
   const [ancre, setAncre] = React.useState(null); // début de la période choisie ; null = en cours
-  const [fenetre, setFenetre] = React.useState(null); // 'reglages'
+  const [fenetre, setFenetre] = React.useState(null); // { type: 'reglages' } | { type: 'export', choix, tva }
+  const fermerFenetre = React.useCallback(() => setFenetre(null), []);
   const [jourSaisie, setJourSaisie] = React.useState(null);
 
   const lireInventaires = React.useCallback(() => legacySB.db.listInventaires(etabId, { strict: true }), [etabId]);
@@ -115,16 +122,20 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     writeJson(CLE_PERIODE, { type: t });
   };
 
-  const data = useCompta({ etablissement, periode: periodeCalcul, precedente, aujourdhui, inventaires, direction });
+  const data = useCompta({ etablissement, periode: periodeCalcul, precedente, aujourdhui, inventaires, direction, banque: peutEcrire });
 
   // Un écran soumis à un droit n'est repris que si le droit est là.
-  const repris = [...ECRANS_REPRIS, ...(direction ? ['personnel'] : []), ...(peutEcrire ? ['tva'] : [])];
+  const repris = [...ECRANS_REPRIS, ...(direction ? ['personnel'] : []), ...(peutEcrire ? ['tva', 'banque', 'tresorerie'] : [])];
   const { ecran, setEcran, retourAccueil } = useEcranModule('comptabilite', {
     repris,
     surRetour: () => setJourSaisie(null),
   });
   const ouvrir = (e) => { if (e) setEcran(e); };
   const ouvrirAchats = () => (typeof setPage === 'function' ? setPage('achats') : navigateToPage('achats'));
+  // « Je règle les factures » de l'échéancier : Factures & achats s'ouvre sur cet écran.
+  const ouvrirReglement = () => { writeLegacyStorage('sc_achats_ecran', 'reglement'); ouvrirAchats(); };
+  const decompteTva = data.tva.decomptes[data.tva.defaut];
+  const ouvrirExport = (choix = 'periode', tva = decompteTva.periode) => setFenetre({ type: 'export', choix, tva });
 
   const s = data.synthese;
   const { etats } = data;
@@ -140,7 +151,10 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   const libelle = periode ? libellePeriode(periode) : '';
   const libellePrec = precedente ? libellePeriode(precedente) : '';
   const actions = peutEcrire
-    ? [{ id: 'reglages', label: 'Réglages', detail: 'Méthode de TVA, charges sociales, coût horaire moyen.', onClick: () => setFenetre('reglages') }]
+    ? [
+      { id: 'exporter', label: 'Exporter', detail: 'Ventes, factures d\'achat, charges fixes et état TVA pour la fiduciaire.', onClick: () => ouvrirExport() },
+      { id: 'reglages', label: 'Réglages', detail: 'Méthode de TVA, charges sociales, coût horaire moyen.', onClick: () => setFenetre({ type: 'reglages' }) },
+    ]
     : [];
 
   const barre = (
@@ -284,18 +298,65 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
             chargesAbsentes={data.charges.status === 'absente'}
             charges={data.charges.status === 'ready' ? data.charges.lignes : null}
             docs={data.docs}
+            onExporter={(p) => ouvrirExport('tva', p)}
           />
         </EcranTache>
       )}
 
-      {fenetre === 'reglages' && peutEcrire && (
+      {ecran === 'banque' && peutEcrire && (
+        <EcranBanque
+          etabId={etabId}
+          userId={user.id}
+          releves={data.releves}
+          lignes={data.lignesReleve}
+          docs={data.docs}
+          onRetour={retourAccueil}
+          onChange={() => Promise.all([data.releves.reload(), data.lignesReleve.reload(), data.achats.reload()])}
+        />
+      )}
+
+      {ecran === 'tresorerie' && peutEcrire && (
+        <EcranTache titre="Trésorerie" etat="Les 8 prochaines semaines" onRetour={retourAccueil}>
+          {etats.achats === 'loading' ? <p style={ui.remarque}>Chargement…</p> : (
+            <EcranTresorerie
+              docs={data.docs}
+              charges={data.charges.status === 'ready' ? data.charges.lignes : null}
+              chargesAbsentes={data.charges.status === 'absente'}
+              decomptesTva={etats.tva === 'ready' ? data.tva.decomptes : []}
+              salaireMensuel={data.salaireMensuel}
+              moisSalaires={data.moisPasse}
+              direction={direction}
+              parJour={data.parJourTout}
+              aujourdhui={aujourdhui}
+              dernierReleve={data.releves.status === 'ready' ? data.banque.dernier : null}
+              onRegler={ouvrirReglement}
+            />
+          )}
+        </EcranTache>
+      )}
+
+      {fenetre?.type === 'reglages' && peutEcrire && (
         <FenetreReglages
           etabId={etabId}
           userId={user.id}
           reglages={data.reglages}
           absente={data.migrationAbsente}
-          onClose={() => setFenetre(null)}
+          onClose={fermerFenetre}
           onEnregistre={data.reloadTout}
+        />
+      )}
+
+      {fenetre?.type === 'export' && peutEcrire && (
+        <FenetreExportCompta
+          etablissement={etablissement}
+          direction={direction}
+          periode={periodeCalcul}
+          data={data}
+          tvaPeriode={fenetre.tva}
+          choixInitial={fenetre.choix}
+          aujourdhui={aujourdhui}
+          inventaires={inventaires}
+          onClose={fermerFenetre}
         />
       )}
     </div>

@@ -332,7 +332,43 @@ export async function lierLigne(ligneId, documentId, mode, userId) {
     rapproche_le: new Date().toISOString(),
     rapproche_par: userId || null,
   }).eq('id', ligneId);
+  // Index unique sur document_id : la facture a été liée ailleurs entre-temps.
+  if (error && String(error.code) === '23505') return { error: 'Cette facture est déjà rapprochée d\'une autre ligne du relevé.' };
   return { error: error ? messageCompta(error) : null };
+}
+
+// Rapproche des lignes de relevé de leurs factures, après un geste explicite
+// (« Valider les rapprochements », « Confirmer », « Choisir la facture »).
+// Une facture encore à régler est d'abord marquée réglée à la date de la
+// ligne, par virement, note « Relevé bancaire », par le même appel que
+// Factures & achats ; option `nouveau` : un règlement posé entre-temps sur un
+// autre appareil n'est pas écrasé. Aucune autre colonne de la facture n'est
+// écrite. Puis chaque ligne reçoit sa facture.
+//   paires : [{ ligne, facture }] → { liees, reglees, error }
+export async function rapprocher(paires, mode, userId) {
+  const legacySB = dbService.getBridge();
+  const parDate = new Map();
+  (paires || []).filter(p => !p.facture.regleLe).forEach((p) => {
+    const date = p.ligne.dateOperation;
+    if (!parDate.has(date)) parDate.set(date, []);
+    if (!parDate.get(date).includes(p.facture.id)) parDate.get(date).push(p.facture.id);
+  });
+  let reglees = 0;
+  try {
+    for (const [date, ids] of parDate) {
+      const faites = await legacySB.db.reglerFacturesAchat(ids, { regleLe: date, regleMode: 'virement', regleNote: 'Relevé bancaire' }, { nouveau: true });
+      reglees += (faites || []).length;
+    }
+  } catch (error) {
+    return { liees: 0, reglees, error: messageCompta(error) };
+  }
+  let liees = 0;
+  for (const p of paires || []) {
+    const { error } = await lierLigne(p.ligne.id, p.facture.id, mode, userId);
+    if (error) return { liees, reglees, error };
+    liees += 1;
+  }
+  return { liees, reglees, error: null };
 }
 
 export async function delierLigne(ligneId) {

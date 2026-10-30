@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn } from '../../components/ui/index.jsx';
 import EtatAbsent from './EtatAbsent.jsx';
 import { achatsPeriode } from './syntheseCompta.js';
 import { doublonsCharges } from './chargesFixes.js';
@@ -10,7 +11,8 @@ import { Chf, Montant, dateCH, pluriel, st as ui, tauxTexte } from './comptaUi.j
 // préalable des factures d'achat (mêmes montants que l'export fiduciaire) et
 // des charges fixes, TVA estimée à payer. Taux de la dette fiscale nette :
 // chiffre d'affaires TVA comprise fois le taux saisi. Une estimation pour
-// préparer le décompte, jamais le décompte officiel.
+// préparer le décompte, jamais le décompte officiel. « Exporter l'état TVA »
+// ouvre l'export pour la fiduciaire réglé sur le décompte affiché.
 //
 //   decomptes : [{ periode, etat }] de useCompta (précédent, en cours)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,7 +41,7 @@ function Ligne({ libelle, base, tva, fort, id }) {
   );
 }
 
-export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, charges, docs }) {
+export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, charges, docs, onExporter }) {
   const [choix, setChoix] = React.useState(defaut);
   const { periode, etat: e } = decomptes[choix] || decomptes[defaut];
   const effective = e.methode === 'effective';
@@ -165,6 +167,12 @@ export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, cha
         </p>
         <p style={st.note}>Estimation pour préparer le décompte : votre fiduciaire établit le décompte officiel.</p>
       </section>
+
+      {onExporter && (
+        <div>
+          <Btn onClick={() => onExporter(periode)} style={{ minHeight: 44 }}>Exporter l'état TVA</Btn>
+        </div>
+      )}
     </div>
   );
 }

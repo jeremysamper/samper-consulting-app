@@ -5,11 +5,12 @@ import { useAchatsDocuments } from '../inventaire/useAchatsDocuments.js';
 import { lirePeriode, useContrats } from '../planning/contratsService.js';
 import { bornesMois } from '../planning/soldesHeures.js';
 import { REGLAGES_DEFAUT, lireToutesLesPages, useLecture, useTableCompta } from './comptaService.js';
-import { ajouterJours, finEffective } from './periodesCompta.js';
+import { ajouterJours, finEffective, periodeMois } from './periodesCompta.js';
 import { resumeVentes, ventesParJour } from './ventesCompta.js';
 import { synthese } from './syntheseCompta.js';
 import { coutPersonnel } from './personnelCompta.js';
 import { etatTva, periodeTva } from './tvaCompta.js';
+import { etatBanque } from './rapprochement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Toutes les lectures de la Comptabilité pour une période, et les calculs qui
@@ -26,6 +27,10 @@ import { etatTva, periodeTva } from './tvaCompta.js';
 // Personnel (D4, D14) : salaires estimés et contrats lus pour la direction
 // seulement (consultant, patron) ; pour qui règle les factures sans être de la
 // direction, le coût du personnel reste « réservé à la direction ».
+//
+// Banque et trésorerie (`banque`, droit « Régler les factures ») : relevés et
+// lignes de relevé, ventes des 45 derniers jours (chiffre d'affaires moyen) et,
+// pour la direction, horaires du mois précédent (salaires estimés d'un mois).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PRET = new Set(['ready', 'absente', 'inactif']);
@@ -74,18 +79,21 @@ async function lireCaisse(etabId, debut, fin) {
   return { connexions: conns.length, lignes };
 }
 
-export function useCompta({ etablissement, periode, precedente, aujourdhui, inventaires, direction = false, actif = true }) {
+export function useCompta({ etablissement, periode, precedente, aujourdhui, inventaires, direction = false, banque = false, actif = true }) {
   const etabId = etablissement?.id || null;
   const hebergement = isModuleActiveForEtab(etablissement, 'hebergement');
   const finEff = finEffective(periode, aujourdhui);
   const quinzaine = ajouterJours(aujourdhui, -13);
+  // Mois précédent entier : salaires estimés d'un mois pour la trésorerie.
+  const moisPasse = useMemo(() => periodeMois(ajouterJours(`${aujourdhui.slice(0, 7)}-01`, -1)), [aujourdhui]);
 
   // ── Tables neuves ──
   const reglagesLus = useTableCompta('compta_reglages', etabId, { actif, ordre: ['etablissement_id'] });
   const reglages = useMemo(() => ({ ...REGLAGES_DEFAUT, ...(reglagesLus.lignes[0] || {}) }), [reglagesLus.lignes]);
   // Décompte de TVA précédent : le premier jour de vente dont l'écran TVA a besoin.
   const tvaPrecedente = periodeTva(aujourdhui, reglages.methodeTva, -1);
-  const debutLecture = [precedente?.debut, periode.debut, quinzaine, tvaPrecedente.debut].filter(Boolean).sort()[0];
+  const debutLecture = [precedente?.debut, periode.debut, quinzaine, tvaPrecedente.debut, banque ? ajouterJours(aujourdhui, -45) : null]
+    .filter(Boolean).sort()[0];
   const finLecture = periode.fin > aujourdhui ? periode.fin : aujourdhui;
 
   const ventesJour = useTableCompta('ventes_jour', etabId, { debut: debutLecture, fin: finLecture, colonneDate: 'jour', actif, ordre: ['jour', 'taux'] });
@@ -93,6 +101,9 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   // Salaires : direction seulement (RLS) ; pour un autre, une liste vide mentirait.
   const salaires = useTableCompta('salaires_estimes', etabId, { actif: actif && direction, ordre: ['debut', 'id'] });
   const contratsLus = useContrats(actif && direction ? etabId : null);
+  // Banque : seulement pour qui règle les factures (Banque et Trésorerie).
+  const releves = useTableCompta('releves_bancaires', etabId, { actif: actif && banque, ordre: ['created_at', 'id'] });
+  const lignesReleve = useTableCompta('releve_lignes', etabId, { actif: actif && banque, ordre: ['date_operation', 'id'] });
 
   // ── Lectures existantes ──
   const achats = useAchatsDocuments(etabId, { actif });
@@ -109,6 +120,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   // (24 mois de lectures pour un écart).
   const intervalles = [[periode.debut, finEff], [quinzaine, aujourdhui]];
   if (precedente && precedente.type !== 'annee') intervalles.push([precedente.debut, finEffective(precedente, aujourdhui)]);
+  if (banque && direction) intervalles.push([moisPasse.debut, moisPasse.fin]);
   const moisHoraires = moisDe(intervalles);
   const lireHoraires = useCallback(async () => {
     const parMois = await Promise.all(moisHoraires.map((cle) => {
@@ -156,7 +168,8 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
 
     const ventes = resume(periode);
     const personnelCourant = personnel(periode);
-    const courante = synthese({ periode, aujourdhui, ventes, docs, charges: chargesListe, personnel: personnelCourant, inventaires: listeInventaires, tva: tva(periode) });
+    const tvaPeriode = tva(periode);
+    const courante = synthese({ periode, aujourdhui, ventes, docs, charges: chargesListe, personnel: personnelCourant, inventaires: listeInventaires, tva: tvaPeriode });
     let prec = null;
     if (precedente) {
       // Horaires de l'année précédente non lus (24 mois de lectures pour un
@@ -165,9 +178,11 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
       prec = synthese({ periode: precedente, aujourdhui, ventes: resume(precedente), docs, charges: chargesListe, personnel: personnelPrec, inventaires: listeInventaires, tva: tva(precedente) });
       if (personnelCourant && !personnelPrec) prec = { ...prec, resultat: null };
     }
-    return { parJour: parJourTout.filter(dans(periode)), synthese: courante, precedente: prec };
+    // Salaires estimés d'un mois entier (trésorerie) : le mois précédent.
+    const salaireMensuel = banque ? (personnel(moisPasse)?.total ?? null) : null;
+    return { parJour: parJourTout.filter(dans(periode)), synthese: courante, precedente: prec, tvaPeriode, salaireMensuel };
   }, [parJourTout, joursOuverts, periode, precedente, aujourdhui, docs, chargesListe, listeInventaires,
-    personnelPret, contratsLus.contrats, salaires.lignes, horaires.data, reglages]);
+    personnelPret, contratsLus.contrats, salaires.lignes, horaires.data, reglages, banque, moisPasse]);
 
   // Décomptes de TVA : le précédent (à déclarer) et celui en cours ; montré
   // d'abord, le précédent tant que son échéance n'est pas passée.
@@ -195,19 +210,27 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   // TVA : ventes, achats et charges fixes (sans la migration, sans les charges).
   etats.tva = etatDe(etats.ventes, achatsStatut, pretOuAbsent(etats.charges), pretOuAbsent(reglagesLus.status));
   const migrationAbsente = [ventesJour.status, charges.status, reglagesLus.status].includes('absente');
-  const enEchec = [ventesJour, charges, reglagesLus, salaires, caisse, notes, horaires, inventaires].some(l => l?.enEchec)
+  const enEchec = [ventesJour, charges, reglagesLus, salaires, caisse, notes, horaires, inventaires, releves, lignesReleve].some(l => l?.enEchec)
     || (achats.loadError && docs.length > 0);
 
   const reloadTout = useCallback(() => Promise.all([
     ventesJour.reload(), charges.reload(), reglagesLus.reload(), salaires.reload(), caisse.reload(), notes.reload(), horaires.reload(),
-    inventaires?.reload?.(), achats.reload(),
-  ]), [ventesJour.reload, charges.reload, reglagesLus.reload, salaires.reload, caisse.reload, notes.reload, horaires.reload, inventaires, achats.reload]);
+    inventaires?.reload?.(), achats.reload(), releves.reload(), lignesReleve.reload(),
+  ]), [ventesJour.reload, charges.reload, reglagesLus.reload, salaires.reload, caisse.reload, notes.reload, horaires.reload, inventaires,
+    achats.reload, releves.reload, lignesReleve.reload]);
+
+  // Banque : dernier relevé et paiements à rapprocher (accueil, trésorerie).
+  const etatDeLaBanque = useMemo(() => etatBanque(releves.lignes, lignesReleve.lignes), [releves.lignes, lignesReleve.lignes]);
 
   return {
     hebergement,
     ventesJour,
     charges,
     salaires,
+    releves,
+    lignesReleve,
+    banque: etatDeLaBanque,
+    moisPasse,
     contrats: contratsLus,
     reglages,
     reglagesLus,
