@@ -913,6 +913,17 @@ export const UI_GLOSSARY_ES = {
   'Aucune préparation ne correspond.': 'Ninguna preparación coincide.',
   'Aucune préparation pour cet établissement.': 'Ninguna preparación para este establecimiento.',
   'indisponible, nouvel essai en cours': 'no disponible, reintentando',
+  // Fiches en vitrine (vignettes de la carte du moment et de Je cherche une fiche).
+  'Fiches du plat': 'Fichas del plato',
+  'Fiche à venir': 'Ficha pendiente',
+  'Aucune fiche ne correspond à': 'Ninguna ficha coincide con',
+  'Plats à compléter': 'Platos por completar',
+  'aucune fiche': 'ninguna ficha',
+  'sur aucune carte': 'en ninguna carta',
+  'et': 'y',
+  'autres': 'otros',
+  'modifiée le': 'modificada el',
+  'Aucun allergène déclaré': 'Ningún alérgeno declarado',
 
   // ── Réservations par tâche : accueil du module ──
   'Je réserve une table': 'Reservo una mesa',
@@ -1042,6 +1053,15 @@ export const UI_GLOSSARY_ES = {
 
   // ── Fiches salle par tâche ──
   'Je cherche un plat…': 'Busco un plato…',
+  'Chargement des fiches…': 'Cargando fichas…',
+  'Fiches indisponibles': 'Fichas no disponibles',
+  "Hors ligne : les fiches s'afficheront au retour du réseau.": 'Sin conexión: las fichas aparecerán cuando vuelva la red.',
+  'Aucune fiche salle pour le moment.': 'Todavía no hay fichas de sala.',
+  'La première se crée avec « Nouvelle fiche ».': 'La primera se crea con «Nueva ficha».',
+  'Au service': 'Durante el servicio',
+  'accords': 'maridajes',
+  'accord': 'maridaje',
+  'Modifiée le': 'Modificada el',
 
   // ── Catalogue par tâche ──
   'Je cherche un produit ou un fournisseur…': 'Busco un producto o un proveedor…',

@@ -932,6 +932,17 @@ export const UI_GLOSSARY = {
   'Aucune préparation ne correspond.': 'No preparation matches.',
   'Aucune préparation pour cet établissement.': 'No preparation for this establishment.',
   'indisponible, nouvel essai en cours': 'unavailable, retrying',
+  // Fiches en vitrine (vignettes de la carte du moment et de Je cherche une fiche).
+  'Fiches du plat': 'Recipes in this dish',
+  'Fiche à venir': 'Recipe to come',
+  'Aucune fiche ne correspond à': 'No recipe matches',
+  'Plats à compléter': 'Dishes to complete',
+  'aucune fiche': 'no recipe',
+  'sur aucune carte': 'on no menu',
+  'et': 'and',
+  'autres': 'others',
+  'modifiée le': 'updated on',
+  'Aucun allergène déclaré': 'No allergen declared',
 
   // ── Réservations par tâche : accueil du module ──
   'Je réserve une table': 'I book a table',
@@ -1061,6 +1072,15 @@ export const UI_GLOSSARY = {
 
   // ── Fiches salle par tâche ──
   'Je cherche un plat…': 'Search for a dish…',
+  'Chargement des fiches…': 'Loading sheets…',
+  'Fiches indisponibles': 'Sheets unavailable',
+  "Hors ligne : les fiches s'afficheront au retour du réseau.": 'Offline: the sheets will appear when the network is back.',
+  'Aucune fiche salle pour le moment.': 'No service sheet yet.',
+  'La première se crée avec « Nouvelle fiche ».': 'Create the first one with “New sheet”.',
+  'Au service': 'During service',
+  'accords': 'pairings',
+  'accord': 'pairing',
+  'Modifiée le': 'Updated on',
 
   // ── Catalogue par tâche ──
   'Je cherche un produit ou un fournisseur…': 'Search for a product or a supplier…',
