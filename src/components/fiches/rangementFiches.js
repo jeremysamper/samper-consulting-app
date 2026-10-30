@@ -8,6 +8,7 @@
 // (recettes, plats + plat_recettes + carte_plats, fiches_salle).
 // ─────────────────────────────────────────────────────────────
 import { normalizeSearch } from '../../utils/searchText.js';
+import { grouperParCategorie } from '../../utils/categoriesPlat.js';
 
 // Catégories de préparations techniques : sauces, fonds, bases, garnitures,
 // préparations. Ce ne sont pas des plats servis au client : elles ne donnent
@@ -81,6 +82,40 @@ export function photoDeFicheSalle(fiche, plats, recettes) {
   if (plat) return plat.photoUrl;
   const recette = (recettes || []).find((r) => r && r.statut !== 'archivée' && r.masquee !== true && r.photoUrl && nomCompare(r.nom) === cle);
   return recette ? recette.photoUrl : null;
+}
+
+// a commence par b, au mot près (« tarte aux pruneaux maison » commence par
+// « tarte aux pruneaux », « tartelette » ne commence pas par « tarte »).
+const commencePar = (a, b) => a.startsWith(b) && (a.length === b.length || /[^a-z0-9]/.test(a[b.length]));
+
+// Plats à écrire sous une fiche (« Plat : … ») : on tait celui qui porte le
+// nom de la fiche ou qui le prolonge, la ligne ne ferait que répéter le
+// titre. Restent ceux qui apprennent quelque chose : le beurre blanc sert
+// dans « Filet de féra, beurre blanc ».
+export function platsAEcrire(recette, plats) {
+  const nom = nomCompare(recette?.nom);
+  if (!nom) return plats || [];
+  return (plats || []).filter((p) => {
+    const n = nomCompare(p?.nom);
+    return !n || !(commencePar(n, nom) || commencePar(nom, n));
+  });
+}
+
+// Section unique des préparations techniques dans « Je cherche une fiche » :
+// une section par catégorie technique alignait un titre par fiche (« Bases »,
+// « Fonds », « Sauces », une fiche chacune). Chaque vignette garde sa
+// catégorie écrite sur elle.
+export const SECTION_PREPARATIONS = 'Préparations de base';
+
+// Sections de « Je cherche une fiche » : les fiches servies par catégorie,
+// dans l'ordre de service, puis les préparations de base en dernier.
+export function sectionsDeFiches(fiches) {
+  const servies = [];
+  const techniques = [];
+  (fiches || []).forEach((r) => (estCategorieTechnique(r?.categorie) ? techniques : servies).push(r));
+  const sections = grouperParCategorie(servies);
+  if (techniques.length) sections.push([SECTION_PREPARATIONS, techniques]);
+  return sections;
 }
 
 // Plats actifs à compléter : sans fiche visible (raison « sansFiche »), ou

@@ -56,8 +56,8 @@ export default function VitrineCarte({
           titre: 'Fiches du plat',
           items: ouvrables.map((r) => ({ cle: r.id, nom: r.nom, onOuvrir: () => onOuvrirRecette(r, plat) })),
         } : null}
-        actions={canFiches ? (
-          <button type="button" className="fv-action" onClick={() => onModifierPlat(plat)}>Modifier</button>
+        actions={canFiches ? (nommer) => (
+          <button type="button" className="fv-action" {...nommer('modifier')} onClick={() => onModifierPlat(plat)}>Modifier</button>
         ) : null}
       />
     );

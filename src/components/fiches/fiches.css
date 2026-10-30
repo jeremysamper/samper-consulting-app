@@ -29,12 +29,16 @@
    section de n vignettes (n plus petit que la rangée) en occupe n colonnes et
    la suivante se range à côté. L'ordre de service est gardé (pas de
    remplissage des trous en arrière). */
+/* Sections côte à côte étirées à la hauteur de leur rangée (une section posée
+   à côté d'une autre n'a jamais qu'une rangée de vignettes) : avec la grille
+   qui s'étire à son tour et les actions calées en bas de vignette, le bouton
+   « Modifier » de « Plats » tombe à la hauteur de ceux d'« Entrées ». */
 .fv-vitrine {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 12px;
   row-gap: 26px;
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
 }
 .fv-vitrine > * {
@@ -106,8 +110,11 @@
   outline-offset: 2px;
 }
 
-/* Téléphone d'abord : 2 colonnes, puis par la largeur réellement disponible. */
+/* Téléphone d'abord : 2 colonnes, puis par la largeur réellement disponible.
+   La grille remplit sa section (étirée par .fv-vitrine) ; ses vignettes,
+   étirées dans leur cellule, ont toutes la hauteur de leur rangée. */
 .fv-grille {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px 12px;
@@ -400,16 +407,23 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+/* Au doigt (iPad compris, quelle que soit sa largeur) : cibles de 44 px.
+   La règle globale button:not(.mini) d'app.css le fait déjà pour les
+   boutons ; posée ici, la cible ne dépend plus de l'ordre des feuilles. */
 @media (pointer: coarse) {
-  .fv-lien { min-height: 44px; }
+  .fv-lien,
+  .fv-action { min-height: 44px; }
 }
 
 /* Actions secondaires : fond doux, texte d'accent (langage des boutons
-   secondaires de l'app). */
+   secondaires de l'app). Calées en bas de la vignette (margin-top auto dans
+   sa colonne flex) : d'une vignette à l'autre d'une rangée, les boutons
+   tombent à la même hauteur, quelle que soit la longueur du texte. */
 .fv-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: auto;
 }
 .fv-action {
   appearance: none;

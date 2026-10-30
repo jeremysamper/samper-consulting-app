@@ -12,9 +12,11 @@ import {
 } from 'lucide-react';
 import { normalizeSearch } from '../../utils/searchText.js';
 
-// Comparaison sur le nom normalisé, au début d'un mot : « Pâtes & Risottos »
-// trouve « pate », « Fonds & sauces » trouve « fond ». Premier trouvé, premier
-// servi : l'ordre de la table compte.
+// Comparaison sur le nom normalisé, au mot entier, pluriel permis :
+// « Pâtes & Risottos » trouve « pate », « Fonds & sauces » trouve « fond ».
+// « Fondues » ne trouve plus « fond » (une soupe), ni « Plateau de fromages »
+// « plat » : la fondue a son picto, le plateau celui des fromages. Premier
+// trouvé, premier servi : l'ordre de la table compte.
 const PICTOS_CATEGORIE = [
   ['entree', Salad],
   ['plat', UtensilsCrossed],
@@ -23,6 +25,7 @@ const PICTOS_CATEGORIE = [
   ['pate', CookingPot],
   ['risotto', CookingPot],
   ['fromage', Milk],
+  ['fondue', CookingPot],
   ['dessert', CakeSlice],
   ['boisson', Wine],
   ['menu', BookOpen],
@@ -36,7 +39,7 @@ const PICTOS_CATEGORIE = [
 ];
 
 const echappe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const MOTIFS = PICTOS_CATEGORIE.map(([cle, Icone]) => [new RegExp(`(^|[^a-z0-9])${echappe(cle)}`), Icone]);
+const MOTIFS = PICTOS_CATEGORIE.map(([cle, Icone]) => [new RegExp(`(^|[^a-z0-9])${echappe(cle)}(e?s|x)?($|[^a-z0-9])`), Icone]);
 
 export function iconeCategorie(categorie) {
   const c = normalizeSearch(categorie).trim();

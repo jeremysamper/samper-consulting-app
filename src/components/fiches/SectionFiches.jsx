@@ -20,7 +20,9 @@ export function GrilleFiches({ children }) {
 
 // ─── SectionFiches : un titre serif, son nombre, puis la grille ─────────────
 // Le nombre vit dans son propre nœud : « Entrées » se traduit par le
-// glossaire, le chiffre ne part jamais à la traduction.
+// glossaire, le chiffre ne part jamais à la traduction. Un « 1 » à côté
+// d'une seule vignette ne dit rien : il n'est écrit que pour une section
+// repliable (son contenu peut être caché).
 // repliable : { ouvert, onBasculer } fait du titre un bouton (Archivées).
 // grille = false : le contenu se pose tel quel (lignes de « Plats à compléter »).
 // Une section en grille de 1 à 4 vignettes porte sa taille (fv-section--n1
@@ -31,7 +33,7 @@ export default function SectionFiches({ titre, nombre, repliable, grille = true,
   const titreContenu = (
     <>
       <span>{titre}</span>
-      {nombre != null && <span className="fv-section-nombre" data-no-translate="">{nombre}</span>}
+      {nombre != null && (nombre !== 1 || repliable) && <span className="fv-section-nombre" data-no-translate="">{nombre}</span>}
     </>
   );
   const ouvert = repliable ? repliable.ouvert : true;

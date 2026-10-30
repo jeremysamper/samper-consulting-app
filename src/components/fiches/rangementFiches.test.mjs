@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   estCategorieTechnique, recettesOuvrablesDuPlat, platsDeRecette,
   photoDeRecette, photoDeFicheSalle, platsACompleter,
+  platsAEcrire, sectionsDeFiches, SECTION_PREPARATIONS,
 } from './rangementFiches.js';
 
 const rec = (id, nom, categorie, patch) => ({ id, nom, categorie, statut: 'validée', masquee: false, photoUrl: null, ...patch });
@@ -92,4 +93,28 @@ test('plats à compléter : sans fiche visible, ou hors carte', () => {
 test('plats d\'une fiche : ceux qui la contiennent, dans l\'ordre reçu', () => {
   assert.deepEqual(platsDeRecette('r-beurre', [platTarte, platFera]).map((p) => p.id), ['p-fera']);
   assert.deepEqual(platsDeRecette('r-inconnue', [platTarte, platFera]), []);
+});
+
+test('ligne « Plat : » : le plat qui porte le nom de la fiche est tu', () => {
+  const risotto = rec('r-ris', 'Risotto aux bolets', 'Pâtes & Risottos');
+  const platRisotto = plat('p-ris', 'Risotto  aux Bolets', [lien('r-ris', 0, 'principal')]);
+  const platLong = plat('p-ris2', 'Risotto aux bolets, copeaux de sbrinz', [lien('r-ris', 0, 'principal')]);
+  assert.deepEqual(platsAEcrire(risotto, [platRisotto, platLong]), []);
+  // Le plat plus court que la fiche, au mot près : « Tarte » sous « Tarte aux pruneaux ».
+  assert.deepEqual(platsAEcrire(tarte, [plat('p-t', 'Tarte', [])]), []);
+  assert.deepEqual(platsAEcrire(tarte, [plat('p-tl', 'Tartelettes', [])]).map((p) => p.id), ['p-tl']);
+  // La sous-recette garde son plat : il apprend quelque chose.
+  assert.deepEqual(platsAEcrire(beurre, [platFera]).map((p) => p.id), ['p-fera']);
+  assert.deepEqual(platsAEcrire(pate, [platTarte]).map((p) => p.id), ['p-tarte']);
+});
+
+test('sections : fiches servies dans l\'ordre de service, préparations de base en une seule section', () => {
+  const fond = rec('r-fond', 'Fond brun', 'Fonds');
+  const gnocchi = rec('r-gn', 'Gnocchi', 'Garnitures');
+  const muesli = rec('r-mu', 'Birchermüesli', 'Petit-déjeuner');
+  const sections = sectionsDeFiches([beurre, tarte, fond, fera, pate, gnocchi, muesli]);
+  assert.deepEqual(sections.map(([cat]) => cat), ['Poissons', 'Desserts', 'Petit-déjeuner', SECTION_PREPARATIONS]);
+  assert.deepEqual(sections[3][1].map((r) => r.id).sort(), ['r-beurre', 'r-fond', 'r-gn', 'r-pate']);
+  assert.deepEqual(sectionsDeFiches([fera]).map(([cat]) => cat), ['Poissons']);
+  assert.deepEqual(sectionsDeFiches([]), []);
 });

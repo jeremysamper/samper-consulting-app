@@ -3,15 +3,18 @@ import { Clock, Users } from 'lucide-react';
 import VignetteFiche from '../../components/fiches/VignetteFiche.jsx';
 import SectionFiches, { GrilleFiches } from '../../components/fiches/SectionFiches.jsx';
 import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
-import { platsDeRecette, photoDeRecette, platsACompleter } from '../../components/fiches/rangementFiches.js';
-import { categorieDuPlat, grouperParCategorie } from '../../utils/categoriesPlat.js';
+import {
+  platsDeRecette, photoDeRecette, platsACompleter, platsAEcrire, sectionsDeFiches,
+} from '../../components/fiches/rangementFiches.js';
+import { categorieDuPlat } from '../../utils/categoriesPlat.js';
 
 // ─── VitrineFiches : « Je cherche une fiche », une grille de fiches ─────────
 // Avant, une liste de plats en accordéon : aucune fiche ne s'ouvrait d'un
 // geste et les sous-recettes (beurre blanc, fond brun) ne se voyaient qu'en
 // dépliant leur plat. Ici chaque fiche visible est une vignette, rangée par
-// catégorie dans l'ordre de service (les techniques ensuite, par ordre
-// alphabétique), et dit dans quel plat elle sert. La recherche porte sur le
+// catégorie dans l'ordre de service (les préparations de base ensuite, en
+// une seule section), et dit dans quel plat elle sert quand ce plat ne porte
+// pas déjà son nom. La recherche porte sur le
 // nom de la fiche ET des plats qui la contiennent.
 // Droit « fiches » seulement : « Plats à compléter » (sans fiche visible ou
 // sur aucune carte, avec Modifier), puis « Archivées », repliée, ouverte
@@ -51,9 +54,12 @@ export default function VitrineFiches({
     return m;
   }, [recettesEtab, recettesArchivees, plats]);
   const platsDe = (r) => platsParRecette.get(r.id) || [];
+  // Préfixe des ids des lignes « Plats à compléter » (bouton Modifier nommé
+  // par le nom du plat, comme dans les vignettes).
+  const idLignes = React.useId();
 
   const fiches = (recettesEtab || []).filter((r) => match(r.nom, platsDe(r).map((p) => p.nom)));
-  const groupes = grouperParCategorie(fiches);
+  const groupes = sectionsDeFiches(fiches);
   const aCompleter = canFiches ? platsACompleter(plats, visiblesParId).filter(({ plat }) => match(plat.nom)) : [];
   const archivees = canFiches ? (recettesArchivees || []).filter((r) => match(r.nom)).sort(parNom) : [];
   const archiveesOuvertes = Boolean(voirArchivees || q);
@@ -69,7 +75,7 @@ export default function VitrineFiches({
         titre={r.nom}
         photo={photoDeRecette(r, plats, visiblesParId)}
         categorie={categorieDuPlat(r)}
-        texte={textePlats(platsDe(r))}
+        texte={textePlats(platsAEcrire(r, platsDe(r)))}
         allergenes={r.allergenesIds}
         meta={[
           temps > 0 && { cle: 'temps', Icone: Clock, contenu: <><span data-no-translate="">{temps}</span> min</> },
@@ -78,20 +84,31 @@ export default function VitrineFiches({
         pastille={archivee ? 'Archivée' : (r.statut === 'brouillon' ? 'Brouillon' : null)}
         attenuee={archivee}
         onOuvrir={() => onOuvrir(r, cle)}
-        actions={canEtiqueter && !archivee ? (
-          <button type="button" className="fv-action" onClick={() => onEtiquette(r)}>Étiquette</button>
+        actions={canEtiqueter && !archivee ? (nommer) => (
+          <button type="button" className="fv-action" {...nommer('etiquette')} onClick={() => onEtiquette(r)}>Étiquette</button>
         ) : null}
       />
     );
   };
 
-  const rien = q && !fiches.length && !aCompleter.length && !archivees.length;
+  // Rien à montrer : une recherche sans résultat le dit avec son texte ; sans
+  // recherche (toutes les fiches cachées, plats créés avant leurs fiches, rôle
+  // sans droit fiches), l'écran le dit aussi au lieu de rester blanc. Mêmes
+  // phrases que la bibliothèque vide (déjà au glossaire).
+  const rien = !fiches.length && !aCompleter.length && !archivees.length;
 
   return (
     <GrilleFiches>
-      {rien && (
+      {rien && q && (
         <p className="fv-vide-recherche">
           Aucune fiche ne correspond à «&nbsp;<span data-no-translate="">{String(recherche || '').trim()}</span>&nbsp;».
+        </p>
+      )}
+      {rien && !q && (
+        <p className="fv-vide-recherche">
+          {canFiches
+            ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.'
+            : 'Aucune recette pour cet établissement.'}
         </p>
       )}
 
@@ -110,10 +127,16 @@ export default function VitrineFiches({
                   <PhotoFiche src={plat.photoUrl} categorie={categorieDuPlat(plat)} nom={plat.nom} variante="miniature" />
                 </span>
                 <span className="fv-ligne-texte">
-                  <span className="fv-ligne-nom">{plat.nom}</span>
+                  <span className="fv-ligne-nom" id={`${idLignes}-${plat.id}`}>{plat.nom}</span>
                   <span className="fv-ligne-raison">{raison === 'sansFiche' ? 'aucune fiche' : 'sur aucune carte'}</span>
                 </span>
-                <button type="button" className="fv-action" onClick={() => onModifierPlat(plat)}>Modifier</button>
+                <button
+                  type="button"
+                  className="fv-action"
+                  id={`${idLignes}-${plat.id}-modifier`}
+                  aria-labelledby={`${idLignes}-${plat.id}-modifier ${idLignes}-${plat.id}`}
+                  onClick={() => onModifierPlat(plat)}
+                >Modifier</button>
               </li>
             ))}
           </ul>

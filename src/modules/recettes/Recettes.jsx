@@ -60,8 +60,12 @@ const RETRY_MAX_MS = 30000;
 const STATUTS_RECETTE = {
   brouillon: { label: 'Brouillon', couleur: 'var(--text2)' },
   'validée': { label: 'Validée', couleur: 'var(--success-text)' },
+  // « Active » : ce que l'éditeur de fiches écrit (brouillon, active, archivée).
+  active: { label: 'Active', couleur: 'var(--success-text)' },
   'archivée': { label: 'Archivée', couleur: 'var(--text3)' },
 };
+// État normal d'une fiche en service : aucune pastille sur sa photo.
+const STATUTS_EN_SERVICE = ['validée', 'active'];
 const statutRecette = (s) => STATUTS_RECETTE[s] || { label: s || '', couleur: 'var(--text2)' };
 // Date ISO (2026-09-29) en date suisse (29.09.2026) ; un autre texte passe tel quel.
 const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('.') : (v || ''));
@@ -589,7 +593,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
   const ingCols = isMobile ? '1fr 78px 34px' : '1fr 96px 60px';
   const sIngName = { ...rs.ingName, ...(tactile ? { fontSize: 16 } : (isMobile ? { fontSize: 15 } : null)) };
   const portionsFiche = Number(recette.portions) || 0;
-  const statutAffiche = recette.statut && recette.statut !== 'validée' ? statutRecette(recette.statut).label : null;
+  const statutAffiche = recette.statut && !STATUTS_EN_SERVICE.includes(recette.statut) ? statutRecette(recette.statut).label : null;
 
   return (
     <div ref={hautRef} style={rs.detailRoot}>
@@ -1506,23 +1510,39 @@ const Recettes = ({ user, etablissement }) => {
   const fermerFiche = React.useCallback(() => setSelectedRecette(null), []);
   useBackLayer(Boolean(selectedRecette), fermerFiche, 'recettes-fiche');
 
-  // Au retour d'une fiche, la vitrine revient sur la vignette quittée plutôt
-  // qu'en haut de la liste (la fiche s'ouvre en haut de page). La clé dit
-  // laquelle : « plat:<id> » sur la carte du moment, « fiche:<id> » dans Je
-  // cherche une fiche ; sans clé (recherche allergène, bibliothèque de Gérer),
-  // rien n'est ramené. Même motif que les Fiches salle.
+  // Au retour d'une fiche, l'écran revient là où on l'a quitté (la fiche
+  // s'ouvre en haut de page et remet à zéro le défilement de ses parents).
+  // À l'ouverture, le défilement de chaque parent qui défile est retenu ; au
+  // retour, il est remis tel quel : la liste de Gérer (Bibliothèque) et la
+  // recherche Allergènes retrouvent leur ligne. La clé dit en plus quelle
+  // vignette a été quittée : « plat:<id> » sur la carte du moment,
+  // « fiche:<id> » dans Je cherche une fiche ; si elle n'est plus à l'écran
+  // après la remise (liste relue entre-temps), elle y est ramenée. Même motif
+  // que les Fiches salle.
+  const racineRef = React.useRef(null);
   const ficheQuitteeRef = React.useRef(null);
   const vignetteQuitteeRef = React.useRef(null);
+  const defilementQuitteRef = React.useRef(null);
   const ouvrirFiche = React.useCallback((r, cle = null) => {
+    const parents = [];
+    for (let el = racineRef.current?.parentElement; el; el = el.parentElement) if (el.scrollTop > 0) parents.push([el, el.scrollTop]);
+    defilementQuitteRef.current = { parents, fenetre: window.scrollY };
     ficheQuitteeRef.current = cle;
     setSelectedRecette(r);
   }, []);
   React.useLayoutEffect(() => {
-    if (selectedRecette || edition || !ficheQuitteeRef.current) return;
-    const el = vignetteQuitteeRef.current;
+    if (selectedRecette || edition) return;
+    const defilement = defilementQuitteRef.current;
+    const cle = ficheQuitteeRef.current;
+    defilementQuitteRef.current = null;
+    ficheQuitteeRef.current = null;
+    if (defilement) {
+      defilement.parents.forEach(([el, haut]) => { if (el.isConnected) el.scrollTop = haut; });
+      if (defilement.fenetre > 0) window.scrollTo(0, defilement.fenetre);
+    }
+    const el = cle ? vignetteQuitteeRef.current : null;
     const r = el?.getBoundingClientRect();
     if (r && (r.top < 0 || r.bottom > window.innerHeight)) el.scrollIntoView({ block: 'center' });
-    ficheQuitteeRef.current = null;
   }, [selectedRecette, edition]);
   const fermerEditeur = React.useCallback(() => setEdition(null), []);
   useBackLayer(Boolean(edition), fermerEditeur, 'recettes-editeur');
@@ -1978,7 +1998,7 @@ const Recettes = ({ user, etablissement }) => {
   );
 
   if (ecran === ECRAN_ACCUEIL) return (
-    <div style={rs.root}>
+    <div ref={racineRef} style={rs.root}>
       {fenetres}
       <AccueilRecettes
         fiches={dataStatus === 'ready' ? recettesEtab.length : null}
@@ -2018,7 +2038,7 @@ const Recettes = ({ user, etablissement }) => {
   // La loupe : dans l'en-tête de la carte du moment, dans la barre de Gérer.
   const loupe = <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />;
   return (
-    <div style={rs.root}>
+    <div ref={racineRef} style={rs.root}>
       {fenetres}
       <EcranTache
         titre={TITRES_ECRAN[ecran]}
@@ -2207,8 +2227,10 @@ const Recettes = ({ user, etablissement }) => {
       ) : ecran === 'chercher' ? (
         // Je cherche une fiche : une grille de fiches (VitrineFiches). Une
         // lecture en cours ou en échec ne s'annonce jamais comme une
-        // bibliothèque vide (cf. PanneauEtat).
-        recettesEtab.length === 0 && plats.length === 0 && recettesArchivees.length === 0 ? (
+        // bibliothèque vide (cf. PanneauEtat) : sans aucune fiche lue, des
+        // plats déjà là (lecture des fiches en échec) ne suffisent pas à
+        // montrer la grille, elle les donnerait tous « à compléter ».
+        recettesEtab.length === 0 && recettesArchivees.length === 0 && (plats.length === 0 || dataStatus !== 'ready') ? (
           dataStatus !== 'ready'
             ? <PanneauEtat
                 titre={dataStatus === 'loading' ? 'Chargement des recettes…' : 'Recettes indisponibles'}

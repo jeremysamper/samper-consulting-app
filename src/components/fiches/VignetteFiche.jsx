@@ -24,7 +24,13 @@ import './fiches.css';
 //   pastille   : « Brouillon », « Archivée »… en haut à droite de la photo
 //   mention    : ligne discrète (« Fiche à venir »)
 //   liens      : { titre, items: [{ cle, nom, onOuvrir }] }
-//   actions    : boutons (.fv-action) sous la vignette
+//   actions    : boutons (.fv-action) sous la vignette, ou une fonction
+//                (nommer) => boutons. nommer('modifier') rend les props
+//                { id, aria-labelledby } qui nomment le bouton par son
+//                libellé suivi du titre de la vignette (« Modifier Joue de
+//                bœuf ») : N boutons « Modifier » restent distincts pour un
+//                lecteur d'écran, sans phrase neuve à traduire par plat (le
+//                titre est déjà un texte du DOM).
 //   selection  : { coche, onBasculer } quand la sélection est active
 //   refVignette, attenuee (archivées)
 export default function VignetteFiche({
@@ -32,6 +38,7 @@ export default function VignetteFiche({
   onOuvrir, liens, actions, selection, refVignette, attenuee = false,
 }) {
   const idTitre = React.useId();
+  const nommer = (suffixe) => ({ id: `${idTitre}-${suffixe}`, 'aria-labelledby': `${idTitre}-${suffixe} ${idTitre}` });
   const metaVisible = (meta || []).filter(Boolean);
   const Cible = onOuvrir || selection ? 'button' : 'div';
   const auToucher = selection ? selection.onBasculer : onOuvrir;
@@ -95,7 +102,7 @@ export default function VignetteFiche({
           </ul>
         </div>
       )}
-      {actions && <div className="fv-actions">{actions}</div>}
+      {actions && <div className="fv-actions">{typeof actions === 'function' ? actions(nommer) : actions}</div>}
     </article>
   );
 }
