@@ -25,7 +25,12 @@ const activable = (agir) => ({
 // Case de la grille : les horaires du jour écrits en clair (« Midi », puis les
 // heures), sur fond neutre avec le filet gauche du type. En mode remplissage, toucher la case pose le
 // modèle choisi au lieu d'ouvrir la saisie.
-const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected, absence = null, onRemplir = null }) => {
+//
+// glisser (useGlisserHoraires, null quand le glisser n'est pas permis) : un
+// horaire s'attrape à la souris ou par appui long ; il ne sélectionne pas de
+// texte et n'ouvre pas le menu d'appui long. origineId : l'horaire traîné
+// (pâli, contour pointillé) ; souleveId : l'horaire soulevé par l'appui long.
+const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected, absence = null, onRemplir = null, glisser = null }) => {
   const shifts = getShiftsDay(userId, date);
   const remplir = (e) => { e.stopPropagation(); onRemplir(userId, date); };
   if (shifts.length === 0) {
@@ -56,8 +61,13 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
         // cours teintent la case. Le type se lit au filet gauche.
         const bg = selected ? 'var(--accent-light)' : enPoste ? 'var(--success-bg)' : 'var(--surface2)';
         const etat = enPoste ? 'en poste' : shift.pointageFin ? 'pointé' : null;
+        const attrapable = Boolean(glisser) && !selectionMode && !onRemplir;
+        const origine = attrapable && glisser.origineId === shift.id;
+        const souleve = attrapable && glisser.souleveId === shift.id;
         const onClick = (e) => {
           e.stopPropagation();
+          // Le lâcher d'un glisser n'ouvre pas « Modifier l'horaire ».
+          if (glisser && glisser.clicIgnore()) return;
           if (onRemplir) { onRemplir(userId, date); return; }
           if (selectionMode) { toggleShiftSelected?.(shift.id); return; }
           if (canWrite) openEditShift(shift);
@@ -69,8 +79,12 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
         return (
           <div
             key={shift.id}
-            style={{ ...pls.shiftCell, background: bg, boxShadow: filetType(t), cursor: 'pointer', padding: '4px 6px 4px 8px', border: selected ? '1px solid var(--accent)' : 'none', display: 'flex', alignItems: 'flex-start', gap: 4 }}
+            style={{
+              ...pls.shiftCell, background: bg, boxShadow: souleve ? `${filetType(t)}, var(--sh)` : filetType(t), cursor: attrapable ? 'grab' : 'pointer', padding: '4px 6px 4px 8px', border: selected ? '1px solid var(--accent)' : 'none', display: 'flex', alignItems: 'flex-start', gap: 4,
+              ...(attrapable ? pls.horaireAttrapable : null), ...(origine ? pls.horaireOrigine : null), ...(souleve ? pls.horaireSouleve : null),
+            }}
             onClick={onClick}
+            {...(attrapable ? { 'data-planning-horaire': shift.id, onPointerDown: (e) => glisser.surPointerDown(e, shift), onContextMenu: (e) => e.preventDefault() } : null)}
             {...(modifiable ? { ...activable(onClick), 'aria-labelledby': `shift-lbl-${shift.id} shift-h-${shift.id}` } : null)}
           >
             {modifiable && <span id={`shift-lbl-${shift.id}`} hidden>Modifier l'horaire de</span>}

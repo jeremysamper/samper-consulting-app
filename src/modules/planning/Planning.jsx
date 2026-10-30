@@ -20,11 +20,18 @@ import MasquesModal from './MasquesModal.jsx';
 import GroupesModal from './GroupesModal.jsx';
 import SaisieRapide from './SaisieRapide.jsx';
 import DupliquerModal from './DupliquerModal.jsx';
+import DupliquerVersModal from './DupliquerVersModal.jsx';
+import FantomeHoraire from './FantomeHoraire.jsx';
+import BandeauAnnuler from './BandeauAnnuler.jsx';
+import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
+import { useEcrituresHoraires } from './useEcrituresHoraires.js';
+import { useGlisserHoraires } from './useGlisserHoraires.js';
+import { cleCase, lireCase, regleDepot } from './planningGlisser.js';
 import ExportModal from './ExportModal.jsx';
 import MonPlanning from './MonPlanning.jsx';
 import ModelesModal from './ModelesModal.jsx';
 import { BoutonActions, Fenetre } from './planningUi.jsx';
-import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, filetType, formatDuree, horairesDuModele, libelleModele, typeHoraire } from './planningModeles.js';
+import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, filetType, formatDuree, libelleModele, typeHoraire } from './planningModeles.js';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 import { usePlanningModeles } from '../../hooks/usePlanningModeles.js';
@@ -88,6 +95,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [editForm, setEditForm] = React.useState(null);
   const [planning, setPlanning] = React.useState([]); // shifts chargés depuis Supabase
   const [loading, setLoading] = React.useState(true);
+  // Dernière lecture des horaires en échec : la grille le dit (BandeauNonActualise)
+  // au lieu de passer pour vide, et la duplication attend une lecture réussie.
+  const [lectureEchec, setLectureEchec] = React.useState(false);
   // Refetch des shifts de l'effet courant, rejoué au réveil de l'appareil.
   const reloadShiftsRef = React.useRef(null);
   // Horaires dont un pointage est en cours d'envoi : un double tap sur l'iPad
@@ -249,13 +259,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const { assurerDepuis: assurerAbsencesDepuis } = absencesEtab;
   React.useEffect(() => { assurerAbsencesDepuis(selectedDate); }, [selectedDate, assurerAbsencesDepuis]);
   React.useEffect(() => { assurerAbsencesDepuis(mobileDate); }, [mobileDate, assurerAbsencesDepuis]);
-  const absencesVisibles = absencesEtab.status === 'absent' ? [] : absencesEtab.absences.filter(a => !estMasque(a.userId));
+  // Mémorisés (comme planningEtab) : les plans de la fenêtre Dupliquer ne se
+  // recalculent qu'à un vrai changement. estMasque ne lit que masques et user.id.
+  const absencesVisibles = React.useMemo(
+    () => (absencesEtab.status === 'absent' ? [] : absencesEtab.absences.filter(a => !estMasque(a.userId))),
+    [absencesEtab.status, absencesEtab.absences, masquesEtab.masques, user.id],
+  );
+  const estAbsent = React.useCallback((uid, d) => !!absenceDe(absencesVisibles, uid, d), [absencesVisibles]);
 
   // Planning de cet établissement uniquement
-  const planningEtab = planning.filter(s => (s.etablissementId || 'etab-1') === etabId);
+  const planningEtab = React.useMemo(() => planning.filter(s => (s.etablissementId || 'etab-1') === etabId), [planning, etabId]);
   // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
   // de chevauchement : un horaire masqué existe toujours.
   const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
+
+  // Écritures des gestes de la grille (modèle posé, glisser, duplication) et
+  // leur retour arrière : useEcrituresHoraires.js.
+  const ecritures = useEcrituresHoraires({ bridge: legacySB, setPlanning, existants: planningEtab, canWrite, etabId });
 
   // Téléphones saisis par chacun dans « Mon compte » (consultant et patron).
   const phones = useTeamPhones(user.role);
@@ -282,8 +302,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const rows = await legacySB.db.listShifts(etabId, { strict: true });
         if (!mounted) return;
         setPlanning(rows.map(r => legacySB.db.mapShiftFromDB(r)));
+        setLectureEchec(false);
       } catch (err) {
         console.error('[Planning] load', err);
+        if (mounted) setLectureEchec(true);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -426,56 +448,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
     setShowEditModal(true);
   };
 
-  // Pose un modèle (un ou deux créneaux) chez une personne un jour donné. Un
-  // créneau qui chevauche un horaire existant est laissé de côté : le service
-  // coupé reste possible, rien n'est écrasé sans le demander.
-  const poserModele = async (modele, userId, date, { silencieux = false } = {}) => {
-    if (!canWrite || !modele || !userId || !date) return;
-    const { aCreer, ignores } = horairesDuModele(modele, { userId, date, etablissementId: etabId, existants: planningEtab });
-    if (!aCreer.length) {
-      if (!silencieux) notifyLegacy('Ce créneau est déjà occupé.', 'warning');
-      return;
-    }
-    try {
-      let crees;
-      if (legacySB) {
-        const rows = await legacySB.db.createShifts(aCreer);
-        crees = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
-      } else {
-        crees = aCreer.map((s, i) => ({ ...s, id: 'sm' + Date.now() + '-' + i }));
-      }
-      setPlanning(prev => [...prev, ...crees.filter(c => !prev.some(p => p.id === c.id))]);
-      if (ignores && !silencieux) notifyLegacy('Une partie était déjà occupée : seul le créneau libre a été posé.', 'info');
-    } catch (err) {
-      notifyLegacy('Enregistrement impossible. ' + messageErreur(err, 'planning'), 'error');
-    }
-  };
-
   // Mode remplissage : chaque case touchée reçoit le modèle choisi.
-  const remplirCase = (userId, date) => poserModele(remplissage, userId, date);
-
-  // Duplication validée dans la fenêtre Dupliquer : un effacement groupé
-  // (ce qui est remplacé) puis une création groupée.
-  const appliquerDuplication = async ({ aCreer, aSupprimer }) => {
-    try {
-      let crees;
-      if (legacySB) {
-        if (aSupprimer.length) await legacySB.db.deleteShifts(aSupprimer);
-        const rows = await legacySB.db.createShifts(aCreer);
-        crees = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
-      } else {
-        crees = aCreer.map((s, i) => ({ ...s, id: 'sd' + Date.now() + '-' + i }));
-      }
-      const retires = new Set(aSupprimer);
-      setPlanning(prev => [...prev.filter(s => !retires.has(s.id)), ...crees.filter(c => !prev.some(p => p.id === c.id))]);
-      let msg = `${crees.length} horaire${crees.length > 1 ? 's' : ''} créé${crees.length > 1 ? 's' : ''}`;
-      if (aSupprimer.length) msg += `, ${aSupprimer.length} remplacé${aSupprimer.length > 1 ? 's' : ''}`;
-      notifyLegacy(msg + '.', 'success');
-    } catch (err) {
-      notifyLegacy('Duplication impossible. ' + messageErreur(err, 'planning'), 'error');
-      throw err;
-    }
-  };
+  const remplirCase = (userId, date) => ecritures.poserModele(remplissage, userId, date);
 
   // Clic sur un shift existant → édition directe (plus de modale Détail intermédiaire côté planning).
   const openEditShift = (shift) => {
@@ -678,12 +652,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [pointageEditForm, setPointageEditForm] = React.useState({ debut: '', fin: '' });
   const [pointageEditSaving, setPointageEditSaving] = React.useState(false);
 
-  // State pour « Dupliquer vers… » (mode sélection) : copie des horaires sélectionnés
-  // vers plusieurs jours × employés. { sourceShifts } = horaires cochés.
-  const [demultModal, setDemultModal] = React.useState(null); // { sourceShifts } | null
-  const [demultDates, setDemultDates] = React.useState(new Set());
-  const [demultUserIds, setDemultUserIds] = React.useState(new Set());
-  const [demultSaving, setDemultSaving] = React.useState(false);
+  // « Dupliquer vers… » (mode sélection) : copie des horaires sélectionnés
+  // vers plusieurs jours × employés (DupliquerVersModal). Horaires cochés | null.
+  const [demultSources, setDemultSources] = React.useState(null);
 
   // ─── État pour la suppression multiple (Axe 2) ───
   // Mode sélection : des cases à cocher apparaissent sur chaque horaire, une barre
@@ -715,6 +686,34 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Modèle à plusieurs créneaux choisi (Coupure) : ses créneaux remplacent les heures saisies.
   const [batchModele, setBatchModele] = React.useState(null);
   const [batchSaving, setBatchSaving] = React.useState(false);
+
+  // ─── Glisser-déposer des horaires (grille semaine, ordinateur et iPad) ───
+  // Réservé à qui gère le planning, hors sélection et hors pinceau. La règle
+  // (regleDepot) se lit sur l'état du dernier rendu ; un horaire dont une
+  // écriture est en cours ne s'attrape pas.
+  const glisserActif = canWrite && !isMobile && activeTab === 'planning' && !selectionMode && !remplissage;
+  const glisser = useGlisserHoraires({
+    actif: glisserActif,
+    attrapable: (h) => !ecritures.estEnCours(h.id),
+    horaireDe: (id) => planningEtab.find(s => s.id === id) || null,
+    evaluer: (horaire, cle, copie) => {
+      const cible = lireCase(cle);
+      const a = cible && absenceDe(absencesVisibles, cible.userId, cible.date);
+      return regleDepot({ horaire, cible, copie, existants: planningEtab, absence: a ? metaMotif(a.motif).label : null });
+    },
+    onDeposer: ecritures.deposer,
+  });
+  // Le bandeau du dernier geste s'en va quand on quitte la grille.
+  const { fermerBandeau } = ecritures;
+  React.useEffect(() => { if (ecran !== 'planning') fermerBandeau(); }, [ecran, fermerBandeau]);
+  // Il s'en va aussi au geste suivant : ouvrir une fenêtre ou un mode qui écrit
+  // des horaires. Son « Annuler » viserait sinon un geste qui n'est plus le dernier.
+  const ouvertures = [showEditModal, showDetailModal, !!saisieRapide, !!remplissage, selectionMode, showBatchModal, !!demultSources, showDupliquer];
+  const ouverturesRef = React.useRef(ouvertures);
+  React.useEffect(() => {
+    if (ouvertures.some((v, i) => v && !ouverturesRef.current[i])) fermerBandeau();
+    ouverturesRef.current = ouvertures;
+  });
 
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
@@ -921,98 +920,26 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
 
   // ─── « Dupliquer vers… » depuis le mode sélection ───
-  // Duplique les horaires sélectionnés vers N employés × N jours cochés.
-  // Réutilise les méthodes batch (createShifts/deleteShifts) livrées aux axes 2/3.
+  // Les horaires sélectionnés vers N employés × N jours cochés
+  // (DupliquerVersModal, plan planCopieVers : un horaire pointé n'est jamais remplacé).
   const openDuplicateSelection = () => {
     const sources = planningEtab.filter(s => selectedIds.has(s.id));
     if (sources.length === 0) { notifyLegacy('Sélectionnez au moins un horaire.', 'warning'); return; }
-    setDemultModal({ sourceShifts: sources });
-    setDemultDates(new Set()); // l'utilisateur choisit les jours cibles
-    setDemultUserIds(new Set(sources.map(s => s.userId))); // employés d'origine pré-cochés
+    setDemultSources(sources);
   };
 
-  const closeDemult = () => {
-    setDemultModal(null);
-    setDemultDates(new Set());
-    setDemultUserIds(new Set());
-  };
-
-  // Pour chaque couple (employé × jour) coché, recrée une copie de chaque horaire source.
-  // Conflits : on remplace systématiquement l'existant de la cellule (cohérent avec l'ancienne
-  // duplication journée). La cellule d'origine d'un horaire source est ignorée (pas de copie sur soi).
-  const saveDemult = async () => {
-    const sources = demultModal?.sourceShifts || [];
-    if (sources.length === 0) return;
-    if (demultDates.size === 0) { notifyLegacy('Sélectionnez au moins un jour cible.', 'warning'); return; }
-    if (demultUserIds.size === 0) { notifyLegacy('Sélectionnez au moins un employé cible.', 'warning'); return; }
-
-    setDemultSaving(true);
-    let replaced = 0;
-    const toCreate = [];
-    const idsToRemove = new Set();
-
-    try {
-      for (const userId of demultUserIds) {
-        for (const date of demultDates) {
-          // Ne pas dupliquer une cellule sur elle-même (origine d'un horaire sélectionné)
-          if (sources.some(s => s.userId === userId && s.date === date)) continue;
-          const existing = planningEtab.filter(s => s.userId === userId && s.date === date);
-          // On ne retire que les horaires existants qui chevauchent un des créneaux
-          // dupliqués → un horaire non chevauchant (ex. midi en place, on duplique un
-          // soir) est conservé, le service coupé survit à la duplication.
-          existing.forEach(ex => {
-            if (sources.some(src => shiftsOverlap(ex.debut, ex.fin, src.debut, src.fin))) {
-              idsToRemove.add(ex.id);
-              replaced++;
-            }
-          });
-          for (const src of sources) {
-            toCreate.push({
-              etablissementId: etabId,
-              userId,
-              date,
-              debut: src.debut,
-              fin: src.fin,
-              pause: src.pause || 0,
-              poste: src.poste || '',
-              statut: 'confirmé',
-              typeShift: src.typeShift || 'simple',
-              pointageDebut: null,
-              pointageFin: null,
-            });
-          }
-        }
-      }
-
-      if (toCreate.length === 0) {
-        notifyLegacy('Aucun horaire à créer (vérifie les jours/employés cochés).', 'warning');
-        setDemultSaving(false);
-        return;
-      }
-
-      let createdShifts = [];
-      if (legacySB) {
-        if (idsToRemove.size > 0) await legacySB.db.deleteShifts(Array.from(idsToRemove));
-        const rows = await legacySB.db.createShifts(toCreate);
-        createdShifts = (rows || []).map(r => legacySB.db.mapShiftFromDB(r));
-      } else {
-        createdShifts = toCreate.map((s, i) => ({ ...s, id: 'sh' + Date.now() + '-' + i }));
-      }
-
-      setPlanning(prev => [...prev.filter(s => !idsToRemove.has(s.id)), ...createdShifts]);
-
-      let msg = `${createdShifts.length} horaire${createdShifts.length > 1 ? 's' : ''} créé${createdShifts.length > 1 ? 's' : ''}`;
-      if (replaced > 0) msg += ` (${replaced} remplacé${replaced > 1 ? 's' : ''})`;
-      notifyLegacy(msg, 'success');
-      closeDemult();
-      setSelectionMode(false);
-      setSelectedIds(new Set());
-    } catch (err) {
-      notifyLegacy('Duplication impossible. ' + messageErreur(err, 'planning'), 'error');
-    } finally {
-      setDemultSaving(false);
+  // Après une duplication de la fenêtre Dupliquer encore ouverte : la grille
+  // montre le résultat (semaine suivante après « Copier sur la suivante »),
+  // et l'accueil ouvre « Faire le planning ».
+  const apresDuplication = (action) => {
+    if (action === 'suivante') {
+      if (isMobile) setMobileDate(d => ajouterJoursIso(d, 7));
+      else setSelectedDate(d => ajouterJoursIso(d, 7));
     }
+    if (ecran !== 'planning') setEcran('planning');
   };
+  // Sur téléphone, la semaine de la fenêtre est celle du jour affiché.
+  const lundiDe = (iso) => ajouterJoursIso(iso, -((new Date(iso + 'T12:00:00').getDay() + 6) % 7));
 
   // ═══════════════ EXPORT CCNT ═══════════════
   // Conforme aux art. 15 et 21 CCNT hôtellerie-restauration suisse
@@ -1358,6 +1285,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
     : null;
   const titreEcran = { horaires: 'Mes horaires', equipe: 'L\'équipe aujourd\'hui', planning: canWrite ? 'Faire le planning' : 'La semaine de l\'équipe' }[ecran];
 
+  // Ce que chaque case de la grille reçoit du glisser (null : aucun horaire attrapable).
+  const glisse = glisser.glisse;
+  const glisserCase = glisserActif ? {
+    surPointerDown: glisser.surPointerDown,
+    clicIgnore: glisser.clicIgnore,
+    origineId: glisse && glisse.phase === 'glisse' ? glisse.horaireId : null,
+    souleveId: glisse && glisse.phase === 'arme' ? glisse.horaireId : null,
+  } : null;
+
   return (
     <div style={pls.root}>
       {/* ─── Accueil du module, ou en-tête de l'écran de tâche ─── */}
@@ -1479,6 +1415,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
         </div>
       )}
 
+      {/* Lecture des horaires en échec : ce qui s'affiche n'est peut-être pas à jour. */}
+      {lectureEchec && <div className="no-print"><BandeauNonActualise onRetry={() => reloadShiftsRef.current?.()} /></div>}
+
       {/* Contenu */}
       {activeTab === 'moi' ? (
         <MonPlanning
@@ -1494,11 +1433,22 @@ const Planning = ({ user, etablissement, initialTab }) => {
       ) : activeTab === 'planning' ? (
         isMobile ? renderMobilePlanning() : (
           <div style={pls.card} id="planning-print">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={pls.enteteGrille}>
               <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>Planning {horizon} semaine{horizon > 1 ? 's' : ''}</div>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>À partir du {new Date(selectedDate + 'T12:00:00').toLocaleDateString('fr-CH')}</div>
+              {/* Qui gère le planning lit comment déplacer un horaire ; les autres, la date de départ. */}
+              <div style={canWrite ? pls.aideGrille : pls.dateGrille} className={canWrite ? 'no-print' : undefined}>
+                {canWrite
+                  ? (matchMedia('(pointer: fine)').matches
+                    ? 'Glissez un horaire pour le déplacer. Alt ou Ctrl en le lâchant : il est copié.'
+                    : 'Gardez le doigt sur un horaire, puis glissez-le pour le déplacer.')
+                  : <>À partir du {new Date(selectedDate + 'T12:00:00').toLocaleDateString('fr-CH')}</>}
+              </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            {/* Zone du glisser : le touchmove y est annulé pendant un glisser au
+                doigt. Pas de data-no-edge-swipe : un horaire n'est jamais sous
+                la bande du bord (colonne des noms collée à gauche, 200 px), et
+                le retour par le bord doit rester possible sur la grille. */}
+            <div style={{ overflowX: 'auto' }} ref={glisser.zoneRef}>
               <div style={{ ...pls.grid, gridTemplateColumns: `200px repeat(${DAYS.length}, minmax(90px,1fr))`, minWidth: 200 + DAYS.length * 90 }}>
                 <div style={pls.empColHeader} />
                 {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 11, fontWeight: 700 }}>{d.label}</div></div>)}
@@ -1540,7 +1490,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
                         </div>
                       </div>
-                      {DAYS.map(d => <div key={d.date} style={pls.dayCell}><ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null}/></div>)}
+                      {DAYS.map(d => {
+                        // Case visée par un glisser : état de la règle (crochet data-etat-depot du banc).
+                        const cle = cleCase(emp.id, d.date);
+                        const vise = glisser.glisse && glisser.glisse.cle === cle ? glisser.glisse.etat : null;
+                        return (
+                          <div key={d.date} data-planning-case={cle} data-etat-depot={vise || undefined} style={vise ? { ...pls.dayCell, ...pls.caseVisee[vise] } : pls.dayCell}>
+                            <ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null} glisser={glisserCase}/>
+                          </div>
+                        );
+                      })}
                     </React.Fragment>
                   );
                 })}
@@ -1917,155 +1876,20 @@ const Planning = ({ user, etablissement, initialTab }) => {
         );
       })()}
 
-      {/* ═══ Modale « Dupliquer vers… » (depuis le mode sélection) ═══ */}
-      {demultModal && (() => {
-        const sources = demultModal.sourceShifts || [];
-        const srcUserIds = new Set(sources.map(s => s.userId));
-        const srcDates = new Set(sources.map(s => s.date));
-        // Aperçu = couples (employé × jour) cochés non-origine × nombre d'horaires sources
-        let targetCells = 0;
-        demultUserIds.forEach(uid => {
-          demultDates.forEach(date => {
-            if (!sources.some(s => s.userId === uid && s.date === date)) targetCells++;
-          });
-        });
-        const realPreview = targetCells * sources.length;
-        const toggleDate = (date) => {
-          setDemultDates(prev => {
-            const next = new Set(prev);
-            if (next.has(date)) next.delete(date); else next.add(date);
-            return next;
-          });
-        };
-        const toggleUser = (uid) => {
-          setDemultUserIds(prev => {
-            const next = new Set(prev);
-            if (next.has(uid)) next.delete(uid); else next.add(uid);
-            return next;
-          });
-        };
-        const allDatesSelected = DAYS.length > 0 && DAYS.every(d => demultDates.has(d.date));
-        const allUsersSelected = employees.length > 0 && employees.every(e => demultUserIds.has(e.id));
-        return (
-          <Fenetre id="planning-dupliquer" titre="Dupliquer vers…" onClose={closeDemult} largeur={720}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {/* Récapitulatif sélection */}
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>Horaires à dupliquer</div>
-                  <div style={{ fontSize: 13 }}>
-                    <strong>{sources.length}</strong> horaire{sources.length > 1 ? 's' : ''} sélectionné{sources.length > 1 ? 's' : ''}, copié{sources.length > 1 ? 's' : ''} pour chaque personne et chaque jour cochés ci-dessous
-                  </div>
-                </div>
-
-                {/* Sélection JOURS */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label style={pls.fieldLabel}>Jours cibles ({demultDates.size} sélectionnés)</label>
-                    <button
-                      style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
-                      onClick={() => {
-                        if (allDatesSelected) setDemultDates(new Set());
-                        else setDemultDates(new Set(DAYS.map(d => d.date)));
-                      }}
-                    >{allDatesSelected ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 6 }}>
-                    {DAYS.map(d => {
-                      const isSrc = srcDates.has(d.date);
-                      const checked = demultDates.has(d.date);
-                      return (
-                        <label
-                          key={d.date}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px',
-                            border: '1px solid transparent',
-                            borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                            background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleDate(d.date)}
-                          />
-                          <span style={{ flex: 1 }}>
-                            {d.label}
-                            {isSrc && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Sélection EMPLOYÉS */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label style={pls.fieldLabel}>Employés cibles ({demultUserIds.size} sélectionnés)</label>
-                    <button
-                      style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
-                      onClick={() => {
-                        if (allUsersSelected) setDemultUserIds(new Set());
-                        else setDemultUserIds(new Set(employees.map(e => e.id)));
-                      }}
-                    >{allUsersSelected ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
-                    {employees.map(emp => {
-                      const role = demoData.roles[emp.role];
-                      const isSrc = srcUserIds.has(emp.id);
-                      const checked = demultUserIds.has(emp.id);
-                      return (
-                        <label
-                          key={emp.id}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
-                            border: '1px solid transparent',
-                            borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                            background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleUser(emp.id)}
-                          />
-                          <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
-                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {emp.prenom} {emp.nom}
-                            {isSrc && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Avertissement */}
-                <div style={{ ...encadreStyle('alerte'), fontSize: 11 }}>
-                  Un horaire qui chevauche la copie est <strong>remplacé</strong> ; un horaire qui ne la chevauche pas (un midi quand on copie un soir) est gardé.
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                  <span style={{ flex: 1, fontSize: 12, color: realPreview > 0 ? 'var(--text)' : 'var(--text2)' }}>
-                    {realPreview > 0
-                      ? <><strong>{realPreview}</strong> horaire{realPreview > 1 ? 's' : ''} sera{realPreview > 1 ? 'ont' : ''} créé{realPreview > 1 ? 's' : ''}</>
-                      : 'Aucun horaire à créer'}
-                  </span>
-                  <button style={pls.exportBtn} onClick={closeDemult} disabled={demultSaving}>Annuler</button>
-                  <button
-                    style={{ ...pls.addBtn, opacity: realPreview === 0 || demultSaving ? 0.5 : 1 }}
-                    onClick={saveDemult}
-                    disabled={realPreview === 0 || demultSaving}
-                  >
-                    {demultSaving ? 'Création…' : `Dupliquer (${realPreview})`}
-                  </button>
-                </div>
-              </div>
-          </Fenetre>
-        );
-      })()}
+      {/* ═══ « Dupliquer vers… » (depuis le mode sélection) ═══ */}
+      {demultSources && (
+        <DupliquerVersModal
+          sources={demultSources}
+          jours={DAYS}
+          employees={employees}
+          existants={planningEtab}
+          estAbsent={estAbsent}
+          etablissementId={etabId}
+          onAppliquer={(plan) => ecritures.appliquerDuplication(plan, { mode: 'toast' })}
+          onFait={() => { setDemultSources(null); setSelectionMode(false); setSelectedIds(new Set()); }}
+          onClose={() => setDemultSources(null)}
+        />
+      )}
       {/* ═════════ BARRE D'ACTION SÉLECTION MULTIPLE (Axe 2) ═════════ */}
       {selectionMode && activeTab === 'planning' && (
         <div className="no-print barre-selection-planning" style={pls.selectionBar}>
@@ -2096,7 +1920,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           nomDe={nomDe}
           modeles={modeles}
           existants={planningEtab}
-          onPoser={(m, uid, d) => poserModele(m, uid, d)}
+          onPoser={(m, uid, d) => ecritures.poserModele(m, uid, d)}
           onAutre={openNouvelHoraire}
           onClose={() => setSaisieRapide(null)}
         />
@@ -2104,16 +1928,30 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
       {showDupliquer && canWrite && (
         <DupliquerModal
-          semaine={selectedDate}
+          semaine={isMobile ? lundiDe(mobileDate) : selectedDate}
           existants={planningEtab}
           employees={employees}
-          nomDe={nomDe}
-          estAbsent={(uid, d) => !!absenceDe(absencesVisibles, uid, d)}
+          estAbsent={estAbsent}
+          nonActualise={lectureEchec}
           etablissementId={etabId}
-          onDupliquer={appliquerDuplication}
+          onDupliquer={(plan) => ecritures.appliquerDuplication(plan)}
+          onFait={apresDuplication}
           onClose={() => setShowDupliquer(false)}
         />
       )}
+
+      {/* Glisser-déposer : le fantôme qui suit le pointeur, puis le bandeau du
+          dernier geste (Annuler, Copier plutôt, Copier ici). */}
+      <FantomeHoraire glisse={glisse} refRacine={glisser.fantomeRef} nomDe={nomDe} />
+      <BandeauAnnuler
+        bandeau={ecritures.bandeau}
+        nomDe={nomDe}
+        pendantGlisser={Boolean(glisse)}
+        onAnnuler={ecritures.annulerDernier}
+        onCopierPlutot={ecritures.copierPlutot}
+        onCopierIci={ecritures.copierIci}
+        onFermer={ecritures.fermerMessage}
+      />
 
       {exportOuvert && (
         <ExportModal
