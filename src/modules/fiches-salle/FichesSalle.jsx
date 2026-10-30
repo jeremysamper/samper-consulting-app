@@ -39,6 +39,10 @@ import { categorieDuPlat, categoriesPresentes, grouperParCategorie } from '../..
 // (jetons warning). Les couleurs propres au module, en dur, illisibles en
 // sombre et sous le seuil AA pour certaines (céleri, moutarde), ont disparu.
 
+// Nouvel essai de lecture des fiches après un échec : 4 s, doublé, 30 s au plus.
+const ESSAI_MIN_MS = 4000;
+const ESSAI_MAX_MS = 30000;
+
 // Date ISO (2026-10-14) en date suisse (14.10.2026) ; un autre texte passe tel quel.
 const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('.') : (v || ''));
 
@@ -225,18 +229,42 @@ const FichesSalle = ({ user, etablissement }) => {
     }
     let mounted = true;
     const unsubs = [];
+    // Échec : nouvel essai programmé (4 s, puis 8, 16, 30 s au plus), comme
+    // Cartes & Recettes. L'écran « Fiches indisponibles » l'annonce.
+    // Une seule lecture à la fois : deux événements realtime rapprochés
+    // (fiches_salle, carte_fiches_salle) en lançaient deux, et deux échecs
+    // programmaient deux essais dont un seul était annulé à la fermeture.
+    // Un appel qui arrive pendant une lecture en demande une de plus, à la
+    // fin de celle-ci (la modification qu'il signale n'est pas perdue).
+    let essaiTimer = null;
+    let essaiDelai = ESSAI_MIN_MS;
+    let enCours = false;
+    let aRelire = false;
     const lireFiches = async () => {
+      if (!mounted) return;
+      if (enCours) { aRelire = true; return; }
+      enCours = true;
+      aRelire = false;
+      if (essaiTimer) { clearTimeout(essaiTimer); essaiTimer = null; }
       try {
         const rows = await legacySB.db.listFichesSalle(etabId, { strict: true });
-        if (!mounted) return;
-        setFiches(rows);
-        setFichesLues(true);
-        setStatutLecture('ready');
+        if (mounted) {
+          essaiDelai = ESSAI_MIN_MS;
+          setFiches(rows);
+          setFichesLues(true);
+          setStatutLecture('ready');
+        }
       } catch (err) {
-        if (!mounted) return;
-        console.error('[FichesSalle]', err);
-        setStatutLecture('error');
+        if (mounted) {
+          console.error('[FichesSalle]', err);
+          setStatutLecture('error');
+          if (essaiTimer) clearTimeout(essaiTimer);
+          essaiTimer = setTimeout(lireFiches, essaiDelai);
+          essaiDelai = Math.min(essaiDelai * 2, ESSAI_MAX_MS);
+        }
       }
+      enCours = false;
+      if (aRelire && mounted) lireFiches();
     };
     const lireRecettes = async () => {
       try { const recs = await legacySB.db.listRecettes(etabId); if (mounted) setRecettes(recs); }
@@ -258,6 +286,7 @@ const FichesSalle = ({ user, etablissement }) => {
     unsubs.push(legacySB.realtime.subscribeReload('carte_fiches_salle', lireFiches));
     return () => {
       mounted = false;
+      if (essaiTimer) clearTimeout(essaiTimer);
       if (lireFichesRef.current === lireFiches) lireFichesRef.current = null;
       unsubs.forEach(u => u && u());
     };
@@ -267,6 +296,18 @@ const FichesSalle = ({ user, etablissement }) => {
   // pendant la veille, on relit (resumeCoordinator attend une session saine).
   const relireFiches = React.useCallback(() => (lireFichesRef.current ? lireFichesRef.current() : undefined), []);
   useResumeRefresh(relireFiches);
+  // « Réessayer » de l'écran « Fiches indisponibles » (aucune fiche lue) :
+  // l'écran repasse en « Chargement des fiches… » le temps de la relecture,
+  // au moins un instant, sinon un échec immédiat (hors ligne) laisserait le
+  // toucher sans effet visible. Une grille déjà lue n'y passe jamais.
+  // La minuterie est gardée : annulée par un second toucher et à la fermeture.
+  const reessaiRef = React.useRef(null);
+  React.useEffect(() => () => clearTimeout(reessaiRef.current), []);
+  const reessayerLecture = () => {
+    setStatutLecture('loading');
+    clearTimeout(reessaiRef.current);
+    reessaiRef.current = setTimeout(relireFiches, 400);
+  };
 
   // Garde un onglet de carte valide quand les cartes changent.
   React.useEffect(() => {
@@ -629,7 +670,7 @@ const FichesSalle = ({ user, etablissement }) => {
                   ? 'La connexion a été interrompue. Nouvel essai automatique en cours.'
                   : 'Hors ligne : les fiches s\'afficheront au retour du réseau.'}
               </p>
-              <button type="button" className="fv-action" onClick={relireFiches}>Réessayer</button>
+              <button type="button" className="fv-action" onClick={reessayerLecture}>Réessayer</button>
             </>
           )}
         </div>
@@ -727,6 +768,9 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
   }, [fiche.id]);
 
   const familles = (fiche.accordsGeneraux || []).map(g => String(g || '').trim()).filter(Boolean);
+  // Température et temps écrits une seule fois, ici, en toutes lettres : la
+  // génération les rédige en phrases (« Chaud, assiette chaude. Servir dans
+  // les 2 minutes »), trop longues pour une ligne posée sur la photo.
   const auService = [
     fiche.temperatureService && ['Température de service', fiche.temperatureService],
     fiche.tempsPreparation && ['Temps de préparation', fiche.tempsPreparation],
@@ -762,12 +806,6 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
           <div className="fv-heros-texte">
             {fiche.categorie && <p className="fv-heros-cat">{fiche.categorie}</p>}
             <h2 className="fv-heros-titre">{fiche.nom}</h2>
-            {(fiche.temperatureService || fiche.tempsPreparation) && (
-              <p className="fv-heros-meta">
-                {fiche.temperatureService && <span>{fiche.temperatureService}</span>}
-                {fiche.tempsPreparation && <span>{fiche.tempsPreparation}</span>}
-              </p>
-            )}
           </div>
         </header>
 
