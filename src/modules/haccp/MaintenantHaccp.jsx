@@ -11,7 +11,9 @@ import { heureEnMinutes } from './HACCP.utils.js';
 // États (etat = etatDuJour de haccpJour.js) : à faire, en retard, tout est à
 // jour, manque (une tournée passée incomplète), sans heures de relevé, pas
 // encore réglé ; plus le chargement et la lecture en échec, qui ne disent
-// jamais « Tout est à jour » : un écran sans données ne rassure pas.
+// jamais « Tout est à jour » : un écran sans données ne rassure pas. Un frigo
+// dont le dernier relevé du jour est hors plage (etat.aRevoir) est rappelé
+// dans tous les états, en ton danger, jusqu'à un relevé bon.
 // Relecture en échec avec des données à l'écran (enEchecRelecture) : la carte
 // garde son contenu, mais « Tout est à jour » devient « Dernière mise à jour à ».
 //
@@ -19,7 +21,8 @@ import { heureEnMinutes } from './HACCP.utils.js';
 // ouverte la nuit n'affiche pas à 07:10 le « Tout est à jour » de la veille.
 //
 // Crochets du banc : data-haccp-maintenant (la carte), data-haccp-action="releve"
-// (le gros bouton du relevé, quel que soit son libellé).
+// (le gros bouton du relevé, quel que soit son libellé), data-haccp-a-revoir
+// (chaque frigo à relever de nouveau).
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Un tic par minute : le composant qui l'appelle se redessine, et recalcule
@@ -100,30 +103,49 @@ export default function MaintenantHaccp({
   }
 
   const aJour = etat.statut === 'a_jour';
+  // Un frigo trop chaud ou trop froid au dernier relevé : la carte le rappelle
+  // jusqu'à un relevé bon (etat.aRevoir), et ne dit pas « Tout est à jour ».
+  const aRevoir = etat.aRevoir || [];
+  const lignesARevoir = aRevoir.length > 0 && (
+    <div style={st.manque}>
+      {aRevoir.map(a => (
+        <div key={a.zone.id} data-haccp-a-revoir="" style={st.aRevoir}>
+          <span>{a.zone.nom}</span> : {minuscule(a.mot)} à <N>{a.heure}</N>. À relever de nouveau.
+        </div>
+      ))}
+    </div>
+  );
   // Une relecture a échoué : la carte ne dit pas « Tout est à jour » sur des
   // données peut-être périmées.
-  const surtitreAJour = enEchecRelecture
-    ? <>Dernière mise à jour à <N>{derniereMaj || '-'}</N></>
-    : <>Tout est à jour</>;
-  const tonAJour = enEchecRelecture ? 'neutre' : 'ok';
+  let surtitreAJour = <>Tout est à jour</>;
+  let tonAJour = 'ok';
+  if (aRevoir.length) { surtitreAJour = <>À revoir</>; tonAJour = 'retard'; }
+  else if (enEchecRelecture) { surtitreAJour = <>Dernière mise à jour à <N>{derniereMaj || '-'}</N></>; tonAJour = 'neutre'; }
+  const coche = !aRevoir.length && !enEchecRelecture;
 
   const boutonReleve = (libelle, principal = true) => (canWrite ? (
     <button type="button" data-haccp-action="releve" data-cadre="" style={principal ? st.primaire : st.secondaire} onClick={onReleve}>{libelle}</button>
   ) : null);
+  // Rien de dû maintenant : « Relever de nouveau » s'il y a un frigo à revoir
+  // (le relevé guidé le propose avec les autres), sinon « quand même ».
+  const boutonHorsTournee = aRevoir.length
+    ? boutonReleve('Relever de nouveau')
+    : boutonReleve('Faire un relevé quand même', false);
   const lectureSeule = !canWrite && <div style={st.ligneDiscrete}>Seule l'équipe de cuisine note les relevés.</div>;
 
   // ─── Sans heures de relevé : toutes les zones, une fois par jour ───
   if (!etat.tournees.length) {
     return (
       <Carte ton={aJour ? tonAJour : 'neutre'} bouton={aJour
-        ? boutonReleve('Faire un relevé quand même', false)
+        ? boutonHorsTournee
         : boutonReleve(etat.zonesFaitesJour > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}>
-        <Surtitre ton={aJour ? tonAJour : 'neutre'} ok={aJour && !enEchecRelecture}>
+        <Surtitre ton={aJour ? tonAJour : 'neutre'} ok={aJour && coche}>
           {aJour ? surtitreAJour : <>À faire aujourd'hui</>}
         </Surtitre>
         <div style={st.titre}>Relever les températures</div>
         <div style={st.ligne}><N>{etat.zonesFaitesJour}</N> sur <N>{etat.totalZones}</N> frigos et appareils relevés aujourd'hui</div>
         <Barre faits={etat.zonesFaitesJour} total={etat.totalZones} />
+        {lignesARevoir}
         {isConsultant && <div style={st.ligneDiscrete}>Pour savoir à quelle heure relever, réglez les heures de relevé dans Réglages.</div>}
         {lectureSeule}
       </Carte>
@@ -132,11 +154,16 @@ export default function MaintenantHaccp({
 
   const { courante, prochaine, manquees } = etat;
   const maintenantMin = heureEnMinutes(maintenant) ?? 0;
-  const aujourdhui = <div style={st.ligneDiscrete}>Aujourd'hui : <N>{etat.faitsJour}</N> relevés sur <N>{etat.totalJour}</N></div>;
+  const aujourdhui = (
+    <div style={st.ligneDiscrete}>
+      Aujourd'hui : <N>{etat.faitsJour}</N> {etat.faitsJour > 1 ? 'relevés faits sur' : 'relevé fait sur'} <N>{etat.totalJour}</N> prévus
+    </div>
+  );
+  const manquent = (t) => <Manquent manque={t.total - t.faites} total={t.total} />;
   const lignesManquees = manquees.map(t => (
     <div key={t.id} style={st.manque}>
       <div style={st.ligneForte}>Pas fait aujourd'hui : relevé de <N>{t.heure}</N></div>
-      <div style={st.ligne}><N>{t.total - t.faites}</N> frigos sur <N>{t.total}</N> manquent. Prévenez le chef.</div>
+      <div style={st.ligne}>{manquent(t)}</div>
     </div>
   ));
 
@@ -154,6 +181,7 @@ export default function MaintenantHaccp({
         <div style={st.sousTitre} data-no-translate="">{courante.label}</div>
         <div style={st.ligne}><N>{courante.faites}</N> sur <N>{courante.total}</N> frigos et appareils relevés</div>
         <Barre faits={courante.faites} total={courante.total} />
+        {lignesARevoir}
         {aujourdhui}
         {lignesManquees}
         {lectureSeule}
@@ -161,26 +189,57 @@ export default function MaintenantHaccp({
     );
   }
 
-  // ─── Rien à faire maintenant : à jour, ou une tournée passée manque ───
-  const ton = etat.statut === 'manque' ? 'retard' : tonAJour;
-  let surtitre;
-  if (etat.statut === 'a_jour') surtitre = surtitreAJour;
-  else if (courante.etat === 'fait') surtitre = <>Relevé de <N>{courante.heure}</N> fait</>;
-  else surtitre = <>Prochain relevé à <N>{courante.heure}</N></>;
+  // ─── Une tournée passée manque (la courante faite ou à venir) ───
+  // Ce qu'on lit en premier est le problème : « En retard », « Relevé de
+  // 07:00 pas fait » en titre, puis la prochaine tournée. Même ton que l'état
+  // « en retard » qui le précède : rien ne change à l'écran à mi-chemin entre
+  // deux tournées, quand la courante passe à la suivante.
+  if (etat.statut === 'manque') {
+    const seule = manquees.length === 1 ? manquees[0] : null;
+    return (
+      <Carte ton="retard" bouton={boutonHorsTournee}>
+        <Surtitre ton="retard">En retard</Surtitre>
+        <div style={st.titre}>
+          {seule ? <>Relevé de <N>{seule.heure}</N> pas fait</> : <><N>{manquees.length}</N> relevés pas faits</>}
+        </div>
+        <div style={st.sousTitre}>
+          {courante.etat === 'fait'
+            ? <>Relevé de <N>{courante.heure}</N> fait</>
+            : <>Prochain relevé à <N>{courante.heure}</N></>}
+        </div>
+        {seule ? <div style={st.ligne}>{manquent(seule)}</div> : lignesManquees}
+        {lignesARevoir}
+        {aujourdhui}
+        {lectureSeule}
+      </Carte>
+    );
+  }
+
+  // ─── Rien à faire maintenant, rien en retard ───
   return (
-    <Carte ton={ton} bouton={boutonReleve('Faire un relevé quand même', false)}>
-      <Surtitre ton={ton} ok={etat.statut === 'a_jour' && !enEchecRelecture}>{surtitre}</Surtitre>
-      {etat.statut === 'a_jour' && (prochaine ? (
+    <Carte ton={tonAJour} bouton={boutonHorsTournee}>
+      <Surtitre ton={tonAJour} ok={coche}>{surtitreAJour}</Surtitre>
+      {prochaine ? (
         <>
           <div style={st.titre}>Prochain relevé à <N>{prochaine.heure}</N></div>
           <div style={st.sousTitre} data-no-translate="">{prochaine.label}</div>
         </>
-      ) : <div style={st.titre}>Tout est fait pour aujourd'hui.</div>)}
-      {lignesManquees}
+      ) : <div style={st.titre}>Tout est fait pour aujourd'hui.</div>}
+      {lignesARevoir}
       {aujourdhui}
       {lectureSeule}
     </Carte>
   );
+}
+
+// « Trop chaud » se lit « trop chaud » au milieu d'une phrase.
+const minuscule = (mot) => (mot ? mot.charAt(0).toLowerCase() + mot.slice(1) : mot);
+
+// « 5 frigos sur 8 manquent », « 1 frigo sur 8 manque ».
+function Manquent({ manque, total }) {
+  return manque > 1
+    ? <><N>{manque}</N> frigos sur <N>{total}</N> manquent. Prévenez le chef.</>
+    : <><N>{manque}</N> frigo sur <N>{total}</N> manque. Prévenez le chef.</>;
 }
 
 function Surtitre({ ton, ok = false, children }) {
@@ -220,6 +279,7 @@ const st = {
   ligneForte: { fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 },
   ligneDiscrete: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
   manque: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
+  aRevoir: { fontSize: 14, fontWeight: 600, color: 'var(--danger-text)', lineHeight: 1.4 },
   piste: { height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', marginTop: 2 },
   plein: { height: '100%', borderRadius: 3, background: 'var(--accent)' },
   primaire: {

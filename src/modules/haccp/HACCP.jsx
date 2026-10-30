@@ -23,8 +23,8 @@ import ProgrammeDuJour from './ProgrammeDuJour.jsx';
 import ProblemesHaccp from './ProblemesHaccp.jsx';
 import RegistreHaccp from './RegistreHaccp.jsx';
 import ReleveGuide from './ReleveGuide.jsx';
-import ControlesDuJour from './ControlesDuJour.jsx';
-import { PlageTexte } from './ActionsCorrectives.jsx';
+import ControlesDuJour, { HistoriqueControles } from './ControlesDuJour.jsx';
+import { Mesure, PlageTexte } from './ActionsCorrectives.jsx';
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -56,6 +56,9 @@ function messageReleves(n, heure, horsPlage) {
 }
 
 const TABLES_HACCP = ['haccp_zones', 'haccp_ctrl_templates', 'haccp_releves', 'haccp_controls', 'haccp_creneaux'];
+
+// Délai pendant lequel un « C'est fait » se rattrape par « Annuler ».
+const ANNULATION_CONTROLE_MS = 2 * 60 * 1000;
 
 const HACCP = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
@@ -100,6 +103,20 @@ const HACCP = ({ user, etablissement }) => {
   const [formRel, setFormRel]   = React.useState({ zoneId:'', date: todayStr, heure:'', valeur:'', commentaire:'' });
   const [formCtrl, setFormCtrl] = React.useState({ templateId:'', date: todayStr, heure:'', statut:'conforme', notes:'' });
 
+  // Minuit passé sur une tablette restée ouverte : ce qui regardait la veille
+  // (registre, contrôles, dates des formulaires) passe au nouveau jour, sinon
+  // l'écran des contrôles resterait sur la veille, sans bouton « C'est fait ».
+  // Un autre jour choisi exprès dans le registre reste choisi.
+  const jourRef = React.useRef(todayStr);
+  React.useEffect(() => {
+    const veille = jourRef.current;
+    if (veille === todayStr) return;
+    jourRef.current = todayStr;
+    setDateFilter(d => (d === veille ? todayStr : d));
+    setFormRel(f => (f.date === veille ? { ...f, date: todayStr } : f));
+    setFormCtrl(f => (f.date === veille ? { ...f, date: todayStr } : f));
+  }, [todayStr]);
+
   // ─── Relever une seule zone, sur sa ligne de l'accueil ───
   const [inlineReleve, setInlineReleve] = React.useState(null);
   const [inlineTempInput, setInlineTempInput] = React.useState('');
@@ -115,6 +132,31 @@ const HACCP = ({ user, etablissement }) => {
   const [brouillon, setBrouillon] = React.useState({});
   const [etatLignes, setEtatLignes] = React.useState({});
   const [guideEnCours, setGuideEnCours] = React.useState(false);
+  // Jour et tournée du brouillon : il ne vaut que pour eux. Rouvert sur une
+  // autre tournée ou un autre jour, le relevé repart vide (un chiffre du matin
+  // ne repart jamais avec l'heure du soir).
+  const brouillonCleRef = React.useRef(null);
+
+  // Contrôles marqués « C'est fait » ici, qu'on peut encore annuler :
+  // { [id]: fin en ms }. Un toucher sur le mauvais « C'est fait » ne laisse
+  // pas un faux « Bon » au registre. Annuler supprime : réservé à qui gère le
+  // HACCP (canManage), comme toute suppression d'un contrôle.
+  const [annulables, setAnnulables] = React.useState({});
+  // Le bouton disparaît à l'échéance, pas au tic suivant de la minute.
+  React.useEffect(() => {
+    const fins = Object.values(annulables);
+    if (!fins.length) return undefined;
+    const attente = Math.max(0, Math.min(...fins) - Date.now()) + 50;
+    const id = setTimeout(() => {
+      const t = Date.now();
+      setAnnulables(prev => {
+        const n = {};
+        Object.keys(prev).forEach(k => { if (prev[k] > t) n[k] = prev[k]; });
+        return n;
+      });
+    }, attente);
+    return () => clearTimeout(id);
+  }, [annulables]);
 
   // Contrôles marqués « C'est fait » dont l'écriture est en cours.
   const [controlesEnCours, setControlesEnCours] = React.useState(() => new Set());
@@ -282,8 +324,11 @@ const HACCP = ({ user, etablissement }) => {
   const etatJour = pret ? etatDuJour({ creneaux, zones, releves, today: todayStr, maintenant }) : null;
   const compte = pret ? compteControles(ctrlTpls, controls, todayStr) : null;
   const relevesDuJour = releves.filter(r => r.date === todayStr);
-  // Tournée du relevé guidé : celle du créneau le plus proche de maintenant.
+  // Tournée du relevé guidé : celle du créneau le plus proche de maintenant,
+  // la même que celle à laquelle le relevé sera rattaché (règle commune avec
+  // le tableau de bord, voir le test croisé de haccpJour.test.mjs).
   const tourneeGuide = etatJour?.courante || null;
+  const cleBrouillon = `${todayStr}|${tourneeGuide?.id || 'jour'}`;
 
   // « À surveiller » sur l'accueil : hors plage et problèmes de contrôle
   // d'aujourd'hui et d'hier. La liste du mois vit dans le registre.
@@ -308,7 +353,7 @@ const HACCP = ({ user, etablissement }) => {
 
   const submitReleve = async () => {
     if (!formRel.valeur || !formRel.heure) { alertLegacy('Remplissez tous les champs obligatoires.'); return; }
-    if (!formRel.zoneId) { alertLegacy('Sélectionnez une zone.'); return; }
+    if (!formRel.zoneId) { alertLegacy('Choisissez un frigo ou appareil.'); return; }
     const zone = zones.find(z=>z.id===formRel.zoneId);
     const conforme = isConforme(zone, formRel.valeur);
     const newReleve = {
@@ -370,12 +415,49 @@ const HACCP = ({ user, etablissement }) => {
     try {
       const saved = legacySB ? await legacySB.db.upsertHaccpControl(nouveau) : { id: 'ct' + Date.now(), ...nouveau };
       setControls(prev => [saved, ...prev]);
+      if (canManage) setAnnulables(prev => ({ ...prev, [saved.id]: Date.now() + ANNULATION_CONTROLE_MS }));
+      notifyLegacy('Contrôle noté', 'success');
     } catch (err) {
       notifyLegacy(messageErreur(err, 'haccp'), 'error');
     } finally {
       setControlesEnCours(prev => { const n = new Set(prev); n.delete(tpl.id); return n; });
     }
   };
+  // « Annuler » d'un « C'est fait » touché par erreur, par qui gère le HACCP
+  // (canManage, seul à pouvoir supprimer un contrôle), deux minutes
+  // seulement ; ensuite, la suppression de l'historique. La suppression est
+  // vérifiée par une relecture : une suppression refusée par la base ne rend
+  // pas d'erreur, et l'écran ne doit pas faire croire qu'elle a eu lieu.
+  const [annulationEnCours, setAnnulationEnCours] = React.useState(null);
+  const oublierAnnulable = (id) => setAnnulables(prev => { const n = { ...prev }; delete n[id]; return n; });
+  const annulerControle = async (id) => {
+    if (annulationEnCours || !canManage) return;
+    if (!(annulables[id] > Date.now())) {
+      oublierAnnulable(id);
+      notifyLegacy("Trop tard pour annuler : supprimez-le dans l'historique.", 'warning');
+      return;
+    }
+    setAnnulationEnCours(id);
+    try {
+      if (legacySB) {
+        await legacySB.db.deleteHaccpControl(id);
+        const restants = await legacySB.db.listHaccpControls(etabId, { strict: true });
+        if (restants.some(c => c.id === id)) {
+          oublierAnnulable(id);
+          notifyLegacy('Pas annulé : la suppression a été refusée.', 'error');
+          return;
+        }
+      }
+      setControls(prev => prev.filter(c => c.id !== id));
+      oublierAnnulable(id);
+      notifyLegacy('Contrôle annulé', 'success');
+    } catch (err) {
+      notifyLegacy(messageErreur(err, 'haccp'), 'error');
+    } finally {
+      setAnnulationEnCours(null);
+    }
+  };
+  const idsAnnulables = new Set(Object.keys(annulables).filter(id => annulables[id] > Date.now()));
   const controleProbleme = (tpl) => {
     setFormCtrl({ templateId: tpl.id, date: todayStr, heure: zurichClock(), statut: 'non-conforme', notes: '' });
     setShowControl(true);
@@ -387,14 +469,14 @@ const HACCP = ({ user, etablissement }) => {
       try {
         const saved = await legacySB.db.upsertHaccpZone(payload);
         setZones(prev => prev.find(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [...prev, saved]);
-      } catch (err) { notifyLegacy('Zone non enregistrée. ' + messageErreur(err, 'haccp'), 'error'); return; }
+      } catch (err) { notifyLegacy('Frigo ou appareil non enregistré. ' + messageErreur(err, 'haccp'), 'error'); return; }
     } else {
       setZones(prev => prev.find(x=>x.id===z.id) ? prev.map(x=>x.id===z.id?z:x) : [...prev,z]);
     }
     setZoneModal(null);
   };
   const deleteZone = async (id) => {
-    if (!confirmLegacy('Supprimer cette zone ? Les relevés associés seront aussi supprimés.')) return;
+    if (!confirmLegacy('Supprimer ce frigo ou appareil ? Ses relevés seront aussi supprimés.')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpZone(id); }
       catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
@@ -629,7 +711,27 @@ const HACCP = ({ user, etablissement }) => {
   // ─── Relevé guidé ───
   // Rendu synchrone dans le toucher : l'autoFocus du premier champ vide
   // s'applique dans le geste de l'utilisateur, le clavier s'ouvre sur iOS.
-  const ouvrirReleveGuide = () => { flushSync(() => setEcran('tournee')); };
+  // Le brouillon ne vaut que pour son jour et sa tournée : rouvert ailleurs,
+  // le relevé repart vide. Rouvert sur la même tournée après un
+  // enregistrement partiel, les lignes enregistrées (en base, « Déjà relevé
+  // à ») se libèrent ; celles en échec gardent leur chiffre pour Réessayer.
+  const ouvrirReleveGuide = () => {
+    flushSync(() => {
+      if (brouillonCleRef.current !== cleBrouillon) {
+        setBrouillon({});
+        setEtatLignes({});
+      } else {
+        const enregistrees = Object.keys(etatLignes).filter(id => etatLignes[id] === 'ok');
+        if (enregistrees.length) {
+          const sans = (prev) => { const n = { ...prev }; enregistrees.forEach(id => { delete n[id]; }); return n; };
+          setBrouillon(sans);
+          setEtatLignes(sans);
+        }
+      }
+      brouillonCleRef.current = cleBrouillon;
+      setEcran('tournee');
+    });
+  };
   const majLigne = (zoneId, patch) => setBrouillon(prev => ({ ...prev, [zoneId]: { ...prev[zoneId], ...patch } }));
 
   // Une écriture par ligne remplie, même date (aujourd'hui) et même heure
@@ -642,6 +744,9 @@ const HACCP = ({ user, etablissement }) => {
     const lignes = activeZones.filter(z => etatLignes[z.id] !== 'ok' && valeurLisible(brouillon[z.id]?.valeur));
     if (!lignes.length) return;
     setGuideEnCours(true);
+    // Les marques « Enregistré » / « Pas enregistré » qui suivent valent pour
+    // la tournée affichée au moment d'enregistrer.
+    brouillonCleRef.current = cleBrouillon;
     const date = zurichToday();
     const heure = zurichClock();
     const crees = [];
@@ -681,7 +786,15 @@ const HACCP = ({ user, etablissement }) => {
       echecs.forEach(id => { n[id] = 'echec'; });
       return n;
     });
-    notifyLegacy(`${crees.length} relevés enregistrés, ${echecs.length} pas enregistrés`, 'warning');
+    const s = (n) => (n > 1 ? 's' : '');
+    notifyLegacy(`${crees.length} relevé${s(crees.length)} enregistré${s(crees.length)}, ${echecs.length} pas enregistré${s(echecs.length)}`, 'warning');
+  };
+
+  // Le registre et les contrôles s'ouvrent depuis l'accueil sur aujourd'hui :
+  // un autre jour choisi lors d'une visite précédente ne se garde pas.
+  const ouvrirEcran = (id) => {
+    if (id === 'controles' || id === 'releves') setDateFilter(zurichToday());
+    setEcran(id);
   };
 
   // ─── Barres d'actions ───
@@ -721,7 +834,7 @@ const HACCP = ({ user, etablissement }) => {
   } else if (activeTab === 'config' && isConsultant) {
     actions = (
       <>
-        <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter une zone</button>
+        <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter un frigo ou appareil</button>
         <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
       </>
     );
@@ -729,7 +842,9 @@ const HACCP = ({ user, etablissement }) => {
 
   // ─── Titre et ligne d'état de chaque écran ───
   const titresEcran = {
-    tournee: tourneeGuide ? <>Relevé de <N>{tourneeGuide.heure}</N></> : ECRANS_HACCP.tournee,
+    tournee: tourneeGuide
+      ? <>Relevé de <N>{tourneeGuide.heure}</N>{tourneeGuide.etat === 'en_retard' && <>, en retard</>}</>
+      : ECRANS_HACCP.tournee,
   };
   const etatsEcran = {
     tournee: tourneeGuide
@@ -773,10 +888,18 @@ const HACCP = ({ user, etablissement }) => {
             onReessayer={relire}
           />
           {aide.visible && <AideHaccp onFermer={aide.fermer} />}
-          <AccueilHaccp controles={compte} canWrite={canWrite} isConsultant={isConsultant} onOuvrir={setEcran} />
-          {pret && (
+          <AccueilHaccp controles={compte} canWrite={canWrite} onOuvrir={ouvrirEcran} />
+          {(pret || isConsultant) && (
             <div className="module-toolbar">
-              <div className="module-actions">{boutonExporter('haccp-dashboard-print')}</div>
+              <div className="module-actions">
+                {pret && boutonExporter('haccp-dashboard-print')}
+                {/* Réglages du consultant : un bouton discret plutôt qu'une
+                    cinquième tuile seule sur sa rangée. data-tuile : même
+                    crochet du banc qu'avant. */}
+                {isConsultant && (
+                  <button type="button" data-tuile="config" style={hs.exportBtn} onClick={() => setEcran('config')}>Réglages</button>
+                )}
+              </div>
             </div>
           )}
         </>
@@ -872,27 +995,17 @@ const HACCP = ({ user, etablissement }) => {
               enCours={controlesEnCours}
               onFait={controleFait}
               onProbleme={controleProbleme}
+              annulables={idsAnnulables}
+              annulationEnCours={annulationEnCours}
+              onAnnuler={annulerControle}
             />
-            <div style={hs.tableCard} className="grid-table-scroll">
-              <div style={hs.tableCardHeader}>Tout l'historique</div>
-              <div className="grid-table-row" style={{...hs.relHead, gridTemplateColumns: '2fr 80px 60px 120px 130px 2fr' + (canManage ? ' 90px' : '')}}><span>Contrôle</span><span>Date</span><span>Heure</span><span>Par</span><span>Résultat</span><span>Notes</span>{canManage && <span className='no-print'>Action</span>}</div>
-              {controls.map(c=>{
-                const tpl=ctrlTpls.find(t=>t.id===c.templateId);
-                const op=userDisplay(c.operateur);
-                const bon = c.statut==='conforme';
-                return(
-                  <div key={c.id} className="grid-table-row" style={{...hs.relRow, gridTemplateColumns: '2fr 80px 60px 120px 130px 2fr' + (canManage ? ' 90px' : '')}}>
-                    <span style={{...hs.cell,fontWeight:500}}>{tpl?.label}</span>
-                    <span style={hs.cell}><N>{c.date}</N></span>
-                    <span style={hs.cell}><N>{String(c.heure || '').slice(0, 5)}</N></span>
-                    <span style={hs.cell}><N>{op.name}</N></span>
-                    <span style={{...hs.cell,fontWeight:600,color:bon?'var(--success-text)':'var(--danger-strong)'}}>{bon?'Bon':'Problème signalé'}</span>
-                    <span style={{...hs.cell,fontSize:12,color:'var(--text2)'}}>{c.notes||'-'}</span>
-                    {canManage && <span className='no-print'><button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteControlRecord(c.id)}>Supprimer</button></span>}
-                  </div>
-                );
-              })}
-            </div>
+            <HistoriqueControles
+              tpls={ctrlTpls}
+              controls={controls}
+              today={todayStr}
+              canManage={canManage}
+              onSupprimer={deleteControlRecord}
+            />
           </div>
         </div>
       ) : blocLecture)}
@@ -922,8 +1035,8 @@ const HACCP = ({ user, etablissement }) => {
           {/* Banner */}
           <div style={{background:'var(--nav)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:220}}>
-              <div style={{color:'#fff',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP, réservée au consultant</div>
-              <div style={{color:'rgba(255,255,255,0.5)',fontSize:12,marginTop:3}}>Gérez les zones de contrôle et les contrôles d'hygiène de l'établissement. Ces paramètres s'appliquent à toute l'équipe.</div>
+              <div style={{color:'var(--nav-text-active)',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP, réservée au consultant</div>
+              <div style={{color:'var(--nav-text)',fontSize:12,marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement.</div>
             </div>
           </div>
 
@@ -934,21 +1047,17 @@ const HACCP = ({ user, etablissement }) => {
                 <div style={hcfg.sectionTitle}>Heures de relevé</div>
                 <div style={hcfg.sectionSub}>
                   {creneaux.length === 0
-                    ? "Aucun créneau : l'heure est saisie librement à chaque relevé"
-                    : `${creneaux.length} créneau${creneaux.length>1?'x':''} configuré${creneaux.length>1?'s':''}, ${activeCreneaux.length} actif${activeCreneaux.length>1?'s':''}`}
+                    ? <>Aucune heure réglée : l'équipe relève une fois par jour.</>
+                    : <><N>{creneaux.length}</N> {creneaux.length>1?'heures réglées':'heure réglée'}, <N>{activeCreneaux.length}</N> {activeCreneaux.length>1?'actives':'active'}</>}
                 </div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>Ajouter un créneau</button>
+              <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>Ajouter une heure de relevé</button>
             </div>
 
             {creneaux.length === 0 ? (
               <div style={{padding:'16px 18px'}}>
                 <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.55,marginBottom:14}}>
-                  Les heures de relevé ne sont pas les mêmes d'une maison à l'autre : un seul shift
-                  qui démarre à 6h ne se relève pas comme un double service midi et soir. Définissez
-                  ici la grille horaire de l'établissement : elle pré-remplit l'heure à la saisie et
-                  affiche les tournées restantes sur le tableau de bord. Un relevé hors créneau
-                  reste toujours possible.
+                  Les heures de relevé ne sont pas les mêmes d'une maison à l'autre : un seul service qui démarre à 6h ne se relève pas comme un double service midi et soir. Réglez ici les heures de l'établissement : la carte de l'accueil HACCP dit à l'équipe quand relever, et le tableau de bord signale un relevé en retard. Un relevé en dehors de ces heures reste toujours possible.
                 </div>
                 <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
                   {CRENEAUX_PRESETS.map(p=>(
@@ -973,7 +1082,7 @@ const HACCP = ({ user, etablissement }) => {
                         {!c.actif && <span style={{fontSize:11,fontWeight:500,background:'var(--bg)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                       </div>
                       <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
-                        Tournée de {activeZones.length} zone{activeZones.length>1?'s':''}, heure locale
+                        Relevé de <N>{activeZones.length}</N> {activeZones.length>1?'frigos et appareils':'frigo ou appareil'}
                       </div>
                     </div>
                     <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}} onClick={()=>toggleCreneau(c)}>
@@ -992,9 +1101,9 @@ const HACCP = ({ user, etablissement }) => {
             <div style={hcfg.sectionHeader}>
               <div>
                 <div style={hcfg.sectionTitle}>Frigos et appareils à relever</div>
-                <div style={hcfg.sectionSub}>{zones.length} zone{zones.length>1?'s':''} configurée{zones.length>1?'s':''}, {activeZones.length} active{activeZones.length>1?'s':''}</div>
+                <div style={hcfg.sectionSub}><N>{zones.length}</N> {zones.length>1?'frigos et appareils':'frigo ou appareil'}, <N>{activeZones.length}</N> à relever</div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter une zone</button>
+              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter un frigo ou appareil</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {zones.map(z=>(
@@ -1004,8 +1113,9 @@ const HACCP = ({ user, etablissement }) => {
                       {z.nom}
                       {!z.actif && <span style={{fontSize:11,fontWeight:500,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
                     </div>
-                    <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
-                      {ZONE_TYPES.find(t=>t.id===z.type)?.label}, cible : {z.cible}{z.unite}, plage : [{z.min??'-'} ; {z.max??'+∞'}]{z.unite}
+                    <div style={{fontSize:12,color:'var(--text2)',marginTop:2,lineHeight:1.4}}>
+                      {ZONE_TYPES.find(t=>t.id===z.type)?.label}. <PlageTexte zone={z} />.
+                      {z.cible != null && z.cible !== '' && <> Idéal : <Mesure valeur={z.cible} unite={z.unite || '°C'} />.</>}
                     </div>
                   </div>
                   {/* Toggle actif */}

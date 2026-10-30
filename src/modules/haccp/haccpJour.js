@@ -49,7 +49,8 @@ export function etatTournees(creneauxActifsTries, zonesActives, relevesDuJour, m
 //   manquees : tournées passées incomplètes, hors courante ;
 //   faitsJour / totalJour : relevés de tournée du jour (zones x tournées) ;
 //   sans tournée : zonesFaitesJour et dernierReleve (heure du dernier relevé
-//     du jour sur une zone active).
+//     du jour sur une zone active) ;
+//   aRevoir : zones à relever de nouveau (zonesARevoir), avec ou sans tournée.
 export function etatDuJour({ creneaux, zones, releves, today, maintenant }) {
   const zonesActives = (zones || []).filter(z => z.actif);
   const relevesDuJour = (releves || []).filter(r => r.date === today);
@@ -60,6 +61,7 @@ export function etatDuJour({ creneaux, zones, releves, today, maintenant }) {
   const base = {
     statut: 'non_regle', courante: null, prochaine: null, manquees: [], tournees: [],
     faitsJour: 0, totalJour: 0, zonesFaitesJour, totalZones: zonesActives.length, dernierReleve,
+    aRevoir: zonesARevoir(zonesActives, relevesDuJour),
   };
   if (!zonesActives.length) return base;
 
@@ -87,6 +89,28 @@ export function etatDuJour({ creneaux, zones, releves, today, maintenant }) {
     faitsJour: tournees.reduce((s, t) => s + t.faites, 0),
     totalJour: zonesActives.length * tournees.length,
   };
+}
+
+// Zones à relever de nouveau : zones actives dont le dernier relevé du jour
+// est hors plage, donc qu'aucun relevé bon n'a suivi. Un frigo trop chaud ne
+// disparaît pas de la carte parce qu'il a été relevé : elle le rappelle
+// jusqu'à un relevé bon. [{ zone, heure (HH:MM), valeur, mot }], par heure.
+// À égalité d'heure, le premier de la liste l'emporte (le plus récent : un
+// nouveau relevé est ajouté en tête).
+export function zonesARevoir(zonesActives, relevesDuJour) {
+  const dernier = {};
+  (relevesDuJour || []).forEach(r => {
+    const prec = dernier[r.zoneId];
+    if (!prec || String(r.heure || '') > String(prec.heure || '')) dernier[r.zoneId] = r;
+  });
+  return (zonesActives || [])
+    .filter(z => dernier[z.id] && !dernier[z.id].conforme)
+    .map(z => {
+      const r = dernier[z.id];
+      const v = verdictReleve(z, r.valeur);
+      return { zone: z, heure: String(r.heure || '').slice(0, 5), valeur: r.valeur, mot: v?.ton === 'danger' ? v.mot : 'À surveiller' };
+    })
+    .sort((a, b) => a.heure.localeCompare(b.heure));
 }
 
 // Plage d'une zone pour l'affichage : entre (min et max), au_moins (min

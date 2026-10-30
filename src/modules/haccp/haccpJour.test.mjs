@@ -202,3 +202,59 @@ test('compteur de la tuile : contrôles dus seulement', () => {
   assert.deepEqual(compteControles(tpls, controls, TODAY), { faits: 0, dus: 4 });
   assert.deepEqual(compteControles(tpls, [...controls, { id: '3', templateId: 'c', date: TODAY, heure: '11:20', statut: 'conforme' }], TODAY), { faits: 1, dus: 4 });
 });
+
+test('frigo trop chaud : à relever de nouveau tant qu\'un relevé bon ne suit pas', () => {
+  const passe = ZONES.find(z => z.id === 'z3');
+  const chaud = { id: 'chaud', zoneId: 'z3', date: TODAY, heure: '11:21', valeur: 9, conforme: false };
+  const e = jour([...tournee('07:00'), chaud], '11:25');
+  assert.equal(e.aRevoir.length, 1);
+  assert.equal(e.aRevoir[0].zone.id, 'z3');
+  assert.equal(e.aRevoir[0].heure, '11:21');
+  assert.equal(e.aRevoir[0].mot, 'Trop chaud');
+  // Un relevé bon après : plus rien à revoir.
+  const bon = { id: 'bon', zoneId: 'z3', date: TODAY, heure: '11:52', valeur: 3, conforme: true };
+  assert.deepEqual(jour([...tournee('07:00'), chaud, bon], '11:55').aRevoir, []);
+  // Un relevé bon avant ne l'efface pas.
+  const avant = { id: 'avant', zoneId: 'z3', date: TODAY, heure: '10:00', valeur: 3, conforme: true };
+  assert.equal(jour([avant, chaud], '11:25').aRevoir.length, 1);
+  // Hier ne compte pas, une zone inactive non plus, sans tournée non plus.
+  assert.deepEqual(jour([{ ...chaud, date: '2026-10-29' }], '11:25').aRevoir, []);
+  const inactive = ZONES.map(z => (z.id === 'z3' ? { ...z, actif: false } : z));
+  assert.deepEqual(etatDuJour({ creneaux: CRENEAUX, zones: inactive, releves: [chaud], today: TODAY, maintenant: '11:25' }).aRevoir, []);
+  const sansTournee = etatDuJour({ creneaux: [], zones: ZONES, releves: [chaud], today: TODAY, maintenant: '11:25' });
+  assert.equal(sansTournee.aRevoir[0].zone.nom, passe.nom);
+  // Congélateur trop chaud, bain-marie pas assez chaud : le mot suit la zone.
+  const congel = { id: 'cg', zoneId: 'z2', date: TODAY, heure: '11:22', valeur: -10, conforme: false };
+  const bain = { id: 'bm', zoneId: 'z7', date: TODAY, heure: '11:20', valeur: 50, conforme: false };
+  assert.deepEqual(jour([chaud, congel, bain], '11:25').aRevoir.map(a => a.mot), ['Pas assez chaud', 'Trop chaud', 'Trop chaud']);
+});
+
+// Le tableau de bord (src/modules/dashboard/tableauLogique.js, aFaire) et la
+// carte HACCP rattachent un relevé à la même tournée (créneau le plus proche)
+// et disent « en retard » au même moment : les deux écrans ne doivent jamais
+// se contredire. Si l'un change sa règle, ce test casse.
+test('mêmes tournées en retard que le tableau de bord', async () => {
+  const { aFaire } = await import('../dashboard/tableauLogique.js');
+  const cas = [
+    { releves: tournee('09:30', ZONES.slice(0, 3)), maintenant: '12:05' },
+    { releves: tournee('09:30'), maintenant: '12:05' },
+    { releves: tournee('09:14'), maintenant: '12:05' },
+    { releves: [...tournee('07:00'), ...tournee('11:35', ZONES.slice(0, 5))], maintenant: '15:00' },
+    { releves: tournee('11:30'), maintenant: '15:00' },
+    { releves: tournee('15:00'), maintenant: '19:00' },
+    { releves: [], maintenant: '23:30' },
+  ];
+  for (const { releves, maintenant } of cas) {
+    const e = jour(releves, maintenant);
+    const cote = [...e.manquees, ...(e.courante.etat === 'en_retard' ? [e.courante] : [])]
+      .map(t => t.heure).sort();
+    const [hh, mm] = maintenant.split(':').map(Number);
+    const tableau = aFaire({
+      aujourdhui: TODAY, maintenant: hh * 60 + mm,
+      haccp: { zones: ZONES, creneaux: CRENEAUX, releves },
+      groupes: [], shifts: [], absences: [], nbMessages: 0, pertes: [],
+      avecHaccp: true, avecGroupes: false, avecPlanning: false, direction: false, nomDe: () => '',
+    }).filter(i => i.icone === 'haccp').map(i => i.titre.match(/\d\d:\d\d/)[0]).sort();
+    assert.deepEqual(cote, tableau, `relevés ${releves[0]?.heure || 'aucun'}, contrôle à ${maintenant}`);
+  }
+});
