@@ -9,6 +9,9 @@
 //   midi et un soir coexistent (service coupé) ;
 // - un horaire déjà pointé n'est jamais effacé, et rien n'est posé par-dessus ;
 // - une personne absente (congé, formation, absence) ce jour-là n'en reçoit pas ;
+// - un jour déjà passé (avant `aPartirDu`, quand il est donné) n'est ni rempli
+//   ni vidé : une copie y laisserait un horaire jamais pointé, lu comme une
+//   absence dans la grille et le relevé ;
 // - les pointages ne sont jamais recopiés.
 // ─────────────────────────────────────────────────────────────────────────────
 import { ajouterJours, chevauche } from './planningModeles.js';
@@ -34,13 +37,17 @@ const copieDe = (src, userId, date, etablissementId) => ({
 // - dejaPresents : horaires existants distincts qui ont bloqué une copie ;
 // - joursAbsence : couples (personne, jour) distincts sautés (une coupure un
 //   jour d'absence compte 1) ;
-// - pointesGardes : horaires déjà pointés laissés en place en mode Remplacer.
-export function planDuplication({ sources, cibles, existants, remplacer = false, remplacementLarge = null, estAbsent, etablissementId }) {
+// - pointesGardes : horaires déjà pointés laissés en place en mode Remplacer ;
+// - joursPasses : dates cibles distinctes sautées parce qu'antérieures à
+//   aPartirDu (date du jour à Zurich, 'YYYY-MM-DD').
+export function planDuplication({ sources, cibles, existants, remplacer = false, remplacementLarge = null, estAbsent, etablissementId, aPartirDu = null }) {
   const aCreer = [];
   const aSupprimer = new Set();
   const presents = new Set();
   const absences = new Set();
   const pointes = new Set();
+  const passes = new Set();
+  const estPasse = (date) => Boolean(aPartirDu) && date < aPartirDu;
   let doublons = 0;
 
   // Remplacement large (semaine) : la semaine cible de chaque personne concernée
@@ -48,7 +55,7 @@ export function planDuplication({ sources, cibles, existants, remplacer = false,
   if (remplacer && remplacementLarge) {
     remplacementLarge.forEach(({ userId, dates }) => {
       existants.forEach(e => {
-        if (e.userId !== userId || !dates.has(e.date)) return;
+        if (e.userId !== userId || !dates.has(e.date) || estPasse(e.date)) return;
         if (estPointe(e)) pointes.add(e.id); else aSupprimer.add(e.id);
       });
     });
@@ -56,6 +63,7 @@ export function planDuplication({ sources, cibles, existants, remplacer = false,
 
   sources.forEach(src => {
     cibles(src).forEach(date => {
+      if (estPasse(date)) { passes.add(date); return; }
       if (estAbsent && estAbsent(src.userId, date)) { absences.add(cleCase(src.userId, date)); return; }
       const enPlace = existants.filter(e => e.userId === src.userId && e.date === date && !aSupprimer.has(e.id) && chevauche(e.debut, e.fin, src.debut, src.fin));
       if (enPlace.length) {
@@ -69,13 +77,13 @@ export function planDuplication({ sources, cibles, existants, remplacer = false,
     });
   });
 
-  return { sources, aCreer, aSupprimer: [...aSupprimer], dejaPresents: presents.size, joursAbsence: absences.size, pointesGardes: pointes.size, doublons };
+  return { sources, aCreer, aSupprimer: [...aSupprimer], dejaPresents: presents.size, joursAbsence: absences.size, pointesGardes: pointes.size, joursPasses: passes.size, doublons };
 }
 
 // Semaines entières (ou celle d'une personne) recopiées `offsets` jours plus
 // loin. En mode Remplacer, la semaine cible de chaque personne concernée repart
-// de zéro (sauf le pointé).
-export function planSemaines({ debutSource, offsets, existants, personneId = null, remplacer = false, estAbsent, etablissementId }) {
+// de zéro (sauf le pointé et les jours passés).
+export function planSemaines({ debutSource, offsets, existants, personneId = null, remplacer = false, estAbsent, etablissementId, aPartirDu = null }) {
   // Fin de semaine calculée une fois : le filtre parcourt tout l'historique.
   const finSource = ajouterJours(debutSource, 6);
   const sources = existants.filter(s => s.date >= debutSource && s.date <= finSource && (!personneId || s.userId === personneId));
@@ -90,18 +98,20 @@ export function planSemaines({ debutSource, offsets, existants, personneId = nul
     remplacementLarge: personnes.map(userId => ({ userId, dates: datesCibles })),
     estAbsent,
     etablissementId,
+    aPartirDu,
   });
 }
 
 // « Reprendre la semaine du … » : la semaine d'avant recopiée SUR la semaine
-// affichée (qui commence à `semaine`). Toujours en mode garder.
-export const planReprendre = ({ semaine, existants, estAbsent, etablissementId }) =>
-  planSemaines({ debutSource: ajouterJours(semaine, -7), offsets: [7], existants, estAbsent, etablissementId });
+// affichée (qui commence à `semaine`). Toujours en mode garder. Ouverte sur la
+// semaine en cours, elle ne remplit que les jours à partir d'aujourd'hui.
+export const planReprendre = ({ semaine, existants, estAbsent, etablissementId, aPartirDu = null }) =>
+  planSemaines({ debutSource: ajouterJours(semaine, -7), offsets: [7], existants, estAbsent, etablissementId, aPartirDu });
 
 // « Copier cette semaine sur la suivante » : la semaine affichée recopiée sur
-// celle d'après. Toujours en mode garder.
-export const planVersSuivante = ({ semaine, existants, estAbsent, etablissementId }) =>
-  planSemaines({ debutSource: semaine, offsets: [7], existants, estAbsent, etablissementId });
+// celle d'après. Toujours en mode garder, jours passés sautés.
+export const planVersSuivante = ({ semaine, existants, estAbsent, etablissementId, aPartirDu = null }) =>
+  planSemaines({ debutSource: semaine, offsets: [7], existants, estAbsent, etablissementId, aPartirDu });
 
 // « Dupliquer vers… » (mode sélection) : chaque horaire choisi recopié chez
 // chaque personne et chaque jour cochés. Un horaire qui chevauche la copie est
@@ -152,5 +162,6 @@ export function resumeDuplication(plan, {
   ajouter('presents', plan.dejaPresents || 0, 'déjà présent gardé', 'déjà présents gardés');
   ajouter('pointes', plan.pointesGardes || 0, 'déjà pointé gardé', 'déjà pointés gardés');
   ajouter('absences', plan.joursAbsence || 0, 'jour d\'absence sauté', 'jours d\'absence sautés');
+  ajouter('passes', plan.joursPasses || 0, 'jour passé sauté', 'jours passés sautés');
   return parts;
 }

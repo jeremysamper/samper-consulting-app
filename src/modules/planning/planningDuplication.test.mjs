@@ -136,6 +136,27 @@ test('toute la semaine vers la suivante en Remplacer : toute l\'équipe repart d
   assert.equal(plan.pointesGardes, 1);
 });
 
+test('reprendre un vendredi sur la semaine en cours vide : aucun horaire avant aujourd\'hui', () => {
+  // Semaine précédente de Tom du lundi 19 au vendredi 23.10 ; aujourd'hui = vendredi 30.10.
+  const src = ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'].map(d => h('tom', d, '08:00', '16:00'));
+  const plan = planReprendre({ semaine: S1, existants: src, estAbsent: aucuneAbsence, etablissementId: 'e1', aPartirDu: '2026-10-30' });
+  assert.deepEqual(plan.aCreer.map(c => c.date), ['2026-10-30']);
+  assert.equal(plan.aCreer.filter(c => c.date < '2026-10-30').length, 0);
+  assert.equal(plan.joursPasses, 4);
+  // Sans date du jour (tests, appels anciens) : la semaine entière, comme avant.
+  assert.equal(planReprendre({ semaine: S1, existants: src, estAbsent: aucuneAbsence, etablissementId: 'e1' }).aCreer.length, 5);
+});
+
+test('Remplacer ne vide jamais un jour passé', () => {
+  const src = [h('tom', '2026-10-20', '08:00', '16:00'), h('tom', '2026-10-24', '08:00', '16:00')];
+  const passeLibre = h('tom', '2026-10-27', '10:00', '15:00');
+  const avenirLibre = h('tom', '2026-10-31', '17:00', '23:00');
+  const plan = planSemaines({ debutSource: '2026-10-19', offsets: [7], existants: [...src, passeLibre, avenirLibre], remplacer: true, estAbsent: aucuneAbsence, etablissementId: 'e1', aPartirDu: '2026-10-30' });
+  assert.deepEqual(plan.aSupprimer, [avenirLibre.id]);
+  assert.deepEqual(plan.aCreer.map(c => c.date), ['2026-10-31']);
+  assert.equal(plan.joursPasses, 1);
+});
+
 test('resumeDuplication : morceaux accordés, compteurs nuls omis', () => {
   const parts = resumeDuplication({ aCreer: new Array(49), aSupprimer: [], dejaPresents: 3, pointesGardes: 0, joursAbsence: 1 }, { copies: ['horaire sera copié sur cette semaine', 'horaires seront copiés sur cette semaine'] });
   assert.deepEqual(parts.map(p => [p.n, p.texte]), [
@@ -145,4 +166,6 @@ test('resumeDuplication : morceaux accordés, compteurs nuls omis', () => {
   ]);
   const un = resumeDuplication({ aCreer: [1], aSupprimer: ['x', 'y'], pointesGardes: 1 });
   assert.deepEqual(un.map(p => [p.n, p.texte]), [[1, 'horaire sera copié'], [2, 'remplacés'], [1, 'déjà pointé gardé']]);
+  const passes = resumeDuplication({ aCreer: [1], aSupprimer: [], joursPasses: 4 });
+  assert.deepEqual(passes.map(p => [p.n, p.texte]), [[1, 'horaire sera copié'], [4, 'jours passés sautés']]);
 });
