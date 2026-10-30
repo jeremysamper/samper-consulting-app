@@ -1,0 +1,13 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Accueil du module HACCP, scopé .haccp-accueil (AccueilHaccp.jsx).
+   Mise en page seulement : aucune couleur, aucune fonction de couleur (la
+   zone exportée par html2canvas n'en dépend pas, et ces règles n'y entrent
+   pas). Les tuiles d'une même grille ont toutes la hauteur de la plus haute ;
+   quatre tuiles se rangent en 2 + 2 sur iPad portrait au lieu de 3 + 1 (une
+   tuile seule sur sa rangée). Téléphone (2 colonnes) et ordinateur
+   (4 colonnes) gardent la grille partagée .accueil-grille.
+   ───────────────────────────────────────────────────────────────────────────── */
+.haccp-accueil .accueil-grille { grid-auto-rows: 1fr; }
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .haccp-accueil[data-tuiles="4"] .accueil-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -1968,11 +1968,11 @@ export function installLegacySupabase() {
     },
 
     // ─── HACCP - Zones ───
-    async listHaccpZones(etabId) {
+    async listHaccpZones(etabId, { strict = false } = {}) {
       let q = client.from('haccp_zones').select('*').order('nom');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listHaccpZones]', error); return []; }
+      if (error) return _readFailed('[listHaccpZones]', error, strict);
       return (data || []).map(this.mapHaccpZoneFromDB);
     },
     async upsertHaccpZone(zone) {
@@ -2018,11 +2018,16 @@ export function installLegacySupabase() {
     // créneau configuré : le module retombe sur la saisie libre. C'est aussi ce
     // qui est renvoyé si la table n'existe pas encore (migration non appliquée),
     // et c'est voulu : le front reste utilisable exactement comme avant.
-    async listHaccpCreneaux(etabId) {
+    // En strict, seule une vraie erreur de lecture remonte ; la relation
+    // absente reste une liste vide.
+    async listHaccpCreneaux(etabId, { strict = false } = {}) {
       let q = client.from('haccp_creneaux').select('*').order('heure');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listHaccpCreneaux]', error); return []; }
+      if (error) {
+        if (_relationAbsente(error)) { console.error('[listHaccpCreneaux]', error); return []; }
+        return _readFailed('[listHaccpCreneaux]', error, strict);
+      }
       return (data || []).map(this.mapHaccpCreneauFromDB);
     },
     async upsertHaccpCreneau(creneau) {
@@ -2055,11 +2060,11 @@ export function installLegacySupabase() {
     },
 
     // ─── HACCP - Control templates ───
-    async listHaccpTpls(etabId) {
+    async listHaccpTpls(etabId, { strict = false } = {}) {
       let q = client.from('haccp_ctrl_templates').select('*').order('label');
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listHaccpTpls]', error); return []; }
+      if (error) return _readFailed('[listHaccpTpls]', error, strict);
       return (data || []).map(this.mapHaccpTplFromDB);
     },
     async upsertHaccpTpl(tpl) {

@@ -25,14 +25,40 @@ export const FREQ_OPTIONS = [
 
 // ─── Écrans du module ───
 // Une tâche par écran ; le libellé sert à la tuile de l'accueil et au titre
-// de l'écran. L'identifiant est celui de l'ancien onglet ; le tableau de bord
-// n'est pas un écran, il vit sur l'accueil, sous les tuiles.
+// de l'écran. L'identifiant est celui de l'ancien onglet ; le tableau du jour
+// n'est pas un écran, il vit sur l'accueil, sous la carte « Maintenant » et
+// les tuiles. « tournee » (le relevé guidé) n'a pas de tuile : la carte
+// « Maintenant » y mène ; son titre devient « Relevé de HH:MM » quand
+// l'établissement a des heures de relevé.
 export const ECRANS_HACCP = {
-  releves: 'Je relève une température',
-  etiquettes: 'Une étiquette',
+  tournee: 'Relevé des températures',
+  etiquettes: "J'imprime une étiquette",
   tracabilite: 'Je photographie une étiquette',
-  controles: 'Les contrôles',
+  controles: 'Je coche un contrôle',
+  releves: 'Le registre',
   config: 'Réglages',
+};
+
+// ─── Aide « Première fois ici ? » ───
+// Lue une fois par personne et par appareil : la clé porte l'id de la
+// personne (une tablette partagée par la brigade la montre à chaque nouveau),
+// valeur '1' une fois refermée. Hors de UI_STORAGE_KEYS pour ne pas toucher
+// un fichier partagé par tous les modules.
+export const AIDE_HACCP_CLE = 'sc_haccp_aide_vue_';
+
+// ─── Ce qu'on fait quand un chiffre sort de la plage ───
+// Proposé en puces sous la ligne hors plage, au choix, plusieurs possibles :
+// rien n'est obligatoire, mais celui qui débute voit tout de suite quoi faire.
+// Les libellés choisis partent dans le commentaire du relevé (même INSERT).
+// « Autre chose » ouvre un champ libre et n'est jamais écrit lui-même.
+export const ACTION_AUTRE = 'Autre chose';
+export const ACTIONS_CORRECTIVES = {
+  froid_haut: ['Porte fermée, je relève de nouveau dans 30 minutes', 'Produits déplacés dans un autre frigo', 'Chef prévenu', 'Produits jetés', ACTION_AUTRE],
+  froid_bas: ['Réglage du frigo corrigé', 'Chef prévenu', ACTION_AUTRE],
+  chaud_bas: ['Remis à chauffer, je relève de nouveau dans 30 minutes', 'Chef prévenu', 'Produits jetés', ACTION_AUTRE],
+  chaud_haut: ['Température baissée', 'Chef prévenu', ACTION_AUTRE],
+  hygiene: ['Cycle relancé', 'Chef prévenu', ACTION_AUTRE],
+  autre: ['Chef prévenu', ACTION_AUTRE],
 };
 
 // ─── Créneaux de relevé ───
