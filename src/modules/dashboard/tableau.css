@@ -1,65 +1,180 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   Tableau de bord (restaurants)
+   Tableau de bord (restaurants et hôtels)
    ────────────────────────────────────────────────────────────────────────────
    Feuille limitée à .tdb, chargée avec le chunk du module. Elle ne porte que ce
-   que les styles inline ne savent pas faire : couleurs d'action lisibles dans
-   les deux thèmes, mise en page par largeur d'écran, survol, focus clavier,
-   pastille « en direct » et mouvement réduit. Le reste est en objets de style
-   dans les composants, sur les jetons de app.css.
+   que les styles inline ne savent pas faire : mise en page et tailles par
+   largeur du conteneur, filets entre les lignes, survol, focus clavier, onglets,
+   point « en poste » et mouvement réduit. Couleurs : jetons de app.css
+   seulement (aucune valeur en dur, lisible dans les deux thèmes et à la capture).
    ════════════════════════════════════════════════════════════════════════════ */
 
-.tdb {
-  /* Boutons d'action du pointage : texte blanc sur teinte sombre en clair,
-     texte encre sur teinte claire en sombre (contraste AA dans les deux). */
-  --tdb-go: #15803d;
-  --tdb-on-go: #ffffff;
-  --tdb-stop: var(--accent);
-  --tdb-on-stop: #ffffff;
-  --tdb-live: #16a34a;
+/* Par la largeur réellement disponible (barre latérale ouverte ou non), pas
+   par celle de l'écran : requêtes de conteneur. Points de rupture 560, 760 et
+   1080 px. */
+.tdb { container-type: inline-size; container-name: tdb; gap: 24px; }
+@media (min-width: 600px) {
+  .tdb { gap: 32px; }
 }
 
-html[data-theme="dark"] .tdb {
-  --tdb-go: oklch(72% 0.14 152);
-  --tdb-on-go: oklch(18% 0.03 152);
-  --tdb-on-stop: #04222f;
-  --tdb-live: oklch(76% 0.15 152);
+/* ── En-tête du jour : le seul aplat de la page ───────────────────────────── */
+.tdb-hero {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 18px 16px;
 }
+.tdb-hero-salut { font-size: 28px; }
+.tdb-reperes {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+.tdb-repere-valeur { font-size: 30px; }
+.tdb-repere-icone { display: none; }
 
-/* ── Mise en page ─────────────────────────────────────────────────────────── */
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+.tdb-titre { font-size: 20px; }
+.tdb-citation { font-size: 17px; }
+.tdb-chiffre-valeur { font-size: 28px; }
+
+/* Rangée « maintenant » : votre service et à faire | qui travaille. */
 .tdb-haut {
   display: grid;
-  gap: 16px;
+  gap: 24px;
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.tdb-pile {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.tdb-equipe-services {
+  display: grid;
+  gap: 10px 28px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+/* Au-delà de huit lignes dans un même service : masquées jusqu'à « Voir
+   N autres personnes » (!important : la ligne pose son display en style
+   inline). Jamais un service coupé ailleurs : son compte reste vrai. */
+.tdb .tdb-hors-groupe { display: none !important; }
+.tdb-semaine {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
 }
 .tdb-jours {
   display: grid;
-  gap: 16px;
+  gap: 28px;
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
 }
-.tdb-bas {
+.tdb-chiffres {
   display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Par la largeur réellement disponible (barre latérale ouverte ou non), pas
-   par celle de l'écran : requêtes de conteneur. */
-.tdb { container-type: inline-size; container-name: tdb; }
+/* Lignes de liste : un filet entre deux lignes, pas de boîte. Les boutons
+   perdent leur bordure et leur fond d'agent utilisateur par la classe, pas
+   par le style inline : le filet peut se poser et le survol s'applique. */
+.tdb button.tdb-lien { border: 0; background: transparent; }
+.tdb .tdb-filet { border-radius: 0; }
+.tdb .tdb-filet + .tdb-filet { border-top: 1px solid var(--rule-soft); }
+.tdb .tdb-chiffres > .tdb-chiffre { border-top: 1px solid var(--rule-soft); }
+
+@container tdb (min-width: 560px) {
+  .tdb-hero { padding: 22px 26px; gap: 18px; }
+  .tdb-hero-salut { font-size: 34px; }
+  .tdb-repere-valeur { font-size: 40px; }
+  .tdb-repere-icone { display: block; margin-bottom: 4px; }
+  .tdb-reperes { gap: 16px; }
+  .tdb-titre { font-size: 22px; }
+  .tdb-citation { font-size: 19px; }
+  .tdb-chiffre-valeur { font-size: 34px; }
+}
 @container tdb (min-width: 760px) {
-  .tdb-haut { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-  .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tdb-bas--deux { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .tdb-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; }
+  .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
+  .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; }
+  .tdb-jour-semaine { grid-column: 1 / -1; }
+  /* La semaine sur toute la largeur : barres et absences à gauche, groupes
+     à venir à droite. */
+  .tdb-jour-semaine .tdb-semaine {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    gap: 18px 32px;
+    align-items: start;
+  }
+  .tdb-jour-semaine .tdb-semaine > .tdb-semaine-groupes { grid-column: 2; grid-row: span 2; }
 }
 @container tdb (min-width: 1080px) {
-  .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tdb-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: end;
+    column-gap: 32px;
+  }
+  .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+  .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
+  /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
+     droite ; huit lignes par colonne avant « Voir toute l'équipe ». */
+  .tdb-equipe-services--deux {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+  }
+  .tdb-equipe-services--deux > .tdb-equipe-groupe:first-child { grid-row: span 2; }
+  .tdb-equipe-services--deux > button { grid-column: 1 / -1; }
+  .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+  .tdb-jour-semaine { grid-column: auto; }
+  .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; }
+  .tdb-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ── Onglets (téléphone) : soulignés, pas de pilule ──────────────────────── */
+.tdb-onglets {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rule-soft);
+  scrollbar-width: none;
+}
+.tdb-onglets::-webkit-scrollbar { display: none; }
+.tdb .tdb-onglet {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tdb .tdb-onglet.is-actif {
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 /* ── Interactions ─────────────────────────────────────────────────────────── */
 .tdb-lien {
-  transition: background-color 150ms ease, border-color 150ms ease;
+  border-radius: var(--r-sm);
+  transition: background-color 150ms ease;
 }
-.tdb-lien:hover {
-  background: var(--surface2);
+/* Survol sur les vrais pointeurs seulement (sur tactile il colle après le
+   tap). Plus spécifique que le fond transparent de .tdb button.tdb-lien. */
+@media (hover: hover) and (pointer: fine) {
+  .tdb button.tdb-lien:not(:disabled):hover { background: var(--surface2); }
+  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--surface); }
 }
 .tdb-lien:focus-visible,
 .tdb button:focus-visible {
@@ -67,14 +182,13 @@ html[data-theme="dark"] .tdb {
   outline-offset: 2px;
 }
 
-/* Pastille « en poste » : un point fixe, sans halo animé. */
+/* Point « en poste » : fixe, sans halo animé. */
 .tdb-live {
-  position: relative;
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--tdb-live);
+  background: var(--success-strong);
   flex-shrink: 0;
 }
 @media (prefers-reduced-motion: reduce) {
