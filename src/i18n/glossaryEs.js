@@ -1061,7 +1061,7 @@ export const UI_GLOSSARY_ES = {
   'Après la fin du salaire précédent.': 'Tras el fin del salario anterior.',
   'Nouveau salaire dès une date': 'Nuevo salario desde una fecha',
   "L'ancien reste pour les mois passés.": 'El anterior se mantiene en los meses pasados.',
-  'dont': 'de ellas',
+  'dont': 'incluyendo',
   'prévues non pointées': 'previstas sin fichar',
   'non chiffrées': 'sin valorar',
   'non chiffré': 'sin valorar',

@@ -1080,7 +1080,7 @@ export const UI_GLOSSARY = {
   'Après la fin du salaire précédent.': 'After the end of the previous salary.',
   'Nouveau salaire dès une date': 'New salary from a date',
   "L'ancien reste pour les mois passés.": 'The old one stays for past months.',
-  'dont': 'of which',
+  'dont': 'including',
   'prévues non pointées': 'planned, not clocked',
   'non chiffrées': 'not costed',
   'non chiffré': 'not costed',
