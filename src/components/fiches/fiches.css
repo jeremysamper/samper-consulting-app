@@ -1,0 +1,839 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Fiches en vitrine (Cartes & Recettes, Fiches salle)
+   ────────────────────────────────────────────────────────────────────────────
+   Feuille limitée à .fv, chargée avec les composants de src/components/fiches.
+   Elle porte la forme des vignettes et de la fiche ouverte : la règle globale
+   « Plus de carrés » de app.css vise les styles inline sérialisés et aplatirait
+   une vignette posée en style inline ; une classe y échappe sans !important.
+   Couleurs : jetons de app.css, plus deux crèmes de marque toujours posées sur
+   le voile sombre, donc identiques dans les deux thèmes. Aucune fonction de
+   couleur calculée dans une propriété (la capture PDF ne les lit pas).
+   Aucun transform ni filter sur un bouton : l'affordance globale des boutons
+   (app.css) reste maîtresse, les effets vivent sur leurs enfants.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.fv {
+  --fv-creme: #f1ebe1;
+  --fv-creme-doux: rgba(241, 235, 225, 0.82);
+  container-type: inline-size;
+  container-name: fv;
+  min-width: 0;
+}
+/* Fiche ouverte : même racine, deuxième nom pour ses propres requêtes. */
+.fv-fiche {
+  container-name: fv fvfiche;
+}
+
+/* ── Sections et grille ───────────────────────────────────────────────────── */
+/* Les sections se posent sur les colonnes des vignettes, mêmes écarts : une
+   section de n vignettes (n plus petit que la rangée) en occupe n colonnes et
+   la suivante se range à côté. L'ordre de service est gardé (pas de
+   remplissage des trous en arrière). */
+.fv-vitrine {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 26px;
+  align-items: start;
+  min-width: 0;
+}
+.fv-vitrine > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.fv-vitrine > .fv-section--n1 { grid-column: span 1; }
+.fv-section--n1 > .fv-grille { grid-template-columns: minmax(0, 1fr); }
+@container fv (min-width: 600px) {
+  .fv-vitrine { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 16px; }
+  .fv-vitrine > .fv-section--n2 { grid-column: span 2; }
+  .fv-section--n2 > .fv-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container fv (min-width: 860px) {
+  .fv-vitrine { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fv-vitrine > .fv-section--n3 { grid-column: span 3; }
+  .fv-section--n3 > .fv-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container fv (min-width: 1180px) {
+  .fv-vitrine { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .fv-vitrine > .fv-section--n4 { grid-column: span 4; }
+  .fv-section--n4 > .fv-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.fv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.fv-section-titre {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+}
+.fv-section-nombre {
+  font-family: var(--font-num);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text3);
+}
+.fv-section-bascule {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fv-section-bascule svg {
+  align-self: center;
+  color: var(--text3);
+}
+.fv-section-bascule:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Téléphone d'abord : 2 colonnes, puis par la largeur réellement disponible. */
+.fv-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 12px;
+}
+@container fv (min-width: 600px) {
+  .fv-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 16px; }
+}
+@container fv (min-width: 860px) {
+  .fv-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container fv (min-width: 1180px) {
+  .fv-grille { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* ── Vignette ─────────────────────────────────────────────────────────────── */
+.fv-vignette {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.fv-vignette[data-attenuee] {
+  opacity: 0.75;
+}
+.fv-ouvrir {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.fv-ouvrir--inerte {
+  cursor: default;
+}
+.fv-ouvrir:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* La photo porte la forme : coins, ombre ; aucun cadre autour du texte. */
+.fv-cadre-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--grad-brand);
+  box-shadow: var(--sh-sm);
+  transition: transform 300ms ease, box-shadow 300ms ease;
+}
+/* iPad en paysage et ordinateur : la hauteur d'écran est comptée, le cadre
+   s'allonge un peu pour garder deux rangées de vignettes en vue. */
+@container fv (min-width: 860px) {
+  .fv-cadre-photo { aspect-ratio: 16 / 10; }
+}
+.fv-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease;
+}
+.fv-remplacement {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad-brand);
+}
+.fv-remplacement-picto {
+  width: 34%;
+  max-width: 88px;
+  height: auto;
+  color: var(--fv-creme);
+  opacity: 0.35;
+  transform: translateY(-14%);
+}
+.fv-initiale {
+  font-family: var(--font-serif);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fv-creme);
+  opacity: 0.35;
+  transform: translateY(-14%);
+}
+.fv-voile {
+  position: absolute;
+  inset: 0;
+  background: var(--grad-scrim);
+  pointer-events: none;
+}
+.fv-nom {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--fv-creme);
+}
+@container fv (min-width: 600px) {
+  .fv-nom { left: 12px; right: 12px; bottom: 11px; font-size: 16px; }
+}
+.fv-pastille {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  box-shadow: var(--sh-sm);
+}
+
+.fv-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 2px;
+}
+.fv-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text2);
+}
+.fv-allergenes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--warning-text);
+}
+.fv-allergene {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.fv-allergene-picto {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.fv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text3);
+}
+.fv-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.fv-meta-picto {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.fv-mention {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text3);
+}
+
+/* Survol : souris seulement (sur tactile il colle après le tap). */
+@media (hover: hover) and (pointer: fine) {
+  .fv-ouvrir:not(.fv-ouvrir--inerte):hover .fv-cadre-photo {
+    transform: translateY(-2px);
+    box-shadow: var(--sh);
+  }
+  .fv-ouvrir:not(.fv-ouvrir--inerte):hover .fv-photo {
+    transform: scale(1.04);
+  }
+}
+/* Appui : le cadre se resserre, partout. */
+.fv-ouvrir:not(.fv-ouvrir--inerte):active .fv-cadre-photo {
+  transform: scale(0.985);
+}
+
+/* Case de sélection : 44 x 44 au doigt, sur le coin de la photo. */
+.fv-coche {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+}
+.fv-coche input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.fv-vignette[data-coche] .fv-cadre-photo {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Fiches d'un plat qui en a plusieurs : une ligne tactile par fiche. */
+.fv-liens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.fv-liens-titre {
+  margin: 0 2px;
+  font-size: 11.5px;
+  color: var(--text3);
+}
+.fv-liens-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fv-lien {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--rule-soft);
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.fv-lien-nom {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.3;
+}
+.fv-lien-picto {
+  flex-shrink: 0;
+  color: var(--text3);
+}
+.fv-lien:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  .fv-lien { min-height: 44px; }
+}
+
+/* Actions secondaires : fond doux, texte d'accent (langage des boutons
+   secondaires de l'app). */
+.fv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fv-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 34px;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.fv-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Lignes (« Plats à compléter ») : miniature, nom, raison, action. */
+.fv-lignes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fv-ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.fv-miniature {
+  position: relative;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--grad-brand);
+}
+.fv-miniature .fv-remplacement-picto,
+.fv-miniature .fv-initiale {
+  transform: none;
+}
+.fv-miniature .fv-remplacement-picto { width: 46%; }
+.fv-miniature .fv-initiale { font-size: 30px; }
+.fv-ligne-texte {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fv-ligne-nom {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+}
+.fv-ligne-raison {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.fv-vide-recherche {
+  margin: 0;
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+/* ── Fiche ouverte ────────────────────────────────────────────────────────── */
+.fv-fiche {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.fv-heros {
+  position: relative;
+  height: 200px;
+  margin: 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--grad-brand);
+  box-shadow: var(--sh);
+}
+@container fvfiche (min-width: 600px) {
+  .fv-heros { height: 220px; }
+}
+@container fvfiche (min-width: 760px) {
+  .fv-heros { height: 240px; }
+}
+@container fvfiche (min-width: 1100px) {
+  .fv-heros { height: 280px; }
+}
+.fv-heros .fv-pastille {
+  top: 14px;
+  right: 14px;
+}
+.fv-heros-texte {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fv-heros-cat {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fv-creme-doux);
+}
+.fv-heros-titre {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--fv-creme);
+}
+.fv-heros-meta {
+  margin: 4px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fv-creme-doux);
+}
+@container fvfiche (min-width: 760px) {
+  .fv-heros-texte { left: 24px; right: 24px; bottom: 18px; }
+  .fv-heros-titre { font-size: 28px; }
+}
+
+.fv-titre-section {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+}
+.fv-sous-titre {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+}
+
+/* Allergènes en bandeau, sans cadre : un titre et la liste sur une ligne. */
+.fv-bandeau-allergenes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.fv-bandeau-allergenes .fv-titre-section {
+  font-size: 16px;
+}
+.fv-allergenes--bandeau {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: 6px 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.fv-allergenes--bandeau .fv-allergene-picto {
+  width: 17px;
+  height: 17px;
+}
+.fv-vide {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+/* Deux colonnes dès 760 px de fiche (iPad portrait compris), une seule
+   au téléphone, dans le même ordre de lecture. */
+.fv-fiche-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+@container fvfiche (min-width: 760px) {
+  .fv-fiche-cols {
+    display: grid;
+    grid-template-columns: minmax(300px, 5fr) minmax(0, 7fr);
+    gap: 32px;
+    align-items: start;
+  }
+}
+.fv-col {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+.fv-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.fv-bloc-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.fv-texte-long {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-line;
+}
+
+/* Étapes numérotées. */
+.fv-etapes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fv-etape {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.fv-etape-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-num);
+  font-size: 12px;
+  font-weight: 700;
+}
+.fv-fiche--tactile .fv-etape {
+  font-size: 16px;
+  line-height: 1.6;
+}
+.fv-fiche--tactile .fv-etape-num {
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+.fv-fiche--tactile .fv-texte-long {
+  font-size: 15px;
+}
+
+/* Conservation : le texte, puis Congélation et Durées de vie côte à côte. */
+.fv-conservation-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+@container fvfiche (min-width: 600px) {
+  .fv-conservation-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+}
+
+.fv-pied {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 12px;
+  color: var(--text3);
+}
+
+/* ── Fiche salle ouverte ──────────────────────────────────────────────────── */
+/* Téléphone : allergènes et info service d'abord ; dès 760 px, description à
+   gauche, allergènes à droite. */
+.fv-fiche-cols--salle .fv-col-b {
+  order: -1;
+}
+@container fvfiche (min-width: 760px) {
+  .fv-fiche-cols--salle { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .fv-fiche-cols--salle .fv-col-b { order: 0; }
+}
+.fv-accroche {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--text);
+}
+.fv-infos {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fv-infos dt {
+  font-size: 12px;
+  color: var(--text3);
+}
+.fv-infos dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.fv-familles {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+}
+.fv-onglet-nombre {
+  margin-left: 5px;
+  font-family: var(--font-num);
+  font-weight: 500;
+  opacity: 0.7;
+}
+.fv-accords {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 32px;
+}
+@container fvfiche (min-width: 600px) {
+  .fv-accords { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.fv-accord {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.fv-accord-nom {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.fv-accord-region {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.fv-accord-alt {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text2);
+}
+.fv-accord-notes {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text2);
+}
+
+/* ── États (Fiches salle) ─────────────────────────────────────────────────── */
+.fv-etat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+}
+.fv-etat-titre {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.fv-etat-texte {
+  margin: 0;
+  max-width: 460px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+}
+.fv-etat .fv-action {
+  margin-top: 8px;
+}
+
+/* ── Mouvement réduit : ni zoom ni montée ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .fv-cadre-photo,
+  .fv-photo {
+    transition: none;
+  }
+  .fv-ouvrir:not(.fv-ouvrir--inerte):hover .fv-cadre-photo,
+  .fv-ouvrir:not(.fv-ouvrir--inerte):active .fv-cadre-photo,
+  .fv-ouvrir:not(.fv-ouvrir--inerte):hover .fv-photo {
+    transform: none;
+  }
+}
