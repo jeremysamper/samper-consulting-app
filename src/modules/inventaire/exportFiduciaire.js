@@ -33,13 +33,13 @@ export const COLONNES = [
   'TTC', 'Échéance', 'Réglée le', 'Mode', 'Note', 'Pièce', 'À vérifier',
 ];
 // Clés des lignes, alignées sur COLONNES.
-const CLES = [
+export const CLES = [
   'date', 'fournisseur', 'numero', 'perimetre', 'ht',
   'tva26', 'tva81', 'tva38', 'tvaAutre', 'tauxAutre',
   'ttc', 'echeance', 'regleLe', 'mode', 'note', 'piece', 'aVerifier',
 ];
-const NUMERIQUES = new Set(['ht', 'tva26', 'tva81', 'tva38', 'tvaAutre', 'tauxAutre', 'ttc']);
-const TOTALISEES = ['ht', 'tva26', 'tva81', 'tva38', 'tvaAutre', 'ttc'];
+export const NUMERIQUES = new Set(['ht', 'tva26', 'tva81', 'tva38', 'tvaAutre', 'tauxAutre', 'ttc']);
+export const TOTALISEES = ['ht', 'tva26', 'tva81', 'tva38', 'tvaAutre', 'ttc'];
 
 // ── Intervalles ──
 
@@ -133,18 +133,18 @@ export function csvFiduciaire(lignes) {
 
 // ── Classeur Excel (OOXML, une feuille) ──
 
-const esc = (s) => String(s ?? '')
+export const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
-const col = (i) => (i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + (i % 26)));
-const num = (n) => String(+Number(n).toFixed(6));
-const cStr = (ref, s, texte) => `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${esc(texte)}</t></is></c>`;
-const cNum = (ref, s, n) => `<c r="${ref}" s="${s}"><v>${num(n)}</v></c>`;
-const cVide = (ref, s) => `<c r="${ref}" s="${s}"/>`;
+export const col = (i) => (i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + (i % 26)));
+export const num = (n) => String(+Number(n).toFixed(6));
+export const cStr = (ref, s, texte) => `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${esc(texte)}</t></is></c>`;
+export const cNum = (ref, s, n) => `<c r="${ref}" s="${s}"><v>${num(n)}</v></c>`;
+export const cVide = (ref, s) => `<c r="${ref}" s="${s}"/>`;
 const LARGEURS = [11, 30, 14, 14, 12, 11, 11, 11, 11, 10, 12, 11, 11, 14, 28, 26, 10];
 
 // Styles : 0 défaut, 1 en-tête, 2 texte, 3 montant, 4 total texte, 5 total montant.
-const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+export const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>
 <fonts count="2"><font><sz val="10"/><name val="Arial"/><family val="2"/></font><font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font></fonts>
@@ -162,7 +162,7 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
-function feuilleFactures(lignes, titre) {
+export function feuilleFactures(lignes, titre) {
   const t = totauxFiduciaire(lignes);
   const rows = [];
   rows.push(`<row r="1" ht="22" customHeight="1">${cStr('A1', 0, titre)}</row>`);
