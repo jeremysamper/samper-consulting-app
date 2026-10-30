@@ -18,9 +18,14 @@ import { copieHoraire, estPointe, horaireDeplace, idCopie, regleDepot } from './
 // (BandeauAnnuler, 8 s). `bandeau` est ce que le bandeau montre ; le geste
 // annulable vit à côté, dans une ref (avec la promesse de son écriture). Le
 // geste suivant ferme le bandeau (poserModele ici, les fenêtres d'écriture dans
-// Planning.jsx). Un retour arrière ne crée jamais de chevauchement : la case de
-// départ est relue au moment d'annuler.
+// Planning.jsx). Un dépôt refusé n'écrit rien, donc n'est pas un geste : son
+// bandeau garde le geste d'avant (precedent), qui revient, toujours annulable,
+// quand on ferme le refus (fermerMessage). Un retour arrière ne crée jamais de
+// chevauchement : la case de départ est relue au moment d'annuler.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Bandeaux d'un dépôt refusé : rien n'a été écrit.
+const REFUS = new Set(['chevauche', 'pointe']);
 
 export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite, etabId }) {
   const existantsRef = React.useRef(existants);
@@ -48,8 +53,10 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     return seqRef.current;
   };
   const fermerBandeau = React.useCallback(() => { dernierRef.current = null; setBandeau(null); }, []);
-  // Le geste échoue ou ne peut plus être annulé : son bandeau s'en va, pas celui d'un geste plus récent.
+  // Le geste échoue ou ne peut plus être annulé : son bandeau s'en va, pas celui
+  // d'un geste plus récent, et il ne revient pas après un refus (fini).
   const oublier = (geste) => {
+    geste.fini = true;
     if (dernierRef.current === geste) dernierRef.current = null;
     setBandeau(b => (b && b.seq === geste.seq ? null : b));
   };
@@ -58,6 +65,18 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     setBandeau(b => (b && b.seq === geste.seq ? { ...b, occupe } : b));
   };
   const memoriser = (geste) => { dernierRef.current = geste; return geste; };
+  // Montre le bandeau d'un geste (vue) et en fait le dernier geste.
+  const retenir = (vue, geste) => memoriser({ ...geste, vue, seq: montrer(vue) });
+
+  // « Fermer », × ou fin du délai du bandeau. Après un refus, le geste d'avant
+  // revient avec son bandeau, s'il est toujours annulable ; sinon tout se ferme.
+  const fermerMessage = () => {
+    const d = dernierRef.current;
+    const p = d && REFUS.has(d.type) ? d.precedent : null;
+    if (!p || p.fini) { fermerBandeau(); return; }
+    p.seq = montrer({ ...p.vue, occupe: Boolean(p.annulation) });
+    dernierRef.current = p;
+  };
 
   // ─── Poser un modèle (saisie en un geste, pinceau) ───
   // Un créneau qui chevauche un horaire existant est laissé de côté : le
@@ -96,8 +115,7 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     const promesse = bridge
       ? bridge.db.updateShift(avant.id, { userId: cible.userId, date: cible.date }).then((row) => { const m = vers(row); remplacer(m.id, m); return m; })
       : Promise.resolve(apres);
-    const seq = montrer({ type: 'deplace', horaire: apres, absence });
-    const geste = memoriser({ seq, type: 'deplace', avant, apres, absence, promesse });
+    const geste = retenir({ type: 'deplace', horaire: apres, absence }, { type: 'deplace', avant, apres, absence, promesse });
     promesse
       .catch((err) => {
         remplacer(avant.id, avant);
@@ -118,8 +136,7 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     const promesse = bridge
       ? bridge.db.createShifts([copie]).then((rows) => { const m = rows && rows[0] ? vers(rows[0]) : copie; remplacer(copie.id, m); return m; })
       : Promise.resolve(copie);
-    const seq = montrer({ type: 'copie', horaire: copie, absence });
-    const geste = memoriser({ seq, type: 'copie', copie, promesse });
+    const geste = retenir({ type: 'copie', horaire: copie, absence }, { type: 'copie', copie, promesse });
     promesse
       .catch((err) => {
         retirer([copie.id]);
@@ -131,9 +148,12 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
   };
 
   // Un dépôt refusé se dit dans le bandeau ; « pointe » garde de quoi copier.
+  // Le geste annulable d'avant (ou celui que gardait un refus précédent) est
+  // porté par precedent, et rendu par fermerMessage.
   const signaler = (b) => {
-    const seq = montrer(b);
-    memoriser({ ...b, seq, promesse: Promise.resolve() });
+    const d = dernierRef.current;
+    const precedent = d && REFUS.has(d.type) ? d.precedent : d;
+    retenir(b, { ...b, precedent: precedent || null, promesse: Promise.resolve() });
   };
 
   // Lâcher sur une case : la règle (regleDepot) a déjà tranché.
@@ -270,7 +290,8 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     occuper(geste, true);
     try { await geste.promesse; } catch { return; }
     const cible = { userId: geste.apres.userId, date: geste.apres.date };
-    if (!copiePossible(geste.avant, cible, geste.absence)) return;
+    // Copie refusée : le déplacement reste annulable quand le refus se ferme.
+    if (!copiePossible(geste.avant, cible, geste.absence)) { geste.annulation = false; return; }
     if (!(await annulerDeplacement(geste))) return;
     copier(geste.avant, cible, geste.absence);
   };
@@ -311,8 +332,7 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     }
     setPlanning(prev => [...prev.filter(s => !aEffacer.has(s.id)), ...crees.filter(c => !prev.some(p => p.id === c.id))]);
     if (mode === 'bandeau') {
-      const seq = montrer({ type: 'duplication', n: crees.length });
-      memoriser({ seq, type: 'duplication', crees, remplaces, promesse: Promise.resolve() });
+      retenir({ type: 'duplication', n: crees.length }, { type: 'duplication', crees, remplaces, promesse: Promise.resolve() });
     } else {
       let msg = `${crees.length} horaire${crees.length > 1 ? 's' : ''} créé${crees.length > 1 ? 's' : ''}`;
       if (remplaces.length) msg += ` (${remplaces.length} remplacé${remplaces.length > 1 ? 's' : ''})`;
@@ -322,7 +342,7 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
   };
 
   return {
-    bandeau, fermerBandeau, estEnCours,
+    bandeau, fermerBandeau, fermerMessage, estEnCours,
     poserModele, deposer, deplacer, copier, copierIci, copierPlutot, annulerDernier,
     appliquerDuplication, annulerDuplication,
   };

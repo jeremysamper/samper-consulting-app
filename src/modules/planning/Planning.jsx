@@ -1950,7 +1950,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         onAnnuler={ecritures.annulerDernier}
         onCopierPlutot={ecritures.copierPlutot}
         onCopierIci={ecritures.copierIci}
-        onFermer={ecritures.fermerBandeau}
+        onFermer={ecritures.fermerMessage}
       />
 
       {exportOuvert && (

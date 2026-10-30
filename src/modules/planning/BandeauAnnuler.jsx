@@ -6,7 +6,8 @@ import { jourCourt } from './planningGlisser.js';
 // Bandeau du dernier geste de la grille : ce qui vient d'être fait, et le
 // retour arrière (« Annuler », « Copier plutôt », « Copier ici »). Fixe en bas
 // à gauche, sous les fenêtres ; les toasts restent en bas à droite. Il reste
-// 8 s (« Annulé. » 2 s), disparaît au geste suivant ou par « Fermer ».
+// 8 s (« Annulé. » 2 s), disparaît au geste suivant ou par « Fermer ». Fermer
+// un refus (chevauche, pointe) rend le bandeau du geste d'avant (fermerMessage).
 // Pendant un glisser, il laisse passer le pointeur (la case dessous reste
 // visable).
 //
