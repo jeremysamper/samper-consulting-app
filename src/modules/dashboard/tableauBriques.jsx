@@ -106,8 +106,10 @@ export function Duree({ minutes, style }) {
 
 // Repère de l'en-tête : un chiffre en grand, sa phrase, son détail. Mène au
 // module quand le rôle peut l'ouvrir. Vide ou en échec, la phrase prend la
-// place du chiffre (jamais un gros zéro).
-export function Repere({ repere, icone: Icone, onClick, label }) {
+// place du chiffre (jamais un gros zéro). Pas d'aria-label : il remplacerait,
+// pour un lecteur d'écran, le texte visible (« 110 couverts aujourd'hui, 42 à
+// midi, 68 le soir ») par la seule destination.
+export function Repere({ repere, icone: Icone, onClick }) {
   const { id, valeur, libelle, detail, vide, echec, texte } = repere;
   const contenu = (
     <>
@@ -125,7 +127,7 @@ export function Repere({ repere, icone: Icone, onClick, label }) {
   );
   if (!onClick) return <div data-repere={id} style={b.repere}>{contenu}</div>;
   return (
-    <button type="button" data-repere={id} className="tdb-lien tdb-repere" onClick={onClick} aria-label={label} style={{ ...b.repere, ...b.bouton }}>
+    <button type="button" data-repere={id} className="tdb-lien tdb-repere" onClick={onClick} style={{ ...b.repere, ...b.bouton }}>
       {contenu}
     </button>
   );
@@ -156,13 +158,18 @@ export function LigneAction({ icone: Icone, couleur = 'var(--accent)', titre, de
 // Une personne : initiales, puis le nom et son état sur la première ligne,
 // le détail (heures, poste) sur toute la largeur de la seconde, le téléphone
 // pour la direction. `compact` (l'équipe de demain) : une ligne, sans
-// initiales, le nom à gauche et les heures à droite.
+// initiales, le nom (et le téléphone dessous) à gauche, les heures à droite.
 export function Personne({ userId, detail, tel, droite, compact = false, className = '' }) {
   const u = userDisplay(userId);
   if (compact) {
     return (
       <div className={`tdb-filet ${className}`} style={b.personneCompacte}>
-        <span style={b.nomCompact} data-no-translate>{u.name}</span>
+        {tel ? (
+          <span style={b.nomEtTel}>
+            <span style={b.nomCompact} data-no-translate>{u.name}</span>
+            <PhoneLink tel={tel} style={b.tel} />
+          </span>
+        ) : <span style={b.nomCompact} data-no-translate>{u.name}</span>}
         <span style={b.compacteDroite}>
           {detail && <span style={b.detailCompact}>{detail}</span>}
           {droite}
@@ -265,11 +272,13 @@ export const b = {
   compte: { fontFamily: 'var(--font-num)', fontWeight: 400, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
   lien: {
     display: 'inline-flex', alignItems: 'center', gap: 2, minHeight: 44, padding: '0 4px 0 6px', flexShrink: 0,
-    background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer',
+    borderRadius: 'var(--r-sm)', cursor: 'pointer',
     fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)', whiteSpace: 'nowrap',
   },
+  // Fond et bordure des boutons .tdb-lien : tableau.css (.tdb button.tdb-lien),
+  // pour que le survol de la classe s'applique (un fond inline l'emporterait).
   bouton: {
-    background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)', width: '100%',
+    cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)', width: '100%',
   },
   repere: {
     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, minWidth: 0, boxSizing: 'border-box',
@@ -292,7 +301,8 @@ export const b = {
   },
   compacteDroite: { display: 'inline-flex', alignItems: 'baseline', gap: 10, flexShrink: 0 },
   nom: { display: 'block', flex: '0 1 auto', minWidth: 0, fontSize: 15, fontWeight: 500, lineHeight: 1.35, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  nomCompact: { fontSize: 15, fontWeight: 500, lineHeight: 1.35, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  nomEtTel: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 },
+  nomCompact: { fontSize: 15, fontWeight: 500, lineHeight: 1.35, color: 'var(--text)', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   detail: { display: 'block', fontSize: 13, lineHeight: 1.35, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
   detailCompact: { fontSize: 13, lineHeight: 1.4, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
   tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 13 },

@@ -106,8 +106,8 @@ function Colonne({ titre, date, sousTitre, semaine = false, children }) {
 
 // ── Un jour ───────────────────────────────────────────────────────────────
 function Jour({
-  date, estDemain = false, sansCouverts = false, couverts, groupes, shifts, absences, avecCouverts, avecGroupes, avecPlanning, avecAbsences,
-  nonLu, peutOuvrir, ouvrir,
+  date, estDemain = false, sansCouverts = false, couverts, groupes, shifts, absences, telephones, avecCouverts, avecGroupes, avecPlanning,
+  avecAbsences, nonLu, peutOuvrir, ouvrir,
 }) {
   const vers = (page) => (peutOuvrir(page) ? () => ouvrir(page) : null);
   const c = couvertsDu(couverts, date);
@@ -129,7 +129,14 @@ function Jour({
         </SousSection>
       )}
       {estDemain && avecPlanning && (
-        <EquipeDemain date={date} shifts={shifts} absences={avecAbsences ? absences : []} echec={nonLu('shifts')} lien={vers('planning')} />
+        <EquipeDemain
+          date={date}
+          shifts={shifts}
+          absences={avecAbsences ? absences : []}
+          telephones={telephones}
+          echec={nonLu('shifts')}
+          lien={vers('planning')}
+        />
       )}
     </div>
   );
@@ -199,9 +206,10 @@ function LigneGroupe({ g, onClick, quand }) {
   );
 }
 
-// L'équipe de demain : une ligne par personne et ses heures, puis les
-// absences de demain en une phrase (« Absences : Nadia Rochat, congé »).
-function EquipeDemain({ date, shifts, absences, echec, lien }) {
+// L'équipe de demain : une ligne par personne et ses heures (le téléphone
+// sous le nom pour la direction), puis les absences de demain en une phrase
+// (« Absences : Nadia Rochat (Congé) »).
+function EquipeDemain({ date, shifts, absences, telephones = {}, echec, lien }) {
   const equipe = equipeDu(shifts, date);
   const absents = (absences || []).filter((a) => a.dateDebut <= date && a.dateFin >= date);
   const absenceDe = (userId) => absents.find((a) => a.userId === userId);
@@ -214,6 +222,7 @@ function EquipeDemain({ date, shifts, absences, echec, lien }) {
           key={userId}
           compact
           userId={userId}
+          tel={(telephones || {})[userId]}
           detail={<span data-no-translate>{liste.map((sh) => `${sh.debut} à ${sh.fin}`).join(', ')}</span>}
           droite={absenceDe(userId) ? <EtatEquipier motif={absenceDe(userId).motif} /> : null}
         />
@@ -235,6 +244,26 @@ function EquipeDemain({ date, shifts, absences, echec, lien }) {
 }
 
 // ── La semaine ────────────────────────────────────────────────────────────
+// Cinq groupes à venir au plus ; la suite est annoncée (la lecture couvre
+// quinze jours), avec le lien vers les groupes quand le rôle peut l'ouvrir.
+const GROUPES_MAX = 5;
+
+function AutresGroupes({ n, onClick }) {
+  const un = n === 1;
+  if (onClick) {
+    return (
+      <LienModule onClick={onClick}>
+        <span>Voir</span>{' '}<span data-no-translate>{n}</span>{' '}<span>{un ? 'autre groupe' : 'autres groupes'}</span>
+      </LienModule>
+    );
+  }
+  return (
+    <Vide>
+      <span data-no-translate>{n}</span>{' '}<span>{un ? 'autre groupe à venir' : 'autres groupes à venir'}</span>
+    </Vide>
+  );
+}
+
 function Semaine({
   aujourdhui, couverts, groupes, absences, avecCouverts, avecGroupes, avecAbsences, nonLu, peutOuvrir, ouvrir,
 }) {
@@ -251,20 +280,31 @@ function Semaine({
   const echecCouverts = avecCouverts && nonLu('couverts');
   const rien = !groupesAVenir.length && !absencesAVenir.length && (!avecCouverts || (!echecCouverts && !total));
 
+  const abreges = jours.map((d) => {
+    const rel = jourRelatif(d, aujourdhui);
+    return rel === "aujourd'hui" ? 'Auj.' : rel === 'demain' ? 'Dem.' : `${rel.charAt(0).toUpperCase()}${rel.slice(1, 3)}.`;
+  });
+  // Les barres sont muettes pour un lecteur d'écran (aria-hidden) : les totaux
+  // jour par jour sont dits par un texte masqué à l'œil, en nœuds traduisibles.
   const graphique = (
-    <div style={s.barres} aria-hidden="true">
-      {jours.map((d, i) => {
-        const rel = jourRelatif(d, aujourdhui);
-        const initiale = rel === "aujourd'hui" ? 'Auj.' : rel === 'demain' ? 'Dem.' : `${rel.charAt(0).toUpperCase()}${rel.slice(1, 3)}.`;
-        return (
+    <>
+      <span style={s.cache}>
+        {jours.map((d, i) => (
+          <React.Fragment key={d}>
+            {i ? ', ' : ''}<span>{abreges[i]}</span>{' '}<span data-no-translate>{totaux[i]}</span>
+          </React.Fragment>
+        ))}
+      </span>
+      <div style={s.barres} aria-hidden="true">
+        {jours.map((d, i) => (
           <div key={d} style={s.barreCol}>
             <span style={{ ...s.barreValeur, color: totaux[i] ? 'var(--text)' : 'var(--text2)' }} data-no-translate>{totaux[i] || ''}</span>
             <span style={{ ...s.barre, height: `${Math.max(4, (totaux[i] / max) * 64)}px`, background: i === 0 ? 'var(--accent)' : 'var(--accent-bd)', opacity: totaux[i] ? 1 : 0.35 }} />
-            <span style={{ ...s.barreJour, color: i === 0 ? 'var(--accent)' : 'var(--text2)', fontWeight: i === 0 ? 700 : 500 }}>{initiale}</span>
+            <span style={{ ...s.barreJour, color: i === 0 ? 'var(--accent)' : 'var(--text2)', fontWeight: i === 0 ? 700 : 500 }}>{abreges[i]}</span>
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    </>
   );
 
   // Disposition (pile, ou deux colonnes sur toute la largeur) : tableau.css.
@@ -279,15 +319,18 @@ function Semaine({
         >
           {echecCouverts ? <Vide>Réservations indisponibles pour l&apos;instant</Vide>
             : vers('previsions')
-              ? <button type="button" className="tdb-lien" onClick={vers('previsions')} style={s.graphiqueBouton} aria-label="Ouvrir les réservations">{graphique}</button>
-              : graphique}
+              ? <button type="button" className="tdb-lien" onClick={vers('previsions')} style={s.graphiqueBouton}>{graphique}</button>
+              : <div style={{ position: 'relative' }}>{graphique}</div>}
         </SousSection>
       )}
       {avecGroupes && groupesAVenir.length > 0 && (
         <SousSection className="tdb-semaine-groupes" titre="Groupes à venir" niveau={4}>
-          {groupesAVenir.slice(0, 5).map((g) => (
+          {groupesAVenir.slice(0, GROUPES_MAX).map((g) => (
             <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} quand={jourRelatif(g.dateEvenement, aujourdhui)} />
           ))}
+          {groupesAVenir.length > GROUPES_MAX && (
+            <AutresGroupes n={groupesAVenir.length - GROUPES_MAX} onClick={vers('groupes')} />
+          )}
         </SousSection>
       )}
       {avecAbsences && absencesAVenir.length > 0 && (
@@ -323,9 +366,16 @@ const s = {
   serviceMot: { fontSize: 15, color: 'var(--text2)' },
   total: { margin: '6px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
   auTotal: { fontSize: 13, color: 'var(--text2)', whiteSpace: 'nowrap' },
+  // Fond et bordure du bouton : tableau.css (.tdb button.tdb-lien), pour que
+  // son survol s'applique.
   graphiqueBouton: {
-    display: 'block', width: '100%', padding: 0, margin: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+    position: 'relative', display: 'block', width: '100%', padding: 0, margin: 0, borderRadius: 'var(--r-sm)',
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)',
+  },
+  // Texte pour les lecteurs d'écran seulement (masqué à l'œil, pas à eux).
+  cache: {
+    position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden',
+    clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', whiteSpace: 'nowrap', borderWidth: 0,
   },
   barres: { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, alignItems: 'end', padding: '6px 2px 2px' },
   barreCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 },

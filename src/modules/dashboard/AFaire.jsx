@@ -59,7 +59,7 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
         <button type="button" className="tdb-lien" onClick={() => setTout((v) => !v)} style={s.plus}>
           {tout ? <span>Réduire</span>
             : items.length - MAX === 1 ? <span>Voir le dernier point</span>
-              : <><span>Voir les</span>{' '}<span data-no-translate>{items.length - MAX}</span>{' '}<span>autres</span></>}
+              : <><span>Voir</span>{' '}<span data-no-translate>{items.length - MAX}</span>{' '}<span>autres points</span></>}
         </button>
       )}
     </Section>
@@ -71,7 +71,7 @@ const s = {
   urgent: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600, color: 'var(--danger-text)' },
   plus: {
     alignSelf: 'flex-start', minHeight: 44, padding: '0 6px', marginTop: 4, cursor: 'pointer',
-    background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+    borderRadius: 'var(--r-sm)',
     fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)',
   },
 };

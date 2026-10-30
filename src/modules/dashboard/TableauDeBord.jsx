@@ -193,8 +193,10 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const couvertsJour = couvertsDu(d.couverts, aujourdhui);
   const groupesJour = avecGroupes ? groupesDu(d.groupes, aujourdhui) : [];
   const absentsJour = absencesDuJour(absences, aujourdhui);
-  // Absences en échec sans liste : rien n'est dit des absences.
-  const absencesLues = avecAbsences && !(abs.status === 'error' && !(abs.absences || []).length);
+  // Absences pas encore lues, ou en échec sans liste : rien n'est dit des
+  // absences (jamais « Aucune absence » avant d'avoir lu). Une liste déjà lue
+  // reste affichée pendant une relecture, sans clignoter.
+  const absencesLues = avecAbsences && (abs.status === 'ready' || (abs.absences || []).length > 0);
   const avecCouvertsLus = avecCouverts && d.statuts.couverts !== 'absent';
   const avecGroupesLus = avecGroupes && d.statuts.groupes !== 'absent';
   const service = avecCouvertsLus && !nonLu('couverts')
@@ -304,6 +306,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
             couverts={d.couverts}
             groupes={avecGroupes ? d.groupes : []}
             absences={absences}
+            telephones={telephones}
             avecCouverts={avecCouvertsLus}
             avecGroupes={avecGroupesLus}
             avecPlanning={avecPlanning}

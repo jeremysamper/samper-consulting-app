@@ -13,7 +13,6 @@ import { Duree, Mots, Parties, Repere } from './tableauBriques.jsx';
 // zéro qui clignote avant les données.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ARIA = { couverts: 'Ouvrir les réservations', groupes: 'Ouvrir les groupes', equipe: 'Ouvrir le planning' };
 const ICONES = { couverts: getModuleIcon('previsions'), groupes: getModuleIcon('groupes'), equipe: getModuleIcon('planning') };
 
 export function EnTete({ date, salutation, prenom, pret, service, reperes, peutOuvrir, ouvrir, onAssistant }) {
@@ -46,7 +45,6 @@ export function EnTete({ date, salutation, prenom, pret, service, reperes, peutO
               key={r.id}
               repere={r}
               icone={ICONES[r.id]}
-              label={ARIA[r.id]}
               onClick={peutOuvrir(r.page) ? () => ouvrir(r.page) : null}
             />
           ))}

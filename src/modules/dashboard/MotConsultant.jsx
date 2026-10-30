@@ -11,8 +11,12 @@ import { Section } from './tableauBriques.jsx';
 // écrire pour le consultant.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const jourDuMois = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', day: 'numeric' }).format(new Date(iso));
-const moisLong = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', month: 'long' }).format(new Date(iso));
+// « 28.10.2026 » : la date de la signature en chiffres, la même dans les trois
+// langues (« le 28 octobre » laissait « , le » en français et « october » en
+// minuscule une fois traduit).
+const dateSignature = (iso) => new Intl.DateTimeFormat('fr-CH', {
+  timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit', year: 'numeric',
+}).format(new Date(iso));
 
 export default function MotConsultant({ message, consultant, onPublier }) {
   const [edition, setEdition] = React.useState(false);
@@ -74,9 +78,7 @@ export default function MotConsultant({ message, consultant, onPublier }) {
           <blockquote className="tdb-citation" style={s.citation}>{texte}</blockquote>
           <figcaption style={s.signature}>
             <span data-no-translate>{auteur}</span>
-            {message?.updatedAt ? (
-              <>, le <span data-no-translate>{jourDuMois(message.updatedAt)}</span>{' '}<span>{moisLong(message.updatedAt)}</span></>
-            ) : null}
+            {message?.updatedAt ? <>, <span data-no-translate>{dateSignature(message.updatedAt)}</span></> : null}
           </figcaption>
         </figure>
       ) : (
@@ -98,7 +100,7 @@ const s = {
   vide: { margin: 0, padding: '4px 0', fontSize: 15, lineHeight: 1.5, color: 'var(--text2)', maxWidth: '68ch' },
   modifier: {
     display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 6px', flexShrink: 0, cursor: 'pointer',
-    background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+    borderRadius: 'var(--r-sm)',
     fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)',
   },
   zone: {

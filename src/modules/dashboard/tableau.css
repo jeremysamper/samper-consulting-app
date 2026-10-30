@@ -32,7 +32,6 @@
 }
 .tdb-repere-valeur { font-size: 30px; }
 .tdb-repere-icone { display: none; }
-.tdb-hero .tdb-lien:hover { background: var(--surface); }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 .tdb-titre { font-size: 20px; }
@@ -58,9 +57,10 @@
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
-/* Au-delà de huit lignes : masquées jusqu'à « Voir toute l'équipe »
-   (!important : la ligne pose son display en style inline). */
-.tdb .tdb-hors-liste { display: none !important; }
+/* Au-delà de huit lignes dans un même service : masquées jusqu'à « Voir
+   N autres personnes » (!important : la ligne pose son display en style
+   inline). Jamais un service coupé ailleurs : son compte reste vrai. */
+.tdb .tdb-hors-groupe { display: none !important; }
 .tdb-semaine {
   display: flex;
   flex-direction: column;
@@ -80,9 +80,9 @@
 }
 
 /* Lignes de liste : un filet entre deux lignes, pas de boîte. Les boutons
-   perdent leur bordure d'agent utilisateur (la classe, pas le style inline,
-   pour que le filet puisse se poser). */
-.tdb button.tdb-lien { border: 0; }
+   perdent leur bordure et leur fond d'agent utilisateur par la classe, pas
+   par le style inline : le filet peut se poser et le survol s'applique. */
+.tdb button.tdb-lien { border: 0; background: transparent; }
 .tdb .tdb-filet { border-radius: 0; }
 .tdb .tdb-filet + .tdb-filet { border-top: 1px solid var(--rule-soft); }
 .tdb .tdb-chiffres > .tdb-chiffre { border-top: 1px solid var(--rule-soft); }
@@ -129,9 +129,6 @@
   }
   .tdb-equipe-services--deux > .tdb-equipe-groupe:first-child { grid-row: span 2; }
   .tdb-equipe-services--deux > button { grid-column: 1 / -1; }
-  .tdb .tdb-equipe-services--deux .tdb-hors-liste { display: flex !important; }
-  .tdb .tdb-equipe-services--deux .tdb-hors-colonne { display: none !important; }
-  .tdb .tdb-equipe-services--deux .tdb-voir-liste { display: none; }
   .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
   .tdb-jour-semaine { grid-column: auto; }
   .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; }
@@ -173,8 +170,11 @@
   border-radius: var(--r-sm);
   transition: background-color 150ms ease;
 }
-.tdb-lien:hover {
-  background: var(--surface2);
+/* Survol sur les vrais pointeurs seulement (sur tactile il colle après le
+   tap). Plus spécifique que le fond transparent de .tdb button.tdb-lien. */
+@media (hover: hover) and (pointer: fine) {
+  .tdb button.tdb-lien:not(:disabled):hover { background: var(--surface2); }
+  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--surface); }
 }
 .tdb-lien:focus-visible,
 .tdb button:focus-visible {
