@@ -26,6 +26,17 @@ export function enMinutes(hhmm) {
 
 export const enHeure = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
+// Minutes écoulées de `debut` à `fin` (en minutes depuis minuit). Une heure
+// pointée par le serveur peut devancer de quelques minutes l'horloge de
+// l'appareil : un écart négatif d'au plus une heure vaut 0 (jamais
+// « 23 h 58 » en poste) ; au-delà, le service a passé minuit.
+export function minutesEcoulees(debut, fin) {
+  const ecart = fin - debut;
+  if (ecart >= 0) return ecart;
+  if (ecart >= -60) return 0;
+  return ecart + 1440;
+}
+
 // « 2 h 14 », « 45 min »
 export function duree(minutes) {
   const m = Math.max(0, Math.round(minutes));
@@ -154,6 +165,12 @@ export const nbAllergies = (g) => (g.allergenesIds || []).length + (g.allergiesN
 //
 // Les horaires sont rangés par jour ISO (« 1 » = lundi … « 7 » = dimanche) ;
 // un service se termine, estime-t-on, 90 min après la dernière arrivée.
+//
+// jours_fermes et services_fermes ferment la réservation EN LIGNE (vacances,
+// privatisation, service complet), pas forcément le restaurant : un jour ou
+// un service fermé en ligne qui a des couverts se sert quand même. Le jour
+// fermé avec des couverts se dit sans compte à rebours (sans_heure) ; un
+// service fermé en ligne avec des couverts reste dans la liste du jour.
 export const FIN_SERVICE_APRES_MIN = 90;
 const ORDRE_SERVICES = ['brunch', 'midi', 'soir'];
 
@@ -167,13 +184,15 @@ export function etatDuService({ couverts, couvertsDemain = null, parametres, auj
   const etat = (e, extra = {}) => ({ etat: e, service: null, dans: null, heure: null, couverts: 0, demain: null, ...extra });
   const termine = () => etat('termine', { demain: couvertsDemain || { midi: 0, soir: 0, brunch: 0, total: 0 } });
 
-  if (parametres && (parametres.jours_fermes || []).includes(aujourdhui)) return etat('ferme');
+  const jourFerme = Boolean(parametres && (parametres.jours_fermes || []).includes(aujourdhui));
+  if (jourFerme && !c.total) return etat('ferme');
 
-  const duJour = parametres?.horaires?.[jourIso(aujourdhui)] || null;
+  const duJour = jourFerme ? null : (parametres?.horaires?.[jourIso(aujourdhui)] || null);
   const fermes = parametres?.services_fermes?.[aujourdhui] || [];
   const services = duJour
     ? ORDRE_SERVICES
-      .filter((id) => duJour[id] && enMinutes(duJour[id].de) != null && enMinutes(duJour[id].a) != null && !fermes.includes(id))
+      .filter((id) => duJour[id] && enMinutes(duJour[id].de) != null && enMinutes(duJour[id].a) != null
+        && (!fermes.includes(id) || (c[id] || 0) > 0))
       .map((id) => {
         const de = enMinutes(duJour[id].de);
         let a = enMinutes(duJour[id].a);

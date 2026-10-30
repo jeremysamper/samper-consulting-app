@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarClock, CircleCheck, Clock, LogIn, LogOut } from 'lucide-react';
-import { enMinutes, jourRelatif } from './tableauLogique.js';
+import { enMinutes, jourRelatif, minutesEcoulees } from './tableauLogique.js';
 import { Duree, LienModule, Section } from './tableauBriques.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,8 +95,8 @@ export default function CartePointage({
           const debutPointe = enMinutes(shift.pointageDebut);
           const finPointee = enMinutes(shift.pointageFin);
           let travaille = 0;
-          if (enPoste && debutPointe != null) travaille = (maintenant - debutPointe + 1440) % 1440;
-          if (termine && debutPointe != null && finPointee != null) travaille = (finPointee - debutPointe + 1440) % 1440;
+          if (enPoste && debutPointe != null) travaille = minutesEcoulees(debutPointe, maintenant);
+          if (termine && debutPointe != null && finPointee != null) travaille = minutesEcoulees(debutPointe, finPointee);
 
           // Service terminé : une ligne grise.
           if (termine) {

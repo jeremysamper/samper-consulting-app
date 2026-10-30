@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  aFaire, chiffresGestion, equipeParService, etatDuService, jourIso, reperesDuJour, serviceDuShift,
+  aFaire, chiffresGestion, equipeParService, etatDuService, jourIso, minutesEcoulees, reperesDuJour, serviceDuShift,
 } from './tableauLogique.js';
 
 const JOUR = '2026-10-30'; // un vendredi
@@ -22,6 +22,15 @@ const COUVERTS = { midi: 42, soir: 68, brunch: 0, total: 110 };
 const COUVERTS_DEMAIN = { midi: 35, soir: 54, brunch: 0, total: 89 };
 const etat = (heure, extra = {}) => etatDuService({
   couverts: COUVERTS, couvertsDemain: COUVERTS_DEMAIN, parametres: PARAMETRES, aujourdhui: JOUR, maintenant: h(heure), ...extra,
+});
+
+test('minutesEcoulees : horloge en retard, service passé minuit', () => {
+  assert.equal(minutesEcoulees(h('10:52'), h('11:30')), 38);
+  // Pointage confirmé à 10:52, appareil à 10:50 : 0, jamais 23 h 58.
+  assert.equal(minutesEcoulees(h('10:52'), h('10:50')), 0);
+  assert.equal(minutesEcoulees(h('10:52'), h('09:52')), 0);
+  // Arrivée à 22:00, il est 01:30 : 3 h 30.
+  assert.equal(minutesEcoulees(h('22:00'), h('01:30')), 210);
 });
 
 test('serviceDuShift : le type posé, sinon le début avant 16 h', () => {
@@ -64,11 +73,24 @@ test('etatDuService : compte à rebours, service en cours, journée terminée', 
 });
 
 test('etatDuService : jour fermé, service fermé ce jour', () => {
-  assert.equal(etat('10:50', { parametres: { ...PARAMETRES, jours_fermes: [JOUR] } }).etat, 'ferme');
-  const sansMidi = etat('10:50', { parametres: { ...PARAMETRES, services_fermes: { [JOUR]: ['midi'] } } });
+  const vide = { midi: 0, soir: 0, brunch: 0, total: 0 };
+  const soirSeul = { midi: 0, soir: 68, brunch: 0, total: 68 };
+  assert.equal(etat('10:50', { couverts: vide, parametres: { ...PARAMETRES, jours_fermes: [JOUR] } }).etat, 'ferme');
+  const sansMidi = etat('10:50', { couverts: soirSeul, parametres: { ...PARAMETRES, services_fermes: { [JOUR]: ['midi'] } } });
   assert.deepEqual(sansMidi, { etat: 'a_venir', service: 'soir', dans: 490, heure: '19:00', couverts: 68, demain: null });
   // Fermé un autre jour : rien ne change aujourd'hui.
   assert.equal(etat('10:50', { parametres: { ...PARAMETRES, services_fermes: { [DEMAIN]: ['midi'] } } }).service, 'midi');
+});
+
+test('etatDuService : fermé en ligne mais avec des couverts (privatisation, groupe)', () => {
+  // Jour fermé à la réservation en ligne, 110 couverts : jamais « fermé »,
+  // et sans compte à rebours.
+  const jourFerme = etat('10:50', { parametres: { ...PARAMETRES, jours_fermes: [JOUR] } });
+  assert.deepEqual(jourFerme, { etat: 'sans_heure', service: 'midi', dans: null, heure: null, couverts: 42, demain: null });
+  assert.equal(etat('15:30', { parametres: { ...PARAMETRES, jours_fermes: [JOUR] } }).service, 'soir');
+  // Midi fermé en ligne avec 42 couverts midi : le midi reste le prochain service.
+  const midiComplet = etat('10:50', { parametres: { ...PARAMETRES, services_fermes: { [JOUR]: ['midi'] } } });
+  assert.deepEqual(midiComplet, { etat: 'a_venir', service: 'midi', dans: 70, heure: '12:00', couverts: 42, demain: null });
 });
 
 test('etatDuService : sans paramètres, jamais d\'heure inventée', () => {
