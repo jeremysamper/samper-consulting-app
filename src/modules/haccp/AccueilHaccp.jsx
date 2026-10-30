@@ -1,37 +1,36 @@
 import React from 'react';
-import { Camera, ClipboardCheck, Settings2, Tag, Thermometer } from 'lucide-react';
+import { BookOpen, Camera, ClipboardCheck, Settings2, Tag } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { ECRANS_HACCP } from './HACCP.constants.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tuiles de l'accueil du module HACCP, sur la grille partagée AccueilModule :
-// les tâches du service d'abord (relever, étiqueter, photographier), puis les
-// contrôles, « Réglages » en dernier. Le tableau de bord (tournées, saisie
-// rapide, zones à relever) suit les tuiles sur le même écran (HACCP.jsx) :
-// relever une zone y reste à un toucher. Une tuile hors droit n'est pas rendue.
+// Tuiles de l'accueil du module HACCP, sur la grille partagée AccueilModule,
+// sous la carte « Maintenant » (qui mène au relevé des températures : pas de
+// tuile « relevé » en plus). Les tâches du service d'abord (étiquette, photo),
+// puis les contrôles, le registre, « Réglages » en dernier. Chaque tuile dit
+// en une ligne ce qu'elle fait. Une tuile hors droit n'est pas rendue.
 //
-// tournee : la tournée proposée maintenant ({ heure, faites, total, complet }),
-// null sans grille horaire ; dernierReleve : heure du dernier relevé du jour,
-// null s'il n'y en a pas. Nombres et heures dans leurs propres nœuds : la
-// phrase autour reste une entrée du glossaire.
+// controles : { faits, dus } (compteControles), null tant que la lecture n'a
+// pas abouti : jamais « 0 sur 0 » sur des données qu'on n'a pas.
+// Nombres dans leurs propres nœuds : la phrase autour reste une entrée du
+// glossaire.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function AccueilHaccp({
-  tournee, dernierReleve, controlesFaits, controlesActifs,
-  canWrite, isConsultant, onOuvrir,
-}) {
-  let etatReleves = <>aucun relevé aujourd'hui</>;
-  if (tournee && !tournee.complet) {
-    etatReleves = <><span>{tournee.heure}</span> : <span>{tournee.faites}</span> / <span>{tournee.total}</span> zones relevées</>;
-  } else if (dernierReleve) {
-    etatReleves = <>dernier relevé à <span>{dernierReleve}</span></>;
+const N = ({ children }) => <span data-no-translate="">{children}</span>;
+
+export default function AccueilHaccp({ controles, canWrite, isConsultant, onOuvrir }) {
+  let etatControles = null;
+  if (controles) {
+    etatControles = controles.dus > 0
+      ? <><N>{controles.faits}</N> sur <N>{controles.dus}</N> faits aujourd'hui</>
+      : <>Rien à faire aujourd'hui</>;
   }
   const tuiles = [
-    { id: 'releves', Icone: Thermometer, etat: etatReleves },
-    { id: 'etiquettes', Icone: Tag, etat: <>imprimer un lot</>, visible: canWrite },
-    { id: 'tracabilite', Icone: Camera, etat: canWrite ? <>photos des étiquettes</> : <>voir les photos</> },
-    { id: 'controles', Icone: ClipboardCheck, etat: <><span>{controlesFaits}</span> / <span>{controlesActifs}</span> faits aujourd'hui</> },
-    { id: 'config', Icone: Settings2, etat: <>zones, créneaux, contrôles</>, visible: isConsultant },
+    { id: 'etiquettes', Icone: Tag, etat: <>Le nom et la date limite, à coller sur la boîte</>, visible: canWrite },
+    { id: 'tracabilite', Icone: Camera, etat: canWrite ? <>Garder l'étiquette d'un produit reçu</> : <>Voir les photos des étiquettes</> },
+    { id: 'controles', Icone: ClipboardCheck, etat: etatControles },
+    { id: 'releves', Icone: BookOpen, etat: <>Les relevés jour par jour</> },
+    { id: 'config', Icone: Settings2, etat: <>Frigos, heures de relevé, contrôles</>, visible: isConsultant },
   ].map(t => ({ ...t, libelle: ECRANS_HACCP[t.id], onClick: () => onOuvrir(t.id) }));
   return <AccueilModule tuiles={tuiles} />;
 }
