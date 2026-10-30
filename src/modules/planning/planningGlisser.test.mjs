@@ -96,6 +96,19 @@ test('sans cible : rien', () => {
   assert.equal(regleDepot({ horaire: midiMarco, cible: null, existants: [] }).effet, 'rien');
 });
 
+test('retour arrière vers une case de départ reprise entre-temps : refus « chevauche »', () => {
+  // Le soir de Sarah a quitté mercredi pour lundi ; un « Soir » a été posé
+  // mercredi depuis. Annuler (même règle que le dépôt) ne le remet pas.
+  const deplace = h('s1', 'sarah', '2026-11-02', '18:00', '23:30', { typeShift: 'soir' });
+  const pose = h('s2', 'sarah', '2026-11-04', '17:00', '23:00', { typeShift: 'soir' });
+  const r = regleDepot({ horaire: deplace, cible: { userId: 'sarah', date: '2026-11-04' }, existants: [deplace, pose] });
+  assert.equal(r.bloque, 'chevauche');
+  assert.equal(r.conflit.id, 's2');
+  // Un midi posé à sa place ne gêne pas le retour du soir (service coupé).
+  const midi = h('s3', 'sarah', '2026-11-04', '10:00', '15:00');
+  assert.equal(regleDepot({ horaire: deplace, cible: { userId: 'sarah', date: '2026-11-04' }, existants: [deplace, midi] }).effet, 'deplacer');
+});
+
 test('horaireDeplace ne change que la personne et le jour', () => {
   const pointe = { ...midiMarco, pause: 30, note: 'clé', statut: 'modifié' };
   const d = horaireDeplace(pointe, { userId: 'julie', date: '2026-11-05' });

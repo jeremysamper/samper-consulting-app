@@ -29,8 +29,6 @@ const copieDe = (src, userId, date, etablissementId) => ({
   pointageFin: null,
 });
 
-const dansSemaine = (date, debut) => date >= debut && date <= ajouterJours(debut, 6);
-
 // Plan général. cibles(source) : les dates où recopier cet horaire, chez la
 // même personne. Compteurs du résumé :
 // - dejaPresents : horaires existants distincts qui ont bloqué une copie ;
@@ -78,7 +76,9 @@ export function planDuplication({ sources, cibles, existants, remplacer = false,
 // loin. En mode Remplacer, la semaine cible de chaque personne concernée repart
 // de zéro (sauf le pointé).
 export function planSemaines({ debutSource, offsets, existants, personneId = null, remplacer = false, estAbsent, etablissementId }) {
-  const sources = existants.filter(s => dansSemaine(s.date, debutSource) && (!personneId || s.userId === personneId));
+  // Fin de semaine calculée une fois : le filtre parcourt tout l'historique.
+  const finSource = ajouterJours(debutSource, 6);
+  const sources = existants.filter(s => s.date >= debutSource && s.date <= finSource && (!personneId || s.userId === personneId));
   const datesCibles = new Set();
   offsets.forEach(o => { for (let i = 0; i < 7; i += 1) datesCibles.add(ajouterJours(debutSource, o + i)); });
   const personnes = [...new Set(sources.map(s => s.userId))];

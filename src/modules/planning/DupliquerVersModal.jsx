@@ -13,6 +13,9 @@ import { Resume } from './DupliquerModal.jsx';
 // d'origine ne reçoit jamais sa propre copie. Le résumé avant validation dit
 // ce qui sera créé, remplacé, gardé et sauté.
 //
+// Cibles tactiles de 44 px : chaque jour et chaque personne est un label entier
+// (la case de 20 px dedans), les boutons « Tout sélectionner » aussi.
+//
 // Pendant l'écriture, « Annuler » devient « Fermer » et reste actif ; une
 // écriture finie après fermeture affiche son issue sans piloter la fenêtre.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,7 +29,10 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
 
   const srcUserIds = new Set(sources.map(s => s.userId));
   const srcDates = new Set(sources.map(s => s.date));
-  const plan = planCopieVers({ sources, userIds, dates, existants, estAbsent, etablissementId });
+  const plan = React.useMemo(
+    () => planCopieVers({ sources, userIds, dates, existants, estAbsent, etablissementId }),
+    [sources, userIds, dates, existants, estAbsent, etablissementId],
+  );
   const n = plan.aCreer.length;
 
   const basculer = (setter, valeur) => setter(prev => {
@@ -66,7 +72,7 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <label style={pls.fieldLabel}>Jours cibles ({dates.size} sélectionnés)</label>
             <button
-              style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
+              style={vs.tout}
               onClick={() => setDates(toutesDates ? new Set() : new Set(jours.map(d => d.date)))}
             >{toutesDates ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
           </div>
@@ -74,16 +80,8 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
             {jours.map(d => {
               const checked = dates.has(d.date);
               return (
-                <label
-                  key={d.date}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px',
-                    border: '1px solid transparent',
-                    borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                    background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                  }}
-                >
-                  <input type="checkbox" checked={checked} onChange={() => basculer(setDates, d.date)} />
+                <label key={d.date} style={{ ...vs.choix, background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                  <input type="checkbox" style={vs.case} checked={checked} onChange={() => basculer(setDates, d.date)} />
                   <span style={{ flex: 1 }}>
                     {d.label}
                     {srcDates.has(d.date) && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
@@ -99,7 +97,7 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <label style={pls.fieldLabel}>Employés cibles ({userIds.size} sélectionnés)</label>
             <button
-              style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
+              style={vs.tout}
               onClick={() => setUserIds(tousEmployes ? new Set() : new Set(employees.map(e => e.id)))}
             >{tousEmployes ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
           </div>
@@ -107,16 +105,8 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
             {employees.map(emp => {
               const checked = userIds.has(emp.id);
               return (
-                <label
-                  key={emp.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
-                    border: '1px solid transparent',
-                    borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                    background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                  }}
-                >
-                  <input type="checkbox" checked={checked} onChange={() => basculer(setUserIds, emp.id)} />
+                <label key={emp.id} style={{ ...vs.choix, background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                  <input type="checkbox" style={vs.case} checked={checked} onChange={() => basculer(setUserIds, emp.id)} />
                   <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {emp.prenom} {emp.nom}
@@ -129,8 +119,8 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
         </div>
 
         {/* Avertissement */}
-        <div style={{ ...encadreStyle('alerte'), fontSize: 11 }}>
-          Un horaire qui chevauche la copie est <strong>remplacé</strong>, sauf s'il est déjà pointé ; un horaire qui ne la chevauche pas (un midi quand on copie un soir) est gardé.
+        <div style={{ ...encadreStyle('alerte'), fontSize: 12 }}>
+          Un horaire qui chevauche la copie est remplacé, sauf s'il est déjà pointé. Un horaire qui ne la chevauche pas (un midi quand on copie un soir) est gardé.
         </div>
 
         {/* Footer : ce qui sera créé, remplacé, gardé et sauté */}
@@ -142,9 +132,9 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
                 ? <>Aucun horaire à créer : <Resume parts={resumeDuplication(plan).slice(1)} /></>
                 : 'Aucun horaire à créer'}
           </span>
-          <button style={pls.exportBtn} onClick={onClose}>{enCours ? 'Fermer' : 'Annuler'}</button>
+          <button style={{ ...pls.exportBtn, minHeight: 44 }} onClick={onClose}>{enCours ? 'Fermer' : 'Annuler'}</button>
           <button
-            style={{ ...pls.addBtn, opacity: n === 0 || enCours ? 0.5 : 1 }}
+            style={{ ...pls.addBtn, minHeight: 44, opacity: n === 0 || enCours ? 0.5 : 1 }}
             onClick={valider}
             disabled={n === 0 || enCours}
           >
@@ -155,3 +145,9 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
     </Fenetre>
   );
 }
+
+const vs = {
+  choix: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 10px', borderRadius: 8, fontSize: 13, cursor: 'pointer', minWidth: 0 },
+  case: { width: 20, height: 20, margin: 0, flexShrink: 0, accentColor: 'var(--accent)', cursor: 'pointer' },
+  tout: { ...pls.exportBtn, fontSize: 12, minHeight: 44, padding: '0 12px' },
+};

@@ -74,7 +74,9 @@ const pls = {
     refus: { background: 'var(--danger-bg)', boxShadow: 'inset 0 0 0 2px var(--danger-strong)' },
   },
   enteteGrille: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 10 },
-  aideGrille: { flex: '1 1 260px', minWidth: 0, fontSize: 12, color: 'var(--text2)', textAlign: 'right' },
+  // Ligne d'aide du glisser : lisible d'un coup d'œil (texte plein, filet accent à gauche), sans cadre.
+  aideGrille: { flex: '1 1 260px', minWidth: 0, fontSize: 13, fontWeight: 500, color: 'var(--text)', textAlign: 'left', paddingLeft: 10, borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: 'var(--accent)' },
+  dateGrille: { flex: '1 1 260px', minWidth: 0, fontSize: 12, color: 'var(--text2)', textAlign: 'right' },
   emptyCell: { height: '100%', minHeight: 58, border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   addHint: { fontSize: 18, color: 'var(--text2)' },
   ptTable: { display: 'flex', flexDirection: 'column' },

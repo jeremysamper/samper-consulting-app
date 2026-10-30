@@ -1,7 +1,7 @@
 import React from 'react';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { horairesDuModele } from './planningModeles.js';
+import { chevauche, horairesDuModele } from './planningModeles.js';
 import { copieHoraire, estPointe, horaireDeplace, idCopie, regleDepot } from './planningGlisser.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,7 +16,10 @@ import { copieHoraire, estPointe, horaireDeplace, idCopie, regleDepot } from './
 //
 // Un seul retour arrière : le dernier geste, tant que son bandeau est affiché
 // (BandeauAnnuler, 8 s). `bandeau` est ce que le bandeau montre ; le geste
-// annulable vit à côté, dans une ref (avec la promesse de son écriture).
+// annulable vit à côté, dans une ref (avec la promesse de son écriture). Le
+// geste suivant ferme le bandeau (poserModele ici, les fenêtres d'écriture dans
+// Planning.jsx). Un retour arrière ne crée jamais de chevauchement : la case de
+// départ est relue au moment d'annuler.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite, etabId }) {
@@ -61,6 +64,8 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
   // service coupé reste possible, rien n'est écrasé sans le demander.
   const poserModele = async (modele, userId, date, { silencieux = false } = {}) => {
     if (!canWrite || !modele || !userId || !date) return;
+    // Geste suivant : le bandeau du geste d'avant ne propose plus de l'annuler.
+    fermerBandeau();
     const { aCreer, ignores } = horairesDuModele(modele, { userId, date, etablissementId: etabId, existants: existantsRef.current });
     if (!aCreer.length) {
       if (!silencieux) notifyLegacy('Ce créneau est déjà occupé.', 'warning');
@@ -155,11 +160,19 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     const courant = actuel(id);
     if (!courant) { notifyLegacy('Cet horaire n\'existe plus.', 'warning'); oublier(geste); return false; }
     if (estPointe(courant)) { notifyLegacy('Cet horaire vient d\'être pointé : il reste où il est.', 'warning'); oublier(geste); return false; }
-    remplacer(id, { ...courant, userId: geste.avant.userId, date: geste.avant.date });
+    // Sa case de départ a pu recevoir un horaire entre-temps (autre appareil,
+    // geste resté sans fermer le bandeau) : la même règle que le dépôt.
+    const retour = { userId: geste.avant.userId, date: geste.avant.date };
+    if (regleDepot({ horaire: courant, cible: retour, copie: false, existants: existantsRef.current, absence: null }).bloque === 'chevauche') {
+      notifyLegacy('Sa case de départ a maintenant un horaire qui le chevauche : il reste où il est.', 'warning');
+      oublier(geste);
+      return false;
+    }
+    remplacer(id, { ...courant, ...retour });
     marquer(id, 1);
     try {
       if (bridge) {
-        const row = await bridge.db.updateShift(id, { userId: geste.avant.userId, date: geste.avant.date });
+        const row = await bridge.db.updateShift(id, retour);
         const m = vers(row);
         remplacer(id, m);
       }
@@ -196,10 +209,14 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
 
   // Annuler une duplication : les horaires créés s'en vont (sauf ceux pointés
   // entre-temps), puis ceux qu'un « Remplacer » avait effacés reviennent avec
-  // leurs ids et leurs champs (Remplacer n'efface jamais un horaire pointé).
+  // leurs ids et leurs champs (Remplacer n'efface jamais un horaire pointé),
+  // sauf là où un autre horaire occupe désormais leur créneau.
   const annulerDuplication = async (geste) => {
     const partants = geste.crees.map(c => actuel(c.id)).filter(c => c && !estPointe(c));
     const ids = partants.map(c => c.id);
+    const restants = existantsRef.current.filter(e => !ids.includes(e.id));
+    const aRemettre = geste.remplaces.filter(r => !restants.some(e => e.id !== r.id
+      && e.userId === r.userId && e.date === r.date && chevauche(e.debut, e.fin, r.debut, r.fin)));
     retirer(ids);
     try {
       if (bridge && ids.length) await bridge.db.deleteShifts(ids);
@@ -209,15 +226,18 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
       notifyLegacy('Annulation impossible. ' + messageErreur(err, 'planning'), 'error');
       return false;
     }
-    if (geste.remplaces.length) {
-      ajouter(geste.remplaces);
+    if (aRemettre.length < geste.remplaces.length) {
+      notifyLegacy('Certains horaires remplacés ne reviennent pas : un autre horaire occupe leur créneau.', 'warning');
+    }
+    if (aRemettre.length) {
+      ajouter(aRemettre);
       try {
         if (bridge) {
-          const rows = await bridge.db.createShifts(geste.remplaces);
+          const rows = await bridge.db.createShifts(aRemettre);
           (rows || []).map(vers).forEach(m => remplacer(m.id, m));
         }
       } catch (err) {
-        retirer(geste.remplaces.map(r => r.id));
+        retirer(aRemettre.map(r => r.id));
         oublier(geste);
         notifyLegacy('Annulation impossible. ' + messageErreur(err, 'planning'), 'error');
         return false;

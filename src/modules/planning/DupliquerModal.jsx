@@ -13,8 +13,10 @@ import { accord, planDuplication, planReprendre, planSemaines, planVersSuivante,
 // 2. « Copier cette semaine sur la suivante » : la semaine affichée sur celle
 //    d'après (la grille y passe ensuite, pour montrer le résultat).
 // Toujours en mode garder : rien n'est effacé. Une action qui ne copierait rien
-// est grisée avec sa raison. Le reste (une personne, une journée, plusieurs
-// semaines, Garder ou Remplacer) est dans « Autres copies ».
+// est grisée avec sa raison. Le reste (une personne, une journée, toute la
+// semaine vers une ou plusieurs semaines, Garder ou Remplacer) est dans
+// « Autres copies ». Tant que la dernière lecture des horaires a échoué
+// (nonActualise), rien ne se copie : les plans seraient faux.
 //
 // Plans et règles : planningDuplication.js (pur, testé). La fermeture n'est
 // jamais bloquée : pendant l'écriture, « Annuler » devient « Fermer » ; une
@@ -47,17 +49,18 @@ const COPIES_SEMAINE = ['horaire sera copié sur cette semaine', 'horaires seron
 const COPIES = ['horaire sera copié', 'horaires seront copiés'];
 const CREES = ['horaire sera créé', 'horaires seront créés'];
 const REMPLACES = ['horaire existant sera remplacé', 'horaires existants seront remplacés'];
+const NON_ACTUALISE = 'Planning non actualisé : réessayez.';
 
-export default function DupliquerModal({ semaine, existants, employees, estAbsent, etablissementId, onDupliquer, onFait, onClose }) {
+export default function DupliquerModal({ semaine, existants, employees, estAbsent, nonActualise = false, etablissementId, onDupliquer, onFait, onClose }) {
   const ouvertRef = React.useRef(true);
   React.useEffect(() => { ouvertRef.current = true; return () => { ouvertRef.current = false; }; }, []);
   const [enCours, setEnCours] = React.useState(null); // 'reprendre' | 'suivante' | 'autres' | null
   const [autres, setAutres] = React.useState(false);
-  const [quoi, setQuoi] = React.useState('personne'); // personne | jour | plusieurs
+  const [quoi, setQuoi] = React.useState('personne'); // personne | jour | semaine
   const [personneId, setPersonneId] = React.useState(employees[0]?.id || '');
   const [jourSource, setJourSource] = React.useState(semaine);
+  // « Vers » de la semaine d'une personne comme de toute la semaine : 1 = la suivante.
   const [nbSemaines, setNbSemaines] = React.useState(1);
-  const [nbPlusieurs, setNbPlusieurs] = React.useState(2);
   const [joursCibles, setJoursCibles] = React.useState(new Set());
   const [remplacer, setRemplacer] = React.useState(false);
 
@@ -65,31 +68,32 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
   const semaineSuiv = ajouterJours(semaine, 7);
   const joursSemaine = React.useMemo(() => Array.from({ length: 7 }, (_, i) => ajouterJours(semaine, i)), [semaine]);
 
-  const reprendre = planReprendre({ semaine, existants, estAbsent, etablissementId });
-  const suivante = planVersSuivante({ semaine, existants, estAbsent, etablissementId });
+  // Plans mémorisés : une mise à jour realtime ou un choix dans la fenêtre ne
+  // refait que ce qui a changé (existants et estAbsent restent les mêmes objets
+  // côté Planning.jsx tant que les horaires et les absences ne bougent pas).
+  const reprendre = React.useMemo(() => planReprendre({ semaine, existants, estAbsent, etablissementId }), [semaine, existants, estAbsent, etablissementId]);
+  const suivante = React.useMemo(() => planVersSuivante({ semaine, existants, estAbsent, etablissementId }), [semaine, existants, estAbsent, etablissementId]);
 
   // « Autres copies » : calculé seulement quand la section est ouverte.
-  let autre = null;
-  if (autres) {
+  const autre = React.useMemo(() => {
+    if (!autres) return null;
     if (quoi === 'jour') {
       const dates = [...joursCibles].filter(d => d !== jourSource);
-      autre = planDuplication({ sources: existants.filter(s => s.date === jourSource), cibles: () => dates, existants, remplacer, estAbsent, etablissementId });
-    } else {
-      const nb = quoi === 'plusieurs' ? nbPlusieurs : nbSemaines;
-      autre = planSemaines({
-        debutSource: semaine,
-        offsets: Array.from({ length: nb }, (_, i) => 7 * (i + 1)),
-        existants,
-        personneId: quoi === 'personne' ? personneId : null,
-        remplacer,
-        estAbsent,
-        etablissementId,
-      });
+      return planDuplication({ sources: existants.filter(s => s.date === jourSource), cibles: () => dates, existants, remplacer, estAbsent, etablissementId });
     }
-  }
+    return planSemaines({
+      debutSource: semaine,
+      offsets: Array.from({ length: nbSemaines }, (_, i) => 7 * (i + 1)),
+      existants,
+      personneId: quoi === 'personne' ? personneId : null,
+      remplacer,
+      estAbsent,
+      etablissementId,
+    });
+  }, [autres, quoi, joursCibles, jourSource, semaine, nbSemaines, personneId, remplacer, existants, estAbsent, etablissementId]);
 
   const lancer = async (action, plan) => {
-    if (!plan || !plan.aCreer.length || enCours) return;
+    if (!plan || !plan.aCreer.length || enCours || nonActualise) return;
     setEnCours(action);
     try {
       await onDupliquer({ aCreer: plan.aCreer, aSupprimer: plan.aSupprimer });
@@ -104,12 +108,13 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
     }
   };
 
-  const raisonReprendre = reprendre.sources.length === 0
-    ? 'Rien à reprendre : cette semaine-là est vide.'
-    : reprendre.aCreer.length === 0 ? 'Tout est déjà en place, rien ne sera copié.' : null;
-  const raisonSuivante = suivante.sources.length === 0
-    ? 'Cette semaine est vide, rien à copier.'
-    : suivante.aCreer.length === 0 ? 'Tout est déjà en place, rien ne sera copié.' : null;
+  // Lecture en échec : une semaine « vide » peut ne pas l'être, rien ne se copie.
+  const raisonReprendre = nonActualise ? NON_ACTUALISE
+    : reprendre.sources.length === 0 ? 'Rien à reprendre : cette semaine-là est vide.'
+      : reprendre.aCreer.length === 0 ? 'Tout est déjà en place, rien ne sera copié.' : null;
+  const raisonSuivante = nonActualise ? NON_ACTUALISE
+    : suivante.sources.length === 0 ? 'Cette semaine est vide, rien à copier.'
+      : suivante.aCreer.length === 0 ? 'Tout est déjà en place, rien ne sera copié.' : null;
 
   // Jours proposés comme cibles d'une journée : les deux semaines qui suivent le jour source.
   const joursProposes = Array.from({ length: 14 }, (_, i) => ajouterJours(jourSource, i + 1));
@@ -118,7 +123,7 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
     if (n.has(d)) n.delete(d); else n.add(d);
     return n;
   });
-  const nAutre = autre ? autre.aCreer.length : 0;
+  const nAutre = autre && !nonActualise ? autre.aCreer.length : 0;
 
   return (
     <Fenetre
@@ -171,7 +176,7 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
               options={[
                 { v: 'personne', label: 'La semaine d\'une personne' },
                 { v: 'jour', label: 'Une journée', detail: 'Les horaires de toute l\'équipe ce jour-là, vers d\'autres jours.' },
-                { v: 'plusieurs', label: 'Toute la semaine, sur plusieurs semaines' },
+                { v: 'semaine', label: 'Toute la semaine' },
               ]}
             />
           </div>
@@ -210,20 +215,11 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
             </>
           )}
 
-          {quoi === 'personne' && (
+          {quoi !== 'jour' && (
             <div>
               <label style={st.label} htmlFor="dupliquer-nb">Vers</label>
               <select id="dupliquer-nb" style={{ ...st.champ, marginTop: 4 }} value={nbSemaines} onChange={e => setNbSemaines(Number(e.target.value))}>
                 <option value={1}>La semaine suivante</option>
-                {[2, 3, 4, 6, 8].map(n => <option key={n} value={n}>Les {n} semaines suivantes</option>)}
-              </select>
-            </div>
-          )}
-
-          {quoi === 'plusieurs' && (
-            <div>
-              <label style={st.label} htmlFor="dupliquer-nb-semaines">Vers</label>
-              <select id="dupliquer-nb-semaines" style={{ ...st.champ, marginTop: 4 }} value={nbPlusieurs} onChange={e => setNbPlusieurs(Number(e.target.value))}>
                 {[2, 3, 4, 6, 8].map(n => <option key={n} value={n}>Les {n} semaines suivantes</option>)}
               </select>
             </div>
@@ -243,7 +239,9 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
           </div>
 
           <div style={st.apercu} aria-live="polite">
-            {autre.sources.length === 0
+            {nonActualise
+              ? NON_ACTUALISE
+              : autre.sources.length === 0
               ? 'Rien à dupliquer ici.'
               : autre.aCreer.length === 0
                 ? (quoi === 'jour' && joursCibles.size === 0 ? 'Choisissez au moins un jour.' : 'Tout est déjà en place, rien ne sera copié.')

@@ -23,6 +23,7 @@ import DupliquerModal from './DupliquerModal.jsx';
 import DupliquerVersModal from './DupliquerVersModal.jsx';
 import FantomeHoraire from './FantomeHoraire.jsx';
 import BandeauAnnuler from './BandeauAnnuler.jsx';
+import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import { useEcrituresHoraires } from './useEcrituresHoraires.js';
 import { useGlisserHoraires } from './useGlisserHoraires.js';
 import { cleCase, lireCase, regleDepot } from './planningGlisser.js';
@@ -94,6 +95,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const [editForm, setEditForm] = React.useState(null);
   const [planning, setPlanning] = React.useState([]); // shifts chargés depuis Supabase
   const [loading, setLoading] = React.useState(true);
+  // Dernière lecture des horaires en échec : la grille le dit (BandeauNonActualise)
+  // au lieu de passer pour vide, et la duplication attend une lecture réussie.
+  const [lectureEchec, setLectureEchec] = React.useState(false);
   // Refetch des shifts de l'effet courant, rejoué au réveil de l'appareil.
   const reloadShiftsRef = React.useRef(null);
   // Horaires dont un pointage est en cours d'envoi : un double tap sur l'iPad
@@ -255,10 +259,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const { assurerDepuis: assurerAbsencesDepuis } = absencesEtab;
   React.useEffect(() => { assurerAbsencesDepuis(selectedDate); }, [selectedDate, assurerAbsencesDepuis]);
   React.useEffect(() => { assurerAbsencesDepuis(mobileDate); }, [mobileDate, assurerAbsencesDepuis]);
-  const absencesVisibles = absencesEtab.status === 'absent' ? [] : absencesEtab.absences.filter(a => !estMasque(a.userId));
+  // Mémorisés (comme planningEtab) : les plans de la fenêtre Dupliquer ne se
+  // recalculent qu'à un vrai changement. estMasque ne lit que masques et user.id.
+  const absencesVisibles = React.useMemo(
+    () => (absencesEtab.status === 'absent' ? [] : absencesEtab.absences.filter(a => !estMasque(a.userId))),
+    [absencesEtab.status, absencesEtab.absences, masquesEtab.masques, user.id],
+  );
+  const estAbsent = React.useCallback((uid, d) => !!absenceDe(absencesVisibles, uid, d), [absencesVisibles]);
 
   // Planning de cet établissement uniquement
-  const planningEtab = planning.filter(s => (s.etablissementId || 'etab-1') === etabId);
+  const planningEtab = React.useMemo(() => planning.filter(s => (s.etablissementId || 'etab-1') === etabId), [planning, etabId]);
   // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
   // de chevauchement : un horaire masqué existe toujours.
   const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
@@ -292,8 +302,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const rows = await legacySB.db.listShifts(etabId, { strict: true });
         if (!mounted) return;
         setPlanning(rows.map(r => legacySB.db.mapShiftFromDB(r)));
+        setLectureEchec(false);
       } catch (err) {
         console.error('[Planning] load', err);
+        if (mounted) setLectureEchec(true);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -694,6 +706,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Le bandeau du dernier geste s'en va quand on quitte la grille.
   const { fermerBandeau } = ecritures;
   React.useEffect(() => { if (ecran !== 'planning') fermerBandeau(); }, [ecran, fermerBandeau]);
+  // Il s'en va aussi au geste suivant : ouvrir une fenêtre ou un mode qui écrit
+  // des horaires. Son « Annuler » viserait sinon un geste qui n'est plus le dernier.
+  const ouvertures = [showEditModal, showDetailModal, !!saisieRapide, !!remplissage, selectionMode, showBatchModal, !!demultSources, showDupliquer];
+  const ouverturesRef = React.useRef(ouvertures);
+  React.useEffect(() => {
+    if (ouvertures.some((v, i) => v && !ouverturesRef.current[i])) fermerBandeau();
+    ouverturesRef.current = ouvertures;
+  });
 
   // Loading guard APRÈS tous les hooks (sinon React error #310 : hooks appelés de manière conditionnelle)
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
@@ -1395,6 +1415,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
         </div>
       )}
 
+      {/* Lecture des horaires en échec : ce qui s'affiche n'est peut-être pas à jour. */}
+      {lectureEchec && <div className="no-print"><BandeauNonActualise onRetry={() => reloadShiftsRef.current?.()} /></div>}
+
       {/* Contenu */}
       {activeTab === 'moi' ? (
         <MonPlanning
@@ -1413,7 +1436,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={pls.enteteGrille}>
               <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>Planning {horizon} semaine{horizon > 1 ? 's' : ''}</div>
               {/* Qui gère le planning lit comment déplacer un horaire ; les autres, la date de départ. */}
-              <div style={pls.aideGrille} className={canWrite ? 'no-print' : undefined}>
+              <div style={canWrite ? pls.aideGrille : pls.dateGrille} className={canWrite ? 'no-print' : undefined}>
                 {canWrite
                   ? (matchMedia('(pointer: fine)').matches
                     ? 'Glissez un horaire pour le déplacer. Alt ou Ctrl en le lâchant : il est copié.'
@@ -1422,8 +1445,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
             </div>
             {/* Zone du glisser : le touchmove y est annulé pendant un glisser au
-                doigt, et le glissé du bord iOS n'y part pas. */}
-            <div style={{ overflowX: 'auto' }} ref={glisser.zoneRef} data-no-edge-swipe="">
+                doigt. Pas de data-no-edge-swipe : un horaire n'est jamais sous
+                la bande du bord (colonne des noms collée à gauche, 200 px), et
+                le retour par le bord doit rester possible sur la grille. */}
+            <div style={{ overflowX: 'auto' }} ref={glisser.zoneRef}>
               <div style={{ ...pls.grid, gridTemplateColumns: `200px repeat(${DAYS.length}, minmax(90px,1fr))`, minWidth: 200 + DAYS.length * 90 }}>
                 <div style={pls.empColHeader} />
                 {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 11, fontWeight: 700 }}>{d.label}</div></div>)}
@@ -1858,7 +1883,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           jours={DAYS}
           employees={employees}
           existants={planningEtab}
-          estAbsent={(uid, d) => !!absenceDe(absencesVisibles, uid, d)}
+          estAbsent={estAbsent}
           etablissementId={etabId}
           onAppliquer={(plan) => ecritures.appliquerDuplication(plan, { mode: 'toast' })}
           onFait={() => { setDemultSources(null); setSelectionMode(false); setSelectedIds(new Set()); }}
@@ -1906,7 +1931,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
           semaine={isMobile ? lundiDe(mobileDate) : selectedDate}
           existants={planningEtab}
           employees={employees}
-          estAbsent={(uid, d) => !!absenceDe(absencesVisibles, uid, d)}
+          estAbsent={estAbsent}
+          nonActualise={lectureEchec}
           etablissementId={etabId}
           onDupliquer={(plan) => ecritures.appliquerDuplication(plan)}
           onFait={apresDuplication}

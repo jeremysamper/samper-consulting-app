@@ -124,6 +124,18 @@ test('plusieurs semaines : chaque semaine reçoit sa copie', () => {
   assert.deepEqual(plan.aCreer.map(c => c.date), ['2026-11-03', '2026-11-10', '2026-11-17']);
 });
 
+test('toute la semaine vers la suivante en Remplacer : toute l\'équipe repart de la semaine affichée, pointé gardé', () => {
+  // « Autres copies », Toute la semaine, Vers la semaine suivante, Remplacer.
+  const src = [h('a', '2026-10-27', '10:00', '15:00'), h('b', '2026-10-28', '17:00', '23:00')];
+  const brouillonA = h('a', '2026-11-05', '09:00', '17:00');
+  const brouillonB = h('b', '2026-11-03', '10:00', '15:00');
+  const pointeB = h('b', '2026-11-04', '17:00', '23:00', pointe);
+  const plan = planSemaines({ debutSource: S1, offsets: [7], existants: [...src, brouillonA, brouillonB, pointeB], remplacer: true, estAbsent: aucuneAbsence, etablissementId: 'e1' });
+  assert.deepEqual(plan.aSupprimer.sort(), [brouillonA.id, brouillonB.id].sort());
+  assert.deepEqual(plan.aCreer.map(c => c.userId + c.date), ['a2026-11-03']);
+  assert.equal(plan.pointesGardes, 1);
+});
+
 test('resumeDuplication : morceaux accordés, compteurs nuls omis', () => {
   const parts = resumeDuplication({ aCreer: new Array(49), aSupprimer: [], dejaPresents: 3, pointesGardes: 0, joursAbsence: 1 }, { copies: ['horaire sera copié sur cette semaine', 'horaires seront copiés sur cette semaine'] });
   assert.deepEqual(parts.map(p => [p.n, p.texte]), [
