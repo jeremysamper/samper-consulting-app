@@ -1,18 +1,21 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// TABLEAU DE BORD (restaurants) : ce que l'équipe doit savoir en arrivant.
+// TABLEAU DE BORD (restaurants et hôtels) : ce que l'équipe doit savoir en
+// arrivant, lisible en trois secondes.
 //
-//   En tête      bonjour + la journée en une phrase (couverts, groupes, absents)
-//   Mon service  pointage de l'équipier connecté
-//   À faire      ce qui attend quelqu'un maintenant
+//   En-tête du jour   bonjour, état du service, trois repères (couverts,
+//                     groupes, équipe), le seul aplat de la page
+//   Maintenant        Votre service aujourd'hui (pointage de l'équipier) et
+//                     À faire maintenant | Qui travaille aujourd'hui
+//   Aujourd'hui à l'hôtel (établissement hôtelier)
 //   Le mot du consultant
-//   À savoir     aujourd'hui, demain, cette semaine (couverts, groupes,
-//                équipe, absences)
-//   Chiffres de gestion  direction seulement
+//   Ce qui vous attend  aujourd'hui, demain, cette semaine
+//   Les chiffres de la semaine et du mois  direction seulement
 //
 // Les établissements spa gardent leur tableau de bord d'origine
 // (LegacyModuleHost). Chaque bloc n'apparaît que si son module est activé
 // pour l'établissement ; un lien vers un module n'est proposé qu'au rôle qui
-// y a accès.
+// y a accès. Une lecture en échec jamais aboutie le dit (nonLu), au lieu
+// d'afficher une liste vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React from 'react';
@@ -33,13 +36,15 @@ import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventa
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import { useDonneesTableau } from './useDonneesTableau.js';
 import {
-  aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, equipeDu, groupesDu, prochainShift, resumeDuJour, shiftsDu,
+  aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, decaler, equipeDu, etatDuService, groupesDu,
+  prochainShift, reperesDuJour, shiftsDu,
 } from './tableauLogique.js';
-import { t } from './tableauUi.jsx';
+import { EnTete } from './EnTeteJour.jsx';
 import CartePointage from './CartePointage.jsx';
 import MotConsultant from './MotConsultant.jsx';
 import AFaire from './AFaire.jsx';
-import ASavoir from './ASavoir.jsx';
+import QuiTravaille from './QuiTravaille.jsx';
+import CeQuiVousAttend from './CeQuiVousAttend.jsx';
 import ChiffresGestion from './ChiffresGestion.jsx';
 import CarteHotel from './CarteHotel.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
@@ -180,16 +185,31 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   }
 
   // ── Dérivés ──
+  // Source en échec qui n'a jamais été lue : rien à montrer, l'écran le dit.
+  // Les horaires de réservation en ligne ne servent qu'au compte à rebours de
+  // l'en-tête : leur échec ne fait pas apparaître le bandeau.
+  const nonLu = (source) => d.statuts[source] === 'error' && !d.lus[source];
   const nomDe = (id) => userDisplay(id).prenom || userDisplay(id).name;
   const couvertsJour = couvertsDu(d.couverts, aujourdhui);
   const groupesJour = avecGroupes ? groupesDu(d.groupes, aujourdhui) : [];
   const absentsJour = absencesDuJour(absences, aujourdhui);
-  const resume = resumeDuJour({ couverts: couvertsJour, groupes: groupesJour, absents: absentsJour, avecCouverts, nomDe });
+  // Absences en échec sans liste : rien n'est dit des absences.
+  const absencesLues = avecAbsences && !(abs.status === 'error' && !(abs.absences || []).length);
+  const avecCouvertsLus = avecCouverts && d.statuts.couverts !== 'absent';
+  const avecGroupesLus = avecGroupes && d.statuts.groupes !== 'absent';
+  const service = avecCouvertsLus && !nonLu('couverts')
+    ? etatDuService({
+      couverts: couvertsJour, couvertsDemain: couvertsDu(d.couverts, decaler(aujourdhui, 1)), parametres: d.parametres, aujourdhui, maintenant,
+    })
+    : null;
+  const reperes = reperesDuJour({
+    couverts: couvertsJour, groupes: groupesJour, equipe: equipeDu(d.shifts, aujourdhui), absents: absentsJour, absencesLues,
+    avecCouverts: avecCouvertsLus, avecGroupes: avecGroupesLus, avecPlanning, nonLu,
+  });
   const items = aFaire({
     aujourdhui, maintenant, haccp: d.haccp, groupes: d.groupes, shifts: d.shifts, absences,
     nbMessages, pertes: d.pertes, avecHaccp, avecGroupes, avecPlanning, direction, nomDe,
   });
-  const equipeDe = (date) => equipeDu(d.shifts, date);
   const chiffres = chiffresGestion({ pertes: d.pertes, shifts: d.shifts, couverts: d.couverts, aujourdhui });
   const derniers = derniersParPerimetre(d.inventaires || []);
   const plusAncien = derniers.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))[0];
@@ -205,79 +225,103 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       : derniers.length > 1 ? `${derniers.length} zones, la plus ancienne au ${new Date(`${plusAncien.date}T12:00:00`).toLocaleDateString('fr-CH')}`
         : `Au ${new Date(`${plusAncien.date}T12:00:00`).toLocaleDateString('fr-CH')}`,
   };
-  const enEchec = Object.values(d.statuts).includes('error');
+  const enEchec = Object.entries(d.statuts).some(([source, statut]) => statut === 'error' && source !== 'parametres');
 
-  // « Mon service » : le pointage individuel de l'équipe, toujours là quand le
-  // planning est activé, horaire prévu ou non (arrivée hors planning). Pas
+  // « Votre service » : le pointage individuel de l'équipe, toujours là quand
+  // le planning est activé, horaire prévu ou non (arrivée hors planning). Pas
   // pour la direction (consultant, patron), qui ne pointe pas.
   const montrerPointage = avecPlanning && !direction;
   const salutation = maintenant >= 18 * 60 ? 'Bonsoir' : 'Bonjour';
 
+  // L'équipe du jour : section à part sur tablette et ordinateur, en tête de
+  // l'onglet Aujourd'hui de « Ce qui vous attend » sur téléphone.
+  const quiTravaille = (dansOnglet) => (avecPlanning ? (
+    <QuiTravaille
+      dansOnglet={dansOnglet}
+      aujourdhui={aujourdhui}
+      maintenant={maintenant}
+      shifts={d.shifts}
+      absences={absences}
+      telephones={telephones}
+      avecAbsences={absencesLues}
+      echec={nonLu('shifts')}
+      peutOuvrir={peutOuvrir}
+      ouvrir={ouvrir}
+    />
+  ) : null);
+  const equipeAPart = avecPlanning && !mobile;
+
   return (
-    <div className="tdb" style={t.page}>
+    <div className="tdb" style={s.page}>
       <EnTete
         date={dateLongue(aujourdhui)}
         salutation={salutation}
         prenom={user?.prenom}
-        resume={resume}
+        pret={d.pret}
+        service={service}
+        reperes={reperes}
+        peutOuvrir={peutOuvrir}
+        ouvrir={ouvrir}
         onAssistant={consultant && peutOuvrir('faq') ? () => ouvrir('faq') : null}
       />
 
       {enEchec && <BandeauNonActualise onRetry={d.recharger} />}
 
       {!d.pret ? (
-        <div style={{ ...t.carte, color: 'var(--text2)', fontSize: 14 }} aria-live="polite">Chargement du tableau de bord…</div>
+        <p style={s.chargement} aria-live="polite">Chargement du tableau de bord…</p>
       ) : (
         <>
-          <div className="tdb-haut" style={!montrerPointage ? { gridTemplateColumns: 'minmax(0, 1fr)' } : undefined}>
-            {montrerPointage && (
-              <CartePointage
-                shifts={mesShifts}
-                prochain={monProchain}
-                aujourdhui={aujourdhui}
-                maintenant={maintenant}
-                onPointer={pointer}
-                enCours={enCours}
-                erreur={erreurPointage}
-                prenom={user?.prenom}
-                onPointerHorsPlanning={pointerHorsPlanning}
-              />
-            )}
-            <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />
+          <div className={equipeAPart ? 'tdb-haut' : 'tdb-haut tdb-haut--seul'}>
+            <div className="tdb-pile">
+              {montrerPointage && (
+                <CartePointage
+                  shifts={mesShifts}
+                  prochain={monProchain}
+                  aujourdhui={aujourdhui}
+                  maintenant={maintenant}
+                  onPointer={pointer}
+                  enCours={enCours}
+                  erreur={erreurPointage}
+                  prenom={user?.prenom}
+                  onPointerHorsPlanning={pointerHorsPlanning}
+                  onVoirPlanning={peutOuvrir('planning') ? () => ouvrir('planning') : null}
+                />
+              )}
+              <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />
+            </div>
+            {equipeAPart && quiTravaille(false)}
           </div>
 
           {avecHotel && <CarteHotel etabId={etabId} aujourdhui={aujourdhui} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />}
 
           <MotConsultant message={d.message} consultant={consultant} onPublier={publierMessage} />
 
-          <ASavoir
+          <CeQuiVousAttend
             mobile={mobile}
+            enTeteAujourdhui={mobile ? quiTravaille(true) : null}
             aujourdhui={aujourdhui}
-            maintenant={maintenant}
             shifts={d.shifts}
             couverts={d.couverts}
             groupes={avecGroupes ? d.groupes : []}
             absences={absences}
-            equipeDe={equipeDe}
-            telephones={telephones}
-            avecCouverts={avecCouverts && d.statuts.couverts !== 'absent'}
-            avecGroupes={avecGroupes && d.statuts.groupes !== 'absent'}
+            avecCouverts={avecCouvertsLus}
+            avecGroupes={avecGroupesLus}
             avecPlanning={avecPlanning}
-            avecAbsences={avecAbsences}
+            avecAbsences={absencesLues}
+            nonLu={nonLu}
             peutOuvrir={peutOuvrir}
             ouvrir={ouvrir}
-            parRubrique={direction}
           />
 
           {direction && (
             <ChiffresGestion
               chiffres={chiffres}
               stock={stock}
-              couvertsJour={couvertsJour}
               avecPertes={avecPertes}
               avecStock={avecStock}
-              avecCouverts={avecCouverts}
+              avecCouverts={avecCouvertsLus}
               avecPlanning={avecPlanning}
+              nonLu={nonLu}
               peutOuvrir={peutOuvrir}
               ouvrir={ouvrir}
             />
@@ -288,31 +332,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   );
 }
 
-// En tête : la date, le bonjour et la journée en une phrase.
-export function EnTete({ date, salutation, prenom, resume, onAssistant }) {
-  return (
-    <header style={s.entete}>
-      <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-        <h2 style={s.titre}>{date}</h2>
-        <p style={s.resume}>
-          <span style={{ color: 'var(--text)' }}>{salutation}{prenom ? ` ${prenom}` : ''}.</span>
-          {resume ? ` ${resume}` : ''}
-        </p>
-      </div>
-      {onAssistant && (
-        <button type="button" onClick={onAssistant} style={s.assistant}>Assistant</button>
-      )}
-    </header>
-  );
-}
-
 const s = {
-  entete: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: '4px 2px 2px' },
-  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 30, lineHeight: 1.15, color: 'var(--text)' },
-  resume: { margin: '6px 0 0', fontSize: 16, lineHeight: 1.55, color: 'var(--text2)', maxWidth: 760 },
-  assistant: {
-    display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '10px 16px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, background: 'var(--surface)', color: 'var(--text)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-  },
+  // Espacement des sections : tableau.css (24 px, 32 px dès 600 px).
+  page: { display: 'flex', flexDirection: 'column', maxWidth: 1400, margin: '0 auto', width: '100%', minWidth: 0 },
+  chargement: { margin: 0, fontSize: 15, color: 'var(--text2)' },
 };

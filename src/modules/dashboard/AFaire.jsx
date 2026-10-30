@@ -1,62 +1,77 @@
 import React from 'react';
-import { Carte, Ligne, Puce, TONS, t } from './tableauUi.jsx';
+import { CircleCheck } from 'lucide-react';
+import { getModuleIcon } from '../moduleIcons.js';
+import { LigneAction, Section } from './tableauBriques.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// À faire : ce qui attend quelqu'un maintenant, du plus urgent au moins
+// À faire maintenant : ce qui attend quelqu'un, du plus urgent au moins
 // urgent (relevés HACCP en retard, groupes à lire ou à préparer, retards de
-// pointage, pertes à valider, messages). Chaque ligne mène au module concerné
-// quand le rôle y a accès. Libellé seul, sans icône : une alerte (danger,
-// warning) garde sa couleur sur le titre.
+// pointage, pertes à valider, messages). Chaque ligne porte le pictogramme
+// de son module (le même que sur l'accueil tactile) et mène au module quand
+// le rôle y a accès. Titres et détails tels que aFaire() les écrit.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX = 6;
+const COULEURS = { danger: 'var(--danger-text)', warning: 'var(--warning-text)', info: 'var(--accent)' };
 
 export default function AFaire({ items, peutOuvrir, ouvrir }) {
   const [tout, setTout] = React.useState(false);
   const urgents = items.filter((i) => i.ton === 'danger').length;
   const visibles = tout ? items : items.slice(0, MAX);
 
+  // « 5 points à traiter, dont 1 urgent » : nombres et mots dans leurs nœuds.
+  const sousTitre = items.length ? (
+    <>
+      <span data-no-translate>{items.length}</span>{' '}
+      <span>{items.length > 1 ? 'points à traiter' : 'point à traiter'}</span>
+      {urgents > 0 && (
+        <>
+          <span>, dont</span>{' '}
+          <span data-no-translate style={{ color: 'var(--danger-text)', fontWeight: 600 }}>{urgents}</span>{' '}
+          <span style={{ color: 'var(--danger-text)', fontWeight: 600 }}>{urgents > 1 ? 'urgents' : 'urgent'}</span>
+        </>
+      )}
+    </>
+  ) : <span>Rien en attente</span>;
+
   return (
-    <Carte
-      ton={urgents ? 'danger' : items.length ? 'warning' : 'success'}
-      titre="À faire"
-      sousTitre={items.length
-        ? `${items.length} point${items.length > 1 ? 's' : ''} à traiter${urgents ? `, dont ${urgents} urgent${urgents > 1 ? 's' : ''}` : ''}`
-        : "Rien d'urgent pour l'instant"}
-    >
-      {!items.length && <div style={t.vide}>Tout est à jour. Bon service !</div>}
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {visibles.map((item, i) => {
-          const alerte = item.ton === 'danger' || item.ton === 'warning';
-          const cliquable = peutOuvrir(item.page);
-          return (
-            <Ligne
-              key={item.id}
-              onClick={cliquable ? () => ouvrir(item.page) : null}
-              label={`${item.titre}. ${item.detail}`}
-              style={{ borderRadius: 0, paddingInline: 2, ...(i ? { borderTop: '1px solid var(--border)' } : null) }}
-            >
-              <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <span style={{ ...t.nom, whiteSpace: 'normal', ...(alerte ? { color: TONS[item.ton].texte } : null) }}>{item.titre}</span>
-                <span style={{ ...t.texte2, display: 'block' }}>{item.detail}</span>
-              </span>
-              {item.ton === 'danger' && <Puce ton="danger">Urgent</Puce>}
-            </Ligne>
-          );
-        })}
+    <Section id="tdb-afaire" titre="À faire maintenant" sousTitre={sousTitre}>
+      {!items.length && (
+        <p style={s.vide}>
+          <CircleCheck size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--success-strong)', flexShrink: 0 }} />
+          <span>Rien en attente pour l&apos;instant. Bon service !</span>
+        </p>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {visibles.map((item) => (
+          <LigneAction
+            key={item.id}
+            icone={getModuleIcon(item.page === 'pointage' ? 'planning' : item.page)}
+            couleur={COULEURS[item.ton] || 'var(--accent)'}
+            titre={item.titre}
+            detail={item.detail}
+            droite={item.ton === 'danger' ? <span style={s.urgent}>Urgent</span> : null}
+            onClick={peutOuvrir(item.page) ? () => ouvrir(item.page) : null}
+          />
+        ))}
       </div>
       {items.length > MAX && (
-        <button type="button" onClick={() => setTout((v) => !v)} style={s.plus}>
-          {tout ? 'Réduire' : items.length - MAX === 1 ? 'Voir le dernier point' : `Voir les ${items.length - MAX} autres`}
+        <button type="button" className="tdb-lien" onClick={() => setTout((v) => !v)} style={s.plus}>
+          {tout ? <span>Réduire</span>
+            : items.length - MAX === 1 ? <span>Voir le dernier point</span>
+              : <><span>Voir les</span>{' '}<span data-no-translate>{items.length - MAX}</span>{' '}<span>autres</span></>}
         </button>
       )}
-    </Carte>
+    </Section>
   );
 }
 
 const s = {
+  vide: { display: 'flex', alignItems: 'center', gap: 10, margin: 0, padding: '8px 0', fontSize: 15, lineHeight: 1.5, color: 'var(--text)' },
+  urgent: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600, color: 'var(--danger-text)' },
   plus: {
-    marginTop: 8, minHeight: 40, padding: '8px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    background: 'transparent', color: 'var(--accent)', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+    alignSelf: 'flex-start', minHeight: 44, padding: '0 6px', marginTop: 4, cursor: 'pointer',
+    background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)',
   },
 };

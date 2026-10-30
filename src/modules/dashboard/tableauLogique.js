@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
-import { absenceDe, absencesDuJour, couvre, metaMotif } from '../../utils/absences.js';
+import { absenceDe, absencesDuJour, couvre } from '../../utils/absences.js';
 import { libelleGroupe } from '../groupes/typesGroupe.js';
 
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -95,6 +95,23 @@ export function equipeDu(shifts, dateISO) {
   return [...parPersonne.entries()].map(([userId, liste]) => ({ userId, shifts: liste }));
 }
 
+// Service d'un horaire : le type posé au planning, sinon l'heure de début
+// (avant 16 h, c'est le midi).
+export function serviceDuShift(shift) {
+  if (shift?.typeShift === 'midi' || shift?.typeShift === 'soir') return shift.typeShift;
+  const debut = enMinutes(shift?.debut);
+  return debut == null || debut < 16 * 60 ? 'midi' : 'soir';
+}
+
+// L'équipe d'un jour rangée par service : « qui est là ce soir ». Une
+// personne en service coupé apparaît dans les deux groupes, chaque fois avec
+// les seuls horaires de ce service. Les groupes vides sont retirés.
+export function equipeParService(shifts, dateISO) {
+  return ['midi', 'soir']
+    .map((id) => ({ id, personnes: equipeDu(shiftsDu(shifts, dateISO).filter((s) => serviceDuShift(s) === id), dateISO) }))
+    .filter((g) => g.personnes.length > 0);
+}
+
 // Prochain service d'un équipier après aujourd'hui (dans la fenêtre lue).
 export function prochainShift(shifts, userId, aujourdhui) {
   return (shifts || [])
@@ -122,34 +139,126 @@ export function phraseGroupe(g) {
 
 export const nbAllergies = (g) => (g.allergenesIds || []).length + (g.allergiesNote ? 1 : 0);
 
-// ── Phrase d'accueil ──────────────────────────────────────────────────────
-// Ce que la brigade doit savoir en arrivant, en une ligne :
-// « 42 couverts ce midi et 68 ce soir. 1 groupe de 14 à 19 h. Lucas en congé. »
-export function resumeDuJour({ couverts, groupes, absents, avecCouverts, nomDe }) {
-  const phrases = [];
-  if (avecCouverts && couverts.total > 0) {
-    const parts = [];
-    if (couverts.brunch) parts.push(`${couverts.brunch} au brunch`);
-    if (couverts.midi) parts.push(`${couverts.midi} ce midi`);
-    if (couverts.soir) parts.push(`${couverts.soir} ce soir`);
-    parts[0] = parts[0].replace(/^(\d+)/, (n) => `${n} couvert${Number(n) > 1 ? 's' : ''}`);
-    const liste = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}` : parts[0];
-    phrases.push(`${liste}.`);
+// ── État du service ───────────────────────────────────────────────────────
+// La ligne d'état de l'en-tête : « Service du midi dans 1 h 10 », d'après les
+// horaires de la réservation en ligne (reservation_en_ligne_parametres), seule
+// heure de service connue en base. Sans réglage pour ce jour, aucune heure
+// n'est inventée : la phrase dit seulement les couverts du service.
+//
+//   etat     a_venir | en_cours | termine | ferme | sans_heure | aucun
+//   service  brunch | midi | soir (le service retenu), ou null
+//   dans     minutes jusqu'au début (a_venir), sinon null
+//   heure    début du service retenu (HH:MM), sinon null
+//   couverts couverts réservés du service retenu
+//   demain   couverts de demain par service (etat termine), sinon null
+//
+// Les horaires sont rangés par jour ISO (« 1 » = lundi … « 7 » = dimanche) ;
+// un service se termine, estime-t-on, 90 min après la dernière arrivée.
+export const FIN_SERVICE_APRES_MIN = 90;
+const ORDRE_SERVICES = ['brunch', 'midi', 'soir'];
+
+export function jourIso(dateISO) {
+  const j = parseLocalDate(dateISO).getDay();
+  return String(j === 0 ? 7 : j);
+}
+
+export function etatDuService({ couverts, couvertsDemain = null, parametres, aujourdhui, maintenant }) {
+  const c = couverts || { midi: 0, soir: 0, brunch: 0, total: 0 };
+  const etat = (e, extra = {}) => ({ etat: e, service: null, dans: null, heure: null, couverts: 0, demain: null, ...extra });
+  const termine = () => etat('termine', { demain: couvertsDemain || { midi: 0, soir: 0, brunch: 0, total: 0 } });
+
+  if (parametres && (parametres.jours_fermes || []).includes(aujourdhui)) return etat('ferme');
+
+  const duJour = parametres?.horaires?.[jourIso(aujourdhui)] || null;
+  const fermes = parametres?.services_fermes?.[aujourdhui] || [];
+  const services = duJour
+    ? ORDRE_SERVICES
+      .filter((id) => duJour[id] && enMinutes(duJour[id].de) != null && enMinutes(duJour[id].a) != null && !fermes.includes(id))
+      .map((id) => {
+        const de = enMinutes(duJour[id].de);
+        let a = enMinutes(duJour[id].a);
+        if (a < de) a += 1440;
+        return { id, de, fin: a + FIN_SERVICE_APRES_MIN, heure: enHeure(de) };
+      })
+      .sort((x, y) => x.de - y.de)
+    : [];
+
+  if (services.length) {
+    const s = services.find((x) => maintenant < x.fin);
+    if (!s) return termine();
+    if (maintenant < s.de) return etat('a_venir', { service: s.id, dans: s.de - maintenant, heure: s.heure, couverts: c[s.id] || 0 });
+    return etat('en_cours', { service: s.id, heure: s.heure, couverts: c[s.id] || 0 });
   }
-  if (groupes.length === 1) {
-    const g = groupes[0];
-    phrases.push(`Un groupe de ${g.nbPax}${g.heure ? ` à ${heureParlee(g.heure)}` : ''}.`);
-  } else if (groupes.length > 1) {
-    const pax = groupes.reduce((t, g) => t + (g.nbPax || 0), 0);
-    phrases.push(`${groupes.length} groupes, ${pax} personnes en tout.`);
+
+  // Sans horaire connu : le midi jusqu'à 15 h s'il a des couverts (ou le
+  // brunch), sinon le soir jusqu'à 22 h, puis la journée est terminée.
+  if (!c.total) return etat('aucun');
+  if (maintenant < 15 * 60 && (c.midi || c.brunch)) {
+    const service = c.midi ? 'midi' : 'brunch';
+    return etat('sans_heure', { service, couverts: c[service] });
   }
-  if (absents.length) {
-    const noms = absents.map((a) => nomDe(a.userId));
-    const liste = noms.length > 1 ? `${noms.slice(0, -1).join(', ')} et ${noms[noms.length - 1]}` : noms[0];
-    const motif = absents.length === 1 && absents[0].motif !== 'absence' ? ` (${metaMotif(absents[0].motif).label.toLowerCase()})` : '';
-    phrases.push(`${absents.length > 1 ? 'Absences' : 'Absence'} : ${liste}${motif}.`);
+  if (maintenant < 22 * 60 && c.soir) return etat('sans_heure', { service: 'soir', couverts: c.soir });
+  return termine();
+}
+
+// ── Repères du jour ───────────────────────────────────────────────────────
+// Les trois chiffres de l'en-tête : couverts, groupes, équipe. Chacun dit son
+// chiffre et sa phrase, ou une phrase à la place du chiffre quand il n'y a
+// rien (vide) ou que la lecture a échoué sans jamais aboutir (echec). Le
+// détail est rendu en parties : { n } pour une valeur (nombre, heure), { t }
+// pour un texte fixe, chacun dans son propre nœud pour la traduction.
+export function reperesDuJour({
+  couverts, groupes, equipe, absents, absencesLues, avecCouverts, avecGroupes, avecPlanning, nonLu = () => false,
+}) {
+  const reperes = [];
+  if (avecCouverts) {
+    const c = couverts || { midi: 0, soir: 0, brunch: 0, total: 0 };
+    const echec = nonLu('couverts');
+    const detail = [];
+    [['brunch', 'au brunch'], ['midi', 'à midi'], ['soir', 'le soir']].forEach(([id, mot]) => {
+      if (!c[id]) return;
+      if (detail.length) detail.push({ t: ',' });
+      detail.push({ n: c[id] }, { t: mot });
+    });
+    reperes.push({
+      id: 'couverts', page: 'previsions', valeur: c.total, echec, vide: !echec && !c.total,
+      libelle: c.total === 1 ? 'couvert aujourd\'hui' : 'couverts aujourd\'hui',
+      texte: echec ? 'Réservations indisponibles pour l\'instant' : 'Aucune réservation aujourd\'hui',
+      detail: detail.length ? detail : null,
+    });
   }
-  return phrases.join(' ');
+  if (avecGroupes) {
+    const liste = groupes || [];
+    const echec = nonLu('groupes');
+    const pax = liste.reduce((t, g) => t + (Number(g.nbPax) || 0), 0);
+    let detail = null;
+    if (liste.length === 1) {
+      const g = liste[0];
+      detail = g.heure ? [{ n: pax }, { t: 'personnes à' }, { n: heureParlee(g.heure) }] : [{ n: pax }, { t: 'personnes' }];
+    } else if (liste.length > 1) {
+      detail = [{ n: pax }, { t: 'personnes en tout' }];
+    }
+    reperes.push({
+      id: 'groupes', page: 'groupes', valeur: liste.length, echec, vide: !echec && !liste.length,
+      libelle: liste.length > 1 ? 'groupes aujourd\'hui' : 'groupe aujourd\'hui',
+      texte: echec ? 'Groupes indisponibles pour l\'instant' : 'Aucun groupe aujourd\'hui',
+      detail,
+    });
+  }
+  if (avecPlanning) {
+    const n = (equipe || []).length;
+    const echec = nonLu('shifts');
+    const nbAbs = (absents || []).length;
+    let detail = null;
+    if (absencesLues) detail = nbAbs ? [{ n: nbAbs }, { t: nbAbs > 1 ? 'absences' : 'absence' }] : [{ t: 'Aucune absence' }];
+    reperes.push({
+      id: 'equipe', page: 'planning', valeur: n, echec, vide: !echec && !n,
+      libelle: n > 1 ? 'personnes au planning' : 'personne au planning',
+      texte: echec ? 'Planning indisponible pour l\'instant' : 'Personne au planning aujourd\'hui',
+      detail,
+    });
+  }
+  return reperes;
 }
 
 // ── À faire ───────────────────────────────────────────────────────────────

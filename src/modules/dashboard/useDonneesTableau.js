@@ -14,11 +14,16 @@ import { mapGroupeFromDB } from '../../hooks/useGroupes.js';
 //   message consultant
 //   HACCP              zones, tournées et relevés du jour (si le rôle y a accès)
 //   gestion            pertes du mois et à valider, inventaires (direction)
+//   parametres         horaires de la réservation en ligne (une ligne), pour
+//                      la ligne « Service du midi dans 1 h 10 » de l'en-tête
 // Les absences viennent de useAbsences, à part (partagé avec le Planning).
 //
 // Chaque source a son état : une lecture en échec garde la dernière valeur
 // affichée (jamais d'écran « aucun groupe » sur un JWT expiré au réveil) et
 // le tableau le signale discrètement. 'absent' = table pas encore créée.
+// `lus` retient les sources lues au moins une fois depuis le montage : une
+// source en échec qui n'a jamais été lue n'a rien à montrer, l'écran le dit
+// au lieu d'afficher une liste vide.
 // Tout est relu sur un changement realtime des tables concernées et au réveil
 // de l'appareil (subscribeReload).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +34,7 @@ const TABLES_SUIVIES = ['shifts', 'consultant_messages', 'groupe_evenements', 'p
 const VIDE = {
   shifts: [], couverts: [], groupes: [], message: null,
   haccp: { zones: [], creneaux: [], releves: [] },
-  pertes: [], inventaires: [],
+  pertes: [], inventaires: [], parametres: null,
 };
 
 // Résultat d'une lecture Supabase → données, ou erreur à signaler.
@@ -42,6 +47,7 @@ async function lire(requete) {
 export function useDonneesTableau({ etablissementId, aujourdhui, avecHaccp, avecPertes, avecStock, avecCouverts, avecGroupes }) {
   const [donnees, setDonnees] = useState(VIDE);
   const [statuts, setStatuts] = useState({});
+  const [lus, setLus] = useState({});
   const [pret, setPret] = useState(false);
   const rechargerRef = useRef(null);
 
@@ -65,6 +71,15 @@ export function useDonneesTableau({ etablissementId, aujourdhui, avecHaccp, avec
           .select('date_service, couverts_midi, couverts_soir, couverts_brunch, nb_groupes')
           .eq('etablissement_id', etablissementId).gte('date_service', aujourdhui).lte('date_service', j(6))
           .order('date_service')),
+        // Lisible par tout membre de l'établissement. Sans ligne : null, et
+        // l'en-tête ne donne aucune heure de service.
+        parametres: async () => {
+          const { data, error } = await supabase.from('reservation_en_ligne_parametres')
+            .select('horaires, jours_fermes, services_fermes')
+            .eq('etablissement_id', etablissementId).maybeSingle();
+          if (error) throw error;
+          return data || null;
+        },
       } : {}),
       ...(avecGroupes ? {
         groupes: () => lire(supabase.from('groupe_evenements').select('*')
@@ -103,11 +118,13 @@ export function useDonneesTableau({ etablissementId, aujourdhui, avecHaccp, avec
       if (!vivant) return;
       const maj = {};
       const etats = {};
+      const lues = {};
       resultats.forEach((res, i) => {
         const nom = noms[i];
         if (res.status === 'fulfilled') {
           maj[nom] = res.value ?? VIDE[nom];
           etats[nom] = 'ready';
+          lues[nom] = true;
         } else {
           const code = res.reason?.code;
           if (RELATION_ABSENTE.has(code)) { maj[nom] = VIDE[nom]; etats[nom] = 'absent'; }
@@ -116,6 +133,7 @@ export function useDonneesTableau({ etablissementId, aujourdhui, avecHaccp, avec
       });
       setDonnees((prec) => ({ ...prec, ...maj }));
       setStatuts((prec) => ({ ...prec, ...etats }));
+      if (Object.keys(lues).length) setLus((prec) => ({ ...prec, ...lues }));
       setPret(true);
     };
 
@@ -152,5 +170,5 @@ export function useDonneesTableau({ etablissementId, aujourdhui, avecHaccp, avec
   // Mise à jour locale d'une source (message publié), sans attendre le realtime.
   const maj = useCallback((nom, valeur) => setDonnees((d) => ({ ...d, [nom]: valeur })), []);
 
-  return { ...donnees, statuts, pret, remplacerShift, retirerShift, remettreShifts, recharger, maj };
+  return { ...donnees, statuts, lus, pret, remplacerShift, retirerShift, remettreShifts, recharger, maj };
 }
