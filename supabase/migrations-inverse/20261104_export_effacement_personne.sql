@@ -1,9 +1,13 @@
--- Inverse de 20261104_export_effacement_personne : a jouer seulement si la
--- production casse. Retire les deux fonctions, la policy et l'index, et remet
+-- Inverse de 20261104_export_effacement_personne et de son complement _2 :
+-- a jouer seulement si la production casse. Retire les deux fonctions, la
+-- policy, l'index et le verrou du journal des envois, et remet
 -- spa_bons_avant_maj au texte de 20260927_spa_module (sans le drapeau).
 
 drop function if exists public.export_personne(text, text);
 drop function if exists public.effacer_personne(text, text);
+
+drop trigger if exists trg_spa_envois_verrou_maj on public.spa_envois;
+drop function if exists public.spa_envois_verrou_maj();
 
 drop policy if exists spa_envois_update on public.spa_envois;
 revoke update on public.spa_envois from authenticated;
