@@ -28,17 +28,13 @@ function messageRpc(error) {
   return code ? MESSAGES[code] : 'Erreur technique. Réessaie ou contacte le support.';
 }
 
-export async function exporterPersonne(type, clientId) {
-  const { data, error } = await supabase.rpc('export_personne', { p_type: type, p_client_id: clientId });
-  if (error) return { data: null, error: messageRpc(error) };
-  return { data, error: null };
+async function appelerRpc(nom, type, clientId) {
+  const { data, error } = await supabase.rpc(nom, { p_type: type, p_client_id: clientId });
+  return { data: error ? null : data, error: messageRpc(error) };
 }
 
-export async function effacerPersonne(type, clientId) {
-  const { data, error } = await supabase.rpc('effacer_personne', { p_type: type, p_client_id: clientId });
-  if (error) return { data: null, error: messageRpc(error) };
-  return { data, error: null };
-}
+export const exporterPersonne = (type, clientId) => appelerRpc('export_personne', type, clientId);
+export const effacerPersonne = (type, clientId) => appelerRpc('effacer_personne', type, clientId);
 
 // Dépose l'export en fichier JSON. Nom de fichier neutre (date, pas de nom de
 // personne) : il atterrit dans les téléchargements, souvent synchronisés.

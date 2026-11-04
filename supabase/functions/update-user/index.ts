@@ -16,22 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// Origines admises : l'app, ses previews Vercel, le développement local.
-const ORIGINES = ["https://samperconsulting-app.com", "https://www.samperconsulting-app.com"];
-const ORIGINE_PREVIEW = /^https:\/\/sc-app-[a-z0-9-]+-samper-consulting\.vercel\.app$/;
-const ORIGINE_LOCALE = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/;
-
-function enTetesCors(req: Request): Record<string, string> {
-  const origine = req.headers.get("Origin") ?? "";
-  const admise = ORIGINES.includes(origine) || ORIGINE_PREVIEW.test(origine) || ORIGINE_LOCALE.test(origine);
-  return {
-    ...(admise ? { "Access-Control-Allow-Origin": origine } : {}),
-    "Vary": "Origin",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-}
+import { enTetesCors } from "../_shared/cors.ts";
 
 serve(async (req) => {
   const corsHeaders = enTetesCors(req);

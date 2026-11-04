@@ -140,8 +140,9 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
   async function effacerDonnees() {
     if (!client || !window.confirm(confirmationEffacement(nomClient(client)))) return;
     setEnCours(true);
-    const res = await effacerPersonne('resa', clientId);
-    setEnCours(false);
+    let res;
+    try { res = await effacerPersonne('resa', clientId); }
+    finally { setEnCours(false); }
     if (res.error) { notify(res.error, 'error'); return; }
     notify('Données effacées : la fiche est anonymisée et archivée.', 'success');
     onSaved?.();

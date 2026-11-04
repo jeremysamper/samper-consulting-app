@@ -149,14 +149,14 @@ export default function ClientFiche({
             )}
             {/* Droit d'accès et droit à l'effacement (SI3) : consultant et patron. */}
             {peutEffacer && (
-              <button type="button" onClick={() => onExporter(client)} style={st.discret}>
-                <Download size={16} strokeWidth={1.8} aria-hidden="true" /> Exporter
-              </button>
-            )}
-            {peutEffacer && (
-              <button type="button" onClick={() => onEffacer(client)} style={st.discret}>
-                <Eraser size={16} strokeWidth={1.8} aria-hidden="true" /> Effacer les données
-              </button>
+              <>
+                <button type="button" onClick={() => onExporter(client)} style={st.discret}>
+                  <Download size={16} strokeWidth={1.8} aria-hidden="true" /> Exporter
+                </button>
+                <button type="button" onClick={() => onEffacer(client)} style={st.discret}>
+                  <Eraser size={16} strokeWidth={1.8} aria-hidden="true" /> Effacer les données
+                </button>
+              </>
             )}
             {peutGerer && (
               <button type="button" onClick={() => onArchiver(client, !client.archive)} style={st.discret}>
@@ -259,6 +259,10 @@ export default function ClientFiche({
                 ['Observations', sc.observations], ['Produits', sc.produits],
                 ['Ressenti', sc.ressenti], ['Conseils', sc.recommandations],
               ].filter(([, v]) => v);
+              // Libellé : le soin (traduisible), puis la praticienne isolée en
+              // data-no-translate ; « Séance » seul quand la ligne n'a ni l'un ni l'autre.
+              const soin = sc.soin || (sc.praticien ? '' : 'Séance');
+              const praticienne = sc.praticien ? (soin ? `, ${sc.praticien}` : sc.praticien) : null;
               return (
                 <li key={sc.id} style={s.etape}>
                   <span aria-hidden="true" style={{ ...s.point, ...(i === 0 ? s.pointRecent : null) }} />
@@ -272,8 +276,8 @@ export default function ClientFiche({
                       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
                         <span style={{ display: 'block', fontFamily: 'var(--font-serif)', fontSize: 17 }}>{dateLongue(sc.dateSeance)}</span>
                         <span style={{ display: 'block', fontSize: 13, color: 'var(--spa-ink2)' }}>
-                          {sc.soin || (sc.praticien ? '' : 'Séance')}
-                          {sc.praticien ? <span data-no-translate>{sc.soin ? `, ${sc.praticien}` : sc.praticien}</span> : null}
+                          {soin}
+                          {praticienne && <span data-no-translate>{praticienne}</span>}
                         </span>
                       </span>
                       <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-ink3)', transform: ouvert ? 'rotate(90deg)' : 'none', transition: 'transform 200ms ease' }} />
