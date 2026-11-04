@@ -36,7 +36,8 @@ export default function ReservationDetailModal({
     onResaUpdated?.();
   }
 
-  function LigneDetail({ label, valeur }) {
+  // brut : valeur personnelle (nom, note libre), jamais envoyée à la traduction.
+  function LigneDetail({ label, valeur, brut }) {
     if (!valeur && valeur !== 0) return null;
     return (
       <div style={{
@@ -49,7 +50,7 @@ export default function ReservationDetailModal({
         }}>
           {label}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text)' }}>
+        <div style={{ fontSize: 13, color: 'var(--text)' }} data-no-translate={brut ? '' : undefined}>
           {valeur}
         </div>
       </div>
@@ -113,7 +114,7 @@ export default function ReservationDetailModal({
           <div style={{
             fontWeight: 700, fontSize: 14, color: 'var(--text)',
             fontFamily: 'var(--font-serif)',
-          }}>
+          }} data-no-translate>
             {resa.nom}
           </div>
           <button
@@ -245,7 +246,7 @@ export default function ReservationDetailModal({
           {resa.origine === 'en_ligne' && <LigneDetail label="Origine" valeur="Réservée en ligne" />}
           {resa.origine === 'passage' && <LigneDetail label="Origine" valeur="Client de passage" />}
           {resa.est_groupe && <LigneDetail label="Type" valeur={groupeLie ? 'Groupe, saisi dans Groupes' : 'Groupe'} />}
-          <LigneDetail label="Notes"     valeur={resa.notes_libres} />
+          <LigneDetail label="Notes"     valeur={resa.notes_libres} brut />
           {tags.length > 0 && (
             <div style={{
               display: 'flex', gap: 12, padding: '7px 0',
@@ -376,7 +377,7 @@ export default function ReservationDetailModal({
             borderRadius: '0 0 14px 14px',
           }}>
             <div style={{ fontSize: 13, color: 'var(--danger-text)', fontWeight: 500, lineHeight: 1.4 }}>
-              Annuler la réservation de {resa.nom}
+              Annuler la réservation de <span data-no-translate>{resa.nom}</span>
               {resa.date_service ? ` du ${formatDateLongue(resa.date_service).toLowerCase()}` : ''}
               {resa.heure_arrivee ? ` à ${(resa.heure_arrivee).slice(0, 5)}` : ''} ?
             </div>

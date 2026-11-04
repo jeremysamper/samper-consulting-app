@@ -49,6 +49,7 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
             icone={getModuleIcon(item.page === 'pointage' ? 'planning' : item.page)}
             couleur={COULEURS[item.ton] || 'var(--accent)'}
             titre={item.titre}
+            titreBrut={item.brut}
             detail={item.detail}
             droite={item.ton === 'danger' ? <span style={s.urgent}>Urgent</span> : null}
             onClick={peutOuvrir(item.page) ? () => ouvrir(item.page) : null}

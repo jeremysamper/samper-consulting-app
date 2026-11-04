@@ -118,12 +118,12 @@ export default function ClientFiche({
           </button>
         )}
         {client.telephone && (
-          <a href={`tel:${client.telephone.replace(/\s+/g, '')}`} style={{ ...st.secondaire, textDecoration: 'none', boxSizing: 'border-box' }} aria-label={`Appeler ${nomClient(client)}`}>
+          <a href={`tel:${client.telephone.replace(/\s+/g, '')}`} style={{ ...st.secondaire, textDecoration: 'none', boxSizing: 'border-box' }} data-no-translate aria-label={`Appeler ${nomClient(client)}`}>
             <Phone size={16} strokeWidth={1.8} aria-hidden="true" /> Appeler
           </a>
         )}
         {client.email && (
-          <a href={`mailto:${client.email}`} style={{ ...st.secondaire, textDecoration: 'none', boxSizing: 'border-box' }} aria-label={`Écrire à ${nomClient(client)}`}>
+          <a href={`mailto:${client.email}`} style={{ ...st.secondaire, textDecoration: 'none', boxSizing: 'border-box' }} data-no-translate aria-label={`Écrire à ${nomClient(client)}`}>
             <Mail size={16} strokeWidth={1.8} aria-hidden="true" /> Écrire
           </a>
         )}
@@ -177,13 +177,13 @@ export default function ClientFiche({
               {client.notesSante && (
                 <div style={st.encartSante}>
                   <HeartPulse size={18} strokeWidth={1.8} color="var(--spa-sakura)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span><strong>Santé :</strong> {client.notesSante}</span>
+                  <span><strong>Santé :</strong> <span data-no-translate>{client.notesSante}</span></span>
                 </div>
               )}
               {client.preferences && (
                 <div style={st.encartInfo}>
                   <Leaf size={18} strokeWidth={1.8} color="var(--spa-mizu)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span><strong>Préférences :</strong> {client.preferences}</span>
+                  <span><strong>Préférences :</strong> <span data-no-translate>{client.preferences}</span></span>
                 </div>
               )}
               {conseil && (
@@ -191,11 +191,11 @@ export default function ClientFiche({
                   <Sprout size={18} strokeWidth={1.8} color="var(--spa-matcha)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                   <span>
                     Revenir vers le <strong>{dateLongue(conseil.prochaineSeance)}</strong>
-                    {conseil.recommandations ? ` : ${conseil.recommandations}` : '.'}
+                    {conseil.recommandations ? <span data-no-translate>{` : ${conseil.recommandations}`}</span> : '.'}
                   </span>
                 </div>
               )}
-              {client.notes && <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--spa-ink2)', overflowWrap: 'anywhere' }}>{client.notes}</div>}
+              {client.notes && <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--spa-ink2)', overflowWrap: 'anywhere' }} data-no-translate>{client.notes}</div>}
             </div>
           </section>
         )}
@@ -216,7 +216,7 @@ export default function ClientFiche({
                     <span style={{ flex: '1 1 auto', minWidth: 0, fontSize: 14 }}>
                       <span style={{ display: 'block', fontWeight: 600 }}>{r.soinLibelle || 'Soin à préciser'}</span>
                       <span style={{ display: 'block', color: 'var(--spa-ink2)', fontSize: 13 }}>
-                        {jourMois(r.dateRdv)}, de {r.heureDebut} à {heureFin(r.heureDebut, r.dureeMin)}{r.praticien ? ` avec ${r.praticien}` : ''}
+                        {jourMois(r.dateRdv)}, de {r.heureDebut} à {heureFin(r.heureDebut, r.dureeMin)}{r.praticien ? <span data-no-translate>{` avec ${r.praticien}`}</span> : ''}
                       </span>
                     </span>
                     <span style={{ ...st.puce, background: m.fond, color: m.texte }}>{m.label}</span>
@@ -261,7 +261,8 @@ export default function ClientFiche({
                       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
                         <span style={{ display: 'block', fontFamily: 'var(--font-serif)', fontSize: 17 }}>{dateLongue(sc.dateSeance)}</span>
                         <span style={{ display: 'block', fontSize: 13, color: 'var(--spa-ink2)' }}>
-                          {[sc.soin, sc.praticien].filter(Boolean).join(', ') || 'Séance'}
+                          {sc.soin || (sc.praticien ? '' : 'Séance')}
+                          {sc.praticien ? <span data-no-translate>{sc.soin ? `, ${sc.praticien}` : sc.praticien}</span> : null}
                         </span>
                       </span>
                       <ChevronRight size={18} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--spa-ink3)', transform: ouvert ? 'rotate(90deg)' : 'none', transition: 'transform 200ms ease' }} />
@@ -273,7 +274,7 @@ export default function ClientFiche({
                             {details.map(([l, v]) => (
                               <div key={l} style={{ minWidth: 0 }}>
                                 <div style={s.detailLabel}>{l}</div>
-                                <div style={{ fontSize: 14, lineHeight: 1.55 }}>{v}</div>
+                                <div style={{ fontSize: 14, lineHeight: 1.55 }} data-no-translate>{v}</div>
                               </div>
                             ))}
                           </div>

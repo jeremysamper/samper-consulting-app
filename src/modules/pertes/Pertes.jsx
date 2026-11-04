@@ -340,7 +340,7 @@ const Pertes = ({ user, etablissement }) => {
               <span style={pts.cell}>{p.date}</span>
               <span style={{...pts.cellBold, flex:2}}>
                 {p.produit}
-                {p.commentaire && <div style={{fontSize:11,color:'var(--text2)',fontWeight:400,marginTop:1}}>{p.commentaire}</div>}
+                {p.commentaire && <div style={{fontSize:11,color:'var(--text2)',fontWeight:400,marginTop:1}} data-no-translate>{p.commentaire}</div>}
               </span>
               <span style={pts.cell}><span style={pts.motifTag}>{p.motif}</span></span>
               <span style={pts.cell}>{p.categorie}</span>
@@ -348,8 +348,8 @@ const Pertes = ({ user, etablissement }) => {
               <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight:500}}>−CHF {valeur}</span>
               <span style={pts.cell}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <div style={{...pts.empDot, background:role?.couleur}}>{emp.avatar}</div>
-                  <span style={{fontSize:12}}>{emp.found ? emp.prenom : emp.name}</span>
+                  <div style={{...pts.empDot, background:role?.couleur}} data-no-translate>{emp.avatar}</div>
+                  <span style={{fontSize:12}} data-no-translate>{emp.found ? emp.prenom : emp.name}</span>
                 </div>
               </span>
               <span style={pts.cell}>

@@ -151,7 +151,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
         className="modal-full"
         role="dialog"
         aria-modal="true"
-        aria-label={nouveau ? 'Nouveau client' : `Fiche de ${nomClient(client || form)}`}
+        aria-label={nouveau ? 'Nouveau client' : 'Fiche client'}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--surface)', borderRadius: isMobile ? 0 : 14,
@@ -166,7 +166,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
         }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
-              {nouveau ? 'Nouveau client' : nomClient(client || form)}
+              {nouveau ? 'Nouveau client' : <span data-no-translate>{nomClient(client || form)}</span>}
               {client?.archive && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text3)' }}>archivée</span>}
             </div>
             {!nouveau && historique && (
@@ -280,7 +280,8 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                           </div>
                           {(tags.length > 0 || r.notes_libres) && (
                             <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 3 }}>
-                              {tags.join(', ')}{tags.length && r.notes_libres ? '. ' : ''}{r.notes_libres || ''}
+                              {tags.join(', ')}{tags.length && r.notes_libres ? '. ' : ''}
+                              {r.notes_libres ? <span data-no-translate>{r.notes_libres}</span> : ''}
                             </div>
                           )}
                         </div>

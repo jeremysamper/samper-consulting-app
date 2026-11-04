@@ -67,6 +67,7 @@ function ResaPuce({ resa, svc, onOpen }) {
   return (
     <button
       type="button"
+      data-no-translate
       title={titre}
       aria-label={titre}
       onClick={(e) => { e.stopPropagation(); onOpen?.(resa); }}

@@ -59,7 +59,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
       {/* Infos principales */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }} data-no-translate>
             {resa.nom}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>
@@ -107,7 +107,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
             fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 3,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: isMobile ? 220 : 380,
-          }}>
+          }} data-no-translate>
             {resa.notes_libres}
           </div>
         )}

@@ -237,6 +237,7 @@ function Planning({ date, estAujourdhui, maintenant, actifs, praticiensConnus, c
                       key={m}
                       type="button"
                       className="spa-creneau-libre"
+                      data-no-translate
                       aria-label={`Réserver à ${hhmm(m)}${nomP ? ` avec ${nomP}` : ''}`}
                       onClick={() => onNouveau({ date, heure: hhmm(m), praticien: nomP })}
                       style={{ ...s.creneau, top: (m - debut) * PX_MIN, height: PAS_CRENEAU * PX_MIN }}
@@ -280,6 +281,7 @@ function BlocRdv({ r, client, top, hauteur, onClick }) {
       type="button"
       onClick={onClick}
       className="spa-carte-action"
+      data-no-translate
       aria-label={`${r.heureDebut} à ${heureFin(r.heureDebut, r.dureeMin)}, ${nomClient(client)}, ${r.soinLibelle || 'soin'}, ${m.label}`}
       style={{
         ...s.bloc, top: top + 2, height: hauteur - 4,
@@ -390,7 +392,9 @@ function CarteRdv({ r, client, enCours = false, onClick }) {
         <span style={s.blocDetail}>
           <span style={{ color: enCours ? 'var(--spa-mizu)' : m.texte, fontWeight: 600 }}>{enCours ? 'En cabine' : m.label}</span>
           {', '}
-          {[r.soinLibelle || 'Soin à préciser', r.praticien, r.cabine].filter(Boolean).join(', ')}
+          <span>{r.soinLibelle || 'Soin à préciser'}</span>
+          {r.praticien ? <span data-no-translate>{`, ${r.praticien}`}</span> : null}
+          {r.cabine ? <span>{`, ${r.cabine}`}</span> : null}
         </span>
       </span>
     </button>

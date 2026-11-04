@@ -144,12 +144,13 @@ export function Repere({ repere, icone: Icone, onClick }) {
 
 // Ligne d'action (« À faire maintenant ») : pictogramme du module, titre,
 // détail, et à droite ce qui presse. Bouton vers le module quand c'est permis.
-export function LigneAction({ icone: Icone, couleur = 'var(--accent)', titre, detail, droite, onClick }) {
+// titreBrut : le titre porte un nom de personne ou de groupe, jamais traduit.
+export function LigneAction({ icone: Icone, couleur = 'var(--accent)', titre, titreBrut, detail, droite, onClick }) {
   const contenu = (
     <>
       {Icone && <Icone size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: couleur, flexShrink: 0, marginTop: 1 }} />}
       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-        <span style={b.ligneTitre}>{titre}</span>
+        <span style={b.ligneTitre} data-no-translate={titreBrut ? '' : undefined}>{titre}</span>
         {detail && <span style={b.ligneDetail}>{detail}</span>}
       </span>
       {droite}

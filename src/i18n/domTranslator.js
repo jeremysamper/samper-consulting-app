@@ -171,12 +171,18 @@ async function ensureSharedCache(lang) {
 const URL_LIKE = /^(https?:\/\/|www\.|[\w.+-]+@[\w-]+\.)/i;
 const UUID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
+// Donnée personnelle, jamais un libellé d'interface : une chaîne qui contient
+// un e-mail ou un téléphone (suisse ou international) reste en français et ne
+// part jamais à ai-proxy, où qu'ils soient dans la phrase.
+const EMAIL_IN = /[\w.+-]+@[\w-]+\.[\w-]{2,}/;
+const PHONE_IN = /(?:\+|\b00)\s?\d(?:[\s.()/\u{00a0}\u{202f}-]?\d){7,}|\b0\d{2}(?:[\s./\u{00a0}\u{202f}-]?\d{2,3}){3}\b/u;
 
 /** Le cœur de chaîne mérite-t-il une traduction ? */
 function isTranslatable(core) {
   if (!core || core.length > 600) return false;
   if (DO_NOT_TRANSLATE.has(core)) return false;
   if (URL_LIKE.test(core) || UUID_LIKE.test(core) || ISO_DATE.test(core)) return false;
+  if (EMAIL_IN.test(core) || PHONE_IN.test(core)) return false;
   // Au moins 3 lettres : écarte « 12 g », « 3 kg », « 18:30 », « CHF 4.50 ».
   const letters = core.replace(/[^\p{L}]/gu, '');
   if (letters.length < 3) return false;

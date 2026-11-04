@@ -83,6 +83,7 @@ function LigneResa({
       {deplacable && (
         <span
           data-plan-poignee={resa.id}
+          data-no-translate
           onPointerDown={(e) => onPointerDownResa(e, resa)}
           aria-label={placee ? `Ajouter une table à ${resa.nom}` : `Placer ${resa.nom}`}
           title={placee ? 'Glisser sur une autre table pour agrandir ou changer la tablée' : 'Glisser sur une table'}
@@ -117,7 +118,7 @@ function LigneResa({
             fontSize: 13, fontWeight: 700, color: 'var(--text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
             textDecoration: statut === 'no_show' ? 'line-through' : 'none',
-          }}>
+          }} data-no-translate>
             {resa.nom}
           </span>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>
@@ -147,7 +148,7 @@ function LigneResa({
           <div style={{
             fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 1,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
+          }} data-no-translate>
             {resa.notes_libres}
           </div>
         )}

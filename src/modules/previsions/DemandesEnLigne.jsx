@@ -65,7 +65,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
           >
             <div style={{ flex: '1 1 220px', minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                {r.nom} <span style={{ fontWeight: 500, color: 'var(--text2)' }}>({r.nb_couverts} pers.)</span>
+                <span data-no-translate>{r.nom}</span> <span style={{ fontWeight: 500, color: 'var(--text2)' }}>({r.nb_couverts} pers.)</span>
               </div>
               <button
                 type="button"
@@ -78,7 +78,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
                 {formatDateLongue(r.date_service)}, {SERVICES[r.service] || r.service} {(r.heure_arrivee || '').slice(0, 5)}
               </button>
               {r.notes_libres && (
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>{r.notes_libres}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }} data-no-translate>{r.notes_libres}</div>
               )}
               {r.telephone && (
                 <a href={`tel:${String(r.telephone).replace(/\s/g, '')}`} style={{ display: 'block', width: 'fit-content', fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>

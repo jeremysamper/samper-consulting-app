@@ -174,14 +174,14 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
               fontFamily: 'var(--font)',
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-no-translate>
                   {nomClient(c)}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {[c.telephone, c.email].filter(Boolean).join(', ') || 'Pas de contact'}
                 </div>
                 {(c.allergies || c.preferences) && (
-                  <div style={{ fontSize: 11, color: c.allergies ? 'var(--danger-text)' : 'var(--text3)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 11, color: c.allergies ? 'var(--danger-text)' : 'var(--text3)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-no-translate>
                     {[c.allergies, c.preferences].filter(Boolean).join(' ; ')}
                   </div>
                 )}

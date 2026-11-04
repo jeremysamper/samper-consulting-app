@@ -235,7 +235,7 @@ export function Modale({
         className={`${tiroir ? 'spa-tiroir' : 'spa-apparition'} ${plein ? 'modal-full' : 'modal-sheet'}`}
         role="dialog"
         aria-modal="true"
-        aria-label={titre}
+        aria-label={titreBrut ? undefined : titre}
         style={{
           ...st.fenetre,
           ...(tiroir ? { ...st.tiroir, width: largeur } : { width: largeur }),

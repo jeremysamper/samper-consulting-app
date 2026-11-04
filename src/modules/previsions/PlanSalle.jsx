@@ -237,6 +237,7 @@ function TableShape({
       onPointerDown={deplacable ? (e) => onPointerDownTable(e, table) : undefined}
       onDoubleClick={modePlan && canEdit ? () => onEditTable(table) : undefined}
       onClick={!modePlan && onTap ? () => onTap(table) : undefined}
+      data-no-translate={tabouret && occupants.length ? '' : undefined}
       title={titre}
       style={{
         position: 'absolute',
@@ -339,9 +340,11 @@ function TableShape({
         >
           {/* ⇄ : la tablée déborde sur une autre table, les couverts affichés
               sont ceux du groupe entier et non de cette seule table. */}
-          {tabouret
-            ? `${String(resa.nom || '').trim().slice(0, 3)}${liste.length > 1 ? '+' : ''}`
-            : sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} (${resa.nb_couverts})`}
+          <span data-no-translate>
+            {tabouret
+              ? `${String(resa.nom || '').trim().slice(0, 3)}${liste.length > 1 ? '+' : ''}`
+              : sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} (${resa.nb_couverts})`}
+          </span>
         </div>
       ))}
       {!tabouret && liste.length > 3 && (
@@ -377,6 +380,7 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
       {canEdit && (
         <span
           data-plan-poignee={resa.id}
+          data-no-translate
           onPointerDown={(e) => onPointerDownResa(e, resa)}
           aria-label={placee ? `Ajouter une table à ${resa.nom}` : `Placer ${resa.nom}`}
           title={placee ? 'Glisser sur une autre table pour agrandir la tablée' : 'Glisser sur une table'}
@@ -404,7 +408,7 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
         <div style={{
           fontSize: 12, fontWeight: 700, color: 'var(--text)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
+        }} data-no-translate>
           {resa.nom}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text2)' }}>
@@ -2408,7 +2412,7 @@ export default function PlanSalle({
           background: 'var(--accent)', color: 'var(--on-accent)',
           fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
           boxShadow: '0 6px 20px rgba(0,0,0,0.28)', whiteSpace: 'nowrap',
-        }}>
+        }} data-no-translate>
           {drag.resa?.nom}, {drag.resa?.nb_couverts} pax
         </div>
       )}

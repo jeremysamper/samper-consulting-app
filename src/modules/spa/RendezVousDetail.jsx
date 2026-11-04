@@ -55,6 +55,7 @@ export default function RendezVousDetail({
   return (
     <Modale
       titre={`${r.heureDebut} ${nomClient(client)}`}
+      titreBrut
       entete={entete}
       onClose={onClose}
       largeur={580}
@@ -145,16 +146,16 @@ export default function RendezVousDetail({
       {client?.notesSante && (
         <div style={st.encartSante}>
           <HeartPulse size={18} strokeWidth={1.8} color="var(--spa-sakura)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-          <span><strong>Santé :</strong> {client.notesSante}</span>
+          <span><strong>Santé :</strong> <span data-no-translate>{client.notesSante}</span></span>
         </div>
       )}
       {client?.preferences && (
         <div style={st.encartInfo}>
           <Leaf size={18} strokeWidth={1.8} color="var(--spa-mizu)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
-          <span><strong>Préférences :</strong> {client.preferences}</span>
+          <span><strong>Préférences :</strong> <span data-no-translate>{client.preferences}</span></span>
         </div>
       )}
-      {r.notes && <div style={{ fontSize: 14, color: 'var(--spa-ink2)', lineHeight: 1.55 }}><strong style={{ color: 'var(--spa-ink)' }}>Note :</strong> {r.notes}</div>}
+      {r.notes && <div style={{ fontSize: 14, color: 'var(--spa-ink2)', lineHeight: 1.55 }}><strong style={{ color: 'var(--spa-ink)' }}>Note :</strong> <span data-no-translate>{r.notes}</span></div>}
     </Modale>
   );
 }

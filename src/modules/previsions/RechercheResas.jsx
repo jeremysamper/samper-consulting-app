@@ -32,7 +32,7 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
           border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font)',
         }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }} data-no-translate>
             {resa.nom}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>

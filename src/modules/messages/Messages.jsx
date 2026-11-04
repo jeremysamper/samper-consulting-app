@@ -159,11 +159,11 @@ const Messages = ({ user, isActive = true }) => {
               <span style={ms.avatar}>{initialsOf(profile)}</span>
               <span style={ms.contactBody}>
                 <span style={ms.contactTop}>
-                  <span style={{ ...ms.contactName, fontWeight: unread ? 700 : 700 }}>{fullName(profile)}</span>
+                  <span style={{ ...ms.contactName, fontWeight: unread ? 700 : 700 }} data-no-translate>{fullName(profile)}</span>
                   {last && <span style={ms.contactDate}>{formatListDate(last.createdAt)}</span>}
                 </span>
                 <span style={ms.contactBottom}>
-                  <span style={{ ...ms.contactPreview, color: unread ? 'var(--text)' : 'var(--text2)' }}>{preview}</span>
+                  <span style={{ ...ms.contactPreview, color: unread ? 'var(--text)' : 'var(--text2)' }} data-no-translate={last ? '' : undefined}>{preview}</span>
                   {unread > 0 && (
                     <span style={ms.unreadBadge} aria-label={`${unread} message${unread > 1 ? 's' : ''} non lu${unread > 1 ? 's' : ''}`}>{unread}</span>
                   )}
@@ -199,12 +199,12 @@ const Messages = ({ user, isActive = true }) => {
           {initialsOf(selected)}
         </span>
         <div style={{ minWidth: 0 }}>
-          <div style={ms.threadName}>{fullName(selected)}</div>
+          <div style={ms.threadName} data-no-translate>{fullName(selected)}</div>
           <div style={ms.threadSub}>{(roleConfig[selected?.role] || { label: selected?.role || '' }).label}</div>
         </div>
       </div>
 
-      <div style={ms.threadMessages} ref={threadRef} role="log" aria-live="polite" aria-label={`Conversation avec ${fullName(selected)}`}>
+      <div style={ms.threadMessages} ref={threadRef} role="log" aria-live="polite" aria-label="Conversation">
         {thread.length === 0 && (
           <div style={ms.emptyHint}>Aucun message pour l'instant. Écrivez le premier.</div>
         )}
@@ -223,7 +223,7 @@ const Messages = ({ user, isActive = true }) => {
                   </button>
                 )}
                 <div style={mine ? ms.bubbleMine : ms.bubbleTheirs}>
-                  <div style={ms.bubbleText}>{m.message}</div>
+                  <div style={ms.bubbleText} data-no-translate>{m.message}</div>
                   <div style={{ ...ms.bubbleMeta, textAlign: mine ? 'right' : 'left' }}>
                     {formatTime(m.createdAt)}
                     {mine && (
@@ -249,6 +249,7 @@ const Messages = ({ user, isActive = true }) => {
             // Ctrl/⌘ + Entrée envoie ; Entrée seule garde le retour à la ligne.
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
           }}
+          data-no-translate
           placeholder={`Écrire à ${selected?.prenom || fullName(selected)}…`}
           aria-label={`Message pour ${fullName(selected)}`}
           maxLength={MAX_LENGTH}

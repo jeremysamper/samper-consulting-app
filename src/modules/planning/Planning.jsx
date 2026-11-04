@@ -1165,7 +1165,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
                           : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
-                      <div style={pls.mobileName}>{emp.name}</div>
+                      <div style={pls.mobileName} data-no-translate>{emp.name}</div>
                       <PhoneLink tel={phones[shift.userId]} style={pls.mobilePhone} />
                       <div style={pls.mobileMeta}>
                         <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{typeLabel}{shift.poste ? `, ${shift.poste}` : ''}</span>
@@ -1206,7 +1206,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{emp.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }} data-no-translate>{emp.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
                 </div>
                 <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 11, color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
@@ -1472,7 +1472,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       <div style={pls.empCol}>
                         <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={pls.empName}>{emp.prenom} {emp.nom}</div>
+                          <div style={pls.empName} data-no-translate>{emp.prenom} {emp.nom}</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginTop: 2 }}>
                             <span
                               style={{ fontSize: 11, fontWeight: 700, color: weekColor }}
@@ -1529,7 +1529,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
-                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div><div><div style={pls.ptName}>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
+                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }} data-no-translate>{emp.avatar}</div><div><div style={pls.ptName} data-no-translate>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
                     <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
@@ -1560,7 +1560,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const emp = userDisplay(selectedShift.userId);
                 return (
                   <>
-                    <div><strong>Employé :</strong> {emp.name}</div>
+                    <div><strong>Employé :</strong> <span data-no-translate>{emp.name}</span></div>
                     {phones[selectedShift.userId] && (
                       <div><strong>Téléphone :</strong> <PhoneLink tel={phones[selectedShift.userId]} /></div>
                     )}
@@ -1625,7 +1625,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <label style={pls.fieldLabel}>Employé</label>
                 <select style={pls.fieldInput} value={editForm.userId} onChange={e => setEditForm({ ...editForm, userId: e.target.value })}>
                   <option value="">Sélectionner…</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.prenom} {e.nom}{demoData.roles[e.role]?.label ? ` (${demoData.roles[e.role].label})` : ''}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id} data-no-translate>{e.prenom} {e.nom}{demoData.roles[e.role]?.label ? ` (${demoData.roles[e.role].label})` : ''}</option>)}
                 </select>
               </div>
               <div>
@@ -1696,7 +1696,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <label style={pls.fieldLabel}>Collaborateur</label>
                   <select style={pls.fieldInput} value={ccntEmployeeId || ''} onChange={e => setCcntEmployeeId(e.target.value)}>
                     <option value="">Choisir…</option>
-                    {equipe.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
+                    {equipe.map(u => <option key={u.id} value={u.id} data-no-translate>{u.prenom} {u.nom}</option>)}
                   </select>
                 </div>
                 <div>
@@ -1758,7 +1758,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={ccnt.identiteGrille}>
                 <div><span style={ccnt.etiquette}>Établissement</span> {data.etab?.nom || '-'}</div>
                 <div><span style={ccnt.etiquette}>Adresse</span> {data.etab?.adresse || '-'}</div>
-                <div><span style={ccnt.etiquette}>Collaborateur</span> {data.emp.prenom} {data.emp.nom}</div>
+                <div><span style={ccnt.etiquette}>Collaborateur</span> <span data-no-translate>{data.emp.prenom} {data.emp.nom}</span></div>
                 <div><span style={ccnt.etiquette}>Fonction</span> {data.emp.poste || demoData.roles[data.emp.role]?.label || '-'}</div>
                 <div><span style={ccnt.etiquette}>Mois</span> {data.moisLabel}</div>
                 <div><span style={ccnt.etiquette}>Durée hebdomadaire contractuelle</span> {data.heuresHebdo} h</div>
@@ -2116,7 +2116,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           <input type="checkbox" checked={checked} onChange={() => toggleBatchUser(emp.id)} />
                           <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {emp.prenom} {emp.nom}
+                            <span data-no-translate>{emp.prenom} {emp.nom}</span>
                             <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
                           </span>
                         </label>

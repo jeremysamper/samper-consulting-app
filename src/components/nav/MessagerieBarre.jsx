@@ -151,11 +151,11 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
             <span style={st.avatar}>{initialsOf(profile)}</span>
             <span style={st.contactCorps}>
               <span style={st.contactHaut}>
-                <span style={st.contactNom}>{fullName(profile)}</span>
+                <span style={st.contactNom} data-no-translate>{fullName(profile)}</span>
                 {last && <span style={st.contactDate}>{formatListDate(last.createdAt)}</span>}
               </span>
               <span style={st.contactBas}>
-                <span style={{ ...st.apercu, color: nonLus ? 'var(--text)' : 'var(--text2)' }}>{preview}</span>
+                <span style={{ ...st.apercu, color: nonLus ? 'var(--text)' : 'var(--text2)' }} data-no-translate={last ? '' : undefined}>{preview}</span>
                 {nonLus > 0 && (
                   <span style={st.nonLus} aria-label={`${nonLus} message${nonLus > 1 ? 's' : ''} non lu${nonLus > 1 ? 's' : ''}`}>{nonLus}</span>
                 )}
@@ -177,11 +177,11 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
         </Btn>
         <span style={st.avatar}>{initialsOf(selected)}</span>
         <span style={{ minWidth: 0 }}>
-          <span style={st.filNom}>{fullName(selected)}</span>
+          <span style={st.filNom} data-no-translate>{fullName(selected)}</span>
           <span style={st.filRole}>{(roleConfig[selected?.role] || { label: selected?.role || '' }).label}</span>
         </span>
       </div>
-      <div style={{ ...st.defile, ...st.fil }} ref={filRef} role="log" aria-live="polite" aria-label={`Conversation avec ${fullName(selected)}`}>
+      <div style={{ ...st.defile, ...st.fil }} ref={filRef} role="log" aria-live="polite" aria-label="Conversation">
         {thread.length === 0 && <div style={st.vide}>Aucun message pour l'instant. Écrivez le premier.</div>}
         {thread.map((m) => {
           const mine = m.senderId === user.id;
@@ -192,7 +192,7 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
             <React.Fragment key={m.id}>
               {showDay && <div style={st.jour}>{day}</div>}
               <div style={mine ? st.bulleMoi : st.bulleAutre}>
-                <div style={st.bulleTexte}>{m.message}</div>
+                <div style={st.bulleTexte} data-no-translate>{m.message}</div>
                 <div style={{ ...st.bulleMeta, textAlign: mine ? 'right' : 'left' }}>
                   {formatTime(m.createdAt)}
                   {mine && (
@@ -216,6 +216,7 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
             // Ctrl/⌘ + Entrée envoie ; Entrée seule garde le retour à la ligne.
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
           }}
+          data-no-translate
           placeholder={`Écrire à ${selected?.prenom || fullName(selected)}…`}
           aria-label={`Message pour ${fullName(selected)}`}
           maxLength={MAX_LENGTH}
