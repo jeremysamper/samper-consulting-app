@@ -21,9 +21,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { fetchOpenChecks, normalizeOpenChecks, refreshAccessToken } from '../_shared/lightspeed-client.ts';
 import { computeCheckDiff } from './diff.ts';
 import type { PosConnection, OpenCheck, ExistingItem } from '../_shared/types.ts';
+import { appliquerCors } from '../_shared/cors.ts';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -67,7 +67,9 @@ function isScopeError(msg: string): boolean {
   return /\b(401|403)\b/.test(msg);
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'POST requis' }, 405);
 
@@ -261,4 +263,4 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[pos-orders-poll] etab=${etablissementId} checks=${checks.length} upserts=${inserted} refired=${refired} voided=${voided} closed=${closed}`);
   return json({ etablissementId, checks: checks.length, upserts: inserted, refired, voided, closed });
-});
+}

@@ -21,9 +21,9 @@ import { aggregateSalesLines } from '../_shared/aggregate.ts';
 import { upsertItemsAndSales } from '../_shared/upsert.ts';
 import { localDateToUtcRange, utcToLocalDateString } from '../_shared/timezone.ts';
 import type { PosConnection, EtablissementWithTz } from '../_shared/types.ts';
+import { appliquerCors } from '../_shared/cors.ts';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -78,7 +78,9 @@ async function refreshAccessToken(
   return res.json();
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'POST requis' }, 405);
 
@@ -218,4 +220,4 @@ Deno.serve(async (req: Request) => {
     errors:        errors.map((r) => ({ date: r.date, error: r.error })),
     details:       results,
   });
-});
+}

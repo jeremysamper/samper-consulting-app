@@ -95,9 +95,9 @@ import { ErreurSmtp, HOTE_INFOMANIAK, HOTE_OK, messageSmtp, smtp } from '../_sha
 import {
   ErreurSms, SERVEUR_SMS_DEFAUT, envoyerSms, listerAppareils, messageSms, normaliserMobile, texteSms,
 } from '../_shared/sms.ts';
+import { appliquerCors } from '../_shared/cors.ts';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -109,7 +109,11 @@ const json = (body: unknown, status = 200) =>
   });
 
 const TZ = 'Europe/Zurich';
-const ROLES_EQUIPE = ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'];
+const ROLES_EQUIPE = [
+  'consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa',
+  // Branche Hôtel (lot H1).
+  'receptionniste', 'gouvernante', 'femme_de_chambre', 'technicien',
+];
 const ROLES_DIRECTION = ['consultant', 'patron'];
 const RESEND_URL = 'https://api.resend.com';
 const LOT_MAX = 100; // limite de l'API batch de Resend
@@ -1444,7 +1448,9 @@ async function completerFicheClient(sb: Admin, reservationId: string, prenom: st
 }
 
 // ── Handler ───────────────────────────────────────────────────────
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Méthode non autorisée' }, 405);
 
@@ -1946,4 +1952,4 @@ Deno.serve(async (req: Request) => {
   }
 
   return json({ error: 'Action inconnue.' }, 400);
-});
+}

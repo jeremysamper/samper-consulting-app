@@ -21,9 +21,9 @@
 // ================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { utcToLocalDateString } from '../_shared/timezone.ts';
+import { appliquerCors } from '../_shared/cors.ts';
 
 const cors = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -32,7 +32,9 @@ const json = (b: unknown, s = 200) =>
 
 const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json({ error: 'POST requis' }, 405);
 
@@ -121,4 +123,4 @@ Deno.serve(async (req: Request) => {
 
   const { data } = admin.storage.from('haccp-photos').getPublicUrl(path);
   return json({ path, url: data.publicUrl, date: localDate });
-});
+}

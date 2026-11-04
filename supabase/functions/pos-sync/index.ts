@@ -21,9 +21,9 @@ import { aggregateSalesLines } from '../_shared/aggregate.ts';
 import { upsertItemsAndSales } from '../_shared/upsert.ts';
 import { localDateToUtcRange, utcToLocalDateString } from '../_shared/timezone.ts';
 import type { PosConnection, EtablissementWithTz, SyncResult } from '../_shared/types.ts';
+import { appliquerCors } from '../_shared/cors.ts';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -180,7 +180,7 @@ async function syncConnection(
   }
 }
 
-// ── Helpers log ──────────────────────────────────────────────────
+// ── Helpers log ───────────────────────────────────────────────────
 async function insertSyncLog(
   admin: ReturnType<typeof adminClient>,
   connectionId: string,
@@ -217,7 +217,9 @@ async function updateSyncLog(
 }
 
 // ── Handler principal ─────────────────────────────────────────────
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'POST requis' }, 405);
 
@@ -306,4 +308,4 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[pos-sync] Terminé - synced=${summary.synced} errors=${summary.errors}`);
   return json(summary);
-});
+}

@@ -27,10 +27,10 @@ import { evalVentes }         from './evaluators/ventes.ts';
 import { evalPertes }         from './evaluators/pertes.ts';
 import { evalPersonnalisee }  from './evaluators/personnalisee.ts';
 import type { AlertItem, AlertRule, EvalResult } from './types.ts';
+import { appliquerCors } from '../_shared/cors.ts';
 
 // ── CORS ─────────────────────────────────────────────────────────
 const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -137,7 +137,9 @@ async function envoyerNotifications(
 }
 
 // ── Handler principal ────────────────────────────────────────────
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   // Vérification CRON_SECRET. Sans secret configuré, tout appel est refusé :
@@ -247,4 +249,4 @@ Deno.serve(async (req: Request) => {
   console.log('[alerts] notifications :', JSON.stringify(push).slice(0, 300));
 
   return json({ ok: true, fired, resolved, skipped, details: results, push });
-});
+}

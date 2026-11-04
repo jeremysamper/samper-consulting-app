@@ -19,6 +19,7 @@
 //          'translate' (texte ; payload.target = 'en' par défaut, ou 'es').
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { appliquerCors } from '../_shared/cors.ts';
 
 const PROVIDERS = {
   anthropic: { url: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-4-5' },
@@ -26,7 +27,6 @@ const PROVIDERS = {
 };
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -578,7 +578,9 @@ async function callOpenAI(apiKey: string, model: string, system: string, parts: 
   return data?.choices?.[0]?.message?.content || '';
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Méthode non autorisée' }, 405);
 
@@ -665,4 +667,4 @@ Deno.serve(async (req: Request) => {
   // bien celle demandée avant de mettre en cache (une version antérieure de la
   // fonction répondait toujours en anglais).
   return json(target ? { task, provider, target, result } : { task, provider, result });
-});
+}
