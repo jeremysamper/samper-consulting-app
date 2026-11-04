@@ -116,7 +116,7 @@ export default defineConfig({
         navigateFallback: '/vite-index.html',
         // /reserver/ et /table/ : pages publiques de réservation (spas,
         // restaurants ; entrée à part), jamais remplacées par l'app shell.
-        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/confidentialite/],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre

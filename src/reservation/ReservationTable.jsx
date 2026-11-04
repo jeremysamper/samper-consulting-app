@@ -470,6 +470,12 @@ export default function ReservationTable() {
             )}
           </>
         )}
+
+        <footer style={{ marginTop: 28, textAlign: 'center' }}>
+          <a href="/confidentialite/" target="_blank" rel="noopener" style={{ fontSize: 12, color: 'var(--t-ink2)' }} data-no-translate="">
+            Confidentialité
+          </a>
+        </footer>
       </main>
     </div>
   );

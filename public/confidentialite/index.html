@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Déclaration de confidentialité</title>
+    <!-- Page publique autonome (lot SI4) : aucun script, aucune session, aucun appel
+         réseau hors polices. Texte en français seulement (décision D7), hors du
+         périmètre du traducteur (data-no-translate). Les polices sont les mêmes
+         fichiers que l'app (public/fonts/ui, licence OFL). -->
+    <style>
+      @font-face {
+        font-family: "IBM Plex Sans";
+        src: url("/fonts/ui/IBMPlexSans-latin-wght.woff2") format("woff2");
+        font-weight: 400 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "IBM Plex Serif";
+        src: url("/fonts/ui/IBMPlexSerif-latin-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      :root {
+        --encre: #1d2429;
+        --encre2: #55616a;
+        --ligne: #d9dee2;
+        --fond: #f7f8f9;
+        --accent: #003042;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: var(--fond); color: var(--encre); }
+      body { font-family: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; font-size: 15px; }
+      main { max-width: 760px; margin: 0 auto; padding: 36px 20px 64px; }
+      h1 { font-family: "IBM Plex Serif", Georgia, serif; font-weight: 400; font-size: 30px; margin: 10px 0 4px; color: var(--accent); }
+      h2 { font-family: "IBM Plex Serif", Georgia, serif; font-weight: 400; font-size: 20px; margin: 34px 0 8px; color: var(--accent); }
+      p, li { color: var(--encre); }
+      .note { color: var(--encre2); font-size: 13px; }
+      .bandeau {
+        display: inline-block; margin-bottom: 14px; padding: 6px 12px; border-radius: 6px;
+        background: #fdf3e3; border: 1px solid #ecd9b0; color: #7a5a1e; font-size: 13px; font-weight: 600;
+      }
+      .completer { background: #fdf3e3; border-radius: 4px; padding: 1px 5px; color: #7a5a1e; }
+      table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+      th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--ligne); }
+      th { color: var(--encre2); font-weight: 600; }
+      a { color: var(--accent); }
+      footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--ligne); font-size: 13px; color: var(--encre2); }
+    </style>
+  </head>
+  <body data-no-translate="">
+    <main data-no-translate="">
+      <span class="bandeau">Projet, à faire relire</span>
+      <h1>Déclaration de confidentialité</h1>
+      <p class="note">Ritmo, application de gestion pour la restauration et l'hôtellerie, éditée par Samper Consulting. Version projet du 4 novembre 2026, à faire relire avant publication.</p>
+
+      <h2>Qui est responsable du traitement</h2>
+      <p>
+        Samper Consulting, Jérémy Samper, Valais, Suisse.
+        <span class="completer">À compléter avant publication : adresse postale et adresse e-mail de contact.</span>
+      </p>
+      <p>
+        Pour les données saisies par un établissement dans l'application (ses équipes, ses clients, ses hôtes),
+        l'établissement reste responsable de ses propres données ; Samper Consulting les traite pour son compte
+        en tant que fournisseur de l'application.
+      </p>
+
+      <h2>Quelles données sont traitées</h2>
+      <ul>
+        <li><strong>Comptes des équipes</strong> : nom, e-mail, rôle, établissements rattachés, et selon les modules utilisés : planning, pointages, absences, contrats et estimations de salaire (visibles de la direction seulement), messages internes.</li>
+        <li><strong>Clients des restaurants</strong> : nom, téléphone, e-mail, date de la réservation, notes libres (par exemple une allergie signalée).</li>
+        <li><strong>Clients des spas</strong> : coordonnées et, avec consentement exprès, des indications de santé utiles aux soins (contre-indications, grossesse).</li>
+        <li><strong>Hôtes des hôtels</strong> : coordonnées, séjours, et les données du registre des occupants prévues par le droit cantonal (dont la pièce d'identité).</li>
+        <li><strong>Contacts fournisseurs</strong> : nom, coordonnées professionnelles.</li>
+        <li><strong>Données techniques</strong> : journaux de sécurité des demandes de réservation en ligne (adresse IP sous forme hachée, e-mail), pour limiter les abus.</li>
+      </ul>
+
+      <h2>Pour quelles finalités</h2>
+      <p>
+        Faire fonctionner l'application pour chaque établissement : réservations et leur confirmation par e-mail ou SMS,
+        planning et pointage des équipes, hygiène (HACCP), fiches et cartes, inventaire et achats, spa, hôtel, messagerie interne.
+        Aucune donnée n'est vendue, et aucune publicité n'est affichée.
+      </p>
+
+      <h2>À qui des données sont transmises</h2>
+      <p>Des prestataires traitent certaines données pour faire fonctionner l'application. Les principaux :</p>
+      <table>
+        <tr><th>Prestataire</th><th>Rôle</th><th>Pays de traitement</th></tr>
+        <tr><td>Supabase</td><td>base de données et stockage</td><td>Union européenne (Francfort)</td></tr>
+        <tr><td>Vercel</td><td>hébergement de l'application</td><td>Union européenne (Francfort)</td></tr>
+        <tr><td>Infomaniak</td><td>envoi des e-mails de confirmation</td><td>Suisse</td></tr>
+        <tr><td>Anthropic</td><td>traduction de l'interface et assistance IA</td><td>États-Unis</td></tr>
+        <tr><td>OpenAI</td><td>assistance IA (fournisseur de repli)</td><td>États-Unis</td></tr>
+        <tr><td>Resend</td><td>envoi d'e-mails (canal de repli)</td><td>États-Unis</td></tr>
+        <tr><td>Google, Microsoft</td><td>envoi d'e-mails quand l'établissement connecte sa propre boîte</td><td>selon le fournisseur de la boîte</td></tr>
+        <tr><td>Lightspeed</td><td>caisse (ventes, sans données nominatives de clients)</td><td>États-Unis, Canada</td></tr>
+        <tr><td>Passerelle SMS</td><td>SMS de confirmation, via le téléphone de l'établissement</td><td>non vérifié</td></tr>
+      </table>
+      <p class="note">
+        Pour les transferts hors de Suisse et de l'Union européenne, des garanties au sens de l'art. 16 de la loi fédérale
+        sur la protection des données (nLPD) sont requises ; leur formalisation contractuelle avec chaque prestataire est en cours.
+      </p>
+
+      <h2>Combien de temps</h2>
+      <p>
+        Les données sont conservées tant qu'elles servent à l'activité de l'établissement.
+        <span class="completer">À compléter avant publication : durées de conservation par catégorie, en cours de définition.</span>
+      </p>
+
+      <h2>Vos droits</h2>
+      <p>
+        Toute personne peut demander l'accès à ses données, leur rectification ou leur effacement
+        (art. 25 et suivants nLPD ; art. 15 à 21 RGPD pour les personnes dans l'Union européenne).
+        Pour une réservation ou une fiche client, adressez-vous d'abord à l'établissement concerné :
+        l'application lui fournit un export et un effacement des données d'une personne.
+        Les e-mails d'anniversaire et d'actualités contiennent un lien de désinscription.
+        En Suisse, l'autorité de surveillance est le Préposé fédéral à la protection des données et à la transparence (PFPDT).
+      </p>
+
+      <h2>Sécurité et violations</h2>
+      <p>
+        Les accès sont limités par rôle et par établissement, les échanges sont chiffrés (HTTPS).
+        En cas de violation de la sécurité des données présentant un risque élevé, le PFPDT est informé
+        dans les meilleurs délais (art. 24 nLPD) et, pour les personnes dans l'Union européenne,
+        l'autorité compétente l'est sous 72 heures (art. 33 RGPD) ; les personnes concernées sont informées
+        lorsque c'est nécessaire à leur protection.
+      </p>
+
+      <h2>Témoins et stockage local</h2>
+      <p>
+        L'application mémorise sur l'appareil des préférences d'affichage (thème, langue, dernier écran)
+        et des données de travail hors-ligne. Aucun témoin publicitaire, aucune mesure d'audience tierce.
+      </p>
+
+      <footer>
+        <p>
+          Textes de référence : <a href="https://www.fedlex.admin.ch/eli/cc/2022/491/fr" rel="noopener">nLPD, RS 235.1</a>,
+          <a href="https://www.fedlex.admin.ch/eli/cc/2022/568/fr" rel="noopener">OPDo, RS 235.11</a>,
+          <a href="https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32016R0679" rel="noopener">RGPD (UE) 2016/679</a>.
+        </p>
+        <p>Projet, à faire relire. Cette page ne vaut pas conseil juridique ; elle sera validée avant publication.</p>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -233,6 +233,10 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard,
 
         <div style={as.footer}>
           Les comptes sont créés par le consultant depuis le module <strong>Rôles & Accès</strong>.
+          {' '}
+          <a href="/confidentialite/" target="_blank" rel="noopener" style={{ color: 'var(--text2)' }} data-no-translate="">
+            Confidentialité
+          </a>
         </div>
       </div>
     </div>
