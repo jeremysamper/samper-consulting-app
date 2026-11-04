@@ -180,7 +180,7 @@ async function syncConnection(
   }
 }
 
-// ── Helpers log ───────────────────────────────────────────────────
+// ── Helpers log ──────────────────────────────────────────────────
 async function insertSyncLog(
   admin: ReturnType<typeof adminClient>,
   connectionId: string,
