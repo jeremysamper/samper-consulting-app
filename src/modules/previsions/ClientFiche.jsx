@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useResaClients, nomClient } from '../../hooks/useResaClients.js';
+import { confirmationEffacement, effacerPersonne, exporterPersonne, telechargerExport } from '../../services/personneService.js';
 import { metaStatut, SERVICE_META, serviceAffiche } from './statutsReservation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -50,7 +51,7 @@ const champ = {
   background: 'var(--bg)', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)',
 };
 
-export default function ClientFiche({ etablissementId, clientId = null, canEdit = false, onClose, onSaved }) {
+export default function ClientFiche({ etablissementId, clientId = null, canEdit = false, peutEffacer = false, onClose, onSaved }) {
   const isMobile = useIsMobile();
   const clients = useResaClients(etablissementId);
   const [client, setClient] = useState(null);
@@ -123,6 +124,27 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
     if (res.error) { notify(res.error, 'error'); return; }
     notify(archive ? 'Fiche archivée' : 'Fiche sortie des archives', 'success');
     onSaved?.(res.data);
+    if (ouvertRef.current) onClose();
+  }
+
+  // Export des données du client (droit d'accès, lot SI3) : un JSON téléchargé.
+  async function exporterDonnees() {
+    const { data, error } = await exporterPersonne('resa', clientId);
+    if (error) { notify(error, 'error'); return; }
+    telechargerExport(data, 'resa');
+    notify('Export téléchargé : fiche, réservations et séjours.', 'success');
+  }
+
+  // Effacement anonymisant (droit à l'effacement, lot SI3) : les réservations
+  // restent, le nom devient « Client effacé », contact et notes sont vidés.
+  async function effacerDonnees() {
+    if (!client || !window.confirm(confirmationEffacement(nomClient(client)))) return;
+    setEnCours(true);
+    const res = await effacerPersonne('resa', clientId);
+    setEnCours(false);
+    if (res.error) { notify(res.error, 'error'); return; }
+    notify('Données effacées : la fiche est anonymisée et archivée.', 'success');
+    onSaved?.();
     if (ouvertRef.current) onClose();
   }
 
@@ -307,6 +329,25 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
             }}>
               {client.archive ? 'Sortir des archives' : 'Archiver'}
             </button>
+          )}
+          {/* Droit d'accès et droit à l'effacement (SI3) : consultant et patron. */}
+          {peutEffacer && !nouveau && client && (
+            <>
+              <button type="button" onClick={exporterDonnees} disabled={enCours} style={{
+                minHeight: 44, padding: '8px 12px', borderRadius: 8,
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+              }}>
+                Exporter
+              </button>
+              <button type="button" onClick={effacerDonnees} disabled={enCours} style={{
+                minHeight: 44, padding: '8px 12px', borderRadius: 8,
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                background: 'var(--surface)', color: 'var(--danger-text)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+              }}>
+                Effacer les données
+              </button>
+            </>
           )}
           <div style={{ flex: 1 }} />
           <button type="button" onClick={onClose} style={{

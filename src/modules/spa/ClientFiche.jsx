@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Archive, ArchiveRestore, Cake, CalendarPlus, ChevronRight, Gift, HeartPulse, Leaf, Mail, MailCheck,
+  Archive, ArchiveRestore, Cake, CalendarPlus, ChevronRight, Download, Eraser, Gift, HeartPulse, Leaf, Mail, MailCheck,
   NotebookPen, Pencil, Phone, Sprout, Trash2,
 } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
@@ -24,8 +24,8 @@ import {
 const MOIS_ANNEE = new Intl.DateTimeFormat('fr-CH', { month: 'long', year: 'numeric', timeZone: 'Europe/Zurich' });
 
 export default function ClientFiche({
-  client, etablissementId, reservations, stats, peutGerer, peutSupprimer, peutOffrir,
-  onModifier, onReserver, onOffrirBon, onArchiver, onSupprimer, onClose,
+  client, etablissementId, reservations, stats, peutGerer, peutSupprimer, peutEffacer, peutOffrir,
+  onModifier, onReserver, onOffrirBon, onArchiver, onSupprimer, onExporter, onEffacer, onClose,
 }) {
   const aujourdhui = zurichToday();
   const [seanceOuverte, setSeanceOuverte] = useState(null); // {} = nouvelle, sinon séance
@@ -145,6 +145,17 @@ export default function ClientFiche({
             {peutSupprimer && (
               <button type="button" onClick={() => onSupprimer(client)} style={{ ...st.danger, marginRight: 'auto' }}>
                 <Trash2 size={16} strokeWidth={1.8} aria-hidden="true" /> Supprimer
+              </button>
+            )}
+            {/* Droit d'accès et droit à l'effacement (SI3) : consultant et patron. */}
+            {peutEffacer && (
+              <button type="button" onClick={() => onExporter(client)} style={st.discret}>
+                <Download size={16} strokeWidth={1.8} aria-hidden="true" /> Exporter
+              </button>
+            )}
+            {peutEffacer && (
+              <button type="button" onClick={() => onEffacer(client)} style={st.discret}>
+                <Eraser size={16} strokeWidth={1.8} aria-hidden="true" /> Effacer les données
               </button>
             )}
             {peutGerer && (

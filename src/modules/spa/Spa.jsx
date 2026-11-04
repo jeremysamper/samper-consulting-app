@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
+import { confirmationEffacement, effacerPersonne, exporterPersonne, telechargerExport } from '../../services/personneService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import AgendaSpa from './AgendaSpa.jsx';
@@ -182,6 +183,28 @@ export default function Spa({ user, etablissement }) {
     if (error) { notify(error, 'error'); return; }
     notify('Fiche client supprimée.', 'success');
     setFicheId(null);
+    reservations.reload();
+    seances.reload();
+    bons.reload();
+  }
+
+  // Export des données du client (droit d'accès, lot SI3) : un JSON téléchargé.
+  async function exporterClient(client) {
+    const { data, error } = await exporterPersonne('spa', client.id);
+    if (error) { notify(error, 'error'); return; }
+    telechargerExport(data, 'spa');
+    notify('Export téléchargé : fiche, rendez-vous, séances, bons et envois.', 'success');
+  }
+
+  // Effacement anonymisant (droit à l'effacement, lot SI3) : la fiche reste,
+  // le nom devient « Client effacé », contact, notes et santé sont vidés.
+  async function effacerClient(client) {
+    if (!window.confirm(confirmationEffacement(nomClient(client)))) return;
+    const { error } = await effacerPersonne('spa', client.id);
+    if (error) { notify(error, 'error'); return; }
+    notify('Données effacées : la fiche est anonymisée et archivée.', 'success');
+    setFicheId(null);
+    clients.reload();
     reservations.reload();
     seances.reload();
     bons.reload();
@@ -437,12 +460,15 @@ Le client sera prévenu par e-mail.`)) return;
           stats={statsClients.get(fiche.id)}
           peutGerer={peutGerer}
           peutSupprimer={direction}
+          peutEffacer={direction}
           peutOffrir={peutCatalogue}
           onModifier={(c) => setClientForm({ client: c })}
           onReserver={(c) => setRdvForm({ clientInitial: c, date: aujourdhui })}
           onOffrirBon={(c) => setBonPour(c)}
           onArchiver={archiver}
           onSupprimer={supprimerClient}
+          onExporter={exporterClient}
+          onEffacer={effacerClient}
           onClose={() => setFicheId(null)}
         />
       )}

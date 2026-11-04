@@ -33,7 +33,7 @@ const FILTRES = [
 // Habitué : trois venues ou plus.
 const HABITUE = 3;
 
-export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
+export default function ClientsResa({ etablissementId, canEdit, peutEffacer = false, refreshKey }) {
   const clients = useResaClients(etablissementId);
   const [liste, setListe] = useState(null);
   const [erreur, setErreur] = useState(null);
@@ -209,6 +209,7 @@ export default function ClientsResa({ etablissementId, canEdit, refreshKey }) {
           etablissementId={etablissementId}
           clientId={ouverte === 'nouveau' ? null : ouverte}
           canEdit={canEdit}
+          peutEffacer={peutEffacer}
           onClose={() => setOuverte(null)}
           onSaved={() => charger()}
         />

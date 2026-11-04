@@ -305,7 +305,7 @@ export default function Previsions({ user, etablissement }) {
       )}
 
       {etabId && ecran === 'clients' && (
-        <ClientsResa etablissementId={etabId} canEdit={canEdit} refreshKey={refreshKey} />
+        <ClientsResa etablissementId={etabId} canEdit={canEdit} peutEffacer={['consultant', 'patron'].includes(user?.role)} refreshKey={refreshKey} />
       )}
 
       {etabId && ecran === 'rapport' && voitRapport && (
