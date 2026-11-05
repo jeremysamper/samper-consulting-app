@@ -170,7 +170,7 @@
     /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
        pour la teinte de la marque (~225). C'est ce virage qui donne au dark
        son atmosphère « Opal » : profondeur froide, lumière aqua. */
-    --bg: oklch(19.5% 0.024 225);
+    --bg: #071319;
     --bg2: oklch(16.5% 0.02 225);
     --surface: oklch(22.5% 0.024 225);
     --surface2: oklch(26% 0.022 225);
@@ -245,7 +245,7 @@
 
 html[data-theme="dark"] {
   /* Contenu identique au bloc @media ci-dessus, voir le commentaire là-haut. */
-  --bg: oklch(19.5% 0.024 225);
+  --bg: #071319;
   --bg2: oklch(16.5% 0.02 225);
   --surface: oklch(22.5% 0.024 225);
   --surface2: oklch(26% 0.022 225);
