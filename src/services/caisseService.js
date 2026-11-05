@@ -109,6 +109,24 @@ export async function supprimerLigne(id) {
   return { error: null };
 }
 
+// Derniers « sans ... » poses dans l'etablissement (rappel en chips de la
+// fiche de ligne). Lu depuis les options des lignes recentes, aucun stockage
+// double ; jamais bloquant : une erreur rend simplement une liste vide.
+export async function listSansRecents(etablissementId, limite = 8) {
+  const { data, error } = await supabase
+    .from('caisse_lignes')
+    .select('options, created_at, caisse_tickets!inner(etablissement_id)')
+    .eq('caisse_tickets.etablissement_id', etablissementId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) { console.warn('[caisseService] listSansRecents', error); return { data: [] }; }
+  const vus = [];
+  (data || []).forEach((r) => (Array.isArray(r.options) ? r.options : []).forEach((o) => {
+    if (o && o.type === 'sans' && o.valeur && !vus.includes(o.valeur)) vus.push(o.valeur);
+  }));
+  return { data: vus.slice(0, limite) };
+}
+
 // Envoi du bon : UNE RPC, idempotente au double tap (le second appel trouve
 // zéro ligne en attente et ne crée aucun bon). Rend { bon_id, lignes }.
 export async function envoyerBon(ticketId, suite) {

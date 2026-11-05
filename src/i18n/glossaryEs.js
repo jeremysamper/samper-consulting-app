@@ -3516,4 +3516,14 @@ export const UI_GLOSSARY_ES = {
   'Cuisson, allergie, sans gluten...': 'Cocción, alergia, sin gluten...',
   'Réduire la quantité': 'Reducir la cantidad',
   'Augmenter la quantité': 'Aumentar la cantidad',
+  // ── Caisse v2 : fiche de ligne et paramètres (06.11.2026) ──
+  'Sans': 'Sin',
+  'Supprimer la ligne': 'Eliminar la línea',
+  'Fiche de la ligne': 'Detalle de la línea',
+  'Sans quoi ? (gluten, oignon...)': 'Sin qué? (gluten, cebolla...)',
+  'Message libre': 'Mensaje libre',
+  'bleu': 'muy poco hecho',
+  'saignant': 'poco hecho',
+  'à point': 'al punto',
+  'bien cuit': 'muy hecho',
 };

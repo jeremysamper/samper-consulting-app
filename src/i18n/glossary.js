@@ -3535,6 +3535,16 @@ export const UI_GLOSSARY = {
   'Cuisson, allergie, sans gluten...': 'Cooking, allergy, gluten-free...',
   'Réduire la quantité': 'Reduce quantity',
   'Augmenter la quantité': 'Increase quantity',
+  // ── Caisse v2 : fiche de ligne et paramètres (06.11.2026) ──
+  'Sans': 'Without',
+  'Supprimer la ligne': 'Delete the line',
+  'Fiche de la ligne': 'Line details',
+  'Sans quoi ? (gluten, oignon...)': 'Without what? (gluten, onion...)',
+  'Message libre': 'Free message',
+  'bleu': 'blue rare',
+  'saignant': 'rare',
+  'à point': 'medium',
+  'bien cuit': 'well done',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

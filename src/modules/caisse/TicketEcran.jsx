@@ -3,6 +3,8 @@ import { Btn, Input } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import * as caisse from '../../services/caisseService.js';
+import FicheLigne from './FicheLigne.jsx';
+import { libelleOption } from './options.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // L'écran du ticket : la grille d'articles (tap = +1) et le ticket lui-même
@@ -16,8 +18,9 @@ const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
 export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDeplacer, onFusionne, onClos, reload }) {
   const [recherche, setRecherche] = React.useState('');
-  const [noteLigneId, setNoteLigneId] = React.useState(null);
-  const [noteTexte, setNoteTexte] = React.useState('');
+  // Fiche d'édition d'une ligne (v2) : identifiant de la ligne ouverte.
+  const [ficheLigneId, setFicheLigneId] = React.useState(null);
+  const [sansRecents, setSansRecents] = React.useState([]);
   const [libreOuvert, setLibreOuvert] = React.useState(false);
   const [libreNom, setLibreNom] = React.useState('');
   const [librePrix, setLibrePrix] = React.useState('');
@@ -30,6 +33,22 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
   // La suite a envoyer : la plus basse qui porte encore des lignes en attente.
   const suiteAEnvoyer = enAttente.length ? Math.min(...enAttente.map((l) => l.suite)) : null;
 
+  // La fiche suit la ligne vivante (realtime, rechargements) ; elle se ferme
+  // seule si la ligne part en cuisine ou disparaît.
+  const ficheLigne = lignes.find((l) => l.id === ficheLigneId && l.statut === 'en_attente') || null;
+  React.useEffect(() => {
+    if (ficheLigneId && !ficheLigne) setFicheLigneId(null);
+  }, [ficheLigneId, ficheLigne]);
+
+  // Derniers « sans ... » de la maison, relus à chaque ouverture de fiche.
+  const etabId = ticket?.etablissement_id;
+  React.useEffect(() => {
+    if (!etabId || !ficheLigneId) return undefined;
+    let vivant = true;
+    caisse.listSansRecents(etabId).then(({ data }) => { if (vivant) setSansRecents(data || []); });
+    return () => { vivant = false; };
+  }, [etabId, ficheLigneId]);
+
   const match = makeSearchMatcher(recherche);
   const visibles = (articles || []).filter((a) => match(a.nom, a.categorie));
   // L'ordre du service d'abord, les catégories maison ensuite, par ordre alphabétique.
@@ -41,9 +60,11 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
   const erreur = (e) => { if (e) notify(e, 'error'); return Boolean(e); };
 
   async function ajouterArticle(plat) {
-    // Même plat, même suite 1 par défaut, sans note, pas encore envoyé : +1.
+    // Même plat, suite 1, sans note ni paramètre, pas encore envoyé : +1
+    // (une ligne paramétrée reste la sienne, on n'y empile pas un couvert).
     const existante = lignes.find((l) =>
-      l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === 1 && !l.note);
+      l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === 1
+      && !l.note && !(l.options || []).length);
     if (existante) {
       const { error } = await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 });
       if (erreur(error)) return;
@@ -69,32 +90,18 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
     reload();
   }
 
-  async function changerQuantite(l, delta) {
-    const q = Number(l.quantite) + delta;
-    if (q <= 0) {
-      const { error } = await caisse.supprimerLigne(l.id);
-      if (erreur(error)) return;
-    } else {
-      const { error } = await caisse.majLigne(l.id, { quantite: q });
-      if (erreur(error)) return;
-    }
-    reload();
-  }
-
-  async function changerSuite(l) {
-    const { error } = await caisse.majLigne(l.id, { suite: l.suite >= 3 ? 1 : l.suite + 1 });
+  // Écritures de la fiche de ligne : immédiates, l'écran suit par reload.
+  async function majFicheLigne(partial) {
+    if (!ficheLigne) return;
+    const { error } = await caisse.majLigne(ficheLigne.id, partial);
     if (!erreur(error)) reload();
   }
 
-  async function retirerLigne(l) {
-    const { error } = await caisse.supprimerLigne(l.id);
-    if (!erreur(error)) reload();
-  }
-
-  async function enregistrerNote() {
-    const { error } = await caisse.majLigne(noteLigneId, { note: noteTexte.trim() || null });
+  async function supprimerFicheLigne() {
+    if (!ficheLigne) return;
+    const { error } = await caisse.supprimerLigne(ficheLigne.id);
     if (erreur(error)) return;
-    setNoteLigneId(null); setNoteTexte('');
+    setFicheLigneId(null);
     reload();
   }
 
@@ -196,39 +203,39 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].filter((s) => lignes.some((l) => l.suite === s)).map((s) => (
           <div key={s}>
             <div style={st.suiteTitre}><span>Suite</span> <span>{s}</span></div>
-            {lignes.filter((l) => l.suite === s).map((l) => (
-              <div key={l.id} style={st.ligne}>
-                <div style={st.ligneHaut}>
-                  <span style={st.ligneQte}>{Number(l.quantite)}</span>
-                  <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
-                  <span style={st.lignePrix}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
-                </div>
-                {l.note && <div style={st.ligneNote} data-no-translate>{l.note}</div>}
-                <div style={st.ligneActions}>
-                  {l.statut === 'en_attente' ? (
-                    <>
-                      <Btn variant="ghost" onClick={() => changerQuantite(l, -1)} style={st.btnMini} aria-label="Réduire la quantité">-1</Btn>
-                      <Btn variant="ghost" onClick={() => changerQuantite(l, 1)} style={st.btnMini} aria-label="Augmenter la quantité">+1</Btn>
-                      <Btn variant="ghost" onClick={() => changerSuite(l)} style={st.btnMini}>
-                        <span>Suite</span> <span>{l.suite}</span>
-                      </Btn>
-                      <Btn variant="ghost" onClick={() => { setNoteLigneId(l.id); setNoteTexte(l.note || ''); }} style={st.btnMini}>Note</Btn>
-                      <Btn variant="ghost" onClick={() => retirerLigne(l)} style={st.btnMini}>Retirer</Btn>
-                    </>
-                  ) : (
+            {lignes.filter((l) => l.suite === s).map((l) => {
+              const params = [...(l.options || []).map(libelleOption), l.note].filter(Boolean).join(', ');
+              const contenu = (
+                <>
+                  <div style={st.ligneHaut}>
+                    <span style={st.ligneQte}>{Number(l.quantite)}</span>
+                    <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
+                    <span style={st.lignePrix}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
+                  </div>
+                  {params && <div style={st.ligneNote} data-no-translate>{params}</div>}
+                </>
+              );
+              // Ligne en attente : tout le rang est la cible, un tap ouvre sa
+              // fiche (quantité, suite, paramètres, suppression).
+              if (l.statut === 'en_attente') {
+                return (
+                  <button key={l.id} type="button" style={st.ligneBouton} onClick={() => setFicheLigneId(l.id)}>
+                    {contenu}
+                  </button>
+                );
+              }
+              // Ligne partie en cuisine : figée, le badge bascule servi / envoyé.
+              return (
+                <div key={l.id} style={st.ligne}>
+                  {contenu}
+                  <div style={st.ligneActions}>
                     <Btn variant="ghost" onClick={() => basculerServi(l)} style={st.btnMini}>
                       {l.statut === 'servi' ? 'Servi' : 'Envoyé'}
                     </Btn>
-                  )}
-                </div>
-                {noteLigneId === l.id && (
-                  <div style={st.noteForm}>
-                    <Input value={noteTexte} onChange={(e) => setNoteTexte(e.target.value)} placeholder="Cuisson, allergie, sans gluten..." style={{ flex: 1, minHeight: 44 }} />
-                    <Btn variant="primary" onClick={enregistrerNote} style={st.btn44}>Enregistrer</Btn>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         ))}
 
@@ -266,6 +273,16 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
           </div>
         )}
 
+        {ficheLigne && (
+          <FicheLigne
+            ligne={ficheLigne}
+            sansRecents={sansRecents}
+            onChange={majFicheLigne}
+            onSupprimer={supprimerFicheLigne}
+            onClose={() => setFicheLigneId(null)}
+          />
+        )}
+
         <div style={st.gestion}>
           <Btn variant="ghost" onClick={onDeplacer} style={st.btn44}>Déplacer</Btn>
           {ticketsMemeTable.length > 0 && (
@@ -295,13 +312,19 @@ const st = {
   vide: { color: 'var(--text2)', fontSize: 14 },
   suiteTitre: { fontSize: 12, fontWeight: 600, color: 'var(--text3)', textTransform: 'none', margin: '6px 0 4px' },
   ligne: { padding: '8px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
+  // Rang tappable d'une ligne en attente : mêmes filets, cible de 44 px.
+  ligneBouton: {
+    display: 'block', width: '100%', minHeight: 44, padding: '10px 0', textAlign: 'left',
+    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)',
+    fontFamily: 'var(--font)', fontSize: 15,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+  },
   ligneHaut: { display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 },
   ligneQte: { fontFamily: 'var(--font-num)', fontWeight: 600, flexShrink: 0 },
   ligneNom: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   lignePrix: { fontFamily: 'var(--font-num)', flexShrink: 0 },
   ligneNote: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
   ligneActions: { display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 },
-  noteForm: { display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' },
   btnMini: { minHeight: 44, padding: '8px 12px', flexShrink: 0 },
   btn44: { minHeight: 44, flexShrink: 0 },
   btnGrand: { minHeight: 52, fontSize: 16, flex: '1 1 auto' },
