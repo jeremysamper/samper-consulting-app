@@ -34,6 +34,8 @@ const loadRecettes = () => import('./recettes/Recettes.jsx');
 const loadRoles = () => import('./roles/Roles.jsx');
 const loadPrevisions = () => import('./previsions/Previsions.jsx');
 const loadVentesPos = () => import('./pos/VentesPos.jsx');
+// Caisse v1 : prise de commande en salle, bons vers le KDS, ventes directes.
+const loadCaisse = () => import('./caisse/Caisse.jsx');
 const loadSOP = () => import('./sop/SOP.jsx');
 const loadSpa = () => import('./spa/Spa.jsx');
 // Branche Hôtel (lot H0) : modules « à activer » des établissements hôteliers.
@@ -73,6 +75,7 @@ const Recettes = lazy(loadRecettes);
 const Roles = lazy(loadRoles);
 const Previsions = lazy(loadPrevisions);
 const VentesPos = lazy(loadVentesPos);
+const Caisse = lazy(loadCaisse);
 const SOP = lazy(loadSOP);
 const Spa = lazy(loadSpa);
 const Hebergement = lazy(loadHebergement);
@@ -360,6 +363,14 @@ export default function LegacyModuleHost({
       const RolesComponent = Roles;
       return user.role === 'consultant' && permissions.consultant_tools !== false
         ? wrap('Roles et acces', <RolesComponent user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'caisse': {
+      // Une clé absente ne vaut jamais « ouvert » (comme Réservations) : les
+      // défauts du code donnent la caisse à consultant, patron, resp_cuisine
+      // et serveur ; réglable ensuite par rôle et par personne.
+      return permissions.caisse === true
+        ? wrap('Caisse', <Caisse user={user} etablissement={etablissement} legacyVersion={legacyVersion} />)
         : accessDenied;
     }
     case 'pos': {
