@@ -68,7 +68,19 @@ function scheduleRetry() {
 
 // `zone` : saisie d'une zone d'un produit rangé dans plusieurs zones (RPC
 // inventaire_saisir_stock_zone, migration 20261106).
-function appelRpc({ inventaireId, ligneId, zone, stockReel, compteLe, clientUuid }) {
+function appelRpc({ type, inventaireId, ligneId, zone, stockReel, compteLe, clientUuid, operation, valeurs, faitLe }) {
+  // Modification d'un produit (ajout, nom, zones, annulation, suppression) :
+  // RPC inventaire_modifier_ligne, migration 20261106b.
+  if (type === 'modif') {
+    return supabase.rpc('inventaire_modifier_ligne', {
+      p_inventaire_id: inventaireId,
+      p_ligne_id: ligneId,
+      p_operation: operation,
+      p_valeurs: valeurs || {},
+      p_fait_le: faitLe,
+      p_client_uuid: clientUuid,
+    });
+  }
   if (zone) {
     return supabase.rpc('inventaire_saisir_stock_zone', {
       p_inventaire_id: inventaireId,
@@ -195,6 +207,57 @@ export async function saisirStockOnlineOrQueue({
   return { mode: 'queued', queued };
 }
 
+// Modification d'un produit : même flux que la saisie d'une quantité. En
+// ligne, la RPC fusionne la ligne tout de suite ; sans réseau, l'opération
+// attend dans la même file, dans l'ordre des gestes (une par geste, jamais
+// remplacée : renommer puis changer de zone sont deux opérations).
+export async function queueModif({ inventaireId, ligneId, operation, valeurs, faitLe, userId, etablissementId }) {
+  const clientUuid = generateUuid();
+  const item = {
+    type: 'modif',
+    cle: `${inventaireId}::${ligneId}::op::${clientUuid}`,
+    clientUuid,
+    inventaireId,
+    ligneId,
+    operation,
+    valeurs: valeurs || {},
+    faitLe,
+    userId: userId || null,
+    etablissementId: etablissementId || null,
+    createdAt: Date.now(),
+    attempts: 0,
+  };
+  await inventaireQueue.put(item);
+  await refreshPendingCount();
+  return item;
+}
+
+export async function modifierOnlineOrQueue({
+  inventaireId, ligneId, operation, valeurs, faitLe, userId, etablissementId, sauvegardeHistorique,
+}) {
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    try {
+      const { data, error } = await withTimeout(appelRpc({
+        type: 'modif', inventaireId, ligneId, operation, valeurs, faitLe, clientUuid: generateUuid(),
+      }));
+      if (!error) {
+        if (getPendingSaisieCount() > 0) syncPendingSaisies();
+        return { mode: 'online', statut: data?.status || 'applied', raison: data?.raison };
+      }
+      // RPC absente (migration pas encore appliquée) : écriture historique.
+      if (error.code === 'PGRST202' && typeof sauvegardeHistorique === 'function') {
+        await sauvegardeHistorique();
+        return { mode: 'repli' };
+      }
+      if (!isNetworkError(error)) throw error;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  const queued = await queueModif({ inventaireId, ligneId, operation, valeurs, faitLe, userId, etablissementId });
+  return { mode: 'queued', queued };
+}
+
 // Compteur d'attente : abonnement pour l'UI (bandeau + module Inventaire).
 // Compatible useSyncExternalStore (le listener est rappelé à chaque variation).
 export function subscribePendingSaisies(listener) {
@@ -225,7 +288,8 @@ export async function listPendingSaisies(inventaireId) {
 export async function retirerSaisiesEnAttente(inventaireId, ligneId, zone = '') {
   try {
     const items = await inventaireQueue.list();
-    const aRetirer = items.filter((item) => item.inventaireId === inventaireId && item.ligneId === ligneId
+    const aRetirer = items.filter((item) => item.type !== 'modif'
+      && item.inventaireId === inventaireId && item.ligneId === ligneId
       && (!zone || item.zone === zone));
     for (const item of aRetirer) await inventaireQueue.remove(item.cle);
   } catch {

@@ -12,6 +12,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import {
   getPendingSaisieCount,
   listPendingSaisies,
+  modifierOnlineOrQueue,
   retirerSaisiesEnAttente,
   saisirStockOnlineOrQueue,
   subscribePendingSaisies,
@@ -22,6 +23,7 @@ import {
   ligneDepuisProduit, ligneLibre, lignesReprises,
 } from './inventaireLignes.js';
 import { avecZones, zoneSuggeree, zonesOf, estMultiZone, sommeParZone } from './zones.js';
+import { appliquerModifLigne, valeursAjout, valeursZones } from './modifsLignes.js';
 import AccueilInventaire from './AccueilInventaire.jsx';
 import ChoixPerimetre from './ChoixPerimetre.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
@@ -107,26 +109,28 @@ const recouvrirSaisiesEnAttente = (liste, saisies) => {
     if (!parLigne.has(s.ligneId)) parLigne.set(s.ligneId, []);
     parLigne.get(s.ligneId).push(s);
   });
+  // Rejouées dans l'ordre des gestes : un produit ajouté hors-ligne puis
+  // compté doit exister avant sa quantité.
   return liste.map((inv) => {
     const parLigne = parInventaire.get(inv.id);
     if (!parLigne) return inv;
-    return recalcInventaire({
-      ...inv,
-      lignes: (inv.lignes || []).map((l) => {
-        const enFile = parLigne.get(l.id);
-        if (!enFile) return { ...l };
-        let ligne = { ...l };
-        enFile.forEach((s) => {
-          if (s.zone) {
-            const parZone = { ...(ligne.parZone || {}), [s.zone]: { q: s.stockReel, le: s.compteLe } };
-            ligne = { ...ligne, parZone, stockReel: sommeParZone(parZone) };
-          } else {
-            ligne = { ...ligne, stockReel: s.stockReel };
-          }
-        });
-        return ligne;
-      }),
+    const enFile = Array.from(parLigne.values()).flat().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    let lignes = (inv.lignes || []).map(l => ({ ...l }));
+    enFile.forEach((s) => {
+      if (s.type === 'modif') {
+        lignes = appliquerModifLigne(lignes, s);
+        return;
+      }
+      lignes = lignes.map((l) => {
+        if (l.id !== s.ligneId) return l;
+        if (s.zone) {
+          const parZone = { ...(l.parZone || {}), [s.zone]: { q: s.stockReel, le: s.compteLe } };
+          return { ...l, parZone, stockReel: sommeParZone(parZone) };
+        }
+        return { ...l, stockReel: s.stockReel };
+      });
     });
+    return recalcInventaire({ ...inv, lignes: lignes.map(l => ({ ...l })) });
   });
 };
 
@@ -1066,40 +1070,87 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
     if (champ) { champ.focus(); champ.select(); }
   };
 
+  // ─── Modification d'un produit, en ligne comme hors-ligne ───
+  // Une opération sur UNE ligne : affichée tout de suite sur l'appareil (même
+  // règle que la RPC, modifsLignes.js), envoyée si le réseau répond, sinon
+  // mise en file et rejouée au retour du réseau. Jamais la réécriture de
+  // l'inventaire entier : elle écraserait ce qui a bougé ailleurs entre-temps.
+  // Rend false quand le serveur a refusé (produit recompté après, supprimé,
+  // inventaire validé) : l'écran est alors relu.
+  // `dejaAffiche` : la ligne est déjà à l'écran (ajout en lot affiché d'un coup).
+  const modifierProduit = async (operation, ligneId, valeurs = {}, { dejaAffiche = false } = {}) => {
+    const faitLe = new Date().toISOString();
+    const updated = dejaAffiche
+      ? invCourant()
+      : majLignesLocal(lignes => appliquerModifLigne(lignes, { operation, ligneId, valeurs, faitLe }));
+    if (!updated || !legacySB) return true;
+    try {
+      const resultat = await modifierOnlineOrQueue({
+        inventaireId: updated.id,
+        ligneId,
+        operation,
+        valeurs,
+        faitLe,
+        userId: user.id,
+        etablissementId: etabId,
+        // Repli tant que la migration 20261106b n'est pas appliquée.
+        sauvegardeHistorique: () => saveInv(updated),
+      });
+      if (resultat?.statut === 'stale') {
+        notifyLegacy('Ce produit a été recompté entre-temps : sa quantité est conservée.', 'warning', { duration: 7000 });
+        reloadRef.current?.();
+        return false;
+      }
+      if (resultat?.statut === 'not_applied') {
+        notifyLegacy('Modification non enregistrée : le produit ou l\'inventaire a changé entre-temps.', 'warning', { duration: 7000 });
+        reloadRef.current?.();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[modifierProduit]', err);
+      notifyLegacy('Modification non enregistrée. ' + messageErreur(err, 'inventaire'), 'error');
+      reloadRef.current?.();
+      return false;
+    }
+  };
+
   const deleteLine = async (lineId) => {
     if (!canGererLignes || !confirmLegacy('Supprimer cette ligne d\'inventaire ?')) return false;
-    await majLignes(lignes => lignes.filter(l => l.id !== lineId));
+    await modifierProduit('suppression', lineId);
     return true;
   };
 
   // ─── « Modifier » d'un produit du comptage ───
   // Nom, catégorie, unité, zones ; le prix seulement pour qui gère les lignes.
   // Un nom déjà porté par un autre produit est refusé (le rapprochement des
-  // factures se fait par le nom).
+  // factures se fait par le nom). Seuls les champs changés partent.
   const modifierLigne = async (ligneId, patch) => {
     if (!canEditLignes) return;
     const lignesAvant = invCourant()?.lignes || [];
+    const avant = lignesAvant.find(l => l.id === ligneId);
     const nom = String(patch.produit || '').trim();
-    if (!nom) return;
+    if (!avant || !nom) return;
     if (lignesAvant.some(l => l.id !== ligneId && cleProduit(l.produit) === cleProduit(nom))) {
       notifyLegacy(`« ${nom} » existe déjà dans cet inventaire.`, 'warning');
       return;
     }
-    await majLignes(lignes => lignes.map(l => {
-      if (l.id !== ligneId) return l;
-      const { zones, prixUnit, ...champs } = patch;
-      let suite = { ...l, ...champs, produit: nom };
-      if (canGererLignes && prixUnit != null) suite.prixUnit = +Number(prixUnit).toFixed(4);
-      if (zones) suite = avecZones(suite, zones);
-      return suite;
-    }));
-    notifyLegacy('Produit modifié.', 'success');
+    const valeurs = {};
+    if (nom !== avant.produit) valeurs.produit = nom;
+    if (patch.categorie !== avant.categorie) valeurs.categorie = patch.categorie;
+    if (patch.unite !== avant.unite) valeurs.unite = patch.unite;
+    if (canGererLignes && patch.prixUnit != null && +Number(patch.prixUnit).toFixed(4) !== Number(avant.prixUnit || 0)) {
+      valeurs.prixUnit = +Number(patch.prixUnit).toFixed(4);
+    }
+    if (patch.zones && patch.zones.join('|') !== zonesOf(avant).join('|')) Object.assign(valeurs, valeursZones(patch.zones));
+    if (!Object.keys(valeurs).length) return;
+    if (await modifierProduit('maj', ligneId, valeurs)) notifyLegacy('Produit modifié.', 'success');
   };
 
   // « Annuler la saisie » : le produit redevient « à compter » (dans une zone
   // seulement pour un produit compté zone par zone). Les quantités encore en
-  // file hors-ligne pour lui sont retirées ; `compteLe` passe à maintenant, si
-  // bien qu'un comptage plus ancien arrivant d'une autre tablette est refusé.
+  // file pour lui sont retirées ; un comptage fait APRÈS le geste, sur une
+  // autre tablette, est gardé (la RPC répond 'stale').
   const annulerSaisie = async (ligneId, zone = '') => {
     if (!canEditLignes) return;
     const inventaireId = invCourant()?.id;
@@ -1111,17 +1162,9 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
       Object.keys(suite).filter(k => k.startsWith(`${ligneId}::`)).forEach(k => { delete suite[k]; });
       return suite;
     });
-    const le = new Date().toISOString();
-    await majLignes(lignes => lignes.map(l => {
-      if (l.id !== ligneId) return l;
-      if (zone && l.parZone) {
-        const { [zone]: _retiree, ...reste } = l.parZone;
-        return { ...l, parZone: reste, stockReel: sommeParZone(reste), compteLe: le };
-      }
-      const { parZone: _toutes, ...sansZones } = l;
-      return { ...sansZones, stockReel: null, compteLe: le };
-    }));
-    notifyLegacy('Saisie annulée : le produit est de nouveau à compter.', 'info');
+    if (await modifierProduit('annuler_saisie', ligneId, zone ? { zone } : {})) {
+      notifyLegacy('Saisie annulée : le produit est de nouveau à compter.', 'info');
+    }
   };
 
   // ─── Mode sélection : suppression et export Excel en lot ───
@@ -1197,7 +1240,12 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
     if (aAjouter.length) {
       const ids = aAjouter.map(l => l.id);
       if (recents) setAjoutsRecents(prev => [...ids.slice().reverse(), ...prev.filter(id => !ids.includes(id))].slice(0, 30));
-      const ecriture = majLignes(lignes => [...lignes, ...aAjouter]);
+      // Toutes à l'écran d'un coup, puis une opération par produit : chacune
+      // part si le réseau répond, sinon attend dans la file hors-ligne.
+      majLignesLocal(lignes => [...lignes, ...aAjouter]);
+      const ecriture = (async () => {
+        for (const l of aAjouter) await modifierProduit('ajout', l.id, valeursAjout(l), { dejaAffiche: true });
+      })();
       if (!enFond) await ecriture;
     }
     return aAjouter;
@@ -1283,7 +1331,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
 
   const changerUnite = async (ligneId, unite) => {
     if (!canEditLignes) return;
-    await majLignes(lignes => lignes.map(l => (l.id === ligneId ? { ...l, unite } : l)));
+    await modifierProduit('maj', ligneId, { unite });
   };
 
   // Range une ou plusieurs lignes dans une liste de zones (vide = retirer).
@@ -1668,9 +1716,10 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
 
       {saisiesEnAttente > 0 && (
         <div style={invs.saisiesAttente} className="no-print">
+          {/* Quantités comptées et modifications de produits : la même file. */}
           {saisiesEnAttente > 1
-            ? `${saisiesEnAttente} quantités comptées en attente de synchronisation. Elles partiront seules au retour du réseau : vous pouvez fermer l'app.`
-            : "1 quantité comptée en attente de synchronisation. Elle partira seule au retour du réseau : vous pouvez fermer l'app."}
+            ? <><span>{saisiesEnAttente}</span> changements en attente de réseau (quantités, produits). Ils partiront seuls au retour du réseau : vous pouvez fermer l&apos;app.</>
+            : <>1 changement en attente de réseau (quantité ou produit). Il partira seul au retour du réseau : vous pouvez fermer l&apos;app.</>}
         </div>
       )}
 
@@ -1742,7 +1791,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
             commitStockReel,
             onAjoutRapide: ajoutRapide,
             onChangerUnite: changerUnite,
-            onChangerZones: (ligneId, zones) => changerZones([ligneId], zones),
+            onChangerZones: (ligneId, zones) => (canEditLignes ? modifierProduit('maj', ligneId, valeursZones(zones)) : null),
             onRangerSansZone: rangerSansZone,
             onModifier: modifierLigne,
             onAnnulerSaisie: annulerSaisie,
