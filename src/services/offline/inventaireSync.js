@@ -66,7 +66,19 @@ function scheduleRetry() {
   }
 }
 
-function appelRpc({ inventaireId, ligneId, stockReel, compteLe, clientUuid }) {
+// `zone` : saisie d'une zone d'un produit rangé dans plusieurs zones (RPC
+// inventaire_saisir_stock_zone, migration 20261106).
+function appelRpc({ inventaireId, ligneId, zone, stockReel, compteLe, clientUuid }) {
+  if (zone) {
+    return supabase.rpc('inventaire_saisir_stock_zone', {
+      p_inventaire_id: inventaireId,
+      p_ligne_id: ligneId,
+      p_zone: zone,
+      p_stock_reel: stockReel,
+      p_compte_le: compteLe,
+      p_client_uuid: clientUuid,
+    });
+  }
   return supabase.rpc('inventaire_saisir_stock', {
     p_inventaire_id: inventaireId,
     p_ligne_id: ligneId,
@@ -79,12 +91,13 @@ function appelRpc({ inventaireId, ligneId, stockReel, compteLe, clientUuid }) {
 // Met une quantité en file, horodatée MAINTENANT. Recompter le même produit
 // avant la synchronisation remplace la saisie en attente (clé = inventaire +
 // ligne) : seule la dernière quantité comptée a un sens.
-export async function queueSaisie({ inventaireId, ligneId, stockReel, produit, unite, userId, etablissementId }) {
+export async function queueSaisie({ inventaireId, ligneId, zone = '', stockReel, produit, unite, userId, etablissementId }) {
   const item = {
-    cle: cleSaisie(inventaireId, ligneId),
+    cle: cleSaisie(inventaireId, ligneId, zone),
     clientUuid: generateUuid(),
     inventaireId,
     ligneId,
+    ...(zone ? { zone } : {}),
     produit: produit || '',
     unite: unite || '',
     stockReel,
@@ -156,13 +169,13 @@ export async function syncPendingSaisies() {
 // est celui de la RPC ('applied', 'duplicate', 'stale', 'not_applied') :
 // l'appelant doit réafficher la valeur serveur sur 'stale' et 'not_applied'.
 export async function saisirStockOnlineOrQueue({
-  inventaireId, ligneId, stockReel, produit, unite, userId, etablissementId, sauvegardeHistorique,
+  inventaireId, ligneId, zone = '', stockReel, produit, unite, userId, etablissementId, sauvegardeHistorique,
 }) {
   if (typeof navigator === 'undefined' || navigator.onLine !== false) {
     const clientUuid = generateUuid();
     try {
       const { data, error } = await withTimeout(appelRpc({
-        inventaireId, ligneId, stockReel, compteLe: new Date().toISOString(), clientUuid,
+        inventaireId, ligneId, zone, stockReel, compteLe: new Date().toISOString(), clientUuid,
       }));
       if (!error) {
         if (getPendingSaisieCount() > 0) syncPendingSaisies();
@@ -178,7 +191,7 @@ export async function saisirStockOnlineOrQueue({
       if (!isNetworkError(err)) throw err;
     }
   }
-  const queued = await queueSaisie({ inventaireId, ligneId, stockReel, produit, unite, userId, etablissementId });
+  const queued = await queueSaisie({ inventaireId, ligneId, zone, stockReel, produit, unite, userId, etablissementId });
   return { mode: 'queued', queued };
 }
 

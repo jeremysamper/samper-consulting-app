@@ -148,7 +148,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
         <>
           <label style={st.zone}>
             Ranger dans
-            <ChoixZone value={zone} onChange={setZone} lignes={lignesExistantes} style={st.zoneSelect} ariaLabel="Zone des produits ajoutés" />
+            <ChoixZone value={zone} onChange={setZone} lignes={lignesExistantes} style={st.zoneSelect} ariaLabel="Zone des produits ajoutés" videLabel="D'après le nom" />
           </label>
           <span style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 160px', minWidth: 0 }}>
             {nbCoches === 0 ? 'Aucun produit coché.' : <><strong style={{ color: 'var(--text)' }}>{nbCoches}</strong> produit{nbCoches > 1 ? 's' : ''} à ajouter</>}

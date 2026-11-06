@@ -2,7 +2,7 @@
 // File d'attente des quantités comptées hors-ligne : stockage IndexedDB.
 //
 // Chaque élément est une quantité relevée sur une ligne d'inventaire :
-//   { cle, clientUuid, inventaireId, ligneId, produit, unite, stockReel,
+//   { cle, clientUuid, inventaireId, ligneId, zone?, produit, unite, stockReel,
 //     compteLe (ISO UTC), userId, etablissementId, createdAt (ms), attempts }
 //
 // Deux clés, deux rôles distincts :
@@ -21,7 +21,9 @@
 
 import { STORES, withStore } from './offlineDb.js';
 
-export const cleSaisie = (inventaireId, ligneId) => `${inventaireId}::${ligneId}`;
+// Un produit rangé dans plusieurs zones se compte zone par zone : une saisie
+// en attente par zone (`zone` vide = la ligne entière, comme avant).
+export const cleSaisie = (inventaireId, ligneId, zone = '') => (zone ? `${inventaireId}::${ligneId}::${zone}` : `${inventaireId}::${ligneId}`);
 
 export const inventaireQueue = {
   // put sert à l'ajout, au remplacement (recomptage) et à la mise à jour

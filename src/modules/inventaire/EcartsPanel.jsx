@@ -5,7 +5,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { dateCH, estCompte } from './inventaireLignes.js';
-import { zoneOf } from './zones.js';
+import { libelleZones, estMultiZone } from './zones.js';
 import ChoixZone from './ChoixZone.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -235,7 +235,7 @@ export default function EcartsPanel({
                 <span style={st.prodName}>{l.produit}{typeBadge}</span>
                 <span style={st.cell}>
                   <span style={st.catTag}>{l.categorie}</span>
-                  {zoneOf(l) && <span style={st.zoneTag}>{zoneOf(l)}</span>}
+                  {libelleZones(l) && <span style={st.zoneTag}>{libelleZones(l)}</span>}
                 </span>
                 <span style={{...st.cell, textAlign:'right'}}>{l.stockTheo} {l.unite}</span>
                 <span style={{...st.cellBold, textAlign:'right'}}>
@@ -248,6 +248,10 @@ export default function EcartsPanel({
                         type="text"
                         inputMode="decimal"
                         aria-label={`Stock réel - ${l.produit} (${l.unite})`}
+                        // Produit rangé dans plusieurs zones : compté zone par zone dans « Je compte »,
+                        // la ligne affiche leur somme.
+                        readOnly={estMultiZone(l)}
+                        title={estMultiZone(l) ? 'Compté zone par zone dans « Je compte »' : undefined}
                         ref={el => { if (el) stockRefs.current[l.id] = el; else delete stockRefs.current[l.id]; }}
                         value={stockDraft[l.id] ?? String(l.stockReel ?? '')}
                         onChange={e => setStockDraft(d => ({ ...d, [l.id]: e.target.value }))}

@@ -23,7 +23,7 @@ import {
   libelleType, periodeInventaire, dansPeriode, statutsDocuments,
   construireContexteRapprochement, rapprocherLigneDoc, quantiteEnUniteInventaire,
 } from './achatsLogic.js';
-import { zoneOf, ordreZones, SANS_ZONE } from './zones.js';
+import { libelleZones, ordreZones, SANS_ZONE } from './zones.js';
 import { estMaison, sourceMaison } from './produitsMaison.js';
 
 const jjmm = (iso) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}` : '');
@@ -135,7 +135,7 @@ export function construireEtatInventaire({
     const valeurStock = qteRecue ? puMoyen * arrondi(qteRecue - sortie) : null;
 
     return {
-      zone: zoneOf(l),
+      zone: libelleZones(l),
       categorie: l.categorie || 'Autres',
       produit: l.produit,
       conditionnement,

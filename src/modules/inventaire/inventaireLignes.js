@@ -99,11 +99,18 @@ export const ligneLibre = (nom, { categorie = 'Autres', unite = 'pcs', prixUnit 
 // Lignes d'un nouvel inventaire repris du précédent : même liste de produits,
 // quantité précédente gardée en stock théorique et en indication, stock réel
 // à recompter.
-export const lignesReprises = (lignesPrecedentes) => (lignesPrecedentes || []).map(l => ({
-  ...l,
-  id: nouvelIdLigne(),
-  stockTheo: Number(l.stockReel) || 0,
-  precedent: estCompte(l) ? Number(l.stockReel) : null,
-  stockReel: null,
-  compteLe: undefined,
-}));
+// Un produit compté zone par zone garde la quantité de chaque zone en indication.
+export const lignesReprises = (lignesPrecedentes) => (lignesPrecedentes || []).map(({ parZone, precedentParZone: _ancien, ...l }) => {
+  const parZonePrecedent = parZone
+    ? Object.fromEntries(Object.entries(parZone).filter(([, v]) => v && v.q != null).map(([z, v]) => [z, Number(v.q)]))
+    : null;
+  return {
+    ...l,
+    id: nouvelIdLigne(),
+    stockTheo: Number(l.stockReel) || 0,
+    precedent: estCompte(l) ? Number(l.stockReel) : null,
+    ...(parZonePrecedent && Object.keys(parZonePrecedent).length ? { precedentParZone: parZonePrecedent } : {}),
+    stockReel: null,
+    compteLe: undefined,
+  };
+});
