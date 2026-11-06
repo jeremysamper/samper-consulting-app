@@ -36,7 +36,7 @@ const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument |
 export default function AccueilInventaire({
   vue = 'inventaire', perimetreActif, perimetres, pilesParPerimetre, inv, docs,
   canManage, canRegler, canImportXlsx,
-  onJeCompte, onImport, onReglement, onEcheances, onAnalyses, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
+  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onAnalyses, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
 }) {
   const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | 'gerer' | null
   const fermer = React.useCallback(() => setFenetre(null), []);
@@ -132,7 +132,7 @@ export default function AccueilInventaire({
           <span style={{ flex: '1 1 240px', minWidth: 0 }}>
             <span>{aCompleter}</span> {aCompleter > 1 ? 'documents à compléter' : 'document à compléter'} : la lecture n’a pas tout trouvé (fournisseur, date ou montant TTC).
           </span>
-          <Btn small variant="ghost" onClick={() => onImport(facturesACompleter ? 'facture' : 'bon_livraison')}>Compléter</Btn>
+          <Btn small variant="ghost" onClick={() => (onCompleter ? onCompleter() : onImport(facturesACompleter ? 'facture' : 'bon_livraison'))}>Compléter</Btn>
         </div>
       )}
 

@@ -538,14 +538,21 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
     setEcran('verification');
   };
 
-  // Tuile « Livraison reçue » ou « Facture reçue » : les documents encore à
-  // compléter passent d'abord par « Vérifier la lecture », puis l'import.
+  // Tuile « Livraison reçue » ou « Facture reçue » : l'import, directement.
+  // Les documents encore à compléter ne passent plus d'abord : une pièce
+  // impossible à compléter (pages manquantes, papier perdu) bloquait chaque
+  // nouvel import. Ils restent signalés sur l'accueil (bandeau « Compléter »).
   const ouvrirImport = (type) => {
     setImportType(type);
     setImportOuvert(true);
+    setEcran('import');
+  };
+
+  // Bandeau « N documents à compléter » de l'accueil : la file de vérification,
+  // puis retour à l'accueil.
+  const ouvrirCompletion = () => {
     const enAttente = idsACompleter();
-    if (enAttente.length) ouvrirVerification(enAttente, 'import');
-    else setEcran('import');
+    if (enAttente.length) ouvrirVerification(enAttente, ECRAN_ACCUEIL);
   };
 
   // Un document vient d'être lu et enregistré (pièce puis upsert) : il entre
@@ -1626,6 +1633,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
           canImportXlsx={canImportXlsx}
           onJeCompte={ouvrirJeCompte}
           onImport={ouvrirImport}
+          onCompleter={ouvrirCompletion}
           onReglement={() => setEcran('reglement')}
           onEcheances={() => setEcran('echeances')}
           onAnalyses={() => setEcran('analyses')}

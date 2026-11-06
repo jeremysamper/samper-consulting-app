@@ -358,11 +358,13 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
 // tout document sans fournisseur ou sans date, et une pièce dont HT, TTC et
 // taux de TVA lus ne s'accordent pas (tvaAchats.js). Il reste signalé (accueil
 // du module, écran « Vérifier la lecture », liste des documents) jusqu'à ce
-// qu'on le complète ou qu'on corrige le taux.
-export const estACompleter = (d) => (d.typeDocument === 'facture' && d.totalTTC == null)
+// qu'on le complète ou qu'on corrige le taux. Un document exclu à la main
+// (doublon, pièce mise de côté) n'est plus à compléter.
+export const estACompleter = (d) => !d.exclu && (
+  (d.typeDocument === 'facture' && d.totalTTC == null)
   || !String(d.fournisseurNom || '').trim()
   || !d.dateDocument
-  || tvaIncoherente(d);
+  || tvaIncoherente(d));
 
 // ── Rattachement : produit créé depuis une ligne lue, décision propagée ──
 
