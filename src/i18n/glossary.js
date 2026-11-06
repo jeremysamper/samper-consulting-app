@@ -2525,6 +2525,8 @@ export const UI_GLOSSARY = {
   'Document enregistré.': 'Document saved.',
   'Document suivant': 'Next document',
   'Déposer d’autres documents': 'Add more documents',
+  'Continuer les photos': 'Keep taking photos',
+  'Compléter plus tard': 'Complete later',
   'Appliquer les prix lus': 'Apply the prices read',
   'Rien à vérifier.': 'Nothing to check.',
   'Date du document': 'Document date',

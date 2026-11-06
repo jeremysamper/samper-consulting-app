@@ -16,6 +16,8 @@ import { dateCH } from './inventaireLignes.js';
 // facture) : « Enregistrer » reste inactif tant qu'ils sont vides. Le document
 // et sa photo sont déjà en base (pièce puis upsert, à l'import) : quitter
 // l'écran ne perd rien, le document reste signalé « à compléter ».
+// Tant qu'un champ manque, « Continuer les photos » (depuis l'import) ou
+// « Compléter plus tard » laisse le document à compléter sans bloquer la suite.
 //
 // Après « Enregistrer » : les lignes à rattacher de ce document, et, pour qui
 // gère l'inventaire, les prix lus reportés sur les produits rattachés.
@@ -36,7 +38,7 @@ const DATE_VALIDE = /^20\d{2}-\d{2}-\d{2}$/;
 export default function VerifierLecture({
   doc, position, total, libelleSuivant, perimetres, fournisseurs, avecPiece, etabId,
   canRegler, canManage, canCreer, rapprochement, catalogue, docsRef, enregistrerDoc, onAjouterLignes, onAppliquerPrix,
-  onEnregistrer, onRetour, onSuivant, onTerminer,
+  onEnregistrer, onRetour, onSuivant, onTerminer, onPlusTard, libellePlusTard,
 }) {
   const facture = doc.typeDocument === 'facture';
   const [v, setV] = React.useState(() => ({
@@ -201,6 +203,9 @@ export default function VerifierLecture({
                   ? <>À saisir avant d’enregistrer : {manque.map((m, i) => <React.Fragment key={m}>{i ? ', ' : ''}<span>{m}</span></React.Fragment>)}. Le document et sa photo sont déjà gardés.</>
                   : illisible ? 'Montant illisible : écrivez par exemple 454.50.' : 'Le document et sa photo sont déjà gardés.'}
               </span>
+              {onPlusTard && (manque.length > 0 || illisible) && (
+                <Btn variant="ghost" onClick={onPlusTard} disabled={busy}>{libellePlusTard}</Btn>
+              )}
               <Btn variant="primary" onClick={enregistrer} disabled={!peutEnregistrer}>{busy ? 'Enregistrement…' : 'Enregistrer'}</Btn>
             </div>
           </>

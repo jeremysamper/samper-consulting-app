@@ -549,6 +549,17 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
     if (docAVerifier && estACompleter(docAVerifier)) notifyLegacy('Document gardé, à compléter plus tard.', 'info');
     retourAccueil();
   };
+  // « Continuer les photos » / « Compléter plus tard » : un champ non lu ne
+  // bloque plus la suite. Depuis l'import, retour direct aux photos (les
+  // documents de la file restent à compléter, repris à la prochaine ouverture
+  // d'une tuile d'import) ; ailleurs, document suivant.
+  const verifierPlusTard = () => {
+    notifyLegacy('Document gardé, à compléter plus tard.', 'info');
+    if (suiteVerification === 'import' && importOuvert) {
+      setAVerifier([]);
+      setEcran('import');
+    } else passerAuSuivant();
+  };
 
   // Document entier réécrit (lignes rattachées, type, périmètre) : jamais
   // regle_*, jamais le TTC ni l'échéance (upsertAchatsDocument les ignore).
@@ -1670,6 +1681,8 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
           onRetour={quitterVerification}
           onSuivant={passerAuSuivant}
           onTerminer={retourAccueil}
+          onPlusTard={verifierPlusTard}
+          libellePlusTard={suiteVerification === 'import' ? 'Continuer les photos' : 'Compléter plus tard'}
         />
       ) : (
         <EcranTache titre="Vérifier la lecture" onRetour={retourAccueil}>

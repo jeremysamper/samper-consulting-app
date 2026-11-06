@@ -2506,6 +2506,8 @@ export const UI_GLOSSARY_ES = {
   'Document enregistré.': 'Documento guardado.',
   'Document suivant': 'Documento siguiente',
   'Déposer d’autres documents': 'Añadir más documentos',
+  'Continuer les photos': 'Seguir haciendo fotos',
+  'Compléter plus tard': 'Completar más tarde',
   'Appliquer les prix lus': 'Aplicar los precios leídos',
   'Rien à vérifier.': 'Nada que comprobar.',
   'Date du document': 'Fecha del documento',
