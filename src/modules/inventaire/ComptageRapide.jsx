@@ -4,6 +4,7 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 import { estCompte, UNITES_INVENTAIRE } from './inventaireLignes.js';
 import { zoneOf, zonesOf, estMultiZone, quantiteZone, zonesDesLignes, zoneSuggeree, SANS_ZONE } from './zones.js';
 import CasesZones from './CasesZones.jsx';
+import ModifierProduit from './ModifierProduit.jsx';
 
 // Vue « Comptage » : ce qu'on fait vraiment en chambre froide, et rien d'autre.
 //
@@ -42,6 +43,7 @@ export default function ComptageRapide({
   lignes, canEdit, stockDraft, setStockDraft, stockRefs, commitStockReel,
   onAjoutRapide, onChangerUnite, onChangerZones, onRangerSansZone, onReprendreRestants, catalogue,
   ajoutsRecents = [], focusDemande = null, onFocusFait,
+  onModifier, onAnnulerSaisie, onSupprimer, canGerer = false,
 }) {
   const [filtre, setFiltre] = React.useState('tous');
   // 'toutes', une zone, ou SANS_ZONE.
@@ -52,6 +54,8 @@ export default function ComptageRapide({
   const [recherche, setRecherche] = React.useState('');
   const [ajout, setAjout] = React.useState('');
   const [focusApres, setFocusApres] = React.useState(null);
+  // Produit ouvert dans « Modifier » : { ligneId, zone } (zone de la carte).
+  const [edition, setEdition] = React.useState(null);
   const ajoutRef = React.useRef(null);
 
   const total = lignes.length;
@@ -162,7 +166,14 @@ export default function ComptageRapide({
     return (
       <div key={cle} style={{ ...st.carte, ...(compte ? st.carteComptee : {}), ...(recente ? st.carteRecente : {}) }}>
         <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-          <div data-no-translate style={st.nom}>{l.produit}</div>
+          <div style={st.nomLigne}>
+            <div data-no-translate style={st.nom}>{l.produit}</div>
+            {canEdit && onModifier && (
+              <button type="button" style={st.modifierBtn} onClick={() => setEdition({ ligneId: l.id, zone: multi ? zone : '' })} aria-label={`Modifier - ${l.produit}`}>
+                Modifier
+              </button>
+            )}
+          </div>
           <div style={st.indication}>
             <span>
               {precedent != null
@@ -239,8 +250,23 @@ export default function ComptageRapide({
     );
   };
 
+  const ligneEditee = edition ? parId.get(edition.ligneId) : null;
+
   return (
     <div style={st.root}>
+      {ligneEditee && (
+        <ModifierProduit
+          key={ligneEditee.id}
+          ligne={ligneEditee}
+          zone={edition.zone}
+          lignes={lignes}
+          canGerer={canGerer}
+          onEnregistrer={(patch) => onModifier(ligneEditee.id, patch)}
+          onAnnulerSaisie={(z) => onAnnulerSaisie(ligneEditee.id, z)}
+          onSupprimer={() => onSupprimer(ligneEditee.id)}
+          onClose={() => setEdition(null)}
+        />
+      )}
       <div style={st.progression}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, color: 'var(--text)' }}>
@@ -431,7 +457,10 @@ const st = {
   carteRecente: { borderColor: 'var(--accent)' },
   // Les cases sur toute la largeur de la carte, sous le nom et le champ.
   casesLigne: { flexBasis: '100%', minWidth: 0 },
-  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
+  nomLigne: { display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 },
+  nom: { flex: '1 1 auto', minWidth: 0, fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
+  // Lien discret, cible tactile de 32 px sans agrandir la carte.
+  modifierBtn: { flexShrink: 0, background: 'none', border: 'none', padding: '0 4px', minHeight: 32, marginTop: -7, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   indication: { fontSize: 11, color: 'var(--text2)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' },
   egal: { width: 40, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text2)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },

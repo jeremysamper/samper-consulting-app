@@ -219,6 +219,21 @@ export async function listPendingSaisies(inventaireId) {
   }
 }
 
+// « Annuler la saisie » : les quantités encore en file pour cette ligne (ou
+// cette zone de la ligne) sont retirées, sinon elles reviendraient au
+// prochain rejeu. Sans zone : toutes les saisies de la ligne.
+export async function retirerSaisiesEnAttente(inventaireId, ligneId, zone = '') {
+  try {
+    const items = await inventaireQueue.list();
+    const aRetirer = items.filter((item) => item.inventaireId === inventaireId && item.ligneId === ligneId
+      && (!zone || item.zone === zone));
+    for (const item of aRetirer) await inventaireQueue.remove(item.cle);
+  } catch {
+    // File illisible : rien à retirer.
+  }
+  await refreshPendingCount();
+}
+
 // Démarre les déclencheurs de rejeu. Appelé une fois au boot de l'app,
 // sans effet aux appels suivants.
 export function startInventaireSync() {

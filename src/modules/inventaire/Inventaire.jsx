@@ -12,6 +12,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import {
   getPendingSaisieCount,
   listPendingSaisies,
+  retirerSaisiesEnAttente,
   saisirStockOnlineOrQueue,
   subscribePendingSaisies,
 } from '../../services/offline/inventaireSync.js';
@@ -1066,8 +1067,61 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
   };
 
   const deleteLine = async (lineId) => {
-    if (!canGererLignes || !confirmLegacy('Supprimer cette ligne d\'inventaire ?')) return;
+    if (!canGererLignes || !confirmLegacy('Supprimer cette ligne d\'inventaire ?')) return false;
     await majLignes(lignes => lignes.filter(l => l.id !== lineId));
+    return true;
+  };
+
+  // ─── « Modifier » d'un produit du comptage ───
+  // Nom, catégorie, unité, zones ; le prix seulement pour qui gère les lignes.
+  // Un nom déjà porté par un autre produit est refusé (le rapprochement des
+  // factures se fait par le nom).
+  const modifierLigne = async (ligneId, patch) => {
+    if (!canEditLignes) return;
+    const lignesAvant = invCourant()?.lignes || [];
+    const nom = String(patch.produit || '').trim();
+    if (!nom) return;
+    if (lignesAvant.some(l => l.id !== ligneId && cleProduit(l.produit) === cleProduit(nom))) {
+      notifyLegacy(`« ${nom} » existe déjà dans cet inventaire.`, 'warning');
+      return;
+    }
+    await majLignes(lignes => lignes.map(l => {
+      if (l.id !== ligneId) return l;
+      const { zones, prixUnit, ...champs } = patch;
+      let suite = { ...l, ...champs, produit: nom };
+      if (canGererLignes && prixUnit != null) suite.prixUnit = +Number(prixUnit).toFixed(4);
+      if (zones) suite = avecZones(suite, zones);
+      return suite;
+    }));
+    notifyLegacy('Produit modifié.', 'success');
+  };
+
+  // « Annuler la saisie » : le produit redevient « à compter » (dans une zone
+  // seulement pour un produit compté zone par zone). Les quantités encore en
+  // file hors-ligne pour lui sont retirées ; `compteLe` passe à maintenant, si
+  // bien qu'un comptage plus ancien arrivant d'une autre tablette est refusé.
+  const annulerSaisie = async (ligneId, zone = '') => {
+    if (!canEditLignes) return;
+    const inventaireId = invCourant()?.id;
+    if (!inventaireId) return;
+    await retirerSaisiesEnAttente(inventaireId, ligneId, zone);
+    setStockDraft(prev => {
+      const suite = { ...prev };
+      delete suite[ligneId];
+      Object.keys(suite).filter(k => k.startsWith(`${ligneId}::`)).forEach(k => { delete suite[k]; });
+      return suite;
+    });
+    const le = new Date().toISOString();
+    await majLignes(lignes => lignes.map(l => {
+      if (l.id !== ligneId) return l;
+      if (zone && l.parZone) {
+        const { [zone]: _retiree, ...reste } = l.parZone;
+        return { ...l, parZone: reste, stockReel: sommeParZone(reste), compteLe: le };
+      }
+      const { parZone: _toutes, ...sansZones } = l;
+      return { ...sansZones, stockReel: null, compteLe: le };
+    }));
+    notifyLegacy('Saisie annulée : le produit est de nouveau à compter.', 'info');
   };
 
   // ─── Mode sélection : suppression et export Excel en lot ───
@@ -1690,6 +1744,10 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
             onChangerUnite: changerUnite,
             onChangerZones: (ligneId, zones) => changerZones([ligneId], zones),
             onRangerSansZone: rangerSansZone,
+            onModifier: modifierLigne,
+            onAnnulerSaisie: annulerSaisie,
+            onSupprimer: deleteLine,
+            canGerer: canGererLignes,
             onReprendreRestants: reprendreRestants,
             catalogue,
             ajoutsRecents,
