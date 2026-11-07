@@ -1,4 +1,4 @@
-# Prix de l'inventaire Cuisine du Rucher : APPLIQUÉ EN PROD le 07.11.2026
+# Prix des inventaires Cuisine et Boissons du Rucher : APPLIQUÉ EN PROD le 07.11.2026
 
 Inventaire `inv-1792997751713` (Le Rucher d'Evolène, périmètre Cuisine, daté du 26.10.2026, compté du 05 au 07.11, validé le 07.11 à 18 h 16).
 
@@ -80,8 +80,21 @@ Fleurs comestibles : unité passée de pcs (10.02) à g (26.10) sans conversion 
 - Les prix estimés et les deux prix de la facture Brumann, à remplacer par les factures quand elles arrivent.
 - L'inventaire Cuisine du 02.10 garde Poulet émincé à 0 (3 kg) : sa sortie sur la période est valorisée à 0 dans l'état. Non modifié, inventaire déjà clos.
 
+## Boissons (même soir, `03-boissons.sql`)
+
+Inventaires `inv-1792997740029` (Boissons du 26.10, validé le 02.11) et `inv-1793627029424` (Boissons du 02.11, en cours, une seule ligne comptée). Mêmes prix par nom de produit sur les deux.
+
+- 26.10 : 106 lignes complétées, valeur 15 599.87 puis 17 813.61 CHF. 02.11 : 99 lignes complétées, valeur inchangée (229.65, rien d'autre de compté).
+- Relu : 0 ligne sans prix, 0 autre champ modifié. Sauvegarde `sauvegarde.inventaires_rucher_boissons_prix_20261107`.
+- Facture Fauchère (prix au carton divisé par le nombre de bouteilles) : Valais 33 cl verre 1.01, Valais PET 33 cl 1.15, Iris 1 L 3.90 (abricot, poire, pomme), Iris 25 cl 1.73 (nectar d'abricot, appliqué aux cinq Iris), Opaline 1.95 (sureau, appliqué aux quatre), Arkina 33 cl 0.99, Coca et Coca zéro 1.50, Yodeli 1.16. Facture Cuendet : Café carioca 24.20/kg.
+- Rucher : chaque thé ou tisane en vrac (30 références Aux 5T) à 10.38 le paquet, prix de « Thés en vrac » de l'inventaire Cuisine.
+- Catalogue : Sirop grenadine 6.20 (Morand, 1 L).
+- Estimé : Arkina 1 L 1.12, Arkina 50 cl 1.10, Valais gazeuse 1 L 1.40, Alpinesse 1.60, Cola craft et zéro 1.60, Mate 1.60, Sinalco 1.25, Urban kombucha 2.20, Whitefrontier 2.20, Hydromel 11.00, Sachets de thé vides 0.06 pièce.
+- Produits maison, tous à 0 en stock : Base 2.00/kg, Cordial 5.00/kg, Premix 1.50/kg, Infusion 1.00/kg (forfaits, à recalculer par fiche si un stock apparaît).
+
 ## Fichiers
 
-- `01-maj-prix.sql` : la mise à jour telle que jouée (empreinte md5 de la liste de prix, garde sur `updated_at`).
+- `01-maj-prix.sql` : la mise à jour Cuisine telle que jouée (empreinte md5 de la liste de prix, garde sur `updated_at`).
 - `02-verification.sql` : relecture.
-- `99-rollback.sql` : remet la ligne sauvegardée.
+- `03-boissons.sql` : la mise à jour Boissons.
+- `99-rollback.sql` : remet les lignes sauvegardées (Cuisine, puis Boissons).
