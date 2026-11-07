@@ -23,3 +23,9 @@ update public.inventaires i
    set lignes = s.lignes, valeur_totale = s.valeur_totale
   from sauvegarde.inventaires_rucher_brioche_20261107 s
  where i.id = s.id and i.id in ('inv-1790946512915', 'inv-1792997751713', 'inv-1794074436242');
+
+-- Miel et confitures (06-miel-confitures.sql) : à jouer en premier si on remonte tout.
+update public.inventaires i
+   set lignes = s.lignes, valeur_totale = s.valeur_totale
+  from sauvegarde.inventaires_rucher_miel_confitures_20261107 s
+ where i.id = s.id and i.id in ('inv-1790946512915', 'inv-1792997751713', 'inv-1794074436242');

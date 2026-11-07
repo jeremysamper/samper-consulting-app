@@ -103,6 +103,15 @@ Relevé par Jérémy après la première passe : des poids et des nombres de pi�
 - Valeurs : 02.10 de 5 368.48 à 3 847.43 CHF après la brioche (l'inventaire clos du 02.10 était surévalué de 1 521.05 CHF) ; 26.10 de 6 264.39 à 6 069.91 CHF ; 07.11 (en cours) prix seulement.
 - Relu : 6 lignes changées par inventaire, aucun autre champ. Sauvegarde `sauvegarde.inventaires_rucher_pieces_20261107`.
 
+## Quantités revues avec Jérémy (même soir, `06-miel-confitures.sql`)
+
+Revue des quantités qui paraissaient énormes pour un établissement de 14 petits déjeuners au plus. Confirmés tels quels : foin 16 kg, pickles 10.5 kg, café 17 kg, thés, viennoiseries, pâte feuilletée et le reste de la liste.
+
+- Miel : 27 kg au lieu de 34.
+- Confitures maison : 22 kg au lieu de 33.5, répartis au prorata du comptage (rhubarbe 7.9, fruits des bois 7.5, abricot 6.6).
+- Prix des confitures recalculés depuis les fiches : abricot 4.87, rhubarbe 3.78, fruits des bois 6.36 CHF/kg (l'app donnait 8.44, 8.86, 7.99). Aussi appliqués au 02.10 et au 07.11 (stock théorique du 07.11 repris des nouveaux chiffres).
+- Valeurs : Cuisine 26.10 à 5 818.77 CHF ; 02.10 à 3 806.29 CHF (surévalué de 1 562.19 CHF au total d'après les corrections de la soirée).
+
 ## Fichiers
 
 - `01-maj-prix.sql` : la mise à jour Cuisine telle que jouée (empreinte md5 de la liste de prix, garde sur `updated_at`).
@@ -110,4 +119,5 @@ Relevé par Jérémy après la première passe : des poids et des nombres de pi�
 - `03-boissons.sql` : la mise à jour Boissons.
 - `04-pieces-et-poids.sql` : pièces, poids et prix des produits maison (Cuisine 02.10, 26.10, 07.11).
 - `05-brioche-safranee.sql` : brioche safranée au kilo.
+- `06-miel-confitures.sql` : miel, confitures maison (quantités et prix).
 - `99-rollback.sql` : remet les lignes sauvegardées (Cuisine, puis Boissons).
