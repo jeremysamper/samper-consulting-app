@@ -8,10 +8,13 @@ Aucune des 6 commandes n'était en base, sur aucun périmètre ni établissement
 
 ## Saisie
 
-Six documents `bon_commande`, périmètre Cuisine, fournisseur « Culturefood frigemo SA », date = date de livraison, numéro = numéro de commande, total HT = total du bon (somme des lignes vérifiée égale, document par document). Source `pdf`, nom du fichier dans `nom_fichier`. Les PDF ne sont pas joints comme pièces (le stockage ne s'écrit pas par SQL).
+Neuf documents (six, puis trois remis dans la soirée : PDF (6), (7) et (8)),  `bon_commande`, périmètre Cuisine, fournisseur « Culturefood frigemo SA », date = date de livraison, numéro = numéro de commande, total HT = total du bon (somme des lignes vérifiée égale, document par document). Source `pdf`, nom du fichier dans `nom_fichier`. Les PDF ne sont pas joints comme pièces (le stockage ne s'écrit pas par SQL).
 
 | Commande | Commandée le | Livrée le | Lignes | Total HT |
 |---|---|---|---|---|
+| 0006740193 | 08.10 | 09.10 | 3 | 56.25 |
+| 0006740191 | 08.10 | 10.10 | 1 | 10.23 |
+| 0006749277 | 10.10 | 12.10 | 3 | 121.60 |
 | 0006766175 | 15.10 | 16.10 | 18 | 384.06 |
 | 0006774441 | 18.10 | 19.10 | 6 | 44.60 |
 | 0006774438 | 18.10 | 22.10 | 3 | 146.76 |
@@ -25,11 +28,14 @@ Deux lignes marquées à vérifier (champ `issues`) : Kaki (bon : 1 carton à 4.
 
 ## Non saisi
 
+`commande-...(9).pdf` : même commande que (4), 0006766175, déjà saisie. Ligne « Bananen Basic Isobag 12kg » de la commande 0006749277 : 0 kg, prix s.d., 0.00, non livrée, non reprise.
+
+
 `culturefood-frigemo-sa_2026-11-07.pdf` et sa copie `(1)` (fichiers identiques) : liste imprimée le 07.11 sans numéro de commande ni date de livraison, total 337.17. Ce n'est pas une commande rattachable.
 
 ## Effet sur l'état d'inventaire
 
-Période Cuisine de l'inventaire du 26.10 : du 03.10 au 26.10. Les livraisons des 16, 19 et 22.10 y entrent ; celles des 28.10 et 06.11 comptent pour l'inventaire Cuisine suivant (l'inventaire est daté du 26.10 alors que le comptage a eu lieu du 05 au 07.11).
+Période Cuisine de l'inventaire du 26.10 : du 03.10 au 26.10. Les livraisons des 09, 10, 12, 16, 19 et 22.10 y entrent ; celles des 28.10 et 06.11 comptent pour l'inventaire Cuisine suivant (l'inventaire est daté du 26.10 alors que le comptage a eu lieu du 05 au 07.11).
 
 ## Rollback
 
