@@ -92,9 +92,21 @@ Inventaires `inv-1792997740029` (Boissons du 26.10, validé le 02.11) et `inv-17
 - Estimé : Arkina 1 L 1.12, Arkina 50 cl 1.10, Valais gazeuse 1 L 1.40, Alpinesse 1.60, Cola craft et zéro 1.60, Mate 1.60, Sinalco 1.25, Urban kombucha 2.20, Whitefrontier 2.20, Hydromel 11.00, Sachets de thé vides 0.06 pièce.
 - Produits maison, tous à 0 en stock : Base 2.00/kg, Cordial 5.00/kg, Premix 1.50/kg, Infusion 1.00/kg (forfaits, à recalculer par fiche si un stock apparaît).
 
+## Pièces et poids des produits maison (même soir, `04-pieces-et-poids.sql`)
+
+Relevé par Jérémy après la première passe : des poids et des nombres de pièces qui n'ont rien à voir.
+
+- **Financiers et madeleines** : comptés à la pièce le 02.10 (50 et 100), au kilo le 26.10 (5 et 3.5). Le prix au kilo était appliqué aux pièces le 02.10 (100 madeleines à 9.48 CHF pièce = 947.73 CHF). Le 02.10 est ramené en kg avec le poids de pièce de la fiche (financier 30.5 g, madeleine 17.4 g : 1.525 et 1.738 kg). Au 26.10, stock théorique et précédent ramenés en kg aussi.
+- **Prix recalculés depuis les fiches**, ingrédients aux prix du Rucher : Financier 12.51/kg (le coût de l'app oubliait beurre noisette et pignons d'arole), Madeleine 7.33/kg, Pancake 0.108 la pièce (fiche de 30 pancakes ; l'app donnait 3.59).
+- **Cakes à la pièce = un cake entier** (moule de 20 cm, environ 1 kg de pâte d'après les fiches du Rucher) : Cake citron 5.63, Carrot cake 7.03, Cake au safran et amande 12.38 (la fiche fait un seul cake ; safran compté 12 CHF le gramme). L'app donnait un prix par tranche, faux lui aussi. Les quatre cakes non liés (chocolat 10.70, amandes 9.40, marbré 8.00, vanille 7.40) étaient déjà au cake entier de 1 kg.
+- **Brioche safranée** gardée à 4.37 la pièce (fiche de 2 brioches de 600 g). Si une « pièce » est une petite brioche individuelle, ce prix est trop haut : à confirmer.
+- Valeurs : 02.10 de 5 368.48 à 4 017.84 CHF (l'inventaire clos du 02.10 était surévalué de 1 350.64 CHF) ; 26.10 de 6 264.39 à 6 069.91 CHF ; 07.11 (en cours) prix seulement.
+- Relu : 6 lignes changées par inventaire, aucun autre champ. Sauvegarde `sauvegarde.inventaires_rucher_pieces_20261107`.
+
 ## Fichiers
 
 - `01-maj-prix.sql` : la mise à jour Cuisine telle que jouée (empreinte md5 de la liste de prix, garde sur `updated_at`).
 - `02-verification.sql` : relecture.
 - `03-boissons.sql` : la mise à jour Boissons.
+- `04-pieces-et-poids.sql` : pièces, poids et prix des produits maison (Cuisine 02.10, 26.10, 07.11).
 - `99-rollback.sql` : remet les lignes sauvegardées (Cuisine, puis Boissons).
