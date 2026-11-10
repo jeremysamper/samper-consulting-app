@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Hourglass, Plus, Send } from 'lucide-react';
+import { Check, ChevronDown, Hourglass, Plus, Send } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
@@ -7,6 +7,8 @@ import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
 import BoutonFiche from './BoutonFiche.jsx';
+import CorrigerClient from './CorrigerClient.jsx';
+import { allergiesDe } from './clients.js';
 import { libelleOption } from './options.js';
 import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
 import { ID_TOUT, rangerArticles, sousGroupesAutres } from './categories.js';
@@ -34,18 +36,36 @@ import { useHauteurRestante, useLargeur, useRetraitBas } from './mesures.js';
 // Les noms de produits, de catégories, de modes et de tables sont des
 // données : data-no-translate. Chaque nombre vit dans son propre noeud
 // (traduction du DOM).
+//
+// v5 : le ticket d'une table sait qui est assis. Un bandeau en tête dit le
+// nom, les couverts et les allergies du client ; « Corriger » ouvre la feuille
+// des corrections du service (nom, couverts, arrivé, no-show, autre
+// réservation), toutes par la RPC caisse_corriger_reservation. Une vente
+// directe reste anonyme : pas de bandeau.
+// Quand la maison vend plus d'une carte, un sélecteur discret restreint la
+// grille à une seule ; il s'ouvre sur « Toutes les cartes » (aucun geste de
+// plus pour qui ne s'en sert pas) et le choix tient le temps du ticket. Un
+// produit porté par deux cartes n'apparaît qu'une fois.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 const LARGEUR_DEUX_COLONNES = 700;
 const ID_PLUS = '_plus';
+const LIBELLES_QUI = { reservation: 'Réservation', passage: 'Client de passage', compte: 'Compte client' };
 
 export default function TicketEcran({
   ticket, articles, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
   peutHabiller = false, onBoutonsChange, onOuvrirReglages,
   ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
+  cartes = [], reservation = null, reservations = [], onReservationsChange,
 }) {
   const [recherche, setRecherche] = React.useState('');
+  // Carte choisie pour ce ticket ; null = toutes les cartes en vente.
+  const [carteChoisie, setCarteChoisie] = React.useState(null);
+  const [cartesOuvert, setCartesOuvert] = React.useState(false);
+  // Feuille « Corriger » du bandeau client.
+  const [corrigerOuvert, setCorrigerOuvert] = React.useState(false);
+  const [correctionEnCours, setCorrectionEnCours] = React.useState(false);
   // Mode de saisie : la suite où tombent les prochains produits.
   const [modeActif, setModeActif] = React.useState(1);
   // Modes ouverts par le « + » pendant ce ticket, au-delà de ceux réglés.
@@ -113,10 +133,18 @@ export default function TicketEcran({
     return () => { vivant = false; };
   }, [etabId, ficheLigneId]);
 
+  // ── Carte choisie : une carte décochée ou archivée pendant le ticket
+  // retombe sur « Toutes les cartes ». ──
+  const carte = cartes.find((c) => c.id === carteChoisie) || null;
+  const articlesCarte = React.useMemo(
+    () => (carte ? articles.filter((a) => (a.carteIds || []).includes(carte.id)) : articles),
+    [articles, carte],
+  );
+
   // ── Rangement des produits dans les catégories de caisse ──
   const rangement = React.useMemo(
-    () => rangerArticles({ articles, boutons, categoriesMaison: categories }),
-    [articles, boutons, categories],
+    () => rangerArticles({ articles: articlesCarte, boutons, categoriesMaison: categories }),
+    [articlesCarte, boutons, categories],
   );
   // « Tout » par défaut : chaque produit reste à un tap, comme avant les
   // onglets. Une maison peut régler l'ouverture sur sa première catégorie.
@@ -233,6 +261,32 @@ export default function TicketEcran({
     }
   }
 
+  // Corrections du service sur la réservation du ticket. Une RPC par geste ;
+  // l'écran relit le ticket et les réservations, jamais un état supposé.
+  const verrouCorrection = React.useRef(false);
+  async function corriger(payload, message) {
+    if (verrouCorrection.current) return;
+    verrouCorrection.current = true;
+    setCorrectionEnCours(true);
+    try {
+      const { error } = await caisse.corrigerReservation({
+        etablissementId: ticket.etablissement_id,
+        ticketId: ticket.id,
+        reservationId: payload.reservationId,
+        nom: payload.nom ?? null,
+        couverts: payload.couverts ?? null,
+        statut: payload.statut ?? null,
+      });
+      if (erreur(error)) return;
+      notify(message, 'success');
+      await Promise.all([reload(), onReservationsChange?.()]);
+      if (payload.rattacher) setCorrigerOuvert(false);
+    } finally {
+      verrouCorrection.current = false;
+      setCorrectionEnCours(false);
+    }
+  }
+
   async function fusionner() {
     const autre = ticketsMemeTable[0];
     if (!autre) return;
@@ -252,6 +306,7 @@ export default function TicketEcran({
 
   if (!ticket) return null;
 
+  const allergies = allergiesDe(reservation);
   const dense = reglages.grille === 'dense';
   const styleGrille = { ...st.grille, gridTemplateColumns: `repeat(auto-fill, minmax(${dense ? 112 : 140}px, 1fr))` };
 
@@ -395,6 +450,30 @@ export default function TicketEcran({
           placeholder="Chercher un article"
           style={{ minHeight: 44, flexShrink: 0 }}
         />
+        {!enRecherche && cartes.length > 1 && (
+          <div style={st.cartes} data-caisse-cartes="">
+            <button
+              type="button"
+              style={st.carteBouton}
+              aria-expanded={cartesOuvert}
+              onClick={() => setCartesOuvert((v) => !v)}
+            >
+              <span style={st.carteLibelle}>Carte :</span>
+              {carte ? <span data-no-translate>{carte.nom}</span> : <span>Toutes les cartes</span>}
+              <ChevronDown size={16} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+            </button>
+            {cartesOuvert && (
+              <div style={st.carteListe}>
+                <Btn variant={carte ? 'ghost' : 'primary'} onClick={() => { setCarteChoisie(null); setCartesOuvert(false); }} style={st.btn44}>Toutes les cartes</Btn>
+                {cartes.map((c) => (
+                  <Btn key={c.id} variant={carte?.id === c.id ? 'primary' : 'ghost'} onClick={() => { setCarteChoisie(c.id); setCartesOuvert(false); }} style={st.btn44}>
+                    <span data-no-translate>{c.nom}</span>
+                  </Btn>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {!enRecherche && rangement.onglets.length > 1 && (
           <SegmentedTabs className="caisse-onglets" tabs={ongletsCategories} active={onglet} onChange={setOngletChoisi} />
         )}
@@ -420,7 +499,7 @@ export default function TicketEcran({
           })}
           {(enRecherche ? !trouves.length : !rangement.onglets.length) && (
             <p style={st.vide}>
-              {enRecherche ? 'Aucun article ne correspond.' : 'Aucun article sur les cartes actives.'}
+              {enRecherche ? 'Aucun article ne correspond.' : 'Aucun article sur les cartes en vente.'}
             </p>
           )}
         </div>
@@ -469,6 +548,31 @@ export default function TicketEcran({
 
       {/* ── La lecture de la table : le ticket en blocs par mode ── */}
       <section style={{ ...st.colTicket, ...colonne }} data-cadre="" data-caisse-ticket="">
+        {/* ── Qui est à la table (v5). Vente directe : anonyme, pas de bandeau. ── */}
+        {ticket.table_id && (
+          <div style={st.bandeau} data-caisse-client={ticket.qui || 'inconnu'}>
+            <div style={st.bandeauCorps}>
+              {reservation ? (
+                <span style={st.bandeauNom} data-no-translate>{reservation.nom}</span>
+              ) : (
+                <span style={st.bandeauNom}>{ticket.reservation_id ? 'Réservation' : 'Client non renseigné'}</span>
+              )}
+              <span style={st.bandeauDetail}>
+                {(ticket.couverts || reservation?.nb_couverts) && (
+                  <span><span style={st.num}>{ticket.couverts || reservation.nb_couverts}</span> <span>couverts</span></span>
+                )}
+                {ticket.qui && <span>{LIBELLES_QUI[ticket.qui]}</span>}
+                {reservation?.statut === 'no_show' && <span>No-show</span>}
+              </span>
+              {allergies.length > 0 && (
+                <span style={st.bandeauAllergies}>
+                  <span>Allergies :</span> <span data-no-translate>{allergies.join(', ')}</span>
+                </span>
+              )}
+            </div>
+            <Btn variant="ghost" onClick={() => setCorrigerOuvert(true)} style={st.btn44}>Corriger</Btn>
+          </div>
+        )}
         <div style={{ ...st.zoneLignes, ...defilant }}>
           {lignes.length === 0 && <p style={st.vide}>Touchez un article pour l'ajouter.</p>}
           {Array.from({ length: SUITE_MAX }, (_, i) => i + 1).filter((s) => lignes.some((l) => l.suite === s)).map((s) => {
@@ -562,6 +666,16 @@ export default function TicketEcran({
             onClose={() => setFicheLigneId(null)}
           />
         )}
+        {corrigerOuvert && (
+          <CorrigerClient
+            reservation={reservation}
+            reservations={reservations}
+            tableId={ticket.table_id}
+            enCours={correctionEnCours}
+            onCorriger={corriger}
+            onClose={() => setCorrigerOuvert(false)}
+          />
+        )}
       </section>
 
       {/* Écran étroit : la page défile, le total et l'action restent collés en
@@ -586,6 +700,24 @@ const st = {
     borderRadius: 'var(--r-xl)', boxShadow: 'var(--sh-sm)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
+  // Sélecteur de carte : une ligne discrète, qui se déplie sur place.
+  cartes: { display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, minWidth: 0 },
+  carteBouton: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44, maxWidth: '100%',
+    padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer',
+    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, textAlign: 'left',
+  },
+  carteLibelle: { color: 'var(--text2)', fontWeight: 400 },
+  carteListe: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  // Bandeau du client en tête du ticket : ne défile pas.
+  bandeau: {
+    display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, padding: '10px 12px 10px 16px', minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+  },
+  bandeauCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
+  bandeauNom: { fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
+  bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 13, color: 'var(--text2)' },
+  bandeauAllergies: { fontSize: 13, fontWeight: 600, color: 'var(--warning-text)', lineHeight: 1.3, overflowWrap: 'anywhere' },
   zoneGrille: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, paddingBottom: 4 },
   zoneLignes: { padding: '6px 16px 0', minWidth: 0 },
   modeCompte: {

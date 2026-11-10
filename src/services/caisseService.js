@@ -19,9 +19,31 @@ const MESSAGES = {
   '23505': 'Ce nom existe déjà.',
 };
 
+// Refus des RPC de la v5 (caisse_ouvrir_ticket, caisse_corriger_reservation) :
+// la base les lève sans accents, l'écran les dit en clair.
+const MESSAGES_RPC = {
+  'caisse: acces refuse': "Vous n'avez pas les droits pour cette action.",
+  'caisse: table inconnue pour cet etablissement': 'Cette table ne fait plus partie du plan de salle.',
+  'caisse: reservation introuvable': 'Réservation introuvable.',
+  "caisse: reservation d'un autre jour": "Cette réservation n'est pas du jour.",
+  "caisse: cette reservation n'est pas attendue": "Cette réservation n'est plus attendue (annulée, partie ou no-show).",
+  'caisse: fiche client introuvable': 'Fiche client introuvable ou archivée.',
+  'caisse: nombre de couverts invalide': 'Nombre de couverts invalide (de 1 à 99).',
+  'caisse: le nom ne peut pas etre vide': 'Le nom ne peut pas être vide.',
+  'caisse: nom trop long': 'Nom trop long.',
+  'caisse: ticket introuvable': 'Ticket introuvable.',
+  'caisse: ce statut ne se pose pas depuis la caisse': 'Ce statut ne se pose pas depuis la caisse.',
+  'caisse: le statut de cette reservation ne se change pas ici': 'Le statut de cette réservation se change dans Réservations.',
+  'caisse: reservation de groupe, nom et couverts se corrigent dans Groupes': "Réservation d'un groupe : le nom et les couverts se corrigent dans Groupes.",
+  'caisse: correction non enregistree': "La correction n'a pas été enregistrée. Réessayez.",
+};
+
 function mapError(error, fallback) {
   if (!error) return null;
   console.error('[caisseService]', error);
+  const brut = String(error.message || '');
+  if (MESSAGES_RPC[brut]) return MESSAGES_RPC[brut];
+  if (/^caisse: ticket \w+ fige$/.test(brut)) return 'Ce ticket est clos : il ne se corrige plus.';
   const code = String(error.code || '');
   if (MESSAGES[code]) return MESSAGES[code];
   // Les gardes de la base (déclencheurs caisse_*) lèvent des messages en
@@ -55,6 +77,96 @@ export async function creerTicket(etablissementId, tableId) {
     .single();
   if (error) return { data: null, error: mapError(error) };
   return { data, error: null };
+}
+
+// ── Qui est à la table (v5, migration 20261110_caisse_v5) ──
+// Ouvre le ticket d'une table au nom d'une réservation, d'un client de passage
+// ou d'une fiche du fichier clients. UNE RPC : le rôle serveur n'écrit pas les
+// réservations lui-même. Idempotente au double tap (le second appel rend le
+// ticket du premier, deja_ouvert vrai). La vente directe reste creerTicket.
+// qui = 'reservation' | 'passage' | 'compte'.
+export async function ouvrirTicket({ etablissementId, tableId, qui, reservationId = null, clientId = null, couverts = null }) {
+  const { data, error } = await supabase.rpc('caisse_ouvrir_ticket', {
+    p_etablissement_id: etablissementId,
+    p_table_id: tableId,
+    p_qui: qui,
+    p_reservation_id: reservationId,
+    p_client_id: clientId,
+    p_couverts: couverts,
+  });
+  if (error) return { data: null, error: mapError(error, "La table n'a pas pu être ouverte. Réessayez.") };
+  return { data, error: null };
+}
+
+// Correction d'une réservation par le service : rattachement du ticket, nom,
+// couverts, statut vers 'arrive' ou 'no_show'. Rien d'autre ne s'écrit par ce
+// chemin, et chaque correction laisse une ligne au Journal d'activité.
+// Sans ticket (liste « Réservations sans ticket ») : ticketId absent.
+export async function corrigerReservation({ etablissementId, reservationId, ticketId = null, nom = null, couverts = null, statut = null }) {
+  const { data, error } = await supabase.rpc('caisse_corriger_reservation', {
+    p_etablissement_id: etablissementId,
+    p_reservation_id: reservationId,
+    p_ticket_id: ticketId,
+    p_nom: nom,
+    p_couverts: couverts,
+    p_statut: statut,
+  });
+  if (error) return { data: null, error: mapError(error, "La correction n'a pas pu être enregistrée. Réessayez.") };
+  return { data, error: null };
+}
+
+// Réservations des jours donnés (aujourd'hui, et la veille pour un service qui
+// passe minuit), annulées exclues, avec les tables posées et ce que la salle
+// doit savoir du client. Ni e-mail ni téléphone : la caisse ne les lit pas.
+export async function listReservations(etablissementId, dates) {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('id, nom, nb_couverts, heure_arrivee, date_service, service, statut, origine, client_id, groupe_evenement_id, reservation_tables(table_id), reservation_tags(type_tag, valeur), resa_clients(prenom, nom, allergies)')
+    .eq('etablissement_id', etablissementId)
+    .in('date_service', dates)
+    .neq('statut', 'annule')
+    .order('date_service', { ascending: true })
+    .order('heure_arrivee', { ascending: true });
+  if (error) return { data: null, error: mapError(error, 'Réservations illisibles. Réessayez.') };
+  return { data: data || [], error: null };
+}
+
+// Fichier clients pour la recherche de la caisse : nom, prénom, allergies.
+// Les coordonnées ne quittent pas la base.
+export async function listClients(etablissementId) {
+  const { data, error } = await supabase
+    .from('resa_clients')
+    .select('id, prenom, nom, allergies')
+    .eq('etablissement_id', etablissementId)
+    .eq('archive', false)
+    .order('nom', { ascending: true })
+    .limit(2000);
+  if (error) return { data: null, error: mapError(error, 'Fichier clients illisible. Réessayez.') };
+  return { data: data || [], error: null };
+}
+
+// Tickets d'un client pour sa fiche : ceux rattachés à sa fiche, et ceux
+// ouverts sur l'une de ses réservations (un ticket pris avant le rattachement
+// de la fiche garde client_id à null). Tickets annulés exclus. Lecture
+// ouverte à tout membre de l'établissement (policy caisse_tickets_select).
+export async function listTicketsClient(clientId, reservationIds = []) {
+  // Le filtre .or() de PostgREST est du texte : seuls des identifiants simples
+  // y entrent (lettres, chiffres, tirets), jamais une chaîne saisie.
+  const simple = (id) => /^[\w-]+$/.test(String(id));
+  if (!simple(clientId)) return { data: [], error: null };
+  const ids = (reservationIds || []).filter(simple);
+  let requete = supabase
+    .from('caisse_tickets')
+    .select('id, statut, created_at, closed_at, couverts, table_id, salle_tables(nom), caisse_lignes(libelle, quantite, prix_unitaire)')
+    .neq('statut', 'annule')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  requete = ids.length
+    ? requete.or(`client_id.eq.${clientId},reservation_id.in.(${ids.join(',')})`)
+    : requete.eq('client_id', clientId);
+  const { data, error } = await requete;
+  if (error) return { data: null, error: mapError(error, 'Tickets illisibles. Réessayez.') };
+  return { data: data || [], error: null };
 }
 
 export async function majTicket(id, partial) {

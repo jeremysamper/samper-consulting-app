@@ -21,12 +21,22 @@ import { CUISSONS } from './options.js';
 //                     s'ouvre. « Tout » par défaut : tous les produits sur un
 //                     écran, à un tap, comme avant les onglets ; une grande
 //                     carte préférera s'ouvrir sur sa première catégorie.
+//   delai_no_show_min : minutes après l'heure d'une réservation confirmée avant
+//                     que la caisse la propose dans « Réservations sans
+//                     ticket » (v5). Rien n'est jamais posé sans tap.
+//   cartes_ids      : les cartes qui alimentent la caisse (v5). Absente ou
+//                     vide = toutes les cartes actives, comme avant. Une carte
+//                     archivée ou cachée ne vend jamais, même cochée ; un
+//                     identifiant de carte disparue est ignoré.
 //
 // Les modes ne changent rien au schéma : le mode de rang n est la suite n de
 // caisse_lignes (1 = En direct, 2 = À suivre, 3 = À suivre 2...).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const SUITE_MAX = 9;
+export const DELAI_NO_SHOW_MIN = 5;
+export const DELAI_NO_SHOW_MAX = 240;
+export const DELAIS_NO_SHOW = [15, 30, 45, 60];
 export const MODES_SUIVRE_MAX = SUITE_MAX - 1;
 export const FAMILLES_PAIEMENT = ['especes', 'carte', 'autre'];
 export const LIBELLES_FAMILLES = { especes: 'Espèces', carte: 'Carte bancaire', autre: 'Autre' };
@@ -40,6 +50,8 @@ export const REGLAGES_DEFAUT = {
   moyens_paiement: FAMILLES_PAIEMENT.map((cle) => ({ cle, libelle: LIBELLES_FAMILLES[cle] })),
   grille: 'large',
   ouverture: 'tout',
+  delai_no_show_min: 30,
+  cartes_ids: [],
 };
 
 const borne = (n, min, max, defaut) => {
@@ -90,11 +102,32 @@ export function fusionnerReglages(config) {
     moyens_paiement: moyens && moyens.length ? moyens : REGLAGES_DEFAUT.moyens_paiement,
     grille: GRILLES.includes(c.grille) ? c.grille : REGLAGES_DEFAUT.grille,
     ouverture: OUVERTURES.includes(c.ouverture) ? c.ouverture : REGLAGES_DEFAUT.ouverture,
+    delai_no_show_min: borne(c.delai_no_show_min, DELAI_NO_SHOW_MIN, DELAI_NO_SHOW_MAX, REGLAGES_DEFAUT.delai_no_show_min),
+    cartes_ids: listeTextes(c.cartes_ids, 80, 60) || [],
     perso: {
       cuissons: Boolean(cuissons && cuissons.length),
       moyens_paiement: Boolean(moyens && moyens.length),
     },
   };
+}
+
+// Les cartes qui alimentent la caisse, et les articles qu'elles portent.
+// Fermé par défaut : seule une carte ni archivée ni cachée vend, cochée ou
+// non. Sans réglage (cartes_ids vide), toutes les cartes actives vendent et,
+// si la maison n'a relié aucun plat à une carte, tous les plats actifs (le
+// comportement d'avant la v5). Avec un réglage, seuls les plats des cartes
+// cochées encore actives vendent : si plus aucune ne l'est, la grille est vide
+// (l'article libre reste), jamais rouverte en grand toute seule.
+export function cartesEtArticlesEnVente({ plats, cartes, cartesIds }) {
+  const actives = (cartes || []).filter((c) => c && !c.archive && !c.masquee);
+  const choisies = Array.isArray(cartesIds) ? cartesIds : [];
+  const regle = choisies.length > 0;
+  const enVente = regle ? actives.filter((c) => choisies.includes(c.id)) : actives;
+  const ids = new Set(enVente.map((c) => c.id));
+  const platsActifs = (plats || []).filter((p) => p.actif !== false);
+  const surCarte = platsActifs.filter((p) => (p.carteIds || []).some((id) => ids.has(id)));
+  const articles = regle || surCarte.length ? surCarte : platsActifs;
+  return { cartesActives: actives, cartesEnVente: enVente, articles, regle };
 }
 
 // Nom d'un mode. suite 1 = En direct, 2 = À suivre, 3 = À suivre 2...
