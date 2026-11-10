@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, ChevronsRight, ClipboardCheck, ConciergeBell, FlaskConical, History, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
+import { BarChart3, CalendarClock, ChevronsRight, ClipboardCheck, ConciergeBell, FlaskConical, History, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
@@ -20,6 +20,9 @@ import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTes
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
+
+// Rapports (v8) : chargés à la demande, ils ne pèsent pas sur la prise de commande.
+const Rapports = React.lazy(() => import('./rapports/Rapports.jsx'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : prise de commande par table depuis le plan de salle, ventes
@@ -68,6 +71,11 @@ import { useMaintenant } from './mesures.js';
 // clôture sont des PDF construits depuis les données (documentsCaisse.js).
 // Ni l'historique ni la clôture ne s'ouvrent en mode test : ils ne montrent
 // que de vraies ventes.
+//
+// v8 : rapports. Une tuile « Rapports » pour consultant, patron et
+// responsable de cuisine (la base rend à chacun ce qu'il peut lire : tout pour
+// la direction, les plats vendus et les services pour le responsable de
+// cuisine ; elle refuse les autres rôles). Jamais en mode test.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const dateCH = (jour) => { const [a, m, j] = String(jour || '').split('-'); return j ? `${j}.${m}.${a}` : ''; };
@@ -526,6 +534,13 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           : <><span>{etatJour?.tickets_du_jour ?? 0}</span> <span>tickets à clôturer aujourd'hui</span></>,
         onClick: () => setEcran('cloture'),
       }]),
+      ...(modeTest || !peutHabiller ? [] : [{
+        id: 'rapports',
+        libelle: 'Rapports',
+        Icone: BarChart3,
+        etat: peutAnnuler ? 'Chiffres, plats vendus, fichiers pour la fiduciaire' : 'Plats vendus et services, midi et soir',
+        onClick: () => setEcran('rapports'),
+      }]),
     ];
     const enRetard = !modeTest && peutHabiller ? (etatJour?.a_cloturer || []) : [];
     return (
@@ -678,6 +693,15 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       <EcranTache titre="Clôture de caisse" etat="Vérifier, compter les espèces, figer" onRetour={retourAccueil}>
         <Cloture etablissementId={etabId} onDocument={pdfCloture} onChange={rechargerJournee} />
       </EcranTache>
+    );
+  }
+
+  // ── Rapports (v8) ──
+  if (ecran === 'rapports' && !modeTest && peutHabiller) {
+    return (
+      <React.Suspense fallback={<p style={st.vide}>Chargement…</p>}>
+        <Rapports etablissement={etablissement} reglages={reglages} onRetour={retourAccueil} />
+      </React.Suspense>
     );
   }
 

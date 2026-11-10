@@ -15,6 +15,8 @@ const NOMS_TAUX = { 8.1: 'Sur place', 2.6: 'À l\'emporter', 3.8: 'Hébergement'
 
 export default function EcranVentes({ s, parJour, peutEcrire, couverturePrete, hebergement, onSaisir }) {
   const v = s.ventes || { parTaux: [], jours: { manuel: 0, pos: 0, notes: 0 }, notesTtc: 0, manquants: [] };
+  // Jours de caisse : la caisse reliée et les clôtures de la caisse native.
+  const joursCaisse = (v.jours.pos || 0) + (v.jours.caisse || 0);
   const [ouvertes, setOuvertes] = React.useState(() => new Set());
   const basculer = (cle) => setOuvertes((o) => {
     const n = new Set(o);
@@ -72,7 +74,7 @@ export default function EcranVentes({ s, parJour, peutEcrire, couverturePrete, h
 
       <p style={ui.remarque}>
         <span>Saisi à la main</span> <span>{v.jours.manuel}</span> <span>{pluriel(v.jours.manuel, 'jour,', 'jours,')}</span>{' '}
-        <span>caisse</span> <span>{v.jours.pos}</span> <span>{pluriel(v.jours.pos, 'jour', 'jours')}</span>
+        <span>caisse</span> <span>{joursCaisse}</span> <span>{pluriel(joursCaisse, 'jour', 'jours')}</span>
         {(hebergement || v.notesTtc) ? <>, <span>notes de séjour</span> <span>CHF</span> <span>{chf(v.notesTtc)}</span></> : null}.
         {v.jours.pos > 0 && <> <span>La caisse ne distingue pas la vente à l'emporter : ses montants sont comptés à 8,1 %.</span></>}
       </p>
@@ -110,7 +112,7 @@ export default function EcranVentes({ s, parJour, peutEcrire, couverturePrete, h
                       <span style={ui.ligneTitre}>{jourCourt(j.jour)}</span>
                       <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                         <Chf v={j.ttc} />
-                        <span style={ui.ligneDetail}>{j.source === 'manuel' ? 'saisi' : j.source === 'pos' ? 'caisse' : 'notes de séjour'}</span>
+                        <span style={ui.ligneDetail}>{j.source === 'manuel' ? 'saisi' : (j.source === 'pos' || j.source === 'caisse') ? 'caisse' : 'notes de séjour'}</span>
                       </span>
                     </div>
                   ))}

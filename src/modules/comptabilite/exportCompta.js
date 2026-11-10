@@ -46,9 +46,11 @@ const vide = () => rang([]);
 function feuilleResume({ s, direction }) {
   const v = s.ventes || {};
   const jours = v.jours || { manuel: 0, pos: 0, notes: 0 };
+  // Caisse reliée (pos_sales) et clôtures de la caisse native : même mot.
+  const joursCaisse = (jours.pos || 0) + (jours.caisse || 0);
   const sources = [
     jours.manuel ? `saisi à la main ${jours.manuel} jours` : null,
-    jours.pos ? `caisse ${jours.pos} jours` : null,
+    joursCaisse ? `caisse ${joursCaisse} jours` : null,
     v.notesTtc ? `notes de séjour CHF ${v.notesTtc.toFixed(2)}` : null,
   ].filter(Boolean).join(', ');
   const m = s.matiere;
@@ -106,7 +108,7 @@ function feuilleVentes(parJour) {
   };
   const lignes = jours.map(j => [
     dateCH(j.jour),
-    [j.source === 'manuel' ? 'saisi' : j.source === 'pos' ? 'caisse' : null, j.avecNotes ? 'notes de séjour' : null].filter(Boolean).join(', '),
+    [j.source === 'manuel' ? 'saisi' : (j.source === 'pos' || j.source === 'caisse') ? 'caisse' : null, j.avecNotes ? 'notes de séjour' : null].filter(Boolean).join(', '),
     ...TAUX_VENTES.map(k => nombre(j.parTaux?.[k])),
     autres(j),
     j.ttc,
@@ -231,8 +233,9 @@ export function feuillesCompta({ periode, synthese: s, parJour = [], lignesAchat
 // ── Classeur ──
 
 // Styles d'exportFiduciaire : 0 défaut, 1 en-tête, 2 texte, 3 montant,
-// 4 total texte, 5 total montant.
-function feuilleXml(f, titre, selectionnee) {
+// 4 total texte, 5 total montant. Exportée pour les classeurs de la caisse
+// (caisse/rapports/exportsRapport.js), qui reprennent ces conventions.
+export function feuilleXml(f, titre, selectionnee) {
   const rows = [`<row r="1" ht="22" customHeight="1">${cStr('A1', 0, `${f.nom} : ${titre}`)}</row>`];
   rows.push(`<row r="3" ht="30" customHeight="1">${f.colonnes.map((c, i) => cStr(`${col(i)}3`, 1, c.titre)).join('')}</row>`);
   f.rangs.forEach((r, k) => {
@@ -276,6 +279,12 @@ export function xlsxCompta(feuilles, { date = new Date() } = {}) {
     feuilleXml(feuilles.charges, t, false),
     feuilleXml(feuilles.etatTva, t, false),
   ];
+  return classeurXlsx({ xml, noms: NOMS_FEUILLES, titre: t, date });
+}
+
+// Le classeur autour des feuilles : `xml` (une chaîne par feuille, dans
+// l'ordre) et `noms` (les onglets). Partagé avec les classeurs de la caisse.
+export function classeurXlsx({ xml, noms, titre: t, date = new Date() }) {
   const fichiers = {
     '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -303,7 +312,7 @@ ${xml.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" Conte
     'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <bookViews><workbookView activeTab="0"/></bookViews>
-<sheets>${NOMS_FEUILLES.map((nom, i) => `<sheet name="${esc(nom)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>
+<sheets>${noms.map((nom, i) => `<sheet name="${esc(nom)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>
 <calcPr calcId="191029"/>
 </workbook>`,
     'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

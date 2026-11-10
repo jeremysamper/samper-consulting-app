@@ -53,8 +53,9 @@ export function coordonneesMaison(etablissement, reglages) {
   };
 }
 
-// Petit moteur de mise en page : une colonne, du haut vers le bas.
-function plume(doc, { gauche, droite, haut }) {
+// Petit moteur de mise en page : une colonne, du haut vers le bas. Exporté
+// pour la synthèse des rapports (rapports/pdfRapport.js).
+export function plume(doc, { gauche, droite, haut }) {
   const p = { y: haut, gauche, droite, largeur: droite - gauche };
   p.texte = (t, { taille = 9, gras = false, gris = false, aligne = 'left', x = null, saut = null, largeur = null } = {}) => {
     doc.setFont('helvetica', gras ? 'bold' : 'normal');

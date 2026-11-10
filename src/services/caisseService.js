@@ -689,3 +689,35 @@ export async function fusionnerTickets(sourceId, cibleId) {
   if (e2) return { error: mapError(e2, 'Lignes fusionnées, ancien ticket à supprimer à la main.') };
   return { error: null };
 }
+
+// v8 : les données des rapports pour une fenêtre de 62 jours au plus (RPC
+// caisse_rapport_donnees). La base ne rend que de vrais tickets numérotés, et
+// ce que le rôle peut lire : tout pour consultant et patron, les tickets et
+// leurs lignes pour le responsable de cuisine, un refus pour les autres.
+export async function rapportDonnees(etablissementId, debut, fin) {
+  const { data, error } = await supabase.rpc('caisse_rapport_donnees', {
+    p_etablissement_id: etablissementId, p_debut: debut, p_fin: fin,
+  });
+  if (error) {
+    const message = String(error.message || '') === 'caisse: periode de rapport invalide'
+      ? 'Période de rapport invalide.'
+      : mapError(error, 'Rapport illisible. Réessayez.');
+    return { data: null, error: message };
+  }
+  return { data, error: null };
+}
+
+// La clôture du jour (pas une complémentaire) d'un jour d'exploitation, ou
+// null : numéro et net figé. Lue par la Comptabilité (Chiffre du jour). Un
+// rôle qui ne lit pas les clôtures reçoit null, comme un jour sans clôture.
+export async function clotureDuJour(etablissementId, jour) {
+  const { data, error } = await supabase
+    .from('caisse_clotures')
+    .select('numero, jour_exploitation, totaux')
+    .eq('etablissement_id', etablissementId)
+    .eq('jour_exploitation', jour)
+    .is('complement_de', null)
+    .maybeSingle();
+  if (error || !data) return { data: null, error: error ? mapError(error, 'Clôture illisible.') : null };
+  return { data: { numero: data.numero, jour: data.jour_exploitation, netTtc: Number(data.totaux?.net?.ttc ?? 0) }, error: null };
+}
