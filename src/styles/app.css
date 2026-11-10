@@ -2085,6 +2085,30 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   letter-spacing: normal !important;
 }
 
+/* ─── Caisse v4 : barre de modes et onglets de catégories ────────────────────
+   La barre de modes (En direct, À suivre...) décide où tombe chaque produit
+   touché : le mode actif se lit de loin, en aplat d'accent, là où les onglets
+   ordinaires se contentent d'un soulignement. Cibles de 48 px (modes) et de
+   44 px (catégories), à la souris comme au doigt. */
+.caisse-modes { gap: 6px; flex-shrink: 0; }
+.caisse-modes .segmented-tab {
+  min-height: 48px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface2);
+  border-radius: var(--r-lg);
+}
+.caisse-modes .segmented-tab.is-active {
+  background: var(--accent) !important;
+  color: var(--on-accent) !important;
+  box-shadow: none !important;
+  border-radius: var(--r-lg) !important;
+}
+.caisse-onglets { flex-shrink: 0; }
+.caisse-onglets .segmented-tab { min-height: 44px; padding: 8px 14px; font-size: 14px; }
+
 /* ─── Pastilles en texte ─────────────────────────────────────────────────────
    Une étiquette de statut (span arrondi à petit rembourrage sur fond teinté)
    se lit comme du texte coloré : le fond, le filet et le rembourrage latéral
