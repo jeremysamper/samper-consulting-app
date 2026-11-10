@@ -127,6 +127,40 @@ export async function listSansRecents(etablissementId, limite = 8) {
   return { data: vus.slice(0, limite) };
 }
 
+// Habillage des boutons produits (caisse_boutons, v3) : une ligne par plat.
+// Lecture pour tout membre ; ecriture reservee en RLS a consultant, patron
+// et resp_cuisine. Rend une table plat_id -> ligne.
+export async function listBoutons(etablissementId) {
+  const { data, error } = await supabase
+    .from('caisse_boutons')
+    .select('*')
+    .eq('etablissement_id', etablissementId);
+  if (error) { console.warn('[caisseService] listBoutons', error); return { data: {} }; }
+  const parPlat = {};
+  (data || []).forEach((b) => { parPlat[b.plat_id] = b; });
+  return { data: parPlat };
+}
+
+// Habillage vide (ni nom court, ni couleur, ni picto) : la ligne disparait.
+export async function upsertBouton({ etablissementId, platId, nomCourt, couleur, picto }) {
+  if (!nomCourt && !couleur && !picto) {
+    const { error } = await supabase.from('caisse_boutons').delete().eq('plat_id', platId);
+    if (error) return { error: mapError(error) };
+    return { error: null };
+  }
+  const { error } = await supabase
+    .from('caisse_boutons')
+    .upsert({
+      etablissement_id: etablissementId,
+      plat_id: platId,
+      nom_court: nomCourt || null,
+      couleur: couleur || null,
+      picto: picto || null,
+    }, { onConflict: 'plat_id' });
+  if (error) return { error: mapError(error, "L'habillage n'a pas pu etre enregistre.") };
+  return { error: null };
+}
+
 // Envoi du bon : UNE RPC, idempotente au double tap (le second appel trouve
 // zéro ligne en attente et ne crée aucun bon). Rend { bon_id, lignes }.
 export async function envoyerBon(ticketId, suite) {

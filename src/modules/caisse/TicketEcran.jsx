@@ -4,7 +4,9 @@ import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
+import BoutonFiche from './BoutonFiche.jsx';
 import { libelleOption } from './options.js';
+import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // L'écran du ticket : la grille d'articles (tap = +1) et le ticket lui-même
@@ -16,7 +18,7 @@ import { libelleOption } from './options.js';
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
-export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDeplacer, onFusionne, onClos, reload }) {
+export default function TicketEcran({ ticket, articles, boutons = {}, peutHabiller = false, onBoutonsChange, ticketsMemeTable, onDeplacer, onFusionne, onClos, reload }) {
   const [recherche, setRecherche] = React.useState('');
   // Fiche d'édition d'une ligne (v2) : identifiant de la ligne ouverte.
   const [ficheLigneId, setFicheLigneId] = React.useState(null);
@@ -26,6 +28,24 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
   const [librePrix, setLibrePrix] = React.useState('');
   const [paiementOuvert, setPaiementOuvert] = React.useState(false);
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
+  // Habillage des boutons (v3) : mode édition (consultant, patron,
+  // resp_cuisine) et fiche du bouton ouvert ; l'appui long ouvre aussi la
+  // fiche, hors mode, pour les mêmes rôles.
+  const [editionBoutons, setEditionBoutons] = React.useState(false);
+  const [boutonPlat, setBoutonPlat] = React.useState(null);
+  const appuiLong = React.useRef({ timer: null, declenche: false });
+
+  function debutAppuiLong(plat) {
+    if (!peutHabiller) return;
+    appuiLong.current.declenche = false;
+    appuiLong.current.timer = setTimeout(() => {
+      appuiLong.current.declenche = true;
+      setBoutonPlat(plat);
+    }, 550);
+  }
+  function finAppuiLong() {
+    if (appuiLong.current.timer) { clearTimeout(appuiLong.current.timer); appuiLong.current.timer = null; }
+  }
 
   const lignes = ticket?.lignes || [];
   const total = lignes.reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0);
@@ -171,12 +191,37 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
           <div key={cat}>
             <div style={st.categorie} data-no-translate>{cat}</div>
             <div style={st.grille}>
-              {visibles.filter((a) => (a.categorie || 'Plats') === cat).map((a) => (
-                <button key={a.id} type="button" data-cadre="" style={st.article} onClick={() => ajouterArticle(a)}>
-                  <span style={st.articleNom} data-no-translate>{a.nom}</span>
-                  <span style={st.articlePrix}>{chf(a.prixVente)}</span>
-                </button>
-              ))}
+              {visibles.filter((a) => (a.categorie || 'Plats') === cat).map((a) => {
+                const hab = boutons[a.id];
+                const picto = pictoParId(hab?.picto || pictoDefaut(a.categorie));
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    data-cadre=""
+                    style={{
+                      ...st.article,
+                      ...(hab?.couleur ? { background: `var(--caisse-${hab.couleur})` } : null),
+                    }}
+                    onClick={() => {
+                      if (appuiLong.current.declenche) { appuiLong.current.declenche = false; return; }
+                      if (editionBoutons && peutHabiller) { setBoutonPlat(a); return; }
+                      ajouterArticle(a);
+                    }}
+                    onPointerDown={() => debutAppuiLong(a)}
+                    onPointerUp={finAppuiLong}
+                    onPointerLeave={finAppuiLong}
+                    onPointerCancel={finAppuiLong}
+                    onContextMenu={(e) => { if (peutHabiller) e.preventDefault(); }}
+                  >
+                    <span style={st.articleNomRang}>
+                      {picto && <picto.Icone size={18} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />}
+                      <span style={st.articleNom} data-no-translate>{hab?.nom_court || nomCourtDefaut(a.nom)}</span>
+                    </span>
+                    <span style={st.articlePrix}>{chf(a.prixVente)}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -193,7 +238,34 @@ export default function TicketEcran({ ticket, articles, ticketsMemeTable, onDepl
             <Btn variant="ghost" onClick={() => setLibreOuvert(false)} style={st.btn44}>Fermer</Btn>
           </div>
         ) : (
-          <Btn variant="ghost" onClick={() => setLibreOuvert(true)} style={st.btn44}>Article libre</Btn>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn variant="ghost" onClick={() => setLibreOuvert(true)} style={{ ...st.btn44, flex: '1 1 auto' }}>Article libre</Btn>
+            {peutHabiller && (
+              <Btn variant={editionBoutons ? 'primary' : 'ghost'} onClick={() => setEditionBoutons((v) => !v)} style={st.btn44}>
+                Modifier les boutons
+              </Btn>
+            )}
+          </div>
+        )}
+        {editionBoutons && peutHabiller && (
+          <p style={st.vide}>Touchez un produit pour changer son nom court, sa couleur ou son picto.</p>
+        )}
+        {boutonPlat && (
+          <BoutonFiche
+            plat={boutonPlat}
+            bouton={boutons[boutonPlat.id]}
+            onEnregistrer={async (valeurs) => {
+              const { error } = await caisse.upsertBouton({
+                etablissementId: ticket.etablissement_id,
+                platId: boutonPlat.id,
+                ...valeurs,
+              });
+              if (error) { notify(error, 'error'); return; }
+              setBoutonPlat(null);
+              onBoutonsChange?.();
+            }}
+            onClose={() => setBoutonPlat(null)}
+          />
         )}
       </section>
 
@@ -306,6 +378,7 @@ const st = {
     gap: 4, padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)',
     border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, textAlign: 'left',
   },
+  articleNomRang: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 },
   articleNom: { fontWeight: 500, lineHeight: 1.2 },
   articlePrix: { fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font-num)' },
   libreForm: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },

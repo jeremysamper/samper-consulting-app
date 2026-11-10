@@ -156,6 +156,19 @@
      pour un daltonien. */
   --svc-brunch: #047857;
 
+  /* Palette des boutons produits de la Caisse (fonds doux, texte --text).
+     Cles stockees en base (caisse_boutons.couleur), jamais un hex.
+     Contraste mesure (scripts du lot v3) : --text sur chaque fond passe
+     14,1:1 au moins en clair et 10,4:1 au moins en sombre. */
+  --caisse-rouge: oklch(92% 0.05 25);
+  --caisse-orange: oklch(92% 0.05 60);
+  --caisse-jaune: oklch(92% 0.05 95);
+  --caisse-vert: oklch(92% 0.05 145);
+  --caisse-turquoise: oklch(92% 0.05 185);
+  --caisse-bleu: oklch(92% 0.05 240);
+  --caisse-violet: oklch(92% 0.05 300);
+  --caisse-rose: oklch(92% 0.05 350);
+
   color-scheme: light;
 }
 
@@ -238,6 +251,17 @@
     --svc-soir-bg: oklch(22% 0.04 250);
     --svc-soir-bd: oklch(45% 0.10 250);
     --svc-brunch: oklch(66% 0.14 165);
+
+    /* Palette caisse en sombre : memes teintes, fonds assombris
+       (--text sombre passe 10,4:1 au moins sur chacun). */
+    --caisse-rouge: oklch(32% 0.055 25);
+    --caisse-orange: oklch(32% 0.055 60);
+    --caisse-jaune: oklch(32% 0.055 95);
+    --caisse-vert: oklch(32% 0.055 145);
+    --caisse-turquoise: oklch(32% 0.055 185);
+    --caisse-bleu: oklch(32% 0.055 240);
+    --caisse-violet: oklch(32% 0.055 300);
+    --caisse-rose: oklch(32% 0.055 350);
 
   color-scheme: dark;
   }
@@ -322,6 +346,17 @@ html[data-theme="dark"] {
     --svc-soir-bg: oklch(22% 0.04 250);
     --svc-soir-bd: oklch(45% 0.10 250);
     --svc-brunch: oklch(66% 0.14 165);
+
+    /* Palette caisse en sombre : memes teintes, fonds assombris
+       (--text sombre passe 10,4:1 au moins sur chacun). */
+    --caisse-rouge: oklch(32% 0.055 25);
+    --caisse-orange: oklch(32% 0.055 60);
+    --caisse-jaune: oklch(32% 0.055 95);
+    --caisse-vert: oklch(32% 0.055 145);
+    --caisse-turquoise: oklch(32% 0.055 185);
+    --caisse-bleu: oklch(32% 0.055 240);
+    --caisse-violet: oklch(32% 0.055 300);
+    --caisse-rose: oklch(32% 0.055 350);
 
   color-scheme: dark;
 }
