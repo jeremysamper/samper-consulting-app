@@ -66,7 +66,31 @@ function scheduleRetry() {
   }
 }
 
-function appelRpc({ inventaireId, ligneId, stockReel, compteLe, clientUuid }) {
+// `zone` : saisie d'une zone d'un produit rangé dans plusieurs zones (RPC
+// inventaire_saisir_stock_zone, migration 20261106).
+function appelRpc({ type, inventaireId, ligneId, zone, stockReel, compteLe, clientUuid, operation, valeurs, faitLe }) {
+  // Modification d'un produit (ajout, nom, zones, annulation, suppression) :
+  // RPC inventaire_modifier_ligne, migration 20261106b.
+  if (type === 'modif') {
+    return supabase.rpc('inventaire_modifier_ligne', {
+      p_inventaire_id: inventaireId,
+      p_ligne_id: ligneId,
+      p_operation: operation,
+      p_valeurs: valeurs || {},
+      p_fait_le: faitLe,
+      p_client_uuid: clientUuid,
+    });
+  }
+  if (zone) {
+    return supabase.rpc('inventaire_saisir_stock_zone', {
+      p_inventaire_id: inventaireId,
+      p_ligne_id: ligneId,
+      p_zone: zone,
+      p_stock_reel: stockReel,
+      p_compte_le: compteLe,
+      p_client_uuid: clientUuid,
+    });
+  }
   return supabase.rpc('inventaire_saisir_stock', {
     p_inventaire_id: inventaireId,
     p_ligne_id: ligneId,
@@ -79,12 +103,13 @@ function appelRpc({ inventaireId, ligneId, stockReel, compteLe, clientUuid }) {
 // Met une quantité en file, horodatée MAINTENANT. Recompter le même produit
 // avant la synchronisation remplace la saisie en attente (clé = inventaire +
 // ligne) : seule la dernière quantité comptée a un sens.
-export async function queueSaisie({ inventaireId, ligneId, stockReel, produit, unite, userId, etablissementId }) {
+export async function queueSaisie({ inventaireId, ligneId, zone = '', stockReel, produit, unite, userId, etablissementId }) {
   const item = {
-    cle: cleSaisie(inventaireId, ligneId),
+    cle: cleSaisie(inventaireId, ligneId, zone),
     clientUuid: generateUuid(),
     inventaireId,
     ligneId,
+    ...(zone ? { zone } : {}),
     produit: produit || '',
     unite: unite || '',
     stockReel,
@@ -156,13 +181,13 @@ export async function syncPendingSaisies() {
 // est celui de la RPC ('applied', 'duplicate', 'stale', 'not_applied') :
 // l'appelant doit réafficher la valeur serveur sur 'stale' et 'not_applied'.
 export async function saisirStockOnlineOrQueue({
-  inventaireId, ligneId, stockReel, produit, unite, userId, etablissementId, sauvegardeHistorique,
+  inventaireId, ligneId, zone = '', stockReel, produit, unite, userId, etablissementId, sauvegardeHistorique,
 }) {
   if (typeof navigator === 'undefined' || navigator.onLine !== false) {
     const clientUuid = generateUuid();
     try {
       const { data, error } = await withTimeout(appelRpc({
-        inventaireId, ligneId, stockReel, compteLe: new Date().toISOString(), clientUuid,
+        inventaireId, ligneId, zone, stockReel, compteLe: new Date().toISOString(), clientUuid,
       }));
       if (!error) {
         if (getPendingSaisieCount() > 0) syncPendingSaisies();
@@ -178,7 +203,58 @@ export async function saisirStockOnlineOrQueue({
       if (!isNetworkError(err)) throw err;
     }
   }
-  const queued = await queueSaisie({ inventaireId, ligneId, stockReel, produit, unite, userId, etablissementId });
+  const queued = await queueSaisie({ inventaireId, ligneId, zone, stockReel, produit, unite, userId, etablissementId });
+  return { mode: 'queued', queued };
+}
+
+// Modification d'un produit : même flux que la saisie d'une quantité. En
+// ligne, la RPC fusionne la ligne tout de suite ; sans réseau, l'opération
+// attend dans la même file, dans l'ordre des gestes (une par geste, jamais
+// remplacée : renommer puis changer de zone sont deux opérations).
+export async function queueModif({ inventaireId, ligneId, operation, valeurs, faitLe, userId, etablissementId }) {
+  const clientUuid = generateUuid();
+  const item = {
+    type: 'modif',
+    cle: `${inventaireId}::${ligneId}::op::${clientUuid}`,
+    clientUuid,
+    inventaireId,
+    ligneId,
+    operation,
+    valeurs: valeurs || {},
+    faitLe,
+    userId: userId || null,
+    etablissementId: etablissementId || null,
+    createdAt: Date.now(),
+    attempts: 0,
+  };
+  await inventaireQueue.put(item);
+  await refreshPendingCount();
+  return item;
+}
+
+export async function modifierOnlineOrQueue({
+  inventaireId, ligneId, operation, valeurs, faitLe, userId, etablissementId, sauvegardeHistorique,
+}) {
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    try {
+      const { data, error } = await withTimeout(appelRpc({
+        type: 'modif', inventaireId, ligneId, operation, valeurs, faitLe, clientUuid: generateUuid(),
+      }));
+      if (!error) {
+        if (getPendingSaisieCount() > 0) syncPendingSaisies();
+        return { mode: 'online', statut: data?.status || 'applied', raison: data?.raison };
+      }
+      // RPC absente (migration pas encore appliquée) : écriture historique.
+      if (error.code === 'PGRST202' && typeof sauvegardeHistorique === 'function') {
+        await sauvegardeHistorique();
+        return { mode: 'repli' };
+      }
+      if (!isNetworkError(error)) throw error;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  const queued = await queueModif({ inventaireId, ligneId, operation, valeurs, faitLe, userId, etablissementId });
   return { mode: 'queued', queued };
 }
 
@@ -204,6 +280,22 @@ export async function listPendingSaisies(inventaireId) {
   } catch {
     return [];
   }
+}
+
+// « Annuler la saisie » : les quantités encore en file pour cette ligne (ou
+// cette zone de la ligne) sont retirées, sinon elles reviendraient au
+// prochain rejeu. Sans zone : toutes les saisies de la ligne.
+export async function retirerSaisiesEnAttente(inventaireId, ligneId, zone = '') {
+  try {
+    const items = await inventaireQueue.list();
+    const aRetirer = items.filter((item) => item.type !== 'modif'
+      && item.inventaireId === inventaireId && item.ligneId === ligneId
+      && (!zone || item.zone === zone));
+    for (const item of aRetirer) await inventaireQueue.remove(item.cle);
+  } catch {
+    // File illisible : rien à retirer.
+  }
+  await refreshPendingCount();
 }
 
 // Démarre les déclencheurs de rejeu. Appelé une fois au boot de l'app,

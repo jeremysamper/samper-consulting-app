@@ -2,8 +2,9 @@ import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { estCompte, UNITES_INVENTAIRE } from './inventaireLignes.js';
-import { zoneOf, zonesDesLignes, SANS_ZONE } from './zones.js';
-import ChoixZone from './ChoixZone.jsx';
+import { zoneOf, zonesOf, estMultiZone, quantiteZone, zonesDesLignes, zoneSuggeree, SANS_ZONE } from './zones.js';
+import CasesZones from './CasesZones.jsx';
+import ModifierProduit from './ModifierProduit.jsx';
 
 // Vue « Comptage » : ce qu'on fait vraiment en chambre froide, et rien d'autre.
 //
@@ -12,9 +13,15 @@ import ChoixZone from './ChoixZone.jsx';
 // Entrée passe au produit suivant : on compte une étagère de haut en bas sans
 // lâcher le clavier. Écarts, valeurs et KPI vivent dans la vue « Écarts ».
 //
-// Dès qu'un produit a une zone (Chambre froide, Congélateur...), les cartes se
-// rangent par zone puis par catégorie, et des onglets permettent de compter
-// une zone après l'autre, dans l'ordre du tour.
+// Dès qu'un produit a une zone (Cave, Économat, Froid positif, Froid négatif),
+// les cartes se rangent par zone puis par catégorie, et des onglets permettent
+// de compter une zone après l'autre, dans l'ordre du tour. Un produit rangé
+// dans deux zones a une carte dans chacune, avec sa propre quantité : la ligne
+// vaut la somme.
+//
+// Ajouter un produit : nom, Entrée, quantité, Entrée, produit suivant. Le
+// produit créé passe en tête (« Ajoutés à l'instant »), son champ de quantité
+// ouvert, ses cases de zone sous le nom : rien à chercher derrière.
 //
 // La saisie elle-même (brouillon, blur, file hors-ligne) reste dans le parent :
 // ce composant ne fait qu'afficher et relayer.
@@ -25,40 +32,60 @@ const FILTRES = [
   { id: 'comptes', label: 'Comptés' },
 ];
 
+// Une carte = un produit dans une zone. `cle` sert au brouillon et au focus.
+const cartesDe = (l) => (estMultiZone(l)
+  ? zonesOf(l).map(z => ({ l, zone: z, multi: true, cle: `${l.id}::${z}` }))
+  : [{ l, zone: zoneOf(l), multi: false, cle: l.id }]);
+
+const carteComptee = (c) => (c.multi ? quantiteZone(c.l, c.zone) != null : estCompte(c.l));
+
 export default function ComptageRapide({
   lignes, canEdit, stockDraft, setStockDraft, stockRefs, commitStockReel,
-  onAjoutRapide, onChangerUnite, onChangerZone, onReprendreRestants, catalogue,
+  onAjoutRapide, onChangerUnite, onChangerZones, onRangerSansZone, onReprendreRestants, catalogue,
+  ajoutsRecents = [], focusDemande = null, onFocusFait,
+  onModifier, onAnnulerSaisie, onSupprimer, canGerer = false,
 }) {
   const [filtre, setFiltre] = React.useState('tous');
   // 'toutes', une zone, ou SANS_ZONE.
   const [zoneActive, setZoneActive] = React.useState('toutes');
-  // Mode « ranger » : la zone de chaque produit devient modifiable sur sa
-  // carte. Hors de ce mode les cartes restent compactes : sur tablette une
-  // liste de choix fait 44 px de haut, une par carte doublerait la liste.
+  // Mode « ranger » : les cases de zone apparaissent sur chaque carte. Hors de
+  // ce mode les cartes restent compactes, sauf celles qu'on vient d'ajouter.
   const [rangement, setRangement] = React.useState(false);
   const [recherche, setRecherche] = React.useState('');
   const [ajout, setAjout] = React.useState('');
-  const [ajoutBusy, setAjoutBusy] = React.useState(false);
   const [focusApres, setFocusApres] = React.useState(null);
+  // Produit ouvert dans « Modifier » : { ligneId, zone } (zone de la carte).
+  const [edition, setEdition] = React.useState(null);
+  const ajoutRef = React.useRef(null);
 
   const total = lignes.length;
   const nbComptes = lignes.filter(estCompte).length;
   const restants = total - nbComptes;
   const pct = total ? Math.round((nbComptes / total) * 100) : 0;
 
+  const toutes = React.useMemo(() => lignes.flatMap(cartesDe), [lignes]);
   const zones = zonesDesLignes(lignes);
   const avecZones = zones.length > 0;
-  const nbSansZone = lignes.filter(l => !zoneOf(l)).length;
+  const nbSansZone = lignes.filter(l => !zonesOf(l).length).length;
+  // Ceux que leur nom ou leur catégorie désigne : rangés d'un geste.
+  const nbRangeables = lignes.filter(l => !zonesOf(l).length && zoneSuggeree(l)).length;
   // La zone mémorisée peut avoir disparu (dernier produit rangé ailleurs).
   const zoneFiltre = zoneActive === 'toutes' || zoneActive === SANS_ZONE || zones.includes(zoneActive) ? zoneActive : 'toutes';
-  const dansZone = (l) => zoneFiltre === 'toutes'
-    || (zoneFiltre === SANS_ZONE ? !zoneOf(l) : zoneOf(l) === zoneFiltre);
+  const dansFiltreZone = (c) => zoneFiltre === 'toutes'
+    || (zoneFiltre === SANS_ZONE ? !c.zone : c.zone === zoneFiltre);
+
+  // Produits ajoutés pendant ce comptage : en tête, quels que soient filtres et
+  // recherche, le plus récent d'abord.
+  const idsRecents = new Set(ajoutsRecents);
+  const parId = new Map(lignes.map(l => [l.id, l]));
+  const recentes = ajoutsRecents.map(id => parId.get(id)).filter(Boolean).flatMap(cartesDe);
 
   const match = makeSearchMatcher(recherche);
-  const visibles = lignes.filter(l => (
-    (filtre === 'tous' || (filtre === 'comptes' ? estCompte(l) : !estCompte(l)))
-    && dansZone(l)
-    && match(l.produit, l.categorie, zoneOf(l))
+  const visibles = toutes.filter(c => (
+    !idsRecents.has(c.l.id)
+    && (filtre === 'tous' || (filtre === 'comptes' ? carteComptee(c) : !carteComptee(c)))
+    && dansFiltreZone(c)
+    && match(c.l.produit, c.l.categorie, c.zone)
   ));
 
   // Regroupées par zone (dans l'ordre du tour) puis par catégorie, chaque
@@ -69,51 +96,177 @@ export default function ComptageRapide({
   const groupes = React.useMemo(() => {
     const parZone = new Map();
     (avecZones ? [...zones, ''] : ['']).forEach(z => parZone.set(z, new Map()));
-    visibles.forEach(l => {
-      const z = avecZones ? zoneOf(l) : '';
-      const c = l.categorie || 'Autres';
+    visibles.forEach(c => {
+      const z = avecZones ? c.zone : '';
+      const cat = c.l.categorie || 'Autres';
       const cats = parZone.get(z);
-      if (!cats.has(c)) cats.set(c, []);
-      cats.get(c).push(l);
+      if (!cats.has(cat)) cats.set(cat, []);
+      cats.get(cat).push(c);
     });
     return Array.from(parZone.entries())
       .filter(([, cats]) => cats.size > 0)
       .map(([z, cats]) => ({ zone: z, categories: Array.from(cats.entries()) }));
   }, [visibles, avecZones, clesZones]);
-  const ordre = groupes.flatMap(g => g.categories.flatMap(([, ls]) => ls));
+  const ordre = groupes.flatMap(g => g.categories.flatMap(([, cs]) => cs));
 
-  // Un produit ajouté à la volée prend le focus dès qu'il est à l'écran.
+  // Un produit ajouté prend le focus dès qu'il est à l'écran, qu'il vienne du
+  // champ d'ajout ou de la fenêtre « Ajouter des produits ».
+  // Une demande de focus ne sert qu'une fois : sans ce verrou, la saisie de la
+  // quantité (nouveau rendu, même cible encore en état) ramenait le curseur
+  // dans le champ juste après que Entrée l'a envoyé au champ d'ajout.
+  const cibleFocus = focusApres || focusDemande;
+  const dejaFocalise = React.useRef(null);
   React.useEffect(() => {
-    if (!focusApres) return;
-    const champ = stockRefs.current[focusApres];
-    if (champ) { champ.focus(); champ.select?.(); setFocusApres(null); }
-  }, [lignes, focusApres]);
+    if (!cibleFocus || dejaFocalise.current === cibleFocus) return;
+    const ligne = parId.get(cibleFocus);
+    const cle = ligne ? cartesDe(ligne)[0].cle : cibleFocus;
+    const champ = stockRefs.current[cle];
+    if (champ) {
+      dejaFocalise.current = cibleFocus;
+      champ.focus();
+      champ.select?.();
+      champ.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      setFocusApres(null);
+      if (focusDemande) onFocusFait?.();
+    }
+  }, [lignes, cibleFocus]);
 
-  const focusSuivant = (ligneId) => {
-    const i = ordre.findIndex(l => l.id === ligneId);
+  const focusSuivant = (cle) => {
+    const i = ordre.findIndex(c => c.cle === cle);
     const suivante = ordre[i + 1];
-    const champ = suivante && stockRefs.current[suivante.id];
+    const champ = suivante && stockRefs.current[suivante.cle];
     if (champ) { champ.focus(); champ.select?.(); }
   };
 
+  // Aucune attente : la ligne est à l'écran au retour, l'enregistrement suit.
   const ajouter = async () => {
     const nom = ajout.trim();
-    if (!nom || ajoutBusy) return;
-    setAjoutBusy(true);
-    try {
-      // Ajouté dans la zone qu'on est en train de compter.
-      const zone = zoneFiltre !== 'toutes' && zoneFiltre !== SANS_ZONE ? zoneFiltre : '';
-      const id = await onAjoutRapide(nom, zone);
-      setAjout('');
-      if (filtre === 'comptes') setFiltre('tous');
-      if (id) setFocusApres(id);
-    } finally {
-      setAjoutBusy(false);
-    }
+    if (!nom) return;
+    // Ajouté dans la zone qu'on est en train de compter, sinon dans celle que
+    // désigne son nom (corrigeable d'un tap sur sa carte).
+    const zone = zoneFiltre !== 'toutes' && zoneFiltre !== SANS_ZONE ? zoneFiltre : '';
+    setAjout('');
+    if (filtre === 'comptes') setFiltre('tous');
+    const id = await onAjoutRapide(nom, zone);
+    // Retaper un produit déjà là redonne le focus à son champ, même deux fois de suite.
+    dejaFocalise.current = null;
+    if (id) setFocusApres(id);
   };
+
+  const zoneProposee = zoneSuggeree({ produit: ajout });
+
+  const renderCarte = (c, { recente = false } = {}) => {
+    const { l, zone, multi, cle } = c;
+    const compte = carteComptee(c);
+    const brouillon = stockDraft[cle];
+    const valeur = multi ? quantiteZone(l, zone) : (estCompte(l) ? l.stockReel : null);
+    const precedent = multi ? (l.precedentParZone?.[zone] ?? null) : l.precedent;
+    const autres = multi ? zonesOf(l).filter(z => z !== zone) : [];
+    const commit = (v) => commitStockReel(l.id, v, multi ? zone : '');
+    return (
+      <div key={cle} style={{ ...st.carte, ...(compte ? st.carteComptee : {}), ...(recente ? st.carteRecente : {}) }}>
+        <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+          <div style={st.nomLigne}>
+            <div data-no-translate style={st.nom}>{l.produit}</div>
+            {canEdit && onModifier && (
+              <button type="button" style={st.modifierBtn} onClick={() => setEdition({ ligneId: l.id, zone: multi ? zone : '' })} aria-label={`Modifier - ${l.produit}`}>
+                Modifier
+              </button>
+            )}
+          </div>
+          <div style={st.indication}>
+            <span>
+              {precedent != null
+                ? <>préc. {precedent} {l.unite}</>
+                : compte ? <>compté</> : <>à compter</>}
+            </span>
+            {multi && (
+              <span>
+                aussi en <span data-no-translate>{autres.join(', ')}</span>, total <span>{l.stockReel ?? 0}</span> {l.unite}
+              </span>
+            )}
+          </div>
+        </div>
+        {canEdit ? (
+          <div style={st.saisie}>
+            {!compte && precedent != null && (
+              <button
+                type="button"
+                style={st.egal}
+                title={`Reprendre ${precedent} ${l.unite}`}
+                aria-label={`Reprendre la quantité précédente : ${precedent} ${l.unite}`}
+                onClick={() => commit(String(precedent))}
+              >=</button>
+            )}
+            <input
+              // type="text" + inputMode="decimal" et non type="number" :
+              // sur iOS le pavé numérique français propose une virgule que
+              // type="number" rejette en silence (champ vidé au tap).
+              type="text"
+              inputMode="decimal"
+              enterKeyHint={recente ? 'done' : 'next'}
+              aria-label={`Quantité comptée - ${l.produit}${multi ? ` (${zone})` : ''} (${l.unite})`}
+              ref={el => { if (el) stockRefs.current[cle] = el; else delete stockRefs.current[cle]; }}
+              value={brouillon ?? (valeur != null ? String(valeur) : '')}
+              placeholder={precedent != null ? String(precedent) : '0'}
+              onChange={e => setStockDraft(d => ({ ...d, [cle]: e.target.value }))}
+              onFocus={e => e.target.select()}
+              onBlur={e => commit(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commit(e.target.value);
+                  // Produit qu'on vient de créer : retour au champ d'ajout pour
+                  // enchaîner le suivant.
+                  if (recente && ajoutRef.current) ajoutRef.current.focus();
+                  else focusSuivant(cle);
+                } else if (e.key === 'Escape') {
+                  setStockDraft(d => { const suite = { ...d }; delete suite[cle]; return suite; });
+                  e.target.blur();
+                }
+              }}
+              style={{ ...st.champ, ...(compte ? st.champCompte : {}) }}
+            />
+            <select
+              value={l.unite}
+              onChange={e => onChangerUnite(l.id, e.target.value)}
+              style={st.unite}
+              aria-label={`Unité - ${l.produit}`}
+            >
+              {(UNITES_INVENTAIRE.includes(l.unite) ? UNITES_INVENTAIRE : [l.unite, ...UNITES_INVENTAIRE]).map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+            {valeur != null ? `${valeur} ${l.unite}` : '-'}
+          </div>
+        )}
+        {canEdit && onChangerZones && (rangement || recente) && (
+          <div style={st.casesLigne}>
+            <CasesZones zones={zonesOf(l)} nom={l.produit} onChange={(zs) => onChangerZones(l.id, zs)} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const ligneEditee = edition ? parId.get(edition.ligneId) : null;
 
   return (
     <div style={st.root}>
+      {ligneEditee && (
+        <ModifierProduit
+          key={ligneEditee.id}
+          ligne={ligneEditee}
+          zone={edition.zone}
+          lignes={lignes}
+          canGerer={canGerer}
+          onEnregistrer={(patch) => onModifier(ligneEditee.id, patch)}
+          onAnnulerSaisie={(z) => onAnnulerSaisie(ligneEditee.id, z)}
+          onSupprimer={() => onSupprimer(ligneEditee.id)}
+          onClose={() => setEdition(null)}
+        />
+      )}
       <div style={st.progression}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, color: 'var(--text)' }}>
@@ -130,6 +283,51 @@ export default function ComptageRapide({
         <div style={st.barre}><div style={{ ...st.barreRemplie, width: `${pct}%` }} /></div>
       </div>
 
+      {canEdit && (
+        <div style={st.ajoutBloc}>
+          <div style={st.ajoutRapide}>
+            <input
+              ref={ajoutRef}
+              type="text"
+              list="inventaire-ajout-rapide"
+              value={ajout}
+              onChange={e => setAjout(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouter(); } }}
+              placeholder="Nouveau produit : tapez son nom, Entrée"
+              aria-label="Ajouter un produit"
+              enterKeyHint="go"
+              style={st.ajoutInput}
+              autoComplete="off"
+            />
+            <datalist id="inventaire-ajout-rapide">
+              {(catalogue || []).filter(p => p?.nom && p.actif !== false).slice(0, 2000).map(p => <option key={p.id} value={p.nom} />)}
+            </datalist>
+            <button type="button" style={{ ...st.ajoutBtn, opacity: ajout.trim() ? 1 : 0.5 }} onClick={ajouter} disabled={!ajout.trim()}>
+              Ajouter
+            </button>
+          </div>
+          {ajout.trim() && (
+            <div style={st.ajoutAide}>
+              {zoneFiltre !== 'toutes' && zoneFiltre !== SANS_ZONE
+                ? <>Rangé dans <span data-no-translate>{zoneFiltre}</span></>
+                : zoneProposee ? <>Rangé dans <span data-no-translate>{zoneProposee}</span>, à corriger d'un tap si besoin</> : <>Sans zone, à cocher sur sa carte</>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {recentes.length > 0 && (
+        <div style={st.groupeZone}>
+          <div style={st.zoneTitre}>
+            Ajoutés à l'instant
+            <span style={st.catCompte}>{recentes.filter(carteComptee).length}/{recentes.length}</span>
+          </div>
+          <div style={st.cartes}>
+            {recentes.map(c => renderCarte(c, { recente: true }))}
+          </div>
+        </div>
+      )}
+
       {avecZones && (
         <SegmentedTabs
           size="sm"
@@ -138,8 +336,8 @@ export default function ComptageRapide({
           tabs={[
             { id: 'toutes', label: 'Toutes les zones' },
             ...zones.map(z => {
-              const ls = lignes.filter(l => zoneOf(l) === z);
-              return { id: z, label: `${z} (${ls.filter(estCompte).length}/${ls.length})` };
+              const cs = toutes.filter(c => c.zone === z);
+              return { id: z, label: `${z} (${cs.filter(carteComptee).length}/${cs.length})` };
             }),
             ...(nbSansZone ? [{ id: SANS_ZONE, label: `${SANS_ZONE} (${nbSansZone})` }] : []),
           ]}
@@ -156,7 +354,7 @@ export default function ComptageRapide({
             label: f.id === 'a_compter' ? `${f.label} (${restants})` : f.id === 'comptes' ? `${f.label} (${nbComptes})` : f.label,
           }))}
         />
-        {canEdit && onChangerZone && total > 0 && (
+        {canEdit && onChangerZones && total > 0 && (
           <button
             type="button"
             style={{ ...st.rangerBtn, ...(rangement ? st.rangerBtnActif : {}) }}
@@ -176,36 +374,26 @@ export default function ComptageRapide({
         />
       </div>
 
-      {canEdit && (
-        <div style={st.ajoutRapide}>
-          <input
-            type="text"
-            list="inventaire-ajout-rapide"
-            value={ajout}
-            onChange={e => setAjout(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouter(); } }}
-            placeholder="Ajouter un produit"
-            aria-label="Ajouter un produit"
-            style={st.ajoutInput}
-            autoComplete="off"
-          />
-          <datalist id="inventaire-ajout-rapide">
-            {(catalogue || []).filter(p => p?.nom && p.actif !== false).slice(0, 2000).map(p => <option key={p.id} value={p.nom} />)}
-          </datalist>
-          <button type="button" style={{ ...st.ajoutBtn, opacity: ajout.trim() ? 1 : 0.5 }} onClick={ajouter} disabled={!ajout.trim() || ajoutBusy}>
-            {ajoutBusy ? '…' : 'Ajouter'}
-          </button>
-        </div>
-      )}
-
-      {canEdit && onChangerZone && !avecZones && total > 0 && !rangement && (
+      {canEdit && onChangerZones && rangement && (
         <div style={st.astuceZones}>
-          Rangez les produits par zone (chambre froide, congélateur, économat) avec le bouton « Ranger par zone », pour compter une zone après l'autre.
-
+          <span style={{ flex: '1 1 260px', minWidth: 0 }}>
+            Un tap sur une case range le produit, un second le retire. Deux cases cochées : le produit se compte dans chacune des deux zones.
+          </span>
+          {nbRangeables > 0 && onRangerSansZone && (
+            <button type="button" style={st.rangerBtn} onClick={onRangerSansZone}>
+              Ranger d'après leur nom <span>{nbRangeables}</span> produits sans zone
+            </button>
+          )}
         </div>
       )}
 
-      {visibles.length === 0 && (
+      {canEdit && onChangerZones && !avecZones && total > 0 && !rangement && (
+        <div style={st.astuceZones}>
+          Rangez les produits par zone (cave, économat, froid positif, froid négatif) avec le bouton « Ranger par zone », pour compter une zone après l'autre.
+        </div>
+      )}
+
+      {visibles.length === 0 && recentes.length === 0 && (
         <div style={st.vide}>
           {total === 0
             ? 'Aucun produit dans cet inventaire. Ajoutez-les depuis le catalogue avec « Ajouter des produits », ou tapez un nom ci-dessus.'
@@ -219,97 +407,20 @@ export default function ComptageRapide({
             <div style={st.zoneTitre}>
               {zone || SANS_ZONE}
               <span style={st.catCompte}>
-                {categories.reduce((n, [, ls]) => n + ls.filter(estCompte).length, 0)}/{categories.reduce((n, [, ls]) => n + ls.length, 0)}
+                {categories.reduce((n, [, cs]) => n + cs.filter(carteComptee).length, 0)}/{categories.reduce((n, [, cs]) => n + cs.length, 0)}
               </span>
             </div>
           )}
-          {categories.map(([cat, ls]) => (
-        <div key={cat}>
-          <div style={st.catTitre}>
-            {cat}
-            <span style={st.catCompte}>{ls.filter(estCompte).length}/{ls.length}</span>
-          </div>
-          <div style={st.cartes}>
-            {ls.map(l => {
-              const compte = estCompte(l);
-              const brouillon = stockDraft[l.id];
-              return (
-                <div key={l.id} style={{ ...st.carte, ...(compte ? st.carteComptee : {}) }}>
-                  <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                    <div data-no-translate style={st.nom}>{l.produit}</div>
-                    <div style={st.indication}>
-                      <span>
-                        {l.precedent != null
-                          ? <>préc. {l.precedent} {l.unite}</>
-                          : compte ? <>compté</> : <>à compter</>}
-                      </span>
-                      {canEdit && onChangerZone && rangement && (
-                        <ChoixZone
-                          value={zoneOf(l)}
-                          lignes={lignes}
-                          ariaLabel={`Zone - ${l.produit}`}
-                          style={st.zoneSelect}
-                          onChange={(z) => onChangerZone(l.id, z)}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  {canEdit ? (
-                    <div style={st.saisie}>
-                      {!compte && l.precedent != null && (
-                        <button
-                          type="button"
-                          style={st.egal}
-                          title={`Reprendre ${l.precedent} ${l.unite}`}
-                          aria-label={`Reprendre la quantité précédente : ${l.precedent} ${l.unite}`}
-                          onClick={() => commitStockReel(l.id, String(l.precedent))}
-                        >=</button>
-                      )}
-                      <input
-                        // type="text" + inputMode="decimal" et non type="number" :
-                        // sur iOS le pavé numérique français propose une virgule que
-                        // type="number" rejette en silence (champ vidé au tap).
-                        type="text"
-                        inputMode="decimal"
-                        enterKeyHint="next"
-                        aria-label={`Quantité comptée - ${l.produit} (${l.unite})`}
-                        ref={el => { if (el) stockRefs.current[l.id] = el; else delete stockRefs.current[l.id]; }}
-                        value={brouillon ?? (compte ? String(l.stockReel) : '')}
-                        placeholder={l.precedent != null ? String(l.precedent) : '0'}
-                        onChange={e => setStockDraft(d => ({ ...d, [l.id]: e.target.value }))}
-                        onFocus={e => e.target.select()}
-                        onBlur={e => commitStockReel(l.id, e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            commitStockReel(l.id, e.target.value);
-                            focusSuivant(l.id);
-                          } else if (e.key === 'Escape') {
-                            setStockDraft(d => { const suite = { ...d }; delete suite[l.id]; return suite; });
-                            e.target.blur();
-                          }
-                        }}
-                        style={{ ...st.champ, ...(compte ? st.champCompte : {}) }}
-                      />
-                      <select
-                        value={l.unite}
-                        onChange={e => onChangerUnite(l.id, e.target.value)}
-                        style={st.unite}
-                        aria-label={`Unité - ${l.produit}`}
-                      >
-                        {(UNITES_INVENTAIRE.includes(l.unite) ? UNITES_INVENTAIRE : [l.unite, ...UNITES_INVENTAIRE]).map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                      {compte ? `${l.stockReel} ${l.unite}` : '-'}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          {categories.map(([cat, cs]) => (
+            <div key={cat}>
+              <div style={st.catTitre}>
+                {cat}
+                <span style={st.catCompte}>{cs.filter(carteComptee).length}/{cs.length}</span>
+              </div>
+              <div style={st.cartes}>
+                {cs.map(c => renderCarte(c))}
+              </div>
+            </div>
           ))}
         </div>
       ))}
@@ -325,14 +436,15 @@ const st = {
   lienBtn: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 36 },
   outils: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 },
   recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  ajoutBloc: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   ajoutRapide: { display: 'flex', gap: 8, minWidth: 0 },
   ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  ajoutAide: { fontSize: 11, color: 'var(--text2)', padding: '0 4px' },
   // Même hauteur que le champ d'ajout qu'il prolonge (44 px).
   ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   vide: { padding: '30px 16px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5, background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12 },
   groupeZone: { display: 'flex', flexDirection: 'column', gap: 4 },
   zoneTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: '10px 2px 0', paddingBottom: 4, borderBottom: '2px solid var(--border)' },
-  zoneSelect: { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)', padding: '4px 8px', cursor: 'pointer', maxWidth: 180 },
   // Gabarit du bouton secondaire de Btn (38 px, rayon --r-sm, graisse 500).
   rangerBtn: { padding: '8px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 38, whiteSpace: 'nowrap' },
   rangerBtnActif: { borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 },
@@ -342,7 +454,13 @@ const st = {
   cartes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 8 },
   carte: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, minWidth: 0 },
   carteComptee: { borderColor: 'var(--success-bd)' },
-  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
+  carteRecente: { borderColor: 'var(--accent)' },
+  // Les cases sur toute la largeur de la carte, sous le nom et le champ.
+  casesLigne: { flexBasis: '100%', minWidth: 0 },
+  nomLigne: { display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 },
+  nom: { flex: '1 1 auto', minWidth: 0, fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
+  // Lien discret, cible tactile de 32 px sans agrandir la carte.
+  modifierBtn: { flexShrink: 0, background: 'none', border: 'none', padding: '0 4px', minHeight: 32, marginTop: -7, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   indication: { fontSize: 11, color: 'var(--text2)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' },
   egal: { width: 40, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text2)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
