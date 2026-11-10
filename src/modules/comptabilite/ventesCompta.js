@@ -5,6 +5,10 @@
 // Trois sources, par jour (règle D9 de la spec) :
 //   - la saisie à la main du jour (ventes_jour, TVA comprise, par taux) : elle
 //     corrige la caisse, elle la remplace donc pour ce jour ;
+//     une ligne écrite par la clôture de la caisse native (source 'caisse',
+//     caisse v8) tient la même place : le jour est dit « caisse » tant
+//     qu'aucune de ses lignes n'est une saisie, et dès qu'une saisie existe
+//     pour ce jour, c'est elle qui garde la main ;
 //   - sinon la caisse (pos_sales) : la caisse ne distingue pas l'emporter, son
 //     montant est compté à 8,1 % (dit à l'écran) ;
 //   - plus les lignes de note de séjour de l'hôtel, par taux de la ligne, hors
@@ -52,16 +56,16 @@ function tauxHebergementParJour(notes) {
 }
 
 // Une ligne par jour qui a au moins une source, triée par jour.
-//   manuel : [{ jour, taux, montantTtc }]   (ventes_jour)
+//   manuel : [{ jour, taux, montantTtc, source }]   (ventes_jour)
 //   pos    : [{ jour, montantTtc }]         (pos_sales, revenue_cts / 100)
 //   notes  : [{ jour, type, montant, tvaTaux }]  (sejour_lignes)
-// → [{ jour, source: 'manuel' | 'pos' | null, parTaux: { cle: ttc }, ttc,
+// → [{ jour, source: 'manuel' | 'caisse' | 'pos' | null, parTaux: { cle: ttc }, ttc,
 //      posTtc (null sans caisse ce jour), notesTtc, avecNotes }]
 export function ventesParJour({ manuel = [], pos = [], notes = [], debut = null, fin = null } = {}) {
   const dans = (j) => typeof j === 'string' && (!debut || j >= debut) && (!fin || j <= fin);
   const jours = new Map();
   const jour = (j) => {
-    if (!jours.has(j)) jours.set(j, { jour: j, manuel: null, pos: null, notes: null });
+    if (!jours.has(j)) jours.set(j, { jour: j, manuel: null, saisi: false, pos: null, notes: null });
     return jours.get(j);
   };
   (manuel || []).forEach((v) => {
@@ -71,6 +75,7 @@ export function ventesParJour({ manuel = [], pos = [], notes = [], debut = null,
     x.manuel = x.manuel || {};
     const k = cleTaux(v.taux);
     x.manuel[k] = (x.manuel[k] || 0) + m;
+    if (v.source !== 'caisse') x.saisi = true;
   });
   (pos || []).forEach((v) => {
     const m = nombre(v.montantTtc);
@@ -92,7 +97,7 @@ export function ventesParJour({ manuel = [], pos = [], notes = [], debut = null,
     const parTaux = {};
     const ajouter = (k, v) => { parTaux[k] = (parTaux[k] || 0) + v; };
     let source = null;
-    if (x.manuel) { source = 'manuel'; Object.entries(x.manuel).forEach(([k, v]) => ajouter(k, v)); }
+    if (x.manuel) { source = x.saisi ? 'manuel' : 'caisse'; Object.entries(x.manuel).forEach(([k, v]) => ajouter(k, v)); }
     else if (x.pos != null) { source = 'pos'; ajouter(cleTaux(TAUX_CAISSE), x.pos); }
     let notesTtc = 0;
     if (x.notes) Object.entries(x.notes).forEach(([k, v]) => { ajouter(k, v); notesTtc += v; });
@@ -118,11 +123,12 @@ const rangTaux = (t) => {
 // Sans aucun jour connu : ttc, ht et tva valent null (affichés « n/a »).
 export function totauxVentes(parJour) {
   const parTaux = new Map();
-  const jours = { manuel: 0, pos: 0, notes: 0 };
+  const jours = { manuel: 0, pos: 0, notes: 0, caisse: 0 };
   let notesTtc = 0;
   (parJour || []).forEach((j) => {
     if (j.source === 'manuel') jours.manuel += 1;
     if (j.source === 'pos') jours.pos += 1;
+    if (j.source === 'caisse') jours.caisse += 1;
     if (j.avecNotes) { jours.notes += 1; notesTtc += j.notesTtc || 0; }
     Object.entries(j.parTaux || {}).forEach(([k, v]) => parTaux.set(k, (parTaux.get(k) || 0) + v));
   });
@@ -132,7 +138,7 @@ export function totauxVentes(parJour) {
     const ht = round2(ttc / (1 + taux / 100));
     return { taux, ttc, ht, tva: round2(ttc - ht) };
   }).sort((a, b) => rangTaux(a.taux) - rangTaux(b.taux) || b.taux - a.taux);
-  const connu = jours.manuel + jours.pos + jours.notes > 0;
+  const connu = jours.manuel + jours.pos + jours.notes + jours.caisse > 0;
   const somme = (k) => round2(lignes.reduce((s, l) => s + l[k], 0));
   return {
     ttc: connu ? somme('ttc') : null,

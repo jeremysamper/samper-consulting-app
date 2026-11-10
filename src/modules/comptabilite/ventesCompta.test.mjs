@@ -143,3 +143,31 @@ test('un mois sans aucun horaire compte tous ses jours, même si un autre mois d
   // 30 et 31 août (mois sans horaire) + 14 et 15 septembre (ouverts) ; le 16, fermé.
   assert.deepEqual(c, { avec: 1, attendus: 4, manquants: ['2026-08-30', '2026-08-31', '2026-09-14'] });
 });
+
+test('clôture de la caisse native : le jour est dit caisse, par taux ; une saisie le même jour garde la main', () => {
+  const parJour = ventesParJour({
+    manuel: [
+      // Mardi : deux lignes écrites par la clôture, une par taux.
+      { jour: '2026-11-03', taux: 8.1, montantTtc: 280.48, source: 'caisse' },
+      { jour: '2026-11-03', taux: 2.6, montantTtc: 39, source: 'caisse' },
+      // Mercredi : une ligne de la clôture, une autre saisie à la main.
+      { jour: '2026-11-04', taux: 8.1, montantTtc: 120, source: 'manuel' },
+      { jour: '2026-11-04', taux: 3.8, montantTtc: 36, source: 'caisse' },
+      // Jeudi : annulation seule ce jour-là, la clôture écrit un net négatif.
+      { jour: '2026-11-05', taux: 8.1, montantTtc: -42, source: 'caisse' },
+    ],
+    pos: [{ jour: '2026-11-03', montantTtc: 999 }],
+  });
+  assert.deepEqual(parJour.map(j => [j.jour, j.source, j.ttc]), [
+    ['2026-11-03', 'caisse', 319.48], ['2026-11-04', 'manuel', 156], ['2026-11-05', 'caisse', -42],
+  ]);
+  // Comme une saisie, la clôture passe avant la caisse reliée (pos_sales), sans la perdre de vue.
+  assert.deepEqual(parJour[0].parTaux, { 8.1: 280.48, 2.6: 39 });
+  assert.equal(parJour[0].posTtc, 999);
+  const t = totauxVentes(parJour);
+  assert.deepEqual(t.jours, { manuel: 1, pos: 0, notes: 0, caisse: 2 });
+  assert.equal(t.ttc, 433.48);
+  // Un jour clôturé est un jour couvert.
+  const c = couvertureVentes({ parJour, joursOuverts: new Set(), debut: '2026-11-03', finEffective: '2026-11-05', aujourdhui: '2026-11-10' });
+  assert.deepEqual(c, { avec: 3, attendus: 3, manquants: [] });
+});
