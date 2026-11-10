@@ -19,6 +19,12 @@ const MESSAGES = {
   '23505': 'Ce nom existe déjà.',
 };
 
+// Le refus que la base rend quand le poste n'est plus en mode test (mode
+// expiré, ou quitté depuis un autre onglet). L'écran s'en sert pour revenir
+// de lui-même en mode normal.
+const MODE_TEST_INACTIF = 'caisse: mode test inactif sur ce poste';
+const estRefusModeTest = (error) => String(error?.message || '') === MODE_TEST_INACTIF;
+
 // Refus des RPC de la v5 (caisse_ouvrir_ticket, caisse_corriger_reservation) :
 // la base les lève sans accents, l'écran les dit en clair.
 const MESSAGES_RPC = {
@@ -36,6 +42,14 @@ const MESSAGES_RPC = {
   'caisse: le statut de cette reservation ne se change pas ici': 'Le statut de cette réservation se change dans Réservations.',
   'caisse: reservation de groupe, nom et couverts se corrigent dans Groupes': "Réservation d'un groupe : le nom et les couverts se corrigent dans Groupes.",
   'caisse: correction non enregistree': "La correction n'a pas été enregistrée. Réessayez.",
+  // v6 : mode test, annonce des suites, retour « prêt ».
+  [MODE_TEST_INACTIF]: "Le mode test n'est plus actif sur ce poste.",
+  'caisse: poste invalide': 'Ce poste est mal identifié. Rechargez la page.',
+  "caisse: un ticket de test s'ouvre depuis un poste en mode test": "Un ticket de test s'ouvre depuis un poste en mode test.",
+  "caisse: le drapeau de test d'un ticket ne change jamais": "Un ticket de test reste un ticket de test.",
+  'caisse: un ticket de test et un ticket reel ne se reunissent pas': 'Un ticket de test et un vrai ticket ne se réunissent pas.',
+  "caisse: l'etat cuisine d'une ligne ne s'ecrit pas depuis l'ecran": "L'état cuisine d'une ligne ne se change pas ici.",
+  "caisse: une ligne annoncee ne part que par l'envoi du bon": "Une ligne annoncée en cuisine ne part que par l'envoi du bon.",
 };
 
 function mapError(error, fallback) {
@@ -53,12 +67,15 @@ function mapError(error, fallback) {
 }
 
 // Tickets ouverts de l'établissement, avec leurs lignes.
-export async function listTicketsOuverts(etablissementId) {
+// v6 : un poste normal ne lit jamais un ticket de test, un poste en mode test
+// ne lit que ceux-là. Le filtre est toujours posé (fermé par défaut).
+export async function listTicketsOuverts(etablissementId, { test = false } = {}) {
   const { data, error } = await supabase
     .from('caisse_tickets')
     .select('*, caisse_lignes(*)')
     .eq('etablissement_id', etablissementId)
     .eq('statut', 'ouvert')
+    .eq('test', Boolean(test))
     .order('created_at', { ascending: true });
   if (error) return { data: null, error: mapError(error, 'Tickets illisibles. Réessayez.') };
   const tickets = (data || []).map((t) => ({
@@ -85,7 +102,15 @@ export async function creerTicket(etablissementId, tableId) {
 // réservations lui-même. Idempotente au double tap (le second appel rend le
 // ticket du premier, deja_ouvert vrai). La vente directe reste creerTicket.
 // qui = 'reservation' | 'passage' | 'compte'.
-export async function ouvrirTicket({ etablissementId, tableId, qui, reservationId = null, clientId = null, couverts = null }) {
+// v6, mode test : test = true, le nom du poste et sa clé (rendue par
+// testEntrer, gardée sur l'appareil). La base ouvre alors un ticket de test,
+// sans rien écrire dans les réservations ni dans le fichier clients ; la table
+// devient facultative (vente directe d'essai). Si le poste n'est plus en mode
+// test, le refus est signalé par modeTestInactif.
+export async function ouvrirTicket({
+  etablissementId, tableId = null, qui = null, reservationId = null, clientId = null, couverts = null,
+  test = false, poste = null, posteCle = null,
+}) {
   const { data, error } = await supabase.rpc('caisse_ouvrir_ticket', {
     p_etablissement_id: etablissementId,
     p_table_id: tableId,
@@ -93,9 +118,72 @@ export async function ouvrirTicket({ etablissementId, tableId, qui, reservationI
     p_reservation_id: reservationId,
     p_client_id: clientId,
     p_couverts: couverts,
+    ...(test ? { p_test: true, p_poste: poste, p_poste_cle: posteCle } : null),
   });
-  if (error) return { data: null, error: mapError(error, "La table n'a pas pu être ouverte. Réessayez.") };
+  if (error) {
+    return {
+      data: null,
+      error: mapError(error, "La table n'a pas pu être ouverte. Réessayez."),
+      modeTestInactif: estRefusModeTest(error),
+    };
+  }
   return { data, error: null };
+}
+
+// ── Mode test (v6, migration 20261110_caisse_v6) ──
+// Entrer : consultant, patron, resp_cuisine. La base rend alors la clé du
+// poste (data.cle), une seule fois : l'appareil la garde, c'est elle qui
+// prouve ensuite qu'il est bien le poste passé en mode test. Sortir :
+// l'appareil qui tient la clé (toute personne qui a la caisse), ou un des
+// trois rôles ; vider en sortant, ou vider seul : les trois mêmes rôles.
+// Chaque geste laisse une ligne au journal du mode test.
+export async function testEntrer(etablissementId, poste) {
+  const { data, error } = await supabase.rpc('caisse_test_entrer', {
+    p_etablissement_id: etablissementId, p_poste: poste,
+  });
+  if (error) return { data: null, error: mapError(error, "Le mode test n'a pas pu être activé. Réessayez.") };
+  return { data, error: null };
+}
+
+export async function testSortir(etablissementId, poste, cle, vider = false) {
+  const { data, error } = await supabase.rpc('caisse_test_sortir', {
+    p_etablissement_id: etablissementId, p_poste: poste, p_cle: cle || null, p_vider: Boolean(vider),
+  });
+  if (error) return { data: null, error: mapError(error, "Le mode test n'a pas pu être quitté. Réessayez.") };
+  return { data, error: null };
+}
+
+// Supprime TOUS les tickets de test de la maison, pas seulement ceux de ce
+// poste (lignes, paiements et bons de cuisine de test compris). Rend
+// { tickets, montant }.
+export async function viderTests(etablissementId, poste) {
+  const { data, error } = await supabase.rpc('caisse_vider_tests', {
+    p_etablissement_id: etablissementId, p_poste: poste,
+  });
+  if (error) return { data: null, error: mapError(error, "Les tickets de test n'ont pas pu être vidés. Réessayez.") };
+  return { data, error: null };
+}
+
+// L'état du poste vu par la base : { actif, tickets }.
+export async function testEtat(etablissementId, poste, cle) {
+  const { data, error } = await supabase.rpc('caisse_test_etat', {
+    p_etablissement_id: etablissementId, p_poste: poste, p_cle: cle || null,
+  });
+  if (error) return { data: null, error: mapError(error, 'État du mode test illisible.') };
+  return { data, error: null };
+}
+
+// Journal du mode test : lisible par consultant et patron (RLS), vide pour
+// les autres rôles.
+export async function listJournalTests(etablissementId, limite = 30) {
+  const { data, error } = await supabase
+    .from('caisse_tests_journal')
+    .select('id, action, poste, auteur_nom, auteur_role, nombre, montant, detail, created_at')
+    .eq('etablissement_id', etablissementId)
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) return { data: null, error: mapError(error, 'Journal du mode test illisible.') };
+  return { data: data || [], error: null };
 }
 
 // Correction d'une réservation par le service : rattachement du ticket, nom,
@@ -159,6 +247,8 @@ export async function listTicketsClient(clientId, reservationIds = []) {
     .from('caisse_tickets')
     .select('id, statut, created_at, closed_at, couverts, table_id, salle_tables(nom), caisse_lignes(libelle, quantite, prix_unitaire)')
     .neq('statut', 'annule')
+    // v6 : jamais un ticket de test sur une fiche client.
+    .eq('test', false)
     .order('created_at', { ascending: false })
     .limit(200);
   requete = ids.length
@@ -228,8 +318,10 @@ export async function supprimerLigne(id) {
 export async function listSansRecents(etablissementId, limite = 8) {
   const { data, error } = await supabase
     .from('caisse_lignes')
-    .select('options, created_at, caisse_tickets!inner(etablissement_id)')
+    .select('options, created_at, caisse_tickets!inner(etablissement_id, test)')
     .eq('caisse_tickets.etablissement_id', etablissementId)
+    // v6 : les essais du mode test ne nourrissent pas les rappels de la maison.
+    .eq('caisse_tickets.test', false)
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) { console.warn('[caisseService] listSansRecents', error); return { data: [] }; }
@@ -384,6 +476,18 @@ export async function envoyerBon(ticketId, suite) {
     p_suite: suite,
   });
   if (error) return { data: null, error: mapError(error, "L'envoi du bon a échoué. Réessayez.") };
+  return { data, error: null };
+}
+
+// Réclamer une suite (v6) : UNE RPC, même garde et même idempotence que
+// l'envoi. Les plats annoncés en cuisine au premier envoi y sont libérés (pas
+// recréés), ceux ajoutés depuis y partent. Rend { bon_id, lignes, annonces }.
+export async function reclamerSuite(ticketId, suite) {
+  const { data, error } = await supabase.rpc('caisse_reclamer_suite', {
+    p_ticket_id: ticketId,
+    p_suite: suite,
+  });
+  if (error) return { data: null, error: mapError(error, "La suite n'a pas pu être réclamée. Réessayez.") };
   return { data, error: null };
 }
 

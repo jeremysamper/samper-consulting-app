@@ -5,11 +5,18 @@ import { navigateToPage } from '../../services/navigationService.js';
 import { pollKdsOrders } from '../pos/lib/posApi.js';
 import { s, ticketStyle, faireRowStyle } from './Kds.styles.js';
 
-// KDS - Passe cuisine branché Lightspeed.
+// KDS - Passe cuisine, couplé à la caisse de la maison.
 //
-// Flux : ce module invoque l'edge function pos-orders-poll toutes les ~15 s
-// tant qu'il est affiché (ingestion getCheck -> kds_orders/kds_order_items),
-// et écoute Supabase Realtime pour rafraîchir l'écran instantanément.
+// Deux sources de bons, par établissement, sans réglage à faire :
+//   - la caisse native : ses bons arrivent dans kds_orders par la RPC
+//     caisse_envoyer_bon, l'écran les reçoit par Supabase Realtime ;
+//   - Lightspeed : seulement si la maison y a une connexion (RPC
+//     kds_lightspeed_actif). Ce module invoque alors l'edge function
+//     pos-orders-poll toutes les ~15 s tant qu'il est affiché (ingestion
+//     getCheck -> kds_orders/kds_order_items).
+// Une maison sans Lightspeed ne lance aucun poll et ne voit ni accueil ni
+// bandeau Lightspeed. Les deux sources peuvent coexister : leurs bons se
+// mêlent par heure d'ouverture.
 //
 // Pensé pour le rush : lignes hautes (tap au doigt), bump = tap sur la ligne,
 // actions optimistes (aucune attente réseau), zéro confirmation sauf si on
@@ -56,6 +63,9 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   const [loading, setLoading] = React.useState(true);
   // conn : état de la liaison Lightspeed déduit des réponses du poll.
   const [conn, setConn] = React.useState({ state: 'unknown', lastOkAt: null, error: null });
+  // lightspeed : la maison a-t-elle une connexion Lightspeed ? null tant que
+  // la réponse n'est pas connue (aucun poll dans le doute), puis true ou false.
+  const [lightspeed, setLightspeed] = React.useState(null);
   const [, setTick] = React.useState(0); // re-render 1 s pour les chronos
 
   // ── Lecture des commandes (RLS lecture cuisine) ──
@@ -82,9 +92,32 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     return () => { mounted = false; unsub && unsub(); };
   }, [reload, legacySB]);
 
-  // ── Poll Lightspeed ~15 s tant que l'écran est affiché et visible ──
+  // ── Source des bons : la maison est-elle reliée à Lightspeed ? ──
+  // Un booléen lu en base (aucun jeton). En cas d'échec de lecture, on ne
+  // suppose rien : pas de poll, et une nouvelle tentative toutes les 15 s.
   React.useEffect(() => {
-    if (!isActive || !etabId) return undefined;
+    setLightspeed(null);
+    setConn({ state: 'unknown', lastOkAt: null, error: null });
+    if (!isActive || !etabId || !legacySB) return undefined;
+    let stopped = false;
+    let timer = null;
+    const lire = async () => {
+      try {
+        const actif = await legacySB.db.kdsLightspeedActif(etabId);
+        if (!stopped) setLightspeed(actif);
+      } catch (err) {
+        console.error('[KDS kdsLightspeedActif]', err);
+        if (!stopped) timer = setTimeout(lire, POLL_MS);
+      }
+    };
+    lire();
+    return () => { stopped = true; if (timer) clearTimeout(timer); };
+  }, [isActive, etabId, legacySB]);
+
+  // ── Poll Lightspeed ~15 s tant que l'écran est affiché et visible, pour
+  // une maison reliée à Lightspeed seulement ──
+  React.useEffect(() => {
+    if (!isActive || !etabId || lightspeed !== true) return undefined;
     let stopped = false;
 
     const doPoll = async () => {
@@ -117,7 +150,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [isActive, etabId]);
+  }, [isActive, etabId, lightspeed]);
 
   // ── Wake lock : l'écran du passe ne se met pas en veille pendant le service ──
   React.useEffect(() => {
@@ -360,31 +393,42 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   };
 
   // ── États de page ──
-  const showOnboarding = (conn.state === 'not_connected' || conn.state === 'needs_reconnect') && atPasse.length === 0;
+  // L'accueil, les bandeaux et le témoin de synchro ne concernent qu'une
+  // maison reliée à Lightspeed (dont la liaison peut tomber). Une maison sur
+  // la caisse native n'en voit aucun.
+  const avecLightspeed = lightspeed === true;
+  const showOnboarding = avecLightspeed
+    && (conn.state === 'not_connected' || conn.state === 'needs_reconnect') && atPasse.length === 0;
 
   return (
-    <div style={s.root}>
+    <div style={s.root} data-kds-source={lightspeed === null ? 'inconnue' : (avecLightspeed ? 'lightspeed' : 'caisse')}>
       <div style={s.header}>
         <div>
           <h2 style={s.title}>KDS Cuisine</h2>
-          <div style={s.sub}>Commandes Lightspeed en direct - tap sur un plat pour le marquer fait</div>
+          <div style={s.sub}>
+            {avecLightspeed
+              ? 'Commandes Lightspeed en direct - tap sur un plat pour le marquer fait'
+              : 'Commandes en direct - tap sur un plat pour le marquer fait'}
+          </div>
         </div>
         <div style={s.kpi}>
           {atPasse.length} table{atPasse.length > 1 ? 's' : ''}, {counts.faire} à faire{counts.suite > 0 ? `, ${counts.suite} à suivre` : ''}
         </div>
-        <div style={s.syncWrap}>
-          <span style={s.syncDot(conn.state === 'ok')} />
-          {conn.state === 'ok' && conn.lastOkAt ? `sync ${timeLabel(new Date(conn.lastOkAt).toISOString())}` : 'hors synchro'}
-        </div>
+        {avecLightspeed && (
+          <div style={s.syncWrap}>
+            <span style={s.syncDot(conn.state === 'ok')} />
+            {conn.state === 'ok' && conn.lastOkAt ? `sync ${timeLabel(new Date(conn.lastOkAt).toISOString())}` : 'hors synchro'}
+          </div>
+        )}
       </div>
 
-      {conn.state === 'error' && (
+      {avecLightspeed && conn.state === 'error' && (
         <div style={s.banner}>
           Synchronisation Lightspeed en erreur - l’écran continue sur les dernières données.
           <span style={{ fontSize: 12, opacity: 0.8 }}>{conn.error}</span>
         </div>
       )}
-      {(conn.state === 'not_connected' || conn.state === 'needs_reconnect') && atPasse.length > 0 && (
+      {avecLightspeed && (conn.state === 'not_connected' || conn.state === 'needs_reconnect') && atPasse.length > 0 && (
         <div style={s.banner}>
           {conn.state === 'needs_reconnect' ? 'Reconnexion Lightspeed requise (droit commandes).' : 'Caisse Lightspeed non connectée.'}
           <button style={s.bannerBtn} onClick={openPos}>Ouvrir Ventes POS</button>
