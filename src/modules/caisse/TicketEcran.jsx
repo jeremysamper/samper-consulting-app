@@ -8,6 +8,7 @@ import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
 import BoutonFiche from './BoutonFiche.jsx';
 import CorrigerClient from './CorrigerClient.jsx';
+import Encaissement from './Encaissement.jsx';
 import { allergiesDe } from './clients.js';
 import { libelleOption } from './options.js';
 import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
@@ -69,7 +70,7 @@ export default function TicketEcran({
   peutHabiller = false, onBoutonsChange, onOuvrirReglages,
   ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
-  modeTest = false,
+  modeTest = false, onQuittance,
 }) {
   const [recherche, setRecherche] = React.useState('');
   // Carte choisie pour ce ticket ; null = toutes les cartes en vente.
@@ -93,8 +94,8 @@ export default function TicketEcran({
   const [paiementOuvert, setPaiementOuvert] = React.useState(false);
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
   // Verrous immédiats (une ref, pas un état) : deux taps dans la même image
-  // ne lancent ni deux envois ni deux encaissements.
-  const verrou = React.useRef({ envoi: false, paiement: false });
+  // ne lancent pas deux envois (l'encaissement a son propre verrou, v7).
+  const verrou = React.useRef({ envoi: false });
   // Habillage des boutons (v3) : mode édition (consultant, patron,
   // resp_cuisine) et fiche du bouton ouvert ; l'appui long ouvre aussi la
   // fiche, hors mode, pour les mêmes rôles.
@@ -268,22 +269,6 @@ export default function TicketEcran({
     if (!erreur(error)) reload();
   }
 
-  async function payer(moyen) {
-    if (verrou.current.paiement) return;
-    verrou.current.paiement = true;
-    try {
-      const { error } = await caisse.encaisser(
-        ticket.id, moyen.cle, Math.round(total * 100) / 100,
-        reglages.perso?.moyens_paiement ? moyen.libelle : null,
-      );
-      if (erreur(error)) return;
-      notify('Ticket encaissé', 'success');
-      onClos();
-    } finally {
-      verrou.current.paiement = false;
-    }
-  }
-
   // Corrections du service sur la réservation du ticket. Une RPC par geste ;
   // l'écran relit le ticket et les réservations, jamais un état supposé.
   const verrouCorrection = React.useRef(false);
@@ -419,7 +404,7 @@ export default function TicketEcran({
         </span>
       </Btn>
     );
-  } else if (lignes.length > 0 && !paiementOuvert) {
+  } else if (lignes.length > 0) {
     actionPrincipale = (
       <Btn variant="primary" onClick={() => setPaiementOuvert(true)} style={st.btnPrincipal}>
         <span>Encaisser</span>
@@ -435,23 +420,7 @@ export default function TicketEcran({
         <span style={st.totalLibelle}>Total</span>
         <span style={st.totalValeur}><span>{chf(total)}</span> <span style={st.devise}>CHF</span></span>
       </div>
-      {paiementOuvert ? (
-        <div style={st.paiement}>
-          {enAttente.length > 0 && (
-            <p style={st.avertissement}>
-              <span>{enAttente.length}</span> <span>lignes pas encore envoyées en cuisine.</span>
-            </p>
-          )}
-          <div style={st.moyens}>
-            {reglages.moyens_paiement.map((m, i) => (
-              <Btn key={m.cle + i} variant={m.cle === 'autre' && !reglages.perso?.moyens_paiement ? 'ghost' : 'primary'} onClick={() => payer(m)} style={st.btnMoyen}>
-                {reglages.perso?.moyens_paiement ? <span data-no-translate>{m.libelle}</span> : m.libelle}
-              </Btn>
-            ))}
-          </div>
-          <Btn variant="ghost" onClick={() => setPaiementOuvert(false)} style={st.btn44}>Revenir au ticket</Btn>
-        </div>
-      ) : actionPrincipale}
+      {actionPrincipale}
     </>
   );
 
@@ -634,6 +603,13 @@ export default function TicketEcran({
                       <span style={st.ligneCorps}>
                         <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
                         {params && <span style={st.ligneNote} data-no-translate>{params}</span>}
+                        {/* Remise ou offert posés par un responsable (v7). */}
+                        {l.offert && <span style={st.ligneNote} data-ligne-offerte="">Offert</span>}
+                        {!l.offert && l.prix_origine != null && (
+                          <span style={st.ligneNote} data-ligne-remisee="">
+                            <span>Remise</span> <span style={st.num}>{chf(l.remise_montant)}</span>
+                          </span>
+                        )}
                         {l.statut === 'en_attente' && !l.annonce_at && (
                           <span style={st.etat}><Hourglass size={13} strokeWidth={1.75} aria-hidden="true" /><span>En attente</span></span>
                         )}
@@ -697,7 +673,7 @@ export default function TicketEcran({
             {suiteAEnvoyer != null && suiteAEnvoyer < SUITE_MAX && (
               <Btn variant="ghost" onClick={passerASuivre} style={st.btn44}>Passer à suivre</Btn>
             )}
-            {suiteAEnvoyer != null && lignes.length > 0 && !paiementOuvert && (
+            {suiteAEnvoyer != null && lignes.length > 0 && (
               <Btn variant="ghost" onClick={() => setPaiementOuvert(true)} style={st.btn44}>Encaisser</Btn>
             )}
             <Btn variant="ghost" onClick={onDeplacer} style={st.btn44}>Déplacer</Btn>
@@ -717,6 +693,19 @@ export default function TicketEcran({
             onChange={majFicheLigne}
             onSupprimer={supprimerFicheLigne}
             onClose={() => setFicheLigneId(null)}
+          />
+        )}
+        {/* Encaissement (v7) : la feuille prépare, la base encaisse et numérote. */}
+        {paiementOuvert && (
+          <Encaissement
+            ticket={ticket}
+            reglages={reglages}
+            peutRemiser={peutHabiller}
+            modeTest={modeTest}
+            onQuittance={onQuittance}
+            onEncaisse={() => { setPaiementOuvert(false); onClos(); }}
+            onClose={() => setPaiementOuvert(false)}
+            reload={reload}
           />
         )}
         {corrigerOuvert && (
@@ -842,9 +831,5 @@ const st = {
   btnPrincipal: { minHeight: 60, fontSize: 18, width: '100%', gap: 10, whiteSpace: 'normal' },
   principalTexte: { display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 },
   principalDetail: { fontSize: 13, fontWeight: 500 },
-  paiement: { display: 'flex', flexDirection: 'column', gap: 8 },
-  moyens: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  btnMoyen: { minHeight: 56, fontSize: 16, flex: '1 1 120px' },
-  avertissement: { fontSize: 13, color: 'var(--text2)', margin: 0 },
   gestion: { display: 'flex', gap: 6, flexWrap: 'wrap' },
 };

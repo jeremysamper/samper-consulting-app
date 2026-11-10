@@ -10,9 +10,13 @@ import ListeTriable from './ListeTriable.jsx';
 import { COULEURS, LIBELLES_COULEURS, PICTOS, pictoParId } from './boutons.js';
 import { CATEGORIES_DEFAUT, ID_A_TRIER, estCategorieDefaut, estCategorieVirtuelle, rangerArticles } from './categories.js';
 import {
-  DELAIS_NO_SHOW, FAMILLES_PAIEMENT, LIBELLES_FAMILLES, MODES_SUIVRE_MAX, REGLAGES_DEFAUT,
-  fusionnerReglages, libelleModeDefaut,
+  DELAIS_NO_SHOW, FAMILLES_PAIEMENT, FORMAT_NUMERO_TVA, HEURES_BASCULE, HEURES_FIN_JOURNEE, LIBELLES_FAMILLES,
+  MODES_SUIVRE_MAX, REGLAGES_DEFAUT, fusionnerReglages, libelleModeDefaut,
 } from './reglages.js';
+
+// Taux proposés pour une catégorie de caisse : normal, réduit, hors TVA (bons
+// cadeaux). Le taux d'hébergement (3,8 %) ne concerne pas la restauration.
+const TAUX_CATEGORIE = [8.1, 2.6, 0];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réglages de la caisse (consultant, patron, resp_cuisine : la base refuse les
@@ -43,6 +47,7 @@ const SECTIONS = [
   { id: 'cuissons', label: 'Cuissons' },
   { id: 'sans', label: 'Sans' },
   { id: 'paiement', label: 'Paiement' },
+  { id: 'tva', label: 'TVA et clôture' },
   { id: 'grille', label: 'Grille' },
   { id: 'cartes', label: 'Cartes en vente' },
   { id: 'no_show', label: 'No-show' },
@@ -174,6 +179,9 @@ export default function ReglagesCaisse({
             />
           )}
           {section === 'paiement' && <SectionPaiement reglages={reglages} regler={regler} />}
+          {section === 'tva' && (
+            <SectionTva rangement={rangement} reglages={reglages} regler={regler} ecrire={ecrire} idReel={idReel} />
+          )}
           {section === 'grille' && (
             <div style={st.bloc}>
               <div style={st.sousTitre}>Taille des boutons produits</div>
@@ -756,11 +764,117 @@ function SectionPaiement({ reglages, regler }) {
   );
 }
 
+// ── TVA et clôture (v7) ──────────────────────────────────────────────────────
+// Taux par catégorie et taux réduit à l'emporter (colonnes de
+// caisse_categories ; la base les lit à l'encaissement et fige le taux sur
+// chaque ligne), arrondi des espèces, fin de la journée, bascule midi et
+// soir, coordonnées imprimées sur la quittance. Rien n'est inventé : un champ
+// vide n'est pas imprimé.
+function SectionTva({ rangement, reglages, regler, ecrire, idReel }) {
+  const categories = rangement.categories.filter((c) => !estCategorieVirtuelle(c.id));
+  const [legal, setLegal] = React.useState(reglages.legal);
+  React.useEffect(() => { setLegal(reglages.legal); }, [reglages.legal]);
+  const modifie = JSON.stringify(legal) !== JSON.stringify(reglages.legal);
+  const numeroDouteux = legal.numero_tva.trim() !== '' && !FORMAT_NUMERO_TVA.test(legal.numero_tva.trim());
+
+  const majCategorie = (c, partiel) => ecrire(async () => {
+    const id = await idReel(c);
+    if (!id) return { error: null };
+    return caisse.majTvaCategorie(id, partiel);
+  });
+
+  return (
+    <div style={st.bloc} data-reglages-tva="">
+      <div style={st.sousTitre}>Taux de TVA par catégorie</div>
+      <p style={st.aide}>
+        Sur place, le taux de la catégorie s'applique. Quand un ticket est marqué à emporter, seules les catégories cochées passent au taux réduit ; l'alcool reste toujours au taux normal. Le taux est figé sur chaque ligne à l'encaissement.
+      </p>
+      <div style={st.listeSimple}>
+        {categories.map((c) => (
+          <div key={c.id} style={st.rangTva} data-tva-categorie="">
+            <span style={st.produitNom} data-no-translate>{c.nom}</span>
+            <span style={st.rang}>
+              {TAUX_CATEGORIE.map((t) => (
+                <Btn
+                  key={t}
+                  variant={Number(c.taux_tva ?? 8.1) === t ? 'primary' : 'ghost'}
+                  onClick={() => majCategorie(c, { tauxTva: t })}
+                  style={st.btn44}
+                >
+                  <span style={st.num}>{String(t).replace('.', ',')}</span> <span>%</span>
+                </Btn>
+              ))}
+              <label style={st.produit}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(c.emporter_reduit)}
+                  onChange={(e) => majCategorie(c, { emporterReduit: e.target.checked })}
+                  style={st.case}
+                />
+                <span style={st.aide}>Taux réduit à emporter</span>
+              </label>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p style={st.aide}>Un article libre, ou un produit hors de ces catégories, reste au taux normal, à emporter compris.</p>
+
+      <div style={st.sousTitre}>Espèces</div>
+      <div style={st.rang}>
+        <Btn variant={reglages.arrondi_especes ? 'primary' : 'ghost'} onClick={() => regler({ arrondi_especes: null })} style={st.btnChoix}>Arrondir aux 5 centimes</Btn>
+        <Btn variant={reglages.arrondi_especes ? 'ghost' : 'primary'} onClick={() => regler({ arrondi_especes: false })} style={st.btnChoix}>Au centime</Btn>
+      </div>
+      <p style={st.aide}>L'arrondi ne porte que sur la part payée en espèces. L'écart est enregistré à part sur chaque ticket et repris dans la clôture.</p>
+
+      <div style={st.sousTitre}>La journée de caisse finit à</div>
+      <div style={st.rang}>
+        {HEURES_FIN_JOURNEE.map((h) => (
+          <Btn key={h} variant={reglages.fin_journee === h ? 'primary' : 'ghost'} onClick={() => regler({ fin_journee: h === REGLAGES_DEFAUT.fin_journee ? null : h })} style={st.btn44}>
+            <span style={st.num}>{h}</span>
+          </Btn>
+        ))}
+      </div>
+      <p style={st.aide}>Un ticket encaissé après minuit reste sur le jour du service, jusqu'à cette heure.</p>
+
+      <div style={st.sousTitre}>Le service passe de midi à soir à</div>
+      <div style={st.rang}>
+        {HEURES_BASCULE.map((h) => (
+          <Btn key={h} variant={reglages.bascule_service === h ? 'primary' : 'ghost'} onClick={() => regler({ bascule_service: h === REGLAGES_DEFAUT.bascule_service ? null : h })} style={st.btn44}>
+            <span style={st.num}>{h}</span>
+          </Btn>
+        ))}
+      </div>
+
+      <div style={st.sousTitre}>Coordonnées imprimées sur la quittance</div>
+      <Input value={legal.raison_sociale} onChange={(e) => setLegal({ ...legal, raison_sociale: e.target.value })} placeholder="Raison sociale" style={st.champ} />
+      <Input value={legal.adresse} onChange={(e) => setLegal({ ...legal, adresse: e.target.value })} placeholder="Rue et numéro" style={st.champ} />
+      <Input value={legal.localite} onChange={(e) => setLegal({ ...legal, localite: e.target.value })} placeholder="Code postal et localité" style={st.champ} />
+      <Input value={legal.numero_tva} onChange={(e) => setLegal({ ...legal, numero_tva: e.target.value })} placeholder="CHE-123.456.789 TVA" style={st.champ} />
+      {numeroDouteux && <p style={st.aide}>Le numéro de TVA s'écrit CHE-123.456.789 TVA. Recopiez-le depuis le registre des assujettis ou une facture de la maison.</p>}
+      {!reglages.legal.numero_tva && <p style={st.aide}>Sans numéro de TVA, la quittance ne porte pas la mention exigée d'un assujetti. La caisse ne l'invente jamais.</p>}
+      <div>
+        <Btn
+          variant="primary"
+          disabled={!modifie}
+          onClick={() => regler({ legal: Object.values(legal).some((v) => String(v).trim()) ? Object.fromEntries(Object.entries(legal).map(([k, v]) => [k, String(v).trim()])) : null })}
+          style={st.btn44}
+        >
+          Enregistrer les coordonnées
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
 const st = {
   overlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     zIndex: 1200, padding: 16,
+  },
+  rangTva: {
+    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 56, padding: '6px 0',
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
   },
   feuille: {
     background: 'var(--surface)',

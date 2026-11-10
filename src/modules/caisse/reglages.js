@@ -32,6 +32,17 @@ import { CUISSONS } from './options.js';
 //                     « TEST » en tête, pour former la cuisine (v6). Absente
 //                     ou autre valeur = rien en cuisine. La base lit la même
 //                     clé (caisse_bon_interne) : seul le booléen true compte.
+//   arrondi_especes : false = les espèces se règlent au centime (v7). Absente
+//                     ou autre valeur = arrondi aux 5 centimes sur la part
+//                     payée en espèces. La base lit la même clé.
+//   fin_journee     : 'HH:MM', l'heure où finit le jour d'exploitation (v7,
+//                     04:00 par défaut, de 00:00 à 11:59). La base lit la même
+//                     clé pour dater les tickets et les clôtures.
+//   bascule_service : 'HH:MM', l'heure où le service passe de midi à soir
+//                     (v7, 15:00 par défaut, de 10:00 à 19:00). Lue par la base.
+//   legal           : { raison_sociale, adresse, localite, numero_tva } : les
+//                     coordonnées de la maison imprimées sur la quittance
+//                     (v7). Jamais inventées : un champ vide n'est pas imprimé.
 //
 // Les modes ne changent rien au schéma : le mode de rang n est la suite n de
 // caisse_lignes (1 = En direct, 2 = À suivre, 3 = À suivre 2...).
@@ -57,7 +68,23 @@ export const REGLAGES_DEFAUT = {
   delai_no_show_min: 30,
   cartes_ids: [],
   tests_en_cuisine: false,
+  arrondi_especes: true,
+  fin_journee: '04:00',
+  bascule_service: '15:00',
+  legal: { raison_sociale: '', adresse: '', localite: '', numero_tva: '' },
 };
+
+export const HEURES_FIN_JOURNEE = ['02:00', '03:00', '04:00', '05:00', '06:00'];
+export const HEURES_BASCULE = ['14:00', '15:00', '16:00', '17:00'];
+// Numéro de TVA suisse : CHE-123.456.789 TVA (ou MWST, IVA).
+export const FORMAT_NUMERO_TVA = /^CHE-\d{3}\.\d{3}\.\d{3} (TVA|MWST|IVA)$/;
+
+// Une heure 'HH:MM' entre deux bornes, sinon le défaut (même règle que la base).
+function heureBornee(v, min, max, defaut) {
+  const t = String(v ?? '');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t) || t < min || t > max) return defaut;
+  return t;
+}
 
 const borne = (n, min, max, defaut) => {
   const v = Number(n);
@@ -110,6 +137,15 @@ export function fusionnerReglages(config) {
     delai_no_show_min: borne(c.delai_no_show_min, DELAI_NO_SHOW_MIN, DELAI_NO_SHOW_MAX, REGLAGES_DEFAUT.delai_no_show_min),
     cartes_ids: listeTextes(c.cartes_ids, 80, 60) || [],
     tests_en_cuisine: c.tests_en_cuisine === true,
+    arrondi_especes: c.arrondi_especes !== false,
+    fin_journee: heureBornee(c.fin_journee, '00:00', '11:59', REGLAGES_DEFAUT.fin_journee),
+    bascule_service: heureBornee(c.bascule_service, '10:00', '19:00', REGLAGES_DEFAUT.bascule_service),
+    legal: {
+      raison_sociale: String(c.legal?.raison_sociale ?? '').trim().slice(0, 120),
+      adresse: String(c.legal?.adresse ?? '').trim().slice(0, 160),
+      localite: String(c.legal?.localite ?? '').trim().slice(0, 80),
+      numero_tva: String(c.legal?.numero_tva ?? '').trim().slice(0, 24),
+    },
     perso: {
       cuissons: Boolean(cuissons && cuissons.length),
       moyens_paiement: Boolean(moyens && moyens.length),

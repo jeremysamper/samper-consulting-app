@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, ChevronsRight, ConciergeBell, FlaskConical, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
+import { CalendarClock, ChevronsRight, ClipboardCheck, ConciergeBell, FlaskConical, History, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
@@ -14,6 +14,8 @@ import TicketEcran from './TicketEcran.jsx';
 import ReglagesCaisse from './ReglagesCaisse.jsx';
 import QuiEstLa from './QuiEstLa.jsx';
 import BandeauTest from './BandeauTest.jsx';
+import Historique from './Historique.jsx';
+import Cloture from './Cloture.jsx';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
@@ -56,7 +58,19 @@ import { useMaintenant } from './mesures.js';
 // les mêmes règles : l'écran ne fait que les refléter.
 // Le plan et la liste des tickets disent aussi combien de plats la cuisine a
 // marqués prêts (caisse_lignes.pret_at, posé par le KDS).
+//
+// v7 : encaissement conforme. L'encaissement passe par la RPC
+// caisse_encaisser (numéro continu, TVA figée par ligne, empreinte) ; deux
+// tuiles de plus, « Historique et quittances » (tout rôle qui a la caisse ;
+// l'annulation tracée d'un ticket encaissé reste à consultant et patron) et
+// « Clôture de caisse » (consultant, patron, resp_cuisine). Un bandeau dit
+// aux responsables qu'un jour passé n'est pas clôturé. La quittance et la
+// clôture sont des PDF construits depuis les données (documentsCaisse.js).
+// Ni l'historique ni la clôture ne s'ouvrent en mode test : ils ne montrent
+// que de vraies ventes.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const dateCH = (jour) => { const [a, m, j] = String(jour || '').split('-'); return j ? `${j}.${m}.${a}` : ''; };
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 const totalTicket = (t) => (t.lignes || []).reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0);
@@ -123,6 +137,45 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (!r.error) setConfig(r.data);
   }, [etabId]);
   const maintenant = useMaintenant();
+  // v7 : où en est la caisse (jours passés sans clôture). Lu pour les rôles
+  // qui clôturent ; la base refuse les autres.
+  const peutAnnuler = ['consultant', 'patron'].includes(user?.role);
+  const [etatJour, setEtatJour] = React.useState(null);
+  const rechargerJournee = React.useCallback(async () => {
+    if (!etabId || !peutHabiller) { setEtatJour(null); return; }
+    const { data, error } = await caisse.journee(etabId);
+    if (!error) setEtatJour(data);
+  }, [etabId, peutHabiller]);
+  React.useEffect(() => { rechargerJournee(); }, [rechargerJournee, legacyVersion]);
+
+  // Quittance et clôture : PDF construits depuis les données, ouverts dans un
+  // onglet. L'onglet s'ouvre dans le geste, avant les lectures : sans cela le
+  // navigateur le bloque (repli : téléchargement).
+  const ouvrirPdf = React.useCallback(async (construire, nom) => {
+    let fenetre = null;
+    try { fenetre = window.open('', '_blank'); } catch { fenetre = null; }
+    try {
+      const doc = await construire();
+      if (!doc) { fenetre?.close(); return; }
+      if (fenetre) fenetre.location.href = doc.output('bloburl');
+      else doc.save(nom);
+    } catch (e) {
+      console.error('[caisse] document', e);
+      fenetre?.close();
+      notify("Le document n'a pas pu être produit. Réessayez.", 'error');
+    }
+  }, []);
+  const quittance = React.useCallback((id, client) => ouvrirPdf(async () => {
+    const { data, error } = await caisse.getTicketComplet(id);
+    if (error) { notify(error, 'error'); return null; }
+    const { construireQuittance } = await import('./documentsCaisse.js');
+    return construireQuittance({ ticket: data, etablissement, reglages, client });
+  }, `quittance-${id}.pdf`), [ouvrirPdf, etablissement, reglages]);
+  const pdfCloture = React.useCallback((cloture) => ouvrirPdf(async () => {
+    const { construireCloture } = await import('./documentsCaisse.js');
+    return construireCloture({ cloture, etablissement, reglages });
+  }, `cloture-Z${cloture.numero}.pdf`), [ouvrirPdf, etablissement, reglages]);
+
   const [ticketId, setTicketId] = React.useState(null);
   // 'ouvrir' : un tap sur une table ouvre ou crée son ticket.
   // 'deplacer' : un tap sur une table y déplace le ticket courant.
@@ -456,7 +509,25 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           : 'Aucune réservation en retard',
         onClick: () => setEcran('sans_ticket'),
       }]),
+      // v7 : de vraies ventes seulement, jamais en mode test.
+      ...(modeTest ? [] : [{
+        id: 'historique',
+        libelle: 'Historique et quittances',
+        Icone: History,
+        etat: 'Tickets encaissés, par jour ou par numéro',
+        onClick: () => setEcran('historique'),
+      }]),
+      ...(modeTest || !peutHabiller ? [] : [{
+        id: 'cloture',
+        libelle: 'Clôture de caisse',
+        Icone: ClipboardCheck,
+        etat: etatJour?.cloture
+          ? "La caisse d'aujourd'hui est clôturée"
+          : <><span>{etatJour?.tickets_du_jour ?? 0}</span> <span>tickets à clôturer aujourd'hui</span></>,
+        onClick: () => setEcran('cloture'),
+      }]),
     ];
+    const enRetard = !modeTest && peutHabiller ? (etatJour?.a_cloturer || []) : [];
     return (
       <>
         {bandeauTest}
@@ -475,6 +546,17 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           <div style={st.erreur}>
             <p style={{ margin: 0 }}>{erreurTickets}</p>
             <Btn variant="primary" onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
+          </div>
+        )}
+        {enRetard.length > 0 && (
+          <div style={st.propositionVider} data-cadre="" data-caisse-non-cloturee="">
+            <p style={st.propositionTexte}>
+              <span>La caisse du</span> <span style={st.num}>{dateCH(enRetard[0].jour)}</span> <span>n'est pas clôturée.</span>
+              {enRetard.length > 1 && <>{' '}<span style={st.num}>{enRetard.length}</span> <span>jours attendent leur clôture.</span></>}
+            </p>
+            <span style={st.propositionActions}>
+              <Btn variant="primary" onClick={() => setEcran('cloture')} style={st.btn44}>Clôturer</Btn>
+            </span>
           </div>
         )}
         <AccueilModule tuiles={tuiles} />
@@ -575,6 +657,30 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     );
   }
 
+  // ── Historique et quittances (v7) ──
+  if (ecran === 'historique' && !modeTest) {
+    return (
+      <EcranTache titre="Historique et quittances" etat="Les tickets encaissés gardent leur numéro, même annulés" onRetour={retourAccueil}>
+        <Historique
+          etablissementId={etabId}
+          reglages={reglages}
+          peutAnnuler={peutAnnuler}
+          peutControler={peutHabiller}
+          onQuittance={quittance}
+        />
+      </EcranTache>
+    );
+  }
+
+  // ── Clôture de caisse (v7) ──
+  if (ecran === 'cloture' && !modeTest && peutHabiller) {
+    return (
+      <EcranTache titre="Clôture de caisse" etat="Vérifier, compter les espèces, figer" onRetour={retourAccueil}>
+        <Cloture etablissementId={etabId} onDocument={pdfCloture} onChange={rechargerJournee} />
+      </EcranTache>
+    );
+  }
+
   // ── Tickets ouverts ──
   if (ecran === 'tickets') {
     return (
@@ -655,9 +761,10 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           ticketsMemeTable={autresMemeTable}
           onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
           onFusionne={rechargerTickets}
-          onClos={() => { rechargerTickets(); rechargerReservations(); retourAccueil(); }}
+          onClos={() => { rechargerTickets(); rechargerReservations(); rechargerJournee(); retourAccueil(); }}
           reload={rechargerTickets}
           modeTest={modeTest}
+          onQuittance={quittance}
         />
         {feuilleReglages}
       </EcranTache>

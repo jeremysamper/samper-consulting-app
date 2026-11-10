@@ -88,7 +88,10 @@ test('D, carte puis espèces : arrondi, rendu, pourboire à part', () => {
   assert.equal(p.pourboire, 5);
   assert.deepEqual(p.paiements, [
     { moyen: 'carte', libelle: null, montant: 50, pourboire: 5, rendu: 0, arrondi: 0 },
-    { moyen: 'especes', libelle: null, montant: 23.35, pourboire: 0, rendu: 6.65, arrondi: -0.01 },
+    // Le montant reste la part du ticket réglée (la somme des montants fait le
+    // total) ; l'écart d'arrondi est à part. Choix de représentation fait en
+    // écrivant la base : l'attendu d'origine notait 23,35 dans montant.
+    { moyen: 'especes', libelle: null, montant: 23.36, pourboire: 0, rendu: 6.65, arrondi: -0.01 },
   ]);
   // Ce que la maison garde : le total du ticket plus l'écart d'arrondi.
   assert.equal(p.encaisse, 73.35);
