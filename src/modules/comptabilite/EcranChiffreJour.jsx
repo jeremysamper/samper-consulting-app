@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../../services/supabase.js';
+import { clotureDuJour } from '../../services/caisseService.js';
 import { notify } from '../../components/toast/index.js';
 import { Btn } from '../../components/ui/index.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
@@ -24,7 +25,27 @@ const CHOIX = [
   { id: 'autre', label: 'Autre jour' },
 ];
 
-function Formulaire({ etabId, jour, lignes, taux, peutEcrire, posTtc, onEnregistre }) {
+// La clôture de la caisse native pour ce jour (caisse v8), dite sous le
+// formulaire : soit le chiffre affiché vient d'elle, soit une saisie a pris sa
+// place. Sans clôture lisible (jour non clôturé, rôle qui ne lit pas les
+// clôtures), rien n'est dit.
+function MentionCloture({ cloture, lignes }) {
+  if (!cloture) return null;
+  const deLaCaisse = lignes.length > 0 && lignes.every(l => l.source === 'caisse');
+  return (
+    <div style={ui.remarque} data-mention-cloture={deLaCaisse ? 'caisse' : 'saisie'}>
+      {deLaCaisse ? (
+        <><span>Ce chiffre vient de la clôture de caisse n°</span> <span>{cloture.numero}</span><span>. Une saisie ici le remplace pour ce jour.</span></>
+      ) : lignes.length > 0 ? (
+        <><span>La clôture de caisse n°</span> <span>{cloture.numero}</span> <span>a enregistré</span> <Chf v={cloture.netTtc} /> <span>ce jour-là. La saisie ci-dessus garde la main.</span></>
+      ) : (
+        <><span>La clôture de caisse n°</span> <span>{cloture.numero}</span> <span>a enregistré</span> <Chf v={cloture.netTtc} /> <span>ce jour-là. Une clôture complémentaire, dans la caisse, reprend ce chiffre.</span></>
+      )}
+    </div>
+  );
+}
+
+function Formulaire({ etabId, jour, lignes, taux, peutEcrire, posTtc, cloture, onEnregistre }) {
   const [valeurs, setValeurs] = React.useState(() => Object.fromEntries(taux.map((t) => {
     const l = lignes.find(x => x.taux === t.taux);
     return [t.cle, l ? String(l.montantTtc) : ''];
@@ -77,6 +98,7 @@ function Formulaire({ etabId, jour, lignes, taux, peutEcrire, posTtc, onEnregist
           <span>La caisse a enregistré</span> <Chf v={posTtc} /> <span>ce jour-là. Une saisie ici la remplace pour ce jour.</span>
         </div>
       )}
+      <MentionCloture cloture={cloture} lignes={lignes} />
       {peutEcrire ? (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Btn variant="primary" onClick={enregistrer} disabled={!valide || enCours || (!saisi && !lignes.length)} style={ui.primaire}>
@@ -105,6 +127,10 @@ export default function EcranChiffreJour({
     return (data || []).map(MAPPERS.ventes_jour);
   }, [etabId, jour]);
   const duJour = useLecture(`compta-jour|${etabId}|${jour}`, lireJour, { actif: !absente && !!etabId && jourValide, tables: ['ventes_jour'] });
+  // Clôture de la caisse native de ce jour : un plus, jamais un blocage (une
+  // lecture refusée ou en échec rend null, la saisie reste possible).
+  const lireCloture = React.useCallback(async () => (await clotureDuJour(etabId, jour)).data, [etabId, jour]);
+  const cloture = useLecture(`compta-cloture|${etabId}|${jour}`, lireCloture, { actif: !absente && !!etabId && jourValide });
 
   const taux = TAUX_VENTES.filter(t => t.taux !== 3.8 || hebergement || (duJour.data || []).some(l => l.taux === 3.8));
   const posTtc = parJourTout.find(j => j.jour === jour)?.posTtc ?? null;
@@ -150,6 +176,7 @@ export default function EcranChiffreJour({
           taux={taux}
           peutEcrire={peutEcrire}
           posTtc={posTtc}
+          cloture={cloture.status === 'ready' ? cloture.data : null}
           onEnregistre={() => { duJour.reload(); onEnregistre?.(); }}
         />
       )}

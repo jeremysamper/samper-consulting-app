@@ -38,6 +38,8 @@ export function dateHeureCH(iso) {
 const fr = (c) => c / 100;
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : 0);
 const pct = (p) => (p == null ? null : Math.round(p * 1000) / 10);
+// « 1 ticket », « 4 tickets » : l'accord se fait ici.
+const nb = (n, un, plusieurs) => `${Number(n || 0)} ${Math.abs(Number(n || 0)) > 1 ? plusieurs : un}`;
 const rang = (cellules, fort = false) => ({ cellules, fort });
 const vide = () => rang([]);
 const M = (titre, largeur = 13) => ({ titre, montant: true, largeur });
@@ -63,8 +65,8 @@ function feuilleSynthese(r, { noShow = null } = {}) {
     rang(['Chiffre d\'affaires hors TVA', s.ht, '']),
     rang(['TVA', s.tva, '']),
     ...s.parTaux.map((t) => rang([`   dont ${String(t.taux).replace('.', ',')} %`, t.ttc, `hors TVA ${t.ht.toFixed(2)}, TVA ${t.tva.toFixed(2)}`])),
-    rang(['Ventes encaissées', s.ventesTtc, `${s.tickets} tickets`]),
-    rang(['Annulations', s.annulationsTtc ? -s.annulationsTtc : 0, `${s.annulations} tickets annulés`]),
+    rang(['Ventes encaissées', s.ventesTtc, nb(s.tickets, 'ticket', 'tickets')]),
+    rang(['Annulations', s.annulationsTtc ? -s.annulationsTtc : 0, nb(s.annulations, 'ticket annulé', 'tickets annulés')]),
     rang(['Couverts', s.couverts, '']),
     rang(['Ticket moyen', s.ticketMoyen, '']),
     rang(['Dépense moyenne par couvert', s.parCouvert, '']),
@@ -73,13 +75,13 @@ function feuilleSynthese(r, { noShow = null } = {}) {
     rang(['Sur place', s.surPlace.ttc, s.surPlace.part == null ? '' : `${pct(s.surPlace.part)} % du chiffre`]),
     rang(['À emporter', s.emporter.ttc, s.emporter.part == null ? '' : `${pct(s.emporter.part)} % du chiffre`]),
   ];
-  if (noShow) rangs.push(rang(['No-show de la période', noShow.tables, `${noShow.couverts} couverts, selon le rapport des réservations`]));
+  if (noShow) rangs.push(rang(['No-show de la période', noShow.tables, `${nb(noShow.couverts, 'couvert', 'couverts')}, selon le rapport des réservations`]));
   rangs.push(vide(), rang(['Jours de la période', null, null], true));
   r.jours.forEach((j) => rangs.push(rang([
     dateCH(j.jour), j.ttc,
     j.provisoire ? 'provisoire : jour non clôturé' : `clôture n° ${j.cloture.numero}`,
   ])));
-  if (r.provisoire) rangs.push(vide(), rang([`Rapport provisoire : ${r.provisoires.length} jours ne sont pas clôturés (${r.provisoires.map(dateCH).join(', ')}).`, null, null], true));
+  if (r.provisoire) rangs.push(vide(), rang([`Rapport provisoire : ${nb(r.provisoires.length, 'jour n\'est pas clôturé', 'jours ne sont pas clôturés')} (${r.provisoires.map(dateCH).join(', ')}).`, null, null], true));
   return { id: 'synthese', nom: 'Synthèse', fichier: 'synthese.csv', colonnes: [T('Rubrique', 44), M('Valeur', 16), T('Détail', 60)], rangs };
 }
 
@@ -106,7 +108,7 @@ function feuillePlats(r, tri) {
   const rangs = trierPlats(p.lignes, tri).map((l) => rang([
     l.libelle, l.categorie, l.qte, l.ttc, l.midi.qte, l.midi.ttc, l.soir.qte, l.soir.ttc, l.offertsQte, l.offertsValeur, l.remises,
   ]));
-  rangs.push(rang(['Total', `${p.lignes.length} produits`, p.qte, p.ttc, p.midi.qte, p.midi.ttc, p.soir.qte, p.soir.ttc, p.offertsQte, p.offertsValeur, p.remises], true));
+  rangs.push(rang(['Total', nb(p.lignes.length, 'produit', 'produits'), p.qte, p.ttc, p.midi.qte, p.midi.ttc, p.soir.qte, p.soir.ttc, p.offertsQte, p.offertsValeur, p.remises], true));
   return {
     id: 'plats', nom: 'Plats vendus', fichier: 'plats-vendus.csv',
     colonnes: [
@@ -123,7 +125,7 @@ function feuilleServices(r) {
     r.provisoires.includes(s.jour) ? 'provisoire' : 'clôturé',
   ]));
   const s = r.synthese;
-  rangs.push(rang(['Total', `${r.services.length} services`, s.tickets, s.annulations, s.couverts, s.ttc, null, null], true));
+  rangs.push(rang(['Total', nb(r.services.length, 'service', 'services'), s.tickets, s.annulations, s.couverts, s.ttc, null, null], true));
   return {
     id: 'services', nom: 'Services', fichier: 'services.csv',
     colonnes: [T('Date', 11), T('Service', 9), M('Tickets', 9), M('Annulations', 11), M('Couverts', 9), M('Chiffre TTC'), M('Durée moyenne d\'une table (min)', 14), T('État', 11)],
@@ -155,7 +157,7 @@ function feuilleJournal(r) {
   const rangs = j.entrees.map((e) => rang([dateHeureCH(e.quand), libelleGenre(e.genre), e.piece, e.detail, e.auteur, e.motif, e.montant, e.nombre ?? null]));
   rangs.push(
     vide(),
-    rang(['Mode test', `${j.tests.entrees} entrées, ${j.tests.sorties} sorties, ${j.tests.purges} purges`, null, null, null, 'tickets de test purgés, hors chiffres', j.tests.montant, j.tests.tickets], true),
+    rang(['Mode test', `${nb(j.tests.entrees, 'entrée', 'entrées')}, ${nb(j.tests.sorties, 'sortie', 'sorties')}, ${nb(j.tests.purges, 'purge', 'purges')}`, null, null, null, 'tickets de test purgés, hors chiffres', j.tests.montant, j.tests.tickets], true),
   );
   return {
     id: 'journal', nom: 'Journal des écarts', fichier: 'journal-des-ecarts.csv',
@@ -266,7 +268,7 @@ export function feuillesDossier({ donnees, rapport }) {
   const tot = [...sommeTaux.values()].reduce((s, e) => ({
     ventes: s.ventes + e.ventes, annule: s.annule + e.annule, ttc: s.ttc + e.ttc, ht: s.ht + e.ht, tva: s.tva + e.tva,
   }), { ventes: 0, annule: 0, ttc: 0, ht: 0, tva: 0 });
-  ventes.push(rang([`Total, ${premieres.length} jours clôturés`, null, null, fr(tot.ventes), tot.annule ? -fr(tot.annule) : 0, fr(tot.ttc), fr(tot.ht), fr(tot.tva), null], true));
+  ventes.push(rang([`Total, ${nb(premieres.length, 'jour clôturé', 'jours clôturés')}`, null, null, fr(tot.ventes), tot.annule ? -fr(tot.annule) : 0, fr(tot.ttc), fr(tot.ht), fr(tot.tva), null], true));
 
   // 2. Encaissements par jour et par moyen, depuis les clôtures.
   const encaissements = [];
@@ -420,7 +422,7 @@ export function texteLisezMoi({ rapport, etablissement = '', date = new Date() }
     '',
   ];
   if (rapport.provisoire) {
-    lignes.push(`Jours laissés hors du dossier, faute de clôture (${rapport.provisoires.length}) : ${rapport.provisoires.map(dateCH).join(', ')}.`, '');
+    lignes.push(`${rapport.provisoires.length > 1 ? 'Jours laissés' : 'Jour laissé'} hors du dossier, faute de clôture (${rapport.provisoires.length}) : ${rapport.provisoires.map(dateCH).join(', ')}.`, '');
   } else {
     lignes.push('Tous les jours de vente de la période sont clôturés.', '');
   }

@@ -7,6 +7,9 @@ import { estFacture } from '../inventaire/facturesLogic.js';
 import { dansIntervalle, lignesFiduciaire, nomFichierExport } from '../inventaire/exportFiduciaire.js';
 import { zipPiecesFiduciaire } from '../inventaire/achatsPieces.jsx';
 import { telechargerFichier } from '../inventaire/exportXlsxInventaire.js';
+import { isModuleActiveForEtab } from '../moduleConfig.js';
+import * as caisseService from '../../services/caisseService.js';
+import { fusionnerReglages } from '../caisse/reglages.js';
 import { etatDe, useCompta } from './useCompta.js';
 import { feuillesCompta, nomFichierCompta, xlsxCompta, zipCsvCompta } from './exportCompta.js';
 import { ajouterJours, libellePeriode, periodeMois } from './periodesCompta.js';
@@ -19,6 +22,12 @@ import { pluriel } from './comptaUi.jsx';
 // feuilles en CSV dans un zip, et le dossier des pièces des factures d'achat
 // (zipPiecesFiduciaire de Factures & achats). Les salaires par personne ne
 // sortent jamais : le Résumé porte le coût du personnel total.
+//
+// Caisse v8 : pour la direction d'une maison qui a la caisse, une quatrième
+// sortie, « Caisse (zip) », le dossier fiduciaire de la caisse pour la même
+// période (journal des ventes par jour et par taux, encaissements, clôtures,
+// tickets, annulations, contrôle d'intégrité ; jours clôturés seulement). Les
+// trois sorties d'avant ne changent pas.
 //
 // La période affichée reprend les chiffres déjà lus par l'accueil ; une autre
 // période est lue à l'ouverture de la fenêtre par le même useCompta, pour que
@@ -39,6 +48,8 @@ export default function FenetreExportCompta({
   const [fin, setFin] = React.useState(periode.fin);
   const [zip, setZip] = React.useState(null); // { n, total } pendant le dossier des pièces
   const abortRef = React.useRef(null);
+  const avecCaisse = direction && isModuleActiveForEtab(etablissement, 'caisse');
+  const [dossierEnCours, setDossierEnCours] = React.useState(false);
   React.useEffect(() => () => abortRef.current?.abort(), []);
 
   const type = tvaPeriode?.type === 'semestre' ? 'semestre' : 'trimestre';
@@ -101,6 +112,29 @@ export default function FenetreExportCompta({
     }
   };
 
+  // Dossier de la caisse : lu et construit à la demande (module chargé au tap).
+  const exporterCaisse = async () => {
+    if (dossierEnCours) return;
+    setDossierEnCours(true);
+    try {
+      const [{ telechargerDossier }, lus] = await Promise.all([
+        import('../caisse/rapports/lectureRapport.js'),
+        caisseService.getReglages(etabId),
+      ]);
+      const { data, error } = await telechargerDossier({
+        etablissement, reglages: fusionnerReglages(lus.error ? {} : lus.data), debut: cible.debut, fin: cible.fin,
+      });
+      if (error) { notify(error, 'error'); return; }
+      notify(data.rapport.provisoire
+        ? 'Dossier de caisse téléchargé ; des jours non clôturés sont restés dehors, voir lisez-moi.txt.'
+        : 'Dossier de caisse téléchargé.', data.rapport.provisoire ? 'warning' : 'success');
+    } catch (err) {
+      notify('Dossier de caisse non constitué. ' + messageErreur(err, 'dossier de caisse'), 'error');
+    } finally {
+      setDossierEnCours(false);
+    }
+  };
+
   const options = [
     { v: 'periode', label: 'La période affichée', detail: libellePeriode(periode) },
     { v: 'mois_prec', label: 'Le mois précédent', detail: libellePeriode(moisPrec) },
@@ -127,6 +161,7 @@ export default function FenetreExportCompta({
         </>
       ) : (
         <>
+          {avecCaisse && <Btn onClick={exporterCaisse} disabled={!valide || dossierEnCours} style={st.bouton}>{dossierEnCours ? 'Caisse en cours…' : 'Caisse (zip)'}</Btn>}
           <Btn onClick={exporterPieces} disabled={!actif || !lignesAchats.length} style={st.bouton}>Pièces (zip)</Btn>
           <Btn onClick={exporterCsv} disabled={!actif} style={st.bouton}>CSV (zip)</Btn>
           <Btn variant="primary" onClick={exporterExcel} disabled={!actif} style={st.bouton}>Excel</Btn>

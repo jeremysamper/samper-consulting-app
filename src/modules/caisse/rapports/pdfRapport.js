@@ -122,7 +122,7 @@ export async function construireSynthese({ rapport, etablissement, reglages, com
     paire(`Offerts (${j.offerts.nombre}), valeur`, chf(j.offerts.montant));
     paire(`Tickets abandonnés avant encaissement (${j.abandons.nombre})`, chf(j.abandons.montant));
     paire(`Corrections de réservation (${j.corrections.nombre})`, '');
-    paire(`Mode test : ${j.tests.entrees} entrées, ${j.tests.sorties} sorties, ${nb(j.tests.tickets, 'ticket purgé', 'tickets purgés')}, hors chiffres`, chf(j.tests.montant), { gris: true });
+    paire(`Mode test : ${nb(j.tests.entrees, 'entrée', 'entrées')}, ${nb(j.tests.sorties, 'sortie', 'sorties')}, ${nb(j.tests.tickets, 'ticket purgé', 'tickets purgés')}, hors chiffres`, chf(j.tests.montant), { gris: true });
   }
 
   place(40);

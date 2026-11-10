@@ -303,7 +303,7 @@ test('jour non clôturé : provisoire partout, hors de la sortie comptable, sans
   assert.equal(periodeComplete(r), false);
   const feuilles = feuillesRapport(r);
   assert.ok(feuilles[0].rangs.some((x) => String(x.cellules[2] || '').startsWith('provisoire')));
-  assert.ok(feuilles[0].rangs.some((x) => String(x.cellules[0] || '').startsWith('Rapport provisoire : 1 jours')));
+  assert.ok(feuilles[0].rangs.some((x) => String(x.cellules[0] || '').startsWith('Rapport provisoire : 1 jour n\'est pas clôturé (04.11.2026)')));
   assert.equal(feuilles.find((f) => f.id === 'services').rangs.filter((x) => x.cellules[7] === 'provisoire').length, 2);
   // Dossier fiduciaire : seul le mardi, clôturé, y entre.
   const dossier = feuillesDossier({ donnees: d, rapport: r });
@@ -313,7 +313,7 @@ test('jour non clôturé : provisoire partout, hors de la sortie comptable, sans
   assert.deepEqual(dossier.find((f) => f.id === 'tickets').rangs.map((x) => x.cellules[0]), ['2026-000001', '2026-000002', '2026-000003']);
   // L'annulation de T1, faite un jour non clôturé, attend la clôture de ce jour.
   assert.equal(dossier.find((f) => f.id === 'annulations').rangs.length, 0);
-  assert.match(texteLisezMoi({ rapport: r, etablissement: 'Maison d\'essai', date: new Date('2026-11-10T09:00:00Z') }), /Jours laissés hors du dossier, faute de clôture \(1\) : 04\.11\.2026\./);
+  assert.match(texteLisezMoi({ rapport: r, etablissement: 'Maison d\'essai', date: new Date('2026-11-10T09:00:00Z') }), /Jour laissé hors du dossier, faute de clôture \(1\) : 04\.11\.2026\./);
 });
 
 test('comparaison avec la période précédente : seulement quand elle est complète', () => {
