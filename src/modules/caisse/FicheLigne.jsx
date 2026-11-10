@@ -1,20 +1,22 @@
 import React from 'react';
 import { Btn, Input } from '../../components/ui/index.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
-import { CUISSONS, libelleOption, basculerCuisson, basculerSans, ajouterMessage, retirerOption } from './options.js';
+import { libelleOption, basculerCuisson, basculerSans, ajouterMessage, retirerOption } from './options.js';
+import { REGLAGES_DEFAUT, libelleMode } from './reglages.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fiche d'une ligne du ticket (feuille refermable par le geste retour) :
-// quantité, suite, cuisson, « sans ... » (derniers utilisés + saisie libre),
-// message pour la cuisine ou le bar, suppression. Chaque tap écrit tout de
-// suite (onChange) : rien à enregistrer, la feuille se referme quand on veut.
+// quantité, mode (En direct, À suivre...), cuisson, « sans ... » (réglés par la
+// maison, derniers utilisés, saisie libre), message pour la cuisine ou le bar,
+// suppression. Chaque tap écrit tout de suite (onChange) : rien à enregistrer,
+// la feuille se referme quand on veut.
 // Réservée aux lignes en_attente (une ligne envoyée est figée en base).
 // Les valeurs saisies et les noms sont des données : data-no-translate.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
-export default function FicheLigne({ ligne, sansRecents, onChange, onSupprimer, onClose }) {
+export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEFAUT, suites = [1, 2, 3], onChange, onSupprimer, onClose }) {
   const [sansLibre, setSansLibre] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [cibleMessage, setCibleMessage] = React.useState('cuisine');
@@ -37,8 +39,13 @@ export default function FicheLigne({ ligne, sansRecents, onChange, onSupprimer, 
   const cuissonActive = options.find((o) => o.type === 'cuisson')?.valeur || null;
   const sansActifs = options.filter((o) => o.type === 'sans').map((o) => o.valeur);
   const messages = options.filter((o) => o.type === 'message');
-  // Derniers « sans » de la maison, plus ceux déjà posés sur la ligne.
-  const chipsSans = [...new Set([...(sansRecents || []), ...sansActifs])].slice(0, 10);
+  // Les « sans » réglés par la maison d'abord, puis les derniers utilisés,
+  // plus ceux déjà posés sur la ligne.
+  const chipsSans = [...new Set([...(reglages.sans_rapides || []), ...(sansRecents || []), ...sansActifs])].slice(0, 14);
+  // Une cuisson posée avant un changement de réglages reste retirable.
+  const cuissons = cuissonActive && !reglages.cuissons.includes(cuissonActive)
+    ? [...reglages.cuissons, cuissonActive]
+    : reglages.cuissons;
 
   const majOptions = (next) => onChange({ options: next });
 
@@ -74,20 +81,20 @@ export default function FicheLigne({ ligne, sansRecents, onChange, onSupprimer, 
           <Btn variant="ghost" onClick={() => onChange({ quantite: Number(ligne.quantite) + 1 })} style={st.btn44} ariaLabel="Augmenter la quantité">+1</Btn>
         </div>
 
-        <div style={st.rangTitre}>Suite</div>
+        <div style={st.rangTitre}>Mode</div>
         <div style={st.rang}>
-          {[1, 2, 3].map((s) => (
+          {suites.map((s) => (
             <Btn key={s} variant={ligne.suite === s ? 'primary' : 'ghost'} onClick={() => onChange({ suite: s })} style={st.btn44}>
-              <span>{s}</span>
+              <span data-no-translate>{libelleMode(reglages, s)}</span>
             </Btn>
           ))}
         </div>
 
         <div style={st.rangTitre}>Cuisson</div>
         <div style={st.rang}>
-          {CUISSONS.map((c) => (
+          {cuissons.map((c) => (
             <Btn key={c} variant={cuissonActive === c ? 'primary' : 'ghost'} onClick={() => majOptions(basculerCuisson(options, c))} style={st.btn44}>
-              {c}
+              {reglages.perso?.cuissons ? <span data-no-translate>{c}</span> : c}
             </Btn>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Zap, ReceiptText } from 'lucide-react';
+import { ChevronsRight, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
@@ -9,8 +9,11 @@ import { dbService } from '../../services/dbService.js';
 import { usePlanSalle } from '../../hooks/usePlanSalle.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
-import PlanTables from './PlanTables.jsx';
+import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
+import ReglagesCaisse from './ReglagesCaisse.jsx';
+import { fusionnerReglages } from './reglages.js';
+import { useMaintenant } from './mesures.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : prise de commande par table depuis le plan de salle, ventes
@@ -24,6 +27,12 @@ import TicketEcran from './TicketEcran.jsx';
 //
 // Realtime : caisse_tickets et caisse_lignes, via subscribeReload (rechargement
 // coalescé, rejoué au réveil de l'appareil), cleanup au démontage.
+//
+// v4 : catégories de caisse (caisse_categories), rangement des produits
+// (caisse_boutons.categorie_id et ordre) et réglages de la maison
+// (caisse_reglages), rechargés par realtime sur tous les postes. Une lecture
+// en échec garde les dernières valeurs connues ; sans aucun réglage en base,
+// les défauts du code donnent une caisse complète.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -49,6 +58,20 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     const { data } = await caisse.listBoutons(etabId);
     setBoutons(data || {});
   }, [etabId]);
+  // Catégories et réglages de la maison (v4). L'établissement change : on
+  // repart des défauts, jamais des réglages de la maison d'avant.
+  const [categories, setCategories] = React.useState([]);
+  const [config, setConfig] = React.useState({});
+  const [reglagesOuverts, setReglagesOuverts] = React.useState(false);
+  const reglages = React.useMemo(() => fusionnerReglages(config), [config]);
+  React.useEffect(() => { setCategories([]); setConfig({}); setReglagesOuverts(false); }, [etabId]);
+  const rechargerReglages = React.useCallback(async () => {
+    if (!etabId) return;
+    const [c, r] = await Promise.all([caisse.listCategories(etabId), caisse.getReglages(etabId)]);
+    if (!c.error) setCategories(c.data);
+    if (!r.error) setConfig(r.data);
+  }, [etabId]);
+  const maintenant = useMaintenant();
   const [ticketId, setTicketId] = React.useState(null);
   // 'ouvrir' : un tap sur une table ouvre ou crée son ticket.
   // 'deplacer' : un tap sur une table y déplace le ticket courant.
@@ -89,6 +112,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
 
   React.useEffect(() => { rechargerTickets(); }, [rechargerTickets]);
   React.useEffect(() => { rechargerBoutons(); }, [rechargerBoutons, legacyVersion]);
+  React.useEffect(() => { rechargerReglages(); }, [rechargerReglages, legacyVersion]);
 
   // Realtime : un autre iPad qui vend, la direction qui annule.
   React.useEffect(() => {
@@ -96,6 +120,18 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (!rt?.subscribeReload || !etabId) return undefined;
     return rt.subscribeReload(['caisse_tickets', 'caisse_lignes'], rechargerTickets);
   }, [etabId, rechargerTickets]);
+
+  // Realtime : la direction qui règle la caisse pendant le service. La grille
+  // de chaque poste suit (catégories, rangement, habillage, réglages).
+  const rechargerGrille = React.useCallback(
+    () => Promise.all([rechargerBoutons(), rechargerReglages()]),
+    [rechargerBoutons, rechargerReglages],
+  );
+  React.useEffect(() => {
+    const rt = dbService.getRealtime();
+    if (!rt?.subscribeReload || !etabId) return undefined;
+    return rt.subscribeReload(['caisse_categories', 'caisse_reglages', 'caisse_boutons'], rechargerGrille);
+  }, [etabId, rechargerGrille]);
 
   const ticket = tickets.find((t) => t.id === ticketId) || null;
   // Le ticket courant a été encaissé ou annulé ailleurs : l'écran ne reste
@@ -145,6 +181,20 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     return tables.find((x) => x.id === t.table_id)?.nom || null;
   }
 
+  // Réglages de la caisse : la feuille s'ouvre depuis l'accueil et depuis le
+  // ticket, pour les trois rôles que la base laisse écrire.
+  const feuilleReglages = reglagesOuverts && peutHabiller ? (
+    <ReglagesCaisse
+      etablissementId={etabId}
+      articles={articles}
+      boutons={boutons}
+      categories={categories}
+      config={config}
+      onChange={rechargerGrille}
+      onClose={() => setReglagesOuverts(false)}
+    />
+  ) : null;
+
   // ── Accueil à tuiles ──
   if (ecran === ECRAN_ACCUEIL) {
     return (
@@ -182,6 +232,15 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             },
           ]}
         />
+        {peutHabiller && (
+          <div style={st.reglagesAccueil}>
+            <Btn variant="ghost" onClick={() => setReglagesOuverts(true)} style={st.btn44}>
+              <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span>Réglages de la caisse</span>
+            </Btn>
+          </div>
+        )}
+        {feuilleReglages}
       </>
     );
   }
@@ -218,13 +277,23 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         <div style={st.listeTickets}>
           {tickets.map((t) => {
             const nom = nomTable(t);
+            const e = etatTicket(t, maintenant);
             return (
               <button key={t.id} type="button" data-cadre="" style={st.ticketRow} onClick={() => { setTicketId(t.id); setEcran('ticket'); }}>
                 <span style={st.ticketTable}>
                   {nom ? <span data-no-translate>{nom}</span> : <span>Direct</span>}
                 </span>
                 <span style={st.ticketInfos}>
-                  <span>{(t.lignes || []).length}</span> <span>articles</span>
+                  <span><span>{(t.lignes || []).length}</span> <span>articles</span></span>
+                  {e.minutes != null && (
+                    <span><span>Dernier envoi il y a</span> <span style={st.num}>{e.minutes}</span> <span>min</span></span>
+                  )}
+                  {e.aSuivre > 0 && (
+                    <span style={st.ticketSuivre}>
+                      <ChevronsRight size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
+                      <span style={st.num}>{e.aSuivre}</span> <span>à suivre en attente</span>
+                    </span>
+                  )}
                 </span>
                 <span style={st.ticketHeure}>{zurichDateHeure(t.created_at).heure}</span>
                 <span style={st.ticketTotal}><span>{chf(totalTicket(t))}</span> <span>CHF</span></span>
@@ -246,18 +315,24 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         etat={<span><span>Ouvert à</span> <span>{zurichDateHeure(ticket.created_at).heure}</span></span>}
         onRetour={retourAccueil}
       >
+        {/* key : un autre ticket remonte l'écran, le mode revient à « En direct ». */}
         <TicketEcran
+          key={ticket.id}
           ticket={ticket}
           articles={articles}
           boutons={boutons}
+          categories={categories}
+          reglages={reglages}
           peutHabiller={peutHabiller}
           onBoutonsChange={rechargerBoutons}
+          onOuvrirReglages={() => setReglagesOuverts(true)}
           ticketsMemeTable={autresMemeTable}
           onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
           onFusionne={rechargerTickets}
           onClos={() => { rechargerTickets(); retourAccueil(); }}
           reload={rechargerTickets}
         />
+        {feuilleReglages}
       </EcranTache>
     );
   }
@@ -277,7 +352,10 @@ const st = {
     cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, textAlign: 'left', width: '100%',
   },
   ticketTable: { fontWeight: 600, flexShrink: 0, minWidth: 70 },
-  ticketInfos: { color: 'var(--text2)', fontSize: 13, flex: 1 },
+  ticketInfos: { color: 'var(--text2)', fontSize: 13, flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
+  ticketSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontWeight: 600 },
+  num: { fontFamily: 'var(--font-num)' },
+  reglagesAccueil: { display: 'flex', marginTop: 16 },
   ticketHeure: { color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font-num)' },
   ticketTotal: { fontFamily: 'var(--font-num)', fontWeight: 600 },
 };
