@@ -8,7 +8,7 @@ import ListeTriable from './ListeTriable.jsx';
 import { COULEURS, LIBELLES_COULEURS, PICTOS, pictoParId } from './boutons.js';
 import { CATEGORIES_DEFAUT, ID_A_TRIER, estCategorieDefaut, estCategorieVirtuelle, rangerArticles } from './categories.js';
 import {
-  FAMILLES_PAIEMENT, LIBELLES_FAMILLES, MODES_SUIVRE_MAX, REGLAGES_DEFAUT,
+  DELAIS_NO_SHOW, FAMILLES_PAIEMENT, LIBELLES_FAMILLES, MODES_SUIVRE_MAX, REGLAGES_DEFAUT,
   fusionnerReglages, libelleModeDefaut,
 } from './reglages.js';
 
@@ -21,6 +21,7 @@ import {
 //   Produits   : en choisir plusieurs puis leur catégorie (le tri rapide des
 //                boissons) ; dans une catégorie, les ordonner au glisser.
 //   Modes, cuissons, « sans » rapides, moyens de paiement, grille.
+//   Cartes en vente et délai avant de proposer un no-show (v5).
 //
 // Chaque geste écrit tout de suite, rien à enregistrer en sortant. Une
 // écriture refusée remet l'écran dans l'état d'avant AVANT toute relecture.
@@ -39,9 +40,11 @@ const SECTIONS = [
   { id: 'sans', label: 'Sans' },
   { id: 'paiement', label: 'Paiement' },
   { id: 'grille', label: 'Grille' },
+  { id: 'cartes', label: 'Cartes en vente' },
+  { id: 'no_show', label: 'No-show' },
 ];
 
-export default function ReglagesCaisse({ etablissementId, articles, boutons, categories, config, onChange, onClose }) {
+export default function ReglagesCaisse({ etablissementId, articles, boutons, categories, cartes = [], config, onChange, onClose }) {
   const [section, setSection] = React.useState('categories');
   // Copie locale de la config : l'écran suit le geste sans attendre la base.
   const [brouillon, setBrouillon] = React.useState(config || {});
@@ -175,6 +178,27 @@ export default function ReglagesCaisse({ etablissementId, articles, boutons, cat
                 <Btn variant={reglages.ouverture === 'categorie' ? 'primary' : 'ghost'} onClick={() => regler({ ouverture: 'categorie' })} style={st.btnChoix}>La première catégorie</Btn>
               </div>
               <p style={st.aide}>Avec une grande carte, ouvrir sur la première catégorie évite de faire défiler toute la liste.</p>
+            </div>
+          )}
+          {section === 'cartes' && <SectionCartes cartes={cartes} reglages={reglages} regler={regler} />}
+          {section === 'no_show' && (
+            <div style={st.bloc}>
+              <div style={st.sousTitre}>Proposer une réservation en no-show après</div>
+              <div style={st.rang}>
+                {DELAIS_NO_SHOW.map((d) => (
+                  <Btn
+                    key={d}
+                    variant={reglages.delai_no_show_min === d ? 'primary' : 'ghost'}
+                    onClick={() => regler({ delai_no_show_min: d === REGLAGES_DEFAUT.delai_no_show_min ? null : d })}
+                    style={st.btnChoix}
+                  >
+                    <span style={st.num}>{d}</span> <span>min</span>
+                  </Btn>
+                ))}
+              </div>
+              <p style={st.aide}>
+                Passé ce délai après l'heure réservée, une réservation confirmée sans table ouverte apparaît dans « Réservations sans ticket ». La caisse ne marque jamais un no-show seule : un tap le confirme.
+              </p>
             </div>
           )}
         </div>
@@ -514,6 +538,57 @@ function SectionListe({ titre, aide, valeurs, perso, videPermis = false, placeho
       {aide && <p style={st.aide}>{aide}</p>}
       {onDefaut && perso && (
         <div><Btn variant="ghost" onClick={onDefaut} style={st.btn44}>Revenir à la liste proposée</Btn></div>
+      )}
+    </div>
+  );
+}
+
+// ── Cartes en vente (v5) ─────────────────────────────────────────────────────
+// La maison choisit quelles cartes alimentent la caisse. Sans choix
+// (cartes_ids absente), toutes les cartes actives vendent, celles créées plus
+// tard comprises. Seules les cartes actives sont listées : une carte archivée
+// ou cachée ne vend jamais, et son nom ne s'affiche pas ici. Tout cocher
+// revient au réglage par défaut ; la dernière carte ne se décoche pas (une
+// liste vide voudrait dire « toutes »).
+function SectionCartes({ cartes, reglages, regler }) {
+  const ids = cartes.map((c) => c.id);
+  const choisies = reglages.cartes_ids.filter((id) => ids.includes(id));
+  const restreint = reglages.cartes_ids.length > 0;
+  const cochee = (id) => !restreint || choisies.includes(id);
+
+  function basculer(id) {
+    const avant = restreint ? choisies : ids;
+    const apres = avant.includes(id) ? avant.filter((x) => x !== id) : [...avant, id];
+    if (!apres.length) { notify('Gardez au moins une carte en vente.', 'warning'); return; }
+    const toutes = ids.every((x) => apres.includes(x));
+    regler({ cartes_ids: toutes ? null : ids.filter((x) => apres.includes(x)) });
+  }
+
+  return (
+    <div style={st.bloc}>
+      <div style={st.sousTitre}>Cartes qui alimentent la caisse</div>
+      {!cartes.length && <p style={st.aide}>Aucune carte active dans cette maison : tous les plats actifs sont en vente.</p>}
+      <div style={st.listeSimple}>
+        {cartes.map((c) => (
+          <div key={c.id} style={st.rangSimple}>
+            <label style={st.produit}>
+              <input type="checkbox" checked={cochee(c.id)} onChange={() => basculer(c.id)} style={st.case} />
+              <span style={st.produitNom} data-no-translate>{c.nom}</span>
+            </label>
+          </div>
+        ))}
+      </div>
+      {restreint && !choisies.length && cartes.length > 0 && (
+        <p style={st.aide}>Les cartes choisies ne sont plus actives : rien n'est en vente tant qu'aucune carte n'est cochée.</p>
+      )}
+      <p style={st.aide}>
+        {restreint
+          ? 'Une carte créée plus tard ne vendra qu\'une fois cochée ici. Les tickets ouverts gardent leurs lignes.'
+          : 'Toutes les cartes actives vendent, celles créées plus tard aussi. Décochez une carte pour la retirer de la caisse.'}
+      </p>
+      <p style={st.aide}>Une carte archivée ou cachée ne vend jamais.</p>
+      {restreint && (
+        <div><Btn variant="ghost" onClick={() => regler({ cartes_ids: null })} style={st.btn44}>Remettre toutes les cartes en vente</Btn></div>
       )}
     </div>
   );

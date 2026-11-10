@@ -17,7 +17,9 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 
 const ACTIONS = { INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression' };
 const COULEUR_ACTION = { INSERT: 'var(--success-text)', UPDATE: 'var(--accent)', DELETE: 'var(--danger-text)' };
-const MODULES = { recettes: 'Recettes', produits: 'Produits', pertes: 'Pertes', inventaires: 'Inventaires' };
+// caisse : corrections d'une réservation par le service (RPC
+// caisse_corriger_reservation, migration 20261110_caisse_v5).
+const MODULES = { recettes: 'Recettes', produits: 'Produits', pertes: 'Pertes', inventaires: 'Inventaires', caisse: 'Caisse' };
 const COLONNES = 'id, created_at, acteur_id, acteur_nom, acteur_role, module, operation, libelle, colonnes_modifiees';
 const PAGE = 1000;
 
@@ -183,7 +185,7 @@ export default function Journal({ user, etablissement }) {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       <SectionHeader
-        sub="Créations, modifications et suppressions dans les recettes, produits, pertes et inventaires."
+        sub="Créations, modifications et suppressions dans les recettes, produits, pertes et inventaires, et corrections de réservation faites depuis la caisse."
         style={{ marginBottom: 0 }}
       />
 

@@ -36,7 +36,10 @@ export function etatTicket(ticket, maintenant = Date.now()) {
   };
 }
 
-export default function PlanTables({ salles, tables, ticketsParTable, onTapTable }) {
+// noms (v5) : table_id -> { nom, attendu, heure }. Le nom de la réservation
+// s'écrit sous celui de la table quand la place le permet : celle du ticket
+// ouvert, ou la prochaine attendue posée sur une table encore libre.
+export default function PlanTables({ salles, tables, ticketsParTable, noms = {}, onTapTable }) {
   const sallesAvecTables = (salles || []).filter((s) => (tables || []).some((t) => t.salle_id === s.id));
   const [salleId, setSalleId] = React.useState(null);
   const tablesActives = (tables || []).filter((t) => t.actif !== false);
@@ -78,6 +81,10 @@ export default function PlanTables({ salles, tables, ticketsParTable, onTapTable
             const large = wPx >= 96 && hPx >= 52;
             const moyenne = wPx >= 62 && hPx >= 52;
             const detail = hPx >= 52;
+            // Le nom de la réservation : une ligne de plus, donc 68 px pour
+            // une table ouverte (quatre lignes), 44 px pour une table libre.
+            const client = noms[t.id];
+            const placeNom = wPx >= 62 && (ticket ? hPx >= 68 : hPx >= 44);
             return (
               <button
                 key={t.id}
@@ -95,6 +102,9 @@ export default function PlanTables({ salles, tables, ticketsParTable, onTapTable
                 }}
               >
                 <span style={st.tableNom}>{t.nom}</span>
+                {client && placeNom && (
+                  <span style={{ ...st.tableClient, ...(ticket ? null : st.tableClientAttendu) }}>{client.nom}</span>
+                )}
                 {e && moyenne && <span style={st.tableMontant}>{chf(e.montant)}</span>}
                 {e && detail && (
                   <span style={st.tableDetail}>
@@ -121,6 +131,9 @@ export default function PlanTables({ salles, tables, ticketsParTable, onTapTable
               <button key={t.id} type="button" data-cadre="" style={st.rang} onClick={() => onTapTable(t, ticket)}>
                 <span style={st.rangNom} data-no-translate>{t.nom}</span>
                 <span style={st.rangInfos}>
+                  {noms[t.id] && !noms[t.id].attendu && (
+                    <span style={st.rangClient} data-no-translate>{noms[t.id].nom}</span>
+                  )}
                   <span style={st.rangLigne}>
                     <span style={st.num}>{e.articles}</span> <span>articles</span>
                   </span>
@@ -186,6 +199,9 @@ const st = {
     borderColor: 'var(--accent)',
   },
   tableNom: { fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-num)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', padding: '0 2px' },
+  tableClient: { fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', padding: '0 4px' },
+  tableClientAttendu: { color: 'var(--text2)' },
+  rangClient: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflowWrap: 'anywhere' },
   tableMontant: { fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-num)' },
   tableDetail: { fontSize: 12, fontFamily: 'var(--font-num)', display: 'inline-flex', alignItems: 'baseline', whiteSpace: 'nowrap' },
   sep: { margin: '0 5px 0 2px' },

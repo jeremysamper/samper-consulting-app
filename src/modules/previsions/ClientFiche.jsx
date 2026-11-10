@@ -3,11 +3,17 @@ import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useResaClients, nomClient } from '../../hooks/useResaClients.js';
 import { confirmationEffacement, effacerPersonne, exporterPersonne, telechargerExport } from '../../services/personneService.js';
+import { listTicketsClient } from '../../services/caisseService.js';
+import { zurichDateHeure } from '../../utils/zurichTime.js';
 import { metaStatut, SERVICE_META, serviceAffiche } from './statutsReservation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Fiche client d'un restaurant : coordonnées, accord pour les actualités et
 // bons cadeaux, et l'historique de ses réservations avec les tables occupées.
+//
+// Depuis la caisse v5, la fiche montre aussi ses derniers tickets (ceux ouverts
+// à son nom ou sur l'une de ses réservations) : date et heure de Zurich, table,
+// couverts, total, articles repliés. Lecture seule, ouverte à qui lit la fiche.
 //
 // Ouverte depuis l'onglet Clients ou depuis une réservation. Même contrat que
 // les autres modales du module : pendant un enregistrement, « Enregistrer »
@@ -29,6 +35,10 @@ const dateHeureCh = (iso) => {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
 };
 const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+
+const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
+const totalTicket = (t) => (t.caisse_lignes || []).reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0);
+const TICKETS_VISIBLES = 5;
 
 const FORM_VIDE = {
   prenom: '', nom: '', email: '', telephone: '', dateNaissance: '',
@@ -57,6 +67,10 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
   const [client, setClient] = useState(null);
   const [form, setForm] = useState(FORM_VIDE);
   const [historique, setHistorique] = useState(null);
+  // Tickets de caisse du client : null tant que non lus, [] s'il n'en a pas.
+  const [tickets, setTickets] = useState(null);
+  const [tousTickets, setTousTickets] = useState(false);
+  const [ticketOuvert, setTicketOuvert] = useState(null);
   const [chargement, setChargement] = useState(Boolean(clientId));
   const [erreur, setErreur] = useState(null);
   const [enCours, setEnCours] = useState(false);
@@ -81,6 +95,10 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
       const cle = (r) => `${r.date_service || ''} ${r.heure_arrivee || ''}`;
       setHistorique(histo.error ? [] : [...histo.data].sort((a, b) => cle(b).localeCompare(cle(a))));
       setChargement(false);
+      // Les tickets arrivent après la fiche : elle ne les attend pas. Une
+      // lecture en échec laisse le bloc absent, sans gêner le reste.
+      const lus = await listTicketsClient(clientId, histo.error ? [] : histo.data.map((r) => r.id));
+      if (vivant && !lus.error) setTickets(lus.data);
     })();
     return () => { vivant = false; };
   }, [clientId, clients]);
@@ -132,7 +150,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
     const { data, error } = await exporterPersonne('resa', clientId);
     if (error) { notify(error, 'error'); return; }
     telechargerExport(data, 'resa');
-    notify('Export téléchargé : fiche, réservations et séjours.', 'success');
+    notify('Export téléchargé : fiche, réservations, tickets et séjours.', 'success');
   }
 
   // Effacement anonymisant (droit à l'effacement, lot SI3) : les réservations
@@ -261,6 +279,85 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
               <Champ label="Notes">
                 <textarea style={{ ...champ, minHeight: 64, resize: 'vertical' }} value={form.notes} readOnly={lecture} onChange={(e) => set('notes', e.target.value)} />
               </Champ>
+
+              {/* Derniers tickets de caisse (v5) */}
+              {!nouveau && tickets && tickets.length > 0 && (
+                <div data-fiche-tickets="">
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 8 }}>
+                    <span>Derniers tickets</span> <span>({tickets.length})</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {(tousTickets ? tickets : tickets.slice(0, TICKETS_VISIBLES)).map((t) => {
+                      const quand = zurichDateHeure(t.created_at);
+                      const lignes = t.caisse_lignes || [];
+                      const deplie = ticketOuvert === t.id;
+                      return (
+                        <div key={t.id} style={{
+                          padding: '8px 10px', borderRadius: 8,
+                          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                        }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 10px' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{quand.date}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>{quand.heure}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                              {t.salle_tables?.nom
+                                ? <><span>Table</span> <span data-no-translate>{t.salle_tables.nom}</span></>
+                                : <span>Table non notée</span>}
+                            </span>
+                            {t.couverts ? (
+                              <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                                <span style={{ fontFamily: 'var(--font-num)' }}>{t.couverts}</span> <span>couverts</span>
+                              </span>
+                            ) : null}
+                            {t.statut === 'ouvert' && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-text)' }}>en cours</span>}
+                            <span style={{ flex: 1 }} />
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
+                              <span>{chf(totalTicket(t))}</span> <span style={{ fontWeight: 400, color: 'var(--text2)' }}>CHF</span>
+                            </span>
+                            <button
+                              type="button"
+                              aria-expanded={deplie}
+                              onClick={() => setTicketOuvert(deplie ? null : t.id)}
+                              style={{
+                                minHeight: 44, padding: '6px 10px', borderRadius: 8,
+                                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                                background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, fontFamily: 'var(--font)', cursor: 'pointer',
+                              }}
+                            >
+                              <span style={{ fontFamily: 'var(--font-num)' }}>{lignes.length}</span> <span>articles</span>
+                            </button>
+                          </div>
+                          {deplie && (
+                            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {lignes.map((l, i) => (
+                                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text2)' }}>
+                                  <span style={{ fontFamily: 'var(--font-num)', minWidth: 22, textAlign: 'right' }}>{Number(l.quantite)}</span>
+                                  <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }} data-no-translate>{l.libelle}</span>
+                                  <span style={{ fontFamily: 'var(--font-num)' }}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
+                                </div>
+                              ))}
+                              {!lignes.length && <div style={{ fontSize: 12, color: 'var(--text3)' }}>Aucun article.</div>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {tickets.length > TICKETS_VISIBLES && !tousTickets && (
+                    <button
+                      type="button"
+                      onClick={() => setTousTickets(true)}
+                      style={{
+                        marginTop: 8, minHeight: 44, padding: '8px 12px', borderRadius: 8,
+                        borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+                        background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+                      }}
+                    >
+                      Voir tout
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Historique */}
               {!nouveau && (

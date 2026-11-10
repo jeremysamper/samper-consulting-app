@@ -56,6 +56,7 @@ export function confirmationEffacement(nom) {
   return `Effacer les données de ${nom} ?\n\n`
     + 'Le nom devient « Client effacé » ; coordonnées, notes et données de santé sont vidées '
     + 'sur la fiche et sur ses lignes rattachées (rendez-vous, séances et bons, ou réservations et séjours). '
+    + 'Ses tickets de caisse restent pour la comptabilité, sans son nom. '
     + 'Les lignes et les statistiques restent.\n\n'
     + 'Ce geste répond à une demande d\'effacement et ne se défait pas.';
 }
