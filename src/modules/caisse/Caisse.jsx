@@ -41,6 +41,14 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const [tables, setTables] = React.useState([]);
   const [salles, setSalles] = React.useState([]);
   const [articles, setArticles] = React.useState([]);
+  // Habillage des boutons produits (v3) : plat_id -> { nom_court, couleur, picto }.
+  const [boutons, setBoutons] = React.useState({});
+  const peutHabiller = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
+  const rechargerBoutons = React.useCallback(async () => {
+    if (!etabId) return;
+    const { data } = await caisse.listBoutons(etabId);
+    setBoutons(data || {});
+  }, [etabId]);
   const [ticketId, setTicketId] = React.useState(null);
   // 'ouvrir' : un tap sur une table ouvre ou crée son ticket.
   // 'deplacer' : un tap sur une table y déplace le ticket courant.
@@ -80,6 +88,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   }, [etabId, plan, legacyVersion]);
 
   React.useEffect(() => { rechargerTickets(); }, [rechargerTickets]);
+  React.useEffect(() => { rechargerBoutons(); }, [rechargerBoutons, legacyVersion]);
 
   // Realtime : un autre iPad qui vend, la direction qui annule.
   React.useEffect(() => {
@@ -240,6 +249,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         <TicketEcran
           ticket={ticket}
           articles={articles}
+          boutons={boutons}
+          peutHabiller={peutHabiller}
+          onBoutonsChange={rechargerBoutons}
           ticketsMemeTable={autresMemeTable}
           onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
           onFusionne={rechargerTickets}

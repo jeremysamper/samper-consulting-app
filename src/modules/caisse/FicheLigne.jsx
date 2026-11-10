@@ -69,9 +69,9 @@ export default function FicheLigne({ ligne, sansRecents, onChange, onSupprimer, 
 
         <div style={st.rangTitre}>Quantité</div>
         <div style={st.rang}>
-          <Btn variant="ghost" onClick={() => onChange({ quantite: Math.max(1, Number(ligne.quantite) - 1) })} style={st.btn44} aria-label="Réduire la quantité">-1</Btn>
+          <Btn variant="ghost" onClick={() => onChange({ quantite: Math.max(1, Number(ligne.quantite) - 1) })} style={st.btn44} ariaLabel="Réduire la quantité">-1</Btn>
           <span style={st.qte}>{Number(ligne.quantite)}</span>
-          <Btn variant="ghost" onClick={() => onChange({ quantite: Number(ligne.quantite) + 1 })} style={st.btn44} aria-label="Augmenter la quantité">+1</Btn>
+          <Btn variant="ghost" onClick={() => onChange({ quantite: Number(ligne.quantite) + 1 })} style={st.btn44} ariaLabel="Augmenter la quantité">+1</Btn>
         </div>
 
         <div style={st.rangTitre}>Suite</div>
