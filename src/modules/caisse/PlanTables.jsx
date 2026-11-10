@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronsRight } from 'lucide-react';
+import { ChevronsRight, ConciergeBell } from 'lucide-react';
 import { PLAN_W, PLAN_H } from '../../hooks/usePlanSalle.js';
 import { TabBar } from '../../components/ui/index.jsx';
 import { useLargeur, useMaintenant } from './mesures.js';
@@ -33,7 +33,16 @@ export function etatTicket(ticket, maintenant = Date.now()) {
     minutes: dernier == null ? null : Math.max(0, Math.floor((maintenant - dernier) / 60000)),
     aEnvoyer: enAttente.filter((l) => l.suite === 1).length,
     aSuivre: enAttente.filter((l) => l.suite > 1).length,
+    // v6 : plats que la cuisine a marqués faits au KDS et que la salle n'a
+    // pas encore notés servis. Posé par la base (caisse_lignes.pret_at).
+    prets: lignes.filter(estPret).length,
   };
+}
+
+// Une ligne est « prête » tant que la cuisine l'a marquée faite et que la
+// salle ne l'a pas encore servie.
+export function estPret(ligne) {
+  return Boolean(ligne?.pret_at) && ligne.statut !== 'servi';
 }
 
 // noms (v5) : table_id -> { nom, attendu, heure }. Le nom de la réservation
@@ -86,8 +95,8 @@ export default function PlanTables({ salles, tables, ticketsParTable, noms = {},
             const client = noms[t.id];
             const placeNom = wPx >= 62 && (ticket ? hPx >= 68 : hPx >= 44);
             return (
+              <React.Fragment key={t.id}>
               <button
-                key={t.id}
                 type="button"
                 onClick={() => onTapTable(t, ticket)}
                 data-table-ouverte={ticket ? '' : undefined}
@@ -116,6 +125,20 @@ export default function PlanTables({ salles, tables, ticketsParTable, noms = {},
                   <span style={st.tableRepere} aria-hidden="true"><ChevronsRight size={14} strokeWidth={2.25} /></span>
                 )}
               </button>
+              {/* Repère « prêt » : une pastille posée sur le coin de la table,
+                  hors du bouton, pour ne couvrir ni son nom ni son montant
+                  (une petite table n'a pas de place à l'intérieur). Elle ne
+                  prend pas le tap : la table reste la cible. */}
+              {e && e.prets > 0 && (
+                <span
+                  style={{ ...st.tablePrets, left: `calc(${(t.pos_x / PLAN_W) * 100}% - 8px)`, top: `calc(${(t.pos_y / PLAN_H) * 100}% - 8px)` }}
+                  data-table-prets=""
+                >
+                  <ConciergeBell size={13} strokeWidth={2.25} aria-hidden="true" />
+                  <span>{e.prets}</span>
+                </span>
+              )}
+              </React.Fragment>
             );
           })}
         </div>
@@ -146,6 +169,12 @@ export default function PlanTables({ salles, tables, ticketsParTable, noms = {},
                     <span style={st.rangSuivre}>
                       <ChevronsRight size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
                       <span style={st.num}>{e.aSuivre}</span> <span>à suivre en attente</span>
+                    </span>
+                  )}
+                  {e.prets > 0 && (
+                    <span style={st.rangPret} data-caisse-prets="">
+                      <ConciergeBell size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
+                      <span style={st.num}>{e.prets}</span> <span>{e.prets > 1 ? 'prêts en cuisine' : 'prêt en cuisine'}</span>
                     </span>
                   )}
                 </span>
@@ -206,6 +235,17 @@ const st = {
   tableDetail: { fontSize: 12, fontFamily: 'var(--font-num)', display: 'inline-flex', alignItems: 'baseline', whiteSpace: 'nowrap' },
   sep: { margin: '0 5px 0 2px' },
   tableRepere: { position: 'absolute', top: 3, right: 4, display: 'inline-flex' },
+  // Repère « prêt » : une cloche et le nombre de plats prêts, sur le coin
+  // haut gauche de la table (le repère « à suivre » tient le coin droit, à
+  // l'intérieur). Fond plein et filet pour rester lisible sur une table
+  // ouverte comme sur le fond du plan.
+  tablePrets: {
+    position: 'absolute', zIndex: 2, pointerEvents: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
+    padding: '2px 7px', borderRadius: 'var(--r-full)', background: 'var(--surface)', color: 'var(--text)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', boxShadow: 'var(--sh-sm)',
+    fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-num)', lineHeight: 1.2,
+  },
+  rangPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontSize: 13, fontWeight: 600 },
   liste: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 300px', minWidth: 0, maxWidth: 900 },
   listeTitre: { fontSize: 13, fontWeight: 600, color: 'var(--text2)', margin: '4px 0 2px' },
   rang: {

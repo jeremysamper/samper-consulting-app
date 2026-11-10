@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronDown, Hourglass, Plus, Send } from 'lucide-react';
+import { Check, ChevronDown, ConciergeBell, FlaskConical, Hourglass, Megaphone, Plus, Send } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
@@ -14,6 +14,7 @@ import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
 import { ID_TOUT, rangerArticles, sousGroupesAutres } from './categories.js';
 import { REGLAGES_DEFAUT, SUITE_MAX, libelleMode, peutOuvrirMode, suitesVisibles } from './reglages.js';
 import { useHauteurRestante, useLargeur, useRetraitBas } from './mesures.js';
+import { estPret } from './PlanTables.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // L'écran du ticket : à gauche la saisie (mode, catégories, produits), à
@@ -46,6 +47,16 @@ import { useHauteurRestante, useLargeur, useRetraitBas } from './mesures.js';
 // grille à une seule ; il s'ouvre sur « Toutes les cartes » (aucun geste de
 // plus pour qui ne s'en sert pas) et le choix tient le temps du ticket. Un
 // produit porté par deux cartes n'apparaît qu'une fois.
+//
+// v6 : la cuisine voit ce qui arrive, la salle voit ce qui est prêt.
+// Au premier envoi, les lignes des modes suivants sont annoncées en cuisine,
+// tenues : elles s'affichent « annoncé » et restent modifiables (la base met
+// l'item de la cuisine à jour). « Réclamer la suite » les libère par la RPC
+// caisse_reclamer_suite : même tap unique qu'avant. Quand la cuisine marque un
+// plat fait, la ligne porte « Prêt » (caisse_lignes.pret_at, posé par la
+// base : le service ne lit jamais les tables du KDS).
+// En mode test (modeTest), le ticket n'a ni client ni réservation : le
+// bandeau le dit et « Corriger » n'existe pas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -58,6 +69,7 @@ export default function TicketEcran({
   peutHabiller = false, onBoutonsChange, onOuvrirReglages,
   ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
+  modeTest = false,
 }) {
   const [recherche, setRecherche] = React.useState('');
   // Carte choisie pour ce ticket ; null = toutes les cartes en vente.
@@ -221,16 +233,27 @@ export default function TicketEcran({
     if (!erreur(error)) reload();
   }
 
-  // Envoi du bon (Envoyer, Réclamer la suite) : la RPC est idempotente (un
-  // double tap ne crée pas deux bons), le verrou local évite le second appel.
+  // Envoi du bon (Envoyer, Réclamer la suite) : les deux RPC sont idempotentes
+  // (un double tap ne crée pas deux bons), le verrou local évite le second
+  // appel. Le direct part par caisse_envoyer_bon, qui annonce aussi les modes
+  // suivants en cuisine ; une suite se réclame par caisse_reclamer_suite, qui
+  // libère les plats annoncés. Un seul tap dans les deux cas.
   async function envoyer() {
     if (verrou.current.envoi || suiteAEnvoyer == null) return;
     verrou.current.envoi = true;
     setEnvoiEnCours(true);
     try {
-      const { data, error } = await caisse.envoyerBon(ticket.id, suiteAEnvoyer);
+      const reclamation = suiteAEnvoyer > 1;
+      const { data, error } = reclamation
+        ? await caisse.reclamerSuite(ticket.id, suiteAEnvoyer)
+        : await caisse.envoyerBon(ticket.id, suiteAEnvoyer);
       if (erreur(error)) return;
-      if (data?.lignes > 0) notify('Bon envoyé en cuisine', 'success');
+      if (data?.lignes > 0) {
+        // Ticket de test sans le réglage « Envoyer les tests en cuisine » :
+        // la base n'a créé aucun bon, l'écran ne prétend pas le contraire.
+        if (modeTest && !data.bon_id) notify("Ticket de test : rien n'est parti en cuisine", 'info');
+        else notify(reclamation ? 'Suite réclamée en cuisine' : 'Bon envoyé en cuisine', 'success');
+      }
       reload();
     } finally {
       verrou.current.envoi = false;
@@ -548,8 +571,23 @@ export default function TicketEcran({
 
       {/* ── La lecture de la table : le ticket en blocs par mode ── */}
       <section style={{ ...st.colTicket, ...colonne }} data-cadre="" data-caisse-ticket="">
+        {/* ── Ticket de test (v6) : ni client ni réservation, rien à corriger. ── */}
+        {modeTest && (
+          <div style={st.bandeau} data-caisse-client="test">
+            <FlaskConical size={18} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <div style={st.bandeauCorps}>
+              <span style={st.bandeauNom}>Ticket de test</span>
+              <span style={st.bandeauDetail}>
+                {ticket.couverts && (
+                  <span><span style={st.num}>{ticket.couverts}</span> <span>couverts</span></span>
+                )}
+                <span>Aucune réservation ni fiche client n'est touchée</span>
+              </span>
+            </div>
+          </div>
+        )}
         {/* ── Qui est à la table (v5). Vente directe : anonyme, pas de bandeau. ── */}
-        {ticket.table_id && (
+        {!modeTest && ticket.table_id && (
           <div style={st.bandeau} data-caisse-client={ticket.qui || 'inconnu'}>
             <div style={st.bandeauCorps}>
               {reservation ? (
@@ -577,12 +615,16 @@ export default function TicketEcran({
           {lignes.length === 0 && <p style={st.vide}>Touchez un article pour l'ajouter.</p>}
           {Array.from({ length: SUITE_MAX }, (_, i) => i + 1).filter((s) => lignes.some((l) => l.suite === s)).map((s) => {
             const duBloc = lignes.filter((l) => l.suite === s);
-            const enCours = duBloc.some((l) => l.statut === 'en_attente');
+            const attente = duBloc.filter((l) => l.statut === 'en_attente');
+            const enCours = attente.length > 0;
+            // Un mode tenu dont toutes les lignes en attente sont déjà en
+            // cuisine (tenues) est « annoncé » ; il reste à le réclamer.
+            const annonce = enCours && attente.every((l) => l.annonce_at);
             return (
-              <div key={s} style={st.bloc} data-mode={s}>
+              <div key={s} style={st.bloc} data-mode={s} data-mode-etat={annonce ? 'annonce' : (enCours ? 'en_attente' : 'envoye')}>
                 <div style={st.blocTitre}>
                   <span style={{ ...st.blocNom, ...(s === modeActif ? st.blocNomActif : null) }} data-no-translate>{libelleMode(reglages, s)}</span>
-                  <span style={st.blocEtat}>{enCours ? 'en attente' : 'envoyé'}</span>
+                  <span style={st.blocEtat}>{annonce ? 'annoncé' : (enCours ? 'en attente' : 'envoyé')}</span>
                 </div>
                 {duBloc.map((l) => {
                   const params = [...(l.options || []).map(libelleOption), l.note].filter(Boolean).join(', ');
@@ -592,8 +634,13 @@ export default function TicketEcran({
                       <span style={st.ligneCorps}>
                         <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
                         {params && <span style={st.ligneNote} data-no-translate>{params}</span>}
-                        {l.statut === 'en_attente' && (
+                        {l.statut === 'en_attente' && !l.annonce_at && (
                           <span style={st.etat}><Hourglass size={13} strokeWidth={1.75} aria-hidden="true" /><span>En attente</span></span>
+                        )}
+                        {l.statut === 'en_attente' && l.annonce_at && (
+                          <span style={st.etat} data-ligne-annoncee="">
+                            <Megaphone size={13} strokeWidth={1.75} aria-hidden="true" /><span>Annoncé en cuisine, à réclamer</span>
+                          </span>
                         )}
                         {l.statut === 'envoye' && (
                           <span style={st.etat}>
@@ -604,6 +651,12 @@ export default function TicketEcran({
                         )}
                         {l.statut === 'servi' && (
                           <span style={{ ...st.etat, ...st.etatServi }}><Check size={14} strokeWidth={2.25} aria-hidden="true" /><span>Servi</span></span>
+                        )}
+                        {/* La cuisine a marqué le plat fait : à emporter en salle. */}
+                        {estPret(l) && (
+                          <span style={st.pret} data-cadre="" data-ligne-prete="">
+                            <ConciergeBell size={14} strokeWidth={2.25} aria-hidden="true" /><span>Prêt</span>
+                          </span>
                         )}
                       </span>
                       <span style={st.lignePrix}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
@@ -761,6 +814,13 @@ const st = {
   ligneNote: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.3 },
   etat: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' },
   etatServi: { color: 'var(--success-text)', fontWeight: 600 },
+  // Pastille « Prêt » : un picto et le mot, sur fond doux (lisible sans la
+  // couleur seule).
+  pret: {
+    display: 'inline-flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start', padding: '2px 9px',
+    borderRadius: 'var(--r-full)', background: 'var(--success-bg-soft)', color: 'var(--success-text)',
+    fontSize: 13, fontWeight: 700,
+  },
   num: { fontFamily: 'var(--font-num)' },
   lignePrix: { fontFamily: 'var(--font-num)', flexShrink: 0, paddingTop: 2 },
   btn44: { minHeight: 44, flexShrink: 0 },

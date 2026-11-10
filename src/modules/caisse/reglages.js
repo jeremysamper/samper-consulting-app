@@ -28,6 +28,10 @@ import { CUISSONS } from './options.js';
 //                     vide = toutes les cartes actives, comme avant. Une carte
 //                     archivée ou cachée ne vend jamais, même cochée ; un
 //                     identifiant de carte disparue est ignoré.
+//   tests_en_cuisine : true = les bons des tickets de test partent au KDS,
+//                     « TEST » en tête, pour former la cuisine (v6). Absente
+//                     ou autre valeur = rien en cuisine. La base lit la même
+//                     clé (caisse_bon_interne) : seul le booléen true compte.
 //
 // Les modes ne changent rien au schéma : le mode de rang n est la suite n de
 // caisse_lignes (1 = En direct, 2 = À suivre, 3 = À suivre 2...).
@@ -52,6 +56,7 @@ export const REGLAGES_DEFAUT = {
   ouverture: 'tout',
   delai_no_show_min: 30,
   cartes_ids: [],
+  tests_en_cuisine: false,
 };
 
 const borne = (n, min, max, defaut) => {
@@ -104,6 +109,7 @@ export function fusionnerReglages(config) {
     ouverture: OUVERTURES.includes(c.ouverture) ? c.ouverture : REGLAGES_DEFAUT.ouverture,
     delai_no_show_min: borne(c.delai_no_show_min, DELAI_NO_SHOW_MIN, DELAI_NO_SHOW_MAX, REGLAGES_DEFAUT.delai_no_show_min),
     cartes_ids: listeTextes(c.cartes_ids, 80, 60) || [],
+    tests_en_cuisine: c.tests_en_cuisine === true,
     perso: {
       cuissons: Boolean(cuissons && cuissons.length),
       moyens_paiement: Boolean(moyens && moyens.length),

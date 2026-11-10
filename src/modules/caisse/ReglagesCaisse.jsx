@@ -3,7 +3,9 @@ import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
+import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
+import { libellePoste } from './modeTest.js';
 import ListeTriable from './ListeTriable.jsx';
 import { COULEURS, LIBELLES_COULEURS, PICTOS, pictoParId } from './boutons.js';
 import { CATEGORIES_DEFAUT, ID_A_TRIER, estCategorieDefaut, estCategorieVirtuelle, rangerArticles } from './categories.js';
@@ -22,6 +24,8 @@ import {
 //                boissons) ; dans une catégorie, les ordonner au glisser.
 //   Modes, cuissons, « sans » rapides, moyens de paiement, grille.
 //   Cartes en vente et délai avant de proposer un no-show (v5).
+//   Mode test (v6) : envoyer ou non les tests en cuisine, vider les tickets
+//   de test, journal du mode test (consultant et patron).
 //
 // Chaque geste écrit tout de suite, rien à enregistrer en sortant. Une
 // écriture refusée remet l'écran dans l'état d'avant AVANT toute relecture.
@@ -42,9 +46,15 @@ const SECTIONS = [
   { id: 'grille', label: 'Grille' },
   { id: 'cartes', label: 'Cartes en vente' },
   { id: 'no_show', label: 'No-show' },
+  { id: 'test', label: 'Mode test' },
 ];
 
-export default function ReglagesCaisse({ etablissementId, articles, boutons, categories, cartes = [], config, onChange, onClose }) {
+const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
+
+export default function ReglagesCaisse({
+  etablissementId, articles, boutons, categories, cartes = [], config, onChange, onClose,
+  poste = null, peutLireJournalTests = false, onTestsVides,
+}) {
   const [section, setSection] = React.useState('categories');
   // Copie locale de la config : l'écran suit le geste sans attendre la base.
   const [brouillon, setBrouillon] = React.useState(config || {});
@@ -200,6 +210,16 @@ export default function ReglagesCaisse({ etablissementId, articles, boutons, cat
                 Passé ce délai après l'heure réservée, une réservation confirmée sans table ouverte apparaît dans « Réservations sans ticket ». La caisse ne marque jamais un no-show seule : un tap le confirme.
               </p>
             </div>
+          )}
+          {section === 'test' && (
+            <SectionTest
+              etablissementId={etablissementId}
+              reglages={reglages}
+              regler={regler}
+              poste={poste}
+              peutLireJournal={peutLireJournalTests}
+              onTestsVides={onTestsVides}
+            />
           )}
         </div>
       </div>
@@ -594,6 +614,90 @@ function SectionCartes({ cartes, reglages, regler }) {
   );
 }
 
+// ── Mode test (v6) ───────────────────────────────────────────────────────────
+// Le réglage « Envoyer les tests en cuisine », la purge des tickets de test
+// et, pour consultant et patron (la base ne le rend qu'à eux), le journal du
+// mode test : qui est entré, sorti, a vidé, sur quel poste, combien de tickets
+// et pour quel montant.
+const ACTIONS_JOURNAL = {
+  entree: 'Entrée en mode test',
+  sortie: 'Sortie du mode test',
+  purge: 'Tickets de test vidés',
+};
+
+function SectionTest({ etablissementId, reglages, regler, poste, peutLireJournal, onTestsVides }) {
+  const [journal, setJournal] = React.useState(null);
+  const [enCours, setEnCours] = React.useState(false);
+
+  const lireJournal = React.useCallback(async () => {
+    if (!peutLireJournal) return;
+    const { data, error } = await caisse.listJournalTests(etablissementId);
+    if (!error) setJournal(data);
+  }, [etablissementId, peutLireJournal]);
+  React.useEffect(() => { lireJournal(); }, [lireJournal]);
+
+  async function vider() {
+    if (enCours) return;
+    if (!window.confirm('Supprimer tous les tickets de test de la maison, sur tous les postes ? Les vrais tickets ne sont pas touchés.')) return;
+    setEnCours(true);
+    try {
+      const { error } = await caisse.viderTests(etablissementId, poste);
+      if (error) { notify(error, 'error'); return; }
+      notify('Tickets de test vidés', 'success');
+      onTestsVides?.();
+      lireJournal();
+    } finally {
+      setEnCours(false);
+    }
+  }
+
+  return (
+    <div style={st.bloc}>
+      <div style={st.sousTitre}>Envoyer les tests en cuisine</div>
+      <div style={st.rang}>
+        <Btn variant={reglages.tests_en_cuisine ? 'ghost' : 'primary'} onClick={() => regler({ tests_en_cuisine: null })} style={st.btnChoix}>Non, rien en cuisine</Btn>
+        <Btn variant={reglages.tests_en_cuisine ? 'primary' : 'ghost'} onClick={() => regler({ tests_en_cuisine: true })} style={st.btnChoix}>Oui, avec TEST en tête du bon</Btn>
+      </div>
+      <p style={st.aide}>
+        Par défaut, un ticket de test ne part pas en cuisine. Activez l'envoi pour former aussi la cuisine : chaque bon porte alors TEST devant le nom de la table.
+      </p>
+
+      <div style={st.sousTitre}>Tickets de test</div>
+      <p style={st.aide}>
+        Les tickets de test ne comptent dans aucun chiffre et s'effacent seuls au bout de 24 heures. Les vider ici supprime ceux de toute la maison, sur tous les postes ; les vrais tickets ne sont jamais touchés.
+      </p>
+      <div><Btn variant="danger" disabled={enCours} onClick={vider} style={st.btn44}>Vider les tickets de test</Btn></div>
+
+      {peutLireJournal && (
+        <>
+          <div style={st.sousTitre}>Journal du mode test</div>
+          {journal && !journal.length && <p style={st.aide}>Le mode test n'a pas encore servi dans cette maison.</p>}
+          <div style={st.listeSimple} data-caisse-journal-tests="">
+            {(journal || []).map((j) => {
+              const quand = zurichDateHeure(j.created_at);
+              const nomPoste = libellePoste(j.poste);
+              return (
+                <div key={j.id} style={st.rangJournal}>
+                  <span style={st.journalQuand}><span style={st.num}>{quand.date}</span> <span style={st.num}>{quand.heure}</span></span>
+                  <span style={st.journalCorps}>
+                    <span style={st.journalAction}>{ACTIONS_JOURNAL[j.action] || j.action}</span>
+                    <span style={st.journalDetail}>
+                      {j.auteur_nom ? <span data-no-translate>{j.auteur_nom}</span> : <span>Purge automatique</span>}
+                      {nomPoste && <span><span>poste</span> <span style={st.num} data-no-translate>{nomPoste}</span></span>}
+                      <span><span style={st.num}>{j.nombre}</span> <span>{Number(j.nombre) > 1 ? 'tickets de test' : 'ticket de test'}</span></span>
+                      <span><span style={st.num}>{chf(j.montant)}</span> <span>CHF</span></span>
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Moyens de paiement ───────────────────────────────────────────────────────
 function SectionPaiement({ reglages, regler }) {
   const moyens = reglages.moyens_paiement;
@@ -678,6 +782,15 @@ const st = {
   btnChoix: { minHeight: 56, flex: '1 1 160px', fontSize: 15 },
   grandNombre: { fontFamily: 'var(--font-num)', fontSize: 22, fontWeight: 600, minWidth: 40, textAlign: 'center' },
   num: { fontFamily: 'var(--font-num)' },
+  // Journal du mode test : une ligne par geste, l'heure à gauche.
+  rangJournal: {
+    display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 12px', padding: '8px 0', minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+  },
+  journalQuand: { fontSize: 13, color: 'var(--text2)', flexShrink: 0, minWidth: 124 },
+  journalCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 220px', minWidth: 0 },
+  journalAction: { fontSize: 15, fontWeight: 600, color: 'var(--text)' },
+  journalDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 13, color: 'var(--text2)' },
   ligneCat: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, padding: '4px 0' },
   pastilleCat: {
     width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',

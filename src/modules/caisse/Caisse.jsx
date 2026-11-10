@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, ChevronsRight, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
+import { CalendarClock, ChevronsRight, ConciergeBell, FlaskConical, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
@@ -13,6 +13,8 @@ import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
 import ReglagesCaisse from './ReglagesCaisse.jsx';
 import QuiEstLa from './QuiEstLa.jsx';
+import BandeauTest from './BandeauTest.jsx';
+import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
@@ -44,6 +46,16 @@ import { useMaintenant } from './mesures.js';
 // réservations confirmées dont l'heure est passée et qu'aucun ticket ne
 // porte : un tap par ligne pose no-show ou arrivé, jamais la caisse seule.
 // Les cartes en vente se règlent par maison (caisse_reglages.config.cartes_ids).
+//
+// v6 : mode test, propre au poste (modeTest.js). Un responsable l'active
+// depuis l'accueil ; tant qu'il dure, un bandeau le dit sur tous les écrans,
+// le poste ne lit et n'ouvre que des tickets de test (caisse_tickets.test),
+// rien n'est écrit dans les réservations ni dans le fichier clients, et la
+// tuile « Réservations sans ticket » disparaît (elle poserait de vrais
+// statuts). Un poste normal ne lit jamais un ticket de test. La base tient
+// les mêmes règles : l'écran ne fait que les refléter.
+// Le plan et la liste des tickets disent aussi combien de plats la cuisine a
+// marqués prêts (caisse_lignes.pret_at, posé par le KDS).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -85,9 +97,18 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const [config, setConfig] = React.useState({});
   const [reglagesOuverts, setReglagesOuverts] = React.useState(false);
   const reglages = React.useMemo(() => fusionnerReglages(config), [config]);
+  // Mode test (v6) : la clé du poste gardée sur l'appareil, ou null. Un
+  // responsable seul l'active ; la proposition de vider suit la sortie.
+  const poste = React.useMemo(() => idPoste(), []);
+  const [cleTest, setCleTest] = React.useState(() => lireModeTest(etabId));
+  const modeTest = Boolean(cleTest);
+  const peutActiverTest = ROLES_MODE_TEST.includes(user?.role);
+  const [testEnCours, setTestEnCours] = React.useState(false);
+  const [proposerVider, setProposerVider] = React.useState(false);
   React.useEffect(() => {
     setCategories([]); setConfig({}); setReglagesOuverts(false);
     setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]);
+    setTickets([]); setCleTest(lireModeTest(etabId)); setProposerVider(false);
   }, [etabId]);
   // Cartes en vente et articles vendables : fermé par défaut (une carte
   // archivée ou cachée ne vend jamais), sans réglage tout vend comme avant.
@@ -107,13 +128,19 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // 'deplacer' : un tap sur une table y déplace le ticket courant.
   const [modeTables, setModeTables] = React.useState('ouvrir');
 
+  // Un poste normal lit les vrais tickets, un poste en mode test les tickets
+  // de test : jamais les deux. Une réponse arrivée après un changement de mode
+  // est ignorée (elle porterait les tickets de l'autre monde).
+  const lectureTickets = React.useRef(0);
   const rechargerTickets = React.useCallback(async () => {
     if (!etabId) return;
-    const { data, error } = await caisse.listTicketsOuverts(etabId);
+    const tour = ++lectureTickets.current;
+    const { data, error } = await caisse.listTicketsOuverts(etabId, { test: modeTest });
+    if (tour !== lectureTickets.current) return;
     if (error) { setErreurTickets(error); return; }
     setErreurTickets(null);
     setTickets(data);
-  }, [etabId]);
+  }, [etabId, modeTest]);
 
   // Plan de salle (lecture seule) et articles : rechargés au changement
   // d'établissement et après l'hydratation post-login (legacyVersion).
@@ -195,6 +222,91 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const ticketsParTable = {};
   tickets.forEach((t) => { if (t.table_id && !ticketsParTable[t.table_id]) ticketsParTable[t.table_id] = t; });
 
+  // ── Mode test (v6) ──
+  // Retour du poste en mode normal, côté écran : la mémoire locale s'efface,
+  // les tickets de test quittent l'écran, on revient à l'accueil.
+  const sortirDuTestIci = React.useCallback((message) => {
+    oublierModeTest();
+    lectureTickets.current += 1;
+    setTickets([]);
+    setTicketId(null);
+    setQuiTable(null);
+    setCleTest(null);
+    retourAccueil();
+    if (message) notify(message, 'info');
+  }, [retourAccueil]);
+
+  // L'écran ne reste pas en mode test sur la foi de sa seule mémoire : la base
+  // dit si le poste l'est encore (mode expiré, ou quitté par un responsable).
+  // Une lecture en échec ne change rien : la base refusera de toute façon un
+  // ticket de test sur un poste qui ne l'est plus.
+  React.useEffect(() => {
+    if (!etabId || !cleTest) return undefined;
+    let vivant = true;
+    caisse.testEtat(etabId, poste, cleTest).then(({ data, error }) => {
+      if (!vivant || error || data?.actif !== false) return;
+      sortirDuTestIci('Le mode test a pris fin sur ce poste. Il vend de nouveau pour de vrai.');
+    });
+    return () => { vivant = false; };
+  }, [etabId, cleTest, poste, sortirDuTestIci]);
+
+  // « Réservations sans ticket » n'existe pas en mode test : un poste qui s'y
+  // trouvait (écran repris à l'ouverture) revient à l'accueil.
+  React.useEffect(() => {
+    if (modeTest && ecran === 'sans_ticket') retourAccueil();
+  }, [modeTest, ecran, retourAccueil]);
+
+  async function entrerModeTest() {
+    if (testEnCours || modeTest || !peutActiverTest) return;
+    if (!window.confirm('Passer ce poste en mode test ? Les tickets ouverts ici ne compteront pas dans les chiffres. Les autres postes continuent de vendre normalement.')) return;
+    setTestEnCours(true);
+    try {
+      const { data, error } = await caisse.testEntrer(etabId, poste);
+      if (error) { notify(error, 'error'); return; }
+      if (!data?.cle) { notify("Le mode test n'a pas pu être activé. Réessayez.", 'error'); return; }
+      retenirModeTest(etabId, data.cle);
+      lectureTickets.current += 1;
+      setTickets([]);
+      setTicketId(null);
+      setProposerVider(false);
+      setCleTest(data.cle);
+      notify('Mode test activé sur ce poste', 'success');
+    } finally {
+      setTestEnCours(false);
+    }
+  }
+
+  // Sortie en un tap. Les tickets de test restent en base jusqu'à leur purge :
+  // un responsable se voit proposer de les vider tout de suite.
+  async function quitterModeTest() {
+    if (testEnCours || !modeTest) return;
+    setTestEnCours(true);
+    try {
+      const { error } = await caisse.testSortir(etabId, poste, cleTest, false);
+      if (error) { notify(error, 'error'); return; }
+      sortirDuTestIci(null);
+      notify('Mode test quitté. Ce poste vend de nouveau pour de vrai.', 'success');
+      if (peutActiverTest) setProposerVider(true);
+    } finally {
+      setTestEnCours(false);
+    }
+  }
+
+  async function viderLesTests() {
+    if (testEnCours || !peutActiverTest) return;
+    if (!window.confirm('Supprimer tous les tickets de test de la maison, sur tous les postes ? Les vrais tickets ne sont pas touchés.')) return;
+    setTestEnCours(true);
+    try {
+      const { error } = await caisse.viderTests(etabId, poste);
+      if (error) { notify(error, 'error'); return; }
+      setProposerVider(false);
+      notify('Tickets de test vidés', 'success');
+      rechargerTickets();
+    } finally {
+      setTestEnCours(false);
+    }
+  }
+
   async function tapTable(table, ticketExistant) {
     if (modeTables === 'deplacer' && ticketId) {
       if (ticketExistant && ticketExistant.id !== ticketId) {
@@ -225,9 +337,13 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     verrouOuverture.current = true;
     setOuverture(true);
     try {
-      const { data, error } = await caisse.ouvrirTicket({
+      // En mode test, la même feuille s'ouvre (on s'entraîne au vrai geste),
+      // mais la base ouvre un ticket de test : ni réservation ni fiche client.
+      const { data, error, modeTestInactif } = await caisse.ouvrirTicket({
         etablissementId: etabId, tableId: quiTable.id, ...choix,
+        ...(modeTest ? { test: true, poste, posteCle: cleTest } : null),
       });
+      if (modeTestInactif) { sortirDuTestIci(error); return; }
       if (error) { notify(error, 'error'); return; }
       if (data?.deja_ouvert) notify('Cette table avait déjà un ticket ouvert.', 'info');
       await Promise.all([rechargerTickets(), rechargerReservations()]);
@@ -257,6 +373,19 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   }
 
   async function venteDirecte() {
+    // En mode test, la vente directe passe par la RPC d'ouverture : un compte
+    // de l'API ne crée jamais un ticket de test lui-même.
+    if (modeTest) {
+      const { data, error, modeTestInactif } = await caisse.ouvrirTicket({
+        etablissementId: etabId, test: true, poste, posteCle: cleTest,
+      });
+      if (modeTestInactif) { sortirDuTestIci(error); return; }
+      if (error) { notify(error, 'error'); return; }
+      await rechargerTickets();
+      setTicketId(data.ticket_id);
+      setEcran('ticket');
+      return;
+    }
     const { data, error } = await caisse.creerTicket(etabId, null);
     if (error) { notify(error, 'error'); return; }
     await rechargerTickets();
@@ -281,61 +410,88 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       config={config}
       onChange={rechargerGrille}
       onClose={() => setReglagesOuverts(false)}
+      poste={poste}
+      peutLireJournalTests={['consultant', 'patron'].includes(user?.role)}
+      onTestsVides={rechargerTickets}
     />
   ) : null;
 
+  // Bandeau du mode test : en tête de chaque écran de la caisse, sans exception.
+  const bandeauTest = modeTest ? <BandeauTest onQuitter={quitterModeTest} enCours={testEnCours} /> : null;
+
   // ── Accueil à tuiles ──
   if (ecran === ECRAN_ACCUEIL) {
+    const tuiles = [
+      {
+        id: 'tables',
+        libelle: 'Prendre une table',
+        Icone: LayoutGrid,
+        etat: tables.some((t) => t.actif !== false)
+          ? <><span>{tickets.filter((t) => t.table_id).length}</span> <span>tables servies</span></>
+          : 'Aucune table dans le plan de salle',
+        onClick: () => { setModeTables('ouvrir'); setEcran('tables'); },
+      },
+      {
+        id: 'direct',
+        libelle: 'Vente directe',
+        Icone: Zap,
+        etat: 'Sans table, encaissement immédiat',
+        onClick: venteDirecte,
+      },
+      {
+        id: 'tickets',
+        libelle: 'Tickets ouverts',
+        Icone: ReceiptText,
+        etat: <><span>{tickets.length}</span> <span>ouverts</span>{', '}<span>{chf(tickets.reduce((s, t) => s + totalTicket(t), 0))}</span> <span>CHF</span></>,
+        onClick: () => setEcran('tickets'),
+      },
+      // En mode test, pas de « Réservations sans ticket » : un tap y poserait
+      // un vrai statut sur une vraie réservation.
+      ...(modeTest ? [] : [{
+        id: 'sans_ticket',
+        libelle: 'Réservations sans ticket',
+        Icone: CalendarClock,
+        etat: sansTicket.length
+          ? <><span>{sansTicket.length}</span> <span>à vérifier : no-show ou arrivé ?</span></>
+          : 'Aucune réservation en retard',
+        onClick: () => setEcran('sans_ticket'),
+      }]),
+    ];
     return (
       <>
+        {bandeauTest}
+        {proposerVider && peutActiverTest && !modeTest && (
+          <div style={st.propositionVider} data-cadre="" data-caisse-vider-tests="">
+            <p style={st.propositionTexte}>
+              Les tickets de test restent en base jusqu'à leur purge automatique, sous 24 heures. Vous pouvez les vider maintenant.
+            </p>
+            <span style={st.propositionActions}>
+              <Btn variant="primary" disabled={testEnCours} onClick={viderLesTests} style={st.btn44}>Vider les tickets de test</Btn>
+              <Btn variant="ghost" onClick={() => setProposerVider(false)} style={st.btn44}>Plus tard</Btn>
+            </span>
+          </div>
+        )}
         {erreurTickets && (
           <div style={st.erreur}>
             <p style={{ margin: 0 }}>{erreurTickets}</p>
             <Btn variant="primary" onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
           </div>
         )}
-        <AccueilModule
-          tuiles={[
-            {
-              id: 'tables',
-              libelle: 'Prendre une table',
-              Icone: LayoutGrid,
-              etat: tables.some((t) => t.actif !== false)
-                ? <><span>{tickets.filter((t) => t.table_id).length}</span> <span>tables servies</span></>
-                : 'Aucune table dans le plan de salle',
-              onClick: () => { setModeTables('ouvrir'); setEcran('tables'); },
-            },
-            {
-              id: 'direct',
-              libelle: 'Vente directe',
-              Icone: Zap,
-              etat: 'Sans table, encaissement immédiat',
-              onClick: venteDirecte,
-            },
-            {
-              id: 'tickets',
-              libelle: 'Tickets ouverts',
-              Icone: ReceiptText,
-              etat: <><span>{tickets.length}</span> <span>ouverts</span>{', '}<span>{chf(tickets.reduce((s, t) => s + totalTicket(t), 0))}</span> <span>CHF</span></>,
-              onClick: () => setEcran('tickets'),
-            },
-            {
-              id: 'sans_ticket',
-              libelle: 'Réservations sans ticket',
-              Icone: CalendarClock,
-              etat: sansTicket.length
-                ? <><span>{sansTicket.length}</span> <span>à vérifier : no-show ou arrivé ?</span></>
-                : 'Aucune réservation en retard',
-              onClick: () => setEcran('sans_ticket'),
-            },
-          ]}
-        />
-        {peutHabiller && (
+        <AccueilModule tuiles={tuiles} />
+        {(peutHabiller || (peutActiverTest && !modeTest)) && (
           <div style={st.reglagesAccueil}>
-            <Btn variant="ghost" onClick={() => setReglagesOuverts(true)} style={st.btn44}>
-              <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
-              <span>Réglages de la caisse</span>
-            </Btn>
+            {peutHabiller && (
+              <Btn variant="ghost" onClick={() => setReglagesOuverts(true)} style={st.btn44}>
+                <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Réglages de la caisse</span>
+              </Btn>
+            )}
+            {peutActiverTest && !modeTest && (
+              <Btn variant="ghost" disabled={testEnCours} onClick={entrerModeTest} style={st.btn44}>
+                <FlaskConical size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Mode test</span>
+              </Btn>
+            )}
           </div>
         )}
         {feuilleReglages}
@@ -347,6 +503,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   if (ecran === 'tables') {
     const deplacement = modeTables === 'deplacer';
     return (
+      <>
+      {bandeauTest}
       <EcranTache
         titre={deplacement ? 'Choisir la nouvelle table' : 'Prendre une table'}
         etat={deplacement ? null : 'Touchez une table pour ouvrir son ticket'}
@@ -375,11 +533,13 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           />
         )}
       </EcranTache>
+      </>
     );
   }
 
   // ── Réservations sans ticket : no-show ou arrivé, un tap par ligne ──
-  if (ecran === 'sans_ticket') {
+  // Jamais en mode test : l'écran poserait de vrais statuts.
+  if (ecran === 'sans_ticket' && !modeTest) {
     const maintenantMin = zurichNowMinutes();
     return (
       <EcranTache
@@ -418,7 +578,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // ── Tickets ouverts ──
   if (ecran === 'tickets') {
     return (
-      <EcranTache titre="Tickets ouverts" onRetour={retourAccueil}>
+      <>
+      {bandeauTest}
+      <EcranTache titre={modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'} onRetour={retourAccueil}>
         {!tickets.length && <p style={st.vide}>Aucun ticket ouvert.</p>}
         <div style={st.listeTickets}>
           {tickets.map((t) => {
@@ -443,6 +605,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
                       <span style={st.num}>{e.aSuivre}</span> <span>à suivre en attente</span>
                     </span>
                   )}
+                  {e.prets > 0 && (
+                    <span style={st.ticketPret} data-caisse-prets="">
+                      <ConciergeBell size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
+                      <span style={st.num}>{e.prets}</span> <span>{e.prets > 1 ? 'prêts en cuisine' : 'prêt en cuisine'}</span>
+                    </span>
+                  )}
                 </span>
                 <span style={st.ticketHeure}>{zurichDateHeure(t.created_at).heure}</span>
                 <span style={st.ticketTotal}><span>{chf(totalTicket(t))}</span> <span>CHF</span></span>
@@ -451,6 +619,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           })}
         </div>
       </EcranTache>
+      </>
     );
   }
 
@@ -459,6 +628,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     const nom = nomTable(ticket);
     const autresMemeTable = tickets.filter((t) => t.id !== ticket.id && t.table_id && t.table_id === ticket.table_id);
     return (
+      <>
+      {bandeauTest}
       <EcranTache
         titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : 'Vente directe'}
         etat={<span><span>Ouvert à</span> <span>{zurichDateHeure(ticket.created_at).heure}</span></span>}
@@ -486,13 +657,17 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           onFusionne={rechargerTickets}
           onClos={() => { rechargerTickets(); rechargerReservations(); retourAccueil(); }}
           reload={rechargerTickets}
+          modeTest={modeTest}
         />
         {feuilleReglages}
       </EcranTache>
+      </>
     );
   }
 
-  return null;
+  // Écran sans objet (ticket disparu, ou « Réservations sans ticket » repris
+  // par un poste passé en mode test) : le bandeau reste, l'accueil revient.
+  return bandeauTest;
 }
 
 const st = {
@@ -520,7 +695,15 @@ const st = {
   sansTicketNom: { fontSize: 16, fontWeight: 600, overflowWrap: 'anywhere' },
   sansTicketActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   num: { fontFamily: 'var(--font-num)' },
-  reglagesAccueil: { display: 'flex', marginTop: 16 },
+  reglagesAccueil: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  ticketPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontWeight: 600 },
+  // Après la sortie du mode test : proposition de vider, pour un responsable.
+  propositionVider: {
+    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '12px 14px', marginBottom: 12, minWidth: 0,
+    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)',
+  },
+  propositionTexte: { margin: 0, fontSize: 14, lineHeight: 1.4, flex: '1 1 260px', minWidth: 0 },
+  propositionActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   ticketHeure: { color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font-num)' },
   ticketTotal: { fontFamily: 'var(--font-num)', fontWeight: 600 },
 };

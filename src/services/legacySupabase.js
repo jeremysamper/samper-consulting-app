@@ -958,9 +958,19 @@ export function installLegacySupabase() {
     },
 
     // ═══════════════════════════════════════════════════════════════
-    // KDS (kds_orders + kds_order_items) - commandes live Lightspeed.
+    // KDS (kds_orders + kds_order_items) - bons de la caisse native et
+    // commandes live Lightspeed.
     // Lecture RLS : consultant, resp_cuisine, cuisinier. Ecriture via RPC.
     // ═══════════════════════════════════════════════════════════════
+    // La maison a-t-elle une connexion Lightspeed (active ou tombee) ? Un
+    // booleen rendu par la base, aucun jeton. Leve en cas d'echec : l'ecran
+    // ne suppose rien et ne lance aucun poll dans le doute.
+    async kdsLightspeedActif(etabId) {
+      const { data, error } = await client.rpc('kds_lightspeed_actif', { p_etablissement_id: etabId });
+      if (error) throw error;
+      return data === true;
+    },
+
     async listKdsOrders(etabId) {
       let q = client
         .from('kds_orders')
