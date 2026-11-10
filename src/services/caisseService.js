@@ -50,6 +50,35 @@ const MESSAGES_RPC = {
   'caisse: un ticket de test et un ticket reel ne se reunissent pas': 'Un ticket de test et un vrai ticket ne se réunissent pas.',
   "caisse: l'etat cuisine d'une ligne ne s'ecrit pas depuis l'ecran": "L'état cuisine d'une ligne ne se change pas ici.",
   "caisse: une ligne annoncee ne part que par l'envoi du bon": "Une ligne annoncée en cuisine ne part que par l'envoi du bon.",
+  // v7 : encaissement, remises, annulation tracée, clôture.
+  'caisse: ticket deja encaisse': 'Ce ticket est déjà encaissé.',
+  "caisse: un ticket vide ne s'encaisse pas": "Un ticket vide ne s'encaisse pas.",
+  'caisse: paiements invalides': 'Paiement incomplet. Réessayez.',
+  'caisse: moyen de paiement inconnu': 'Moyen de paiement inconnu.',
+  'caisse: montant de paiement invalide': 'Montant de paiement invalide.',
+  'caisse: especes recues insuffisantes': 'Les espèces reçues ne couvrent pas le montant dû.',
+  "caisse: le prix d'une ligne se baisse par une remise, avec un motif": "Le prix d'une ligne se baisse par une remise, avec un motif.",
+  "caisse: la TVA, les remises et les offerts ne s'ecrivent pas depuis l'ecran": 'Une remise ou un offert se pose par un responsable, avec un motif.',
+  "caisse: pourboire, rendu et arrondi passent par l'encaissement": "Le pourboire et le rendu se saisissent à l'encaissement.",
+  'caisse: un motif est obligatoire (3 a 200 caracteres)': 'Un motif est obligatoire.',
+  'caisse: un motif est obligatoire (3 a 300 caracteres)': 'Un motif est obligatoire.',
+  'caisse: pourcentage de remise invalide': 'Pourcentage de remise invalide.',
+  'caisse: montant de remise invalide': 'Montant de remise invalide.',
+  'caisse: aucune ligne a remiser': 'Aucune ligne à remiser.',
+  'caisse: la remise depasse le montant (utiliser offert)': 'La remise dépasse le montant : utilisez « Offert ».',
+  'caisse: ligne introuvable sur ce ticket': 'Ligne introuvable sur ce ticket.',
+  'caisse: ticket deja annule': 'Ce ticket est déjà annulé.',
+  "caisse: seul un ticket encaisse s'annule ici": "Seul un ticket encaissé s'annule ici.",
+  "caisse: un ticket de test ne s'annule pas ici": "Un ticket de test ne s'annule pas.",
+  "caisse: un ticket encaisse s'annule avec un motif, depuis l'historique": "Un ticket encaissé s'annule avec un motif, depuis l'historique.",
+  'caisse: un ticket encaisse ne se modifie plus': 'Ce ticket est encaissé : il ne se modifie plus.',
+  'caisse: un ticket encaisse ne se supprime pas': 'Un ticket encaissé ne se supprime pas.',
+  "caisse: le paiement d'un ticket encaisse ne se retire pas": "Le paiement d'un ticket encaissé ne se retire pas.",
+  "caisse: ce jour n'a pas encore commence": "Ce jour n'a pas encore commencé.",
+  'caisse: ce jour est deja cloture (une cloture complementaire demande un motif)': 'Ce jour est déjà clôturé. Une correction demande un motif.',
+  'caisse: comptage des especes invalide': 'Comptage des espèces invalide.',
+  'caisse: motif invalide (3 a 300 caracteres)': 'Motif trop court ou trop long.',
+  'caisse: plat inconnu pour cet etablissement': "Ce produit n'est plus à la carte de la maison.",
 };
 
 function mapError(error, fallback) {
@@ -58,6 +87,8 @@ function mapError(error, fallback) {
   const brut = String(error.message || '');
   if (MESSAGES_RPC[brut]) return MESSAGES_RPC[brut];
   if (/^caisse: ticket \w+ fige$/.test(brut)) return 'Ce ticket est clos : il ne se corrige plus.';
+  if (/^caisse: les paiements ne font pas le total/.test(brut)) return 'Les paiements ne font pas le total du ticket. Rechargez le ticket et réessayez.';
+  if (/^caisse: chaine d'integrite rompue/.test(brut)) return "La chaîne d'intégrité de la caisse est rompue. Prévenez le consultant avant d'encaisser.";
   const code = String(error.code || '');
   if (MESSAGES[code]) return MESSAGES[code];
   // Les gardes de la base (déclencheurs caisse_*) lèvent des messages en
@@ -503,27 +534,145 @@ export async function passerSuiteSuivante(ticketId, suite) {
   return { error: null };
 }
 
-// Encaissement : enregistre le paiement puis clôt le ticket. Si la clôture
-// échoue après le paiement, le paiement est retiré (retour à l'état d'avant,
-// jamais un ticket ouvert avec un paiement fantôme) avant de remonter l'erreur.
-// moyen = la famille (especes, carte, autre) ; libelle = le nom que la maison
-// a donné à ce moyen dans ses réglages (v4), absent pour un moyen par défaut.
-export async function encaisser(ticketId, moyen, montant, libelle = null) {
-  const { data: paiement, error: e1 } = await supabase
-    .from('caisse_paiements')
-    .insert({ ticket_id: ticketId, moyen, montant, ...(libelle ? { libelle } : null) })
-    .select()
-    .single();
-  if (e1) return { error: mapError(e1, "L'encaissement a échoué. Réessayez.") };
-  const { error: e2 } = await supabase
-    .from('caisse_tickets')
-    .update({ statut: 'encaisse', closed_at: new Date().toISOString() })
-    .eq('id', ticketId);
-  if (e2) {
-    await supabase.from('caisse_paiements').delete().eq('id', paiement.id);
-    return { error: mapError(e2, "L'encaissement a échoué. Réessayez.") };
+// (v7) L'ancien encaissement en deux écritures (paiement inséré, puis statut)
+// n'est plus appelé par cet écran : la base l'accepte encore pour les postes
+// restés sur l'ancienne version, et le scelle de la même façon.
+
+// ── Caisse v7 (migration 20261110_caisse_v7) ──
+// Encaissement : UNE RPC, une transaction. La base contrôle les paiements,
+// calcule l'arrondi des espèces et le rendu, fige le taux de chaque ligne,
+// pose le numéro du ticket sous verrou et son empreinte. Rend
+// { numero, annee, total, rendu, arrondi, pourboire, test }.
+//   paiements : [{ moyen, libelle, montant, recu, pourboire }]
+//   aEmporter : null = ce que porte déjà le ticket.
+export async function encaisserTicket(ticketId, paiements, aEmporter = null) {
+  const { data, error } = await supabase.rpc('caisse_encaisser', {
+    p_ticket_id: ticketId,
+    p_paiements: (paiements || []).map((p) => ({
+      moyen: p.moyen,
+      libelle: p.libelle || null,
+      montant: p.montant,
+      recu: p.recu == null || p.recu === '' ? null : p.recu,
+      pourboire: p.pourboire || 0,
+    })),
+    p_a_emporter: aEmporter,
+  });
+  if (error) return { data: null, error: mapError(error, "L'encaissement a échoué. Réessayez.") };
+  return { data, error: null };
+}
+
+// Remise ou offert, avec motif (consultant, patron, resp_cuisine).
+//   genre : 'pourcent' | 'montant' | 'offert' | 'retirer' ; ligneId null = tout le ticket.
+export async function remise({ ticketId, ligneId = null, genre, valeur = null, motif = null }) {
+  const { data, error } = await supabase.rpc('caisse_remise', {
+    p_ticket_id: ticketId, p_ligne_id: ligneId, p_genre: genre, p_valeur: valeur, p_motif: motif,
+  });
+  if (error) return { data: null, error: mapError(error, "La remise n'a pas pu être posée. Réessayez.") };
+  return { data, error: null };
+}
+
+// Annulation tracée d'un ticket encaissé (consultant, patron), motif obligatoire.
+export async function annulerTicket(ticketId, motif) {
+  const { data, error } = await supabase.rpc('caisse_annuler_ticket', { p_ticket_id: ticketId, p_motif: motif });
+  if (error) return { data: null, error: mapError(error, "Le ticket n'a pas pu être annulé. Réessayez.") };
+  return { data, error: null };
+}
+
+// Où en est la caisse (consultant, patron, resp_cuisine) :
+// { jour, cloture, tickets_du_jour, a_cloturer: [{ jour, tickets }], ouverts }.
+export async function journee(etablissementId) {
+  const { data, error } = await supabase.rpc('caisse_journee', { p_etablissement_id: etablissementId });
+  if (error) return { data: null, error: mapError(error, 'État de la caisse illisible.') };
+  return { data, error: null };
+}
+
+// Clôture du jour : fige les totaux, le comptage et l'écart. Rend la clôture.
+export async function cloturerJour({ etablissementId, jour, especesComptees, fondCaisse = 0, motif = null }) {
+  const { data, error } = await supabase.rpc('caisse_cloturer_jour', {
+    p_etablissement_id: etablissementId, p_jour: jour, p_especes_comptees: especesComptees,
+    p_fond_caisse: fondCaisse, p_motif: motif,
+  });
+  if (error) return { data: null, error: mapError(error, "La clôture n'a pas pu être enregistrée. Réessayez.") };
+  return { data, error: null };
+}
+
+export async function listClotures(etablissementId, limite = 31) {
+  const { data, error } = await supabase
+    .from('caisse_clotures')
+    .select('*')
+    .eq('etablissement_id', etablissementId)
+    .order('numero', { ascending: false })
+    .limit(limite);
+  if (error) return { data: null, error: mapError(error, 'Clôtures illisibles. Réessayez.') };
+  return { data: data || [], error: null };
+}
+
+// Contrôle de la chaîne d'intégrité : { ok, maillons, tickets, annulations,
+// clotures, defauts }. La base contrôle par tranches (rang_suivant) : on
+// enchaîne jusqu'au bout, les défauts s'additionnent.
+export async function verifierChaine(etablissementId) {
+  let depuis = 1;
+  const defauts = [];
+  for (let tour = 0; tour < 200; tour += 1) {
+    const { data, error } = await supabase.rpc('caisse_verifier_chaine', {
+      p_etablissement_id: etablissementId, p_depuis: depuis,
+    });
+    if (error) return { data: null, error: mapError(error, "Le contrôle n'a pas pu être lancé. Réessayez.") };
+    defauts.push(...(data?.defauts || []));
+    if (data?.complet !== false || !data?.rang_suivant) {
+      return { data: { ...data, defauts: defauts.slice(0, 20), ok: defauts.length === 0 }, error: null };
+    }
+    depuis = data.rang_suivant;
   }
-  return { error: null };
+  return { data: null, error: 'Le contrôle est trop long. Réessayez plus tard.' };
+}
+
+// Historique : les tickets numérotés (encaissés, annulés depuis compris) d'un
+// jour d'exploitation, ou d'un numéro. Jamais un ticket de test.
+const COLONNES_HISTORIQUE = 'id, numero, annee, statut, total_ttc, closed_at, jour_exploitation, service, a_emporter, couverts, table_id, annule_motif, annule_at, salle_tables(nom)';
+export async function listTicketsHistorique(etablissementId, { jour = null, numero = null } = {}) {
+  let requete = supabase
+    .from('caisse_tickets')
+    .select(COLONNES_HISTORIQUE)
+    .eq('etablissement_id', etablissementId)
+    .eq('test', false)
+    .not('numero', 'is', null)
+    .order('annee', { ascending: false })
+    .order('numero', { ascending: false })
+    .limit(300);
+  if (numero != null) requete = requete.eq('numero', numero);
+  else if (jour) requete = requete.eq('jour_exploitation', jour);
+  const { data, error } = await requete;
+  if (error) return { data: null, error: mapError(error, 'Historique illisible. Réessayez.') };
+  return { data: data || [], error: null };
+}
+
+// Un ticket avec ses lignes et ses paiements, pour la quittance.
+export async function getTicketComplet(id) {
+  const { data, error } = await supabase
+    .from('caisse_tickets')
+    .select('*, caisse_lignes(*), caisse_paiements(*), salle_tables(nom)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) return { data: null, error: mapError(error || { message: 'caisse: ticket introuvable' }, 'Ticket illisible. Réessayez.') };
+  const tri = (a, b) => String(a.created_at).localeCompare(String(b.created_at)) || String(a.id).localeCompare(String(b.id));
+  return {
+    data: {
+      ...data,
+      lignes: [...(data.caisse_lignes || [])].sort(tri),
+      paiements: [...(data.caisse_paiements || [])].sort(tri),
+      tableNom: data.salle_tables?.nom || null,
+    },
+    error: null,
+  };
+}
+
+// Taux de TVA d'une catégorie de caisse et droit au taux réduit à l'emporter.
+export async function majTvaCategorie(id, { tauxTva, emporterReduit }) {
+  const partial = {};
+  if (tauxTva != null) partial.taux_tva = tauxTva;
+  if (emporterReduit != null) partial.emporter_reduit = emporterReduit;
+  return majCategorie(id, partial);
 }
 
 // Fusion : les lignes du ticket source rejoignent le ticket cible, puis le
