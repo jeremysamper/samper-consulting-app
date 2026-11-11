@@ -121,12 +121,16 @@ export default function Encaissement({
   }, [aDesTerminaux, ticket?.id, terminaux, libelleCarte]);
   React.useEffect(() => { chargerTpe(true); }, [chargerTpe]);
   const tpePret = lectureTpe === 'sans' || lectureTpe === 'lue';
+  React.useEffect(() => { terminalOuvert.current = Boolean(feuille); }, [feuille]);
 
   const fermer = React.useCallback(() => { if (fait) onEncaisse?.(fait); else onClose(); }, [fait, onEncaisse, onClose]);
+  // v9 : tant que la feuille du terminal est ouverte, Échap ne ferme pas
+  // l'encaissement derrière elle.
+  const terminalOuvert = React.useRef(false);
   useBackLayer(true, fermer, 'caisse-encaissement');
   React.useEffect(() => {
     const echap = (e) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (e.key !== 'Escape' || e.defaultPrevented || terminalOuvert.current) return;
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
       e.preventDefault();
       fermer();
