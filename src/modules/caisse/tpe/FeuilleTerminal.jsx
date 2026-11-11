@@ -1,5 +1,4 @@
 import React from 'react';
-import { CreditCard } from 'lucide-react';
 import { Btn, Input } from '../../../components/ui/index.jsx';
 import { useBackLayer } from '../../../hooks/useBackLayer.js';
 import * as tpe from '../../../services/caisseTpeService.js';
@@ -124,10 +123,7 @@ export default function FeuilleTerminal({
   return (
     <div className="modal-sheet-overlay" data-fenetre="" style={st.overlay}>
       <div className="modal-sheet" role="region" aria-label="Paiement par carte sur le terminal" style={st.feuille} data-caisse-terminal={etape}>
-        <div style={st.enTete}>
-          <CreditCard size={22} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
-          <div style={st.titre}>Paiement par carte</div>
-        </div>
+        <div style={st.titre}>Paiement par carte</div>
         <p style={st.aide}><span>Terminal :</span> <span data-no-translate>{terminal.nom}</span></p>
         {ticket.test && <p style={st.aide}>Mode test : terminal simulé, aucun argent ne bouge.</p>}
 
@@ -229,7 +225,6 @@ const st = {
     maxHeight: '92vh', overflowY: 'auto', boxShadow: 'var(--sh-lg)', boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', gap: 10, color: 'var(--text)',
   },
-  enTete: { display: 'flex', alignItems: 'center', gap: 10 },
   titre: { fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2 },
   grand: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, minWidth: 0, flexWrap: 'wrap' },
   grandLibelle: { fontSize: 15, color: 'var(--text2)' },
