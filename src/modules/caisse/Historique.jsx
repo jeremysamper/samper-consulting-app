@@ -4,6 +4,9 @@ import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { zurichAjouterJours, zurichDateHeure, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
+import * as tpe from '../../services/caisseTpeService.js';
+import CarteDetail from './tpe/CarteDetail.jsx';
+import { estPrise } from './tpe/ecranTpe.js';
 import { detailTva, jourExploitation, numeroTicket, totalLigne } from './tva.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -14,13 +17,19 @@ import { detailTva, jourExploitation, numeroTicket, totalLigne } from './tva.js'
 // numéro et passe « annulé » (RPC caisse_annuler_ticket). Les autres rôles ne
 // voient pas le bouton, et la base refuse.
 // Un ticket de test n'apparaît jamais ici (il n'a pas de numéro).
+//
+// Terminal relié (v9) : un paiement par carte passé par le terminal dit sa
+// marque, ses quatre derniers chiffres et son autorisation. Annuler un ticket
+// ne rembourse rien : le remboursement sur le terminal est un geste à part,
+// explicite, de la direction. Tant qu'il n'est pas fait, le ticket annulé
+// porte la mention « remboursement à faire sur le terminal ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 const dateCH = (jour) => { const [a, m, j] = String(jour || '').split('-'); return j ? `${j}.${m}.${a}` : ''; };
 const LIBELLES_MOYENS = { especes: 'Espèces', carte: 'Carte bancaire', autre: 'Autre' };
 
-export default function Historique({ etablissementId, reglages, peutAnnuler = false, peutControler = false, onQuittance }) {
+export default function Historique({ etablissementId, reglages, peutAnnuler = false, peutControler = false, onQuittance, terminaux = [] }) {
   const jourCourant = React.useMemo(() => jourExploitation({
     aujourdhui: zurichToday(), minutes: zurichNowMinutes(), finJournee: reglages.fin_journee,
     veille: (d) => zurichAjouterJours(d, -1),
@@ -127,6 +136,7 @@ export default function Historique({ etablissementId, reglages, peutAnnuler = fa
         <FicheTicket
           id={ouvert}
           peutAnnuler={peutAnnuler}
+          terminaux={terminaux}
           onQuittance={onQuittance}
           onChange={charger}
           onClose={() => setOuvert(null)}
@@ -137,7 +147,7 @@ export default function Historique({ etablissementId, reglages, peutAnnuler = fa
 }
 
 // ── Un ticket de l'historique : lecture, quittance, annulation tracée ──
-function FicheTicket({ id, peutAnnuler, onQuittance, onChange, onClose }) {
+function FicheTicket({ id, peutAnnuler, terminaux = [], onQuittance, onChange, onClose }) {
   const [ticket, setTicket] = React.useState(null);
   const [erreur, setErreur] = React.useState(null);
   const [annulation, setAnnulation] = React.useState(false);
@@ -168,6 +178,22 @@ function FicheTicket({ id, peutAnnuler, onQuittance, onChange, onClose }) {
       setEnCours(false);
     }
   }
+
+  // Remboursement sur le terminal : la direction, sur un ticket annulé.
+  async function rembourser(transaction) {
+    if (enCours) return;
+    setEnCours(true);
+    try {
+      const { data, error } = await tpe.rembourserPaiement(transaction.id);
+      if (error) { notify(error, 'error'); return; }
+      if (data.transaction.rembourse_statut === 'fait') notify('Paiement remboursé sur le terminal', 'success');
+      else notify('Le remboursement a échoué : il reste à faire sur le terminal.', 'warning');
+      await lire();
+    } finally {
+      setEnCours(false);
+    }
+  }
+  const nomTerminal = (transaction) => terminaux.find((t) => t.id === transaction?.terminal_id)?.nom || null;
 
   return (
     <div className="modal-sheet-overlay" data-fenetre="" style={st.overlay} onClick={onClose}>
@@ -221,11 +247,38 @@ function FicheTicket({ id, peutAnnuler, onQuittance, onChange, onClose }) {
               </p>
             ))}
             {ticket.paiements.map((p) => (
-              <p key={p.id} style={st.vide}>
-                {p.libelle ? <span data-no-translate>{p.libelle}</span> : <span>{LIBELLES_MOYENS[p.moyen]}</span>}
-                {' '}<span style={st.num}>{chf(Number(p.montant) + Number(p.arrondi || 0))}</span>
-                {Number(p.pourboire) > 0 && <>{', '}<span>pourboire</span> <span style={st.num}>{chf(p.pourboire)}</span></>}
-              </p>
+              <React.Fragment key={p.id}>
+                <p style={st.vide}>
+                  {p.libelle ? <span data-no-translate>{p.libelle}</span> : <span>{LIBELLES_MOYENS[p.moyen]}</span>}
+                  {' '}<span style={st.num}>{chf(Number(p.montant) + Number(p.arrondi || 0))}</span>
+                  {Number(p.pourboire) > 0 && <>{', '}<span>pourboire</span> <span style={st.num}>{chf(p.pourboire)}</span></>}
+                </p>
+                {p.tpe_transaction_id && (
+                  <div style={st.carteReliee} data-caisse-carte-reliee="">
+                    <p style={st.vide}>
+                      <span>Carte, terminal relié</span>
+                      {nomTerminal(p.transaction) && <>{' '}<span data-no-translate>{nomTerminal(p.transaction)}</span></>}
+                      {p.transaction && <>{' : '}<CarteDetail transaction={p.transaction} /></>}
+                      {p.transaction?.tranche && <>{', '}<span>accord confirmé à la main par un responsable</span></>}
+                    </p>
+                    {p.transaction?.rembourse_statut === 'fait' && <p style={st.vide}>Remboursé sur le terminal.</p>}
+                    {ticket.statut === 'annule' && estPrise(p.transaction) && (
+                      <>
+                        <p style={st.ligneForte}>Remboursement à faire sur le terminal</p>
+                        {p.transaction.rembourse_statut === 'echec' && (
+                          <p style={st.vide}>
+                            <span>La dernière demande a échoué.</span>
+                            {p.transaction.rembourse_message && <>{' '}<span data-no-translate>{p.transaction.rembourse_message}</span></>}
+                          </p>
+                        )}
+                        {peutAnnuler
+                          ? <div><Btn variant="primary" disabled={enCours} onClick={() => rembourser(p.transaction)} style={st.btn44}>Rembourser sur le terminal</Btn></div>
+                          : <p style={st.vide}>Le remboursement se fait par un consultant ou un patron.</p>}
+                      </>
+                    )}
+                  </div>
+                )}
+              </React.Fragment>
             ))}
 
             {Number(ticket.total_ttc) > 400 && (
@@ -237,6 +290,9 @@ function FicheTicket({ id, peutAnnuler, onQuittance, onChange, onClose }) {
             {annulation ? (
               <div style={st.bloc} data-caisse-annulation="">
                 <p style={st.vide}>Le ticket garde son numéro, ses lignes et ses paiements. La clôture du jour porte l'écriture inverse.</p>
+                {ticket.paiements.some((p) => p.tpe_transaction_id) && (
+                  <p style={st.vide}>Annuler ne rembourse pas la carte : le remboursement sur le terminal sera proposé ensuite, sur ce ticket.</p>
+                )}
                 <Input value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Motif de l'annulation" style={st.champ} />
                 <div style={st.pied}>
                   <Btn variant="ghost" onClick={() => setAnnulation(false)} style={st.btn44}>Ne pas annuler</Btn>
@@ -286,6 +342,7 @@ const st = {
   barre2: { textDecoration: 'line-through', color: 'var(--text2)' },
   annule: { color: 'var(--danger-text, var(--text))', fontWeight: 600 },
   controle: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', marginTop: 8 },
+  carteReliee: { display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 12, borderLeftWidth: 2, borderLeftStyle: 'solid', borderLeftColor: 'var(--border)' },
   controleCorps: { padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'stretch' },
   ligneForte: { fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 },
   defaut: { fontSize: 13, color: 'var(--text)', margin: 0, overflowWrap: 'anywhere' },

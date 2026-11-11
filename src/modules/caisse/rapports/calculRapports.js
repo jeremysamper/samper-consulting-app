@@ -140,14 +140,19 @@ function synthese(mvts) {
 // 2. Par moyen de paiement (direction). Comme la clôture : ce que la maison
 // garde est montant + arrondi ; les pourboires et les écarts d'arrondi sont
 // ceux des ventes ; une annulation retire son montant du moyen.
+// v9 : un paiement par carte passé par un terminal relié (p.relie, posé à la
+// lecture) a sa propre ligne, « terminal relié » ; dès qu'il y en a une, la
+// carte saisie à la main le dit aussi. Sans paiement relié, les lignes sont
+// exactement celles de la v8.
 function moyens(mvts) {
   const par = new Map();
   let arrondis = 0;
   let pourboires = 0;
   mvts.forEach((m) => {
     m.paiements.forEach((p) => {
-      const cle = `${p.moyen}|${p.libelle || ''}`;
-      if (!par.has(cle)) par.set(cle, { moyen: p.moyen, libelle: p.libelle || '', nombre: 0, ventes: 0, annulations: 0, pourboires: 0 });
+      const relie = p.moyen === 'carte' && p.relie === true;
+      const cle = `${p.moyen}|${p.libelle || ''}|${relie ? 'relie' : ''}`;
+      if (!par.has(cle)) par.set(cle, { moyen: p.moyen, libelle: p.libelle || '', relie, nombre: 0, ventes: 0, annulations: 0, pourboires: 0 });
       const e = par.get(cle);
       const garde = centimes(p.montant) + centimes(p.arrondi);
       if (m.signe > 0) {
@@ -162,10 +167,13 @@ function moyens(mvts) {
     });
   });
   const ordre = { especes: 0, carte: 1, autre: 2 };
+  const avecRelie = [...par.values()].some((e) => e.relie);
+  const mode = (e) => (e.relie ? 'relie' : (avecRelie && e.moyen === 'carte' ? 'main' : null));
+  const suffixe = { relie: ', terminal relié', main: ', saisie à la main' };
   const lignes = [...par.values()]
-    .sort((a, b) => (ordre[a.moyen] ?? 9) - (ordre[b.moyen] ?? 9) || a.libelle.localeCompare(b.libelle, 'fr'))
+    .sort((a, b) => (ordre[a.moyen] ?? 9) - (ordre[b.moyen] ?? 9) || a.libelle.localeCompare(b.libelle, 'fr') || Number(b.relie) - Number(a.relie))
     .map((e) => ({
-      moyen: e.moyen, libelle: e.libelle, nom: libelleMoyen(e), nombre: e.nombre,
+      moyen: e.moyen, libelle: e.libelle, mode: mode(e), nom: libelleMoyen(e) + (suffixe[mode(e)] || ''), nombre: e.nombre,
       ventes: fr(e.ventes), annulations: fr(e.annulations), net: fr(e.ventes - e.annulations), pourboires: fr(e.pourboires),
     }));
   return {

@@ -19,6 +19,7 @@
 
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import { detailTva, numeroTicket, totalLigne } from './tva.js';
+import { detailCarteTexte, ecartBouclement } from './tpe/ecranTpe.js';
 
 const LIBELLES_MOYENS = { especes: 'Espèces', carte: 'Carte bancaire', autre: 'Autre' };
 
@@ -144,6 +145,13 @@ function dessinerQuittance(doc, p, { ticket, maison, client }) {
   p.texte('Règlement', { gris: true, taille: 8 });
   (ticket.paiements || []).forEach((r) => {
     p.paire(libelleMoyen(r), chf(Number(r.montant) + Number(r.arrondi || 0)));
+    // v9 : une carte passée par le terminal relié dit ce que le terminal a
+    // rendu (marque, quatre derniers chiffres, autorisation), et rien d'autre.
+    // Le reçu du porteur reste celui du terminal.
+    if (r.tpe_transaction_id) {
+      p.texte(`${detailCarteTexte(r.transaction)}, terminal relié`, { taille: 8, gris: true });
+      if (r.transaction?.rembourse_statut === 'fait') p.texte('remboursé sur le terminal', { taille: 8, gris: true });
+    }
     if (Number(r.arrondi)) p.texte(`dont arrondi aux 5 centimes ${chf(r.arrondi)}`, { taille: 8, gris: true });
     if (Number(r.rendu)) p.texte(`rendu ${chf(r.rendu)}`, { taille: 8, gris: true });
     if (Number(r.pourboire)) p.texte(`pourboire ${chf(r.pourboire)}, hors total`, { taille: 8, gris: true });
@@ -194,7 +202,10 @@ export async function construireQuittance({ ticket, etablissement, reglages, cli
 
 // ── Clôture du jour ──────────────────────────────────────────────────────────
 // cloture : la ligne caisse_clotures (totaux figés par la base).
-export async function construireCloture({ cloture, etablissement, reglages }) {
+// bouclements (v9) : [{ terminal_id, montant }], le dernier total de
+// bouclement saisi pour chaque terminal ce jour-là ; ils sont hors de la
+// clôture figée, et le document le dit.
+export async function construireCloture({ cloture, etablissement, reglages, bouclements = [] }) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const maison = coordonneesMaison(etablissement, reglages);
@@ -245,6 +256,29 @@ export async function construireCloture({ cloture, etablissement, reglages }) {
   bloc('Moyens de paiement des ventes');
   (t.moyens || []).forEach((m) => p.paire(`${libelleMoyen(m)} (${m.nombre})`, chf(m.montant)));
   if (Number(t.arrondis)) p.paire('dont écarts d\'arrondi aux 5 centimes', chf(t.arrondis), { gris: true });
+
+  // v9 : les cartes, par terminal relié d'un côté, saisies à la main de
+  // l'autre. Le bloc n'existe que si un terminal relié a encaissé ou si un
+  // bouclement a été saisi : sans terminal, le document est celui de la v7.
+  const c = t.cartes || null;
+  const terminauxCartes = c?.terminaux || [];
+  const bouclementDe = (id) => (bouclements || []).find((b) => b.terminal_id === id) || null;
+  const bouclesSeuls = (bouclements || []).filter((b) => !terminauxCartes.some((x) => x.terminal_id === b.terminal_id));
+  if (c && (terminauxCartes.length || bouclesSeuls.length)) {
+    bloc('Cartes bancaires');
+    terminauxCartes.forEach((x) => {
+      p.paire(`Terminal relié ${x.nom} (${x.nombre})${Number(x.annulees) ? `, dont annulé ${chf(-Number(x.annulees))}` : ''}`, chf(x.net));
+      const b = bouclementDe(x.terminal_id);
+      if (b) {
+        p.paire('Bouclement du terminal, saisi à la main', chf(b.montant), { gris: true });
+        p.paire('Écart, bouclement moins caisse', chf(ecartBouclement(x.net, b.montant)), { gris: true });
+      }
+    });
+    bouclesSeuls.forEach((b) => p.paire('Bouclement d\'un terminal sans carte ce jour, saisi à la main', chf(b.montant), { gris: true }));
+    p.paire('Cartes par terminal relié', chf(c.relie?.net), { gras: true });
+    p.paire(`Cartes saisies à la main, terminal non relié (${c.manuel?.nombre || 0})`, chf(c.manuel?.net));
+    if ((bouclements || []).length) p.texte('Le bouclement du terminal est saisi après la clôture : il n\'entre pas dans les totaux figés.', { taille: 8, gris: true });
+  }
 
   if ((t.services || []).length) {
     bloc('Par service');

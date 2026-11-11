@@ -4,6 +4,10 @@ import { Btn, Input } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import * as caisse from '../../services/caisseService.js';
+import * as tpe from '../../services/caisseTpeService.js';
+import FeuilleTerminal from './tpe/FeuilleTerminal.jsx';
+import CarteDetail from './tpe/CarteDetail.jsx';
+import { ROLES_TERMINAL, ROLES_TRANCHER, choisirTerminal, enRoute, paiementDe, reprise, terminauxPour } from './tpe/ecranTpe.js';
 import { SEUIL_NOM_CLIENT, arrondiCinqCentimes, centimes, numeroTicket, preparerPaiements, totalLignes } from './tva.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,6 +26,15 @@ import { SEUIL_NOM_CLIENT, arrondiCinqCentimes, centimes, numeroTicket, preparer
 // motif obligatoire) ; le serveur demande, l'écran le lui dit.
 // Les noms de produits et de moyens réglés par la maison sont des données :
 // data-no-translate. Chaque nombre vit dans son propre nœud.
+//
+// Terminal relié (v9) : quand la maison a relié un terminal qui peut servir
+// ce ticket, un tap sur « Carte » ouvre la feuille « Présentez la carte sur
+// le terminal » ; accepté, le paiement se pose tout seul, avec le montant du
+// terminal. « Carte, terminal non relié » reste là pour la saisie à la main
+// (panne, terminal d'un autre prestataire). Un paiement accepté plus tôt et
+// jamais encaissé (écran fermé, réseau coupé) se rattache au ticket à
+// l'ouverture, sans second débit. Sans terminal réglé, rien de tout cela ne
+// se charge ni ne s'affiche : l'écran est celui de la v7.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -30,6 +43,16 @@ const nombre = (v) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 const MOTIFS_RAPIDES = ['Geste commercial', 'Fidélité', 'Personnel', 'Erreur de commande'];
+
+// Le terminal retenu par ce poste, par maison (préférence d'écran : le
+// serveur vérifie de toute façon que le terminal est celui de la maison).
+const cleTerminal = (etablissementId) => 'sc_caisse_terminal_' + (etablissementId || '');
+function lireTerminalRetenu(etablissementId) {
+  try { return localStorage.getItem(cleTerminal(etablissementId)); } catch { return null; }
+}
+function retenirTerminal(etablissementId, id) {
+  try { localStorage.setItem(cleTerminal(etablissementId), id); } catch { /* préférence perdue, sans gravité */ }
+}
 
 function useEnLigne() {
   const [enLigne, setEnLigne] = React.useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
@@ -45,6 +68,7 @@ function useEnLigne() {
 
 export default function Encaissement({
   ticket, reglages, peutRemiser = false, modeTest = false, onEncaisse, onQuittance, onClose, reload,
+  terminaux = [], role = null,
 }) {
   const lignes = React.useMemo(() => ticket?.lignes || [], [ticket]);
   const total = totalLignes(lignes);
@@ -62,11 +86,51 @@ export default function Encaissement({
   const [client, setClient] = React.useState({ nom: '', adresse: '' });
   const verrou = React.useRef(false);
 
+  // ── Terminal relié (v9) ──
+  const aDesTerminaux = terminaux.length > 0;
+  const utilisables = React.useMemo(() => terminauxPour(terminaux, ticket), [terminaux, ticket]);
+  const [terminalRetenu, setTerminalRetenu] = React.useState(() => lireTerminalRetenu(ticket?.etablissement_id));
+  const terminal = choisirTerminal(utilisables, terminalRetenu);
+  const [feuille, setFeuille] = React.useState(null); // la feuille du terminal : { terminal, montant, pourboire, libelle, reprise }
+  const [paiementEnRoute, setPaiementEnRoute] = React.useState(null);
+  // 'sans' : la maison n'a jamais relié de terminal, rien n'est lu.
+  const [lectureTpe, setLectureTpe] = React.useState(aDesTerminaux ? 'lecture' : 'sans');
+  const peutRembourser = ROLES_TERMINAL.includes(role);
+  const libelleCarte = reglages.perso?.moyens_paiement
+    ? (reglages.moyens_paiement.find((m) => m.cle === 'carte')?.libelle || null)
+    : null;
+
+  // ouvrir : à l'ouverture de l'encaissement, un paiement resté en route
+  // rouvre sa feuille. Après une fermeture voulue, on relit sans rouvrir.
+  const chargerTpe = React.useCallback(async (ouvrir = false) => {
+    if (!aDesTerminaux || !ticket?.id) return;
+    const { data, error } = await tpe.listTransactionsTicket(ticket.id);
+    if (error) { setLectureTpe('echec'); return; }
+    // Un paiement accepté plus tôt se rattache au ticket, en tête.
+    setPoses((courant) => {
+      const { aPoser } = reprise(data, courant);
+      return aPoser.length ? [...aPoser.map((t) => paiementDe(t, libelleCarte)), ...courant] : courant;
+    });
+    const suspendu = reprise(data).enRoute;
+    setPaiementEnRoute(suspendu);
+    if (suspendu && ouvrir) {
+      const sonTerminal = terminaux.find((t) => t.id === suspendu.terminal_id);
+      if (sonTerminal) setFeuille({ terminal: sonTerminal, montant: suspendu.montant, pourboire: suspendu.pourboire, libelle: libelleCarte, reprise: suspendu });
+    }
+    setLectureTpe('lue');
+  }, [aDesTerminaux, ticket?.id, terminaux, libelleCarte]);
+  React.useEffect(() => { chargerTpe(true); }, [chargerTpe]);
+  const tpePret = lectureTpe === 'sans' || lectureTpe === 'lue';
+  React.useEffect(() => { terminalOuvert.current = Boolean(feuille); }, [feuille]);
+
   const fermer = React.useCallback(() => { if (fait) onEncaisse?.(fait); else onClose(); }, [fait, onEncaisse, onClose]);
+  // v9 : tant que la feuille du terminal est ouverte, Échap ne ferme pas
+  // l'encaissement derrière elle.
+  const terminalOuvert = React.useRef(false);
   useBackLayer(true, fermer, 'caisse-encaissement');
   React.useEffect(() => {
     const echap = (e) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (e.key !== 'Escape' || e.defaultPrevented || terminalOuvert.current) return;
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
       e.preventDefault();
       fermer();
@@ -100,10 +164,58 @@ export default function Encaissement({
 
   // Un tap sur un moyen : il prend la part affichée. S'il règle tout le reste,
   // le ticket s'encaisse ; sinon le paiement se pose et le reste diminue.
-  function toucherMoyen(m) {
-    if (!enLigne || enCours || (part <= 0 && total > 0)) return;
+  function toucherMoyen(m, { aLaMain = false } = {}) {
+    if (!enLigne || enCours || !tpePret || (part <= 0 && total > 0)) return;
     if (m.cle === 'especes') { setEspeces(m); setRecu(''); return; }
-    poser({ moyen: m.cle, libelle: reglages.perso?.moyens_paiement ? m.libelle : null, montant: part, pourboire: tip });
+    const libelle = reglages.perso?.moyens_paiement ? m.libelle : null;
+    // v9 : la carte part sur le terminal relié, s'il y en a un pour ce ticket.
+    if (m.cle === 'carte' && terminal && !aLaMain && part > 0) {
+      if (paiementEnRoute) return;
+      setFeuille({ terminal, montant: part, pourboire: tip, libelle, reprise: null });
+      return;
+    }
+    poser({ moyen: m.cle, libelle, montant: part, pourboire: tip });
+  }
+
+  // Le terminal a accepté : le paiement se pose avec SES chiffres. Posé
+  // d'abord, envoyé ensuite : si l'encaissement échoue, la carte acceptée
+  // reste à l'écran.
+  function terminalApprouve(transaction) {
+    const libelle = feuille?.libelle ?? libelleCarte;
+    setFeuille(null);
+    setPaiementEnRoute(null);
+    if (poses.some((p) => p.tpe === transaction.id)) return;
+    const suite = [...poses, paiementDe(transaction, libelle)];
+    setPoses(suite);
+    setMontant(''); setPourboire('');
+    if (preparerPaiements({ total, paiements: suite, arrondiEspeces: reglages.arrondi_especes }).complet) envoyer(suite);
+  }
+  // La feuille fermée pendant l'attente n'annule rien : on relit où en est
+  // le terminal, sans rouvrir la feuille.
+  function fermerFeuilleTerminal() {
+    setFeuille(null);
+    chargerTpe(false);
+  }
+  async function rembourserPose(p) {
+    if (enCours) return;
+    setEnCours(true);
+    try {
+      const { data, error } = await tpe.rembourserPaiement(p.tpe);
+      if (error) { notify(error, 'error'); return; }
+      if (data.transaction.rembourse_statut === 'fait') {
+        setPoses((courant) => courant.filter((x) => x.tpe !== p.tpe));
+        notify('Paiement remboursé sur le terminal', 'success');
+      } else {
+        notify('Le remboursement a échoué : il reste à faire sur le terminal.', 'warning');
+      }
+    } finally {
+      setEnCours(false);
+    }
+  }
+  function reprendreEnRoute() {
+    const sonTerminal = terminaux.find((t) => t.id === paiementEnRoute?.terminal_id);
+    if (!sonTerminal) return;
+    setFeuille({ terminal: sonTerminal, montant: paiementEnRoute.montant, pourboire: paiementEnRoute.pourboire, libelle: libelleCarte, reprise: paiementEnRoute });
   }
 
   function poser(paiement) {
@@ -212,13 +324,41 @@ export default function Encaissement({
             <span style={st.grandValeur} data-caisse-reste=""><span>{chf(reste)}</span> <span style={st.devise}>CHF</span></span>
           </div>
         )}
-        {poses.map((p, i) => (
+        {poses.map((p, i) => (p.tpe ? (
+          <div key={p.tpe} style={st.pose} data-caisse-pose="terminal">
+            <span style={st.poseNomTerminal}>
+              <span>Carte, terminal relié</span>
+              <CarteDetail transaction={p} />
+            </span>
+            <span style={st.num}>{chf(p.montant)}</span>
+            {peutRembourser
+              ? <Btn variant="ghost" disabled={enCours || !enLigne} onClick={() => rembourserPose(p)} style={st.btn44}>Rembourser</Btn>
+              : <span style={st.petit}>Payé sur le terminal</span>}
+          </div>
+        ) : (
           <div key={i} style={st.pose}>
             <span style={st.poseNom}>{p.libelle ? <span data-no-translate>{p.libelle}</span> : <span>{reglages.moyens_paiement.find((m) => m.cle === p.moyen)?.libelle || p.moyen}</span>}</span>
             <span style={st.num}>{chf(p.montant)}</span>
             <Btn variant="ghost" onClick={() => setPoses(poses.filter((_, j) => j !== i))} style={st.btn44}>Retirer</Btn>
           </div>
-        ))}
+        )))}
+        {lectureTpe === 'echec' && (
+          <div style={st.horsLigne} data-cadre="" role="alert">
+            <span style={st.alerteTexte}>Les paiements par carte de ce ticket n'ont pas pu être lus. Encaisser sans les relire pourrait oublier une carte déjà acceptée.</span>
+            <Btn variant="primary" onClick={() => { setLectureTpe('lecture'); chargerTpe(true); }} style={st.btn44}>Réessayer</Btn>
+          </div>
+        )}
+        {paiementEnRoute && !feuille && (
+          <div style={st.horsLigne} data-cadre="" role="alert" data-caisse-en-route="">
+            <span style={st.alerteTexte}>{paiementEnRoute.statut === 'incertain'
+              ? "Un paiement par carte attend d'être éclairci : regardez le terminal."
+              : 'Un paiement par carte est en route sur le terminal.'}</span>
+            <Btn variant="primary" onClick={reprendreEnRoute} style={st.btn44}>Reprendre</Btn>
+          </div>
+        )}
+        {poses.length > 0 && reste === 0 && tpePret && !paiementEnRoute && (
+          <Btn variant="primary" disabled={enCours || !enLigne} onClick={() => envoyer(poses)} style={st.btnMoyen}>Encaisser le ticket</Btn>
+        )}
         {enAttente > 0 && (
           <p style={st.aide}><span style={st.num}>{enAttente}</span> <span>lignes pas encore envoyées en cuisine.</span></p>
         )}
@@ -267,11 +407,28 @@ export default function Encaissement({
             </div>
             <div style={st.moyens} data-caisse-moyens="">
               {reglages.moyens_paiement.map((m, i) => (
-                <Btn key={m.cle + i} variant="primary" disabled={enCours || !enLigne} onClick={() => toucherMoyen(m)} style={st.btnMoyen}>
+                <Btn key={m.cle + i} variant="primary" disabled={enCours || !enLigne || !tpePret || (m.cle === 'carte' && Boolean(terminal) && Boolean(paiementEnRoute))} onClick={() => toucherMoyen(m)} style={st.btnMoyen}>
                   {reglages.perso?.moyens_paiement ? <span data-no-translate>{m.libelle}</span> : m.libelle}
                 </Btn>
               ))}
             </div>
+            {terminal && (
+              <div style={st.bloc} data-caisse-terminal-choix="">
+                <p style={st.aide}>
+                  <span>La carte part sur le terminal</span> <span style={st.num} data-no-translate>{terminal.nom}</span><span>.</span>
+                  {ticket.test && <span>{' '}</span>}
+                  {ticket.test && <span>Terminal simulé : aucun argent ne bouge.</span>}
+                </p>
+                <div style={st.rang}>
+                  {utilisables.length > 1 && utilisables.map((t) => (
+                    <Btn key={t.id} variant={t.id === terminal.id ? 'primary' : 'ghost'} onClick={() => { retenirTerminal(ticket.etablissement_id, t.id); setTerminalRetenu(t.id); }} style={st.btn44}>
+                      <span data-no-translate>{t.nom}</span>
+                    </Btn>
+                  ))}
+                  <Btn variant="ghost" disabled={enCours || !enLigne || !tpePret} onClick={() => toucherMoyen({ cle: 'carte', libelle: libelleCarte }, { aLaMain: true })} style={st.btn44}>Carte, terminal non relié</Btn>
+                </div>
+              </div>
+            )}
             <p style={st.aide}>Pour payer en plusieurs moyens, changez le montant puis touchez le moyen : le reste se met à jour.</p>
           </>
         )}
@@ -279,7 +436,7 @@ export default function Encaissement({
         <div style={st.separateur} />
         {peutRemiser ? (
           remiseOuverte ? (
-            <Remise ticket={ticket} lignes={lignes} onFait={() => { setRemiseOuverte(false); setPoses([]); reload?.(); }} onFermer={() => setRemiseOuverte(false)} />
+            <Remise ticket={ticket} lignes={lignes} onFait={() => { setRemiseOuverte(false); setPoses((courant) => courant.filter((p) => p.tpe)); reload?.(); }} onFermer={() => setRemiseOuverte(false)} />
           ) : (
             <Btn variant="ghost" onClick={() => setRemiseOuverte(true)} style={st.btn44}>Remise ou offert</Btn>
           )
@@ -287,6 +444,21 @@ export default function Encaissement({
           <p style={st.aide}>Remise ou offert : demandez à un responsable, il le pose avec un motif.</p>
         )}
       </div>
+      {feuille && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <FeuilleTerminal
+            ticket={ticket}
+            terminal={feuille.terminal}
+            montant={feuille.montant}
+            pourboire={feuille.pourboire}
+            reprise={feuille.reprise}
+            peutTrancher={ROLES_TRANCHER.includes(role)}
+            onApprouve={terminalApprouve}
+            onChange={(t) => setPaiementEnRoute(enRoute(t) ? t : null)}
+            onFermer={fermerFeuilleTerminal}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -378,6 +550,9 @@ const st = {
     borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
   },
   poseNom: { flex: 1, minWidth: 0 },
+  poseNomTerminal: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+  petit: { fontSize: 13, color: 'var(--text2)' },
+  alerteTexte: { flex: 1, minWidth: 0 },
   num: { fontFamily: 'var(--font-num)', fontWeight: 600 },
   aide: { fontSize: 13, color: 'var(--text2)', margin: 0, lineHeight: 1.4 },
   ligneInfo: { fontSize: 16, color: 'var(--text)', margin: 0 },

@@ -71,6 +71,7 @@ export default function TicketEcran({
   ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
   modeTest = false, onQuittance,
+  terminaux = [], role = null,
 }) {
   const [recherche, setRecherche] = React.useState('');
   // Carte choisie pour ce ticket ; null = toutes les cartes en vente.
@@ -706,6 +707,8 @@ export default function TicketEcran({
             onEncaisse={() => { setPaiementOuvert(false); onClos(); }}
             onClose={() => setPaiementOuvert(false)}
             reload={reload}
+            terminaux={terminaux}
+            role={role}
           />
         )}
         {corrigerOuvert && (
