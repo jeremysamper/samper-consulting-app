@@ -65,6 +65,11 @@ test('accepté sans montant rendu : incertain', () => {
   assert.equal(suivant(tx('en_cours'), ok({ montantCentimes: null }), t0 + 5000).statut, 'incertain');
 });
 
+test('accepté sans identifiant du prestataire : incertain (ajouté après la revue SQL)', () => {
+  assert.equal(suivant(tx('en_cours'), ok({ idPrestataire: null }), t0 + 5000).statut, 'incertain');
+  assert.equal(suivant(tx('en_cours', { prestataire_id: 'p-1' }), ok({ idPrestataire: null }), t0 + 5000).statut, 'approuve');
+});
+
 test('accepté dans une autre devise : incertain', () => {
   assert.equal(suivant(tx('en_cours'), ok({ devise: 'EUR' }), t0 + 5000).statut, 'incertain');
 });
