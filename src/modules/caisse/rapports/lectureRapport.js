@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import * as caisse from '../../../services/caisseService.js';
+import * as tpe from '../../../services/caisseTpeService.js';
 import { telechargerFichier } from '../../inventaire/exportXlsxInventaire.js';
 import { comparaison, fusionnerDonnees, rapportCaisse } from './calculRapports.js';
 import { nomFichierDossier, nomFichierRapport, csvRapport, xlsxRapport, zipCsvRapport, zipDossier } from './exportsRapport.js';
@@ -21,6 +22,18 @@ export async function lireFenetre(etablissementId, debut, fin) {
   for (const t of tranches(debut, fin, 31)) {
     const { data, error } = await caisse.rapportDonnees(etablissementId, t.debut, t.fin);
     if (error) return { data: null, error };
+    // v9 : pour la direction, les paiements passés par un terminal relié
+    // sont marqués (relie). La base ne rend ces liens qu'à consultant et
+    // patron ; une lecture en échec fait échouer le rapport, pour ne jamais
+    // compter une carte reliée comme une carte saisie à la main.
+    if (data?.niveau === 'direction' && (data.paiements || []).length) {
+      const liens = await tpe.rapportTpe(etablissementId, t.debut, t.fin);
+      if (liens.error) return { data: null, error: liens.error };
+      const parPaiement = new Map((liens.data?.liens || []).map((l) => [l.paiement_id, l]));
+      data.paiements = data.paiements.map((p) => (parPaiement.has(p.id)
+        ? { ...p, relie: true, terminal_id: parPaiement.get(p.id).terminal_id }
+        : p));
+    }
     morceaux.push(data);
   }
   return { data: fusionnerDonnees(morceaux), error: null };

@@ -7,6 +7,7 @@ import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import { libellePoste } from './modeTest.js';
 import ListeTriable from './ListeTriable.jsx';
+import SectionTerminal from './tpe/SectionTerminal.jsx';
 import { COULEURS, LIBELLES_COULEURS, PICTOS, pictoParId } from './boutons.js';
 import { CATEGORIES_DEFAUT, ID_A_TRIER, estCategorieDefaut, estCategorieVirtuelle, rangerArticles } from './categories.js';
 import {
@@ -47,6 +48,7 @@ const SECTIONS = [
   { id: 'cuissons', label: 'Cuissons' },
   { id: 'sans', label: 'Sans' },
   { id: 'paiement', label: 'Paiement' },
+  { id: 'terminal', label: 'Terminal de paiement' },
   { id: 'tva', label: 'TVA et clôture' },
   { id: 'grille', label: 'Grille' },
   { id: 'cartes', label: 'Cartes en vente' },
@@ -56,9 +58,12 @@ const SECTIONS = [
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
+// Terminal de paiement (v9) : la section vit dans son fichier, avec ce qui
+// touche la clé du prestataire.
 export default function ReglagesCaisse({
   etablissementId, articles, boutons, categories, cartes = [], config, onChange, onClose,
   poste = null, peutLireJournalTests = false, onTestsVides,
+  role = null, terminaux = [], lectureTerminaux = 'lue', onTerminauxChange,
 }) {
   const [section, setSection] = React.useState('categories');
   // Copie locale de la config : l'écran suit le geste sans attendre la base.
@@ -179,6 +184,17 @@ export default function ReglagesCaisse({
             />
           )}
           {section === 'paiement' && <SectionPaiement reglages={reglages} regler={regler} />}
+          {section === 'terminal' && (
+            <SectionTerminal
+              etablissementId={etablissementId}
+              role={role}
+              config={brouillon}
+              regler={regler}
+              terminaux={terminaux}
+              lecture={lectureTerminaux}
+              onChange={onTerminauxChange}
+            />
+          )}
           {section === 'tva' && (
             <SectionTva rangement={rangement} reglages={reglages} regler={regler} ecrire={ecrire} idReel={idReel} />
           )}

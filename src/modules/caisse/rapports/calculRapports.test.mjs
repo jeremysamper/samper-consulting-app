@@ -151,6 +151,28 @@ test('moyens de paiement, pourboires, arrondis et écarts de caisse', () => {
   assert.equal(r.ecartsCaisse.total, -0.6);
 });
 
+test('v9, terminal relié : la carte passée par le terminal a sa ligne, la carte à la main le dit', () => {
+  // T3 : carte 100,00 passée par le terminal relié. T1 (93,00, annulé le
+  // mercredi) et T5 (203,40) restent des cartes saisies à la main.
+  const donnees = jeuEssai();
+  const relie = donnees.paiements.find((p) => p.moyen === 'carte' && Number(p.montant) === 100);
+  relie.relie = true;
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  assert.deepEqual(r.moyens.lignes.map((l) => [l.nom, l.mode, l.nombre, l.ventes, l.annulations, l.net]), [
+    ['Espèces', null, 2, 126.5, 0, 126.5],
+    ['Carte bancaire, terminal relié', 'relie', 1, 100, 0, 100],
+    ['Carte bancaire, saisie à la main', 'main', 2, 296.4, 93, 203.4],
+    ['TWINT', null, 1, 45, 0, 45],
+  ]);
+  // Le total ne bouge pas : seules les lignes se partagent.
+  assert.equal(r.moyens.net, 474.9);
+  assert.equal(r.moyens.pourboires, 5);
+  // Sans paiement relié, les lignes sont celles de la v8 (aucun mode).
+  assert.deepEqual(rapportCaisse(jeuEssai(), DEUX_JOURS).moyens.lignes.map((l) => [l.nom, l.mode]), [
+    ['Espèces', null], ['Carte bancaire', null], ['TWINT', null],
+  ]);
+});
+
 test('plats vendus : quantités et chiffre répartis midi et soir, offerts, remises, meilleurs et moins vendus', () => {
   const r = rapportCaisse(jeuEssai(), DEUX_JOURS);
   const p = r.plats;

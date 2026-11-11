@@ -14,7 +14,7 @@ import { computeReservationStats } from '../../previsions/rapport/computeReserva
 import { useRapportReservations } from '../../previsions/rapport/useRapportReservations.js';
 import { chf } from '../documentsCaisse.js';
 import { jourExploitation } from '../tva.js';
-import { LIBELLES_SERVICES, trierPlats } from './calculRapports.js';
+import { LIBELLES_MOYENS, LIBELLES_SERVICES, trierPlats } from './calculRapports.js';
 import { dateCH, dateHeureCH, libelleGenre } from './exportsRapport.js';
 import {
   construirePdf, lireRapport, telechargerCsv, telechargerCsvZip, telechargerDossier, telechargerExcel,
@@ -178,8 +178,14 @@ function Moyens({ r }) {
       <Section titre="Par moyen de paiement">
         {m.lignes.map((l) => (
           <Rang
-            key={`${l.moyen}|${l.libelle}`}
-            titre={l.libelle ? <span data-no-translate>{l.libelle}</span> : l.nom}
+            key={`${l.moyen}|${l.libelle}|${l.mode || ''}`}
+            titre={l.mode ? (
+              <>
+                {l.libelle ? <span data-no-translate>{l.libelle}</span> : <span>{LIBELLES_MOYENS[l.moyen] || l.moyen}</span>}
+                {', '}
+                <span>{l.mode === 'relie' ? 'terminal relié' : 'saisie à la main'}</span>
+              </>
+            ) : (l.libelle ? <span data-no-translate>{l.libelle}</span> : l.nom)}
             detail={(
               <>
                 <span style={st.num}>{l.nombre}</span> <span>{pl(l.nombre, 'paiement', 'paiements')}</span>

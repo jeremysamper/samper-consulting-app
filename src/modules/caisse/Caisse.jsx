@@ -9,6 +9,7 @@ import { dbService } from '../../services/dbService.js';
 import { usePlanSalle } from '../../hooks/usePlanSalle.js';
 import { zurichAjouterJours, zurichDateHeure, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
+import * as tpe from '../../services/caisseTpeService.js';
 import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
 import ReglagesCaisse from './ReglagesCaisse.jsx';
@@ -127,10 +128,24 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const peutActiverTest = ROLES_MODE_TEST.includes(user?.role);
   const [testEnCours, setTestEnCours] = React.useState(false);
   const [proposerVider, setProposerVider] = React.useState(false);
+  // Terminaux de paiement de la maison (v9), reliés et retirés. Une maison
+  // qui n'en a jamais relié garde une liste vide : l'encaissement ne lit et
+  // n'affiche alors rien de plus que la v7.
+  const [terminaux, setTerminaux] = React.useState([]);
+  const [lectureTerminaux, setLectureTerminaux] = React.useState('lecture');
+  const rechargerTerminaux = React.useCallback(async () => {
+    if (!etabId) return;
+    const { data, error } = await tpe.listTerminaux(etabId);
+    if (error) { setLectureTerminaux('echec'); return; }
+    setTerminaux(data);
+    setLectureTerminaux('lue');
+  }, [etabId]);
+  React.useEffect(() => { rechargerTerminaux(); }, [rechargerTerminaux, legacyVersion]);
   React.useEffect(() => {
     setCategories([]); setConfig({}); setReglagesOuverts(false);
     setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]);
     setTickets([]); setCleTest(lireModeTest(etabId)); setProposerVider(false);
+    setTerminaux([]); setLectureTerminaux('lecture');
   }, [etabId]);
   // Cartes en vente et articles vendables : fermé par défaut (une carte
   // archivée ou cachée ne vend jamais), sans réglage tout vend comme avant.
@@ -181,8 +196,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   }, `quittance-${id}.pdf`), [ouvrirPdf, etablissement, reglages]);
   const pdfCloture = React.useCallback((cloture) => ouvrirPdf(async () => {
     const { construireCloture } = await import('./documentsCaisse.js');
-    return construireCloture({ cloture, etablissement, reglages });
-  }, `cloture-Z${cloture.numero}.pdf`), [ouvrirPdf, etablissement, reglages]);
+    // v9 : les bouclements saisis pour ce jour (aucune lecture si la maison
+    // n'a pas de terminal ; une lecture en échec n'empêche pas le PDF).
+    let bouclements = [];
+    if (terminaux.length) bouclements = (await tpe.listBouclements(etabId, cloture.jour_exploitation)).data || [];
+    return construireCloture({ cloture, etablissement, reglages, bouclements });
+  }, `cloture-Z${cloture.numero}.pdf`), [ouvrirPdf, etablissement, reglages, terminaux, etabId]);
 
   const [ticketId, setTicketId] = React.useState(null);
   // 'ouvrir' : un tap sur une table ouvre ou crée son ticket.
@@ -474,6 +493,10 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       poste={poste}
       peutLireJournalTests={['consultant', 'patron'].includes(user?.role)}
       onTestsVides={rechargerTickets}
+      role={user?.role}
+      terminaux={terminaux}
+      lectureTerminaux={lectureTerminaux}
+      onTerminauxChange={rechargerTerminaux}
     />
   ) : null;
 
@@ -682,6 +705,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           peutAnnuler={peutAnnuler}
           peutControler={peutHabiller}
           onQuittance={quittance}
+          terminaux={terminaux}
         />
       </EcranTache>
     );
@@ -691,7 +715,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   if (ecran === 'cloture' && !modeTest && peutHabiller) {
     return (
       <EcranTache titre="Clôture de caisse" etat="Vérifier, compter les espèces, figer" onRetour={retourAccueil}>
-        <Cloture etablissementId={etabId} onDocument={pdfCloture} onChange={rechargerJournee} />
+        <Cloture etablissementId={etabId} onDocument={pdfCloture} onChange={rechargerJournee} terminaux={terminaux} />
       </EcranTache>
     );
   }
@@ -789,6 +813,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           reload={rechargerTickets}
           modeTest={modeTest}
           onQuittance={quittance}
+          terminaux={terminaux}
+          role={user?.role}
         />
         {feuilleReglages}
       </EcranTache>

@@ -3,6 +3,8 @@ import { Btn, Input } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
+import * as tpe from '../../services/caisseTpeService.js';
+import { ecartBouclement, estSimule } from './tpe/ecranTpe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Clôture de caisse du jour (v7), en trois temps :
@@ -15,6 +17,13 @@ import * as caisse from '../../services/caisseService.js';
 // avec un motif. Après la clôture d'un jour, les tickets encaissés passent au
 // jour suivant.
 // Chaque nombre vit dans son propre nœud (traduction du DOM).
+//
+// Cartes (v9) : quand la maison a un terminal relié, la clôture montre les
+// cartes passées par chaque terminal et les cartes saisies à la main. Le
+// total du bouclement du terminal se saisit au comptage (facultatif) ; l'écart
+// s'affiche après, comme pour les espèces. Ce total est enregistré à part
+// (caisse_tpe_bouclements) : la clôture figée et sa chaîne ne bougent pas.
+// Sans terminal relié, l'écran est celui de la v7.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -24,7 +33,7 @@ const nombre = (v) => {
   return String(v ?? '').trim() !== '' && Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-export default function Cloture({ etablissementId, onDocument, onChange }) {
+export default function Cloture({ etablissementId, onDocument, onChange, terminaux = [] }) {
   const [etat, setEtat] = React.useState(null);
   const [erreur, setErreur] = React.useState(null);
   const [clotures, setClotures] = React.useState([]);
@@ -35,6 +44,10 @@ export default function Cloture({ etablissementId, onDocument, onChange }) {
   const [motif, setMotif] = React.useState('');
   const [enCours, setEnCours] = React.useState(false);
   const [faite, setFaite] = React.useState(null);
+  // Les vrais terminaux encore reliés : le simulé n'encaisse aucun vrai ticket.
+  const reels = React.useMemo(() => terminaux.filter((t) => t.actif && !estSimule(t)), [terminaux]);
+  const [boucles, setBoucles] = React.useState({}); // terminal id -> saisie
+  const [bouclesFaits, setBouclesFaits] = React.useState([]);
 
   const charger = React.useCallback(async () => {
     if (!etablissementId) return;
@@ -63,9 +76,20 @@ export default function Cloture({ etablissementId, onDocument, onChange }) {
         etablissementId, jour, especesComptees: e, fondCaisse: f, motif: complementaire ? motif.trim() : null,
       });
       if (error) { notify(error, 'error'); return; }
+      // Le bouclement de chaque terminal, s'il a été saisi : à part de la
+      // clôture figée. Un échec ici ne défait pas la clôture, il se dit.
+      const saisis = reels
+        .map((t) => ({ terminal_id: t.id, nom: t.nom, montant: nombre(boucles[t.id]) }))
+        .filter((b) => b.montant != null);
+      const poses = [];
+      for (const b of saisis) {
+        const r = await tpe.poserBouclement({ etablissementId, terminalId: b.terminal_id, jour, montant: b.montant });
+        if (r.error) notify(r.error, 'error'); else poses.push(b);
+      }
+      setBouclesFaits(poses);
       setFaite(data);
       notify('Clôture enregistrée', 'success');
-      setFond(''); setComptees(''); setMotif(''); setEtape(1);
+      setFond(''); setComptees(''); setMotif(''); setEtape(1); setBoucles({});
       await Promise.all([charger(), onChange?.()]);
     } finally {
       setEnCours(false);
@@ -86,7 +110,7 @@ export default function Cloture({ etablissementId, onDocument, onChange }) {
 
   return (
     <div style={st.racine} data-caisse-cloture="">
-      {faite && <Resultat cloture={faite} onDocument={onDocument} onFermer={() => setFaite(null)} />}
+      {faite && <Resultat cloture={faite} onDocument={onDocument} onFermer={() => setFaite(null)} avecCartes={reels.length > 0} bouclements={bouclesFaits} />}
 
       {!faite && (
         <>
@@ -146,6 +170,15 @@ export default function Cloture({ etablissementId, onDocument, onChange }) {
                 <span style={st.sousTitre}>Espèces comptées, fond compris, CHF</span>
                 <Input value={comptees} onChange={(e) => setComptees(e.target.value)} placeholder="0.00" type="text" inputMode="decimal" style={st.champ} />
               </label>
+              {reels.map((t) => (
+                <label key={t.id} style={st.champLabel} data-cloture-bouclement="">
+                  <span style={st.sousTitre}><span>Total du bouclement du terminal</span> <span data-no-translate>{t.nom}</span><span>, CHF (facultatif)</span></span>
+                  <Input value={boucles[t.id] || ''} onChange={(e) => setBoucles({ ...boucles, [t.id]: e.target.value })} placeholder="0.00" type="text" inputMode="decimal" style={st.champ} />
+                </label>
+              ))}
+              {reels.length > 0 && (
+                <p style={st.aide}>Faites le bouclement sur le terminal, puis recopiez son total des cartes. L'écart avec la caisse s'affiche après la clôture.</p>
+              )}
               {complementaire && (
                 <label style={st.champLabel}>
                   <span style={st.sousTitre}>Motif de la clôture complémentaire</span>
@@ -202,9 +235,11 @@ export default function Cloture({ etablissementId, onDocument, onChange }) {
 }
 
 // ── Ce que la clôture a figé ──
-function Resultat({ cloture, onDocument, onFermer }) {
+function Resultat({ cloture, onDocument, onFermer, avecCartes = false, bouclements = [] }) {
   const t = cloture.totaux || {};
   const ecart = Number(cloture.ecart);
+  const c = t.cartes || null;
+  const montrerCartes = Boolean(c) && (avecCartes || (c.terminaux || []).length > 0);
   return (
     <div style={st.bloc} data-cloture-resultat="">
       <p style={st.titre}>
@@ -229,6 +264,39 @@ function Resultat({ cloture, onDocument, onFermer }) {
       <p style={st.aide}>
         <span>Espèces attendues</span> <span style={st.num}>{chf(t.especes?.attendues)}</span><span>, fond</span> <span style={st.num}>{chf(cloture.fond_caisse)}</span><span>, comptées</span> <span style={st.num}>{chf(cloture.especes_comptees)}</span> <span>CHF.</span>
       </p>
+      {montrerCartes && (
+        <div style={st.bloc} data-cloture-cartes="">
+          <div style={st.sousTitre}>Cartes bancaires</div>
+          {(c.terminaux || []).map((x) => {
+            const b = bouclements.find((y) => y.terminal_id === x.terminal_id) || null;
+            const e = b ? ecartBouclement(x.net, b.montant) : null;
+            return (
+              <div key={x.terminal_id} style={st.bloc}>
+                <p style={st.aide}>
+                  <span>Terminal relié</span> <span data-no-translate>{x.nom}</span><span> :</span> <span style={st.num}>{chf(x.net)}</span> <span>CHF,</span> <span style={st.num}>{x.nombre}</span> <span>{Number(x.nombre) > 1 ? 'paiements' : 'paiement'}</span>
+                </p>
+                {b && (
+                  <div style={{ ...st.grand, ...st.ecart }} data-cadre="">
+                    <span style={st.grandLibelle}>Écart avec le bouclement du terminal</span>
+                    <span style={st.grandValeur}><span>{chf(e)}</span> <span style={st.devise}>CHF</span></span>
+                  </div>
+                )}
+                {b && (
+                  <p style={st.aide}><span>Bouclement saisi</span> <span style={st.num}>{chf(b.montant)}</span><span>, cartes de la caisse</span> <span style={st.num}>{chf(x.net)}</span> <span>CHF.</span></p>
+                )}
+              </div>
+            );
+          })}
+          {bouclements.filter((b) => !(c.terminaux || []).some((x) => x.terminal_id === b.terminal_id)).map((b) => (
+            <p key={b.terminal_id} style={st.aide}>
+              <span>Terminal</span> <span data-no-translate>{b.nom}</span><span> : aucune carte dans la caisse ce jour, bouclement saisi</span> <span style={st.num}>{chf(b.montant)}</span> <span>CHF.</span>
+            </p>
+          ))}
+          <p style={st.aide}>
+            <span>Cartes par terminal relié</span> <span style={st.num}>{chf(c.relie?.net)}</span><span>, cartes saisies à la main</span> <span style={st.num}>{chf(c.manuel?.net)}</span> <span>CHF.</span>
+          </p>
+        </div>
+      )}
       <div style={st.pied}>
         <Btn variant="ghost" onClick={onFermer} style={st.btn44}>Fermer</Btn>
         <Btn variant="primary" onClick={() => onDocument?.(cloture)} style={st.btnAction}>PDF de clôture</Btn>

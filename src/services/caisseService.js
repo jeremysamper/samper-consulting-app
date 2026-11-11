@@ -1,4 +1,6 @@
 import { supabase } from './supabase.js';
+import { messageTpe } from '../modules/caisse/tpe/ecranTpe.js';
+import { listTransactionsTicket } from './caisseTpeService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : tickets, lignes, paiements (migration 20261105_caisse_v1).
@@ -81,11 +83,16 @@ const MESSAGES_RPC = {
   'caisse: plat inconnu pour cet etablissement': "Ce produit n'est plus à la carte de la maison.",
 };
 
+// v9 : les refus qui parlent d'un terminal de paiement sont dits par
+// messageTpe (un seul dictionnaire pour la base et l'Edge Function).
+const REFUS_TERMINAL = /terminal|par carte|remboursement/;
+
 function mapError(error, fallback) {
   if (!error) return null;
   console.error('[caisseService]', error);
   const brut = String(error.message || '');
   if (MESSAGES_RPC[brut]) return MESSAGES_RPC[brut];
+  if (/^caisse: /.test(brut) && REFUS_TERMINAL.test(brut)) return messageTpe(brut);
   if (/^caisse: ticket \w+ fige$/.test(brut)) return 'Ce ticket est clos : il ne se corrige plus.';
   if (/^caisse: les paiements ne font pas le total/.test(brut)) return 'Les paiements ne font pas le total du ticket. Rechargez le ticket et réessayez.';
   if (/^caisse: chaine d'integrite rompue/.test(brut)) return "La chaîne d'intégrité de la caisse est rompue. Prévenez le consultant avant d'encaisser.";
@@ -543,7 +550,11 @@ export async function passerSuiteSuivante(ticketId, suite) {
 // calcule l'arrondi des espèces et le rendu, fige le taux de chaque ligne,
 // pose le numéro du ticket sous verrou et son empreinte. Rend
 // { numero, annee, total, rendu, arrondi, pourboire, test }.
-//   paiements : [{ moyen, libelle, montant, recu, pourboire }]
+//   paiements : [{ moyen, libelle, montant, recu, pourboire, tpe }]
+//     tpe : v9, l'identifiant de la transaction de terminal qui justifie un
+//     paiement par carte « terminal relié » (absent pour une carte saisie à
+//     la main). La base refuse un lien sans transaction approuvée du même
+//     ticket et du même montant.
 //   aEmporter : null = ce que porte déjà le ticket.
 export async function encaisserTicket(ticketId, paiements, aEmporter = null) {
   const { data, error } = await supabase.rpc('caisse_encaisser', {
@@ -554,6 +565,7 @@ export async function encaisserTicket(ticketId, paiements, aEmporter = null) {
       montant: p.montant,
       recu: p.recu == null || p.recu === '' ? null : p.recu,
       pourboire: p.pourboire || 0,
+      ...(p.tpe ? { tpe: p.tpe } : null),
     })),
     p_a_emporter: aEmporter,
   });
@@ -656,11 +668,23 @@ export async function getTicketComplet(id) {
     .maybeSingle();
   if (error || !data) return { data: null, error: mapError(error || { message: 'caisse: ticket introuvable' }, 'Ticket illisible. Réessayez.') };
   const tri = (a, b) => String(a.created_at).localeCompare(String(b.created_at)) || String(a.id).localeCompare(String(b.id));
+  // v9 : un paiement « terminal relié » porte sa transaction (marque, quatre
+  // derniers chiffres, autorisation, remboursement). Lue seulement si le
+  // ticket en a une ; une lecture en échec fait échouer le ticket, pour ne
+  // jamais montrer une carte reliée comme une carte saisie à la main.
+  let transactions = [];
+  if ((data.caisse_paiements || []).some((p) => p.tpe_transaction_id)) {
+    const lu = await listTransactionsTicket(id);
+    if (lu.error) return { data: null, error: lu.error };
+    transactions = lu.data;
+  }
   return {
     data: {
       ...data,
       lignes: [...(data.caisse_lignes || [])].sort(tri),
-      paiements: [...(data.caisse_paiements || [])].sort(tri),
+      paiements: [...(data.caisse_paiements || [])].sort(tri).map((p) => (p.tpe_transaction_id
+        ? { ...p, transaction: transactions.find((t) => t.id === p.tpe_transaction_id) || null }
+        : p)),
       tableNom: data.salle_tables?.nom || null,
     },
     error: null,
