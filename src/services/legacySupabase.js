@@ -971,14 +971,21 @@ export function installLegacySupabase() {
       return data === true;
     },
 
-    async listKdsOrders(etabId) {
+    // Le passe ne lit que ce qu'il affiche : les bons encore au passe, et ceux
+    // des dernieres 24 h (termines gardes pour revue). Sans cette borne, chaque
+    // rafraichissement relisait tout l'historique de la maison.
+    // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [] (un
+    // passe vide et un passe illisible ne doivent pas se ressembler).
+    async listKdsOrders(etabId, { strict = false } = {}) {
+      const depuis = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
       let q = client
         .from('kds_orders')
         .select('*, kds_order_items(*)')
+        .or(`and(status.eq.open,completed_at.is.null),opened_at.gte.${depuis}`)
         .order('opened_at', { ascending: true, nullsFirst: false });
       if (etabId) q = q.eq('etablissement_id', etabId);
       const { data, error } = await q;
-      if (error) { console.error('[listKdsOrders]', error); return []; }
+      if (error) return _readFailed('[listKdsOrders]', error, strict);
       return (data || []).map(this.mapKdsOrderFromDB);
     },
 

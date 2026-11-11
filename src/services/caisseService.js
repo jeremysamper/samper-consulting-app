@@ -534,6 +534,26 @@ export async function passerSuiteSuivante(ticketId, suite) {
   return { error: null };
 }
 
+// Suite et ordre de saisie des lignes dont le KDS affiche les plats (clé
+// « caisse:<id de ligne> »). Le KDS ne sait d'un plat que « tenu ou non » :
+// c'est la ligne qui dit s'il est « À suivre » ou « À suivre 2 ». Lecture
+// seule, par paquets (la liste part dans l'URL). Rend une Map
+// id -> { suite, ordre }, ou { data: null, error } : jamais une Map vide en
+// cas d'échec, l'écran garde alors ce qu'il savait.
+export async function listSuitesLignes(ligneIds) {
+  const ids = [...new Set(ligneIds || [])].filter(Boolean);
+  const lignes = new Map();
+  for (let i = 0; i < ids.length; i += 80) {
+    const { data, error } = await supabase
+      .from('caisse_lignes')
+      .select('id, suite, created_at')
+      .in('id', ids.slice(i, i + 80));
+    if (error) return { data: null, error: mapError(error, 'Suites illisibles. Réessayez.') };
+    (data || []).forEach((l) => lignes.set(l.id, { suite: Number(l.suite) || 1, ordre: l.created_at || '' }));
+  }
+  return { data: lignes, error: null };
+}
+
 // (v7) L'ancien encaissement en deux écritures (paiement inséré, puis statut)
 // n'est plus appelé par cet écran : la base l'accepte encore pour les postes
 // restés sur l'ancienne version, et le scelle de la même façon.
