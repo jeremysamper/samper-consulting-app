@@ -2,7 +2,6 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Input } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
-import { canManageModule } from '../../data/demoData.js';
 import { ROLES_RAPPORT } from './rapport/gardeRapport.js';
 import AccueilReservations from './AccueilReservations.jsx';
 import ReservationForm from './ReservationForm.jsx';
@@ -11,7 +10,7 @@ import RechercheResas from './RechercheResas.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
-import { peutReglerEnLigne } from './gardeEnLigne.js';
+import { peutGererReservations, peutReglerEnLigne } from './gardeEnLigne.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
 import { useNotificationsAppareil } from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
@@ -104,7 +103,7 @@ export default function Previsions({ user, etablissement }) {
   const etabId         = etablissement?.id;
   // Créer / modifier / annuler des réservations : droit « gérer » du module
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
-  const canEdit        = canManageModule(user?.role, 'previsions');
+  const canEdit        = peutGererReservations(user?.role);
   const voitRapport    = ROLES_RAPPORT.includes(user?.role);
   const voitReglages   = peutReglerEnLigne(user?.role);
   // showFinancials réservé pour les futures sections KPIs CA

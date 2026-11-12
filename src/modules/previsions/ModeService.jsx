@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { usePageActive } from '../../components/parcours/pageActive.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { zurichClock, zurichToday } from '../../utils/zurichTime.js';
@@ -68,6 +69,10 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
   // Le geste retour (Android, glissé depuis le bord, Alt+←) quitte le mode
   // service au lieu de quitter le module.
   useBackLayer(true, onClose, 'mode-service');
+  // L'écran est posé en portail sur <body> : quand une autre page passe
+  // devant (« Dessiner la salle » ouvre la page des réglages par-dessus), il
+  // s'efface sans se fermer et reparaît au retour, tel qu'on l'a laissé.
+  const pageActive = usePageActive();
 
   // Service ouvert d'office, une fois les réservations connues : celui de
   // l'heure qu'il est (voir serviceEnCours).
@@ -102,7 +107,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
       style={{
         position: 'fixed', inset: 0, zIndex: 900,
         background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)',
-        display: 'flex', flexDirection: 'column',
+        display: pageActive ? 'flex' : 'none', flexDirection: 'column',
         paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',

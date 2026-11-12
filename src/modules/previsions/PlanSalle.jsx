@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
+import { demanderDessin } from './planSalleDessin.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { usePlanSalle, PLAN_W, PLAN_H, PLAN_GRID } from '../../hooks/usePlanSalle.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
@@ -29,6 +32,14 @@ import { serviceAffiche } from './statutsReservation.js';
 //   • « plan »    : on dessine la salle - on déplace, ajoute et règle les
 //     tables. Les réservations ne bougent pas.
 // Les mélanger reviendrait à déplacer une table en croyant placer un client.
+//
+// Depuis le 12.11.2026, le mode « plan » ne s'ouvre plus dans le service : le
+// plan de base (salles, tables, décor, places de bar, rotation) se dessine
+// dans la page des réglages, section 'plan_salle' (SectionPlanSalle.jsx), où
+// ce composant est monté en variante 'dessin'. « Dessiner la salle » y mène,
+// par-dessus le service et sur la même salle ; « J'ai fini » ramène au
+// service, resté sur son jour, son service et sa salle. Les écarts datés
+// (« Déplacer des tables ») restent ici, dans le service.
 //
 // PLAN DE BASE ET AJUSTEMENTS DU SERVICE
 // Le plan dessiné (« Dessiner la salle », pour tous les services) est le plan
@@ -443,17 +454,23 @@ export default function PlanSalle({
   // Écran Le plan de salle : service et salle sur la même ligne que les
   // boutons, pour que le plan se voie sans descendre la page.
   compact = false,
+  // Variante 'dessin' (page des réglages) : la salle ouverte à l'arrivée, la
+  // première table à poser d'office (venu d'un plan vide), et le retour au
+  // service quand on vient de lui.
+  salleInitiale = null, ajouterAuDepart = false, onAjoutFait, onFini = null,
 }) {
   const isMobile = useIsMobile();
   const plan     = usePlanSalle(etablissementId);
   const reservations = useReservations(etablissementId);
   const canvasRef = useRef(null);
   const enService = variante === 'service';
+  const enDessin  = variante === 'dessin';
 
-  const [mode,    setMode]    = useState('service');
+  // 'plan' seulement dans la section des réglages : le service n'y passe plus.
+  const [mode] = useState(enDessin ? 'plan' : 'service');
   const [service, setService] = useState(null);   // null = pas encore résolu
   const [salles,  setSalles]  = useState(null);
-  const [salleId, setSalleId] = useState(null);   // null = pas encore résolue
+  const [salleId, setSalleId] = useState(salleInitiale);   // null = pas encore résolue
   const [tables,  setTables]  = useState(null);
   const [liens,   setLiens]   = useState(null);
   const [loading, setLoading] = useState(false);
@@ -623,6 +640,10 @@ export default function PlanSalle({
 
   useEffect(() => { load(); }, [load]);
 
+  // Plan de base redessiné dans la page des réglages : le service resté monté
+  // derrière le relit au retour, sans attendre le temps réel.
+  useReglageModifie('plan_salle', () => { if (!enDessin && !dragRef.current) load(); });
+
   // Realtime : l'hôte place à l'entrée pendant que le patron regarde le même
   // plan. Sans ça, chacun placerait sur une photo périmée du service.
   useEffect(() => {
@@ -725,6 +746,18 @@ export default function PlanSalle({
     const existe = salles.some((s) => s.id === salleId);
     if (!existe) setSalleId(premiereSalleId);
   }, [salles, salleId, premiereSalleId]);
+
+  // Venu du bouton « Ajouter une table » d'un plan vide : la première table
+  // est posée à l'arrivée, une seule fois, comme le bouton le faisait. La
+  // salle doit être connue (ou absente : salleCible crée alors la première).
+  const ajoutFaitRef = useRef(false);
+  useEffect(() => {
+    if (!enDessin || !ajouterAuDepart || ajoutFaitRef.current || tables === null || salles === null) return;
+    if (salles.length > 0 && !salles.some((s) => s.id === salleId)) return;
+    ajoutFaitRef.current = true;
+    onAjoutFait?.();
+    ajouterTable();
+  }, [enDessin, ajouterAuDepart, tables, salles, salleId]);
 
   const tablesSalle = useMemo(() => {
     if (!tablesVues) return [];
@@ -1799,7 +1832,10 @@ export default function PlanSalle({
   }
 
   // ── Rendu ───────────────────────────────────────────────────────────
-  if (loading && tables === null) {
+  // En dessin, le canevas n'est posé qu'une fois le plan lu : pas de salle
+  // vide affichée le temps de la lecture, et sa mesure (quadrillage fin) part
+  // d'un canevas déjà à sa place.
+  if ((loading || enDessin) && tables === null && !error) {
     return (
       <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 13 }}>
         Chargement du plan…
@@ -1832,6 +1868,17 @@ export default function PlanSalle({
   // rétrogradé en cours de session verrait sinon le bouton « Terminer »
   // disparaître et resterait coincé dans l'éditeur.
   const modePlan    = mode === 'plan' && canEdit;
+  // « Dessiner la salle » : la section 'plan_salle' de la page des réglages,
+  // ouverte par-dessus le service avec ce qu'il montre (salle, jour, service,
+  // clients placés). Le geste retour et « J'ai fini » ramènent ici.
+  const ouvrirDessin = (ajouterTableAuDepart = false) => {
+    setAjuster(false);
+    demanderDessin({
+      etablissementId, salleId, date, service: serviceActif,
+      resas: resasRef.current || [], ajouterTable: ajouterTableAuDepart,
+    });
+    ouvrirCompte('plan_salle', { parDessus: true });
+  };
   // Salle sans rien à montrer. En dessin, le canevas reste affiché même vide :
   // c'est là qu'on pose le premier mur.
   const aucuneTable = tablesSalle.length === 0 && elementsSalle.length === 0 && !modePlan;
@@ -1966,7 +2013,7 @@ export default function PlanSalle({
             : 'Un responsable doit le dessiner depuis « Dessiner la salle ».'}
         </div>
         {canEdit && (
-          <button type="button" onClick={() => { setMode('plan'); ajouterTable(); }} style={{
+          <button type="button" onClick={() => ouvrirDessin(true)} style={{
             padding: '9px 18px', borderRadius: 8, border: 'none',
             background: 'var(--accent)', color: 'var(--on-accent)',
             fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
@@ -2083,10 +2130,10 @@ export default function PlanSalle({
             )}
             {/* Pas pendant un déplacement de tables : on finit l'un avant
                 d'ouvrir l'autre. */}
-            {!ajusterActif && (
+            {!ajusterActif && (!enDessin || onFini) && (
               <button
                 type="button"
-                onClick={() => { setAjuster(false); setMode(modePlan ? 'service' : 'plan'); }}
+                onClick={enDessin ? () => onFini() : () => ouvrirDessin()}
                 aria-pressed={modePlan}
                 style={boutonMode(modePlan)}
               >

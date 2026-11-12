@@ -4394,4 +4394,7 @@ export const UI_GLOSSARY_ES = {
   // ── Réglages R3 : plans de préventif ──
   'Technique : plans de préventif': 'Mantenimiento: planes preventivos',
   'Les tâches qui reviennent : périodicité, équipement, dernière fois': 'Las tareas que vuelven: periodicidad, equipo, última vez',
+  // ── Réglages R3 : plan de salle ──
+  'Réservations : plan de salle': 'Reservas: plano de sala',
+  'Salles, tables, décor et places de bar du plan de base': 'Salas, mesas, decoración y plazas de barra del plano base',
 };

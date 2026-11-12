@@ -4413,6 +4413,9 @@ export const UI_GLOSSARY = {
   // ── Réglages R3 : plans de préventif ──
   'Technique : plans de préventif': 'Maintenance: preventive plans',
   'Les tâches qui reviennent : périodicité, équipement, dernière fois': 'Recurring tasks: frequency, equipment, last time',
+  // ── Réglages R3 : plan de salle ──
+  'Réservations : plan de salle': 'Reservations: floor plan',
+  'Salles, tables, décor et places de bar du plan de base': 'Rooms, tables, decor and bar seats of the base plan',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

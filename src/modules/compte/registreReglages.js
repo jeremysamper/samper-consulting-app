@@ -1,7 +1,7 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
 import { peutChangerLogo, peutOrganiserMenu } from '../../components/nav/gardesCoque.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
-import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
+import { peutGererReservations, peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutGererCartes } from '../recettes/gardesRecettes.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
@@ -117,6 +117,12 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'previsions',
     garde: (ctx) => ouvreLeModule('previsions')(ctx) && peutReglerEnLigne(ctx.user?.role),
     charger: () => import('../previsions/SectionReservationEnLigne.jsx'),
+  },
+  {
+    id: 'plan_salle', libelle: 'Réservations : plan de salle', detail: 'Salles, tables, décor et places de bar du plan de base',
+    groupe: 'modules', portee: 'maison', module: 'previsions',
+    garde: (ctx) => ouvreLeModule('previsions')(ctx) && peutGererReservations(ctx.user?.role),
+    charger: () => import('../previsions/SectionPlanSalle.jsx'),
   },
   {
     id: 'comptabilite', libelle: 'Comptabilité', detail: 'Méthode de TVA, charges sociales, coût horaire moyen',

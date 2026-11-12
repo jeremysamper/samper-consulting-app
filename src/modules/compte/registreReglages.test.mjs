@@ -55,6 +55,7 @@ const AVANT = {
   factures_textes: ['consultant'],
   factures_email: ['consultant'],
   technique_plans: ['consultant', 'patron', 'gouvernante', 'technicien'],
+  plan_salle: ['consultant', 'patron', 'resp_cuisine', 'hote'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

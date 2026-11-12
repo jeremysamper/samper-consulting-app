@@ -1,6 +1,7 @@
 import React from 'react';
 import { readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { usePageActive } from './pageActive.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // État d'écran d'un module à parcours : l'accueil (une tuile par tâche), puis
@@ -52,9 +53,12 @@ export function useEcranModule(module, { repris = [], surRetour, fixe = null } =
   useBackLayer(!fixe && ecran !== ECRAN_ACCUEIL, retourAccueil, `${module}-ecran`);
 
   // Échap aussi, sauf quand une fenêtre est ouverte (elle se ferme seule,
-  // Fenetres.jsx) ou qu'un champ a la main (Échap y annule la frappe).
+  // Fenetres.jsx) ou qu'un champ a la main (Échap y annule la frappe). Pas
+  // quand une autre page est passée devant (la page des réglages ouverte
+  // par-dessus) : l'écran resté derrière garde sa place pour le retour.
+  const pageActive = usePageActive();
   React.useEffect(() => {
-    if (fixe || ecran === ECRAN_ACCUEIL) return undefined;
+    if (fixe || !pageActive || ecran === ECRAN_ACCUEIL) return undefined;
     const echap = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       if (document.querySelector('[data-fenetre], [role="dialog"]')) return;
@@ -63,7 +67,7 @@ export function useEcranModule(module, { repris = [], surRetour, fixe = null } =
     };
     document.addEventListener('keydown', echap);
     return () => document.removeEventListener('keydown', echap);
-  }, [ecran, retourAccueil, fixe]);
+  }, [ecran, retourAccueil, fixe, pageActive]);
 
   return { ecran, setEcran, retourAccueil };
 }

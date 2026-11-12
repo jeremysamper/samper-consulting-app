@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirPage } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
+import { PageActive } from '../components/parcours/pageActive.js';
 import { getPermissionsForRole } from '../data/demoData.js';
 import { messageErreur } from '../utils/messageErreur.js';
 import { Btn } from '../components/ui/index.jsx';
@@ -168,11 +169,13 @@ export default function LegacyModuleHost({
   // module est de toute façon monté masqué (cf. keep-alive dans App.jsx), donc
   // aucun « Chargement… » ne doit s'afficher pendant les transitions.
   const wrap = (name, element) => (
-    <SafeModule name={name}>
-      <Suspense fallback={null}>
-        {element}
-      </Suspense>
-    </SafeModule>
+    <PageActive.Provider value={isActivePage}>
+      <SafeModule name={name}>
+        <Suspense fallback={null}>
+          {element}
+        </Suspense>
+      </SafeModule>
+    </PageActive.Provider>
   );
   // Module non activé pour cet établissement (Paramètres) : page mémorisée
   // d'une session précédente, lien d'un autre module ou changement
