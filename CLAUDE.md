@@ -108,13 +108,13 @@ All styles are plain JS objects (inline `style={...}` props): no CSS modules, no
 
 ### UI primitives
 
-`src/components/ui/index.jsx` exports shared components used by new modules:
-- `Card` — bordered surface card
-- `Btn` — button with variants: `primary`, `ghost`, `danger`, `success`, `tab`, `tabActive`
-- `Input` — themed text input
-- `TabBar` — horizontal tab row from `[{ id, label, icon? }]`
-- `SectionHeader` — title + optional subtitle + optional action slot
-- `KpiCard` — metric card with value, delta, and optional chart slot
+`src/components/ui/index.jsx` exports shared components used by new modules. They carry the Office direction themselves, through tokens:
+- `Card`, also exported as `Panneau`: a panel, the visible limit of a group (`data-cadre`, `--zone`, soft rule)
+- `Btn`: button with variants `primary` (the only accent fill), `ghost` (outlined secondary), `danger`, `success`, `tab`, `tabActive`
+- `Input`: themed text input; `TabBar`: horizontal tab row from `[{ id, label, icon? }]`
+- `SectionHeader`: title + optional subtitle + optional action slot
+- `KpiCard`: metric card with value, delta, and optional chart slot
+- `ligneStyle()`: shared style of a list row; windows and their form styles (`Fenetre`, `st`) live in `Fenetres.jsx`
 
 ### Toast notifications
 
