@@ -156,8 +156,8 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   const liste = (
     <nav aria-label="Réglages" style={etroit ? st.listeEtroite : st.liste} data-reglages-liste="">
       {groupes.map((groupe) => (
-        <div key={groupe.id} role="group" aria-label={groupe.label} style={st.groupe}>
-          <div style={st.groupeTitre}>{groupe.label}</div>
+        <div key={groupe.id} role="group" aria-label={groupe.label} style={etroit ? st.groupeEtroit : st.groupe}>
+          <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>{groupe.label}</div>
           {groupe.sections.map((s) => {
             const courant = !etroit && s.id === actif;
             return (
@@ -172,7 +172,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
               >
                 <span style={st.entreeTexte}>
                   <span style={st.entreeLibelle}>{s.libelle}</span>
-                  {(etroit || courant) && s.detail && <span style={st.entreeDetail}>{s.detail}</span>}
+                  {etroit && s.detail && <span style={st.entreeDetail}>{s.detail}</span>}
                 </span>
                 {etroit && <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" style={st.chevron} />}
               </button>
@@ -259,16 +259,26 @@ function SectionMontee({ section, user, etablissement, permissions, shellMode })
 const st = {
   racine: { display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0, width: '100%' },
   racineEtroite: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, width: '100%' },
-  liste: { width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0 },
-  listeEtroite: { display: 'flex', flexDirection: 'column', gap: 18, width: '100%', maxWidth: 720, margin: '0 auto' },
+  // Deux volets : la liste reste en vue quand la section défile, et défile
+  // seule si elle dépasse l'écran (--app-header-h : la barre du haut).
+  liste: {
+    width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, position: 'sticky', top: 0,
+    maxHeight: 'calc(100dvh - var(--app-header-h, 64px) - 48px)', overflowY: 'auto', overscrollBehavior: 'contain',
+  },
+  listeEtroite: { display: 'flex', flexDirection: 'column', gap: 18, width: '100%', minWidth: 0 },
+  // Liste seule : une colonne au téléphone, deux ou trois dès que la largeur
+  // le permet (tablette, ordinateur à barre latérale ouverte), pour que toutes
+  // les sections tiennent en un écran ou presque.
+  groupeEtroit: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 6, minWidth: 0 },
+  groupeTitreEtroit: { gridColumn: '1 / -1', fontSize: 12, fontWeight: 500, color: 'var(--text3)', margin: '0 0 0 2px', letterSpacing: 0.2 },
   groupe: { display: 'flex', flexDirection: 'column', gap: 2 },
-  groupeTitre: { fontSize: 12, fontWeight: 500, color: 'var(--text3)', margin: '0 0 4px 10px', letterSpacing: 0.2 },
+  groupeTitre: { fontSize: 12, fontWeight: 500, color: 'var(--text3)', margin: '0 0 2px 10px', letterSpacing: 0.2 },
   entree: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 10px',
     background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)', color: 'var(--text)',
     fontFamily: 'var(--font)', fontSize: 14, fontWeight: 400, lineHeight: 1.25, textAlign: 'left', cursor: 'pointer',
   },
-  entreeEtroite: { minHeight: 56, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 'var(--r-lg)', fontSize: 15, marginBottom: 4 },
+  entreeEtroite: { minHeight: 56, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 'var(--r-lg)', fontSize: 15 },
   entreeActive: { background: 'var(--surface2)', color: 'var(--accent)', fontWeight: 500 },
   entreeTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
   entreeLibelle: { display: 'block' },

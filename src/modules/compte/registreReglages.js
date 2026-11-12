@@ -36,10 +36,14 @@ import { estDirectionPlanning, peutEcrirePlanning, peutOuvrirGroupes } from '../
 // module un raccourci (ouvrirCompte). Les gardes de base ne changent pas.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Ordre d'affichage : l'équipe avant les modules. Mesuré au banc le
+// 12.11.2026 : la liste des modules est longue, et « Rôles & accès » rangé
+// après elle passait sous le pli à 1440 x 900 (un défilement de plus pour le
+// réglage le plus ouvert du consultant).
 export const GROUPES = [
   { id: 'maison', label: 'La maison' },
-  { id: 'modules', label: 'Les modules' },
   { id: 'equipe', label: "L'équipe et les accès" },
+  { id: 'modules', label: 'Les modules' },
   { id: 'preferences', label: 'Mes préférences' },
 ];
 
