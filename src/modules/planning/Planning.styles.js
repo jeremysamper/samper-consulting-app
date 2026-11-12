@@ -86,7 +86,7 @@ const pls = {
   ptAvatar: { width: 30, height: 30, borderRadius: 'var(--r)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontWeight: 'var(--g3)', fontSize: 'var(--t1)' },
   ptName: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
   ptCell: { fontSize: 'var(--t2)' },
-  statusBadge: { display: 'inline-block', padding: '3px 9px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)' },
+  statusBadge: { display: 'inline-block', padding: '3px 9px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)' },
 
   // Mobile
   mobilePlanList: { display: 'flex', flexDirection: 'column', gap: 10 },
@@ -95,7 +95,7 @@ const pls = {
   mobileDayHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--rule-soft)' },
   mobileDayAdd: { width: 26, height: 26, borderRadius: 'var(--r)', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   mobileShiftCard: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--rule-soft)', cursor: 'pointer' },
-  mobileBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 8px', borderRadius: 'var(--r)', whiteSpace: 'nowrap' },
+  mobileBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 8px', borderRadius: 'var(--r-full)', whiteSpace: 'nowrap' },
 
   // Mobile - vue agenda par jour (refonte lisibilité)
   mobilePlanWrap: { display: 'flex', flexDirection: 'column' },
@@ -104,7 +104,7 @@ const pls = {
   mobileNavArrow: { width: 44, height: 44, flexShrink: 0, borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t4)', lineHeight: 1, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   mobileDayNavCenter: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, textAlign: 'center', overflow: 'hidden' },
   mobileDayName: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  mobileTodayChip: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)', background: 'var(--selection)', padding: '1px 8px', borderRadius: 'var(--r)' },
+  mobileTodayChip: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)', background: 'var(--selection)', padding: '1px 8px', borderRadius: 'var(--r-full)' },
   mobileTodayBtn: { width: '100%', minHeight: 44, borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)' },
   // Pointage en un geste depuis la liste desktop / iPad.
   ptAction: { display: 'flex', justifyContent: 'flex-end' },
@@ -125,7 +125,7 @@ const pls = {
   mobileCardTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   mobileHour: { fontSize: 'var(--t4)', fontWeight: 'var(--g3)', color: 'var(--text)', letterSpacing: 0.3, fontFamily: 'var(--font)' },
   mobileCheckbox: { width: 22, height: 22, flexShrink: 0 },
-  mobileStatus: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 9px', borderRadius: 'var(--r)', whiteSpace: 'nowrap', flexShrink: 0 },
+  mobileStatus: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 9px', borderRadius: 'var(--r-full)', whiteSpace: 'nowrap', flexShrink: 0 },
   mobileName: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
   mobileMeta: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 },
   mobileChip: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 9px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', background: 'transparent', whiteSpace: 'nowrap' },

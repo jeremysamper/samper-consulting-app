@@ -155,10 +155,9 @@ export default function AbsencesModal({ onClose, employees, absences, status, ca
 }
 
 const s = {
-  formulaire: {
-    display: 'flex', flexDirection: 'column', gap: 14, padding: 14,
-    borderRadius: 'var(--r)', background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
-  },
+  // Le groupe de saisie se pose dans la fenêtre sans cadre, comme la règle
+  // « Plus de carrés » le rendait.
+  formulaire: { display: 'flex', flexDirection: 'column', gap: 14, padding: '14px 0' },
   dates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 },
   choix: {
     minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
