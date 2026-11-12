@@ -119,3 +119,47 @@ test('série : plus de mille réservations sur un an, la somme des mois reste le
   assert.equal(serie.reduce((s, p) => s + p.chiffres.noShowTables, 0), total.noShowTables);
   assert.equal(serie.reduce((s, p) => s + p.chiffres.echuesTables, 0), total.echuesTables);
 });
+
+// ── Blocs ajoutés à la série (module Statistiques, lot S2) ──
+const tablesSalle = [{ id: 't1', nom: 'T1', zone: 'Salle', nb_places: 4 }, { id: 't2', nom: 'T2', zone: 'Terrasse', nb_places: 6 }];
+const riches = () => {
+  const out = [];
+  for (let i = 0; i < 1200; i += 1) {
+    const d = new Date(Date.UTC(2026, 0, 1 + (i % 300))).toISOString().slice(0, 10);
+    const cree = new Date(Date.UTC(2026, 0, 1 + (i % 300) - (i % 20))).toISOString();
+    out.push(resa(d, i % 3 ? 'soir' : 'midi', 1 + (i % 9), ['parti', 'parti', 'no_show', 'annule', 'confirme', 'demande'][i % 6], {
+      origine: ['equipe', 'en_ligne', 'passage'][i % 3], created_at: cree, heure_arrivee: `${11 + (i % 10)}:${i % 2 ? '00' : '30'}`,
+      client_id: i % 4 ? `c${i % 70}` : null, est_groupe: i % 13 === 0, passeport_gourmand: i % 17 === 0,
+      reservation_tables: i % 5 ? [{ table_id: i % 2 ? 't1' : 't2' }] : [],
+      reservation_tags: i % 7 === 0 ? [{ type_tag: 'occasion', valeur: 'anniversaire' }] : [],
+    }));
+  }
+  return out;
+};
+
+test('série : demandes, délais, composition, clientèle, jours de semaine et créneaux, ceux du rapport', () => {
+  const l = riches();
+  const an = { debut: '2026-01-01', fin: '2026-12-31' };
+  const r = computeReservationStats({ lignes: l, periode: an, comparaison: an, aujourdhui: AUJ, reference: AUJ, tables: tablesSalle });
+  const [tout] = serieReservations({ lignes: l, tranches: [an], aujourdhui: AUJ, tables: tablesSalle });
+  assert.deepEqual(tout.demandes, r.canaux.demandes);
+  assert.deepEqual(tout.anticipation.global, r.anticipation.global);
+  assert.deepEqual(tout.anticipation.parCanal, r.anticipation.parCanal);
+  assert.deepEqual(tout.composition.placement, r.composition.placement);
+  assert.deepEqual(tout.composition.zones, r.composition.zones);
+  assert.deepEqual(tout.composition.topTables, r.composition.topTables);
+  assert.deepEqual(tout.parJourSemaine, r.temporalite.parJourSemaine);
+  assert.deepEqual(tout.heatmap, r.temporalite.heatmap);
+  const { top, ...sansTop } = r.clientele;
+  assert.equal(top.length > 0, true);
+  assert.deepEqual(tout.clientele, sansTop);
+  // Les flux des mois font l'année.
+  const mois = Array.from({ length: 12 }, (_, m) => ({ debut: `2026-${String(m + 1).padStart(2, '0')}-01`, fin: new Date(Date.UTC(2026, m + 1, 0)).toISOString().slice(0, 10) }));
+  const serie = serieReservations({ lignes: l, tranches: mois, aujourdhui: AUJ, tables: tablesSalle });
+  const somme = (f) => serie.reduce((s, p) => s + f(p), 0);
+  assert.equal(somme((p) => p.demandes.recues), r.canaux.demandes.recues);
+  assert.equal(somme((p) => p.composition.groupes.tables), r.composition.groupes.tables);
+  assert.equal(somme((p) => p.clientele.passeport.tables), r.clientele.passeport.tables);
+  const placeesEtNon = r.composition.parTable.reduce((s, u) => s + u.couverts, 0) + r.composition.couvertsNonPlaces;
+  assert.ok(Math.abs(placeesEtNon - r.chiffres.couverts) < 1e-9);
+});

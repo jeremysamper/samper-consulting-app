@@ -135,7 +135,8 @@ function CarteGraphique({
   const [casesOuvertes, setCasesOuvertes] = useState(false);
   const enLigne = large && nb === 1;
   const seule = graphique.mesures.length === 1 ? mesures.find((m) => m.id === graphique.mesures[0]) : null;
-  const ventilations = seule?.ventilations || [];
+  const disponibles = composition.ventilationsDisponibles;
+  const ventilations = (seule?.ventilations || []).filter((v) => !disponibles || disponibles.includes(v.id) || v.id === graphique.ventilation);
   const panneau = (
     <PanneauMesures
       familles={familles}
@@ -166,7 +167,7 @@ function CarteGraphique({
         ) : null}
         {(composition.choix || []).filter((c) => c.options.length).map((c) => (
           <select key={c.mesure} className="no-print" style={st.select} value={c.valeur || ''} onChange={(e) => onChange({ choix: { ...(graphique.choix || {}), [c.mesure]: e.target.value } })} aria-label={c.libelle} data-stat-choix={c.mesure}>
-            {c.options.map((o) => <option key={o.cle} value={o.cle} data-no-translate>{o.libelle}</option>)}
+            {c.options.map((o) => <option key={o.cle} value={o.cle} {...(o.traduire ? {} : { 'data-no-translate': '' })}>{o.libelle}</option>)}
           </select>
         ))}
         {composition.types.length > 1 ? (
@@ -194,6 +195,7 @@ function CarteGraphique({
                 ))}
                 {composition.journees.length > 1 ? <div data-stat-journees=""><span>Ces mesures ne comptent pas la même journée :</span> {composition.journees.map((j, i) => <span key={j}>{i ? ', ' : ''}<span>{j}</span></span>)}.</div> : null}
                 {composition.type === 'empile' ? <div>Les barres s'empilent de bas en haut, dans l'ordre de la légende.</div> : null}
+                {composition.nonTracees > 0 ? <div data-stat-non-tracees=""><span>Catégories non tracées :</span> <span data-no-translate>{composition.nonTracees}</span>. <span>Un graphique porte six séries au plus, et une moyenne ou un relevé ne se regroupe pas.</span></div> : null}
                 {composition.ventilation && libelleComparaison ? <div>Avec une ventilation, la comparaison se lit dans le tableau, sur la période entière.</div> : null}
                 {coupees ? <div>La première ou la dernière tranche est coupée par la période : elle compte moins de jours.</div> : null}
               </div>

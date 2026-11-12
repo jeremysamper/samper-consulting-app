@@ -428,16 +428,20 @@ function composition(lignes, tables) {
       }
     });
   });
-  const topTables = [...usage.values()]
+  // Toutes les tables utilisées (le module Statistiques en fait une
+  // ventilation) ; l'écran n'en montre que les dix premières.
+  const parTable = [...usage.values()]
     .sort((a, b) => b.reservations - a.reservations || b.couverts - a.couverts)
-    .slice(0, 10)
     .map((u) => ({ ...u, nom: parId.get(u.id)?.nom || 'Table', places: parId.get(u.id)?.nb_places ?? null }));
+  const topTables = parTable.slice(0, 10);
 
   return {
     tailles,
     groupes: { tables: groupes.length, couverts: somme(groupes), part: ratio(somme(groupes), totalCouverts) },
     placement: { placees: placees.length, total, taux: ratio(placees.length, total) },
     topTables,
+    parTable,
+    couvertsNonPlaces: totalCouverts - somme(placees),
     zones: zonesRenseignees
       ? [...zones.entries()].map(([zone, couverts]) => ({ zone, couverts })).sort((a, b) => b.couverts - a.couverts)
       : null,
@@ -565,7 +569,13 @@ function variations(c, p, comparaisonVide) {
 // taux (no-show, annulation, occupation) se lit sur sa tranche, numérateur et
 // dénominateur sommés, jamais en moyenne de taux.
 // ═══════════════════════════════════════════════════════════════════════════
-export function serieReservations({ lignes, tranches, aujourdhui, service = 'tous', parametres = null }) {
+// Par tranche, en plus des chiffres clés, des canaux et des services : les
+// demandes en ligne, l'anticipation (sans les carnets, qui regardent l'avenir
+// depuis aujourd'hui), la composition des tables, la clientèle (sans les dix
+// clients nommés) et, de la temporalité, la moyenne par jour de la semaine et
+// les arrivées par créneau. Chaque bloc est la fonction du rapport sur les
+// réservations de la tranche.
+export function serieReservations({ lignes, tranches, aujourdhui, service = 'tous', parametres = null, tables = [] }) {
   const avecBrunch = aDuBrunch(lignes, parametres);
   const aParametres = Boolean(parametres && parametres.horaires && Object.keys(parametres.horaires).length);
   const ctx = { aujourdhui, reference: aujourdhui, service, avecBrunch, parametres, aParametres };
@@ -592,12 +602,23 @@ export function serieReservations({ lignes, tranches, aujourdhui, service = 'tou
   return liste.map((t, i) => {
     const dedans = parTranche[i];
     const comptees = dedans.filter((r) => COMPTEES.has(r.classe));
+    const c = canaux(dedans);
+    const a = anticipation(dedans, [], ctx);
+    const clients = clientele(dedans);
+    delete clients.top;
+    const temps = temporalite(dedans, t, ctx, services);
     return {
       debut: t.debut,
       fin: t.fin,
       vide: dedans.length === 0,
       chiffres: chiffresCles(dedans, t, ctx),
-      canaux: canaux(dedans).parCanal,
+      canaux: c.parCanal,
+      demandes: c.demandes,
+      anticipation: { global: a.global, parCanal: a.parCanal, tranches: a.tranches },
+      composition: composition(dedans, tables),
+      clientele: clients,
+      parJourSemaine: temps.parJourSemaine,
+      heatmap: temps.heatmap,
       services: services.map((s) => {
         const l = comptees.filter((r) => r.svc === s);
         return { service: s, tables: l.length, couverts: somme(l) };

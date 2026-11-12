@@ -135,7 +135,10 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
 // vue déduit (D5) : courbe pour une mesure dans le temps, barres pour une
 // ventilation sur la période, barres empilées pour une ventilation dans le
 // temps. La personne peut passer de l'un à l'autre quand deux sont valides.
-export function typesValides({ nbTranches, nbSeries, ventilation }) {
+// Une ventilation d'un taux ou d'un relevé (cumulable faux) ne s'empile pas :
+// une courbe par catégorie, ou ses barres sur la période.
+export function typesValides({ nbTranches, nbSeries, ventilation, cumulable = true }) {
+  if (ventilation && !cumulable) return nbTranches > 1 ? ['courbe', 'barres'] : ['barres'];
   if (ventilation) return nbTranches > 1 ? ['empile', 'barres'] : ['barres'];
   if (nbTranches <= 1) return ['barres'];
   return nbSeries === 1 ? ['courbe', 'barres'] : ['courbe'];

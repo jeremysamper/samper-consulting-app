@@ -19,6 +19,7 @@ import { totauxFactures } from '../inventaire/facturesLogic.js';
 import { jeuGroupes } from '../groupes/jeuGroupes.mjs';
 import { J1, J2, jeuEssai } from '../caisse/rapports/jeuEssai.mjs';
 import { rapportCaisse } from '../caisse/rapports/calculRapports.js';
+import { computeReservationStats } from '../previsions/rapport/computeReservationStats.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -199,6 +200,71 @@ test('caisse : ventes, annulations, abandons, par personne et par produit, ceux 
   const totaux = c.series.filter((x) => x.libelle !== 'Autres').map((x) => x.total);
   assert.deepEqual(totaux, [...totaux].sort((a, b) => a - b));
   assert.equal(c.series[0].libelle, r.plats.lignes.filter((l) => l.qte > 0).slice(-1)[0].libelle);
+});
+
+// ── Réservations : blocs ajoutés en S2 ──
+function jeuResas() {
+  const out = [];
+  for (let i = 0; i < 1300; i += 1) {
+    const d = new Date(Date.UTC(2026, 0, 1 + (i % 300))).toISOString().slice(0, 10);
+    out.push({
+      id: `r${i}`, date_service: d, service: i % 3 ? 'soir' : 'midi', heure_arrivee: `${11 + (i % 10)}:${i % 2 ? '00' : '30'}`, nb_couverts: 1 + (i % 9),
+      statut: ['parti', 'parti', 'no_show', 'annule', 'confirme', 'demande'][i % 6], origine: ['equipe', 'en_ligne', 'passage'][i % 3],
+      client_id: i % 4 ? `c${i % 70}` : null, est_groupe: i % 13 === 0, passeport_gourmand: i % 17 === 0, nom: 'x',
+      created_at: new Date(Date.UTC(2026, 0, 1 + (i % 300) - (i % 20))).toISOString(),
+      reservation_tables: i % 5 ? [{ table_id: i % 2 ? 't1' : 't2' }] : [],
+      reservation_tags: i % 7 === 0 ? [{ type_tag: 'occasion', valeur: 'anniversaire' }] : [],
+    });
+  }
+  return out;
+}
+
+test('réservations : demandes, délais, groupes, placement, clientèle, tags et ventilations, ceux du rapport', () => {
+  const lignes = jeuResas();
+  const tables = [{ id: 't1', nom: 'T1', zone: 'Salle', nb_places: 4 }, { id: 't2', nom: 'T2', zone: 'Terrasse', nb_places: 6 }];
+  const donnees = { lignes, parametres: null, tables };
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('reservations', lire('reservations', donnees, '2026-01-01', '2026-10-31', pas)));
+  const lu = lire('reservations', donnees, '2026-01-01', '2026-10-31', 'mois');
+  const periode = { debut: '2026-01-01', fin: '2026-10-31' };
+  const r = computeReservationStats({ lignes, periode, comparaison: periode, aujourdhui: AUJ, reference: AUJ, tables });
+  const v = (id, cle) => mesure(id).valeur(lu.total, cle);
+  assert.equal(v('reservations.demandes_recues'), r.canaux.demandes.recues);
+  assert.equal(v('reservations.demandes_acceptees'), r.canaux.demandes.acceptees);
+  assert.equal(v('reservations.demandes_annulees'), r.canaux.demandes.annulees);
+  assert.equal(v('reservations.anticipees'), r.anticipation.global.tables);
+  assert.equal(v('reservations.delai_moyen'), r.anticipation.global.moyenne);
+  assert.equal(v('reservations.delai_median'), r.anticipation.global.mediane);
+  assert.equal(v('reservations.groupes'), r.composition.groupes.tables);
+  assert.equal(v('reservations.placement'), r.composition.placement.taux);
+  assert.equal(v('reservations.avec_fiche'), r.clientele.partAvecFiche);
+  assert.equal(v('reservations.clients_uniques'), r.clientele.clientsUniques);
+  assert.equal(v('reservations.clients_revenus'), r.clientele.clientsRevenus);
+  assert.equal(v('reservations.taux_retour'), r.clientele.tauxRetour);
+  assert.equal(v('reservations.passeport'), r.clientele.passeport.tables);
+  assert.equal(v('reservations.taguees', 'occasion'), r.clientele.tags.find((t) => t.id === 'occasion').tables);
+  // Chaque ventilation des couverts refait les couverts ; le délai refait les réservations au délai connu.
+  const somme = (parts) => parts.reduce((t, x) => t + (x.valeur || 0), 0);
+  const couverts = mesure('reservations.couverts');
+  couverts.ventilations.forEach((x) => assert.ok(Math.abs(somme(x.parts(lu.total)) - r.chiffres.couverts) < 1e-9, x.id));
+  assert.ok(couverts.ventilations.every((x) => x.parts(lu.total).length), 'salle à zones et tables : chaque ventilation a ses catégories');
+  assert.equal(somme(mesure('reservations.anticipees').ventilations[0].parts(lu.total)), r.anticipation.global.tables);
+  // Par jour de la semaine : la moyenne du rapport, en courbes, sans « Autres ».
+  const jo = mesure('reservations.couverts_jour_ouverture');
+  const sources = { points: { reservations: lu.points }, totaux: { reservations: lu.total } };
+  const c = composer({ graphique: { mesures: [jo.id], ventilation: 'semaine_debut' }, mesures: [jo], tranches: lu.tranches, sources, etats: { reservations: 'ready' }, familles: FAMILLES });
+  assert.deepEqual(c.types, ['courbe', 'barres']);
+  assert.deepEqual(c.series.map((x) => x.libelle), ['Lundi', 'Mardi', 'Mercredi', 'Jeudi']);
+  assert.equal(c.nonTracees, 0);
+  assert.equal(c.series[0].total, r.temporalite.parJourSemaine[0].couverts);
+  const f = composer({ graphique: { mesures: [jo.id], ventilation: 'semaine_fin' }, mesures: [jo], tranches: lu.tranches, sources, etats: { reservations: 'ready' }, familles: FAMILLES });
+  assert.deepEqual(f.series.map((x) => x.libelle), ['Vendredi', 'Samedi', 'Dimanche']);
+  assert.equal(f.series[2].total, r.temporalite.parJourSemaine[6].couverts);
+  // Un taux ventilé sur plus de six catégories : six tracées, aucune « Autres ».
+  const sept = { ...jo, ventilations: [{ id: 'tous', libelle: 'x', parts: (p) => (p.parJourSemaine || []).map((j) => ({ cle: String(j.iso), libelle: String(j.iso), valeur: j.couverts, poids: j.nbJours })) }] };
+  const t = composer({ graphique: { mesures: [jo.id], ventilation: 'tous' }, mesures: [sept], tranches: lu.tranches, sources, etats: { reservations: 'ready' }, familles: FAMILLES });
+  assert.equal(t.series.length, 6);
+  assert.equal(t.nonTracees, 1);
+  assert.ok(!t.series.some((x) => x.libelle === 'Autres'));
 });
 
 test('catalogue S2 : nombre de mesures par famille', () => {

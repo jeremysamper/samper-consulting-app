@@ -22,7 +22,11 @@ const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
 const AUJ = '2026-11-11';
 // Mesures ajoutées en S2 aux familles de S1, testées dans egalite-s2.test.mjs.
-const AJOUTS_S2 = ['achats.reglees', 'achats.delai', 'caisse.ventes', 'caisse.annulations_ttc', 'caisse.abandons', 'caisse.abandons_ttc'];
+const AJOUTS_S2 = ['achats.reglees', 'achats.delai', 'caisse.ventes', 'caisse.annulations_ttc', 'caisse.abandons', 'caisse.abandons_ttc',
+  'reservations.demandes_recues', 'reservations.demandes_acceptees', 'reservations.demandes_annulees', 'reservations.anticipees',
+  'reservations.delai_moyen', 'reservations.delai_median', 'reservations.groupes', 'reservations.placement', 'reservations.avec_fiche',
+  'reservations.clients_uniques', 'reservations.clients_venus', 'reservations.clients_revenus', 'reservations.taux_retour',
+  'reservations.passeport', 'reservations.taguees'];
 
 // Points par tranche et point de la période entière, comme le fait l'écran.
 function lire(id, donnees, debut, fin, pas) {
@@ -120,7 +124,8 @@ test('réservations : chaque flux fait le total du rapport, les taux sont ceux d
   assert.equal(v('reservations.taille_moyenne'), c.tailleMoyenne);
   assert.equal(v('reservations.couverts_jour_ouverture'), c.couvertsParJourOuverture);
   const couverts = MESURES.find((m) => m.id === 'reservations.couverts');
-  couverts.ventilations.forEach((vent) => assert.equal(vent.parts(lu.total).reduce((s, x) => s + x.valeur, 0), c.couverts, vent.id));
+  // Une ventilation sans catégorie (salle sans zones ni tables) n'a rien à refaire.
+  couverts.ventilations.filter((vent) => vent.parts(lu.total).length).forEach((vent) => assert.ok(Math.abs(vent.parts(lu.total).reduce((s, x) => s + x.valeur, 0) - c.couverts) < 1e-9, vent.id));
 });
 
 // ── Achats ──

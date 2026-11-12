@@ -41,7 +41,7 @@ function serieDeMesure(m, sources, graphique) {
   const surPeriode = valeurPeriode(m.nature, { surPeriode: total ? lire(total) : null, valeurs });
   const surPeriodeAvant = avant ? valeurPeriode(m.nature, { surPeriode: totalAvant ? lire(totalAvant) : null, valeurs: comparaison }) : null;
   return {
-    id: m.id, mesure: m.id, libelle: choix?.option ? choix.option.libelle : m.libelle, donnee: !!choix?.option, unite: m.unite, nature: m.nature,
+    id: m.id, mesure: m.id, libelle: choix?.option ? choix.option.libelle : m.libelle, donnee: !!choix?.option && !choix.option.traduire, unite: m.unite, nature: m.nature,
     valeurs, comparaison, total: surPeriode, totalComparaison: surPeriodeAvant,
     ecartTotal: avant ? ecartDe(surPeriode, surPeriodeAvant) : null,
     arrondi: m.nature === 'flux' ? ecartArrondi(valeurs, surPeriode) : null,
@@ -50,7 +50,8 @@ function serieDeMesure(m, sources, graphique) {
 
 // Séries d'une mesure ventilée : une série par catégorie, les plus grosses
 // d'abord (total de la période), au plus six ; le reste est regroupé. Une
-// ventilation `ordre: 'croissant'` garde les plus petites (moins vendus).
+// ventilation `ordre: 'croissant'` garde les plus petites (moins vendus), une
+// ventilation `ordre: 'naturel'` garde l'ordre de ses parts (jours de semaine).
 function seriesVentilees(m, ventilation, sources) {
   const points = sources.points[m.famille];
   const total = sources.totaux[m.famille];
@@ -61,14 +62,26 @@ function seriesVentilees(m, ventilation, sources) {
     const c = cats.get(part.cle);
     if (cible === 'point') c.valeurs[rang] = part.valeur;
     else c[cible] = part.valeur;
+    if (cible === 'total' && part.poids != null) c.poids = part.poids;
   };
   points.forEach((p, i) => ventilation.parts(p).forEach((part) => noter(part, i, 'point')));
   if (total) ventilation.parts(total).forEach((part) => noter(part, 0, 'total'));
   if (avant) ventilation.parts(avant).forEach((part) => noter(part, 0, 'totalComparaison'));
   const sens = ventilation.ordre === 'croissant' ? -1 : 1;
-  const tri = [...cats.values()].sort((a, b) => sens * (Math.abs(b.total || 0) - Math.abs(a.total || 0)) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+  // Un taux ou un stock se trie sur son poids (nombre de jours, de relevés),
+  // jamais sur une somme ; un flux sur son total.
+  const poids = (c) => (m.nature === 'flux' ? Math.abs(c.total || 0) : (c.poids ?? Math.abs(c.total || 0)));
+  const tri = ventilation.ordre === 'naturel'
+    ? [...cats.values()]
+    : [...cats.values()].sort((a, b) => sens * (poids(b) - poids(a)) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
   let gardees = tri;
-  if (tri.length > MAX_SERIES) {
+  let nonTracees = 0;
+  if (tri.length > MAX_SERIES && m.nature !== 'flux') {
+    // Un taux ou un relevé ne se regroupe pas en « Autres » (une somme de
+    // moyennes ou de températures n'a pas de sens) : six au plus, le reste dit.
+    gardees = tri.slice(0, MAX_SERIES);
+    nonTracees = tri.length - MAX_SERIES;
+  } else if (tri.length > MAX_SERIES) {
     gardees = tri.slice(0, MAX_SERIES - 1);
     const reste = tri.slice(MAX_SERIES - 1);
     const somme = (liste) => (liste.some(estNombre) ? liste.filter(estNombre).reduce((s, v) => s + Math.round(v * 100), 0) / 100 : null);
@@ -79,13 +92,15 @@ function seriesVentilees(m, ventilation, sources) {
       totalComparaison: avant ? somme(reste.map((c) => c.totalComparaison)) : null,
     });
   }
-  return gardees.map((c) => ({
+  const series = gardees.map((c) => ({
     id: `${m.id}|${c.cle}`, mesure: m.id, libelle: c.libelle, brut: c.brut, donnee: c.donnee, nbRegroupes: c.nbRegroupes || 0,
     unite: m.unite, nature: m.nature, valeurs: c.valeurs, comparaison: null,
     total: c.total, totalComparaison: avant ? c.totalComparaison : null,
     ecartTotal: avant ? ecartDe(c.total, c.totalComparaison) : null,
     arrondi: null,
   }));
+  series.nonTracees = nonTracees;
+  return series;
 }
 
 // Échelle d'un axe : les valeurs des séries, ou les piles pour un empilé
@@ -131,12 +146,17 @@ export function composer({ graphique, mesures, tranches, tranchesComparaison = n
   const src = avecComparaison ? sources : { ...sources, pointsComparaison: null };
 
   let series = [];
-  if (ventilation && lues.length) series = seriesVentilees(seule, ventilation, sources).map((s) => ({ ...s, ventile: true }));
+  let nonTracees = 0;
+  if (ventilation && lues.length) {
+    const v = seriesVentilees(seule, ventilation, sources);
+    nonTracees = v.nonTracees;
+    series = v.map((s) => ({ ...s, ventile: true }));
+  }
   else series = lues.map((m) => serieDeMesure(m, src, graphique));
 
   const unites = unitesDe(series);
   series = series.map((s, i) => ({ ...s, rang: i, axe: unites.indexOf(s.unite) === 1 ? 'd' : 'g' }));
-  const contexte = { nbTranches: tranches.length, nbSeries: series.length, ventilation: !!ventilation };
+  const contexte = { nbTranches: tranches.length, nbSeries: series.length, ventilation: !!ventilation, cumulable: !ventilation || seule?.nature === 'flux' };
   const types = typesValides(contexte);
   const type = typeRetenu(graphique, contexte);
   const mode = type === 'empile' ? 'empile' : (type === 'barres' && ventilation ? 'totaux' : 'valeurs');
@@ -152,6 +172,10 @@ export function composer({ graphique, mesures, tranches, tranchesComparaison = n
     unites,
     echelles,
     ventilation,
+    nonTracees,
+    // Ventilations qui ont des catégories sur la période (une salle sans zones
+    // n'offre pas « par zone ») ; null tant que la famille n'est pas lue.
+    ventilationsDisponibles: seule && sources.totaux?.[seule.famille] ? (seule.ventilations || []).filter((v) => v.parts(sources.totaux[seule.famille]).length > 0).map((v) => v.id) : null,
     comparaison: avecComparaison,
     enAttente,
     nonLues,
