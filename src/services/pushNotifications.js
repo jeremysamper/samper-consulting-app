@@ -34,8 +34,8 @@ const versOctets = (b64url) => {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 };
 
-async function appeler(action) {
-  const { data, error } = await supabase.functions.invoke('notifications', { body: { action } });
+async function appeler(action, extra = {}) {
+  const { data, error } = await supabase.functions.invoke('notifications', { body: { ...extra, action } });
   if (error) {
     let message = null;
     try { message = (await error.context?.json?.())?.error || null; } catch { /* corps illisible */ }
@@ -105,6 +105,8 @@ export async function desactiverPush(etablissementId) {
   return { error: null };
 }
 
-export async function testerPush() {
-  return appeler('test');
+// page : où mène le tap de la notification d'essai ('caisse' pour qui n'a pas
+// Réservations). Liste fermée côté serveur ; sans page, Réservations.
+export async function testerPush(page) {
+  return appeler('test', page ? { page } : {});
 }

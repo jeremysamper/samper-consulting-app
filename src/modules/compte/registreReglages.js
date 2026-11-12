@@ -231,10 +231,14 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
     charger: () => import('../recettes/SectionCarteAccueil.jsx'),
   },
+  // Ouverte à qui voit Réservations ou ouvre la Caisse : un appareil abonné
+  // reçoit les réservations en ligne (seulement si la personne voit
+  // Réservations), les plats prêts de la caisse (seulement ceux qu'elle a
+  // envoyés) et les alertes qui la visent. Aucun droit ne change.
   {
-    id: 'notifications', libelle: 'Notifications sur cet appareil', detail: 'Être prévenu des nouvelles réservations en ligne',
+    id: 'notifications', libelle: 'Notifications sur cet appareil', detail: 'Être prévenu des réservations en ligne et des plats prêts',
     groupe: 'preferences', portee: 'appareil', module: 'previsions',
-    garde: ouvreLeModule('previsions'),
+    garde: (ctx) => ouvreLeModule('previsions')(ctx) || ouvreLeModule('caisse')(ctx),
     charger: () => import('../previsions/SectionNotificationsAppareil.jsx'),
   },
 ];
