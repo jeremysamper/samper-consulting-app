@@ -49,6 +49,8 @@ const AVANT = {
   mon_compte: ROLES,
   apparence: ROLES,
   notifications: ['consultant', 'patron', 'resp_cuisine', 'serveur', 'hote', 'receptionniste'],
+  // Lot R3 : réglages sortis de leur écran de travail.
+  carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

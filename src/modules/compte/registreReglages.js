@@ -2,6 +2,7 @@ import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../m
 import { peutChangerLogo, peutOrganiserMenu } from '../../components/nav/gardesCoque.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
+import { peutGererCartes } from '../recettes/gardesRecettes.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
 import { estDirectionSpa } from '../spa/gardesSpa.js';
@@ -188,6 +189,12 @@ export const SECTIONS = [
     id: 'apparence', libelle: 'Apparence et langue', detail: 'Mode clair ou sombre, langue d\'affichage',
     groupe: 'preferences', portee: 'appareil', garde: () => true,
     charger: () => import('./sections/SectionApparence.jsx'),
+  },
+  {
+    id: 'carte_accueil', libelle: "Carte d'accueil des recettes", detail: 'La carte qui s\'ouvre à votre arrivée dans Cartes & Recettes',
+    groupe: 'preferences', portee: 'personne', module: 'cartes',
+    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
+    charger: () => import('../recettes/SectionCarteAccueil.jsx'),
   },
   {
     id: 'notifications', libelle: 'Notifications sur cet appareil', detail: 'Être prévenu des nouvelles réservations en ligne',

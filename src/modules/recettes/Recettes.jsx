@@ -1,5 +1,7 @@
 import React from 'react';
 import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { lireCarteAccueil, useCarteAccueil } from './carteAccueil.js';
+import { peutGererCartes } from './gardesRecettes.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
@@ -1430,7 +1432,7 @@ const Recettes = ({ user, etablissement }) => {
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
   const perms = getPermissionsForRole(user.role);
-  const canManageCartes = canManageModule(user.role, 'recettes');
+  const canManageCartes = peutGererCartes(user.role);
   // Créer, modifier, dupliquer les fiches et les plats (éditeur venu des Outils
   // consultant le 27.10.2026) : droit d'action « fiches » ET « Modifier » du
   // module. Garde de présentation : la base n'en vérifie pas d'autre que
@@ -1475,12 +1477,10 @@ const Recettes = ({ user, etablissement }) => {
   const [showExportModal, setShowExportModal] = React.useState(false);
   const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
   // Carte d'accueil = préférence utilisateur par établissement (user_settings,
-  // synchro multi-device, cache hydraté au login → lecture instantanée).
-  const [defaultCarteId, setDefaultCarteId] = React.useState(null);
-
-  React.useEffect(() => {
-    setDefaultCarteId(legacySB?.db?.getUserSettingSync?.('cartes_default:' + etabId, null) || null);
-  }, [etabId]);
+  // synchro multi-device, cache hydraté au login → lecture instantanée). Un
+  // seul état, partagé avec la section « Carte d'accueil » de la page des
+  // réglages (carteAccueil.js) : le bouton de la carte en est le raccourci.
+  const { carteId: defaultCarteId, choisir: choisirCarteAccueil } = useCarteAccueil(etabId);
 
   // Écran du parcours : l'accueil (une tuile par tâche), puis un écran par
   // tâche. La carte du moment et la recherche se rouvrent à la visite suivante
@@ -1572,9 +1572,8 @@ const Recettes = ({ user, etablissement }) => {
 
   const toggleDefaultCarte = async (carteId) => {
     const next = defaultCarteId === carteId ? null : carteId;
-    setDefaultCarteId(next);
     try {
-      await legacySB?.db?.setUserSetting?.('cartes_default:' + etabId, next);
+      await choisirCarteAccueil(next);
       notifyLegacy(next ? 'Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
     } catch (e) { notifyLegacy('Enregistrement impossible. ' + messageErreur(e, 'recettes'), 'error'); }
   };
@@ -1831,7 +1830,7 @@ const Recettes = ({ user, etablissement }) => {
   React.useEffect(() => {
     if (!cartes.length) return;
     if (activeTab === LIBRARY_TAB || cartes.some(c => c.id === activeTab)) return;
-    const saved = legacySB?.db?.getUserSettingSync?.('cartes_default:' + etabId, null);
+    const saved = lireCarteAccueil(etabId);
     setActiveTab(saved && cartes.some(c => c.id === saved) ? saved : cartes[0].id);
   }, [cartes, etabId, activeTab]);
 

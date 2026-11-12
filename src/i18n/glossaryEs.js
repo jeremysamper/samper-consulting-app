@@ -4369,4 +4369,12 @@ export const UI_GLOSSARY_ES = {
   "dans la barre latérale, sur la page d'accueil et sur les factures.": 'en la barra lateral, en la página de inicio y en las facturas.',
   'Retirer le logo': 'Quitar el logo',
   'Max 500 Ko. PNG, JPG ou SVG.': 'Máx. 500 KB. PNG, JPG o SVG.',
+  // ── Réglages R3 : carte d'accueil des recettes ──
+  "Carte d'accueil des recettes": 'Carta de inicio de las recetas',
+  "La carte qui s'ouvre à votre arrivée dans Cartes & Recettes": 'La carta que se abre al llegar a Cartas y Recetas',
+  "La carte qui s'ouvre à votre arrivée dans Cartes & Recettes, pour": 'La carta que se abre al llegar a Cartas y Recetas, para',
+  '. Le bouton « Définir par défaut » de chaque carte fait la même chose.': '. El botón «Definir por defecto» de cada carta hace lo mismo.',
+  'La première carte': 'La primera carta',
+  "Aucune carte d'accueil choisie.": 'Ninguna carta de inicio elegida.',
+  "Les cartes n'ont pas pu être lues. Réessayez dans un instant.": 'No se han podido leer las cartas. Inténtelo de nuevo en un momento.',
 };

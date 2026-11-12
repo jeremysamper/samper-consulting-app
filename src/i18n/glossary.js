@@ -4388,6 +4388,14 @@ export const UI_GLOSSARY = {
   "dans la barre latérale, sur la page d'accueil et sur les factures.": 'in the sidebar, on the home page and on invoices.',
   'Retirer le logo': 'Remove the logo',
   'Max 500 Ko. PNG, JPG ou SVG.': 'Max 500 KB. PNG, JPG or SVG.',
+  // ── Réglages R3 : carte d'accueil des recettes ──
+  "Carte d'accueil des recettes": 'Recipes home menu',
+  "La carte qui s'ouvre à votre arrivée dans Cartes & Recettes": 'The menu that opens when you arrive in Menus & Recipes',
+  "La carte qui s'ouvre à votre arrivée dans Cartes & Recettes, pour": 'The menu that opens when you arrive in Menus & Recipes, for',
+  '. Le bouton « Définir par défaut » de chaque carte fait la même chose.': '. The "Set as default" button on each menu does the same.',
+  'La première carte': 'The first menu',
+  "Aucune carte d'accueil choisie.": 'No home menu chosen.',
+  "Les cartes n'ont pas pu être lues. Réessayez dans un instant.": 'The menus could not be read. Try again in a moment.',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
