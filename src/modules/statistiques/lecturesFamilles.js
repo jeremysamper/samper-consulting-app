@@ -28,6 +28,9 @@ import { lireGroupes } from '../../hooks/useGroupes.js';
 import { supabase } from '../../services/supabase.js';
 import { zurichAjouterJours, zurichMinuitIso } from '../../utils/zurichTime.js';
 import { mapReservation as mapRdvSpa } from '../spa/spaData.js';
+import {
+  mapActivite, mapChambre, mapDemande, mapInscription, mapJournal, mapLigne, mapLinge, mapOccupant, mapOrdre, mapSejour,
+} from '../hebergement/hotelData.js';
 
 // Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
 // active pour l'établissement, puis droit d'ouvrir la page.
@@ -220,6 +223,57 @@ export const LECTURES = {
       const ventes = await toutesLesPages((x, y) => supabase.from('pos_sales').select('id, pos_item_id, date, qty, revenue_cts')
         .in('pos_item_id', items.map((i) => i.id)).gte('date', debut).lte('date', fin).order('date').order('id').range(x, y));
       return { ventes, noms: Object.fromEntries(items.map((i) => [i.id, i.name || i.id])) };
+    },
+  },
+  // Branche Hôtel : une famille par écran, chacune sa garde et ses tables.
+  hebergement: {
+    visible: (ctx) => ecranOuvert('hebergement', ctx),
+    async lire(etabId, debut, fin) {
+      const [sejours, chambres, occupants, lignes] = await Promise.all([
+        toutesLesPages((x, y) => supabase.from('sejours').select('*').eq('etablissement_id', etabId).lte('arrivee', fin).gt('depart', debut).order('arrivee').order('id').range(x, y)),
+        toutesLesPages((x, y) => supabase.from('chambres').select('*').eq('etablissement_id', etabId).order('id').range(x, y)),
+        toutesLesPages((x, y) => supabase.from('sejour_occupants').select('*').eq('etablissement_id', etabId).order('id').range(x, y)),
+        toutesLesPages((x, y) => supabase.from('sejour_lignes').select('*').eq('etablissement_id', etabId).gte('jour', debut).lte('jour', fin).order('jour').order('id').range(x, y)),
+      ]);
+      return { sejours: sejours.map(mapSejour), chambres: chambres.map(mapChambre), occupants: occupants.map(mapOccupant), lignes: lignes.map(mapLigne) };
+    },
+  },
+  demandes: {
+    sansFenetre: true,
+    visible: (ctx) => ecranOuvert('demandes', ctx),
+    async lire(etabId) {
+      const demandes = await toutesLesPages((x, y) => supabase.from('demandes').select('*').eq('etablissement_id', etabId).order('created_at').order('id').range(x, y));
+      return { demandes: demandes.map(mapDemande) };
+    },
+  },
+  technique: {
+    visible: (ctx) => ecranOuvert('technique', ctx),
+    async lire(etabId, debut, fin) {
+      const [de, a] = bornesHorodatage(debut, fin);
+      const ordres = await toutesLesPages((x, y) => supabase.from('ordres_travail').select('*').eq('etablissement_id', etabId).gte('termine_at', de).lt('termine_at', a).order('termine_at').order('id').range(x, y));
+      return { ordres: ordres.map(mapOrdre) };
+    },
+  },
+  activites: {
+    visible: (ctx) => ecranOuvert('activites', ctx),
+    async lire(etabId, debut, fin) {
+      const [de, a] = bornesHorodatage(debut, fin);
+      const [activites, inscriptions] = await Promise.all([
+        toutesLesPages((x, y) => supabase.from('activites').select('*').eq('etablissement_id', etabId).gte('debut', de).lt('debut', a).order('debut').order('id').range(x, y)),
+        toutesLesPages((x, y) => supabase.from('activite_inscriptions').select('*').eq('etablissement_id', etabId).order('id').range(x, y)),
+      ]);
+      return { activites: activites.map(mapActivite), inscriptions: inscriptions.map(mapInscription) };
+    },
+  },
+  etages: {
+    visible: (ctx) => ecranOuvert('etages', ctx),
+    async lire(etabId, debut, fin) {
+      const [de, a] = bornesHorodatage(debut, fin);
+      const [journal, linge] = await Promise.all([
+        toutesLesPages((x, y) => supabase.from('chambres_statut_journal').select('*').eq('etablissement_id', etabId).gte('at', de).lt('at', a).order('at').order('id').range(x, y)),
+        toutesLesPages((x, y) => supabase.from('linge_mouvements').select('*').eq('etablissement_id', etabId).gte('jour', debut).lte('jour', fin).order('jour').order('id').range(x, y)),
+      ]);
+      return { journalChambres: journal.map(mapJournal), linge: linge.map(mapLinge) };
     },
   },
 };

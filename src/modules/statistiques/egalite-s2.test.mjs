@@ -20,6 +20,7 @@ import { jeuGroupes } from '../groupes/jeuGroupes.mjs';
 import { J1, J2, jeuEssai } from '../caisse/rapports/jeuEssai.mjs';
 import { rapportCaisse } from '../caisse/rapports/calculRapports.js';
 import { computeReservationStats } from '../previsions/rapport/computeReservationStats.js';
+import { statsPeriode } from '../hebergement/serieHotel.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -316,6 +317,31 @@ test('ventes POS : quantités et chiffre font le top et flop, par plat', () => {
   assert.equal(parts.reduce((x, y) => x + y.valeur, 0), mesure('pos.qte').valeur(lu.total));
 });
 
+// ── Branche Hôtel ──
+test('hôtel : registre, demandes, technique, activités et étages, chaque flux fait son total', () => {
+  const ajouter = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const sejours = Array.from({ length: 1100 }, (_, i) => { const a = ajouter('2026-01-01', i % 330); return { id: `s${i}`, arrivee: a, depart: ajouter(a, 1 + (i % 5)), statut: ['parti', 'en_maison', 'annule'][i % 3], nbAdultes: 2, nbEnfants: 0 }; });
+  const occupants = sejours.filter((_, i) => i % 2).map((x, i) => ({ sejourId: x.id, arrivee: x.arrivee, depart: x.depart, domicilePays: ['CH', 'FR'][i % 2] }));
+  const lignes = sejours.flatMap((x) => [{ jour: x.arrivee, type: 'nuitee', montant: 150 }, { jour: x.arrivee, type: 'taxe_sejour', montant: 3.5 }]);
+  const chambres = Array.from({ length: 10 }, (_, k) => ({ id: `c${k}`, actif: true }));
+  const demandes = Array.from({ length: 300 }, (_, i) => ({ createdAt: `${ajouter('2026-01-01', i)}T08:00:00Z`, statut: i % 2 ? 'faite' : 'ouverte', faiteAt: `${ajouter('2026-01-01', i)}T15:00:00Z` }));
+  const ordres = Array.from({ length: 200 }, (_, i) => ({ statut: 'termine', termineAt: `${ajouter('2026-01-01', i)}T10:00:00Z`, tempsMinutes: 45, cout: 80 }));
+  const activites = Array.from({ length: 100 }, (_, i) => ({ id: `a${i}`, debut: `${ajouter('2026-01-01', i * 3)}T14:00:00Z`, places: 10, annulee: false }));
+  const inscriptions = Array.from({ length: 300 }, (_, i) => ({ activiteId: `a${i % 100}`, nbPersonnes: 2, statut: 'inscrit' }));
+  const journalChambres = Array.from({ length: 600 }, (_, i) => ({ nouveau: i % 2 ? 'propre' : 'a_faire', at: `${ajouter('2026-01-01', i % 300)}T11:00:00Z` }));
+  const linge = Array.from({ length: 400 }, (_, i) => ({ jour: ajouter('2026-01-01', i % 300), sens: i % 2 ? 'sale' : 'propre', quantite: 3 }));
+  const donnees = { sejours, occupants, lignes, chambres, demandes, ordres, activites, inscriptions, journalChambres, linge };
+  ['hebergement', 'demandes', 'technique', 'activites', 'etages'].forEach((id) => ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux(id, lire(id, donnees, '2026-02-01', '2026-04-30', pas))));
+  const lu = lire('hebergement', donnees, '2026-03-01', '2026-03-31', 'semaine');
+  const r = statsPeriode({ ...donnees, debut: '2026-03-01', fin: '2026-03-31' });
+  assert.equal(mesure('hebergement.nuitees_chambres').valeur(lu.total), r.nuiteesChambres);
+  assert.equal(mesure('hebergement.occupation').valeur(lu.total), r.tauxOccupation);
+  assert.equal(mesure('hebergement.prix_moyen').valeur(lu.total), r.prixMoyen);
+  assert.equal(mesure('hebergement.nuitees_personnes').ventilations[0].parts(lu.total).reduce((x, y) => x + y.valeur, 0), r.nuiteesPersonnes);
+  assert.equal(mesure('demandes.delai').valeur(lire('demandes', donnees, '2026-03-01', '2026-03-31', 'mois').total), 7);
+  assert.equal(mesure('activites.remplissage').valeur(lire('activites', donnees, '2026-01-01', '2026-12-31', 'mois').total), 600 / 1000);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
@@ -329,4 +355,9 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('mep'), 3);
   assert.equal(compte('spa'), 4);
   assert.equal(compte('pos'), 2);
+  assert.equal(compte('hebergement'), 9);
+  assert.equal(compte('demandes'), 3);
+  assert.equal(compte('technique'), 3);
+  assert.equal(compte('activites'), 2);
+  assert.equal(compte('etages'), 3);
 });

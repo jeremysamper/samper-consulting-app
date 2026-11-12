@@ -5,6 +5,7 @@ import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { getDemoData } from '../../data/demoData.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { zurichAjouterJours, zurichDateHeure, zurichMinuitIso } from '../../utils/zurichTime.js';
+import { statsPeriode } from './serieHotel.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Données de la branche Hôtel (migration 20261028_hotel_h0) : chambres, séjours
@@ -607,58 +608,16 @@ const sejourCompte = (s) => s.statut === 'en_maison' || s.statut === 'parti';
 // personnes (occupants, sinon personnes du séjour), arrivées, taux d'occupation
 // (nuitées chambres sur chambres actives fois jours), durée moyenne, prix
 // moyen par nuitée vendue (lignes nuitée du mois), taxes du mois, et la
-// répartition HESTA par pays de domicile.
+// répartition HESTA par pays de domicile. Le calcul vit dans serieHotel.js
+// (statsPeriode, testé sous Node, partagé avec le module Statistiques) ; le
+// registre affiche 0 là où un quotient n'a pas de dénominateur.
 export function statsMois({ sejours, chambres, occupants, lignes, mois }) {
-  const debut = premierDuMois(mois);
-  const fin = finDuMois(mois);
-  const duMois = sejours.filter((s) => sejourCompte(s) && s.arrivee <= fin && s.depart > debut);
-  const nuiteesChambres = duMois.reduce((n, s) => n + nuitsDansLeMois(s.arrivee, s.depart, mois), 0);
-  const arrivees = duMois.filter((s) => s.arrivee >= debut && s.arrivee <= fin);
-  const idsDuMois = new Set(duMois.map((s) => s.id));
-  const parSejour = new Map();
-  for (const o of occupants) {
-    if (!idsDuMois.has(o.sejourId)) continue;
-    parSejour.set(o.sejourId, [...(parSejour.get(o.sejourId) || []), o]);
-  }
-  let nuiteesPersonnes = 0;
-  let arriveesPersonnes = 0;
-  const parPays = new Map();
-  const compter = (pays, nuitees, arriveesN) => {
-    const cle = (pays || '').trim() || 'Non renseigné';
-    const e = parPays.get(cle) || { pays: cle, arrivees: 0, nuitees: 0 };
-    e.nuitees += nuitees;
-    e.arrivees += arriveesN;
-    nuiteesPersonnes += nuitees;
-    arriveesPersonnes += arriveesN;
-    parPays.set(cle, e);
-  };
-  for (const s of duMois) {
-    const liste = parSejour.get(s.id);
-    if (liste && liste.length) {
-      for (const o of liste) {
-        const arr = o.arrivee || s.arrivee;
-        compter(o.domicilePays || o.nationalite, nuitsDansLeMois(arr, o.depart || s.depart, mois), arr >= debut && arr <= fin ? 1 : 0);
-      }
-    } else {
-      const p = personnes(s) || 1;
-      compter('', nuitsDansLeMois(s.arrivee, s.depart, mois) * p, s.arrivee >= debut && s.arrivee <= fin ? p : 0);
-    }
-  }
-  const chambresActives = chambres.filter((c) => c.actif).length;
-  const capacite = chambresActives * joursDuMois(mois);
-  const lignesDuMois = lignes.filter((l) => l.jour >= debut && l.jour <= fin);
-  const caNuitees = lignesDuMois.filter((l) => l.type === 'nuitee').reduce((n, l) => n + l.montant, 0);
-  const taxes = { sejour: 0, hebergement: 0 };
-  for (const l of lignesDuMois) {
-    if (l.type === 'taxe_sejour') taxes.sejour += l.montant;
-    if (l.type === 'taxe_hebergement') taxes.hebergement += l.montant;
-  }
-  const dureeMoyenne = arrivees.length ? arrivees.reduce((n, s) => n + nuitsDe(s), 0) / arrivees.length : 0;
+  const s = statsPeriode({ sejours, chambres, occupants, lignes, debut: premierDuMois(mois), fin: finDuMois(mois) });
   return {
-    nuiteesChambres, nuiteesPersonnes, arrivees: arrivees.length, arriveesPersonnes,
-    tauxOccupation: capacite ? nuiteesChambres / capacite : 0, chambresActives,
-    dureeMoyenne, prixMoyen: nuiteesChambres ? caNuitees / nuiteesChambres : 0, caNuitees,
-    taxes, parPays: [...parPays.values()].sort((a, b) => b.nuitees - a.nuitees || a.pays.localeCompare(b.pays, 'fr')),
+    nuiteesChambres: s.nuiteesChambres, nuiteesPersonnes: s.nuiteesPersonnes, arrivees: s.arrivees, arriveesPersonnes: s.arriveesPersonnes,
+    tauxOccupation: s.tauxOccupation ?? 0, chambresActives: s.chambresActives,
+    dureeMoyenne: s.dureeMoyenne ?? 0, prixMoyen: s.prixMoyen ?? 0, caNuitees: s.caNuitees,
+    taxes: s.taxes, parPays: s.parPays,
   };
 }
 
