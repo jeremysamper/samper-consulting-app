@@ -10,6 +10,7 @@ import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
+import { quandRetoursArrives } from '../../services/historyNav.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
 import { peutGererTechnique } from './gardesTechnique.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
@@ -32,6 +33,13 @@ import {
 // l'auteur fait avancer le sien ; équipements, plans, réassignation et
 // suppression demandent la case Modifier de Technique (RLS et déclencheur) ;
 // remettre une chambre à faire demande la case Modifier d'Étages.
+//
+// Depuis le 12.11.2026, la gestion des plans de préventif (créer, modifier,
+// supprimer) vit dans la page des réglages, section 'technique_plans' : ce
+// module y est monté sur le seul écran des plans (ecranReglage). L'écran
+// Préventif garde les tâches, leur échéance et la création des ordres ; ses
+// boutons « Nouveau plan » et « Modifier » ouvrent la section sur la fenêtre
+// du plan, et la refermer ramène à l'écran Préventif.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TITRES = { ordres: 'Les ordres de travail', preventif: 'Le préventif', equipements: 'Les équipements', hors_service: 'Les chambres hors service' };
@@ -354,14 +362,28 @@ function EquipementForm({ equipement, chambres, equipements, onClose }) {
   );
 }
 
-// ecranReglage : 'equipements' quand le module est monté dans la page des
-// réglages (SectionEquipements.jsx), sur ce seul écran.
-export default function Technique({ user, etablissement, ecranReglage = null }) {
+// Plan que l'écran Préventif demande d'ouvrir dans la section des réglages :
+// { plan } pour le modifier, { plan: null } pour un nouveau plan. La section,
+// montée à l'instant ou restée montée derrière, le lit et l'efface.
+let planDemande = null;
+const abonnesPlan = new Set();
+const sAbonnerPlan = (fn) => { abonnesPlan.add(fn); return () => abonnesPlan.delete(fn); };
+function demanderPlan(demande) {
+  planDemande = demande;
+  abonnesPlan.forEach((fn) => fn());
+}
+
+// ecranReglage : 'equipements' ou 'plans' quand le module est monté dans la
+// page des réglages (SectionEquipements.jsx, SectionPlansPreventif.jsx), sur
+// ce seul écran. revenir : donné par la page quand la section est ouverte par
+// un raccourci du module, il y ramène.
+export default function Technique({ user, etablissement, ecranReglage = null, revenir }) {
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const moi = user?.id || null;
   const peutGerer = peutGererTechnique(role);
-  const enReglage = ecranReglage === 'equipements';
+  const enReglage = ecranReglage === 'equipements' || ecranReglage === 'plans';
+  const enPlans = ecranReglage === 'plans';
   const peutEtages = canManageModule(role, 'etages');
   const aujourdhui = useAujourdhui();
 
@@ -372,17 +394,44 @@ export default function Technique({ user, etablissement, ecranReglage = null }) 
   const demandes = useDemandes(etabId);
   const equipe = React.useMemo(() => equipeDe(etabId), [etabId]);
 
-  // Les équipements se règlent dans la page des réglages (section
-  // 'technique_equipements') : la tuile y mène, le module y est monté sur ce
-  // seul écran (fixe).
+  // Les équipements et les plans se règlent dans la page des réglages
+  // (sections 'technique_equipements' et 'technique_plans') : le module y est
+  // monté sur ce seul écran (fixe).
   const ecransRepris = ['ordres', 'preventif', 'hors_service'];
-  const { ecran, setEcran, retourAccueil } = useEcranModule('technique', { repris: ecransRepris, fixe: enReglage ? 'equipements' : null });
+  const { ecran, setEcran, retourAccueil } = useEcranModule('technique', { repris: ecransRepris, fixe: enReglage ? ecranReglage : null });
   const [vue, setVue] = React.useState('ouverts');
   const [recherche, setRecherche] = React.useState('');
   const [form, setForm] = React.useState(null); // { ordre, prerempli }
   const [ficheId, setFicheId] = React.useState(null);
-  const [planForm, setPlanForm] = React.useState(null);
+  const [planForm, setPlanForm] = React.useState(null); // { plan, retour } ; retour = venu de l'écran Préventif
   const [equipForm, setEquipForm] = React.useState(null);
+
+  // Dans le module, un plan s'ouvre dans la section des réglages, par-dessus
+  // l'écran Préventif. Dans la section, il s'ouvre sur place.
+  const ouvrirPlan = (plan) => {
+    if (enPlans) { setPlanForm({ plan, retour: false }); return; }
+    demanderPlan({ plan });
+    ouvrirCompte('technique_plans', { parDessus: true });
+  };
+  const demande = React.useSyncExternalStore(sAbonnerPlan, () => planDemande, () => null);
+  React.useEffect(() => {
+    if (!enPlans || !demande) return;
+    setPlanForm({ plan: demande.plan, retour: true });
+    demanderPlan(null);
+  }, [enPlans, demande]);
+  // Fenêtre venue de l'écran Préventif : la refermer y ramène, comme avant.
+  // Le retour part après le rendu qui referme la fenêtre, une fois son entrée
+  // d'historique dépilée (quandRetoursArrives).
+  const [retourVoulu, setRetourVoulu] = React.useState(false);
+  const fermerPlan = () => {
+    if (planForm?.retour) setRetourVoulu(true);
+    setPlanForm(null);
+  };
+  React.useEffect(() => {
+    if (!retourVoulu) return;
+    setRetourVoulu(false);
+    quandRetoursArrives(() => revenir?.());
+  }, [retourVoulu, revenir]);
 
   const correspond = makeSearchMatcher(recherche);
   const numero = (id) => chambres.rows.find((c) => c.id === id)?.numero || '';
@@ -442,7 +491,12 @@ export default function Technique({ user, etablissement, ecranReglage = null }) 
         </>
       )}
       {etabId && enReglage && peutGerer && (
-        <EnTeteSection actions={(
+        <EnTeteSection actions={enPlans ? (
+          <Btn variant="primary" onClick={() => ouvrirPlan(null)} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
+            <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>Nouveau plan</span>
+          </Btn>
+        ) : (
           <Btn variant="primary" onClick={() => setEquipForm({ equipement: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
             <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
             <span>Nouvel équipement</span>
@@ -459,7 +513,7 @@ export default function Technique({ user, etablissement, ecranReglage = null }) 
               <span>Nouvel ordre</span>
             </Btn>
           ) : ecran === 'preventif' && peutGerer ? (
-            <Btn variant="primary" onClick={() => setPlanForm({ plan: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
+            <Btn variant="primary" onClick={() => ouvrirPlan(null)} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
               <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>Nouveau plan</span>
             </Btn>
@@ -483,7 +537,9 @@ export default function Technique({ user, etablissement, ecranReglage = null }) 
         </>
       )}
 
-      {etabId && ecran === 'preventif' && (
+      {/* Écran Préventif du module, et les mêmes lignes dans la section des
+          réglages, sans les boutons de travail (voir ou créer l'ordre). */}
+      {etabId && (ecran === 'preventif' || (enPlans && peutGerer)) && (
         <>
           {plans.status === 'ready' && !plans.rows.length && <Vide>Aucun plan préventif pour l'instant.</Vide>}
           <Liste>
@@ -504,9 +560,9 @@ export default function Technique({ user, etablissement, ecranReglage = null }) 
                   </span>
                   <span style={h.ligneDroite}>
                     {!p.actif ? <Puce ton="neutre">Inactif</Puce> : retard ? <Puce ton="danger"><span>En retard depuis le</span> <span data-no-translate>{dateCourte(p.prochaineFois)}</span></Puce> : <Puce ton={du ? 'warning' : 'info'}><span>{du ? 'À faire' : 'Prochaine fois le'}</span> {!du && <span data-no-translate>{dateCourte(p.prochaineFois)}</span>}</Puce>}
-                    {p.actif && existant && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setFicheId(existant.id)}>Voir l'ordre</button>}
-                    {p.actif && !existant && peutGerer && <Btn variant="primary" onClick={() => creerDepuisPlan(p)} style={{ minHeight: 40, fontSize: 13 }}>Créer l'ordre</Btn>}
-                    {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setPlanForm({ plan: p })}>Modifier</button>}
+                    {!enPlans && p.actif && existant && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setFicheId(existant.id)}>Voir l'ordre</button>}
+                    {!enPlans && p.actif && !existant && peutGerer && <Btn variant="primary" onClick={() => creerDepuisPlan(p)} style={{ minHeight: 40, fontSize: 13 }}>Créer l'ordre</Btn>}
+                    {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => ouvrirPlan(p)}>Modifier</button>}
                   </span>
                 </div>
               );
@@ -561,7 +617,7 @@ export default function Technique({ user, etablissement, ecranReglage = null }) 
       {fiche && !form && (
         <OrdreFiche ordre={fiche} chambres={chambres.rows} equipements={equipements.rows} plans={plans.rows} moi={moi} peutGerer={peutGerer} peutEtages={peutEtages} ordres={ordres} onRemettreChambre={remettreChambre} onApresFin={() => plans.reload()} onModifier={(o) => setForm({ ordre: o, prerempli: {} })} onClose={() => setFicheId(null)} />
       )}
-      {planForm && <PlanForm plan={planForm.plan} equipements={equipements.rows} chambres={chambres.rows} plans={plans} onClose={() => setPlanForm(null)} />}
+      {planForm && <PlanForm plan={planForm.plan} equipements={equipements.rows} chambres={chambres.rows} plans={plans} onClose={fermerPlan} />}
       {equipForm && <EquipementForm equipement={equipForm.equipement} chambres={chambres.rows} equipements={equipements} onClose={() => setEquipForm(null)} />}
     </section>
   );

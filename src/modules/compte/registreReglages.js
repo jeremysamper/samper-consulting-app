@@ -179,6 +179,13 @@ export const SECTIONS = [
     charger: () => import('../technique/SectionEquipements.jsx'),
     signaux: ['table:equipements'],
   },
+  {
+    id: 'technique_plans', libelle: 'Technique : plans de préventif', detail: 'Les tâches qui reviennent : périodicité, équipement, dernière fois',
+    groupe: 'modules', portee: 'maison', module: 'technique',
+    garde: (ctx) => ouvreLeModule('technique')(ctx) && peutGererTechnique(ctx.user?.role),
+    charger: () => import('../technique/SectionPlansPreventif.jsx'),
+    signaux: ['table:maintenance_plans'],
+  },
   // Facturation client : l'écran Factures est réservé au consultant, ses deux
   // sections aussi (même garde que la page 'factures').
   {

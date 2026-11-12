@@ -4391,4 +4391,7 @@ export const UI_GLOSSARY_ES = {
   'Notification du client, objet, copie et message type': 'Notificación al cliente, asunto, copia y mensaje tipo',
   'Émetteur, bloc client, coordonnées de paiement, mention TVA et signature : chaque client peut avoir ses propres textes.': 'Emisor, bloque del cliente, datos de pago, mención del IVA y firma: cada cliente puede tener sus propios textos.',
   'Message type enregistré.': 'Mensaje tipo guardado.',
+  // ── Réglages R3 : plans de préventif ──
+  'Technique : plans de préventif': 'Mantenimiento: planes preventivos',
+  'Les tâches qui reviennent : périodicité, équipement, dernière fois': 'Las tareas que vuelven: periodicidad, equipo, última vez',
 };

@@ -54,6 +54,7 @@ const AVANT = {
   spa_emails: DIRECTION,
   factures_textes: ['consultant'],
   factures_email: ['consultant'],
+  technique_plans: ['consultant', 'patron', 'gouvernante', 'technicien'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

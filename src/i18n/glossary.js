@@ -4410,6 +4410,9 @@ export const UI_GLOSSARY = {
   'Notification du client, objet, copie et message type': 'Client notification, subject, copy and standard message',
   'Émetteur, bloc client, coordonnées de paiement, mention TVA et signature : chaque client peut avoir ses propres textes.': 'Issuer, client block, payment details, VAT notice and signature: each client can have its own texts.',
   'Message type enregistré.': 'Standard message saved.',
+  // ── Réglages R3 : plans de préventif ──
+  'Technique : plans de préventif': 'Maintenance: preventive plans',
+  'Les tâches qui reviennent : périodicité, équipement, dernière fois': 'Recurring tasks: frequency, equipment, last time',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
