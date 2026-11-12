@@ -7,6 +7,7 @@ import { estDirectionSpa } from '../spa/gardesSpa.js';
 import { estDirectionHotel } from '../hebergement/gardesHotel.js';
 import { peutGererPassations } from '../passations/gardesPassations.js';
 import { peutGererTechnique } from '../technique/gardesTechnique.js';
+import { estDirectionPlanning, peutEcrirePlanning, peutOuvrirGroupes } from '../planning/gardesPlanning.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -68,6 +69,30 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'caisse',
     garde: (ctx) => ouvreLeModule('caisse')(ctx) && peutHabillerCaisse(ctx.user?.role),
     charger: () => import('../caisse/SectionReglagesCaisse.jsx'),
+  },
+  {
+    id: 'planning_modeles', libelle: "Planning : modèles d'horaires", detail: 'Les heures de Midi, Soir, Coupure, Longue',
+    groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && peutEcrirePlanning(ctx.user?.role),
+    charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionModeles })),
+  },
+  {
+    id: 'planning_groupes', libelle: 'Planning : groupes', detail: 'Salle, Cuisine, groupes ajoutés et comptes de pointage partagés',
+    groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && peutOuvrirGroupes(ctx.user?.role),
+    charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionGroupes })),
+  },
+  {
+    id: 'planning_masques', libelle: 'Planning : personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning",
+    groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
+    charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionMasques })),
+  },
+  {
+    id: 'planning_contrats', libelle: 'Planning : contrats', detail: 'Taux, heures par semaine et vacances de chacun',
+    groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && peutEcrirePlanning(ctx.user?.role),
+    charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionContrats })),
   },
   {
     id: 'reservation_en_ligne', libelle: 'Réservation en ligne', detail: "Boîte d'envoi, SMS, horaires, capacité, lien à partager",

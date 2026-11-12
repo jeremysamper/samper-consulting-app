@@ -4346,4 +4346,14 @@ export const UI_GLOSSARY_ES = {
   'Les tâches qui reviennent, par pôle': 'Las tareas que se repiten, por área',
   'Technique : équipements': 'Mantenimiento: equipos',
   'Les équipements suivis par la technique': 'Los equipos seguidos por mantenimiento',
+  // ── Réglages : sections du Planning ──
+  "Planning : modèles d'horaires": 'Planificación: modelos de horarios',
+  'Les heures de Midi, Soir, Coupure, Longue': 'Las horas de Mediodía, Noche, Partido, Largo',
+  'Planning : groupes': 'Planificación: grupos',
+  'Salle, Cuisine, groupes ajoutés et comptes de pointage partagés': 'Sala, Cocina, grupos añadidos y cuentas de fichaje compartidas',
+  'Planning : personnes masquées': 'Planificación: personas ocultas',
+  "Retirer quelqu'un de l'affichage du planning": 'Quitar a alguien de la vista de la planificación',
+  'Planning : contrats': 'Planificación: contratos',
+  'Taux, heures par semaine et vacances de chacun': 'Tasa, horas por semana y vacaciones de cada uno',
+  "Ce réglage n'est pas encore activé sur la base de données.": 'Este ajuste aún no está activado en la base de datos.',
 };

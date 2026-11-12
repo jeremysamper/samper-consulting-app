@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
 import { mapAbsenceFromDB } from '../../utils/absences.js';
@@ -87,6 +88,9 @@ export function useContrats(etablissementId) {
   const [contrats, setContrats] = useState([]);
   const [status, setStatus] = useState(etablissementId ? 'loading' : 'ready');
   const reloadRef = useRef(null);
+  // Réglé dans la page des réglages : un Planning resté monté relit au signal
+  // de changement, même sans temps réel.
+  useReglageModifie('planning_contrats', () => reloadRef.current?.());
 
   useEffect(() => {
     if (!etablissementId) {

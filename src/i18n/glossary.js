@@ -4365,6 +4365,16 @@ export const UI_GLOSSARY = {
   'Les tâches qui reviennent, par pôle': 'The tasks that come back, by department',
   'Technique : équipements': 'Maintenance: equipment',
   'Les équipements suivis par la technique': 'The equipment tracked by maintenance',
+  // ── Réglages : sections du Planning ──
+  "Planning : modèles d'horaires": 'Planning: shift templates',
+  'Les heures de Midi, Soir, Coupure, Longue': 'The hours for Lunch, Evening, Split, Long',
+  'Planning : groupes': 'Planning: groups',
+  'Salle, Cuisine, groupes ajoutés et comptes de pointage partagés': 'Front of house, Kitchen, added groups and shared clock-in accounts',
+  'Planning : personnes masquées': 'Planning: hidden people',
+  "Retirer quelqu'un de l'affichage du planning": 'Remove someone from the planning display',
+  'Planning : contrats': 'Planning: contracts',
+  'Taux, heures par semaine et vacances de chacun': 'Rate, weekly hours and holidays for each person',
+  "Ce réglage n'est pas encore activé sur la base de données.": 'This setting is not yet enabled in the database.',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

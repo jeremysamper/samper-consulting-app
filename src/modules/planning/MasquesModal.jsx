@@ -2,7 +2,6 @@ import React from 'react';
 
 import { pls } from './Planning.styles.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Personnes masquées du Planning & Pointage (consultant et patron).
@@ -12,9 +11,10 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 // continue de voir les siens pour pointer, et le relevé CCNT la garde.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function MasquesModal({ onClose, employees, masques, masquer, afficher, roles }) {
+// Depuis le 12.11.2026 : une section de la page des réglages
+// (SectionsPlanning.jsx), le même contenu sans fenêtre ni voile.
+export default function MasquesModal({ employees, masques, masquer, afficher, roles }) {
   const [enCours, setEnCours] = React.useState(null);
-  useBackLayer(true, onClose, 'planning-masques');
 
   const tries = React.useMemo(
     () => [...employees].sort((a, b) => `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr')),
@@ -35,15 +35,7 @@ export default function MasquesModal({ onClose, employees, masques, masquer, aff
   }
 
   return (
-    <div className="modal-full-overlay" style={pls.overlay} onClick={onClose}>
-      <div className="modal-full" style={{ ...pls.modal, width: 480 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Personnes masquées">
-        <div style={pls.modalHeader}>
-          <div style={pls.modalTitle}>Personnes masquées</div>
-          <button type="button" style={{ ...pls.closeBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44 }} onClick={onClose} aria-label="Fermer" className="ui-fermer">
-            <span aria-hidden="true">×</span>
-          </button>
-        </div>
-
+    <div role="region" aria-label="Personnes masquées" style={{ width: '100%', maxWidth: 480, minWidth: 0 }}>
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={s.aide}>
             Une personne masquée n'apparaît plus dans le planning ni dans le pointage de cet établissement, pour toute l'équipe.
@@ -76,7 +68,6 @@ export default function MasquesModal({ onClose, employees, masques, masquer, aff
 
           {nbMasques > 0 && <div style={s.aide}>{nbMasques} personne{nbMasques > 1 ? 's' : ''} masquée{nbMasques > 1 ? 's' : ''}.</div>}
         </div>
-      </div>
     </div>
   );
 }

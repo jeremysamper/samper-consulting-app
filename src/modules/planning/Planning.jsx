@@ -16,8 +16,6 @@ import { useAbsences } from '../../hooks/useAbsences.js';
 import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
 import { zurichClock, zurichToday } from '../../utils/zurichTime.js';
 import AbsencesModal from './AbsencesModal.jsx';
-import MasquesModal from './MasquesModal.jsx';
-import GroupesModal from './GroupesModal.jsx';
 import SaisieRapide from './SaisieRapide.jsx';
 import DupliquerModal from './DupliquerModal.jsx';
 import DupliquerVersModal from './DupliquerVersModal.jsx';
@@ -29,7 +27,6 @@ import { useGlisserHoraires } from './useGlisserHoraires.js';
 import { cleCase, lireCase, regleDepot } from './planningGlisser.js';
 import ExportModal from './ExportModal.jsx';
 import MonPlanning from './MonPlanning.jsx';
-import ModelesModal from './ModelesModal.jsx';
 import { BoutonActions, Fenetre } from './planningUi.jsx';
 import { TYPES_HORAIRE, ajouterJours as ajouterJoursIso, filetType, formatDuree, libelleModele, typeHoraire } from './planningModeles.js';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
@@ -40,7 +37,8 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import AccueilPlanning from './AccueilPlanning.jsx';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
-import ContratsModal from './ContratsModal.jsx';
+import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 
@@ -126,7 +124,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   }, []);
 
   const perms = getPermissionsForRole(user.role);
-  const canWrite = !!perms.planning && canManageModule(user.role, 'planning');
+  const canWrite = peutEcrirePlanning(user.role);
   const canExport = ['consultant', 'patron'].includes(user.role);
 
   const etabId = etablissement?.id || 'etab-1';
@@ -138,8 +136,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const groupesEtab = usePlanningGroupes(etabId);
   const groupesActifs = groupesEtab.status === 'ready' && groupesEtab.groupes.length > 0;
   const canGererGroupes = canWrite;
-  const canPostes = ['consultant', 'patron'].includes(user.role);
-  const [showGroupes, setShowGroupes] = React.useState(false);
+  const canPostes = estDirectionPlanning(user.role);
   const [groupeFiltre, setGroupeFiltre] = React.useState('tous'); // 'tous' | id de groupe | 'sans'
   // Ce compte est-il un compte de pointage partagé (iPad du restaurant) ?
   const mesGroupesPoste = groupesEtab.postesParCompte.get(user.id) || null;
@@ -165,31 +162,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   // Équipe de cet établissement (sauf consultant et patron qui ne sont pas
   // planifiés, et les comptes de pointage partagés qui ne sont pas des personnes)
-  const equipeEtab = demoData.utilisateurs.filter(u =>
-    u.etablissementIds?.includes(etabId) &&
-    !['consultant', 'patron'].includes(u.role) &&
-    u.actif !== false
-  );
-  const equipe = equipeEtab.filter(u => !groupesEtab.postesParCompte.has(u.id));
+  const { equipeEtab, equipe } = equipeDuPlanning(demoData.utilisateurs, etabId, groupesEtab.postesParCompte);
 
   // Personnes masquées par le consultant ou le patron : absentes du planning et
   // du pointage pour toute l'équipe. Chacun garde ses propres horaires (pour
   // pointer) ; le relevé CCNT travaille sur l'équipe complète.
   const masquesEtab = usePlanningMasques(etabId);
-  const [showMasques, setShowMasques] = React.useState(false);
-  const canMasquer = ['consultant', 'patron'].includes(user.role) && masquesEtab.status !== 'absent';
+  const canMasquer = estDirectionPlanning(user.role) && masquesEtab.status !== 'absent';
   const estMasque = (userId) => userId !== user.id && masquesEtab.masques.has(userId);
   const employees = equipe.filter(u => !estMasque(u.id));
 
   // Modèles d'horaires de l'établissement (Midi, Soir, Coupure, Longue…).
   const modelesEtab = usePlanningModeles(etabId);
   const modeles = modelesEtab.modeles;
-  const [showModeles, setShowModeles] = React.useState(false);
 
   // Contrats de travail (taux, heures par semaine) : heures dues du solde du
   // mois. La RLS ne rend à chacun que le sien, à qui gère le planning tous.
   const contratsEtab = useContrats(etabId);
-  const [showContrats, setShowContrats] = React.useState(false);
 
   // Fenêtres de la refonte : saisie en un geste, remplissage, duplication, export.
   const [saisieRapide, setSaisieRapide] = React.useState(null); // { userId, date } | null
@@ -951,13 +940,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   };
 
   // Paramètres CCNT (durée contractuelle hebdo selon type d'établissement)
-  const getHeuresContractuelles = () => {
-    // 42h standard, 43.5h saisonnier, 45h petit établissement
-    if (etablissement?.ccntHeuresSemaine) return etablissement.ccntHeuresSemaine;
-    if (etablissement?.type === 'saisonnier') return 43.5;
-    if (etablissement?.type === 'petit') return 45;
-    return 42;
-  };
+  const getHeuresContractuelles = () => heuresContractuelles(etablissement);
 
   // Calcul du relevé CCNT pour un employé sur un mois donné
   const buildCCNTData = () => {
@@ -1272,10 +1255,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Choix de « Gérer », partagés par la barre de la grille et la tuile Gérer
   // de l'accueil, avec les gardes d'aujourd'hui.
   const choixAbsences = absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) };
-  const choixModeles = canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => setShowModeles(true) };
-  const choixGroupes = groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => setShowGroupes(true) };
-  const choixMasques = canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => setShowMasques(true) };
-  const choixContrats = canWrite && contratsEtab.status !== 'absent' && { titre: 'Contrats', detail: 'Taux, heures par semaine et vacances de chacun, pour le solde d\'heures.', onClick: () => setShowContrats(true) };
+  const choixModeles = canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => ouvrirCompte('planning_modeles') };
+  const choixGroupes = groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => ouvrirCompte('planning_groupes') };
+  const choixMasques = canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => ouvrirCompte('planning_masques') };
+  const choixContrats = canWrite && contratsEtab.status !== 'absent' && { titre: 'Contrats', detail: 'Taux, heures par semaine et vacances de chacun, pour le solde d\'heures.', onClick: () => ouvrirCompte('planning_contrats') };
 
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
   // le 1er le mois précédent. Rien tant que contrats et absences ne sont pas lus.
@@ -1973,49 +1956,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
         />
       )}
 
-      {showContrats && canWrite && (
-        <ContratsModal
-          personnes={equipe}
-          contrats={contratsEtab.contrats}
-          status={contratsEtab.status}
-          enregistrer={contratsEtab.enregistrer}
-          aujourdhui={zurichToday()}
-          heuresDefaut={getHeuresContractuelles()}
-          onClose={() => setShowContrats(false)}
-        />
-      )}
-
-      {showModeles && canWrite && (
-        <ModelesModal
-          modeles={modeles}
-          personnalises={modelesEtab.personnalises}
-          onEnregistrer={modelesEtab.enregistrer}
-          onClose={() => setShowModeles(false)}
-        />
-      )}
-
-      {showMasques && canMasquer && (
-        <MasquesModal
-          onClose={() => setShowMasques(false)}
-          employees={equipe}
-          masques={masquesEtab.masques}
-          masquer={masquesEtab.masquer}
-          afficher={masquesEtab.afficher}
-          roles={demoData.roles}
-        />
-      )}
-
-      {showGroupes && groupesActifs && (
-        <GroupesModal
-          onClose={() => setShowGroupes(false)}
-          groupesEtab={groupesEtab}
-          personnes={equipe}
-          comptes={equipeEtab}
-          canGerer={canGererGroupes}
-          canPostes={canPostes}
-          roles={demoData.roles}
-        />
-      )}
+      {/* Modèles d'horaires, groupes, personnes masquées et contrats : dans la
+          page des réglages (SectionsPlanning.jsx), le menu « Gérer » y mène. */}
 
       {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
       {showAbsences && (

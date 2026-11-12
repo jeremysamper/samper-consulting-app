@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useReglageModifie } from '../services/reglagesSignal.js';
 import { supabase } from '../services/supabase.js';
 import { dbService } from '../services/dbService.js';
 
@@ -45,6 +46,9 @@ export function usePlanningGroupes(etablissementId) {
   const [postes, setPostes] = useState([]);   // [{ user_id, groupe_id }]
   const [status, setStatus] = useState(etablissementId ? 'loading' : 'ready');
   const reloadRef = useRef(null);
+  // Réglé dans la page des réglages : un Planning resté monté relit au signal
+  // de changement, même sans temps réel.
+  useReglageModifie('planning_groupes', () => reloadRef.current?.());
 
   useEffect(() => {
     if (!etablissementId) {

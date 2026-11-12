@@ -2,7 +2,6 @@ import React from 'react';
 
 import { pls } from './Planning.styles.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { familleDuRole } from '../../hooks/usePlanningGroupes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,13 +16,14 @@ import { familleDuRole } from '../../hooks/usePlanningGroupes.js';
 //     Consultant et patron seulement (canPostes), comme en base.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function GroupesModal({ onClose, groupesEtab, personnes, comptes, canGerer, canPostes, roles }) {
+// Depuis le 12.11.2026 : une section de la page des réglages
+// (SectionsPlanning.jsx), le même contenu sans fenêtre ni voile.
+export default function GroupesModal({ groupesEtab, personnes, comptes, canGerer, canPostes, roles }) {
   const { groupes, groupeDe, affectations, postesParCompte, creerGroupe, renommerGroupe, supprimerGroupe, affecter, reglerPoste } = groupesEtab;
   const [enCours, setEnCours] = React.useState(null);
   const [nouveau, setNouveau] = React.useState('');
   const [noms, setNoms] = React.useState({});
   const [compteAjoute, setCompteAjoute] = React.useState('');
-  useBackLayer(true, onClose, 'planning-groupes');
 
   const tries = React.useMemo(
     () => [...personnes].sort((a, b) => `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr')),
@@ -73,15 +73,7 @@ export default function GroupesModal({ onClose, groupesEtab, personnes, comptes,
   }
 
   return (
-    <div className="modal-full-overlay" style={pls.overlay} onClick={onClose}>
-      <div className="modal-full" style={{ ...pls.modal, width: 560, maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Groupes">
-        <div style={pls.modalHeader}>
-          <div style={pls.modalTitle}>Groupes</div>
-          <button type="button" style={{ ...pls.closeBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44 }} onClick={onClose} aria-label="Fermer" className="ui-fermer">
-            <span aria-hidden="true">×</span>
-          </button>
-        </div>
-
+    <div role="region" aria-label="Groupes" style={{ width: '100%', maxWidth: 560, minWidth: 0 }}>
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* ── Groupes ── */}
           <section style={s.section}>
@@ -211,7 +203,6 @@ export default function GroupesModal({ onClose, groupesEtab, personnes, comptes,
             </section>
           )}
         </div>
-      </div>
     </div>
   );
 }
