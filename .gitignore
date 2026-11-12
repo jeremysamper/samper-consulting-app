@@ -51,6 +51,7 @@ probe-*.txt
 .claude/*
 !.claude/settings.json
 !.claude/hooks/
+!.claude/rules/
 
 # === ÉDITEURS / OS ===
 .DS_Store

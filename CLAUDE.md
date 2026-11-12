@@ -104,7 +104,7 @@ Modules subscribe to Postgres changes via `SB.realtime.subscribe(tableName, call
 
 ### Styling
 
-All styles are plain JS objects (inline `style={...}` props) — no CSS modules, no Tailwind. Theming is driven by CSS variables set on `<html data-theme="light|dark">` via `useTheme` (`src/hooks/useTheme.js`). Key tokens used throughout: `var(--accent)`, `var(--surface)`, `var(--bg)`, `var(--text)`, `var(--text2)`, `var(--text3)`, `var(--border)`, `var(--nav)`, `var(--nav-text)`, `var(--nav-active)`, `var(--font)`, `var(--font-serif)`, `var(--font-num)` (highlighted figures: KPIs, amounts, temperatures).
+All styles are plain JS objects (inline `style={...}` props): no CSS modules, no Tailwind. Theming is driven by CSS variables set on `<html data-theme="light|dark">` via `useTheme` (`src/hooks/useTheme.js`). The look is the Office direction (light side menu, light panels on a grey page, sans-serif titles, outlined secondary buttons, 8 px radius, accent kept for the main action); its scale, role tokens and bans live in `.claude/rules/direction-office.md`. Key tokens: `var(--accent)` with `var(--on-accent)` (main action only), `var(--surface)`, `var(--bg)`, `var(--text)`, `var(--text2)`, `var(--text3)`, `var(--border)`, `var(--selection)` (hover, chosen row), `var(--lien)`, `var(--font)`, `var(--font-num)` (highlighted figures: KPIs, amounts, temperatures). `var(--nav*)` belongs to the shell only; `var(--font-serif)` now equals `var(--font)`.
 
 ### UI primitives
 
