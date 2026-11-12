@@ -4327,4 +4327,6 @@ export const UI_GLOSSARY_ES = {
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categorías, productos, modos, pago, terminal, IVA y cierre',
   // ── Réglages : section Réservation en ligne ──
   "Boîte d'envoi, SMS, horaires, capacité, lien à partager": 'Buzón de envío, SMS, horarios, capacidad, enlace para compartir',
+  // ── Réglages : section Comptabilité ──
+  'Méthode de TVA, charges sociales, coût horaire moyen': 'Método de IVA, cargas sociales, coste horario medio',
 };

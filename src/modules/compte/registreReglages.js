@@ -1,6 +1,7 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
+import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -65,6 +66,12 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'previsions',
     garde: (ctx) => ouvreLeModule('previsions')(ctx) && peutReglerEnLigne(ctx.user?.role),
     charger: () => import('../previsions/SectionReservationEnLigne.jsx'),
+  },
+  {
+    id: 'comptabilite', libelle: 'Comptabilité', detail: 'Méthode de TVA, charges sociales, coût horaire moyen',
+    groupe: 'modules', portee: 'maison', module: 'comptabilite',
+    garde: (ctx) => ouvreLeModule('comptabilite')(ctx) && peutReglerFactures(ctx.user?.role),
+    charger: () => import('../comptabilite/SectionReglagesCompta.jsx'),
   },
 
   // ── L'équipe et les accès ──

@@ -4346,6 +4346,8 @@ export const UI_GLOSSARY = {
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categories, products, modes, payment, terminal, VAT and closing',
   // ── Réglages : section Réservation en ligne ──
   "Boîte d'envoi, SMS, horaires, capacité, lien à partager": 'Outbox, SMS, hours, capacity, link to share',
+  // ── Réglages : section Comptabilité ──
+  'Méthode de TVA, charges sociales, coût horaire moyen': 'VAT method, social charges, average hourly cost',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

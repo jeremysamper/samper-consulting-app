@@ -3,7 +3,8 @@ import './compta.css';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
-import { navigateToPage } from '../../services/navigationService.js';
+import { navigateToPage, ouvrirCompte } from '../../services/navigationService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { Btn } from '../../components/ui/index.jsx';
@@ -22,7 +23,6 @@ import EcranMarges from './EcranMarges.jsx';
 import EcranTva from './EcranTva.jsx';
 import EcranBanque from './EcranBanque.jsx';
 import EcranTresorerie from './EcranTresorerie.jsx';
-import FenetreReglages from './FenetreReglages.jsx';
 import FenetreExportCompta from './FenetreExportCompta.jsx';
 import { writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { useLecture } from './comptaService.js';
@@ -97,7 +97,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     return TYPES_PERIODE.some(x => x.id === t) ? t : 'mois';
   });
   const [ancre, setAncre] = React.useState(null); // début de la période choisie ; null = en cours
-  const [fenetre, setFenetre] = React.useState(null); // { type: 'reglages' } | { type: 'export', choix, tva }
+  const [fenetre, setFenetre] = React.useState(null); // { type: 'export', choix, tva }
   const fermerFenetre = React.useCallback(() => setFenetre(null), []);
   const [jourSaisie, setJourSaisie] = React.useState(null);
 
@@ -124,6 +124,9 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   };
 
   const data = useCompta({ etablissement, periode: periodeCalcul, precedente, aujourdhui, inventaires, direction, banque: peutEcrire });
+  // Réglages enregistrés dans la page des réglages (section 'comptabilite') :
+  // les chiffres gardés montés se recalculent sans recharger l'app.
+  useReglageModifie('comptabilite', () => data.reloadTout());
 
   // Un écran soumis à un droit n'est repris que si le droit est là.
   const repris = [...ECRANS_REPRIS, ...(direction ? ['personnel'] : []), ...(peutEcrire ? ['tva', 'banque', 'tresorerie'] : [])];
@@ -154,7 +157,8 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   const actions = peutEcrire
     ? [
       { id: 'exporter', label: 'Exporter', detail: 'Ventes, factures d\'achat, charges fixes et état TVA pour la fiduciaire.', onClick: () => ouvrirExport() },
-      { id: 'reglages', label: 'Réglages', detail: 'Méthode de TVA, charges sociales, coût horaire moyen.', onClick: () => setFenetre({ type: 'reglages' }) },
+      // Les réglages vivent dans la page des réglages (section 'comptabilite').
+      { id: 'reglages', label: 'Réglages', detail: 'Méthode de TVA, charges sociales, coût horaire moyen.', onClick: () => ouvrirCompte('comptabilite') },
     ]
     : [];
 
@@ -337,16 +341,6 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
         </EcranTache>
       )}
 
-      {fenetre?.type === 'reglages' && peutEcrire && (
-        <FenetreReglages
-          etabId={etabId}
-          userId={user.id}
-          reglages={data.reglages}
-          absente={data.migrationAbsente}
-          onClose={fermerFenetre}
-          onEnregistre={data.reloadTout}
-        />
-      )}
 
       {fenetre?.type === 'export' && peutEcrire && (
         <FenetreExportCompta
