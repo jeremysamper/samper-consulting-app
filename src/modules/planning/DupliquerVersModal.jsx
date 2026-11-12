@@ -60,9 +60,9 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
     <Fenetre id="planning-dupliquer" titre="Dupliquer vers…" onClose={onClose} largeur={720}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* Récapitulatif sélection */}
-        <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>Horaires à dupliquer</div>
-          <div style={{ fontSize: 13 }}>
+        <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12 }}>
+          <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 6 }}>Horaires à dupliquer</div>
+          <div style={{ fontSize: 'var(--t2)' }}>
             <strong>{sources.length}</strong> horaire{sources.length > 1 ? 's' : ''} sélectionné{sources.length > 1 ? 's' : ''}, copié{sources.length > 1 ? 's' : ''} pour chaque personne et chaque jour cochés ci-dessous
           </div>
         </div>
@@ -80,11 +80,11 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
             {jours.map(d => {
               const checked = dates.has(d.date);
               return (
-                <label key={d.date} style={{ ...vs.choix, background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                <label key={d.date} style={{ ...vs.choix, background: checked ? 'var(--selection)' : 'var(--surface)' }}>
                   <input type="checkbox" style={vs.case} checked={checked} onChange={() => basculer(setDates, d.date)} />
                   <span style={{ flex: 1 }}>
                     {d.label}
-                    {srcDates.has(d.date) && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
+                    {srcDates.has(d.date) && <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
                   </span>
                 </label>
               );
@@ -105,12 +105,12 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
             {employees.map(emp => {
               const checked = userIds.has(emp.id);
               return (
-                <label key={emp.id} style={{ ...vs.choix, background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                <label key={emp.id} style={{ ...vs.choix, background: checked ? 'var(--selection)' : 'var(--surface)' }}>
                   <input type="checkbox" style={vs.case} checked={checked} onChange={() => basculer(setUserIds, emp.id)} />
-                  <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
+                  <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 'var(--t1)' }}>{emp.avatar}</div>
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {emp.prenom} {emp.nom}
-                    {srcUserIds.has(emp.id) && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
+                    {srcUserIds.has(emp.id) && <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 4 }}>(origine)</span>}
                   </span>
                 </label>
               );
@@ -119,13 +119,13 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
         </div>
 
         {/* Avertissement */}
-        <div style={{ ...encadreStyle('alerte'), fontSize: 12 }}>
+        <div style={{ ...encadreStyle('alerte'), fontSize: 'var(--t1)' }}>
           Un horaire qui chevauche la copie est remplacé, sauf s'il est déjà pointé. Un horaire qui ne la chevauche pas (un midi quand on copie un soir) est gardé.
         </div>
 
         {/* Footer : ce qui sera créé, remplacé, gardé et sauté */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-          <span style={{ flex: '1 1 240px', minWidth: 0, fontSize: 12, color: n > 0 ? 'var(--text)' : 'var(--text2)' }} aria-live="polite">
+          <span style={{ flex: '1 1 240px', minWidth: 0, fontSize: 'var(--t1)', color: n > 0 ? 'var(--text)' : 'var(--text2)' }} aria-live="polite">
             {n > 0
               ? <Resume parts={resumeDuplication(plan, { copies: ['horaire sera créé', 'horaires seront créés'] })} />
               : plan.pointesGardes > 0 || plan.joursAbsence > 0
@@ -147,7 +147,7 @@ export default function DupliquerVersModal({ sources, jours, employees, existant
 }
 
 const vs = {
-  choix: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 10px', borderRadius: 8, fontSize: 13, cursor: 'pointer', minWidth: 0 },
+  choix: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 10px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', minWidth: 0 },
   case: { width: 20, height: 20, margin: 0, flexShrink: 0, accentColor: 'var(--accent)', cursor: 'pointer' },
-  tout: { ...pls.exportBtn, fontSize: 12, minHeight: 44, padding: '0 12px' },
+  tout: { ...pls.exportBtn, fontSize: 'var(--t1)', minHeight: 44, padding: '0 12px' },
 };

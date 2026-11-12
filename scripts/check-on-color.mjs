@@ -45,9 +45,9 @@ const EXCLUS = [
 // Fichiers en attente : modifiés sans commit dans le worktree
 // fix/exports-sans-capitales (sharp-greider-871ed9). Leurs sites sont listés
 // sans faire échouer le contrôle ; à corriger puis à retirer d'ici quand ce
-// worktree sera repris ou abandonné.
+// worktree sera repris ou abandonné. Planning.styles.js en est sorti au lot 4
+// de l'intégration Office (Q7) : ses sites sont corrigés.
 const EN_ATTENTE = [
-  'modules/planning/Planning.styles.js',
   'modules/factures/Factures.jsx',
 ];
 

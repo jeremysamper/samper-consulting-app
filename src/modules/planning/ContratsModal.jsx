@@ -2,6 +2,7 @@ import React from 'react';
 import { Fenetre, st } from './planningUi.jsx';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { contratDuJour } from './soldesHeures.js';
+import { ligneStyle } from '../../components/ui/index.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Contrats (Gérer > Contrats) : une ligne par personne de l'établissement,
@@ -131,11 +132,12 @@ function Champ({ id, label, onChange, ...props }) {
 }
 
 const s = {
-  liste: { display: 'flex', flexDirection: 'column', gap: 8 },
-  ligne: { display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)' },
+  liste: { display: 'flex', flexDirection: 'column' },
+  // Une personne par ligne de liste (ligneStyle, filet doux), la saisie dépliée dessous.
+  ligne: { ...ligneStyle(), flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', gap: 10, padding: '8px 0' },
   entete: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  resume: { display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 12, color: 'var(--text2)', marginTop: 2 },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  resume: { display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
   boutons: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 },
   form: { display: 'flex', flexDirection: 'column', gap: 10 },
   // Plancher de 200 px : un champ date natif iOS ne se rétrécit pas.
