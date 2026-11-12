@@ -1034,14 +1034,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Chiffres : zéro barré (0 et O distincts) et chiffres de largeur égale sur
-   tout ce qui est chiffré, soit les valeurs en --font-num (KPI, montants,
-   températures, heures) et les cellules de tableau. Plex a des chiffres
-   tabulaires par défaut ; tabular-nums reste posé pour une police de repli. */
+/* Chiffres : largeur égale sur tout ce qui est chiffré, soit les valeurs en
+   --font-num (KPI, montants, températures, heures) et les cellules de
+   tableau. Zéro simple : le zéro barré est retiré avec la direction Office.
+   Plex a des chiffres tabulaires par défaut ; tabular-nums reste posé pour
+   une police de repli. La graisse des chiffres est réglée dans la section
+   « Direction Office », en fin de feuille. */
 [style*="var(--font-num)"],
 td,
 th {
-  font-variant-numeric: tabular-nums slashed-zero;
+  font-variant-numeric: tabular-nums;
 }
 
 #root {
@@ -1384,6 +1386,9 @@ h1 {
   width: min(420px, calc(100vw - 36px));
 }
 
+/* Les quatre types ont le même fond neutre et le même texte : le statut est
+   porté par le picto (.toast-icon), l'information reste sans couleur. Aucun
+   blanc littéral, aucun fond de menu : les jetons --toast-* suivent le thème. */
 .toast {
   display: flex;
   align-items: flex-start;
@@ -1393,31 +1398,16 @@ h1 {
   border: 1px solid transparent;
   border-radius: var(--r);
   padding: 12px 14px;
-  color: #fff;
+  background: var(--toast-fond);
+  color: var(--toast-texte);
   text-align: left;
   cursor: pointer;
   box-shadow: var(--sh-lg);
 }
 
-.toast-success {
-  background: var(--success-strong);
-  border-color: var(--success-text);
-}
-
-.toast-error {
-  background: var(--danger-strong);
-  border-color: var(--danger-text);
-}
-
-.toast-warning {
-  background: var(--warning-strong);
-  border-color: var(--warning-text);
-}
-
-.toast-info {
-  background: var(--nav); /* fond sidebar - cohérent avec le thème dark */
-  border-color: var(--border);
-}
+.toast-success .toast-icon { color: var(--toast-succes); }
+.toast-error .toast-icon { color: var(--toast-danger); }
+.toast-warning .toast-icon { color: var(--toast-alerte); }
 
 .toast-icon,
 .toast-dismiss {
@@ -1599,27 +1589,14 @@ html[data-theme="dark"] button:not(:disabled):active {
   white-space: nowrap;
 }
 
-/* ─── Header « verre » (AppLayout) ──────────────────────────────────────────
-   Façon barres iOS récentes : le header est posé en absolu sur la zone qui
-   défile (--app-header-h), le contenu passe dessous, flouté et resaturé à
-   travers un fond translucide. Filet bas en ombre intérieure : il ne compte
-   pas dans la hauteur. Sans backdrop-filter, ou si l'appareil demande moins de
-   transparence, le fond redevient opaque. */
+/* ─── Barre du haut (AppLayout) ─────────────────────────────────────────────
+   Posée en absolu sur la zone qui défile (--app-header-h) : le contenu passe
+   dessous. Opaque, à la couleur du fond de page, sans flou (direction
+   Office). Filet bas en ombre intérieure : il ne compte pas dans la hauteur.
+   La classe garde son nom d'avant, lu par AppLayout. */
 .app-glass-bar {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
   box-shadow: inset 0 -1px 0 var(--glass-border);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .app-glass-bar { background: var(--surface); }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .app-glass-bar {
-    background: var(--surface);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
 }
 
 /* Boutons du header (langue, recherche, thème, alertes, repli, accueil) :
@@ -1829,9 +1806,11 @@ html[data-theme="dark"] button:not(:disabled):active {
    consultant).
    (hover: hover) : pas d'état survolé qui reste collé après un tap sur iPad. */
 @media (hover: hover) {
+  /* Menu clair : le survol se pose sur --nav-active, un voile blanc ne s'y
+     verrait pas. */
   .sc-nav-item:not([aria-current="page"]):hover,
   .sc-nav-account:hover {
-    background: rgba(255, 255, 255, 0.06) !important;
+    background: var(--nav-active) !important;
     color: var(--nav-text-active) !important;
   }
   .sc-pop-item:not([aria-checked="true"]):hover,
@@ -2128,6 +2107,13 @@ html[data-theme="dark"] button:not(:disabled):active {
 @media (min-width: 1024px) {
   .accueil-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* Tuile : fond, contour et rayon du bouton secondaire d'Office. !important
+   car le fond et le rayon sont en style inline. */
+.accueil-tuile {
+  background: var(--btn-fond) !important;
+  border-radius: var(--r-xl) !important;
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
+}
 @media (hover: hover) {
   .accueil-tuile:hover,
   .sc-accueil-account:hover { background: var(--accent-light) !important; }
@@ -2151,18 +2137,31 @@ button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var
   padding-right: 0 !important;
 }
 
-/* Boutons secondaires : plus de contour, un fond doux et le texte en couleur
-   d'accent, pour qu'ils restent lisibles comme des boutons. Les boutons
-   d'action pleins (accent, danger, succès), les états actifs et les lignes
-   de liste pleine largeur ne sont pas concernés. */
+/* Boutons secondaires (direction Office) : fond, contour et texte par les
+   jetons --btn-*. Le contour est une ombre intérieure, la bordure d'origine
+   devient transparente : la hauteur ne bouge pas. Les boutons d'action pleins
+   (accent, danger, succès), les états actifs et les lignes de liste pleine
+   largeur ne sont pas concernés. */
 button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]):not([style*="width: 100%"]),
 .ui-btn--ghost {
-  background: var(--surface2) !important;
+  background: var(--btn-fond) !important;
   border-color: transparent !important;
   border-radius: var(--r-sm) !important;
-  box-shadow: none !important;
-  color: var(--accent) !important;
-  font-weight: 500 !important;
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
+  color: var(--btn-texte) !important;
+  font-weight: var(--g2) !important;
+}
+/* Éteint : texte et contour s'effacent, le bouton garde sa place. */
+button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]):not([style*="width: 100%"]):disabled,
+.ui-btn--ghost:disabled {
+  color: var(--text3) !important;
+  box-shadow: inset 0 0 0 1px var(--rule-soft) !important;
+}
+/* Un bouton à fond doux sans bord (grille de la caisse, tuiles de module)
+   prend le même contour : --surface2 vaut la surface, sans lui il n'aurait
+   plus ni fond ni limite. */
+button[style*="background: var(--surface2)"][style*="border-style: none"] {
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
 }
 
 /* Cases d'ajout en pointillés : le « + » suffit. */
@@ -2170,18 +2169,21 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   border-color: transparent !important;
 }
 
-/* Barres d'onglets : soulignement de l'onglet actif au lieu d'une pilule. */
+/* Barres d'onglets : soulignement de l'onglet actif au lieu d'une pilule,
+   trait et texte en --onglet (direction Office). La barre de modes de la
+   caisse est exclue par écrit : son mode actif garde l'aplat d'accent posé
+   plus bas (.caisse-modes), quelle que soit la spécificité de cette règle. */
 .segmented-tabs {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
   padding-left: 0 !important;
 }
-.segmented-tab.is-active {
+.segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
   background: transparent !important;
-  box-shadow: inset 0 -2px 0 var(--accent) !important;
+  box-shadow: inset 0 -2px 0 var(--onglet) !important;
   border-radius: 0 !important;
-  color: var(--accent) !important;
+  color: var(--onglet) !important;
 }
 
 /* ─── Petits titres en casse normale ────────────────────────────────────────
@@ -2210,6 +2212,11 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   color: var(--text);
   background: var(--surface2);
   border-radius: var(--r-lg);
+}
+/* Un mode inactif a le contour du bouton secondaire (--surface2 vaut la
+   surface, il n'aurait plus de limite). */
+.caisse-modes .segmented-tab:not(.is-active) {
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
 }
 .caisse-modes .segmented-tab.is-active {
   background: var(--accent) !important;

@@ -86,11 +86,13 @@
    ressemblait au fond de page, donc moins détaché ; fond de surface pour tous. Un fond de surface, un filet fin et des coins doux posent
    les limites sans revenir aux encadrés épais ; le titre se sépare du contenu
    par un filet. Classes seulement : la règle globale « Plus de carrés »
-   (app.css) ne lit que les styles inline et ne les aplatit pas. */
+   (app.css) ne lit que les styles inline et ne les aplatit pas.
+   Direction Office : le panneau est une zone (--zone), cernée d'un filet
+   doux, sans ombre portée. */
 .tdb-panneau {
-  background: var(--surface);
+  background: var(--zone);
   border-radius: var(--r-xl);
-  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh-sm);
+  box-shadow: 0 0 0 1px var(--rule-soft);
   padding: 14px 14px 10px;
   min-width: 0;
 }
@@ -99,9 +101,12 @@
   border-bottom: 1px solid var(--rule-soft);
 }
 .tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
-/* La colonne du jour : un liseré d'accent en haut et son titre en accent. */
+/* La colonne du jour : un liseré en haut, à l'encre de l'onglet actif
+   (--onglet). C'est un marqueur d'état : il change de couleur avec la
+   direction Office, il ne s'éteint pas. Plus spécifique que .tdb-panneau,
+   il garde son ombre quand le panneau pose la sienne. */
 .tdb .tdb-jour--actuel {
-  box-shadow: inset 0 3px 0 var(--accent), 0 0 0 1px var(--rule-soft), var(--sh-sm);
+  box-shadow: inset 0 3px 0 var(--onglet), 0 0 0 1px var(--rule-soft);
 }
 /* Sous-titres (Midi, Soir, Réservations, Groupes...) sur un bandeau teinté. */
 .tdb-sous-tete {
