@@ -4638,6 +4638,15 @@ export const UI_GLOSSARY = {
   "Passages d'une chambre à « propre » dans le journal du ménage.": "Changes of a room to clean in the housekeeping log.",
   "Pièces de linge sorties sales, au jour du mouvement.": "Pieces of linen sent out dirty, on the day of the movement.",
   "Pièces de linge rentrées propres, au jour du mouvement.": "Pieces of linen returned clean, on the day of the movement.",
+  // ── Statistiques (S2) : TVA estimée et prix d'un produit ──
+  "TVA collectée moins impôt préalable, ou chiffre fois le taux de la dette fiscale nette, comme la Vue d'ensemble ; arrondie sur le total, la somme des points peut s'en écarter de quelques centimes.": "VAT collected less input tax, or revenue times the net tax rate, like the Overview; rounded on the total, the sum of the points may differ from it by a few cents.",
+  "Prix d'achat d'un produit": "Purchase price of a product",
+  "Produit acheté": "Product purchased",
+  "Dernier prix unitaire facturé du produit choisi dans le pas, dans son unité, comme le prix d'un produit des Analyses des dépenses ; un prix ne s'additionne pas.": "Last unit price invoiced for the chosen product in the step, in its unit, like the product price in the Spending analysis; a price is not added up.",
+  "la date du relevé de prix (date de la facture)": "the date the price was recorded (invoice date)",
+  "Prix d'un produit du catalogue": "Price of a catalogue product",
+  "Produit du catalogue": "Catalogue product",
+  "Dernier prix unitaire relevé pour le produit choisi dans le pas, comme son historique de prix au catalogue ; un prix ne s'additionne pas.": "Last unit price recorded for the chosen product in the step, like its price history in the catalogue; a price is not added up.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

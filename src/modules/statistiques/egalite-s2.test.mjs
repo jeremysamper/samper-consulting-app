@@ -21,6 +21,9 @@ import { J1, J2, jeuEssai } from '../caisse/rapports/jeuEssai.mjs';
 import { rapportCaisse } from '../caisse/rapports/calculRapports.js';
 import { computeReservationStats } from '../previsions/rapport/computeReservationStats.js';
 import { statsPeriode } from '../hebergement/serieHotel.js';
+import { resumeVentes, ventesParJour } from '../comptabilite/ventesCompta.js';
+import { synthese } from '../comptabilite/syntheseCompta.js';
+import { etatTva } from '../comptabilite/tvaCompta.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -342,6 +345,53 @@ test('hôtel : registre, demandes, technique, activités et étages, chaque flux
   assert.equal(mesure('activites.remplissage').valeur(lire('activites', donnees, '2026-01-01', '2026-12-31', 'mois').total), 600 / 1000);
 });
 
+// ── Comptabilité : TVA estimée (sortie de S1) ──
+test('comptabilité : la TVA estimée est celle de la Vue d’ensemble, la somme des jours à quelques centimes', () => {
+  const manuel = [];
+  for (let j = 1; j <= 31; j += 1) {
+    const jour = `2026-10-${String(j).padStart(2, '0')}`;
+    manuel.push({ jour, taux: 8.1, montantTtc: 2100.35 + j * 13.07, source: 'manuel' });
+    if (j % 2) manuel.push({ jour, taux: 2.6, montantTtc: 180.4 + j, source: 'manuel' });
+  }
+  const parJourTout = ventesParJour({ manuel });
+  const docs = Array.from({ length: 20 }, (_, i) => ({ typeDocument: 'facture', perimetre: 'Général', exclu: false, lignes: [], dateDocument: `2026-10-${String(1 + i).padStart(2, '0')}`, totalHT: 400 + i * 7.3, totalTTC: (400 + i * 7.3) * 1.026, tvaTaux: 2.6 }));
+  const charges = [{ id: 'c1', libelle: 'Loyer', categorie: 'loyer', montant: 6500, tvaTaux: 8.1, periodicite: 'mensuelle', debut: '2026-01-01', fin: null }];
+  ['effective', 'tdfn'].forEach((methodeTva) => {
+    const reglages = { methodeTva, tauxTdfn: 5.1 };
+    const syntheseDe = (p) => {
+      const parJour = parJourTout.filter((x) => x.jour >= p.debut && x.jour <= p.fin);
+      const ventes = resumeVentes({ parJour, joursOuverts: new Set(), debut: p.debut, finEffective: p.fin, aujourdhui: AUJ });
+      const tva = etatTva({ ventes: parJourTout, docs, charges, reglages, debut: p.debut, fin: p.fin, aujourdhui: AUJ, joursOuverts: new Set(), notesCouvrent: false });
+      return synthese({ periode: p, aujourdhui: AUJ, ventes, docs, charges, inventaires: [], tva });
+    };
+    const lu = lire('comptabilite', { syntheseDe }, '2026-10-01', '2026-10-31', 'jour');
+    const mois = syntheseDe({ type: 'libre', debut: '2026-10-01', fin: '2026-10-31' });
+    assert.equal(mesure('comptabilite.tva_estimee').valeur(lu.total), mois.tvaEstimee, methodeTva);
+    const somme = sommeFlux(lu.points.map((x) => mesure('comptabilite.tva_estimee').valeur(x)));
+    assert.ok(Math.abs(somme - mois.tvaEstimee) <= 0.31, `${methodeTva} : ${somme} contre ${mois.tvaEstimee}`);
+  });
+});
+
+// ── Prix d'un produit : achats et catalogue ──
+test("prix d'un produit : dernier prix facturé (achats) et dernier relevé (catalogue), jamais une somme", () => {
+  const docs = Array.from({ length: 60 }, (_, i) => ({ id: `f${i}`, typeDocument: 'facture', exclu: false, perimetre: 'Général', dateDocument: new Date(Date.UTC(2026, 0, 1 + i * 5)).toISOString().slice(0, 10), totalHT: 100, totalTTC: 108.1,
+    lignes: [{ libelle: 'Beurre doux', quantite: 2, prixUnitaire: 9 + (i % 5) * 0.5, montantLigne: 2 * (9 + (i % 5) * 0.5) }] }));
+  const lu = lire('achats', { docs, catalogue: [] }, '2026-01-01', '2026-12-31', 'mois');
+  const prix = mesure('achats.prix_produit');
+  const opts = prix.choix.options(lu.total);
+  assert.equal(opts.length, 1);
+  const c = composer({ graphique: { mesures: [prix.id], choix: {} }, mesures: [prix], tranches: lu.tranches, sources: { points: { achats: lu.points }, totaux: { achats: lu.total } }, etats: { achats: 'ready' }, familles: FAMILLES });
+  const dernier = docs.filter((d) => d.dateDocument <= '2026-12-31').pop().lignes[0].prixUnitaire;
+  assert.equal(c.series[0].total, dernier);
+  const releves = Array.from({ length: 1200 }, (_, i) => ({ produitId: `p${i % 3}`, releveLe: new Date(Date.UTC(2026, 0, 1 + Math.floor(i / 4))).toISOString().slice(0, 10), prixUnitaire: 5 + (i % 7) }));
+  const produits = [{ id: 'p0', nom: 'Farine' }, { id: 'p1', nom: 'Sucre' }, { id: 'p2', nom: 'Sel' }];
+  const luc = lire('catalogue', { releves, produits }, '2026-01-01', '2026-12-31', 'mois');
+  const cat = mesure('catalogue.prix');
+  assert.deepEqual(cat.choix.options(luc.total).map((o) => o.libelle), ['Farine', 'Sel', 'Sucre']);
+  const derniers = releves.filter((r) => r.produitId === 'p1');
+  assert.equal(cat.valeur(luc.total, 'p1'), derniers[derniers.length - 1].prixUnitaire);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
@@ -360,4 +410,5 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('technique'), 3);
   assert.equal(compte('activites'), 2);
   assert.equal(compte('etages'), 3);
+  assert.equal(compte('catalogue'), 1);
 });

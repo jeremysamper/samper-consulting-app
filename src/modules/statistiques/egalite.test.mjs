@@ -26,7 +26,7 @@ const AJOUTS_S2 = ['achats.reglees', 'achats.delai', 'caisse.ventes', 'caisse.an
   'reservations.demandes_recues', 'reservations.demandes_acceptees', 'reservations.demandes_annulees', 'reservations.anticipees',
   'reservations.delai_moyen', 'reservations.delai_median', 'reservations.groupes', 'reservations.placement', 'reservations.avec_fiche',
   'reservations.clients_uniques', 'reservations.clients_venus', 'reservations.clients_revenus', 'reservations.taux_retour',
-  'reservations.passeport', 'reservations.taguees'];
+  'reservations.passeport', 'reservations.taguees', 'comptabilite.tva_estimee', 'achats.prix_produit'];
 
 // Points par tranche et point de la période entière, comme le fait l'écran.
 function lire(id, donnees, debut, fin, pas) {
@@ -189,7 +189,7 @@ test('comptabilité : le total est celui de la synthèse du mois ; le TVA compri
   assert.equal(v('comptabilite.personnel'), null);
   // Hors TVA arrondi par taux sur le total : un demi-centime par jour et par
   // taux au plus ; les charges fixes ont leur propre arrondi au prorata.
-  verifierFlux('comptabilite', lu, { tolerance: { 'comptabilite.ca_ht': 31, 'comptabilite.charges': 31 } });
+  verifierFlux('comptabilite', lu, { tolerance: { 'comptabilite.ca_ht': 31, 'comptabilite.charges': 31, 'comptabilite.tva_estimee': 31 } });
   // Marge et résultat sont des soldes recalculés sur le pas, pas des flux : un
   // jour sans facture n'a pas de coût matière, donc pas de marge.
   const marge = MESURES.find((m) => m.id === 'comptabilite.marge_brute');

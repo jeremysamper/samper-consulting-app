@@ -21,10 +21,10 @@ import { famillePlanning } from './familles/planning.js';
 import { familleHaccp } from './familles/haccp.js';
 import { familleInventaire } from './familles/inventaire.js';
 import { familleGroupes } from './familles/groupes.js';
-import { familleJournal, familleKds, familleMep, familleSop, familleSpa, familleVentesPos } from './familles/reste.js';
+import { familleCatalogue, familleJournal, familleKds, familleMep, familleSop, familleSpa, familleVentesPos } from './familles/reste.js';
 import { familleActivites, familleDemandes, familleEtages, familleHebergement, familleTechnique } from './familles/hotel.js';
 
-export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire, familleGroupes, familleSop, familleMep, familleKds, familleJournal, familleSpa, familleVentesPos,
+export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire, familleGroupes, familleSop, familleMep, familleKds, familleJournal, familleSpa, familleVentesPos, familleCatalogue,
   familleHebergement, familleEtages, familleDemandes, familleActivites, familleTechnique];
 
 const TOUS_LES_PAS = ['jour', 'semaine', 'mois'];

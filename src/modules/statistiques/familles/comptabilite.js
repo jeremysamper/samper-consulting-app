@@ -65,6 +65,11 @@ export const familleComptabilite = {
       phrase: 'Coût du personnel estimé divisé par le chiffre d\'affaires hors TVA. Réservé à la direction.',
     },
     {
+      id: 'comptabilite.tva_estimee', libelle: 'TVA estimée à payer', unite: 'chf', nature: 'flux',
+      valeur: (p) => p.tvaEstimee ?? null,
+      phrase: 'TVA collectée moins impôt préalable, ou chiffre fois le taux de la dette fiscale nette, comme la Vue d\'ensemble ; arrondie sur le total, la somme des points peut s\'en écarter de quelques centimes.',
+    },
+    {
       id: 'comptabilite.resultat', libelle: 'Résultat estimé', unite: 'chf', nature: 'taux',
       valeur: (p) => p.resultat,
       phrase: 'Marge brute moins les charges fixes et, pour la direction, le coût du personnel estimé ; recalculé sur chaque pas, n/a quand la marge l\'est.',

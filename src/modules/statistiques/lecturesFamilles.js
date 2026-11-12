@@ -276,6 +276,29 @@ export const LECTURES = {
       return { journalChambres: journal.map(mapJournal), linge: linge.map(mapLinge) };
     },
   },
+  // Catalogue : les produits de l'établissement et l'historique de leurs prix
+  // (toute la période connue : le choix du produit porte sur la période).
+  catalogue: {
+    sansFenetre: true,
+    visible: (ctx) => ecranOuvert('catalogue', ctx),
+    async lire(etabId) {
+      const db = dbService.getBridge()?.db;
+      if (!db) throw echec(null, 'Lecture indisponible.');
+      const produits = await db.listProduits(etabId, { strict: true });
+      const ids = (produits || []).map((x) => x.id);
+      const releves = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const lot = ids.slice(i, i + 100);
+        releves.push(...await toutesLesPages((x, y) => supabase.from('produit_prix_historique').select('id, produit_id, releve_le, prix_unitaire')
+          .in('produit_id', lot).order('releve_le').order('id').range(x, y)));
+      }
+      const avecHistorique = new Set(releves.map((r) => r.produit_id));
+      return {
+        produits: (produits || []).map((x) => ({ id: x.id, nom: x.nom, avecHistorique: avecHistorique.has(x.id) })),
+        releves: releves.map((r) => ({ produitId: r.produit_id, releveLe: r.releve_le, prixUnitaire: r.prix_unitaire })),
+      };
+    },
+  },
 };
 
 export const famillesVisibles = (contexte) => Object.keys(LECTURES).filter((id) => LECTURES[id].visible(contexte));

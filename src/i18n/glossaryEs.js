@@ -4619,4 +4619,13 @@ export const UI_GLOSSARY_ES = {
   "Passages d'une chambre à « propre » dans le journal du ménage.": "Pasos de una habitación a limpia en el registro de limpieza.",
   "Pièces de linge sorties sales, au jour du mouvement.": "Piezas de ropa sacadas sucias, el día del movimiento.",
   "Pièces de linge rentrées propres, au jour du mouvement.": "Piezas de ropa devueltas limpias, el día del movimiento.",
+  // ── Statistiques (S2) : TVA estimée et prix d'un produit ──
+  "TVA collectée moins impôt préalable, ou chiffre fois le taux de la dette fiscale nette, comme la Vue d'ensemble ; arrondie sur le total, la somme des points peut s'en écarter de quelques centimes.": "IVA repercutido menos IVA soportado, o facturación por el tipo neto, como la Vista general; redondeado sobre el total, la suma de los puntos puede diferir en unos céntimos.",
+  "Prix d'achat d'un produit": "Precio de compra de un producto",
+  "Produit acheté": "Producto comprado",
+  "Dernier prix unitaire facturé du produit choisi dans le pas, dans son unité, comme le prix d'un produit des Analyses des dépenses ; un prix ne s'additionne pas.": "Último precio unitario facturado del producto elegido en el paso, en su unidad, como el precio de un producto del Análisis de gastos; un precio no se suma.",
+  "la date du relevé de prix (date de la facture)": "la fecha del registro del precio (fecha de la factura)",
+  "Prix d'un produit du catalogue": "Precio de un producto del catálogo",
+  "Produit du catalogue": "Producto del catálogo",
+  "Dernier prix unitaire relevé pour le produit choisi dans le pas, comme son historique de prix au catalogue ; un prix ne s'additionne pas.": "Último precio unitario registrado del producto elegido en el paso, como su historial de precios en el catálogo; un precio no se suma.",
 };

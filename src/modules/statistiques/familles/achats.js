@@ -5,10 +5,17 @@
 //
 // Une tranche sans facture chiffrée vaut « n/a », jamais 0.
 
-import { depensesParTranche, parFournisseur, parRayon, trierDocuments } from '../../factures-achats/analysesAchats.js';
+import { depensesParTranche, parFournisseur, parRayon, prixParProduit, trierDocuments } from '../../factures-achats/analysesAchats.js';
 import { reglementsParTranche } from '../../inventaire/facturesLogic.js';
 
 const NON_REPARTI = 'Factures sans ligne lue';
+
+// Dernier prix d'un produit dans les factures d'une tranche (prixParProduit,
+// la série des Analyses des dépenses), null sans achat du produit.
+function dernierPrix(p, cle) {
+  const serie = prixParProduit(p.factures || []).find((x) => x.cle === cle);
+  return serie && serie.points.length ? serie.points[serie.points.length - 1].prix : null;
+}
 
 export const familleAchats = {
   id: 'achats',
@@ -38,6 +45,15 @@ export const familleAchats = {
       id: 'achats.factures', libelle: 'Factures chiffrées', unite: 'nombre', nature: 'flux',
       valeur: (p) => (p.total ? p.n : null),
       phrase: 'Nombre de factures d\'achat qui portent un montant ; les bons de livraison et de commande ne comptent pas.',
+    },
+    {
+      id: 'achats.prix_produit', libelle: 'Prix d\'achat d\'un produit', unite: 'chf', nature: 'stock',
+      choix: {
+        libelle: 'Produit acheté',
+        options: (total) => prixParProduit(total.factures || []).map((x) => ({ cle: x.cle, libelle: `${x.nom} (${x.unite})` })),
+      },
+      valeur: (p, cle) => dernierPrix(p, cle),
+      phrase: 'Dernier prix unitaire facturé du produit choisi dans le pas, dans son unité, comme le prix d\'un produit des Analyses des dépenses ; un prix ne s\'additionne pas.',
     },
     {
       id: 'achats.reglees', libelle: 'Factures réglées', unite: 'chf', nature: 'flux', reserve: 'factures_achat',

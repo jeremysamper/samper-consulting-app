@@ -9,6 +9,7 @@ import { serieKds } from '../../kds/serieKds.js';
 import { serieMep } from '../../mep/serieMep.js';
 import { SANS_PRATICIEN_SPA, serieSpa } from '../../spa/serieSpa.js';
 import { serieVentesPos } from '../../pos/lib/serieVentesPos.js';
+import { serieCatalogue } from '../../catalogue/serieCatalogue.js';
 
 const sauf = (p, f) => (p.vide ? null : f(p));
 const compte = (objet, libelles) => Object.entries(objet || {}).map(([cle, valeur]) => ({ cle, libelle: libelles[cle] || cle, valeur }));
@@ -172,6 +173,29 @@ export const familleVentesPos = {
       valeur: (p) => sauf(p, (x) => x.chiffre),
       ventilations: parPlatPos('chiffre'),
       phrase: 'Chiffre des articles vendus que rend la caisse reliée, TVA comprise, au jour de la vente.',
+    },
+  ],
+};
+
+// Catalogue : prix d'un produit dans le temps, mesure à choix (un produit à
+// la fois), comme l'historique de prix d'un produit du catalogue.
+export const familleCatalogue = {
+  id: 'catalogue',
+  libelle: 'Catalogue produits',
+  journee: 'la date du relevé de prix (date de la facture)',
+  calculer(donnees, tranches) {
+    return serieCatalogue(donnees.releves, tranches).map((p) => ({ ...p, produits: donnees.produits || [] }));
+  },
+  mesures: [
+    {
+      id: 'catalogue.prix', libelle: 'Prix d\'un produit du catalogue', unite: 'chf', nature: 'stock',
+      choix: {
+        libelle: 'Produit du catalogue',
+        options: (total) => (total.produits || []).filter((x) => total.parProduit?.[x.id] || x.avecHistorique)
+          .map((x) => ({ cle: x.id, libelle: x.nom || x.id })).sort((a, b) => String(a.libelle).localeCompare(String(b.libelle), 'fr')),
+      },
+      valeur: (p, id) => p.parProduit?.[id]?.prix ?? null,
+      phrase: 'Dernier prix unitaire relevé pour le produit choisi dans le pas, comme son historique de prix au catalogue ; un prix ne s\'additionne pas.',
     },
   ],
 };
