@@ -36,7 +36,7 @@ function Horloge() {
     return () => clearInterval(id);
   }, []);
   return (
-    <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)' }}>
+    <span style={{ fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', color: 'var(--text)' }}>
       {heure}
     </span>
   );
@@ -45,10 +45,10 @@ function Horloge() {
 function Compteur({ valeur, label, couleur }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
-      <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-num)', color: couleur || 'var(--text)' }}>
+      <span style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', color: couleur || 'var(--text)' }}>
         {valeur}
       </span>
-      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text3)' }}>
+      <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' }}>
         {label}
       </span>
     </div>
@@ -122,10 +122,10 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
         borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
       }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             Mode service
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
             {formatDateLongue(date)}{aujourdhui ? '' : ', pas aujourd’hui'}
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
         {service !== null && !isMobile && (
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <Compteur valeur={couverts(aTable)} label="à table" couleur="var(--success-text)" />
-            <Compteur valeur={couverts(attendus)} label="attendus" couleur="var(--accent)" />
+            <Compteur valeur={couverts(attendus)} label="attendus" couleur="var(--lien)" />
             <Compteur valeur={couverts(prevus)} label="couverts" />
           </div>
         )}
@@ -161,10 +161,10 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
             type="button"
             onClick={() => setPassage(true)}
             style={{
-              minHeight: 44, padding: '9px 16px', borderRadius: 8,
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-              background: 'var(--surface)', color: 'var(--accent)',
-              fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+              minHeight: 44, padding: '9px 16px', borderRadius: 'var(--r)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+              background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+              fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
             }}
           >
             Passage
@@ -175,9 +175,9 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
             type="button"
             onClick={() => setCreating(true)}
             style={{
-              minHeight: 44, padding: '9px 16px', borderRadius: 8, border: 'none',
+              minHeight: 44, padding: '9px 16px', borderRadius: 'var(--r)', border: 'none',
               background: 'var(--accent)', color: 'var(--on-accent)',
-              fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+              fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', cursor: 'pointer',
             }}
           >
             Nouvelle réservation
@@ -187,10 +187,10 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
           type="button"
           onClick={onClose}
           style={{
-            minHeight: 44, padding: '9px 16px', borderRadius: 8,
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-            background: 'var(--surface)', color: 'var(--text)',
-            fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+            minHeight: 44, padding: '9px 16px', borderRadius: 'var(--r)',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+            background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+            fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
           }}
         >
           Quitter
@@ -198,7 +198,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
 
         {/* Compteurs sur téléphone : une ligne à part, sous les boutons. */}
         {service !== null && isMobile && (
-          <div style={{ width: '100%', fontSize: 12, color: 'var(--text2)' }}>
+          <div style={{ width: '100%', fontSize: 'var(--t1)', color: 'var(--text2)' }}>
             <strong style={{ color: 'var(--success-text)' }}>{pluriel(couverts(aTable), 'couvert')} à table</strong>
             {', '}{couverts(attendus)} attendus, {pluriel(couverts(prevus), 'couvert')} prévus
           </div>
@@ -216,17 +216,17 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
       }}>
         {error && (
           <div style={{
-            padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
+            padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)',
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
-            color: 'var(--danger-text)', fontSize: 13, marginBottom: 12,
+            color: 'var(--danger-text)', fontSize: 'var(--t2)', marginBottom: 12,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
           }}>
             <span>{error}</span>
             <button type="button" onClick={load} style={{
-              minHeight: 40, padding: '6px 12px', borderRadius: 6,
+              minHeight: 40, padding: '6px 12px', borderRadius: 'var(--r)',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
               background: 'transparent', color: 'var(--danger-text)',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
             }}>
               Réessayer
             </button>
@@ -234,7 +234,7 @@ export default function ModeService({ etablissementId, date, canEdit, onClose, o
         )}
 
         {(loading || (service === null && !error)) && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text3)', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text3)', fontSize: 'var(--t2)' }}>
             Chargement du service…
           </div>
         )}

@@ -105,10 +105,10 @@ const PAS_TABOURET = 60;
 // Bouton de la rangée « Ajouter » du dessin. flexShrink 0 : dans une rangée
 // qui défile, un bouton comprimé passerait sous son voisin.
 const puce = {
-  flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 8,
+  flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 'var(--r)',
   borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   background: 'var(--surface)', color: 'var(--text)',
-  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
   whiteSpace: 'nowrap',
 };
 
@@ -116,22 +116,22 @@ const puce = {
 // sur une seconde ligne, plus petite. Plein quand le mode est en cours.
 // Contour en longhands : l'état actif ne change que borderColor.
 const boutonMode = (actif) => ({
-  minHeight: 44, padding: '6px 14px', borderRadius: 8,
+  minHeight: 44, padding: '6px 14px', borderRadius: 'var(--r)',
   borderWidth: 1, borderStyle: 'solid',
-  borderColor: actif ? 'var(--accent)' : 'var(--border)',
-  background: actif ? 'var(--accent)' : 'var(--surface)',
-  color: actif ? 'var(--on-accent)' : 'var(--text)',
+  borderColor: actif ? 'var(--onglet)' : 'var(--border)',
+  background: actif ? 'var(--selection)' : 'var(--surface)',
+  color: 'var(--text)',
   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
   gap: 1, textAlign: 'left', lineHeight: 1.2,
-  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
 });
-const portee = { fontSize: 11, fontWeight: 500, opacity: 0.8 };
+const portee = { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', opacity: 0.8 };
 // Le mode en cours, dit en clair au-dessus du plan.
 const bandeauMode = {
-  flex: '1 1 100%', minWidth: 0, padding: '8px 12px', borderRadius: 8,
+  flex: '1 1 100%', minWidth: 0, padding: '8px 12px', borderRadius: 'var(--r)',
   background: 'var(--info-bg-soft)', color: 'var(--info-text)',
   borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--info-bd)',
-  fontSize: 12, lineHeight: 1.45,
+  fontSize: 'var(--t1)', lineHeight: 1.45,
 };
 
 // Table dont la tablée porte le numéro. La clé de fusion EST l'id de cette
@@ -288,9 +288,9 @@ function TableShape({
             position: 'absolute', top: 3, right: 3, zIndex: 1,
             width: 26, height: 26, minHeight: 0, padding: 0,
             borderRadius: '50%',
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-            background: 'var(--surface)', color: 'var(--accent)',
-            fontSize: 14, fontWeight: 700, lineHeight: 1,
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+            background: 'var(--btn-fond)', color: 'var(--lien)',
+            fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', touchAction: 'manipulation',
           }}
@@ -302,14 +302,14 @@ function TableShape({
       <>
       {/* Nom + capacité (le seul numéro, pour une tablée) */}
       <div style={{
-        fontSize: tabouret ? 10 : sobre ? 13 : 11, fontWeight: 700, lineHeight: 1.1,
-        color: 'var(--text)', fontFamily: 'var(--font-serif)',
+        fontSize: tabouret ? 10 : sobre ? 13 : 11, fontWeight: 'var(--g3)', lineHeight: 1.1,
+        color: 'var(--text)', fontFamily: 'var(--font)',
         maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {table.nom}
       </div>
       {!sobre && !tabouret && (
-        <div style={{ fontSize: 9, color: deborde ? 'var(--danger-text)' : 'var(--text3)', lineHeight: 1.1 }}>
+        <div style={{ fontSize: 'var(--t1)', color: deborde ? 'var(--danger-text)' : 'var(--text3)', lineHeight: 1.1 }}>
           {occupants.length ? `${assis}/${places}` : `${places} pl.`}
         </div>
       )}
@@ -328,7 +328,7 @@ function TableShape({
             ? (e) => { e.stopPropagation(); onOpenOccupant(resa); }
             : undefined}
           style={{
-            maxWidth: '100%', padding: tabouret ? '0 3px' : '1px 5px', borderRadius: 20,
+            maxWidth: '100%', padding: tabouret ? '0 3px' : '1px 5px', borderRadius: 'var(--r-full)',
             // Une table occupée par des clients déjà assis se distingue de
             // celle qui les attend : c'est la question qu'on se pose en
             // regardant le plan pendant le service.
@@ -341,7 +341,7 @@ function TableShape({
             color: resa.statut === 'arrive' ? 'var(--on-success)'
                  : resa.statut === 'parti'  ? 'var(--bg)'
                  : 'var(--on-accent)',
-            fontSize: tabouret ? 8 : 9, fontWeight: 700, lineHeight: 1.35,
+            fontSize: tabouret ? 8 : 9, fontWeight: 'var(--g3)', lineHeight: 1.35,
             fontFamily: 'var(--font)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             cursor: mode === 'service' && canEdit ? 'grab' : mode === 'service' && onOpenOccupant ? 'pointer' : 'default',
@@ -359,7 +359,7 @@ function TableShape({
         </div>
       ))}
       {!tabouret && liste.length > 3 && (
-        <div style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 700 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', fontWeight: 'var(--g3)' }}>
           +{liste.length - 3}
         </div>
       )}
@@ -380,7 +380,7 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
     <div
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '7px 9px', borderRadius: 8,
+        padding: '7px 9px', borderRadius: 'var(--r)',
         borderWidth: 1, borderStyle: 'solid',
         borderColor: placee ? 'var(--success-bd)' : 'var(--border)',
         background: placee ? 'var(--success-bg-soft)' : 'var(--surface)',
@@ -401,7 +401,7 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
             flexShrink: 0, width: 34, height: 44, marginLeft: -4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'grab', touchAction: 'none',
-            color: 'var(--text3)', fontSize: 15, lineHeight: 1,
+            color: 'var(--text3)', fontSize: 'var(--t2)', lineHeight: 1,
             userSelect: 'none', WebkitUserSelect: 'none',
           }}
         >
@@ -417,17 +417,17 @@ function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, e
         }}
       >
         <div style={{
-          fontSize: 12, fontWeight: 700, color: 'var(--text)',
+          fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }} data-no-translate>
           {resa.nom}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
           {(resa.heure_arrivee || '').slice(0, 5)}, {resa.nb_couverts} pax
           {resa.est_groupe ? ', groupe' : ''}
         </div>
         <div style={{
-          fontSize: 10, marginTop: 2, fontWeight: 700,
+          fontSize: 'var(--t1)', marginTop: 2, fontWeight: 'var(--g3)',
           color: placee ? 'var(--success-text)' : 'var(--text3)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
@@ -1837,7 +1837,7 @@ export default function PlanSalle({
   // d'un canevas déjà à sa place.
   if ((loading || enDessin) && tables === null && !error) {
     return (
-      <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 13 }}>
+      <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 'var(--t2)' }}>
         Chargement du plan…
       </div>
     );
@@ -1846,16 +1846,16 @@ export default function PlanSalle({
   if (error) {
     return (
       <div style={{
-        padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
+        padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)',
         borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
-        color: 'var(--danger-text)', fontSize: 13,
+        color: 'var(--danger-text)', fontSize: 'var(--t2)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       }}>
         <span>{error}</span>
         <button type="button" onClick={load} style={{
-          padding: '6px 12px', borderRadius: 6, borderWidth: 1, borderStyle: 'solid',
+          padding: '6px 12px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid',
           borderColor: 'var(--danger-bd)', background: 'transparent',
-          color: 'var(--danger-text)', fontSize: 12, fontWeight: 700,
+          color: 'var(--danger-text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
           cursor: 'pointer', fontFamily: 'var(--font)',
         }}>
           Réessayer
@@ -1994,29 +1994,29 @@ export default function PlanSalle({
   // réservations reste affichée à côté : on peut suivre le service sans plan.
   const planVide = (
       <div style={{
-        textAlign: 'center', padding: '44px 24px', borderRadius: 12,
+        textAlign: 'center', padding: '44px 24px', borderRadius: 'var(--r)',
         borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)',
         background: 'var(--surface)',
       }}>
-        <div style={{ fontSize: 34, opacity: 0.18, marginBottom: 10 }}>▦</div>
+        <div style={{ fontSize: 'var(--t6)', opacity: 0.18, marginBottom: 10 }}>▦</div>
         <div style={{
-          fontSize: 14, fontWeight: 700, color: 'var(--text)',
-          fontFamily: 'var(--font-serif)', marginBottom: 6,
+          fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)',
+          fontFamily: 'var(--font)', marginBottom: 6,
         }}>
           {autresSallesGarnies
             ? 'Cette salle n’a pas encore de table'
             : 'Le plan de salle n’est pas encore dessiné'}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
           {canEdit
             ? 'Ajoutez les tables une à une, placez-les au doigt, puis glissez les réservations dessus.'
             : 'Un responsable doit le dessiner depuis « Dessiner la salle ».'}
         </div>
         {canEdit && (
           <button type="button" onClick={() => ouvrirDessin(true)} style={{
-            padding: '9px 18px', borderRadius: 8, border: 'none',
+            padding: '9px 18px', borderRadius: 'var(--r)', border: 'none',
             background: 'var(--accent)', color: 'var(--on-accent)',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+            fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
           }}>
             Ajouter une table
           </button>
@@ -2048,13 +2048,13 @@ export default function PlanSalle({
       }}>
         {ajusterActif && (
           <div style={bandeauMode}>
-            <div style={{ fontWeight: 700 }}>Vous déplacez des tables pour ce service seulement.</div>
+            <div style={{ fontWeight: 'var(--g3)' }}>Vous déplacez des tables pour ce service seulement.</div>
             <div>Glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.</div>
           </div>
         )}
         {modePlan && (
           <div style={bandeauMode}>
-            <div style={{ fontWeight: 700 }}>Vous dessinez la salle : chaque service repartira de ce plan.</div>
+            <div style={{ fontWeight: 'var(--g3)' }}>Vous dessinez la salle : chaque service repartira de ce plan.</div>
           </div>
         )}
         {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
@@ -2087,7 +2087,7 @@ export default function PlanSalle({
           </>
         )}
         {modePlan && (
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text2)' }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t1)', color: 'var(--text2)' }}>
             {elementChoisi
               ? (defChoisi?.forme === 'ligne'
                 ? 'Glissez pour déplacer, tirez le rond pour allonger.'
@@ -2099,10 +2099,10 @@ export default function PlanSalle({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {!modePlan && !ajustIndispo && ajusterActif && ajustParTable.size > 0 && (
               <button type="button" onClick={revenirAuPlanDeBase} style={{
-                minHeight: 40, padding: '8px 14px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                background: 'var(--surface)', color: 'var(--text)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+                minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r)',
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+                fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 Tout remettre en place
               </button>
@@ -2120,10 +2120,10 @@ export default function PlanSalle({
             )}
             {modePlan && (
               <button type="button" onClick={() => setGestionSalles(true)} style={{
-                padding: '8px 14px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                background: 'var(--surface)', color: 'var(--text)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+                padding: '8px 14px', borderRadius: 'var(--r)',
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+                fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 Salles
               </button>
@@ -2159,8 +2159,8 @@ export default function PlanSalle({
           {elementChoisi ? (
             <>
               <span style={{
-                flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--text)',
-                fontFamily: 'var(--font-serif)', marginRight: 4, whiteSpace: 'nowrap',
+                flexShrink: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)',
+                fontFamily: 'var(--font)', marginRight: 4, whiteSpace: 'nowrap',
               }}>
                 {defChoisi?.label}
                 {defChoisi?.nomme && elementChoisi.libelle ? ` « ${elementChoisi.libelle} »` : ''}
@@ -2184,7 +2184,7 @@ export default function PlanSalle({
                 onClick={() => supprimerElement(elementChoisi)}
                 style={{
                   ...puce,
-                  borderColor: supprEnAttente ? 'var(--danger-text)' : 'var(--border)',
+                  borderColor: supprEnAttente ? 'var(--danger-text)' : 'var(--btn-bord)',
                   background: supprEnAttente ? 'var(--danger-fill)' : 'var(--surface)',
                   color: supprEnAttente ? 'var(--on-danger)' : 'var(--danger-text)',
                 }}
@@ -2202,7 +2202,7 @@ export default function PlanSalle({
           ) : (
             <>
               <span style={{
-                flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--text3)',
+                flexShrink: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)',
                 marginRight: 2, whiteSpace: 'nowrap',
               }}>
                 Ajouter
@@ -2273,7 +2273,7 @@ export default function PlanSalle({
             style={{
               flex: 1, minWidth: 0, width: '100%',
               overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-              borderRadius: 12,
+              borderRadius: 'var(--r)',
               ...(ajusteHauteur ? { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: 0 } : {}),
             }}
           >
@@ -2293,7 +2293,7 @@ export default function PlanSalle({
               aspectRatio: `${PLAN_W} / ${PLAN_H}`,
               background: 'var(--bg)',
               borderWidth: 1, borderStyle: 'solid', borderColor: modePlan ? 'var(--border2)' : 'var(--border)',
-              borderRadius: 12, overflow: 'hidden',
+              borderRadius: 'var(--r)', overflow: 'hidden',
             }}
           >
             {/* Quadrillage : seulement pour dessiner le plan. En service, il
@@ -2330,7 +2330,7 @@ export default function PlanSalle({
                     width:  `${((g.x1 - g.x0 + 12) / PLAN_W) * 100}%`,
                     height: `${((g.y1 - g.y0 + 12) / PLAN_H) * 100}%`,
                     borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--accent)',
-                    borderRadius: 12, pointerEvents: 'none', boxSizing: 'border-box',
+                    borderRadius: 'var(--r)', pointerEvents: 'none', boxSizing: 'border-box',
                   }}
                 />
               ))}
@@ -2367,13 +2367,14 @@ export default function PlanSalle({
           {!modePlan && (
             <div
               data-plan-liste="1"
+              data-cadre=""
               style={{
                 width: isMobile ? '100%' : enService ? 'clamp(300px, 36%, 440px)' : 250,
                 flexShrink: 0,
                 borderWidth: 1, borderStyle: 'solid',
                 borderColor: drag?.demarre && drag?.kind === 'lien' && drag?.over?.liste
-                  ? 'var(--accent)' : 'var(--border)',
-                borderRadius: 12, background: enService ? 'var(--bg)' : 'var(--surface)',
+                  ? 'var(--accent)' : 'var(--rule-soft)',
+                borderRadius: 'var(--r)', background: 'var(--zone)',
                 padding: 10, boxSizing: 'border-box',
                 overflowY: 'auto',
                 ...(ajusteHauteur
@@ -2397,8 +2398,7 @@ export default function PlanSalle({
               ) : (
               <>
               <div style={{
-                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: 0.5, color: 'var(--text3)', marginBottom: 8,
+                fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', marginBottom: 8,
               }}>
                 {nbAPlacer > 0
                   ? `À placer (${nbAPlacer}/${resasService.length})`
@@ -2406,13 +2406,13 @@ export default function PlanSalle({
               </div>
 
               {resasService.length === 0 && (
-                <div style={{ fontSize: 12, color: 'var(--text3)', padding: '10px 2px', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', padding: '10px 2px', lineHeight: 1.5 }}>
                   Aucune réservation sur ce service.
                 </div>
               )}
 
               {resasService.length > 0 && nbAPlacer === 0 && (
-                <div style={{ fontSize: 12, color: 'var(--success-text)', padding: '2px 2px 8px', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--success-text)', padding: '2px 2px 8px', lineHeight: 1.5 }}>
                   {drag?.demarre && drag?.kind === 'lien'
                     ? 'Lâche ici pour retirer du plan.'
                     : 'Tout le monde est placé'}
@@ -2439,7 +2439,7 @@ export default function PlanSalle({
               <div style={{
                 marginTop: 10, paddingTop: 8,
                 borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)',
-                fontSize: 11, color: 'var(--text3)', lineHeight: 1.5,
+                fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5,
               }}>
                 {totalService} couvert{totalService > 1 ? 's' : ''}, {placesTotales} place{placesTotales > 1 ? 's' : ''} en salle
                 {enService && nbAPlacer > 0 ? `, ${nbAPlacer} à placer` : ''}
@@ -2455,9 +2455,9 @@ export default function PlanSalle({
           position: 'fixed', left: drag.x, top: drag.y,
           transform: 'translate(-50%, -140%)',
           pointerEvents: 'none', zIndex: 2000,
-          padding: '5px 10px', borderRadius: 20,
+          padding: '5px 10px', borderRadius: 'var(--r-full)',
           background: 'var(--accent)', color: 'var(--on-accent)',
-          fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+          fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
           boxShadow: '0 6px 20px rgba(0,0,0,0.28)', whiteSpace: 'nowrap',
         }} data-no-translate>
           {drag.resa?.nom}, {drag.resa?.nb_couverts} pax

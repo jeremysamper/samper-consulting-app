@@ -96,7 +96,7 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
         aria-label="Client de passage"
         className="modal-sheet"
         style={{
-          background: 'var(--surface)', borderRadius: 14,
+          background: 'var(--surface)', borderRadius: 'var(--r)',
           width: 420, maxWidth: '100%', maxHeight: '85vh',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
@@ -109,12 +109,12 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
           borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
         }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
               Client de passage
             </div>
             {/* Deux nœuds de texte : la phrase est au glossaire, le service
                 aussi. */}
-            <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
               <span>Sans réservation, installé maintenant</span>{' '}
               <span>({libelleService})</span>
             </div>
@@ -123,7 +123,7 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
           <button
             type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer"
             style={{
-              background: 'none', border: 'none', fontSize: 22, minWidth: 44, minHeight: 44,
+              background: 'none', border: 'none', fontSize: 'var(--t4)', minWidth: 44, minHeight: 44,
               cursor: 'pointer', color: 'var(--text2)', lineHeight: 1,
             }}
           >
@@ -135,9 +135,9 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
           {/* Pas de focus d'office : le clavier cacherait les cases, et le
               nom n'est presque jamais demandé. */}
           <div>
-            <label htmlFor="passage-nom" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 5, display: 'block' }}>
+            <label htmlFor="passage-nom" style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 5, display: 'block' }}>
               Nom{' '}
-              <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optionnel)</span>
+              <span style={{ fontWeight: 'var(--g1)', color: 'var(--text3)' }}>(optionnel)</span>
             </label>
             <input
               id="passage-nom"
@@ -153,14 +153,14 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
               style={{
                 width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '9px 12px',
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8,
-                background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 16,
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
+                background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t3)',
               }}
             />
           </div>
 
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>
+            <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 6 }}>
               Combien de couverts ?
             </div>
             {/* Un toucher sur un nombre enregistre le passage. */}
@@ -173,7 +173,7 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
                   onClick={() => installer(n)}
                   aria-label={`${n} couvert${n > 1 ? 's' : ''}`}
                   style={caseStyle(false, {
-                    minHeight: 52, fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 700,
+                    minHeight: 52, fontFamily: 'var(--font-num)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)',
                     cursor: envoi ? 'not-allowed' : 'pointer', opacity: envoi ? 0.5 : 1,
                   })}
                 >
@@ -181,7 +181,7 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
                 </button>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 6 }}>
               {envoi ? 'Enregistrement…' : 'Un toucher sur un nombre enregistre le passage.'}
             </div>
           </div>
@@ -195,9 +195,9 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
               onChange={(e) => setAutre(e.target.value.replace(/\D/g, '').slice(0, 2))}
               onKeyDown={(e) => { if (e.key === 'Enter' && nbAutre >= 1) installer(nbAutre); }}
               style={{
-                width: 130, minWidth: 0, boxSizing: 'border-box', minHeight: 44, borderRadius: 10,
+                width: 130, minWidth: 0, boxSizing: 'border-box', minHeight: 44, borderRadius: 'var(--r)',
                 textAlign: 'center', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font-num)', fontSize: 17,
+                background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font-num)', fontSize: 'var(--t3)',
               }}
             />
             <button
@@ -205,10 +205,10 @@ export default function PassageRapide({ etablissementId, date, service, onClose,
               disabled={envoi || nbAutre < 1}
               onClick={() => installer(nbAutre)}
               style={{
-                flex: 1, minHeight: 44, padding: '8px 12px', borderRadius: 10,
+                flex: 1, minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
                 borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
                 background: 'var(--accent)', color: 'var(--on-accent)',
-                fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)',
+                fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
                 cursor: envoi || nbAutre < 1 ? 'not-allowed' : 'pointer',
                 opacity: envoi || nbAutre < 1 ? 0.5 : 1,
               }}

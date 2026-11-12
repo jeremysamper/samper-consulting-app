@@ -67,11 +67,11 @@ export default function PlanElementForm({ element, onClose, onSave }) {
           padding: '16px 20px',
           borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
         }}>
-          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             {def?.label ?? 'Élément'}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
-            background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
+            background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer',
             color: 'var(--text2)', padding: 4, lineHeight: 1,
           }}>
             ×
@@ -79,7 +79,7 @@ export default function PlanElementForm({ element, onClose, onSave }) {
         </div>
 
         <div style={{ padding: '18px 20px' }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 5, display: 'block' }}>
+          <label style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 5, display: 'block' }}>
             Nom affiché sur le plan
           </label>
           <input
@@ -91,12 +91,12 @@ export default function PlanElementForm({ element, onClose, onSave }) {
             placeholder={SUGGESTIONS[element.type] || ''}
             style={{
               width: '100%', padding: '9px 12px', minHeight: 44,
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8,
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
               background: 'var(--bg)', color: 'var(--text)',
-              fontFamily: 'var(--font)', fontSize: 13, boxSizing: 'border-box',
+              fontFamily: 'var(--font)', fontSize: 'var(--t2)', boxSizing: 'border-box',
             }}
           />
-          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 6, lineHeight: 1.5 }}>
             Laissé vide, le plan affiche « {def?.label} ».
           </div>
         </div>
@@ -108,19 +108,19 @@ export default function PlanElementForm({ element, onClose, onSave }) {
         }}>
           {/* Jamais désactivé, même pendant l'écriture (voir ouvertRef). */}
           <button type="button" onClick={onClose} style={{
-            padding: '10px 18px', borderRadius: 8,
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-            background: 'var(--surface)', color: 'var(--text)',
-            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+            padding: '10px 18px', borderRadius: 'var(--r)',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+            background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
           }}>
             {loading ? 'Fermer' : 'Annuler'}
           </button>
           <button type="submit" disabled={loading} style={{
-            padding: '10px 20px', borderRadius: 8,
+            padding: '10px 20px', borderRadius: 'var(--r)',
             borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
             background: 'var(--accent)', color: 'var(--on-accent)',
             cursor: loading ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
+            fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)',
             opacity: loading ? 0.7 : 1,
           }}>
             {loading ? 'Enregistrement…' : 'Enregistrer'}

@@ -121,11 +121,11 @@ export default function PlanTableForm({
 
   const inp = {
     width: '100%', padding: '9px 12px',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8,
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
     background: 'var(--bg)', color: 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 13, boxSizing: 'border-box',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', boxSizing: 'border-box',
   };
-  const lbl = { fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 5, display: 'block' };
+  const lbl = { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 5, display: 'block' };
 
   return (
     <div
@@ -154,11 +154,11 @@ export default function PlanTableForm({
           padding: '16px 20px',
           borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
         }}>
-          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             {table.forme === 'tabouret' ? 'Place de bar' : 'Table'} {table.nom}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
-            background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
+            background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer',
             color: 'var(--text2)', padding: 4, lineHeight: 1,
           }}>
             ×
@@ -183,19 +183,19 @@ export default function PlanTableForm({
             <div style={{
               display: 'flex', alignItems: 'center', width: 'fit-content',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-              borderRadius: 8, overflow: 'hidden',
+              borderRadius: 'var(--r)', overflow: 'hidden',
             }}>
               <button type="button" aria-label="Diminuer"
                 onClick={() => setPlaces((p) => Math.max(1, p - 1))}
                 style={{
-                  width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)',
+                  width: 44, height: 44, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', background: 'var(--bg)',
                   border: 'none', cursor: 'pointer', color: 'var(--text)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                 −
               </button>
               <div style={{
-                width: 52, textAlign: 'center', fontWeight: 700, fontSize: 17,
+                width: 52, textAlign: 'center', fontWeight: 'var(--g3)', fontSize: 'var(--t3)',
                 color: 'var(--text)', fontFamily: 'var(--font-num)',
               }}>
                 {places}
@@ -203,7 +203,7 @@ export default function PlanTableForm({
               <button type="button" aria-label="Augmenter"
                 onClick={() => setPlaces((p) => Math.min(40, p + 1))}
                 style={{
-                  width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)',
+                  width: 44, height: 44, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', background: 'var(--bg)',
                   border: 'none', cursor: 'pointer', color: 'var(--text)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
@@ -215,15 +215,15 @@ export default function PlanTableForm({
           <div>
             <label style={lbl}>Forme</label>
             <div style={{
-              display: 'flex', borderRadius: 8, overflow: 'hidden',
+              display: 'flex', borderRadius: 'var(--r)', overflow: 'hidden',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
             }}>
               {formes.map((f) => (
                 <button key={f.id} type="button" onClick={() => setForme(f.id)} style={{
                   flex: 1, padding: '10px 2px', border: 'none', cursor: 'pointer',
-                  fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
-                  background: forme === f.id ? 'var(--accent)' : 'var(--bg)',
-                  color:      forme === f.id ? 'var(--on-accent)' : 'var(--text2)',
+                  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
+                  background: forme === f.id ? 'var(--selection)' : 'var(--bg)',
+                  color:      forme === f.id ? 'var(--text)' : 'var(--text2)',
                 }}>
                   {f.label}
                 </button>
@@ -231,12 +231,12 @@ export default function PlanTableForm({
             </div>
             {forme === 'rectangle' && (
               <button type="button" onClick={() => setPivotee((p) => !p)} style={{
-                marginTop: 8, padding: '9px 14px', borderRadius: 8, minHeight: 44,
+                marginTop: 8, padding: '9px 14px', borderRadius: 'var(--r)', minHeight: 44,
                 borderWidth: 1, borderStyle: 'solid',
-                borderColor: pivotee ? 'var(--accent)' : 'var(--border)',
-                background: pivotee ? 'var(--accent)' : 'var(--bg)',
-                color: pivotee ? 'var(--on-accent)' : 'var(--text2)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+                borderColor: pivotee ? 'var(--onglet)' : 'var(--btn-bord)',
+                background: pivotee ? 'var(--selection)' : 'var(--btn-fond)',
+                color: pivotee ? 'var(--text)' : 'var(--btn-texte)',
+                fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 ⟳ {pivotee ? 'Dans le sens de la hauteur' : 'Dans le sens de la largeur'}
               </button>
@@ -246,7 +246,7 @@ export default function PlanTableForm({
           <div>
             <label style={lbl}>Salle</label>
             {salles.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5 }}>
                 Aucune salle définie. Créez-en une depuis le bouton « Salles ».
               </div>
             ) : (
@@ -274,9 +274,9 @@ export default function PlanTableForm({
                 style={{ width: 18, height: 18, accentColor: 'var(--accent)' }}
               />
             </span>
-            <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font)' }}>
+            <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
               Table active
-              <span style={{ display: 'block', fontSize: 11, color: 'var(--text3)' }}>
+              <span style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                 Inactive : conservée dans le plan mais retirée du placement.
               </span>
             </span>
@@ -293,27 +293,27 @@ export default function PlanTableForm({
           {!confirmSuppr ? (
             <button type="button" disabled={loading} onClick={() => setConfirmSuppr(true)} style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-              fontSize: 12, color: 'var(--danger-text)', fontWeight: 500, fontFamily: 'var(--font)',
+              fontSize: 'var(--t1)', color: 'var(--danger-text)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
             }}>
               Supprimer
             </button>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: 'var(--danger-text)' }}>
+              <span style={{ fontSize: 'var(--t1)', color: 'var(--danger-text)' }}>
                 {nbOccupants > 0
                   ? `${nbOccupants} réservation${nbOccupants > 1 ? 's' : ''} placée${nbOccupants > 1 ? 's' : ''} dessus. Supprimer ?`
                   : 'Supprimer cette table ?'}
               </span>
               <button type="button" disabled={loading} onClick={supprimer} style={{
-                padding: '6px 12px', borderRadius: 6, border: 'none',
+                padding: '6px 12px', borderRadius: 'var(--r)', border: 'none',
                 background: 'var(--danger-fill)', color: 'var(--on-danger)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+                fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 Oui
               </button>
               <button type="button" onClick={() => setConfirmSuppr(false)} style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font)',
+                fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font)',
               }}>
                 Non
               </button>
@@ -324,10 +324,10 @@ export default function PlanTableForm({
             {/* Dupliquer : dresser une rangée de dix deux-couverts identiques
                 se fait en dix taps, pas en dix formulaires. */}
             <button type="button" disabled={loading} onClick={dupliquer} style={{
-              padding: '10px 16px', borderRadius: 8,
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-              background: 'var(--surface)', color: 'var(--text)',
-              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+              padding: '10px 16px', borderRadius: 'var(--r)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+              background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
             }}>
               Dupliquer
             </button>
@@ -335,19 +335,19 @@ export default function PlanTableForm({
                 L'écriture partie ne s'arrête pas : le bouton dit alors
                 « Fermer », « Annuler » ferait croire les réglages abandonnés. */}
             <button type="button" onClick={onClose} style={{
-              padding: '10px 18px', borderRadius: 8,
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-              background: 'var(--surface)', color: 'var(--text)',
-              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+              padding: '10px 18px', borderRadius: 'var(--r)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+              background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
             }}>
               {loading ? 'Fermer' : 'Annuler'}
             </button>
             <button type="button" disabled={loading} onClick={enregistrer} style={{
-              padding: '10px 20px', borderRadius: 8,
+              padding: '10px 20px', borderRadius: 'var(--r)',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
               background: 'var(--accent)', color: 'var(--on-accent)',
               cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
+              fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)',
               opacity: loading ? 0.7 : 1,
             }}>
               {loading ? 'Enregistrement…' : 'Enregistrer'}

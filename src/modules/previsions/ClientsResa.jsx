@@ -5,6 +5,7 @@ import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ClientFiche from './ClientFiche.jsx';
+import { Panneau, ligneStyle } from '../../components/ui/index.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Onglet Clients du module Réservations : le fichier clients de
@@ -105,15 +106,15 @@ export default function ClientsResa({ etablissementId, canEdit, peutEffacer = fa
           autoComplete="off"
           style={{
             flex: '1 1 240px', minWidth: 0, minHeight: 44, padding: '10px 14px', boxSizing: 'border-box',
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 999,
-            background: 'var(--surface)', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)',
+            background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)',
           }}
         />
         {canEdit && (
           <button type="button" onClick={() => setOuverte('nouveau')} style={{
-            minHeight: 44, padding: '9px 16px', borderRadius: 8,
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-            background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 500,
+            minHeight: 44, padding: '9px 16px', borderRadius: 'var(--r)',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+            background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
             fontFamily: 'var(--font)', cursor: 'pointer',
           }}>
             Nouveau client
@@ -126,13 +127,13 @@ export default function ClientsResa({ etablissementId, canEdit, peutEffacer = fa
           const actif = filtre === f.id;
           return (
             <button key={f.id} type="button" aria-pressed={actif} onClick={() => setFiltre(f.id)} style={{
-              flexShrink: 0, minHeight: 36, padding: '6px 12px', borderRadius: 999,
-              borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--accent)' : 'var(--border)',
-              background: actif ? 'var(--accent-light)' : 'var(--surface)',
-              color: actif ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: 500,
+              flexShrink: 0, minHeight: 36, padding: '6px 12px', borderRadius: 'var(--r)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
+              background: actif ? 'var(--selection)' : 'var(--btn-fond)',
+              color: actif ? 'var(--text)' : 'var(--btn-texte)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
               fontFamily: 'var(--font)', cursor: 'pointer', whiteSpace: 'nowrap',
             }}>
-              {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{compte[f.id]}</span>
+              {f.label} <span style={{ opacity: 0.7, fontWeight: 'var(--g2)' }}>{compte[f.id]}</span>
             </button>
           );
         })}
@@ -140,20 +141,20 @@ export default function ClientsResa({ etablissementId, canEdit, peutEffacer = fa
 
       {nonActualise && <BandeauNonActualise onRetry={charger} />}
       {erreur && (
-        <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', fontSize: 13, marginBottom: 12 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', fontSize: 'var(--t2)', marginBottom: 12 }}>
           {erreur}
         </div>
       )}
       {liste === null && !erreur && (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>Chargement des clients…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text3)', fontSize: 'var(--t2)' }}>Chargement des clients…</div>
       )}
 
       {liste !== null && visibles.length === 0 && (
         <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 6 }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 6 }}>
             {(liste || []).length === 0 ? 'Le fichier clients est encore vide' : 'Aucun client trouvé'}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 380, margin: '0 auto' }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', maxWidth: 380, margin: '0 auto' }}>
             {(liste || []).length === 0
               ? 'Chaque réservation avec un e-mail ou un téléphone crée ou complète une fiche, automatiquement.'
               : 'Essayez un autre mot ou un autre filtre.'}
@@ -162,45 +163,43 @@ export default function ClientsResa({ etablissementId, canEdit, peutEffacer = fa
       )}
 
       {visibles.length > 0 && (
-        <div style={{
-          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10,
-          overflow: 'hidden', background: 'var(--surface)',
-        }}>
-          {visibles.map((c) => (
+        <Panneau style={{ padding: 0, overflow: 'hidden' }}>
+          {visibles.map((c, i) => (
             <button key={c.id} type="button" onClick={() => setOuverte(c.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+              borderWidth: 0,
+              ...ligneStyle({ derniere: i === visibles.length - 1 }),
+              width: '100%', textAlign: 'left',
               padding: '10px 14px', minHeight: 56, background: 'transparent', cursor: 'pointer',
-              borderWidth: 0, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
               fontFamily: 'var(--font)',
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-no-translate>
+                <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-no-translate>
                   {nomClient(c)}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {[c.telephone, c.email].filter(Boolean).join(', ') || 'Pas de contact'}
                 </div>
                 {(c.allergies || c.preferences) && (
-                  <div style={{ fontSize: 11, color: c.allergies ? 'var(--danger-text)' : 'var(--text3)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-no-translate>
+                  <div style={{ fontSize: 'var(--t1)', color: c.allergies ? 'var(--danger-text)' : 'var(--text3)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-no-translate>
                     {[c.allergies, c.preferences].filter(Boolean).join(' ; ')}
                   </div>
                 )}
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: c.nbVenues >= HABITUE ? 'var(--accent)' : 'var(--text)' }}>
+                <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: c.nbVenues >= HABITUE ? 'var(--lien)' : 'var(--text)' }}>
                   {pluriel(c.nbVenues, 'venue')}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                   {c.prochaine ? `prochaine ${dateCh(c.prochaine)}` : c.derniereVenue ? `dernière ${dateCh(c.derniereVenue)}` : ''}
                   {c.nbNoShow ? `, ${pluriel(c.nbNoShow, 'no-show')}` : ''}
                 </div>
                 {c.consentementMarketing && c.email && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-text)' }}>accepte les e-mails</div>
+                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--success-text)' }}>accepte les e-mails</div>
                 )}
               </div>
             </button>
           ))}
-        </div>
+        </Panneau>
       )}
 
       {ouverte && (

@@ -35,16 +35,16 @@ const couverts = (liste) => liste.reduce((s, r) => s + (r.nb_couverts || 0), 0);
 function BoutonAction({ label, ton, onClick }) {
   const couleurs = ton === 'succes'
     ? { bd: 'var(--success-bd)', bg: 'var(--success-bg-soft)', tx: 'var(--success-text)' }
-    : { bd: 'var(--border)', bg: 'var(--surface)', tx: 'var(--text2)' };
+    : { bd: 'var(--btn-bord)', bg: 'var(--btn-fond)', tx: 'var(--btn-texte)' };
   return (
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       style={{
-        flexShrink: 0, minHeight: 40, padding: '6px 12px', borderRadius: 20,
+        flexShrink: 0, minHeight: 40, padding: '6px 12px', borderRadius: 'var(--r)',
         borderWidth: 1, borderStyle: 'solid', borderColor: couleurs.bd,
         background: couleurs.bg, color: couleurs.tx,
-        fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+        fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
         cursor: 'pointer', whiteSpace: 'nowrap',
       }}
     >
@@ -71,7 +71,7 @@ function LigneResa({
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 6,
-      padding: '6px 8px', borderRadius: 10,
+      padding: '6px 8px', borderRadius: 'var(--r)',
       // Passeport gourmand : cadre vert, comme dans l'agenda. Le retard,
       // lui, garde la main : c'est l'alerte du moment.
       borderWidth: passeport ? 2 : 1, borderStyle: 'solid',
@@ -91,7 +91,7 @@ function LigneResa({
             flexShrink: 0, width: 30, height: 44, marginLeft: -4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'grab', touchAction: 'none',
-            color: 'var(--text3)', fontSize: 15, lineHeight: 1,
+            color: 'var(--text3)', fontSize: 'var(--t2)', lineHeight: 1,
             userSelect: 'none', WebkitUserSelect: 'none',
           }}
         >
@@ -109,44 +109,44 @@ function LigneResa({
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
           <span style={{
-            fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-num)', flexShrink: 0,
-            color: enRetard ? 'var(--danger-text)' : 'var(--accent)',
+            fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', flexShrink: 0,
+            color: enRetard ? 'var(--danger-text)' : 'var(--lien)',
           }}>
             {(resa.heure_arrivee || '').slice(0, 5)}
           </span>
           <span style={{
-            fontSize: 13, fontWeight: 700, color: 'var(--text)',
+            fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
             textDecoration: statut === 'no_show' ? 'line-through' : 'none',
           }} data-no-translate>
             {resa.nom}
           </span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>
+          <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', flexShrink: 0 }}>
             {resa.nb_couverts} p.
           </span>
         </div>
         <div style={{
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 8px',
-          marginTop: 2, fontSize: 11, lineHeight: 1.35,
+          marginTop: 2, fontSize: 'var(--t1)', lineHeight: 1.35,
         }}>
-          <span style={{ fontWeight: 700, color: placee ? 'var(--success-text)' : 'var(--text3)' }}>
+          <span style={{ fontWeight: 'var(--g3)', color: placee ? 'var(--success-text)' : 'var(--text3)' }}>
             {placee ? `Table ${tables.join(' + ')}` : termine ? metaStatut(statut).label : 'À placer'}
           </span>
           {enRetard && (
-            <span style={{ fontWeight: 700, color: 'var(--danger-text)' }}>
+            <span style={{ fontWeight: 'var(--g3)', color: 'var(--danger-text)' }}>
               retard {duree(retard)}
             </span>
           )}
-          {resa.est_groupe && <span style={{ color: 'var(--info-text)', fontWeight: 500 }}>groupe</span>}
-          {passeport && <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>Passeport gourmand</span>}
+          {resa.est_groupe && <span style={{ color: 'var(--info-text)', fontWeight: 'var(--g2)' }}>groupe</span>}
+          {passeport && <span style={{ color: 'var(--success-text)', fontWeight: 'var(--g3)' }}>Passeport gourmand</span>}
           {allergies.length > 0 && (
-            <span style={{ color: 'var(--danger-text)', fontWeight: 700 }}>{allergies.join(', ')}</span>
+            <span style={{ color: 'var(--danger-text)', fontWeight: 'var(--g3)' }}>{allergies.join(', ')}</span>
           )}
           {autres.length > 0 && <span style={{ color: 'var(--text2)' }}>{autres.join(', ')}</span>}
         </div>
         {resa.notes_libres && (
           <div style={{
-            fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 1,
+            fontSize: 'var(--t1)', color: 'var(--text3)', fontStyle: 'italic', marginTop: 1,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }} data-no-translate>
             {resa.notes_libres}
@@ -172,11 +172,11 @@ function Section({ titre, detail, children, ton }) {
     <section style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
-        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+        fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
         color: ton === 'alerte' ? 'var(--warning-text)' : ton === 'succes' ? 'var(--success-text)' : 'var(--text2)',
       }}>
         <span>{titre}</span>
-        {detail && <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text3)' }}>{detail}</span>}
+        {detail && <span style={{ fontWeight: 'var(--g2)', textTransform: 'none', letterSpacing: 0, color: 'var(--text3)' }}>{detail}</span>}
       </div>
       {children}
     </section>
@@ -215,16 +215,16 @@ export default function ServicePanneau({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {retraitPossible && (
         <div style={{
-          padding: '10px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+          padding: '10px 12px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
           borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--accent)',
-          color: 'var(--accent)', textAlign: 'center',
+          color: 'var(--lien)', textAlign: 'center',
         }}>
           Lâche ici pour retirer du plan
         </div>
       )}
 
       {resas.length === 0 && (
-        <div style={{ fontSize: 13, color: 'var(--text3)', padding: '10px 2px', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text3)', padding: '10px 2px', lineHeight: 1.5 }}>
           Aucune réservation sur ce service.
         </div>
       )}
@@ -238,7 +238,7 @@ export default function ServicePanneau({
       {resas.length > 0 && (
         <Section titre={`Attendus (${attendus.length})`} detail={pluriel(couverts(attendus), 'couvert')}>
           {attendus.length === 0
-            ? <div style={{ fontSize: 12, color: 'var(--text3)' }}>Plus personne n'est attendu.</div>
+            ? <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>Plus personne n'est attendu.</div>
             : attendus.map(ligne)}
         </Section>
       )}
@@ -258,7 +258,7 @@ export default function ServicePanneau({
             style={{
               width: '100%', minHeight: 40, padding: '6px 2px', textAlign: 'left',
               background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-              fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
               color: 'var(--text3)',
             }}
           >

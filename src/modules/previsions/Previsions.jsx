@@ -182,7 +182,7 @@ export default function Previsions({ user, etablissement }) {
       {!etabId && (
         <div style={{
           marginTop: 12, padding: '10px 0 10px 12px',   borderLeft: '2px solid var(--warning-bd)',
-          color: 'var(--warning-text)', fontSize: 13, fontFamily: 'var(--font)',
+          color: 'var(--warning-text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)',
         }}>
           Aucun établissement sélectionné. Sélectionnez un établissement avant de saisir des réservations.
         </div>
@@ -306,7 +306,7 @@ export default function Previsions({ user, etablissement }) {
       )}
 
       {etabId && ecran === 'rapport' && voitRapport && (
-        <Suspense fallback={<div style={{ marginTop: 28, fontSize: 14, color: 'var(--text2)' }}>Chargement du rapport…</div>}>
+        <Suspense fallback={<div style={{ marginTop: 28, fontSize: 'var(--t2)', color: 'var(--text2)' }}>Chargement du rapport…</div>}>
           <RapportReservations key={etabId} etablissementId={etabId} />
         </Suspense>
       )}
@@ -317,10 +317,10 @@ export default function Previsions({ user, etablissement }) {
           marginTop: 48, display: 'flex', flexDirection: 'column',
           alignItems: 'center', gap: 12, textAlign: 'center',
         }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
             Sélectionnez un établissement
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 300, lineHeight: 1.6 }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', maxWidth: 300, lineHeight: 1.6 }}>
             La vue semaine s'affichera une fois un établissement sélectionné.
           </div>
         </div>
@@ -376,7 +376,7 @@ export default function Previsions({ user, etablissement }) {
 
 const st = {
   // 16 px : iOS ne zoome pas sur le champ quand il prend la main.
-  champ: { marginTop: 16, fontSize: 16, padding: '12px 14px', minHeight: 44 },
+  champ: { marginTop: 16, fontSize: 'var(--t3)', padding: '12px 14px', minHeight: 44 },
   // Premier bloc de l'accueil : pas de marge au-dessus, un écart avant les tuiles.
   demandesAccueil: { marginTop: 0, marginBottom: 16 },
 };

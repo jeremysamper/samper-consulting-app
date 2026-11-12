@@ -40,10 +40,10 @@ export default function BandeauNonActualise({ onRetry }) {
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 10, flexWrap: 'wrap',
-        padding: '6px 6px 6px 12px', marginBottom: 12, borderRadius: 8,
+        padding: '6px 6px 6px 12px', marginBottom: 12, borderRadius: 'var(--r)',
         borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)',
         background: 'var(--warning-bg-soft)', color: 'var(--warning-text)',
-        fontSize: 12, fontFamily: 'var(--font)',
+        fontSize: 'var(--t1)', fontFamily: 'var(--font)',
       }}
     >
       <span style={{ flex: '1 1 200px', minWidth: 0 }}>
