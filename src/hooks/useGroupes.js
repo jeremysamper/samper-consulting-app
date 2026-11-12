@@ -44,6 +44,37 @@ function messageErreur(error) {
     || 'Erreur technique. Réessayez ou contactez le support.';
 }
 
+// Lignes des groupes d'un établissement à partir de `depuis` (et jusqu'à
+// `fin` si donnée), toutes les pages : PostgREST rend 1000 lignes au plus par
+// réponse, une limite plus haute ne passe pas. Rend { data, error }.
+export async function lireLignesGroupes(etablissementId, depuis, fin = null) {
+  const PAGE = 1000;
+  const lignes = [];
+  for (let de = 0; ; de += PAGE) {
+    let q = supabase.from(TABLE).select('*').eq('etablissement_id', etablissementId).gte('date_evenement', depuis);
+    if (fin) q = q.lte('date_evenement', fin);
+    const { data, error } = await q
+      .order('date_evenement', { ascending: true })
+      .order('heure', { ascending: true, nullsFirst: true })
+      .order('id')
+      .range(de, de + PAGE - 1);
+    if (error) return { data: null, error };
+    lignes.push(...(data || []));
+    if (!data || data.length < PAGE) return { data: lignes, error: null };
+  }
+}
+
+// Groupes d'une période, mappés, pour le module Statistiques : [] tant que la
+// table n'existe pas ; une erreur remonte.
+export async function lireGroupes(etablissementId, debut, fin) {
+  const { data, error } = await lireLignesGroupes(etablissementId, debut, fin);
+  if (error) {
+    if (RELATION_ABSENTE.has(error.code)) return [];
+    throw error;
+  }
+  return (data || []).map(mapGroupeFromDB);
+}
+
 export function mapGroupeFromDB(row) {
   if (!row) return null;
   return {
@@ -131,14 +162,7 @@ export function useGroupes(etablissementId) {
 
     const reload = async () => {
       if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-      const { data, error } = await supabase
-        .from(TABLE)
-        .select('*')
-        .eq('etablissement_id', etablissementId)
-        .gte('date_evenement', depuis)
-        .order('date_evenement', { ascending: true })
-        .order('heure', { ascending: true, nullsFirst: true })
-        .limit(2000);
+      const { data, error } = await lireLignesGroupes(etablissementId, depuis);
       if (!mounted) return;
 
       if (error) {
