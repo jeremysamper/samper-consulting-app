@@ -55,7 +55,7 @@ export default function ModelesModal({ modeles, personnalises, onEnregistrer, on
       {liste.map((m, i) => (
         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input aria-label="Nom du modèle" style={{ ...st.champ, fontWeight: 700 }} value={m.nom} onChange={e => maj(i, { nom: e.target.value })} placeholder="Nom (ex. Midi)" />
+            <input aria-label="Nom du modèle" style={{ ...st.champ, fontWeight: 'var(--g3)' }} value={m.nom} onChange={e => maj(i, { nom: e.target.value })} placeholder="Nom (ex. Midi)" />
             <span style={{ ...st.remarque, whiteSpace: 'nowrap' }}>{formatDuree(heuresModele(m))}</span>
             <button type="button" style={{ ...st.secondaire, color: 'var(--danger-strong)' }} onClick={() => setListe(l => l.filter((_, k) => k !== i))} aria-label={`Retirer ${m.nom || 'ce modèle'}`}>Retirer</button>
           </div>

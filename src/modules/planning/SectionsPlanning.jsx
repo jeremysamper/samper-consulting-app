@@ -117,5 +117,5 @@ export function SectionContrats({ etablissement }) {
 }
 
 const st = {
-  note: { margin: 0, fontSize: 13, color: 'var(--text2)' },
+  note: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
 };
