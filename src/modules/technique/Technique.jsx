@@ -9,6 +9,9 @@ import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
+import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { peutGererTechnique } from './gardesTechnique.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
@@ -351,11 +354,14 @@ function EquipementForm({ equipement, chambres, equipements, onClose }) {
   );
 }
 
-export default function Technique({ user, etablissement }) {
+// ecranReglage : 'equipements' quand le module est monté dans la page des
+// réglages (SectionEquipements.jsx), sur ce seul écran.
+export default function Technique({ user, etablissement, ecranReglage = null }) {
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const moi = user?.id || null;
-  const peutGerer = canManageModule(role, 'technique');
+  const peutGerer = peutGererTechnique(role);
+  const enReglage = ecranReglage === 'equipements';
   const peutEtages = canManageModule(role, 'etages');
   const aujourdhui = useAujourdhui();
 
@@ -366,8 +372,11 @@ export default function Technique({ user, etablissement }) {
   const demandes = useDemandes(etabId);
   const equipe = React.useMemo(() => equipeDe(etabId), [etabId]);
 
-  const ecransRepris = peutGerer ? ['ordres', 'preventif', 'equipements', 'hors_service'] : ['ordres', 'preventif', 'hors_service'];
-  const { ecran, setEcran, retourAccueil } = useEcranModule('technique', { repris: ecransRepris });
+  // Les équipements se règlent dans la page des réglages (section
+  // 'technique_equipements') : la tuile y mène, le module y est monté sur ce
+  // seul écran (fixe).
+  const ecransRepris = ['ordres', 'preventif', 'hors_service'];
+  const { ecran, setEcran, retourAccueil } = useEcranModule('technique', { repris: ecransRepris, fixe: enReglage ? 'equipements' : null });
   const [vue, setVue] = React.useState('ouverts');
   const [recherche, setRecherche] = React.useState('');
   const [form, setForm] = React.useState(null); // { ordre, prerempli }
@@ -398,7 +407,7 @@ export default function Technique({ user, etablissement }) {
     { id: 'nouveau', libelle: 'Nouvel ordre', Icone: Plus, onClick: () => setForm({ ordre: null, prerempli: {} }) },
     { id: 'preventif', libelle: 'Préventif', Icone: Repeat, etat: etat(plansDus.length, 'tâche à faire', 'tâches à faire'), onClick: () => setEcran('preventif') },
     { id: 'hors_service', libelle: 'Chambres hors service', Icone: DoorClosed, etat: etat(horsService.length, 'chambre', 'chambres'), onClick: () => setEcran('hors_service') },
-    { id: 'equipements', libelle: 'Équipements', Icone: Wrench, visible: peutGerer, etat: etat(equipements.rows.filter((e) => e.actif).length, 'en service', 'en service'), onClick: () => setEcran('equipements') },
+    { id: 'equipements', libelle: 'Équipements', Icone: Wrench, visible: peutGerer, etat: etat(equipements.rows.filter((e) => e.actif).length, 'en service', 'en service'), onClick: () => ouvrirCompte('technique_equipements') },
   ];
   const etatLecture = ordres.status === 'absent' ? 'Le module Technique n\'est pas encore activé sur la base de données.'
     : ordres.status === 'error' ? 'Les ordres de travail n\'ont pas pu être lus. Nouvel essai en cours…' : null;
@@ -432,7 +441,15 @@ export default function Technique({ user, etablissement }) {
           {etatLecture && <Vide>{etatLecture}</Vide>}
         </>
       )}
-      {etabId && ecran !== ECRAN_ACCUEIL && (
+      {etabId && enReglage && peutGerer && (
+        <EnTeteSection actions={(
+          <Btn variant="primary" onClick={() => setEquipForm({ equipement: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
+            <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>Nouvel équipement</span>
+          </Btn>
+        )} />
+      )}
+      {etabId && !enReglage && ecran !== ECRAN_ACCUEIL && (
         <EcranTache
           titre={TITRES[ecran] || ''}
           onRetour={retourAccueil}

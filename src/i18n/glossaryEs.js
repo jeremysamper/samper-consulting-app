@@ -4339,4 +4339,11 @@ export const UI_GLOSSARY_ES = {
   'Tarifs par nuit, taxe de séjour, TVA, numéro HESTA': 'Tarifas por noche, tasa turística, IVA, número HESTA',
   'Hébergement : chambres': 'Alojamiento: habitaciones',
   'Numéros, catégories, capacité, chambres en service': 'Números, categorías, capacidad, habitaciones en servicio',
+  // ── Réglages : sections de la branche Hôtel ──
+  'Activités : forfaits': 'Actividades: paquetes',
+  'Les forfaits et ce que chacun donne': 'Los paquetes y lo que da cada uno',
+  'Passations : tâches récurrentes': 'Relevos: tareas recurrentes',
+  'Les tâches qui reviennent, par pôle': 'Las tareas que se repiten, por área',
+  'Technique : équipements': 'Mantenimiento: equipos',
+  'Les équipements suivis par la technique': 'Los equipos seguidos por mantenimiento',
 };

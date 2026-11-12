@@ -16,7 +16,8 @@ import {
   isoZurich, jourZurich, libelleDe, nomPersonne, placesPrises, placesRestantes, sejoursActifs, tonDe, trouverSejour,
   useActivites, useChambres, useConsommations, useForfaitDroits, useForfaits, useInscriptions, useSejours,
 } from '../hebergement/hotelData.js';
-import ForfaitsGestion from './ForfaitsGestion.jsx';
+import { estDirectionHotel } from '../hebergement/gardesHotel.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Activités (branche Hôtel, lot H5) : le programme (une activité, ses places,
@@ -303,7 +304,7 @@ export default function Activites({ user, etablissement }) {
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const peutGerer = canManageModule(role, 'activites');
-  const direction = role === 'consultant' || role === 'patron';
+  const direction = estDirectionHotel(role);
   const aujourdhui = useAujourdhui();
 
   const activites = useActivites(etabId);
@@ -315,7 +316,9 @@ export default function Activites({ user, etablissement }) {
   const chambres = useChambres(etabId);
   const equipe = React.useMemo(() => equipeDe(etabId), [etabId]);
 
-  const ecransRepris = direction ? ['programme', 'pointage', 'forfaits'] : ['programme', 'pointage'];
+  // Les forfaits se règlent dans la page des réglages (section
+  // 'activites_forfaits') : la tuile y mène.
+  const ecransRepris = ['programme', 'pointage'];
   const { ecran, setEcran, retourAccueil } = useEcranModule('activites', { repris: ecransRepris });
   const [jour, setJour] = React.useState(aujourdhui);
   const [form, setForm] = React.useState(null); // { activite }
@@ -333,7 +336,7 @@ export default function Activites({ user, etablissement }) {
     { id: 'programme', libelle: 'Programme', Icone: CalendarDays, etat: <>{etat(duJour.length, 'activité aujourd\'hui', 'activités aujourd\'hui')}<span aria-hidden="true"> </span>{etat(inscritsDuJour, 'inscrit', 'inscrits')}</>, onClick: () => { setJour(aujourdhui); setEcran('programme'); } },
     { id: 'nouvelle', libelle: 'Nouvelle activité', Icone: Plus, visible: peutGerer, onClick: () => setForm({ activite: null }) },
     { id: 'pointage', libelle: 'Pointer une consommation', Icone: ScanLine, etat: etat(consommations.rows.filter((c) => c.jour === aujourdhui).length, 'pointage aujourd\'hui', 'pointages aujourd\'hui'), onClick: () => setEcran('pointage') },
-    { id: 'forfaits', libelle: 'Forfaits', Icone: Ticket, visible: direction, etat: etat(forfaits.rows.filter((f) => f.actif).length, 'forfait actif', 'forfaits actifs'), onClick: () => setEcran('forfaits') },
+    { id: 'forfaits', libelle: 'Forfaits', Icone: Ticket, visible: direction, etat: etat(forfaits.rows.filter((f) => f.actif).length, 'forfait actif', 'forfaits actifs'), onClick: () => ouvrirCompte('activites_forfaits') },
   ];
 
   const ligneActivite = (a) => {
@@ -406,9 +409,6 @@ export default function Activites({ user, etablissement }) {
       )}
       {etabId && ecran === 'pointage' && (
         <Pointage sejours={sejours.rows} chambres={chambres.rows} forfaits={forfaits.rows} droits={droits.rows} consommations={consommations} activites={activites.rows} inscriptions={inscriptions} aujourdhui={aujourdhui} peutGerer={peutGerer} />
-      )}
-      {etabId && ecran === 'forfaits' && direction && (
-        <ForfaitsGestion forfaits={forfaits} droits={droits} />
       )}
 
       {form && <ActiviteForm activite={form.activite} equipe={equipe} activites={activites} aujourdhui={aujourdhui} onClose={() => setForm(null)} />}

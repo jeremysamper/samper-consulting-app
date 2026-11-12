@@ -4358,6 +4358,13 @@ export const UI_GLOSSARY = {
   'Tarifs par nuit, taxe de séjour, TVA, numéro HESTA': 'Nightly rates, tourist tax, VAT, HESTA number',
   'Hébergement : chambres': 'Accommodation: rooms',
   'Numéros, catégories, capacité, chambres en service': 'Numbers, categories, capacity, rooms in service',
+  // ── Réglages : sections de la branche Hôtel ──
+  'Activités : forfaits': 'Activities: packages',
+  'Les forfaits et ce que chacun donne': 'The packages and what each one gives',
+  'Passations : tâches récurrentes': 'Handovers: recurring tasks',
+  'Les tâches qui reviennent, par pôle': 'The tasks that come back, by department',
+  'Technique : équipements': 'Maintenance: equipment',
+  'Les équipements suivis par la technique': 'The equipment tracked by maintenance',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

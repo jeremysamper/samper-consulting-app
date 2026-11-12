@@ -5,6 +5,8 @@ import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
 import { estDirectionSpa } from '../spa/gardesSpa.js';
 import { estDirectionHotel } from '../hebergement/gardesHotel.js';
+import { peutGererPassations } from '../passations/gardesPassations.js';
+import { peutGererTechnique } from '../technique/gardesTechnique.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -97,6 +99,34 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('hebergement')(ctx) && estDirectionHotel(ctx.user?.role),
     charger: () => import('../hebergement/SectionTarifsHotel.jsx'),
     signaux: ['table:tarifs', 'table:hotel_reglages'],
+  },
+  {
+    id: 'hebergement_chambres', libelle: 'Hébergement : chambres', detail: 'Numéros, catégories, capacité, chambres en service',
+    groupe: 'modules', portee: 'maison', module: 'hebergement',
+    garde: (ctx) => ouvreLeModule('hebergement')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../hebergement/SectionChambresHotel.jsx'),
+    signaux: ['table:chambres'],
+  },
+  {
+    id: 'activites_forfaits', libelle: 'Activités : forfaits', detail: 'Les forfaits et ce que chacun donne',
+    groupe: 'modules', portee: 'maison', module: 'activites',
+    garde: (ctx) => ouvreLeModule('activites')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../activites/SectionForfaits.jsx'),
+    signaux: ['table:forfaits', 'table:forfait_droits'],
+  },
+  {
+    id: 'passations_taches', libelle: 'Passations : tâches récurrentes', detail: 'Les tâches qui reviennent, par pôle',
+    groupe: 'modules', portee: 'maison', module: 'passations',
+    garde: (ctx) => ouvreLeModule('passations')(ctx) && peutGererPassations(ctx.user?.role),
+    charger: () => import('../passations/SectionTachesRecurrentes.jsx'),
+    signaux: ['table:taches_recurrentes'],
+  },
+  {
+    id: 'technique_equipements', libelle: 'Technique : équipements', detail: 'Les équipements suivis par la technique',
+    groupe: 'modules', portee: 'maison', module: 'technique',
+    garde: (ctx) => ouvreLeModule('technique')(ctx) && peutGererTechnique(ctx.user?.role),
+    charger: () => import('../technique/SectionEquipements.jsx'),
+    signaux: ['table:equipements'],
   },
 
   // ── L'équipe et les accès ──

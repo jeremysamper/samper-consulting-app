@@ -15,7 +15,6 @@ import {
 import { LigneSejour, Liste, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
 import SejourFiche from './SejourFiche.jsx';
-import ChambresGestion from './ChambresGestion.jsx';
 import HotesGestion, { HoteForm } from './HotesGestion.jsx';
 import SejourNote from './SejourNote.jsx';
 import SejourOccupants from './SejourOccupants.jsx';
@@ -174,7 +173,7 @@ export default function Hebergement({ user, etablissement }) {
     },
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
-    { id: 'chambres', libelle: 'Chambres', Icone: DoorOpen, visible: direction, etat: etat(chambres.rows.filter((c) => c.actif).length, 'chambre active', 'chambres actives'), onClick: () => setEcran('chambres') },
+    { id: 'chambres', libelle: 'Chambres', Icone: DoorOpen, visible: direction, etat: etat(chambres.rows.filter((c) => c.actif).length, 'chambre active', 'chambres actives'), onClick: () => ouvrirCompte('hebergement_chambres') },
     { id: 'tarifs', libelle: 'Tarifs et taxes', Icone: Tag, visible: direction, etat: etat(tarifs.rows.filter((t) => t.actif).length, 'tarif actif', 'tarifs actifs'), onClick: () => ouvrirCompte('hebergement_tarifs') },
     { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
   ];
@@ -233,14 +232,8 @@ export default function Hebergement({ user, etablissement }) {
       )}
       {etabId && ecran === 'departs' && listeDe(departs, 'Aucun départ aujourd\'hui.')}
       {etabId && ecran === 'en_maison' && listeDe(presents, 'Personne en maison pour l\'instant.')}
-      {etabId && ecran === 'chambres' && direction && (
-        <ChambresGestion
-          chambres={chambres}
-          peutGerer={peutGerer}
-          onCreer={(valeurs) => chambres.inserer(valeurs).then((r) => { if (!r.error) notify('Chambre créée.', 'success'); return r; })}
-          onModifier={(id, valeurs) => chambres.modifier(id, valeurs).then((r) => { if (!r.error) notify('Chambre modifiée.', 'success'); return r; })}
-        />
-      )}
+      {/* Chambres : dans la page des réglages (section 'hebergement_chambres'),
+          la tuile y mène. */}
 
       {etabId && ecran === 'hotes' && (
         <HotesGestion

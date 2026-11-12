@@ -7,7 +7,9 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
-import { canManageModule } from '../../data/demoData.js';
+import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { peutGererPassations } from './gardesPassations.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
@@ -157,11 +159,14 @@ function TacheForm({ tache, pole, taches, onClose }) {
   );
 }
 
-export default function Passations({ user, etablissement }) {
+// ecranReglage : 'recurrentes' quand le module est monté dans la page des
+// réglages (SectionTachesRecurrentes.jsx), sur ce seul écran.
+export default function Passations({ user, etablissement, ecranReglage = null }) {
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const moi = user?.id || null;
-  const peutGerer = canManageModule(role, 'passations');
+  const peutGerer = peutGererPassations(role);
+  const enReglage = ecranReglage === 'recurrentes';
   const aujourdhui = useAujourdhui();
 
   const passations = usePassations(etabId);
@@ -171,8 +176,11 @@ export default function Passations({ user, etablissement }) {
   const faites = useTachesFaites(etabId);
   const equipe = React.useMemo(() => equipeDe(etabId), [etabId]);
 
-  const ecransRepris = peutGerer ? ['cahier', 'canaux', 'taches', 'recurrentes'] : ['cahier', 'canaux', 'taches'];
-  const { ecran, setEcran, retourAccueil } = useEcranModule('passations', { repris: ecransRepris });
+  // Les tâches récurrentes se règlent dans la page des réglages (section
+  // 'passations_taches') : la tuile y mène, le module y est monté sur ce seul
+  // écran (fixe).
+  const ecransRepris = ['cahier', 'canaux', 'taches'];
+  const { ecran, setEcran, retourAccueil } = useEcranModule('passations', { repris: ecransRepris, fixe: enReglage ? 'recurrentes' : null });
   const [pole, setPole] = React.useState(() => poleDuRole(role) || 'reception');
   const [canal, setCanal] = React.useState(() => poleDuRole(role) || 'tous');
   const [form, setForm] = React.useState(null); // { passation }
@@ -222,7 +230,7 @@ export default function Passations({ user, etablissement }) {
     { id: 'nouvelle', libelle: 'Nouvelle passation', Icone: Plus, onClick: () => setForm({ passation: null }) },
     { id: 'canaux', libelle: 'Canaux', Icone: MessagesSquare, etat: <><AtSign size={14} strokeWidth={1.8} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> {etat(mesMentions.length, 'mention cette semaine', 'mentions cette semaine')}</>, onClick: () => setEcran('canaux') },
     { id: 'taches', libelle: 'Tâches du jour', Icone: ListTodo, etat: etat(restantes.length, 'tâche à faire', 'tâches à faire'), onClick: () => setEcran('taches') },
-    { id: 'recurrentes', libelle: 'Tâches récurrentes', Icone: Repeat, visible: peutGerer, etat: etat(taches.rows.filter((t) => t.actif).length, 'tâche active', 'tâches actives'), onClick: () => setEcran('recurrentes') },
+    { id: 'recurrentes', libelle: 'Tâches récurrentes', Icone: Repeat, visible: peutGerer, etat: etat(taches.rows.filter((t) => t.actif).length, 'tâche active', 'tâches actives'), onClick: () => ouvrirCompte('passations_taches') },
   ];
   const ongletsPoles = POLES.map((p) => ({ id: p.id, label: p.label }));
   const ongletsCanaux = [CANAL_TOUS, ...POLES].map((p) => ({ id: p.id, label: p.label }));
@@ -267,7 +275,15 @@ export default function Passations({ user, etablissement }) {
           )}
         </>
       )}
-      {etabId && ecran !== ECRAN_ACCUEIL && (
+      {etabId && enReglage && peutGerer && (
+        <EnTeteSection actions={(
+          <Btn variant="primary" onClick={() => setTacheForm({ tache: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
+            <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>Nouvelle tâche récurrente</span>
+          </Btn>
+        )} />
+      )}
+      {etabId && !enReglage && ecran !== ECRAN_ACCUEIL && (
         <EcranTache
           titre={TITRES[ecran] || ''}
           onRetour={retourAccueil}

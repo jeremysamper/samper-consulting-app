@@ -27,6 +27,7 @@ import ControlesDuJour, { HistoriqueControles } from './ControlesDuJour.jsx';
 import { Mesure, PlageTexte } from './ActionsCorrectives.jsx';
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
+import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
@@ -919,10 +920,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       ) : enReglage ? (
         // Dans la page des réglages : la ligne d'état et les actions de
         // l'écran, sans « Retour » ni titre (la page les porte).
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', minWidth: 0 }} className="no-print">
-          <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, flex: '1 1 260px', minWidth: 0 }}>{etatsEcran.config}</div>
-          {actions && <div className="module-actions">{actions}</div>}
-        </div>
+        <EnTeteSection etat={etatsEcran.config} actions={actions} />
       ) : (
         <EcranTache titre={titresEcran[ecran] || ECRANS_HACCP[ecran]} etat={etatsEcran[ecran]} onRetour={retourAccueil} actions={actions} />
       )}
