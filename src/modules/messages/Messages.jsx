@@ -3,39 +3,92 @@
 // Chacun écrit aux comptes qu'il voit (collègues de ses établissements et
 // consultant) ; une conversation n'est lisible que par ses deux participants
 // (RLS, migration 20260926_messagerie_bidirectionnelle).
-// Liste des conversations à gauche (ou seule sur mobile), fil à droite.
+//
+// Deux vues : Discussions (l'écran d'arrivée, conversations d'abord puis les
+// autres comptes actifs) et Contacts (l'annuaire, puis la fiche d'une
+// personne). Liste à gauche, fil ou fiche à droite ; au téléphone, la liste
+// seule, et le fil ou la fiche en calque refermé par le geste retour.
+//
+// La page tient dans la hauteur de l'écran : la liste et le fil défilent
+// chacun dans leur zone, la zone de saisie ne quitte pas l'écran.
 // ═══════════════════════════════════════════════════════════════
 
 import React from 'react';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
-import { Btn, SectionHeader } from '../../components/ui/index.jsx';
+import { MessageSquare } from 'lucide-react';
+import { SectionHeader, SegmentedTabs } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { roles as roleConfig } from '../moduleConfig.js';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { useTeamPhones } from '../../hooks/useTeamPhones.js';
+import { useHauteurRestante } from '../caisse/mesures.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import {
-  MAX_LENGTH, buildContacts, formatDay, formatListDate, formatTime, fullName, groupConversations, initialsOf,
-} from './conversations.js';
+import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, groupConversations } from './conversations.js';
+import LignePersonne from './LignePersonne.jsx';
+import FilConversation from './FilConversation.jsx';
+import FicheContact from './FicheContact.jsx';
+import { cibleDe, sm } from './messagerie.styles.js';
+
+const VUES = [
+  { id: 'discussions', label: 'Discussions' },
+  { id: 'contacts', label: 'Contacts' },
+];
+
+const libelleRole = (profile) => (roleConfig[profile?.role] || { label: profile?.role || '' }).label;
+
+// La loupe dépliée prend toute la ligne de titre : SearchToggle garde seul
+// son état ouvert, on le lit donc dans le DOM de la ligne.
+function useRechercheOuverte(ref) {
+  const [ouverte, setOuverte] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof MutationObserver === 'undefined') return undefined;
+    const lire = () => setOuverte(Boolean(el.querySelector('.search-toggle')));
+    lire();
+    const mo = new MutationObserver(lire);
+    mo.observe(el, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  });
+  return ouverte;
+}
 
 const Messages = ({ user, isActive = true }) => {
   const isMobile = useIsMobile();
+  const tactile = estTactile(useShellMode());
+  const cible = cibleDe(tactile);
   const legacySB = dbService.getBridge();
   const [profiles, setProfiles] = React.useState([]);
   const [messages, setMessages] = React.useState([]);
+  const [vue, setVue] = React.useState('discussions');
   const [selectedId, setSelectedId] = React.useState(null);
+  const [ficheId, setFicheId] = React.useState(null);
   const [search, setSearch] = React.useState('');
   const [draft, setDraft] = React.useState('');
   const [sending, setSending] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const threadRef = React.useRef(null);
   const composerRef = React.useRef(null);
+  const cadreRef = React.useRef(null);
+  const titreRef = React.useRef(null);
+  const rechercheOuverte = useRechercheOuverte(titreRef);
 
-  // Mobile : le fil ouvert est un calque, « retour » ramène à la liste.
+  const filOuvert = vue === 'discussions' && Boolean(selectedId);
+  const ficheOuverte = vue === 'contacts' && Boolean(ficheId);
+
+  // Téléphone : le fil et la fiche sont des calques, « retour » ramène à la
+  // liste. Une seule entrée à la fois : « Écrire » depuis la fiche referme la
+  // sienne et pose celle du fil dans le même geste (historyNav l'ordonne).
   const closeThread = React.useCallback(() => setSelectedId(null), []);
-  useBackLayer(isMobile && Boolean(selectedId), closeThread, 'message-thread');
+  const closeFiche = React.useCallback(() => setFicheId(null), []);
+  useBackLayer(isMobile && filOuvert, closeThread, 'message-thread');
+  useBackLayer(isMobile && ficheOuverte, closeFiche, 'contact-fiche');
+
+  // Hauteur du cadre : le reste de la zone de contenu sous lui, mesuré contre
+  // le conteneur qui défile (jamais innerHeight, faux sur iPad).
+  const hauteur = useHauteurRestante(cadreRef, isActive && !loading);
 
   React.useEffect(() => {
     if (!legacySB) { setLoading(false); return undefined; }
@@ -69,17 +122,25 @@ const Messages = ({ user, isActive = true }) => {
     () => buildContacts({ conversations, profiles, profileById, userId: user.id, search }),
     [conversations, profiles, profileById, search, user.id],
   );
+  const annuaire = React.useMemo(
+    () => buildAnnuaire({ profiles, userId: user.id, search }),
+    [profiles, search, user.id],
+  );
+  // Numéros : lus seulement quand la vue Contacts est ouverte, et seulement
+  // par qui la base les laisse lire (consultant, patron).
+  const telephones = useTeamPhones(vue === 'contacts' ? user.role : null);
 
   const selected = selectedId ? (profileById.get(selectedId) || null) : null;
+  const fiche = ficheId ? (profileById.get(ficheId) || null) : null;
   const thread = React.useMemo(
     () => (selectedId ? [...(conversations.get(selectedId) || [])].reverse() : []),
     [conversations, selectedId],
   );
 
-  // Marquage lu : seulement la conversation ouverte, et seulement quand le
+  // Marquage lu : seulement la conversation affichée, et seulement quand le
   // module est réellement affiché (il peut rester monté masqué).
   React.useEffect(() => {
-    if (!isActive || !selectedId || !legacySB) return;
+    if (!isActive || !filOuvert || !legacySB) return;
     const hasUnread = thread.some((m) => m.recipientId === user.id && !m.readAt);
     if (!hasUnread) return;
     Promise.resolve(legacySB.db.markPrivateMessagesRead(user.id, selectedId))
@@ -88,18 +149,24 @@ const Messages = ({ user, isActive = true }) => {
     setMessages((prev) => prev.map((m) => (
       m.senderId === selectedId && m.recipientId === user.id && !m.readAt ? { ...m, readAt: now } : m
     )));
-  }, [isActive, selectedId, thread, user.id]);
+  }, [isActive, filOuvert, selectedId, thread, user.id]);
 
   // Fil : toujours calé sur le dernier message.
   React.useEffect(() => {
     const el = threadRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [thread.length, selectedId]);
+  }, [thread.length, selectedId, filOuvert]);
 
   const openConversation = (id) => {
     setSelectedId(id);
     setDraft('');
     if (!isMobile) requestAnimationFrame(() => composerRef.current?.focus());
+  };
+
+  const ecrire = (id) => {
+    setVue('discussions');
+    setFicheId(null);
+    openConversation(id);
   };
 
   const send = async () => {
@@ -132,152 +199,103 @@ const Messages = ({ user, isActive = true }) => {
     return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
   }
 
+  const videListe = <div style={sm.vide}>{search ? 'Aucun compte trouvé.' : 'Aucun contact disponible.'}</div>;
+  const listeDiscussions = contacts.length === 0 ? videListe : contacts.map(({ id, profile, last, unread }) => (
+    <LignePersonne
+      key={id}
+      profile={profile}
+      date={last ? formatListDate(last.createdAt) : null}
+      apercu={last ? `${last.senderId === user.id ? 'Vous : ' : ''}${last.message}` : libelleRole(profile)}
+      apercuDonnee={Boolean(last)}
+      nonLus={unread}
+      actif={selectedId === id}
+      onClick={() => openConversation(id)}
+    />
+  ));
+  const listeContacts = annuaire.length === 0 ? videListe : annuaire.map((p) => (
+    <LignePersonne key={p.id} profile={p} apercu={libelleRole(p)} actif={ficheId === p.id} onClick={() => setFicheId(p.id)} />
+  ));
+
+  // Ligne de titre de la liste : le choix de la vue et la loupe. Dépliée, la
+  // recherche prend la ligne entière ; refermée, elle s'efface et les vues
+  // reviennent.
   const listPanel = (
-    <div style={{ ...ms.listPanel, ...(isMobile ? null : ms.listPanelBureau) }}>
-      <div style={ms.listHead}>
-        <span style={ms.listTitle}>Mes messages</span>
-        <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une personne…" />
-      </div>
-      <div style={ms.contactList}>
-        {contacts.length === 0 && (
-          <div style={ms.emptyHint}>{search ? 'Aucun compte trouvé.' : 'Aucun contact disponible.'}</div>
+    <div style={{ ...ms.colonne, gap: 8, ...(isMobile ? null : ms.colonneListeBureau) }}>
+      <div ref={titreRef} style={ms.titreListe}>
+        {!rechercheOuverte && (
+          <SegmentedTabs tabs={VUES} active={vue} onChange={setVue} style={ms.vues(cible)} />
         )}
-        {contacts.map(({ id, profile, last, unread }) => {
-          const role = roleConfig[profile?.role] || { label: profile?.role || '', color: 'var(--accent)' };
-          const active = selectedId === id;
-          const preview = last
-            ? `${last.senderId === user.id ? 'Vous : ' : ''}${last.message}`
-            : role.label;
-          return (
-            <button
-              key={id}
-              type="button"
-              style={{ ...ms.contactRow, ...(active ? ms.contactRowActive : {}) }}
-              onClick={() => openConversation(id)}
-              aria-current={active ? 'true' : undefined}
-            >
-              <span style={ms.avatar}>{initialsOf(profile)}</span>
-              <span style={ms.contactBody}>
-                <span style={ms.contactTop}>
-                  <span style={{ ...ms.contactName, fontWeight: unread ? 700 : 700 }} data-no-translate>{fullName(profile)}</span>
-                  {last && <span style={ms.contactDate}>{formatListDate(last.createdAt)}</span>}
-                </span>
-                <span style={ms.contactBottom}>
-                  <span style={{ ...ms.contactPreview, color: unread ? 'var(--text)' : 'var(--text2)' }} data-no-translate={last ? '' : undefined}>{preview}</span>
-                  {unread > 0 && (
-                    <span style={ms.unreadBadge} aria-label={`${unread} message${unread > 1 ? 's' : ''} non lu${unread > 1 ? 's' : ''}`}>{unread}</span>
-                  )}
-                </span>
-              </span>
-            </button>
-          );
-        })}
+        <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une personne…" style={{ minWidth: cible, minHeight: cible }} />
       </div>
+      <div style={sm.liste}>{vue === 'contacts' ? listeContacts : listeDiscussions}</div>
     </div>
   );
 
-  let lastDay = null;
-  const threadPanel = !selectedId ? (
-    <div style={ms.threadEmpty}>
+  const threadPanel = (
+    <div style={ms.colonne}>
+      <FilConversation
+        userId={user.id}
+        selected={selected}
+        thread={thread}
+        filRef={threadRef}
+        composerRef={composerRef}
+        draft={draft}
+        onDraft={setDraft}
+        onSend={send}
+        sending={sending}
+        onRemove={remove}
+        onRetour={isMobile ? closeThread : undefined}
+        rows={isMobile ? 2 : 3}
+        aide={!isMobile}
+        cible={cible}
+      />
+    </div>
+  );
+
+  const fichePanel = fiche && (
+    <div style={ms.colonne}>
+      <FicheContact
+        profile={fiche}
+        tel={telephones[fiche.id]}
+        onEcrire={() => ecrire(fiche.id)}
+        onRetour={isMobile ? closeFiche : undefined}
+        empile={isMobile}
+        cible={cible}
+      />
+    </div>
+  );
+
+  const videDroite = (
+    <div style={ms.droiteVide}>
       <MessageSquare size={34} strokeWidth={1.5} aria-hidden="true" style={{ opacity: 0.35, color: 'var(--text2)' }} />
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 8 }}>Choisissez une personne</div>
-      <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, maxWidth: 320 }}>
-        Chaque conversation est privée : seuls vous et votre interlocuteur la voyez.
-      </div>
-    </div>
-  ) : (
-    <div style={ms.threadPanel}>
-      <div style={ms.threadHead}>
-        {/* Téléphone : « Retour » en toutes lettres, comme les écrans de tâche. */}
-        {isMobile && (
-          <Btn variant="ghost" onClick={closeThread} style={ms.retourBtn}>
-            <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Retour</span>
-          </Btn>
-        )}
-        <span style={ms.avatar}>
-          {initialsOf(selected)}
-        </span>
-        <div style={{ minWidth: 0 }}>
-          <div style={ms.threadName} data-no-translate>{fullName(selected)}</div>
-          <div style={ms.threadSub}>{(roleConfig[selected?.role] || { label: selected?.role || '' }).label}</div>
+      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginTop: 8 }}>Choisissez une personne</div>
+      {vue === 'discussions' && (
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, maxWidth: 320 }}>
+          Chaque conversation est privée : seuls vous et votre interlocuteur la voyez.
         </div>
-      </div>
-
-      <div style={ms.threadMessages} ref={threadRef} role="log" aria-live="polite" aria-label="Conversation">
-        {thread.length === 0 && (
-          <div style={ms.emptyHint}>Aucun message pour l'instant. Écrivez le premier.</div>
-        )}
-        {thread.map((m) => {
-          const mine = m.senderId === user.id;
-          const day = formatDay(m.createdAt);
-          const showDay = day !== lastDay;
-          lastDay = day;
-          return (
-            <React.Fragment key={m.id}>
-              {showDay && <div style={ms.dayDivider}><span>{day}</span></div>}
-              <div style={{ ...ms.bubbleWrap, justifyContent: mine ? 'flex-end' : 'flex-start' }}>
-                {mine && (
-                  <button type="button" className="mini" style={ms.deleteBtn} onClick={() => remove(m)} title="Supprimer" aria-label="Supprimer le message">
-                    <span aria-hidden="true">×</span>
-                  </button>
-                )}
-                <div style={mine ? ms.bubbleMine : ms.bubbleTheirs}>
-                  <div style={ms.bubbleText} data-no-translate>{m.message}</div>
-                  <div style={{ ...ms.bubbleMeta, textAlign: mine ? 'right' : 'left' }}>
-                    {formatTime(m.createdAt)}
-                    {mine && (
-                      <span style={{ color: m.readAt ? 'var(--success-text)' : 'var(--text3)', fontWeight: 700 }}>
-                        {m.readAt ? ', lu' : ', envoyé'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
-
-      <div style={ms.composer}>
-        <textarea
-          ref={composerRef}
-          style={ms.composerInput}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            // Ctrl/⌘ + Entrée envoie ; Entrée seule garde le retour à la ligne.
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
-          }}
-          data-no-translate
-          placeholder={`Écrire à ${selected?.prenom || fullName(selected)}…`}
-          aria-label={`Message pour ${fullName(selected)}`}
-          maxLength={MAX_LENGTH}
-          rows={isMobile ? 2 : 3}
-        />
-        <div style={ms.composerFoot}>
-          {!isMobile && <span style={ms.composerHint}>Ctrl/⌘ + Entrée pour envoyer</span>}
-          <Btn variant="primary" onClick={send} disabled={!draft.trim() || sending} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {sending ? 'Envoi…' : 'Envoyer'}
-          </Btn>
-        </div>
-      </div>
+      )}
     </div>
   );
+
+  let contenu;
+  if (isMobile) {
+    contenu = filOuvert ? threadPanel : (ficheOuverte && fichePanel) || listPanel;
+  } else {
+    const droite = vue === 'contacts' ? (fichePanel || videDroite) : (selectedId ? threadPanel : videDroite);
+    contenu = <>{listPanel}{droite}</>;
+  }
 
   return (
     <div style={ms.root}>
-      <SectionHeader
-        sub="Écrivez à vos collègues et à votre consultant. Chaque conversation n'est visible que par ses deux participants."
-      />
-      {isMobile ? (
-        selectedId ? threadPanel : listPanel
-      ) : (
-        <div style={ms.desktopGrid}>
-          {listPanel}
-          {threadPanel}
-        </div>
+      {/* Téléphone : la phrase d'explication cède sa place au fil et à la fiche. */}
+      {!(isMobile && (filOuvert || ficheOuverte)) && (
+        <SectionHeader
+          sub="Écrivez à vos collègues et à votre consultant. Chaque conversation n'est visible que par ses deux participants."
+        />
       )}
+      <div ref={cadreRef} style={{ ...(isMobile ? ms.cadreTelephone : ms.cadreBureau), height: hauteur ?? undefined }}>
+        {contenu}
+      </div>
     </div>
   );
 };
@@ -285,52 +303,21 @@ const Messages = ({ user, isActive = true }) => {
 const ms = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
 
-  desktopGrid: { display: 'grid', gridTemplateColumns: 'minmax(250px, 330px) minmax(0, 1fr)', gap: 14, alignItems: 'start' },
-
-  // Liste des conversations
-  // Deux colonnes posées sur la page (plus de panneaux encadrés), séparées
-  // sur ordinateur par un filet vertical.
-  listPanel: { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
-  listPanelBureau: { borderRight: '1px solid var(--border)', paddingRight: 14 },
-  listHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '2px 4px' },
-  listTitle: { fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  contactList: { display: 'flex', flexDirection: 'column', gap: 2, maxHeight: '64vh', overflowY: 'auto' },
-  // flexShrink 0 : dans une colonne flex scrollable, la règle tactile globale
-  // (min-height 44px) superposerait sinon les lignes sur iPad.
-  contactRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 8px', background: 'transparent', borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56, flexShrink: 0 },
-  contactRowActive: { borderColor: 'var(--accent-bd)', background: 'var(--accent-light)' },
-  // Initiales sur fond doux (--surface2), sans couleur de rôle.
-  avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', color: 'var(--text2)', fontWeight: 700, fontSize: 12, flexShrink: 0 },
-  contactBody: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 },
-  contactTop: { display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 },
-  contactName: { flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  contactDate: { fontSize: 11, color: 'var(--text3)', flexShrink: 0 },
-  contactBottom: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
-  contactPreview: { flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  unreadBadge: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-
-  // Fil de discussion
-  threadPanel: { display: 'flex', flexDirection: 'column', minWidth: 0 },
-  threadEmpty: { background: 'var(--surface)', border: '2px dashed var(--border)', borderRadius: 12, padding: '44px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  threadHead: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' },
-  retourBtn: { minHeight: 44, flexShrink: 0 },
-  threadName: { fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  threadSub: { fontSize: 11, color: 'var(--text2)' },
-  threadMessages: { display: 'flex', flexDirection: 'column', gap: 8, padding: 14, minHeight: 160, maxHeight: '52vh', overflowY: 'auto', background: 'var(--bg)' },
-  // Séparateur de jour : du texte, plus une pilule encadrée.
-  dayDivider: { alignSelf: 'center', fontSize: 11, fontWeight: 500, color: 'var(--text3)', padding: '4px 0', margin: '6px 0' },
-  bubbleWrap: { display: 'flex', alignItems: 'flex-end', gap: 4 },
-  bubbleMine: { background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', maxWidth: '78%', minWidth: 0 },
-  bubbleTheirs: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px', padding: '8px 12px', maxWidth: '78%', minWidth: 0 },
-  bubbleText: { fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'break-word' },
-  bubbleMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 4 },
-  deleteBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, background: 'none', border: 'none', borderRadius: 6, color: 'var(--text3)', cursor: 'pointer', padding: 0, flexShrink: 0, marginBottom: 4 },
-  composer: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderTop: '1px solid var(--border)' },
-  composerInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 },
-  composerFoot: { display: 'flex', alignItems: 'center', gap: 8 },
-  composerHint: { fontSize: 11, color: 'var(--text3)' },
-
-  emptyHint: { padding: 14, textAlign: 'center', color: 'var(--text2)', fontSize: 12, fontStyle: 'italic' },
+  // Cadre à hauteur de l'écran. Au-delà du téléphone : la liste (250 à
+  // 330 px), puis le fil ou la fiche, bornés à 760 px de large.
+  cadreTelephone: { display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 },
+  cadreBureau: { display: 'grid', gridTemplateColumns: 'minmax(250px, 330px) minmax(0, 760px)', gridTemplateRows: 'minmax(0, 1fr)', gap: 14, minHeight: 0 },
+  colonne: { display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, minHeight: 0 },
+  // Deux colonnes posées sur la page, séparées par un filet vertical.
+  colonneListeBureau: { borderRightWidth: 1, borderRightStyle: 'solid', borderRightColor: 'var(--rule-soft)', paddingRight: 14 },
+  titreListe: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '2px 0', flexShrink: 0, minWidth: 0 },
+  // Onglets de vue à la hauteur d'une cible (40 px à l'ordinateur, où la
+  // feuille ne les relève pas), 8 px entre eux : la barre ne garde ni sa
+  // marge intérieure ni son contour transparent, et ses onglets s'étirent.
+  // Deux onglets tiennent dans la colonne la plus étroite (187 px sur 301) :
+  // la barre ne défile pas en largeur.
+  vues: (cible) => ({ padding: 0, borderWidth: 0, gap: 8, alignItems: 'stretch', minHeight: cible, overflowX: 'visible' }),
+  droiteVide: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '44px 20px', minWidth: 0 },
 };
 
 export default Messages;
