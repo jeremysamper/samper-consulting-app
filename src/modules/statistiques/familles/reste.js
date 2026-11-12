@@ -7,6 +7,7 @@ import { MODULES_JOURNAL, OPERATIONS_JOURNAL, serieJournal } from '../../journal
 import { serieSop } from '../../sop/serieSop.js';
 import { serieKds } from '../../kds/serieKds.js';
 import { serieMep } from '../../mep/serieMep.js';
+import { SANS_PRATICIEN_SPA, serieSpa } from '../../spa/serieSpa.js';
 
 const sauf = (p, f) => (p.vide ? null : f(p));
 const compte = (objet, libelles) => Object.entries(objet || {}).map(([cle, valeur]) => ({ cle, libelle: libelles[cle] || cle, valeur }));
@@ -105,6 +106,41 @@ export const familleMep = {
       id: 'mep.taux', libelle: 'Mise en place faite', unite: 'pct', nature: 'taux',
       valeur: (p) => p.taux,
       phrase: 'Préparations faites divisées par les préparations des listes, comme l\'avancement d\'une liste ; recalculé sur chaque pas.',
+    },
+  ],
+};
+
+// Spa : soins de l'agenda (ni annulés ni absents), durée en cabine, par
+// praticien, et bons cadeaux créés. Une tranche sans rendez-vous vaut « n/a ».
+export const familleSpa = {
+  id: 'spa',
+  libelle: 'Spa',
+  journee: 'le jour du rendez-vous',
+  calculer(donnees, tranches) {
+    return serieSpa({ reservations: donnees.reservations, bons: donnees.bons }, tranches);
+  },
+  mesures: [
+    {
+      id: 'spa.soins', libelle: 'Soins réalisés ou prévus', unite: 'nombre', nature: 'flux',
+      valeur: (p) => sauf(p, (x) => x.soins),
+      ventilations: [{ id: 'praticien', libelle: 'Par praticien', parts: (p) => Object.entries(p.parPraticien || {}).map(([nom, e]) => ({ cle: nom, libelle: nom, donnee: nom !== SANS_PRATICIEN_SPA, valeur: e.soins })) }],
+      phrase: 'Rendez-vous ni annulés ni absents, au jour du rendez-vous, comme l\'agenda du Spa.',
+    },
+    {
+      id: 'spa.minutes', libelle: 'Minutes en cabine', unite: 'min', nature: 'flux',
+      valeur: (p) => sauf(p, (x) => x.minutes),
+      ventilations: [{ id: 'praticien', libelle: 'Par praticien', parts: (p) => Object.entries(p.parPraticien || {}).map(([nom, e]) => ({ cle: nom, libelle: nom, donnee: nom !== SANS_PRATICIEN_SPA, valeur: e.minutes })) }],
+      phrase: 'Somme des durées des soins ni annulés ni absents.',
+    },
+    {
+      id: 'spa.annules', libelle: 'Soins annulés ou absents', unite: 'nombre', nature: 'flux',
+      valeur: (p) => sauf(p, (x) => x.annules),
+      phrase: 'Rendez-vous annulés, ou dont le client ne s\'est pas présenté.',
+    },
+    {
+      id: 'spa.bons', libelle: 'Bons cadeaux créés', unite: 'nombre', nature: 'flux',
+      valeur: (p) => p.bons,
+      phrase: 'Bons cadeaux créés, au jour de leur création. Leur valeur est un texte, pas un montant : elle ne s\'additionne pas.',
     },
   ],
 };

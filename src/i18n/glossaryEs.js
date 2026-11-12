@@ -4558,4 +4558,16 @@ export const UI_GLOSSARY_ES = {
   "Préparations des listes de mise en place, au jour de service de la liste.": "Preparaciones de las listas de mise en place, el día de servicio de la lista.",
   "Préparations cochées comme faites.": "Preparaciones marcadas como hechas.",
   "Préparations faites divisées par les préparations des listes, comme l'avancement d'une liste ; recalculé sur chaque pas.": "Preparaciones hechas divididas por las preparaciones de las listas, como el avance de una lista; recalculado en cada paso.",
+  // ── Statistiques (S2) : Spa ──
+  "le jour du rendez-vous": "el día de la cita",
+  "Soins réalisés ou prévus": "Tratamientos realizados o previstos",
+  "Minutes en cabine": "Minutos en cabina",
+  "Soins annulés ou absents": "Tratamientos cancelados o ausentes",
+  "Bons cadeaux créés": "Bonos regalo creados",
+  "Par praticien": "Por terapeuta",
+  "À attribuer": "Por asignar",
+  "Rendez-vous ni annulés ni absents, au jour du rendez-vous, comme l'agenda du Spa.": "Citas ni canceladas ni ausentes, el día de la cita, como la agenda del Spa.",
+  "Somme des durées des soins ni annulés ni absents.": "Suma de las duraciones de los tratamientos ni cancelados ni ausentes.",
+  "Rendez-vous annulés, ou dont le client ne s'est pas présenté.": "Citas canceladas, o en las que el cliente no se presentó.",
+  "Bons cadeaux créés, au jour de leur création. Leur valeur est un texte, pas un montant : elle ne s'additionne pas.": "Bonos regalo creados, el día de su creación. Su valor es un texto, no un importe: no se suma.",
 };

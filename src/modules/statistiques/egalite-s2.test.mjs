@@ -289,6 +289,21 @@ test('journal, sop, cuisine et mise en place : chaque flux fait son total, les t
   assert.equal(mesure('mep.taux').valeur(t('mep', { listes })), items.filter((i) => i.fait).length / items.length);
 });
 
+// ── Spa ──
+test("spa : soins, minutes, annulés et bons font l'agenda, par praticien", () => {
+  const reservations = Array.from({ length: 1200 }, (_, i) => ({ dateRdv: new Date(Date.UTC(2026, 0, 1 + (i % 300))).toISOString().slice(0, 10), dureeMin: [30, 60, 90][i % 3], praticien: i % 4 ? 'Léa' : '', statut: ['prevue', 'annulee', 'terminee', 'absent'][i % 4] }));
+  const bons = Array.from({ length: 200 }, (_, i) => ({ createdAt: new Date(Date.UTC(2026, 0, 1 + i, 10)).toISOString() }));
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('spa', lire('spa', { reservations, bons }, '2026-01-01', '2026-12-31', pas)));
+  const lu = lire('spa', { reservations, bons }, '2026-01-01', '2026-12-31', 'mois');
+  const actifs = reservations.filter((r) => !['annulee', 'absent'].includes(r.statut));
+  assert.equal(mesure('spa.soins').valeur(lu.total), actifs.length);
+  assert.equal(mesure('spa.minutes').valeur(lu.total), actifs.reduce((x, r) => x + r.dureeMin, 0));
+  assert.equal(mesure('spa.bons').valeur(lu.total), 200);
+  const parts = mesure('spa.soins').ventilations[0].parts(lu.total);
+  assert.equal(parts.reduce((x, y) => x + y.valeur, 0), actifs.length);
+  assert.equal(parts.find((x) => x.cle === 'À attribuer').donnee, false);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
@@ -300,4 +315,5 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('sop'), 4);
   assert.equal(compte('kds'), 2);
   assert.equal(compte('mep'), 3);
+  assert.equal(compte('spa'), 4);
 });

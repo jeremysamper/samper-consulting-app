@@ -4577,6 +4577,18 @@ export const UI_GLOSSARY = {
   "Préparations des listes de mise en place, au jour de service de la liste.": "Preparations of the mise en place lists, on the service day of the list.",
   "Préparations cochées comme faites.": "Preparations ticked as done.",
   "Préparations faites divisées par les préparations des listes, comme l'avancement d'une liste ; recalculé sur chaque pas.": "Preparations done divided by the preparations of the lists, like the progress of a list; recalculated on each step.",
+  // ── Statistiques (S2) : Spa ──
+  "le jour du rendez-vous": "the day of the appointment",
+  "Soins réalisés ou prévus": "Treatments done or planned",
+  "Minutes en cabine": "Minutes in the treatment room",
+  "Soins annulés ou absents": "Treatments cancelled or no-show",
+  "Bons cadeaux créés": "Gift vouchers created",
+  "Par praticien": "By practitioner",
+  "À attribuer": "To be assigned",
+  "Rendez-vous ni annulés ni absents, au jour du rendez-vous, comme l'agenda du Spa.": "Appointments neither cancelled nor no-show, on the day of the appointment, like the Spa diary.",
+  "Somme des durées des soins ni annulés ni absents.": "Sum of the lengths of the treatments neither cancelled nor no-show.",
+  "Rendez-vous annulés, ou dont le client ne s'est pas présenté.": "Appointments cancelled, or where the client did not show up.",
+  "Bons cadeaux créés, au jour de leur création. Leur valeur est un texte, pas un montant : elle ne s'additionne pas.": "Gift vouchers created, on the day of their creation. Their value is a text, not an amount: it is not added up.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

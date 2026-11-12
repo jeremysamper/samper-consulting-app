@@ -27,6 +27,7 @@ import { userDisplayName } from '../../utils/userDisplay.js';
 import { lireGroupes } from '../../hooks/useGroupes.js';
 import { supabase } from '../../services/supabase.js';
 import { zurichAjouterJours, zurichMinuitIso } from '../../utils/zurichTime.js';
+import { mapReservation as mapRdvSpa } from '../spa/spaData.js';
 
 // Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
 // active pour l'établissement, puis droit d'ouvrir la page.
@@ -191,6 +192,20 @@ export const LECTURES = {
       const lignes = await toutesLesPages((x, y) => supabase.from('mep_listes').select('id, date_service, mep_items(fait)')
         .eq('etablissement_id', etabId).gte('date_service', debut).lte('date_service', fin).order('date_service').order('id').range(x, y));
       return { listes: lignes.map((l) => ({ id: l.id, dateService: l.date_service, items: l.mep_items || [] })) };
+    },
+  },
+  // Spa : l'agenda et les bons cadeaux, à qui ouvre le Spa.
+  spa: {
+    visible: (ctx) => ecranOuvert('spa', ctx),
+    async lire(etabId, debut, fin) {
+      const [de, a] = bornesHorodatage(debut, fin);
+      const [rdv, bons] = await Promise.all([
+        toutesLesPages((x, y) => supabase.from('spa_reservations').select('*').eq('etablissement_id', etabId)
+          .gte('date_rdv', debut).lte('date_rdv', fin).order('date_rdv').order('id').range(x, y)),
+        toutesLesPages((x, y) => supabase.from('spa_bons').select('id, created_at').eq('etablissement_id', etabId)
+          .gte('created_at', de).lt('created_at', a).order('created_at').order('id').range(x, y)),
+      ]);
+      return { reservations: rdv.map(mapRdvSpa), bons: bons.map((b) => ({ id: b.id, createdAt: b.created_at })) };
     },
   },
 };
