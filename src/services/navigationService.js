@@ -17,7 +17,7 @@ export function setNavigationHandler(handler) {
   navigationHandler = typeof handler === 'function' ? handler : null;
 }
 
-export function navigateToPage(page) {
+export function navigateToPage(page, options) {
   if (!page) return;
 
   if (navigationHandler) {
@@ -26,7 +26,7 @@ export function navigateToPage(page) {
       writeText(UI_STORAGE_KEYS.consultantToolsTab, consultantToolsTab);
       notifyConsultantToolsTab(consultantToolsTab);
     }
-    navigationHandler(page);
+    navigationHandler(page, options);
     return;
   }
 
@@ -38,15 +38,21 @@ export function navigateToPage(page) {
   getBrowserWindow()?.location?.reload();
 }
 
-// Espace Compte sur un onglet donné : clé ponctuelle lue au montage, événement
-// pour un Compte déjà monté (keep-alive), puis la page.
-export function ouvrirCompte(onglet) {
+// Page des réglages sur une section donnée : clé ponctuelle lue au montage,
+// événement pour une page déjà montée (keep-alive), puis la page. Les anciens
+// onglets ('parametres', 'roles', 'alertes') sont trois de ses sections.
+//
+// C'est le raccourci des modules : leur entrée « Réglages » appelle
+// ouvrirCompte('<section>'), le geste retour ramène au module. parDessus : à
+// passer quand le raccourci part d'un écran de travail (un ticket ouvert), pour
+// que cet écran garde son entrée d'historique.
+export function ouvrirCompte(onglet, { parDessus = false } = {}) {
   if (onglet) {
     writeText(UI_STORAGE_KEYS.compteTab, onglet);
     const browserWindow = getBrowserWindow();
-    browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:compte-tab', { detail: { tab: onglet } }));
+    browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:compte-tab', { detail: { tab: onglet, raccourci: true } }));
   }
-  navigateToPage('compte');
+  navigateToPage('compte', parDessus ? { parDessus: true } : undefined);
 }
 
 // Fiche d'un groupe dans Groupes (réservation tenue à jour par un groupe) :

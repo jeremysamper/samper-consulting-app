@@ -158,7 +158,9 @@ const s = {
     justifyContent: 'center',
     gap: 6,
     padding: '0 12px',
-    height: 42,
+    // 44 px au doigt, même réduit à son code (FR, EN, ES) sur un téléphone.
+    minWidth: 44,
+    height: 44,
     flexShrink: 0,
     background: 'transparent',
     border: 'none',

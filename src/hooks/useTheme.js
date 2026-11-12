@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { getBrowserWindow } from '../legacy/legacyApi.js';
 import { readText, UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
 
@@ -26,8 +26,25 @@ function readInitialTheme() {
   return 'light';
 }
 
+// Un seul état pour toute l'app : le bouton de la barre du haut, la palette et
+// la section « Apparence » des réglages lisent et écrivent la même valeur, les
+// trois sont toujours d'accord.
+let themeCourant = null;
+const abonnes = new Set();
+const lire = () => {
+  if (themeCourant === null) themeCourant = readInitialTheme();
+  return themeCourant;
+};
+const sAbonner = (fn) => { abonnes.add(fn); return () => abonnes.delete(fn); };
+function ecrire(next) {
+  const valeur = THEMES.has(next) ? next : 'light';
+  if (valeur === lire()) return;
+  themeCourant = valeur;
+  abonnes.forEach((fn) => fn());
+}
+
 export function useTheme() {
-  const [theme, setThemeState] = useState(readInitialTheme);
+  const theme = useSyncExternalStore(sAbonner, lire, () => 'light');
 
   useEffect(() => {
     const documentElement = getBrowserWindow()?.document?.documentElement;
@@ -38,11 +55,11 @@ export function useTheme() {
   }, [theme]);
 
   function setTheme(nextTheme) {
-    setThemeState(THEMES.has(nextTheme) ? nextTheme : 'light');
+    ecrire(nextTheme);
   }
 
   function toggleTheme() {
-    setThemeState((current) => (current === 'dark' ? 'light' : 'dark'));
+    ecrire(lire() === 'dark' ? 'light' : 'dark');
   }
 
   return {

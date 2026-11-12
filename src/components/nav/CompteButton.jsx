@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Entrée de l'espace Compte (paramètres, rôles, alertes), sur la ligne de
-// « Mon compte » : pied de la barre latérale, en-tête de la page d'accueil
-// tactile. Toujours visible sans défiler, quelle que soit la longueur du menu
-// (le menu latéral est plein à 1440 px). Affichée par l'appelant seulement si
-// peutOuvrirCompte (moduleConfig).
+// Entrée de la page des réglages, sur la ligne de « Mon compte » : pied de la
+// barre latérale, en-tête de la page d'accueil tactile. Toujours visible sans
+// défiler, quelle que soit la longueur du menu (le menu latéral est plein à
+// 1440 px). Affichée par l'appelant si peutOuvrirCompte (moduleConfig) :
+// toute personne connectée, chacune avec ses seules sections.
 //
 // Variantes : 'desktop' (sur l'encre de la barre) et 'accueil' (fond clair).
 // Texte seul, pas de pictogramme devant le libellé.
@@ -19,7 +19,7 @@ export default function CompteButton({ onOpen, actif = false, variant = 'desktop
       onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
       aria-current={actif ? 'page' : undefined}
     >
-      Compte
+      Réglages
     </button>
   );
 }

@@ -8,12 +8,29 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 // (modal-sheet). Rendues dans <body> : sur téléphone la barre d'actions défile
 // et couperait tout ce qui est posé dedans. Se ferment par ×, Échap, un tap à
 // côté ou le geste retour.
+//
+// Dans la page des réglages (EnSection), la fenêtre d'un réglage devient une
+// section : même corps, même pied, posés dans la page, sans voile, sans portail
+// et sans entrée d'historique. Seule l'enveloppe change. Une fenêtre ouverte
+// depuis la section (un formulaire, une confirmation) reste une vraie fenêtre.
 // ─────────────────────────────────────────────────────────────────────────────
 
+const ContexteSection = React.createContext(false);
+
+export function EnSection({ children }) {
+  return <ContexteSection.Provider value>{children}</ContexteSection.Provider>;
+}
+
+export function useEnSection() {
+  return React.useContext(ContexteSection);
+}
+
 export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children, pied = null }) {
-  useBackLayer(true, onClose, id);
+  const enSection = React.useContext(ContexteSection);
+  useBackLayer(!enSection, onClose, id);
   const voileRef = React.useRef(null);
   React.useEffect(() => {
+    if (enSection) return undefined;
     // Échap ferme la fenêtre du dessus seulement : une fenêtre ouverte depuis
     // une autre (« Gérer » dans une fiche) ne referme pas les deux d'un coup.
     const echap = (e) => {
@@ -24,7 +41,18 @@ export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children
     };
     document.addEventListener('keydown', echap);
     return () => document.removeEventListener('keydown', echap);
-  }, [onClose]);
+  }, [onClose, enSection]);
+  if (enSection) {
+    return (
+      <ContexteSection.Provider value={false}>
+        <div data-section-fenetre={id || ''} style={{ ...st.enSection, maxWidth: Math.max(largeur, 560) }}>
+          {sousTitre && <div style={{ ...st.sousTitre, marginTop: 0 }}>{sousTitre}</div>}
+          <div style={st.corps}>{children}</div>
+          {pied && <div style={st.pied}>{pied}</div>}
+        </div>
+      </ContexteSection.Provider>
+    );
+  }
   return createPortal(
     <div ref={voileRef} data-fenetre="" className="modal-sheet-overlay" style={st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-sheet" style={{ ...st.fenetre, width: `min(${largeur}px, 100%)` }} role="dialog" aria-modal="true" aria-label={titre}>
@@ -104,6 +132,7 @@ export function Options({ nom, valeur, onChange, options }) {
 
 export const st = {
   voile: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
+  enSection: { display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minWidth: 0, boxSizing: 'border-box' },
   fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
   fermer: { position: 'absolute', top: 6, right: 8, width: 40, height: 40, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: 24, cursor: 'pointer', lineHeight: 1 },
   titre: { fontSize: 17, fontWeight: 700, paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font-serif)' },

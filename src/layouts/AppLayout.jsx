@@ -36,7 +36,7 @@ import { messageErreur } from '../utils/messageErreur.js';
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // et la page d'accueil de la coque tactile.
-const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Compte', accueil: 'Accueil' };
+const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Réglages', accueil: 'Accueil' };
 
 /** Temps relatif lisible depuis une date ISO (ex: "il y a 3 min") */
 function formatRelativeTime(isoString) {
@@ -340,10 +340,11 @@ export default function AppLayout({
       style={style}
     />
   );
-  // Espace Compte (paramètres, rôles, alertes) : bouton sur la ligne de « Mon
-  // compte », entrée de la palette et de l'accueil tactile, pour qui ouvre les
-  // Outils consultant (peutOuvrirCompte, la garde de LegacyModuleHost).
-  const compteOuvrable = peutOuvrirCompte(user, perms);
+  // Page des réglages : bouton sur la ligne de « Mon compte », entrée de la
+  // palette et de l'accueil tactile, pour toute personne connectée
+  // (peutOuvrirCompte, la garde de LegacyModuleHost) ; chacune n'y voit que ses
+  // sections.
+  const compteOuvrable = peutOuvrirCompte(user);
   const ouvrirCompte = compteOuvrable ? () => handleSetPage('compte') : null;
   const accountModal = accountOpen ? (
     <AccountModal

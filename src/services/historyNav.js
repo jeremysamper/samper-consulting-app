@@ -38,6 +38,7 @@ const layers = [];
 // différée, sinon le retour asynchrone dépilerait la page qu'on vient de poser.
 let pendingBacks = 0;
 let deferredPage = null;
+let deferredOptions = null;
 // Calques ouverts pendant qu'un retour interne est en route : posés au popstate.
 const deferredLayers = [];
 // Gestes à faire une fois les retours internes arrivés (quandRetoursArrives).
@@ -75,8 +76,10 @@ function onPopState(event) {
 
   if (pendingBacks === 0 && deferredPage) {
     const next = deferredPage;
+    const options = deferredOptions || undefined;
     deferredPage = null;
-    pushPage(next);
+    deferredOptions = null;
+    pushPage(next, options);
   }
   if (pendingBacks === 0 && deferredLayers.length) {
     const enAttente = deferredLayers.splice(0);
@@ -119,15 +122,23 @@ export function startHistory(initialPage, onPop) {
 // Pose une entrée de page. Si un calque est au sommet (on navigue depuis le
 // tiroir), l'entrée du calque est REMPLACÉE par la page : « retour » ramène
 // alors au module précédent et non au tiroir déjà refermé.
-export function pushPage(page) {
+//
+// parDessus : la page se pose AU-DESSUS du calque, qui reste ouvert dans son
+// module (gardé monté). Pour un aller et retour depuis un écran de travail :
+// les réglages ouverts depuis un ticket de caisse. « Retour » ramène à l'écran
+// quitté, calque compris, et le retour suivant le referme comme d'habitude.
+export function pushPage(page, { parDessus = false } = {}) {
   const win = getBrowserWindow();
   if (!win?.history || !page) { currentPage = page; return; }
-  if (pendingBacks > 0) { deferredPage = page; return; }
+  if (pendingBacks > 0) { deferredPage = page; deferredOptions = { parDessus }; return; }
   const top = win.history.state;
   const topIsLayer = isOurState(top) && top.layer;
   if (!topIsLayer && page === currentPage) return;
   try {
-    if (topIsLayer) {
+    if (topIsLayer && parDessus) {
+      currentIdx += 1;
+      win.history.pushState({ sc: 1, idx: currentIdx, page }, '');
+    } else if (topIsLayer) {
       // Le calque est consommé par la navigation : on le retire de la pile
       // sans appeler close() (l'appelant referme lui-même son UI).
       while (layers.length && layers[layers.length - 1].idx >= top.idx) layers.pop();

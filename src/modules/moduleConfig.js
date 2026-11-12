@@ -335,30 +335,69 @@ export function isPageActiveForEtab(etablissement, page) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Modules consultant-only - non présents dans navItems ni defaultPermissions.
-// Leur accès est géré par condition directe dans LegacyModuleHost.jsx :
+// Leur accès est géré par peutOuvrirPage (plus bas), lue par LegacyModuleHost :
 //   user.role === 'consultant' && permissions.consultant_tools !== false
 //
 //   • factures    → Facturation client        src/modules/factures/
 //   • parametres  → Paramètres établissement  src/modules/parametres/
 //   • roles       → Gestion rôles & accès     src/modules/roles/
-//   • compte      → Espace Compte             src/modules/compte/
+// La page 'compte' (les réglages) s'ouvre à tous : voir peutOuvrirCompte.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Espace Compte (D18) : l'administration de l'app des brigades, sortie des
-// Outils consultant le 28.10.2026 (Paramètres, Rôles & accès, Alertes, plus
-// tard Abonnement). Ouvert à qui ouvre les Outils consultant aujourd'hui, et à
-// personne d'autre. L7 l'ouvrira au patron (D16) : cette fonction, et la liste
-// des rôles de chaque onglet dans Compte.jsx, sont les deux seuls endroits à
-// changer. Le bouton « Compte » (barre latérale, accueil tactile, palette) et
-// LegacyModuleHost lisent cette fonction.
-export function peutOuvrirCompte(user, permissions = {}) {
+// Page des réglages (page hors menu 'compte', src/modules/compte/). Née le
+// 28.10.2026 comme espace Compte du consultant (Paramètres, Rôles & accès,
+// Alertes) ; depuis le 12.11.2026 elle porte tous les réglages de l'app, une
+// section par réglage, chacune sous la garde de son module (registre :
+// compte/registreReglages.js).
+//
+// peutAdministrerCompte : la garde des trois sections d'origine, inchangée
+// (qui ouvre les Outils consultant). L7 les ouvrira au patron (D16) : cette
+// fonction est le seul endroit à changer.
+export function peutAdministrerCompte(user, permissions = {}) {
   return user?.role === 'consultant' && permissions?.consultant_tools !== false;
 }
 
-// Entrée « Compte » de la palette Ctrl+K : hors du menu (pas de case de droit,
-// pas de chiffre Alt), rattachée aux Outils consultant comme Factures & achats
-// l'est à l'Inventaire.
-export const ENTREE_COMPTE = { id: 'compte', label: 'Compte', group: 'Consultant', rattacheA: 'consultant_tools' };
+// La page s'ouvre à toute personne connectée : chacune y a au moins ses
+// préférences (thème, langue, son compte) et n'y voit que ses sections.
+export function peutOuvrirCompte(user) {
+  return Boolean(user?.role);
+}
+
+// Entrée « Réglages » de la palette Ctrl+K : hors du menu (pas de case de
+// droit ; rattacheA la prive de chiffre Alt, comme Factures & achats).
+export const ENTREE_COMPTE = { id: 'compte', label: 'Réglages', group: 'Général', rattacheA: 'dashboard' };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Accès à une page : la condition d'ouverture de chaque page, en un seul
+// endroit. LegacyModuleHost la lit pour monter le module ou afficher le refus ;
+// le registre des réglages la lit pour qu'une section ne s'ouvre qu'à qui ouvre
+// son module. `permissions` = droits de la personne (getPermissionsForRole).
+// L'activation du module pour l'établissement se vérifie à part
+// (isPageActiveForEtab).
+//
+//   clé stricte  : une clé absente ne vaut jamais « ouvert » (direction,
+//                  réservations, caisse) ;
+//   garde dure   : rôle exigé quel que soit le droit stocké (journal et KDS,
+//                  miroirs de la RLS ; pages et IA du consultant) ;
+//   autres pages : ouvertes sauf droit explicitement retiré. Une page inconnue
+//                  affiche le tableau de bord, donc s'ouvre.
+// ─────────────────────────────────────────────────────────────────────────────
+const PAGES_CLE_STRICTE = ['comptabilite', 'statistiques', 'previsions', 'caisse'];
+const PAGES_DU_CONSULTANT = ['consultant_tools', 'factures', 'parametres', 'roles'];
+const CLES_DE_PAGE = { pointage: 'planning', cartes: 'recettes', achats: 'inventaire' };
+
+export function peutOuvrirPage(page, user, permissions = {}) {
+  const role = user?.role;
+  const droits = permissions || {};
+  if (page === 'dashboard' || page === 'accueil') return true;
+  if (page === 'compte') return peutOuvrirCompte(user);
+  if (page === 'faq') return role === 'consultant';
+  if (PAGES_DU_CONSULTANT.includes(page)) return peutAdministrerCompte(user, droits);
+  if (page === 'journal') return ['consultant', 'patron'].includes(role) && droits.journal !== false;
+  if (page === 'kds') return ['consultant', 'resp_cuisine', 'cuisinier'].includes(role) && droits.kds !== false;
+  if (PAGES_CLE_STRICTE.includes(page)) return droits[page] === true;
+  return droits[CLES_DE_PAGE[page] || page] !== false;
+}
 
 // Onglets d'administration des Outils consultant passés dans Compte : un
 // ancien lien vers l'un d'eux ouvre Compte sur l'onglet correspondant.

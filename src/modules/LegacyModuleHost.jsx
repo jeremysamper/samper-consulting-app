@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirCompte } from './moduleConfig.js';
+import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirPage } from './moduleConfig.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { getPermissionsForRole } from '../data/demoData.js';
 import { messageErreur } from '../utils/messageErreur.js';
@@ -196,31 +196,31 @@ export default function LegacyModuleHost({
       return wrap('Tableau de bord', <TableauDeBord user={user} etablissement={etablissement} setPage={setPage} />);
     case 'planning': {
       const PlanningComponent = Planning;
-      return permissions.planning !== false
+      return peutOuvrirPage('planning', user, permissions)
         ? wrap('Planning', <PlanningComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'pointage': {
       const PlanningComponent = Planning;
-      return permissions.planning !== false
+      return peutOuvrirPage('pointage', user, permissions)
         ? wrap('Pointage', <PlanningComponent user={user} etablissement={etablissement} initialTab="pointage" />)
         : accessDenied;
     }
     case 'messages': {
-      return permissions.messages !== false
+      return peutOuvrirPage('messages', user, permissions)
         ? wrap('Messages privés', <Messages user={user} etablissement={etablissement} setPage={setPage} isActive={isActivePage} />)
         : accessDenied;
     }
     case 'journal': {
       // Garde dure par rôle, miroir de la RLS de journal_activite.
-      return ['consultant', 'patron'].includes(user.role) && permissions.journal !== false
+      return peutOuvrirPage('journal', user, permissions)
         ? wrap("Journal d'activité", <Journal user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'comptabilite': {
       // Une clé absente ne vaut jamais « ouvert » (comme Réservations) : la
       // direction par défaut, un écart personnel possible (Rôles & accès).
-      return permissions.comptabilite === true
+      return peutOuvrirPage('comptabilite', user, permissions)
         ? wrap('Comptabilité', <Comptabilite user={user} etablissement={etablissement} setPage={setPage} />)
         : accessDenied;
     }
@@ -228,151 +228,151 @@ export default function LegacyModuleHost({
       // Une clé absente ne vaut jamais « ouvert » (comme la Comptabilité).
       // Dans le module, chaque famille de chiffres garde la garde de son
       // écran d'origine : personne n'y voit un chiffre qu'il ne voit pas ailleurs.
-      return permissions.statistiques === true
+      return peutOuvrirPage('statistiques', user, permissions)
         ? wrap('Statistiques', <Statistiques user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'cartes': {
       const RecettesComponent = Recettes;
-      return permissions.recettes !== false
+      return peutOuvrirPage('cartes', user, permissions)
         ? wrap('Cartes & Recettes', <RecettesComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'inventaire': {
       const InventaireComponent = Inventaire;
-      return permissions.inventaire !== false
+      return peutOuvrirPage('inventaire', user, permissions)
         ? wrap('Inventaire', <InventaireComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'achats': {
       // Factures & achats : mêmes droits que l'Inventaire (clé inventaire).
-      return permissions.inventaire !== false
+      return peutOuvrirPage('achats', user, permissions)
         ? wrap('Factures & achats', <FacturesAchats user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'pertes': {
       const PertesComponent = Pertes;
-      return permissions.pertes !== false
+      return peutOuvrirPage('pertes', user, permissions)
         ? wrap('Pertes', <PertesComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'haccp': {
       const HACCPComponent = HACCP;
-      return permissions.haccp !== false
+      return peutOuvrirPage('haccp', user, permissions)
         ? wrap('HACCP', <HACCPComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'previsions': {
-      return permissions.previsions === true
+      return peutOuvrirPage('previsions', user, permissions)
         ? wrap('Réservations', <Previsions user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'spa': {
-      return permissions.spa !== false
+      return peutOuvrirPage('spa', user, permissions)
         ? wrap('Spa', <Spa user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'groupes': {
-      return permissions.groupes !== false
+      return peutOuvrirPage('groupes', user, permissions)
         ? wrap('Groupes', <Groupes user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'hebergement': {
-      return permissions.hebergement !== false
+      return peutOuvrirPage('hebergement', user, permissions)
         ? wrap('Hébergement', <Hebergement user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'etages': {
-      return permissions.etages !== false
+      return peutOuvrirPage('etages', user, permissions)
         ? wrap('Étages', <Etages user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'demandes': {
-      return permissions.demandes !== false
+      return peutOuvrirPage('demandes', user, permissions)
         ? wrap('Demandes', <Demandes user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'activites': {
-      return permissions.activites !== false
+      return peutOuvrirPage('activites', user, permissions)
         ? wrap('Activités', <Activites user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'passations': {
-      return permissions.passations !== false
+      return peutOuvrirPage('passations', user, permissions)
         ? wrap('Passations', <Passations user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'repas': {
-      return permissions.repas !== false
+      return peutOuvrirPage('repas', user, permissions)
         ? wrap('Repas hôtel', <Repas user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'technique': {
-      return permissions.technique !== false
+      return peutOuvrirPage('technique', user, permissions)
         ? wrap('Technique', <Technique user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'fiches_salle': {
       const FichesSalleComponent = FichesSalle;
-      return permissions.fiches_salle !== false
+      return peutOuvrirPage('fiches_salle', user, permissions)
         ? wrap('Fiches salle', <FichesSalleComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'documents': {
       const DocumentsComponent = Documents;
-      return permissions.documents !== false
+      return peutOuvrirPage('documents', user, permissions)
         ? wrap('Documents', <DocumentsComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'faq': {
       const FAQAssistantComponent = FAQAssistant;
       // IA / assistant : réservé au consultant culinaire (garde dure, indépendante de la BDD).
-      return user.role === 'consultant'
+      return peutOuvrirPage('faq', user, permissions)
         ? wrap('FAQ & Assistant', <FAQAssistantComponent user={user} etablissement={etablissement} setPage={setPage} />)
         : accessDenied;
     }
     case 'catalogue': {
       const CatalogueComponent = Catalogue;
-      return permissions.catalogue !== false
+      return peutOuvrirPage('catalogue', user, permissions)
         ? wrap('Catalogue produits', <CatalogueComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'sop': {
       const SOPComponent = SOP;
-      return permissions.sop !== false
+      return peutOuvrirPage('sop', user, permissions)
         ? wrap('SOPs & Checklists', <SOPComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'consultant_tools': {
       const ConsultantToolsComponent = ConsultantTools;
       // Outils IA : réservés au consultant culinaire (garde dure, indépendante de la BDD).
-      return user.role === 'consultant' && permissions.consultant_tools !== false
+      return peutOuvrirPage('consultant_tools', user, permissions)
         ? wrap('Outils consultant', <ConsultantToolsComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'compte': {
-      // Espace Compte (paramètres, rôles, alertes) : même accès que les Outils
-      // consultant, lu dans peutOuvrirCompte (le bouton « Compte » lit la même).
+      // Page des réglages : ouverte à toute personne connectée, chacune n'y
+      // voit que ses sections (compte/registreReglages.js).
       const CompteComponent = Compte;
-      return peutOuvrirCompte(user, permissions)
-        ? wrap('Compte', <CompteComponent user={user} etablissement={etablissement} />)
+      return peutOuvrirPage('compte', user, permissions)
+        ? wrap('Réglages', <CompteComponent user={user} etablissement={etablissement} shellMode={shellMode} isActive={isActivePage} legacyVersion={legacyVersion} />)
         : accessDenied;
     }
     case 'factures': {
       const FacturesComponent = Factures;
-      return user.role === 'consultant' && permissions.consultant_tools !== false
+      return peutOuvrirPage('factures', user, permissions)
         ? wrap('Factures', <FacturesComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'parametres': {
       const ParametresComponent = Parametres;
-      return user.role === 'consultant' && permissions.consultant_tools !== false
+      return peutOuvrirPage('parametres', user, permissions)
         ? wrap('Etablissements', <ParametresComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'roles': {
       const RolesComponent = Roles;
-      return user.role === 'consultant' && permissions.consultant_tools !== false
+      return peutOuvrirPage('roles', user, permissions)
         ? wrap('Roles et acces', <RolesComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
@@ -380,34 +380,34 @@ export default function LegacyModuleHost({
       // Une clé absente ne vaut jamais « ouvert » (comme Réservations) : les
       // défauts du code donnent la caisse à consultant, patron, resp_cuisine
       // et serveur ; réglable ensuite par rôle et par personne.
-      return permissions.caisse === true
+      return peutOuvrirPage('caisse', user, permissions)
         ? wrap('Caisse', <Caisse user={user} etablissement={etablissement} legacyVersion={legacyVersion} />)
         : accessDenied;
     }
     case 'pos': {
       const VentesPosComponent = VentesPos;
-      return permissions.pos !== false
+      return peutOuvrirPage('pos', user, permissions)
         ? wrap('Ventes POS', <VentesPosComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'commande': {
       const CommandeComponent = Commande;
-      return permissions.commande !== false
+      return peutOuvrirPage('commande', user, permissions)
         ? wrap('Commande', <CommandeComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'mep': {
       const MepComponent = Mep;
-      return permissions.mep !== false
+      return peutOuvrirPage('mep', user, permissions)
         ? wrap('Mise en place', <MepComponent user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'kds': {
       const KdsComponent = Kds;
       // Garde dure par rôle (miroir de la RLS lecture kds_orders) : la table
-      // permissions en BDD n'a pas encore la clé kds, on ne s'y fie pas seule.
-      const kitchenRole = ['consultant', 'resp_cuisine', 'cuisinier'].includes(user.role);
-      return kitchenRole && permissions.kds !== false
+      // permissions en BDD n'a pas encore la clé kds, on ne s'y fie pas seule
+      // (peutOuvrirPage).
+      return peutOuvrirPage('kds', user, permissions)
         ? wrap('KDS Cuisine', <KdsComponent user={user} etablissement={etablissement} isActive={isActivePage} />)
         : accessDenied;
     }

@@ -1,83 +1,271 @@
 import React from 'react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { Btn } from '../../components/ui/index.jsx';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { goBack } from '../../services/historyNav.js';
+import { signalerReglage } from '../../services/reglagesSignal.js';
+import { getPermissionsForRole } from '../../data/demoData.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { ongletCompteDepuisOutils } from '../moduleConfig.js';
-import { Parametres } from '../parametres/index.js';
-import { Roles } from '../roles/index.js';
-import AlertRules from '../consultant-tools/AlertRules.jsx';
+import { sectionsParGroupe, sectionsVisibles } from './registreReglages.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ESPACE COMPTE (D14, D18) - l'administration de l'app des brigades : les
-// paramètres des établissements, les rôles et les accès, les règles d'alerte,
-// plus tard l'abonnement. Sorti des Outils consultant le 28.10.2026 : mêmes
-// écrans, mêmes props, chaque onglet isolé dans un SafeModule.
+// PAGE DES RÉGLAGES (page hors menu 'compte') : tout ce qui se règle dans
+// l'app, au même endroit. Née le 28.10.2026 comme espace Compte du consultant
+// (Paramètres, Rôles & accès, Alertes), elle porte depuis le 12.11.2026 une
+// section par réglage (registreReglages.js), chacune sous la garde de son
+// module : chaque personne n'y voit que ce qu'elle règle déjà ailleurs.
 //
-// Accès : peutOuvrirCompte (moduleConfig), garde de LegacyModuleHost. Chaque
-// onglet porte la liste des rôles qui le voient, consultant seul aujourd'hui ;
-// L7 (D16) ouvrira ici ce que le patron pourra voir.
+// Écran large : la liste des sections à gauche, la section ouverte à droite.
+// Écran étroit (téléphone, tablette, ordinateur à barre latérale ouverte sous
+// 900 px de contenu) : la liste, puis la section ; le geste retour ramène à la
+// liste. Une section ouverte par le raccourci d'un module (ouvrirCompte) s'ouvre
+// directement : le geste retour ramène au module.
+//
+// Chaque section monte l'écran d'origine tel quel, dans un SafeModule. En la
+// quittant, la page signale son réglage : le module d'origine relit
+// (services/reglagesSignal.js).
+//
+// Clés et événement inchangés : sc_compte_tab (ponctuelle), sc_compte_last_tab,
+// 'sc:compte-tab' ; 'parametres', 'roles' et 'alertes' sont trois sections.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ONGLETS = [
-  { id: 'parametres', label: 'Paramètres', roles: ['consultant'] },
-  { id: 'roles', label: 'Rôles & accès', roles: ['consultant'] },
-  { id: 'alertes', label: 'Alertes', roles: ['consultant'] },
-];
+const LARGEUR_DEUX_VOLETS = 900;
 
-// Priorité : clé ponctuelle (ouvrirCompte, ancien lien des Outils) > dernier
-// onglet visité > onglet d'administration où l'on travaillait dans les Outils
-// consultant (première ouverture) > Paramètres.
-function ongletInitial(ids) {
+// Un composant paresseux par section, créé une fois.
+const composants = new Map();
+function composantDe(section) {
+  if (!composants.has(section.id)) composants.set(section.id, React.lazy(section.charger));
+  return composants.get(section.id);
+}
+
+// Section demandée par un raccourci (clé ponctuelle, lue puis effacée).
+function sectionDemandee(ids) {
   try {
     const pre = readText(UI_STORAGE_KEYS.compteTab, '');
     if (pre) {
       removeStorageKeys([UI_STORAGE_KEYS.compteTab]);
       if (ids.includes(pre)) return pre;
     }
+  } catch (e) { /* stockage indisponible */ }
+  return null;
+}
+
+// Section rouverte à l'arrivée par le bouton « Réglages » (deux volets) :
+// dernière section visitée > section d'administration où l'on travaillait dans
+// les Outils consultant (première ouverture) > première de la liste.
+function sectionParDefaut(ids) {
+  try {
     const last = readText(UI_STORAGE_KEYS.compteLastTab, '');
     if (ids.includes(last)) return last;
     const depuisOutils = ongletCompteDepuisOutils(readText(UI_STORAGE_KEYS.consultantToolsLastTab, ''));
     if (ids.includes(depuisOutils)) return depuisOutils;
-  } catch (e) { /* stockage indisponible : premier onglet */ }
-  return ids[0];
+  } catch (e) { /* stockage indisponible : première section */ }
+  return ids[0] || null;
 }
 
-export default function Compte({ user, etablissement }) {
-  const role = user?.role;
-  const onglets = ONGLETS.filter((o) => o.roles.includes(role));
-  const [actif, setActif] = React.useState(() => ongletInitial(onglets.map((o) => o.id)));
+function largeurInitiale() {
+  const w = getBrowserWindow();
+  // Avant la première mesure : la fenêtre moins la barre latérale et les marges.
+  return w ? w.innerWidth - 290 : LARGEUR_DEUX_VOLETS;
+}
+
+export default function Compte({ user, etablissement, shellMode = 'ordinateur', isActive = true }) {
+  const permissions = getPermissionsForRole(user?.role);
+  const ctx = { user, permissions, etablissement, shellMode };
+  const sections = sectionsVisibles(ctx);
+  const ids = sections.map((s) => s.id);
+  const idsCle = ids.join('|');
+  const idsRef = React.useRef(ids);
+  idsRef.current = ids;
+
+  // Largeur du contenu : elle décide entre deux volets et « liste puis section ».
+  const racineRef = React.useRef(null);
+  const [largeur, setLargeur] = React.useState(largeurInitiale);
+  React.useLayoutEffect(() => {
+    const el = racineRef.current;
+    if (!el) return undefined;
+    const mesurer = () => { if (el.offsetWidth > 0) setLargeur(el.offsetWidth); };
+    mesurer();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(mesurer);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const etroit = shellMode === 'telephone' || largeur < LARGEUR_DEUX_VOLETS;
+
+  // { id, direct } : direct = ouverte par un raccourci (retour = le module),
+  // sinon choisie dans la liste (retour = la liste, sur écran étroit).
+  const [ouverte, setOuverte] = React.useState(() => {
+    const demandee = sectionDemandee(ids);
+    if (demandee) return { id: demandee, direct: true };
+    return { id: etroit ? null : sectionParDefaut(ids), direct: false };
+  });
+  const actif = ids.includes(ouverte.id) ? ouverte.id : null;
+
+  // Deux volets : jamais de volet vide. Une section perdue (droit retiré,
+  // établissement sans le module) laisse la place à la section par défaut.
+  React.useEffect(() => {
+    if (etroit || actif) return;
+    const defaut = sectionParDefaut(idsRef.current);
+    if (defaut) setOuverte({ id: defaut, direct: false });
+  }, [etroit, actif, idsCle]);
+
   React.useEffect(() => { if (actif) writeText(UI_STORAGE_KEYS.compteLastTab, actif); }, [actif]);
-  // Compte déjà monté (keep-alive) : ouvrirCompte prévient par un événement.
+
+  // Page déjà montée (keep-alive) : ouvrirCompte prévient par un événement.
   React.useEffect(() => {
     const browserWindow = getBrowserWindow();
     if (!browserWindow) return undefined;
-    const surOnglet = (event) => {
+    const surSection = (event) => {
       const tab = event?.detail?.tab;
-      if (ONGLETS.some((o) => o.id === tab && o.roles.includes(role))) {
-        removeStorageKeys([UI_STORAGE_KEYS.compteTab]);
-        setActif(tab);
-      }
+      if (!idsRef.current.includes(tab)) return;
+      removeStorageKeys([UI_STORAGE_KEYS.compteTab]);
+      setOuverte({ id: tab, direct: true });
     };
-    browserWindow.addEventListener('sc:compte-tab', surOnglet);
-    return () => browserWindow.removeEventListener('sc:compte-tab', surOnglet);
-  }, [role]);
+    browserWindow.addEventListener('sc:compte-tab', surSection);
+    return () => browserWindow.removeEventListener('sc:compte-tab', surSection);
+  }, []);
 
-  // Aucun onglet pour ce rôle : LegacyModuleHost ne l'ouvre pas, rien à montrer.
-  if (!onglets.length) return null;
+  // Section quittée (autre section, autre page, page démontée) : son module
+  // d'origine relit, la nouvelle valeur s'y applique sans recharger l'app.
+  React.useEffect(() => {
+    if (!isActive || !actif) return undefined;
+    return () => signalerReglage(actif);
+  }, [actif, isActive]);
 
-  const contenu = actif === 'roles'
-    ? <SafeModule name="Rôles & accès"><Roles user={user} /></SafeModule>
-    : actif === 'alertes'
-      ? <SafeModule name="Alertes"><AlertRules user={user} etablissement={etablissement} /></SafeModule>
-      : <SafeModule name="Paramètres"><Parametres user={user} /></SafeModule>;
+  // Écran étroit : une section choisie dans la liste est un niveau de plus, le
+  // geste retour ramène à la liste. Ouverte par un raccourci, elle n'empile
+  // rien : le geste retour ramène au module.
+  const retourListe = React.useCallback(() => setOuverte({ id: null, direct: false }), []);
+  // Raccourci d'un module : « Retour » y ramène ; sans page derrière, la liste.
+  const retourModule = () => { if (!goBack()) retourListe(); };
+  useBackLayer(etroit && Boolean(actif) && !ouverte.direct && isActive, retourListe, 'reglages-section');
+
+  if (!sections.length) return null;
+
+  const groupes = sectionsParGroupe(sections);
+  const section = sections.find((s) => s.id === actif) || null;
+  const choisir = (id) => setOuverte({ id, direct: false });
+
+  const liste = (
+    <nav aria-label="Réglages" style={etroit ? st.listeEtroite : st.liste} data-reglages-liste="">
+      {groupes.map((groupe) => (
+        <div key={groupe.id} role="group" aria-label={groupe.label} style={st.groupe}>
+          <div style={st.groupeTitre}>{groupe.label}</div>
+          {groupe.sections.map((s) => {
+            const courant = !etroit && s.id === actif;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-cadre=""
+                data-reglage={s.id}
+                aria-current={courant ? 'page' : undefined}
+                style={{ ...st.entree, ...(etroit ? st.entreeEtroite : null), ...(courant ? st.entreeActive : null) }}
+                onClick={() => choisir(s.id)}
+              >
+                <span style={st.entreeTexte}>
+                  <span style={st.entreeLibelle}>{s.libelle}</span>
+                  {(etroit || courant) && s.detail && <span style={st.entreeDetail}>{s.detail}</span>}
+                </span>
+                {etroit && <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" style={st.chevron} />}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
+  const corps = section ? (
+    <SectionMontee key={section.id} section={section} user={user} etablissement={etablissement} permissions={permissions} shellMode={shellMode} />
+  ) : null;
+
+  if (etroit) {
+    return (
+      <div ref={racineRef} style={st.racineEtroite} data-reglages="etroit">
+        {!section && liste}
+        {section && (
+          <>
+            <div style={st.enTete} className="no-print">
+              <Btn variant="ghost" onClick={ouverte.direct ? retourModule : retourListe} style={st.retour}>
+                <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Retour</span>
+              </Btn>
+              <div style={st.titreEtroit}>{section.libelle}</div>
+              {ouverte.direct && (
+                <Btn variant="ghost" onClick={retourListe} style={st.tous}>Tous les réglages</Btn>
+              )}
+            </div>
+            {corps}
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="no-print" style={{ marginBottom: 14 }}>
-        <SegmentedTabs active={actif} onChange={setActif} tabs={onglets} />
+    <div ref={racineRef} style={st.racine} data-reglages="large">
+      {liste}
+      <div style={st.volet}>
+        {section && <h2 style={st.titre} className="no-print">{section.libelle}</h2>}
+        {corps}
       </div>
-      {contenu}
     </div>
   );
 }
+
+// La section : l'écran d'origine, isolé (un écran qui plante ne fait pas
+// tomber la page). Une section dont l'écran est une fenêtre la pose elle-même
+// en ligne (EnSection, Fenetres.jsx) ; les fenêtres que les autres écrans
+// ouvrent restent de vraies fenêtres.
+function SectionMontee({ section, user, etablissement, permissions, shellMode }) {
+  const Composant = composantDe(section);
+  const signaler = React.useCallback(() => signalerReglage(section.id), [section.id]);
+  return (
+    <div style={st.section} data-section={section.id}>
+      <SafeModule name={section.libelle}>
+        <React.Suspense fallback={<p style={st.attente}>Chargement…</p>}>
+          <Composant
+            user={user}
+            etablissement={etablissement}
+            permissions={permissions}
+            shellMode={shellMode}
+            signaler={signaler}
+          />
+        </React.Suspense>
+      </SafeModule>
+    </div>
+  );
+}
+
+const st = {
+  racine: { display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0, width: '100%' },
+  racineEtroite: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, width: '100%' },
+  liste: { width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0 },
+  listeEtroite: { display: 'flex', flexDirection: 'column', gap: 18, width: '100%', maxWidth: 720, margin: '0 auto' },
+  groupe: { display: 'flex', flexDirection: 'column', gap: 2 },
+  groupeTitre: { fontSize: 12, fontWeight: 500, color: 'var(--text3)', margin: '0 0 4px 10px', letterSpacing: 0.2 },
+  entree: {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 10px',
+    background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)', color: 'var(--text)',
+    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 400, lineHeight: 1.25, textAlign: 'left', cursor: 'pointer',
+  },
+  entreeEtroite: { minHeight: 56, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 'var(--r-lg)', fontSize: 15, marginBottom: 4 },
+  entreeActive: { background: 'var(--surface2)', color: 'var(--accent)', fontWeight: 500 },
+  entreeTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+  entreeLibelle: { display: 'block' },
+  entreeDetail: { display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--text2)', lineHeight: 1.35 },
+  chevron: { flexShrink: 0, color: 'var(--text3)' },
+  volet: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 },
+  titre: { margin: 0, fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.15 },
+  enTete: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
+  retour: { minHeight: 44, flexShrink: 0 },
+  tous: { minHeight: 44, flexShrink: 0, marginLeft: 'auto' },
+  titreEtroit: { flex: '1 1 160px', minWidth: 0, fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.15 },
+  section: { display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%' },
+  attente: { margin: 0, fontSize: 13, color: 'var(--text2)' },
+};

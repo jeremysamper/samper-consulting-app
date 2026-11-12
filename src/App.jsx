@@ -192,7 +192,9 @@ export default function App() {
   }, []);
 
   const setPageRef = useRef(null);
-  function setPage(nextPage) {
+  // options.parDessus : la page se pose au-dessus de l'écran de travail ouvert
+  // dans le module quitté (historyNav.pushPage), qui le retrouve au retour.
+  function setPage(nextPage, options) {
     const consultantToolsTab = getConsultantToolsTabForPage(nextPage);
     if (consultantToolsTab) {
       writeText(UI_STORAGE_KEYS.consultantToolsTab, consultantToolsTab);
@@ -200,7 +202,7 @@ export default function App() {
     const normalized = normalizePage(nextPage);
     setPageState(normalized);
     writeText(UI_STORAGE_KEYS.page, normalized);
-    pushPage(normalized);
+    pushPage(normalized, options?.parDessus ? { parDessus: true } : undefined);
   }
   setPageRef.current = setPage;
 

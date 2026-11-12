@@ -4327,6 +4327,21 @@ export const UI_GLOSSARY = {
   'Estimation depuis les heures pointées, les salaires saisis et les charges sociales. Réservé à la direction.': 'Estimate from clocked hours, salaries entered and social charges. Reserved for management.',
   "Coût du personnel estimé divisé par le chiffre d'affaires hors TVA. Réservé à la direction.": 'Estimated staff cost divided by revenue excluding VAT. Reserved for management.',
   "Marge brute moins les charges fixes et, pour la direction, le coût du personnel estimé ; recalculé sur chaque pas, n/a quand la marge l'est.": 'Gross margin less fixed costs and, for management, the estimated staff cost; recalculated on each step, n/a when the margin is.',
+  // ── Page des réglages (12.11.2026) ──
+  'La maison': 'The house',
+  'Les modules': 'Modules',
+  "L'équipe et les accès": 'Team and access',
+  'Mes préférences': 'My preferences',
+  'Rôles & accès': 'Roles & access',
+  'Établissements, modules, noms des modules, caisse reliée': 'Sites, modules, module names, linked till',
+  "Les règles qui préviennent la direction et l'équipe": 'The rules that alert management and the team',
+  'Qui fait quoi : personnes, rôles, droits': 'Who does what: people, roles, rights',
+  'Apparence et langue': 'Appearance and language',
+  "Mode clair ou sombre, langue d'affichage": 'Light or dark mode, display language',
+  'Sur cet appareil. Le bouton de la barre du haut fait la même chose.': 'On this device. The button in the top bar does the same.',
+  "Langue d'affichage": 'Display language',
+  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English and Español translate the screen, not the data.',
+  'Tous les réglages': 'All settings',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
