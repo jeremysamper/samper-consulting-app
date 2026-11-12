@@ -170,3 +170,36 @@ test('TVA de la synthèse : couverture et complétude reprises de l\'état TVA',
   assert.deepEqual(s.tvaCouverture, { avec: 1, attendus: 92 });
   assert.equal(synthese({ periode: oct, aujourdhui: '2026-10-30', docs, charges }).tvaComplete, null);
 });
+
+// Module Statistiques : useCompta rend syntheseDe(p), la synthèse de bornes
+// quelconques par les mêmes fonctions. Sur les bornes d'un mois, des bornes
+// « libres » rendent les chiffres du mois ; jour par jour, le TVA comprise
+// et le coût matière s'additionnent au centime, le hors TVA à l'arrondi par
+// taux près.
+test('synthèse sur des bornes libres : égale à celle du mois pour les mêmes bornes', () => {
+  const manuel = [];
+  for (let j = 1; j <= 29; j += 1) manuel.push({ jour: `2026-10-${String(j).padStart(2, '0')}`, taux: j % 3 ? 8.1 : 2.6, montantTtc: 1000 + j * 7.35 });
+  const parJourTout = ventesParJour({ manuel });
+  const de = (p) => {
+    const parJour = parJourTout.filter(x => x.jour >= p.debut && x.jour <= p.fin);
+    const ventes = resumeVentes({ parJour, joursOuverts: new Set(), debut: p.debut, finEffective: p.fin, aujourdhui: '2026-11-11' });
+    return synthese({ periode: p, aujourdhui: '2026-11-11', ventes, docs, charges: [], inventaires: [] });
+  };
+  const mois = de(oct);
+  const libre = de({ type: 'libre', debut: oct.debut, fin: oct.fin });
+  assert.equal(libre.ca, mois.ca);
+  assert.equal(libre.ventes.ttc, mois.ventes.ttc);
+  assert.equal(libre.matiere.ht, mois.matiere.ht);
+  assert.equal(libre.margeBrute, mois.margeBrute);
+  assert.equal(libre.resultat, mois.resultat);
+
+  const jours = [];
+  for (let j = 1; j <= 31; j += 1) { const d = `2026-10-${String(j).padStart(2, '0')}`; jours.push(de({ type: 'libre', debut: d, fin: d })); }
+  const c = (v) => Math.round((v || 0) * 100);
+  assert.equal(jours.reduce((s, x) => s + c(x.ventes.ttc), 0), c(mois.ventes.ttc));
+  assert.equal(jours.reduce((s, x) => s + c(x.matiere.ht), 0), c(mois.matiere.ht));
+  // Hors TVA : arrondi sur le total de chaque taux, la somme des jours s'en
+  // écarte d'un demi-centime par jour au plus.
+  const ecart = Math.abs(jours.reduce((s, x) => s + c(x.ca), 0) - c(mois.ca));
+  assert.ok(ecart <= 31, `écart d'arrondi ${ecart} centimes`);
+});

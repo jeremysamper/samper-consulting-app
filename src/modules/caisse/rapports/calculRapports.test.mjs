@@ -43,7 +43,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { strFromU8, unzipSync } from 'fflate';
 import {
-  comparaison, fusionnerDonnees, mouvements, periodeComplete, rapportCaisse, trierPlats,
+  comparaison, fusionnerDonnees, mouvements, periodeComplete, rapportCaisse, serieRapports, trierPlats,
 } from './calculRapports.js';
 import {
   csvRapport, feuillesDossier, feuillesRapport, nomFichierDossier, nomFichierRapport, texteLisezMoi, xlsxRapport, zipCsvRapport, zipDossier,
@@ -541,4 +541,98 @@ test('dossier fiduciaire : journal des ventes par jour et par taux, encaissement
 
 test('personnes citées dans le jeu', () => {
   assert.ok([ANNA, BRUNO, CARLA].every((id) => jeuEssai().personnes[id]));
+});
+
+// ── Série par tranche (module Statistiques) ──
+const centimesDe = (v) => Math.round(v * 100);
+
+test('série : la somme des jours est le chiffre de la période, au centime', () => {
+  const d = jeuEssai();
+  const periode = periodeLibre(J1, J2);
+  const r = rapportCaisse(d, periode);
+  const jours = serieRapports(d, periode, [{ debut: J1, fin: J1 }, { debut: J2, fin: J2 }]);
+  assert.equal(jours[0].synthese.ttc, 319.48);
+  assert.equal(jours[1].synthese.ttc, 155.4);
+  const somme = (f) => jours.reduce((s, j) => s + centimesDe(f(j)), 0) / 100;
+  assert.equal(somme((j) => j.synthese.ttc), r.synthese.ttc);
+  assert.equal(somme((j) => j.synthese.ht), r.synthese.ht);
+  assert.equal(somme((j) => j.synthese.tva), r.synthese.tva);
+  assert.equal(somme((j) => j.plats.ttc), r.plats.ttc);
+  assert.equal(somme((j) => j.moyens.net), r.moyens.net);
+  assert.equal(somme((j) => j.moyens.pourboires), r.moyens.pourboires);
+  assert.equal(jours[0].synthese.tickets + jours[1].synthese.tickets, r.synthese.tickets);
+  assert.equal(jours[0].synthese.couverts + jours[1].synthese.couverts, r.synthese.couverts);
+  assert.equal(jours[0].plats.qte + jours[1].plats.qte, r.plats.qte);
+});
+
+test('série : une tranche égale à la période rend le rapport, taux compris', () => {
+  const d = jeuEssai();
+  const periode = periodeLibre(J1, J2);
+  const r = rapportCaisse(d, periode);
+  const [tout] = serieRapports(d, periode, [{ debut: J1, fin: J2 }]);
+  assert.deepEqual(tout.synthese, r.synthese);
+  assert.deepEqual(tout.moyens, r.moyens);
+  assert.deepEqual(tout.clients, r.clients);
+  assert.deepEqual(tout.ecartsCaisse, r.ecartsCaisse);
+  assert.equal(tout.synthese.ticketMoyen, 118.72);
+  assert.equal(tout.synthese.parCouvert, 52.76);
+  assert.deepEqual(tout.ecarts.annulations, r.journal.annulations);
+  assert.deepEqual(tout.ecarts.remises, r.journal.remises);
+  assert.deepEqual(tout.ecarts.offerts, r.journal.offerts);
+});
+
+test('série : le ticket moyen d\'une tranche se recalcule, il ne se moyenne pas', () => {
+  const d = jeuEssai();
+  const periode = periodeLibre(J1, J2);
+  const jours = serieRapports(d, periode, [{ debut: J1, fin: J1 }, { debut: J2, fin: J2 }]);
+  const [tout] = serieRapports(d, periode, [{ debut: J1, fin: J2 }]);
+  const moyenneDesTaux = (jours[0].synthese.ticketMoyen + jours[1].synthese.ticketMoyen) / 2;
+  assert.notEqual(Math.round(moyenneDesTaux * 100) / 100, tout.synthese.ticketMoyen);
+  const nets = jours.reduce((s, j) => s + j.synthese.tickets - j.synthese.annulations, 0);
+  const ttc = jours.reduce((s, j) => s + centimesDe(j.synthese.ttc), 0);
+  assert.equal(Math.round(ttc / nets) / 100, tout.synthese.ticketMoyen);
+});
+
+test('série : durée moyenne d\'une table égale à celle des services, tranche vide sans zéro inventé', () => {
+  const d = jeuEssai();
+  const periode = periodeLibre(J1, '2026-11-05');
+  const r = rapportCaisse(d, periode);
+  const serie = serieRapports(d, periode, [{ debut: J1, fin: J1 }, { debut: J2, fin: J2 }, { debut: '2026-11-05', fin: '2026-11-05' }]);
+  const duJour = (jour) => r.services.filter((s) => s.jour === jour);
+  [J1, J2].forEach((jour, i) => {
+    const tables = duJour(jour).reduce((s, x) => s + x.tables, 0);
+    assert.equal(serie[i].tables, tables);
+  });
+  assert.equal(serie[2].vide, true);
+  assert.equal(serie[2].synthese.ticketMoyen, null);
+  assert.equal(serie[2].dureeMoyenneMin, null);
+});
+
+test('série : le niveau cuisine ne reçoit ni moyens, ni clients, ni écarts', () => {
+  const d = jeuEssai({ niveau: 'cuisine' });
+  const periode = periodeLibre(J1, J2);
+  const [tout] = serieRapports(d, periode, [{ debut: J1, fin: J2 }]);
+  assert.equal(tout.moyens, null);
+  assert.equal(tout.clients, null);
+  assert.equal(tout.ecartsCaisse, null);
+  assert.equal(tout.ecarts, null);
+  assert.ok(tout.plats.qte > 0);
+});
+
+test('série : plus de mille tickets, la somme des jours reste le total', () => {
+  const tickets = [];
+  const lignes = [];
+  for (let i = 0; i < 1500; i += 1) {
+    const jour = `2026-10-${String((i % 30) + 1).padStart(2, '0')}`;
+    tickets.push({ id: `g${i}`, numero: i + 1, annee: 2026, statut: 'encaisse', test: false, a_emporter: false, sur_table: true, origine: 'passage', jour, service: i % 2 ? 'soir' : 'midi', couverts: 2, created_at: `${jour}T11:00:00Z`, closed_at: `${jour}T12:00:00Z` });
+    lignes.push({ id: `gl${i}`, ticket_id: `g${i}`, plat_id: 'p1', libelle: 'Plat', categorie: 'Plats', quantite: 1, prix_unitaire: 19.9 + (i % 7), taux_tva: 8.1, prix_origine: null });
+  }
+  const d = { niveau: 'cuisine', jour_courant: '2026-11-11', tickets, lignes, paiements: [], clotures: [], ventes_jour: [] };
+  const periode = periodeLibre('2026-10-01', '2026-10-30');
+  const r = rapportCaisse(d, periode);
+  const tranches = Array.from({ length: 30 }, (_, k) => { const j = `2026-10-${String(k + 1).padStart(2, '0')}`; return { debut: j, fin: j }; });
+  const serie = serieRapports(d, periode, tranches);
+  assert.equal(serie.reduce((s, j) => s + j.synthese.tickets, 0), 1500);
+  assert.equal(serie.reduce((s, j) => s + centimesDe(j.synthese.ttc), 0) / 100, r.synthese.ttc);
+  assert.equal(serie.reduce((s, j) => s + centimesDe(j.synthese.tva), 0) / 100, r.synthese.tva);
 });

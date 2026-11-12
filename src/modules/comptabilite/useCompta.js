@@ -190,7 +190,10 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
     }
     // Salaires estimés d'un mois entier (trésorerie) : le mois précédent.
     const salaireMensuel = banque ? (personnel(moisPasse)?.total ?? null) : null;
-    return { parJour: parJourTout.filter(dans(periode)), synthese: courante, precedente: prec, tvaPeriode, salaireMensuel };
+    // Module Statistiques : la synthèse de bornes quelconques prises dans la
+    // fenêtre lue (période et période précédente), par les mêmes règles.
+    const syntheseDe = (p) => synthese({ periode: p, aujourdhui, ventes: resume(p), docs, charges: chargesListe, personnel: personnel(p), inventaires: listeInventaires, tva: tva(p) });
+    return { parJour: parJourTout.filter(dans(periode)), synthese: courante, precedente: prec, tvaPeriode, salaireMensuel, syntheseDe };
   }, [parJourTout, joursOuverts, notesCouvrent, periode, precedente, aujourdhui, docs, chargesListe, listeInventaires,
     personnelPret, contratsLus.contrats, salaires.lignes, horaires.data, reglages, banque, moisPasse]);
 

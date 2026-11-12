@@ -505,6 +505,61 @@ export function rapportCaisse(donnees, periode) {
   };
 }
 
+// ── La série d'une période (module Statistiques) ──
+//   tranches : [{ debut, fin }] en jours d'exploitation, dans l'ordre, sans
+//   recouvrement (les jours, les semaines ou les mois de la période).
+// Les mouvements sont rangés une fois dans leur tranche, puis passent par les
+// fonctions du rapport : la somme des tranches d'un flux est le chiffre de la
+// période, et un taux (ticket moyen, durée d'une table) se lit sur sa
+// tranche, numérateur et dénominateur sommés, jamais en moyenne de taux.
+// Ce que le niveau ne voit pas vaut null, comme dans rapportCaisse.
+export function serieRapports(donnees, periode, tranches) {
+  const direction = donnees?.niveau === 'direction';
+  const liste = tranches || [];
+  const rangDe = (jour) => {
+    let a = 0;
+    let b = liste.length - 1;
+    while (a <= b) {
+      const m = (a + b) >> 1;
+      if (jour < liste[m].debut) b = m - 1;
+      else if (jour > liste[m].fin) a = m + 1;
+      else return m;
+    }
+    return -1;
+  };
+  const parTranche = liste.map(() => []);
+  mouvements(donnees, periode).forEach((m) => {
+    const i = rangDe(m.jour);
+    if (i >= 0) parTranche[i].push(m);
+  });
+  return liste.map((t, i) => {
+    const mvts = parTranche[i];
+    const p = plats(mvts);
+    // Même règle que services() : ventes servies à table, hors à emporter.
+    let tables = 0;
+    let minutes = 0;
+    mvts.forEach((m) => {
+      if (!(m.signe > 0 && m.ticket.sur_table && !m.ticket.a_emporter)) return;
+      const d = (Date.parse(m.ticket.closed_at) - Date.parse(m.ticket.created_at)) / 60000;
+      if (Number.isFinite(d) && d >= 0) { tables += 1; minutes += d; }
+    });
+    const ecarts = direction ? journal(mvts, { personnes: donnees?.personnes }, { ...t, type: 'service' }) : null;
+    return {
+      debut: t.debut,
+      fin: t.fin,
+      vide: mvts.length === 0,
+      synthese: synthese(mvts),
+      plats: { qte: p.qte, ttc: p.ttc, categories: p.categories, offertsValeur: p.offertsValeur, remises: p.remises },
+      tables,
+      dureeMoyenneMin: tables ? Math.round(minutes / tables) : null,
+      clients: direction ? clients(mvts) : null,
+      moyens: direction ? moyens(mvts) : null,
+      ecartsCaisse: direction && periode.type !== 'service' ? ecartsCaisse(donnees?.clotures, t) : null,
+      ecarts: ecarts ? { annulations: ecarts.annulations, remises: ecarts.remises, offerts: ecarts.offerts } : null,
+    };
+  });
+}
+
 // Une période est complète quand elle est finie et que tous ses jours de
 // vente sont clôturés.
 export function periodeComplete(rapport) {

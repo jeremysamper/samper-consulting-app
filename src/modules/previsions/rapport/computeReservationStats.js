@@ -556,6 +556,57 @@ function variations(c, p, comparaisonVide) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Série (module Statistiques) : les chiffres clés de chaque tranche d'une
+// période, par les mêmes règles que le rapport.
+//   tranches : [{ debut, fin }] en dates de service, dans l'ordre, sans
+//   recouvrement (les jours, les semaines ou les mois de la période).
+// Les lignes sont rangées une fois dans leur tranche. La somme des tranches
+// d'un volume (couverts, tables, no-show) est le chiffre de la période ; un
+// taux (no-show, annulation, occupation) se lit sur sa tranche, numérateur et
+// dénominateur sommés, jamais en moyenne de taux.
+// ═══════════════════════════════════════════════════════════════════════════
+export function serieReservations({ lignes, tranches, aujourdhui, service = 'tous', parametres = null }) {
+  const avecBrunch = aDuBrunch(lignes, parametres);
+  const aParametres = Boolean(parametres && parametres.horaires && Object.keys(parametres.horaires).length);
+  const ctx = { aujourdhui, reference: aujourdhui, service, avecBrunch, parametres, aParametres };
+  const services = (avecBrunch ? ['midi', 'soir', 'brunch'] : ['midi', 'soir'])
+    .filter((s) => service === 'tous' || s === service);
+  const liste = tranches || [];
+  const rangDe = (date) => {
+    let a = 0;
+    let b = liste.length - 1;
+    while (a <= b) {
+      const m = (a + b) >> 1;
+      if (date < liste[m].debut) b = m - 1;
+      else if (date > liste[m].fin) a = m + 1;
+      else return m;
+    }
+    return -1;
+  };
+  const parTranche = liste.map(() => []);
+  preparerLignes(lignes, aujourdhui, avecBrunch).forEach((r) => {
+    if (service !== 'tous' && r.svc !== service) return;
+    const i = rangDe(r.date);
+    if (i >= 0) parTranche[i].push(r);
+  });
+  return liste.map((t, i) => {
+    const dedans = parTranche[i];
+    const comptees = dedans.filter((r) => COMPTEES.has(r.classe));
+    return {
+      debut: t.debut,
+      fin: t.fin,
+      vide: dedans.length === 0,
+      chiffres: chiffresCles(dedans, t, ctx),
+      canaux: canaux(dedans).parCanal,
+      services: services.map((s) => {
+        const l = comptees.filter((r) => r.svc === s);
+        return { service: s, tables: l.length, couverts: somme(l) };
+      }),
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Entrée : lignes = réservations lues (fenêtre entière : période, comparaison
 // et carnets), parametres = réglages de la réservation en ligne (ou null),
 // tables = tables de salle de l'établissement.

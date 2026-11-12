@@ -18,6 +18,7 @@ import BandeauTest from './BandeauTest.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
+import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
@@ -108,7 +109,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const [statutEnCours, setStatutEnCours] = React.useState(null);
   // Habillage des boutons produits (v3) : plat_id -> { nom_court, couleur, picto }.
   const [boutons, setBoutons] = React.useState({});
-  const peutHabiller = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
+  const peutHabiller = peutHabillerCaisse(user?.role);
   const rechargerBoutons = React.useCallback(async () => {
     if (!etabId) return;
     const { data } = await caisse.listBoutons(etabId);

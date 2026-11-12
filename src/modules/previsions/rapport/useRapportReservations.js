@@ -24,7 +24,7 @@ const COLONNES = [
 // lit par pages jusqu'à la dernière, incomplète.
 const PAGE = 1000;
 
-async function lireReservations(etablissementId, debut, fin) {
+export async function lireReservations(etablissementId, debut, fin) {
   const lignes = [];
   for (let depuis = 0; ; depuis += PAGE) {
     const { data, error } = await supabase
@@ -42,7 +42,7 @@ async function lireReservations(etablissementId, debut, fin) {
   }
 }
 
-async function lireReferentiel(etablissementId) {
+export async function lireReferentiel(etablissementId) {
   const [tables, parametres] = await Promise.all([
     supabase.from('salle_tables').select('id, nom, nb_places, zone, actif').eq('etablissement_id', etablissementId),
     supabase

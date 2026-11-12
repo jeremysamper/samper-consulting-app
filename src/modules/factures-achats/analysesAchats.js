@@ -113,6 +113,21 @@ export function depensesParMois(factures, aujourdhui) {
   return { mois, points, precedents, total: somme(points), totalPrecedent: somme(precedents), sansDate };
 }
 
+// Série (module Statistiques) : les dépenses de chaque tranche d'une période,
+// par la règle de depensesParMois (montant retenu de chaque facture, date de
+// facture, null quand aucune facture de la tranche n'a de montant).
+//   tranches : [{ debut, fin }] en jours ISO, dans l'ordre, sans recouvrement.
+// `factures` : les factures de la tranche, pour les ventilations
+// (parFournisseur, parRayon) sur les mêmes pièces.
+export function depensesParTranche(factures, tranches) {
+  const datees = (factures || []).filter(f => ISO.test(String(f.dateDocument || '')));
+  return (tranches || []).map((t) => {
+    const dedans = datees.filter(f => f.dateDocument >= t.debut && f.dateDocument <= t.fin);
+    const tot = totaux(dedans);
+    return { debut: t.debut, fin: t.fin, ...tot, valeur: tot.montant, factures: dedans };
+  });
+}
+
 // Factures des 12 mois (date de facture dans la fenêtre).
 export function facturesDesDouzeMois(factures, aujourdhui) {
   const mois = new Set(douzeMois(aujourdhui));

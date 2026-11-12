@@ -3,6 +3,7 @@ import { Input } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { canManageModule } from '../../data/demoData.js';
+import { ROLES_RAPPORT } from './rapport/gardeRapport.js';
 import AccueilReservations from './AccueilReservations.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
@@ -26,8 +27,7 @@ const RapportReservations = lazy(() => import('./rapport/RapportReservations.jsx
 // responsable cuisine (anticipation des couverts). Masqué pour le service, la
 // cuisine et le spa, même quand le module leur est ouvert (décision de Jérémy,
 // 15.10.2026). La base ne filtre que par établissement : c'est un choix
-// d'écran, pas une garde.
-const ROLES_RAPPORT = ['consultant', 'patron', 'resp_cuisine', 'hote'];
+// d'écran, pas une garde. La liste des rôles est dans rapport/gardeRapport.js.
 
 // Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
 // L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)

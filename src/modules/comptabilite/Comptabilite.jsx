@@ -1,6 +1,6 @@
 import React from 'react';
 import './compta.css';
-import { canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { getPermissionsForRole } from '../../data/demoData.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
 import { navigateToPage } from '../../services/navigationService.js';
@@ -27,6 +27,7 @@ import FenetreExportCompta from './FenetreExportCompta.jsx';
 import { writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { useLecture } from './comptaService.js';
 import { useCompta } from './useCompta.js';
+import { estDirection, peutReglerFactures } from './gardesCompta.js';
 import { ventesComparables } from './syntheseCompta.js';
 import { Chf, pluriel, st as ui } from './comptaUi.jsx';
 import {
@@ -60,8 +61,8 @@ const CLE_PERIODE = 'sc_comptabilite_periode';
 const ECRANS_REPRIS = ['ensemble', 'ventes', 'achats', 'charges', 'marges'];
 
 export default function Comptabilite({ user, etablissement, setPage }) {
-  const direction = ['consultant', 'patron'].includes(user?.role);
-  const peutRegler = canManageModule(user?.role, 'factures_achat');
+  const direction = estDirection(user?.role);
+  const peutRegler = peutReglerFactures(user?.role);
   if (!direction && !peutRegler) {
     return (
       <section className="compta" style={ui.page} data-compta-sans-droit="">
