@@ -250,8 +250,10 @@
    - Coque tactile sous 768 px (téléphone) : la marge d'avant, 14 px. À 24 px,
      une bande de sept jours passait sous 44 px par bouton et le comptage
      d'inventaire coûtait un défilement de plus.
-   - Pages nommées par AppLayout (data-marge="serree", aujourd'hui le Spa) :
-     14 px en coque tactile à toute largeur. */
+   - Pages nommées par AppLayout (data-marge="serree" : le Spa, dont le
+     dernier contrôle coûtait un défilement à 32 px, et la caisse, dont la
+     grille des produits perdait une colonne) : 14 px en coque tactile à
+     toute largeur. */
 @media (min-width: 768px) {
   :root { --marge: 32px; }
 }

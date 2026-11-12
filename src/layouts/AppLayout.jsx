@@ -36,10 +36,11 @@ import { messageErreur } from '../utils/messageErreur.js';
 
 // Marge de page : le jeton --marge (app.css), 32 px dès 768 px de large. Les
 // pages de cette liste gardent en coque tactile la marge serrée d'avant, à
-// toute largeur : à 32 px, leur dernier contrôle coûtait un défilement de plus
-// à la tablette (mesure du banc, 12.11.2026). Un écran ne perd jamais un geste
-// pour une marge.
-const PAGES_MARGE_SERREE = new Set(['spa']);
+// toute largeur. Mesure du banc, 12.11.2026, à 32 px à la tablette : le
+// dernier contrôle du Spa coûtait un défilement de plus, et la grille des
+// produits de la caisse passait de quatre colonnes à trois. Un écran ne perd
+// jamais un geste pour une marge.
+const PAGES_MARGE_SERREE = new Set(['spa', 'caisse']);
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // et la page d'accueil de la coque tactile.
