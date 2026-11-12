@@ -49,7 +49,8 @@ function serieDeMesure(m, sources, graphique) {
 }
 
 // Séries d'une mesure ventilée : une série par catégorie, les plus grosses
-// d'abord (total de la période), au plus six ; le reste est regroupé.
+// d'abord (total de la période), au plus six ; le reste est regroupé. Une
+// ventilation `ordre: 'croissant'` garde les plus petites (moins vendus).
 function seriesVentilees(m, ventilation, sources) {
   const points = sources.points[m.famille];
   const total = sources.totaux[m.famille];
@@ -64,7 +65,8 @@ function seriesVentilees(m, ventilation, sources) {
   points.forEach((p, i) => ventilation.parts(p).forEach((part) => noter(part, i, 'point')));
   if (total) ventilation.parts(total).forEach((part) => noter(part, 0, 'total'));
   if (avant) ventilation.parts(avant).forEach((part) => noter(part, 0, 'totalComparaison'));
-  const tri = [...cats.values()].sort((a, b) => Math.abs(b.total || 0) - Math.abs(a.total || 0) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+  const sens = ventilation.ordre === 'croissant' ? -1 : 1;
+  const tri = [...cats.values()].sort((a, b) => sens * (Math.abs(b.total || 0) - Math.abs(a.total || 0)) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
   let gardees = tri;
   if (tri.length > MAX_SERIES) {
     gardees = tri.slice(0, MAX_SERIES - 1);

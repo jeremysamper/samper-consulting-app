@@ -14,6 +14,21 @@ import { serieRapports } from '../../caisse/rapports/calculRapports.js';
 const sauf = (p, f) => (p.vide ? null : f(p));
 const partsTaux = (p, cle) => (p.synthese.parTaux || []).map((t) => ({ cle: `t${t.taux}`, libelle: `${String(t.taux).replace('.', ',')} %`, brut: true, valeur: t[cle] }));
 
+// Par personne, comme l'onglet Personnes des Rapports (niveau direction) :
+// `cle` est la colonne de la personne (ttc encaissé, annulationsTtc, remises,
+// offertsValeur). Un nom est une donnée, jamais traduit.
+const parPersonne = (cle) => ({
+  id: 'personne', libelle: 'Par personne', niveau: 'direction',
+  parts: (p) => (p.personnes || []).filter((e) => e[cle]).map((e) => ({ cle: e.id || '', libelle: e.nom, donnee: !!e.id, valeur: e[cle] })),
+});
+
+// Par produit, comme l'onglet Plats vendus : les plus vendus, ou les moins
+// vendus parmi les produits vendus (quantité positive).
+const parProduit = (cle) => [
+  { id: 'produit', libelle: 'Par produit, les plus vendus', parts: (p) => (p.plats?.lignes || []).map((l) => ({ cle: l.cle, libelle: l.libelle, donnee: true, valeur: l[cle] })) },
+  { id: 'produit_moins', libelle: 'Par produit, les moins vendus', ordre: 'croissant', parts: (p) => (p.plats?.lignes || []).filter((l) => l.qte > 0).map((l) => ({ cle: l.cle, libelle: l.libelle, donnee: true, valeur: l[cle] })) },
+];
+
 const parService = (cle) => ({
   id: 'service', libelle: 'Par service',
   parts: (p) => [
@@ -62,6 +77,28 @@ export const familleCaisse = {
       phrase: 'Somme de la TVA de chaque ticket, arrondie au centime par ticket et par taux.',
     },
     {
+      id: 'caisse.ventes', libelle: 'Ventes encaissées', unite: 'chf', nature: 'flux', niveau: 'direction',
+      valeur: (p) => sauf(p, (x) => x.synthese.ventesTtc),
+      ventilations: [parPersonne('ttc')],
+      phrase: 'Total TVA comprise des tickets encaissés, avant les annulations ; par personne, celle qui a encaissé.',
+    },
+    {
+      id: 'caisse.annulations_ttc', libelle: 'Annulations en montant', unite: 'chf', nature: 'flux', niveau: 'direction',
+      valeur: (p) => sauf(p, (x) => x.synthese.annulationsTtc),
+      ventilations: [parPersonne('annulationsTtc')],
+      phrase: 'Montant TVA comprise des tickets annulés, au jour de l\'annulation ; par personne, celle qui a annulé.',
+    },
+    {
+      id: 'caisse.abandons', libelle: 'Tickets abandonnés', unite: 'nombre', nature: 'flux', niveau: 'direction',
+      valeur: (p) => (p.ecarts ? (p.ecarts.abandons.nombre || (p.vide ? null : 0)) : null),
+      phrase: 'Tickets annulés avant tout encaissement, sans numéro, au jour d\'exploitation, comme le journal des écarts.',
+    },
+    {
+      id: 'caisse.abandons_ttc', libelle: 'Montant des tickets abandonnés', unite: 'chf', nature: 'flux', niveau: 'direction',
+      valeur: (p) => (p.ecarts ? (p.ecarts.abandons.nombre ? p.ecarts.abandons.montant : (p.vide ? null : 0)) : null),
+      phrase: 'Valeur des lignes des tickets abandonnés avant encaissement.',
+    },
+    {
       id: 'caisse.tickets', libelle: 'Tickets encaissés', unite: 'nombre', nature: 'flux',
       valeur: (p) => sauf(p, (x) => x.synthese.tickets),
       phrase: 'Nombre de tickets numérotés encaissés ; un ticket annulé depuis reste compté le jour de sa vente.',
@@ -105,23 +142,25 @@ export const familleCaisse = {
     {
       id: 'caisse.plats_qte', libelle: 'Plats vendus', unite: 'nombre', nature: 'flux',
       valeur: (p) => sauf(p, (x) => x.plats.qte),
-      ventilations: [{ id: 'categorie', libelle: 'Par catégorie de caisse', parts: (p) => p.plats.categories.map((c) => ({ cle: c.nom, libelle: c.nom, donnee: true, valeur: c.qte })) }],
+      ventilations: [{ id: 'categorie', libelle: 'Par catégorie de caisse', parts: (p) => p.plats.categories.map((c) => ({ cle: c.nom, libelle: c.nom, donnee: true, valeur: c.qte })) }, ...parProduit('qte')],
       phrase: 'Quantités vendues, annulations déduites, offerts compris.',
     },
     {
       id: 'caisse.plats_ttc', libelle: 'Chiffre des plats', unite: 'chf', nature: 'flux',
       valeur: (p) => sauf(p, (x) => x.plats.ttc),
-      ventilations: [{ id: 'categorie', libelle: 'Par catégorie de caisse', parts: (p) => p.plats.categories.map((c) => ({ cle: c.nom, libelle: c.nom, donnee: true, valeur: c.ttc })) }],
+      ventilations: [{ id: 'categorie', libelle: 'Par catégorie de caisse', parts: (p) => p.plats.categories.map((c) => ({ cle: c.nom, libelle: c.nom, donnee: true, valeur: c.ttc })) }, ...parProduit('ttc')],
       phrase: 'Somme des lignes vendues, TVA comprise : elle fait le chiffre d\'affaires de la période.',
     },
     {
       id: 'caisse.remises', libelle: 'Remises accordées', unite: 'chf', nature: 'flux', niveau: 'direction',
       valeur: (p) => (p.vide || !p.ecarts ? null : p.ecarts.remises.montant),
+      ventilations: [parPersonne('remises')],
       phrase: 'Montant des remises accordées sur les tickets encaissés.',
     },
     {
       id: 'caisse.offerts', libelle: 'Offerts', unite: 'chf', nature: 'flux', niveau: 'direction',
       valeur: (p) => (p.vide || !p.ecarts ? null : p.ecarts.offerts.montant),
+      ventilations: [parPersonne('offertsValeur')],
       phrase: 'Valeur au prix d\'origine des lignes offertes.',
     },
     {

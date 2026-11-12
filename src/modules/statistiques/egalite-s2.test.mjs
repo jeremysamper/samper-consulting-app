@@ -17,6 +17,8 @@ import { jeuInventaires } from '../inventaire/jeuInventaires.mjs';
 import { valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { totauxFactures } from '../inventaire/facturesLogic.js';
 import { jeuGroupes } from '../groupes/jeuGroupes.mjs';
+import { J1, J2, jeuEssai } from '../caisse/rapports/jeuEssai.mjs';
+import { rapportCaisse } from '../caisse/rapports/calculRapports.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -172,6 +174,31 @@ test('groupes : groupes, convives et annulés font la liste du mois du calendrie
   assert.equal(mesure('groupes.groupes').valeur(lu.total), actifs.length);
   assert.equal(mesure('groupes.convives').valeur(lu.total), actifs.reduce((s, g) => s + g.nbPax, 0));
   assert.equal(mesure('groupes.annules').valeur(lu.total), duMois.length - actifs.length);
+});
+
+// ── Caisse : sorties de S1 ──
+test('caisse : ventes, annulations, abandons, par personne et par produit, ceux des Rapports', () => {
+  const donnees = jeuEssai();
+  const lu = lire('caisse', donnees, J1, J2, 'jour');
+  verifierFlux('caisse', lu);
+  const r = rapportCaisse(donnees, { type: 'libre', debut: J1, fin: J2 });
+  const v = (id) => mesure(id).valeur(lu.total);
+  assert.equal(v('caisse.ventes'), r.synthese.ventesTtc);
+  assert.equal(v('caisse.annulations_ttc'), r.synthese.annulationsTtc);
+  assert.equal(v('caisse.abandons'), r.journal.abandons.nombre);
+  assert.equal(v('caisse.abandons_ttc'), r.journal.abandons.montant);
+  const somme = (parts) => parts.reduce((t, x) => t + Math.round(x.valeur * 100), 0) / 100;
+  const ventilation = (id, vid) => mesure(id).ventilations.find((x) => x.id === vid).parts(lu.total);
+  assert.equal(somme(ventilation('caisse.ventes', 'personne')), r.synthese.ventesTtc);
+  assert.equal(somme(ventilation('caisse.remises', 'personne')), r.journal.remises.montant);
+  assert.equal(somme(ventilation('caisse.offerts', 'personne')), r.journal.offerts.montant);
+  assert.equal(somme(ventilation('caisse.plats_ttc', 'produit')), r.plats.ttc);
+  // Les moins vendus : l'ordre de la ventilation, du plus petit au plus grand.
+  const plats = mesure('caisse.plats_qte');
+  const c = composer({ graphique: { mesures: [plats.id], ventilation: 'produit_moins' }, mesures: [plats], tranches: lu.tranches, sources: { points: { caisse: lu.points }, totaux: { caisse: lu.total } }, etats: { caisse: 'ready' }, familles: FAMILLES });
+  const totaux = c.series.filter((x) => x.libelle !== 'Autres').map((x) => x.total);
+  assert.deepEqual(totaux, [...totaux].sort((a, b) => a - b));
+  assert.equal(c.series[0].libelle, r.plats.lignes.filter((l) => l.qte > 0).slice(-1)[0].libelle);
 });
 
 test('catalogue S2 : nombre de mesures par famille', () => {

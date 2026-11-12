@@ -4475,4 +4475,13 @@ export const UI_GLOSSARY_ES = {
   "Donnez un nom à la vue.": "Dé un nombre a la vista.",
   "Ce nom est déjà pris par une autre vue.": "Este nombre ya lo usa otra vista.",
   "La liste des vues n'a pas pu être enregistrée. Réessayez.": "No se pudo guardar la lista de vistas. Inténtelo de nuevo.",
+  // ── Statistiques (S2) : Caisse ──
+  "Annulations en montant": "Anulaciones en importe",
+  "Montant des tickets abandonnés": "Importe de los tickets abandonados",
+  "Par produit, les plus vendus": "Por producto, los más vendidos",
+  "Par produit, les moins vendus": "Por producto, los menos vendidos",
+  "Total TVA comprise des tickets encaissés, avant les annulations ; par personne, celle qui a encaissé.": "Total IVA incluido de los tickets cobrados, antes de las anulaciones; por persona, la que cobró.",
+  "Montant TVA comprise des tickets annulés, au jour de l'annulation ; par personne, celle qui a annulé.": "Importe IVA incluido de los tickets anulados, el día de la anulación; por persona, la que anuló.",
+  "Tickets annulés avant tout encaissement, sans numéro, au jour d'exploitation, comme le journal des écarts.": "Tickets anulados antes de cualquier cobro, sin número, el día de explotación, como el registro de desviaciones.",
+  "Valeur des lignes des tickets abandonnés avant encaissement.": "Valor de las líneas de los tickets abandonados antes del cobro.",
 };

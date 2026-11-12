@@ -4494,6 +4494,15 @@ export const UI_GLOSSARY = {
   "Donnez un nom à la vue.": "Give the view a name.",
   "Ce nom est déjà pris par une autre vue.": "This name is already used by another view.",
   "La liste des vues n'a pas pu être enregistrée. Réessayez.": "The list of views could not be saved. Try again.",
+  // ── Statistiques (S2) : Caisse ──
+  "Annulations en montant": "Cancellations in amount",
+  "Montant des tickets abandonnés": "Amount of abandoned tickets",
+  "Par produit, les plus vendus": "By product, best sellers",
+  "Par produit, les moins vendus": "By product, least sold",
+  "Total TVA comprise des tickets encaissés, avant les annulations ; par personne, celle qui a encaissé.": "Total including VAT of the tickets cashed, before cancellations; by person, the one who cashed.",
+  "Montant TVA comprise des tickets annulés, au jour de l'annulation ; par personne, celle qui a annulé.": "Amount including VAT of the cancelled tickets, on the day of the cancellation; by person, the one who cancelled.",
+  "Tickets annulés avant tout encaissement, sans numéro, au jour d'exploitation, comme le journal des écarts.": "Tickets cancelled before any payment, without a number, on the business day, like the discrepancy log.",
+  "Valeur des lignes des tickets abandonnés avant encaissement.": "Value of the lines of the tickets abandoned before payment.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

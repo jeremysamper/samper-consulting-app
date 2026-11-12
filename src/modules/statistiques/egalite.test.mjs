@@ -21,6 +21,8 @@ import { periodeMois } from '../comptabilite/periodesCompta.js';
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
 const AUJ = '2026-11-11';
+// Mesures ajoutées en S2 aux familles de S1, testées dans egalite-s2.test.mjs.
+const AJOUTS_S2 = ['achats.reglees', 'achats.delai', 'caisse.ventes', 'caisse.annulations_ttc', 'caisse.abandons', 'caisse.abandons_ttc'];
 
 // Points par tranche et point de la période entière, comme le fait l'écran.
 function lire(id, donnees, debut, fin, pas) {
@@ -294,5 +296,5 @@ test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', 
     assert.ok(m.pas.length > 0, m.id);
   });
   // Les quatre familles de S1 ; celles de S2 sont comptées dans egalite-s2.test.mjs.
-  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !['achats.reglees', 'achats.delai'].includes(m.id)).length, 36);
+  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !AJOUTS_S2.includes(m.id)).length, 36);
 });

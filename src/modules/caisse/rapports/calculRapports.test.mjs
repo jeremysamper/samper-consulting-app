@@ -636,3 +636,21 @@ test('série : plus de mille tickets, la somme des jours reste le total', () => 
   assert.equal(serie.reduce((s, j) => s + centimesDe(j.synthese.ttc), 0) / 100, r.synthese.ttc);
   assert.equal(serie.reduce((s, j) => s + centimesDe(j.synthese.tva), 0) / 100, r.synthese.tva);
 });
+
+test('série : produits, personnes et tickets abandonnés de chaque tranche refont ceux du rapport', () => {
+  const d = jeuEssai();
+  const periode = periodeLibre(J1, J2);
+  const r = rapportCaisse(d, periode);
+  const [tout] = serieRapports(d, periode, [{ debut: J1, fin: J2 }]);
+  assert.deepEqual(tout.ecarts.abandons, r.journal.abandons);
+  assert.deepEqual(tout.personnes, r.personnes);
+  assert.deepEqual(tout.plats.lignes, r.plats.lignes.map((l) => ({ cle: l.cle, libelle: l.libelle, qte: l.qte, ttc: l.ttc })));
+  const jours = serieRapports(d, periode, [{ debut: J1, fin: J1 }, { debut: J2, fin: J2 }]);
+  const somme = (f) => jours.reduce((s, j) => s + centimesDe(f(j)), 0) / 100;
+  assert.equal(somme((j) => j.ecarts.abandons.montant), r.journal.abandons.montant);
+  assert.equal(jours.reduce((s, j) => s + j.ecarts.abandons.nombre, 0), r.journal.abandons.nombre);
+  const parPersonne = (liste, cle) => liste.reduce((s, e) => s + centimesDe(e[cle]), 0) / 100;
+  assert.equal(somme((j) => parPersonne(j.personnes, 'ttc')), parPersonne(r.personnes, 'ttc'));
+  assert.equal(parPersonne(r.personnes, 'ttc'), r.synthese.ventesTtc);
+  assert.equal(parPersonne(r.personnes, 'annulationsTtc'), r.synthese.annulationsTtc);
+});

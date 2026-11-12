@@ -543,19 +543,23 @@ export function serieRapports(donnees, periode, tranches) {
       const d = (Date.parse(m.ticket.closed_at) - Date.parse(m.ticket.created_at)) / 60000;
       if (Number.isFinite(d) && d >= 0) { tables += 1; minutes += d; }
     });
-    const ecarts = direction ? journal(mvts, { personnes: donnees?.personnes }, { ...t, type: 'service' }) : null;
+    // Journal de la tranche : annulations, remises, offerts, et les tickets
+    // abandonnés datés dans la tranche (la RPC ne rend que des abandons datés
+    // de la période). Ni corrections ni tests : ce ne sont pas des ventes.
+    const ecarts = direction ? journal(mvts, { personnes: donnees?.personnes, abandons: donnees?.abandons }, { ...t, type: 'tranche' }) : null;
     return {
       debut: t.debut,
       fin: t.fin,
       vide: mvts.length === 0,
       synthese: synthese(mvts),
-      plats: { qte: p.qte, ttc: p.ttc, categories: p.categories, offertsValeur: p.offertsValeur, remises: p.remises },
+      plats: { qte: p.qte, ttc: p.ttc, categories: p.categories, lignes: p.lignes.map((l) => ({ cle: l.cle, libelle: l.libelle, qte: l.qte, ttc: l.ttc })), offertsValeur: p.offertsValeur, remises: p.remises },
       tables,
       dureeMoyenneMin: tables ? Math.round(minutes / tables) : null,
       clients: direction ? clients(mvts) : null,
       moyens: direction ? moyens(mvts) : null,
       ecartsCaisse: direction && periode.type !== 'service' ? ecartsCaisse(donnees?.clotures, t) : null,
-      ecarts: ecarts ? { annulations: ecarts.annulations, remises: ecarts.remises, offerts: ecarts.offerts } : null,
+      ecarts: ecarts ? { annulations: ecarts.annulations, remises: ecarts.remises, offerts: ecarts.offerts, abandons: ecarts.abandons } : null,
+      personnes: direction ? personnes(mvts, donnees?.personnes) : null,
     };
   });
 }
