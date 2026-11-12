@@ -27,7 +27,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { toutesLesPages } from '../lib/lirePages.js';
+import { toutesLesPages } from '../../../utils/lirePages.js';
 import { dbService } from '../../../services/dbService.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
 

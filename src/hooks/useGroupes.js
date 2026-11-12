@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabase.js';
+import { toutesLesPages } from '../utils/lirePages.js';
 import { dbService } from '../services/dbService.js';
 import { addDays, isoDate, parseLocalDate } from '../utils/dateHelpers.js';
 import { zurichToday } from '../utils/zurichTime.js';
@@ -48,20 +49,15 @@ function messageErreur(error) {
 // `fin` si donnée), toutes les pages : PostgREST rend 1000 lignes au plus par
 // réponse, une limite plus haute ne passe pas. Rend { data, error }.
 export async function lireLignesGroupes(etablissementId, depuis, fin = null) {
-  const PAGE = 1000;
-  const lignes = [];
-  for (let de = 0; ; de += PAGE) {
+  return toutesLesPages((de, a) => {
     let q = supabase.from(TABLE).select('*').eq('etablissement_id', etablissementId).gte('date_evenement', depuis);
     if (fin) q = q.lte('date_evenement', fin);
-    const { data, error } = await q
+    return q
       .order('date_evenement', { ascending: true })
       .order('heure', { ascending: true, nullsFirst: true })
       .order('id')
-      .range(de, de + PAGE - 1);
-    if (error) return { data: null, error };
-    lignes.push(...(data || []));
-    if (!data || data.length < PAGE) return { data: lignes, error: null };
-  }
+      .range(de, a);
+  });
 }
 
 // Groupes d'une période, mappés, pour le module Statistiques : [] tant que la

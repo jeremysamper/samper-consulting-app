@@ -3,6 +3,7 @@ import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
 import { mapAbsenceFromDB } from '../../utils/absences.js';
+import { toutesLesPages } from '../../utils/lirePages.js';
 import { readJson } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { periodeEnCours, retardsDuJour, soldePersonne } from './soldesHeures.js';
@@ -96,18 +97,6 @@ export async function lireContrats(etablissementId) {
   return (data || []).map(mapContratFromDB);
 }
 
-// Toutes les pages d'une lecture : PostgREST rend 1000 lignes au plus par
-// réponse. `requete(de, a)` construit une page avec un ordre stable.
-async function toutesLesPages(requete) {
-  const PAGE = 1000;
-  const lignes = [];
-  for (let de = 0; ; de += PAGE) {
-    const { data, error } = await requete(de, de + PAGE - 1);
-    if (error) return { data: null, error };
-    lignes.push(...(data || []));
-    if (!data || data.length < PAGE) return { data: lignes, error: null };
-  }
-}
 
 // ─── Contrats d'un établissement (ceux que la RLS laisse voir) ─────────────
 export function useContrats(etablissementId) {

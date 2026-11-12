@@ -10,13 +10,11 @@
 
 import { serieHotel } from '../../hebergement/serieHotel.js';
 
-const calculer = (donnees, tranches) => serieHotel(donnees, tranches);
-
 export const familleHebergement = {
   id: 'hebergement',
   libelle: 'Hébergement',
   journee: 'la nuit passée à l\'hôtel',
-  calculer,
+  calculer: serieHotel,
   mesures: [
     {
       id: 'hebergement.nuitees_chambres', libelle: 'Nuitées chambres', unite: 'nombre', nature: 'flux',
@@ -71,7 +69,7 @@ export const familleDemandes = {
   id: 'demandes',
   libelle: 'Demandes',
   journee: 'le jour de Zurich de la demande',
-  calculer,
+  calculer: serieHotel,
   mesures: [
     {
       id: 'demandes.creees', libelle: 'Demandes créées', unite: 'nombre', nature: 'flux',
@@ -95,7 +93,7 @@ export const familleTechnique = {
   id: 'technique',
   libelle: 'Technique',
   journee: 'le jour de Zurich de la fin de l\'ordre de travail',
-  calculer,
+  calculer: serieHotel,
   mesures: [
     {
       id: 'technique.termines', libelle: 'Ordres de travail terminés', unite: 'nombre', nature: 'flux',
@@ -119,7 +117,7 @@ export const familleActivites = {
   id: 'activites',
   libelle: 'Activités',
   journee: 'le jour de l\'activité',
-  calculer,
+  calculer: serieHotel,
   mesures: [
     {
       id: 'activites.inscrits', libelle: 'Personnes inscrites aux activités', unite: 'nombre', nature: 'flux',
@@ -138,7 +136,7 @@ export const familleEtages = {
   id: 'etages',
   libelle: 'Étages',
   journee: 'le jour de Zurich du passage',
-  calculer,
+  calculer: serieHotel,
   mesures: [
     {
       id: 'etages.chambres_faites', libelle: 'Chambres faites', unite: 'nombre', nature: 'flux',

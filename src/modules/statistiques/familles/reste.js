@@ -114,6 +114,12 @@ export const familleMep = {
 
 // Spa : soins de l'agenda (ni annulés ni absents), durée en cabine, par
 // praticien, et bons cadeaux créés. Une tranche sans rendez-vous vaut « n/a ».
+// Par praticien : soins ou minutes de chacun, « À attribuer » sans praticien.
+const parPraticien = (cle) => ({
+  id: 'praticien', libelle: 'Par praticien',
+  parts: (p) => Object.entries(p.parPraticien || {}).map(([nom, e]) => ({ cle: nom, libelle: nom, donnee: nom !== SANS_PRATICIEN_SPA, valeur: e[cle] })),
+});
+
 export const familleSpa = {
   id: 'spa',
   libelle: 'Spa',
@@ -125,13 +131,13 @@ export const familleSpa = {
     {
       id: 'spa.soins', libelle: 'Soins réalisés ou prévus', unite: 'nombre', nature: 'flux',
       valeur: (p) => sauf(p, (x) => x.soins),
-      ventilations: [{ id: 'praticien', libelle: 'Par praticien', parts: (p) => Object.entries(p.parPraticien || {}).map(([nom, e]) => ({ cle: nom, libelle: nom, donnee: nom !== SANS_PRATICIEN_SPA, valeur: e.soins })) }],
+      ventilations: [parPraticien('soins')],
       phrase: 'Rendez-vous ni annulés ni absents, au jour du rendez-vous, comme l\'agenda du Spa.',
     },
     {
       id: 'spa.minutes', libelle: 'Minutes en cabine', unite: 'min', nature: 'flux',
       valeur: (p) => sauf(p, (x) => x.minutes),
-      ventilations: [{ id: 'praticien', libelle: 'Par praticien', parts: (p) => Object.entries(p.parPraticien || {}).map(([nom, e]) => ({ cle: nom, libelle: nom, donnee: nom !== SANS_PRATICIEN_SPA, valeur: e.minutes })) }],
+      ventilations: [parPraticien('minutes')],
       phrase: 'Somme des durées des soins ni annulés ni absents.',
     },
     {
@@ -149,9 +155,10 @@ export const familleSpa = {
 
 // Ventes POS (caisse reliée) : quantités et chiffre, par plat, comme le top et
 // flop. Une tranche sans vente vaut « n/a ».
+const partPlat = (cle) => ([id, x]) => ({ cle: id, libelle: x.nom, donnee: true, valeur: x[cle] });
 const parPlatPos = (cle) => [
-  { id: 'plat', libelle: 'Par plat, les plus vendus', parts: (p) => Object.entries(p.parPlat || {}).map(([id, x]) => ({ cle: id, libelle: x.nom, donnee: true, valeur: x[cle] })) },
-  { id: 'plat_moins', libelle: 'Par plat, les moins vendus', ordre: 'croissant', parts: (p) => Object.entries(p.parPlat || {}).filter(([, x]) => x.qte > 0).map(([id, x]) => ({ cle: id, libelle: x.nom, donnee: true, valeur: x[cle] })) },
+  { id: 'plat', libelle: 'Par plat, les plus vendus', parts: (p) => Object.entries(p.parPlat || {}).map(partPlat(cle)) },
+  { id: 'plat_moins', libelle: 'Par plat, les moins vendus', ordre: 'croissant', parts: (p) => Object.entries(p.parPlat || {}).filter(([, x]) => x.qte > 0).map(partPlat(cle)) },
 ];
 
 export const familleVentesPos = {

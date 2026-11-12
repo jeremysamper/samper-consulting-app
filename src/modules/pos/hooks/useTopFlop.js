@@ -27,7 +27,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../../../services/dbService.js';
 import { addDays, todayInTz, formatRangeLabel } from '../lib/date-utils.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
-import { toutesLesPages } from '../lib/lirePages.js';
+import { toutesLesPages } from '../../../utils/lirePages.js';
 
 export function useTopFlop(etablissement, periodDays = 7) {
   const [items, setItems]             = useState([]);

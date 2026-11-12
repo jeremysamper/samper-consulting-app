@@ -1,4 +1,5 @@
 import { setLegacySB } from '../legacy/legacyApi.js';
+import { toutesLesPages } from '../utils/lirePages.js';
 import { bootDedupeRead, buildPasswordResetRedirectUrl, getSupabaseConfig, invalidateBootRead, supabase } from './supabase.js';
 import { resilientFetch } from './netResilience.js';
 import { subscribeResume } from './resumeCoordinator.js';
@@ -64,20 +65,6 @@ export function installLegacySupabase() {
     return [];
   }
 
-  // Toutes les pages d'une lecture : PostgREST rend 1000 lignes au plus par
-  // réponse, une lecture d'un seul tenant serait tronquée sans le dire.
-  // `requete(de, a)` construit la requête d'une page, avec un ordre stable
-  // (une colonne unique en dernier). Rend { data, error } comme une requête.
-  async function _toutesLesPages(requete) {
-    const PAGE = 1000;
-    const lignes = [];
-    for (let de = 0; ; de += PAGE) {
-      const { data, error } = await requete(de, de + PAGE - 1);
-      if (error) return { data: null, error };
-      lignes.push(...(data || []));
-      if (!data || data.length < PAGE) return { data: lignes, error: null };
-    }
-  }
 
   // Relation absente : la migration qui crée la table n'est pas encore
   // appliquée. Ce n'est PAS un échec de lecture : aucun réessai ne la fera
@@ -1286,7 +1273,7 @@ export function installLegacySupabase() {
       // Une limite demandée garde sa requête unique ; sans limite, toutes les pages.
       const { data, error } = opts.limit
         ? await construire().limit(opts.limit)
-        : await _toutesLesPages((de, a) => construire().order('id').range(de, a));
+        : await toutesLesPages((de, a) => construire().order('id').range(de, a));
       if (error) return _readFailed('[listSopExecutions]', error, opts.strict);
       return (data || []).map(this.mapSopExecFromDB);
     },
@@ -1619,7 +1606,7 @@ export function installLegacySupabase() {
     // ─── INVENTAIRES ───
     // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
     async listInventaires(etabId, { strict = false } = {}) {
-      const { data, error } = await _toutesLesPages((de, a) => {
+      const { data, error } = await toutesLesPages((de, a) => {
         let q = client.from('inventaires').select('*');
         if (etabId) q = q.eq('etablissement_id', etabId);
         return q.order('date', { ascending: false }).order('id').range(de, a);
@@ -1681,7 +1668,7 @@ export function installLegacySupabase() {
 
     // ─── PERTES ───
     async listPertes(etabId, { strict = false } = {}) {
-      const { data, error } = await _toutesLesPages((de, a) => {
+      const { data, error } = await toutesLesPages((de, a) => {
         let q = client.from('pertes').select('*');
         if (etabId) q = q.eq('etablissement_id', etabId);
         return q.order('date', { ascending: false }).order('id').range(de, a);
@@ -2140,7 +2127,7 @@ export function installLegacySupabase() {
 
     // ─── HACCP - Relevés ───
     async listHaccpReleves(etabId, { strict = false } = {}) {
-      const { data, error } = await _toutesLesPages((de, a) => {
+      const { data, error } = await toutesLesPages((de, a) => {
         let q = client.from('haccp_releves').select('*');
         if (etabId) q = q.eq('etablissement_id', etabId);
         return q.order('date', { ascending: false }).order('heure', { ascending: false }).order('id').range(de, a);
