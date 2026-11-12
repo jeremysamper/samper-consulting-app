@@ -351,9 +351,10 @@ export function useSpaParametres(etabId) {
   }, [etabId]);
 
   useEffect(() => { setStatus('loading'); charger(); }, [charger]);
-  // Réglés dans la page des réglages (section 'spa_en_ligne'), table hors
-  // temps réel : un écran resté monté relit au signal de changement.
-  useReglageModifie('spa_en_ligne', charger);
+  // Réglés dans la page des réglages (sections 'spa_en_ligne' et
+  // 'spa_emails'), table hors temps réel : un écran resté monté relit au signal
+  // de changement.
+  useReglageModifie('spa_parametres', charger);
 
   // partie : 'emails' (onglet E-mails) ou 'en_ligne' (onglet En ligne).
   const enregistrer = useCallback(async (p, partie = 'emails') => {

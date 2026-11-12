@@ -4396,6 +4396,13 @@ export const UI_GLOSSARY = {
   'La première carte': 'The first menu',
   "Aucune carte d'accueil choisie.": 'No home menu chosen.',
   "Les cartes n'ont pas pu être lues. Réessayez dans un instant.": 'The menus could not be read. Try again in a moment.',
+  // ── Réglages R3 : Spa, e-mails ──
+  'Spa : e-mails': 'Spa: e-mails',
+  "Boîte d'envoi, bons d'anniversaire, adresse de réponse, signature": 'Outbox, birthday vouchers, reply address, signature',
+  'Réglages e-mails': 'E-mail settings',
+  'Régler les e-mails': 'Set up e-mails',
+  'Les e-mails partent de': 'E-mails are sent from',
+  "Boîte d'envoi et bons d'anniversaire": 'Outbox and birthday vouchers',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

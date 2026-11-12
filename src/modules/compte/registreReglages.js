@@ -135,6 +135,14 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'spa',
     garde: (ctx) => ouvreLeModule('spa')(ctx) && estDirectionSpa(ctx.user?.role),
     charger: () => import('../spa/SectionSpaEnLigne.jsx'),
+    signaux: ['spa_parametres'],
+  },
+  {
+    id: 'spa_emails', libelle: 'Spa : e-mails', detail: "Boîte d'envoi, bons d'anniversaire, adresse de réponse, signature",
+    groupe: 'modules', portee: 'maison', module: 'spa',
+    garde: (ctx) => ouvreLeModule('spa')(ctx) && estDirectionSpa(ctx.user?.role),
+    charger: () => import('../spa/SectionSpaEmails.jsx'),
+    signaux: ['spa_parametres', 'spa_boite'],
   },
   {
     id: 'hebergement_tarifs', libelle: 'Hébergement : tarifs et taxes', detail: 'Tarifs par nuit, taxe de séjour, TVA, numéro HESTA',

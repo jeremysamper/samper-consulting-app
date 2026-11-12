@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Cake, History, Mail, MailCheck, Send, Users } from 'lucide-react';
+import { History, Mail, MailCheck, Send, Users } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { zurichToday } from '../../utils/zurichTime.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { appelerMailer, useSpaParametres, useSpaTable } from './spaData.js';
-import BoiteEnvoi from './BoiteEnvoi.jsx';
 import {
   Avatar, Champ, EtatVide, Puce, TitreSection, dateLongue, decalerJour, jourMois, nomClient,
   prochainAnniversaire, st,
@@ -12,8 +13,10 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 // E-mails du spa (direction : consultant et patron).
 //
-//   Boîte d'envoi : le spa connecte sa boîte Gmail ou Outlook (BoiteEnvoi) ;
-//                   tous ses e-mails partent alors de sa propre adresse.
+// Depuis le 12.11.2026, les réglages vivent dans la page des réglages, section
+// « Spa : e-mails » (SectionSpaEmails.jsx) : la boîte d'envoi (BoiteEnvoi) et
+// les bons d'anniversaire (Anniversaires, exporté d'ici). Cet onglet garde le
+// travail, les actualités et l'historique, et un raccourci vers la section.
 //
 //   Anniversaires : un bon cadeau part tout seul le jour de l'anniversaire de
 //                   chaque client qui a accepté les e-mails (cron quotidien,
@@ -27,7 +30,6 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SOUS_ONGLETS = [
-  { id: 'anniversaires', label: 'Anniversaires', icone: Cake },
   { id: 'actualites', label: 'Actualités', icone: Send },
   { id: 'historique', label: 'Historique', icone: History },
 ];
@@ -59,15 +61,14 @@ const prefixeCode = (nom) => (nom || 'SPA').normalize('NFD').replace(/[^A-Za-z]/
 
 const personnaliser = (t) => String(t || '').replace(/\{prenom\}/gi, 'Camille').replace(/\{nom\}/gi, 'Exemple');
 
-export default function MailingSpa({ etablissement, clients, aujourdhui, consultant = false }) {
-  const etablissementId = etablissement?.id;
-  const [onglet, setOnglet] = useState('anniversaires');
-  const [etat, setEtat] = useState(null); // réponse de spa-mailer « etat », null = inconnu
+// État de la boîte d'envoi (réponse « etat » de spa-mailer), pour l'onglet
+// E-mails et pour la section des réglages. Relu après une connexion ou une
+// déconnexion de la boîte, et au signal de changement de la section.
+export function useEtatEnvoi(etablissementId) {
+  const [etat, setEtat] = useState(null); // null = inconnu
   const [erreurService, setErreurService] = useState(null);
-  const { parametres, status, enregistrer } = useSpaParametres(etablissementId);
   const demande = useRef(0);
 
-  // Relue aussi après une connexion ou une déconnexion de la boîte d'envoi.
   const chargerEtat = useCallback(() => {
     const n = ++demande.current;
     appelerMailer('etat', { etablissementId }).then(({ data, error }) => {
@@ -82,22 +83,33 @@ export default function MailingSpa({ etablissement, clients, aujourdhui, consult
     chargerEtat();
     return () => { demande.current += 1; };
   }, [chargerEtat]);
+  useReglageModifie('spa_boite', chargerEtat);
 
   const configure = etat ? Boolean(etat.configure) : (erreurService ? false : null);
   const adresseEnvoi = etat?.boite?.statut === 'actif' ? etat.boite.adresse : null;
+  return { etat, erreurService, chargerEtat, configure, adresseEnvoi };
+}
+
+export default function MailingSpa({ etablissement, clients }) {
+  const etablissementId = etablissement?.id;
+  const [onglet, setOnglet] = useState('actualites');
+  const { parametres, status } = useSpaParametres(etablissementId);
+  const { configure, adresseEnvoi } = useEtatEnvoi(etablissementId);
   const actifs = clients.filter((c) => !c.archive);
   const destinataires = actifs.filter((c) => c.consentementMarketing && c.email);
   const part = actifs.length ? Math.round((destinataires.length / actifs.length) * 100) : 0;
 
   return (
     <div>
-      <BoiteEnvoi
-        etablissementId={etablissementId}
-        etat={etat}
-        erreurService={erreurService}
-        onRecharger={chargerEtat}
-        consultant={consultant}
-      />
+      {/* Boîte d'envoi et bons d'anniversaire : dans la page des réglages. */}
+      <div style={s.raccourci} data-spa-raccourci-emails="">
+        <span style={{ flex: '1 1 220px', minWidth: 0, fontSize: 14 }}>
+          {adresseEnvoi
+            ? <><span>Les e-mails partent de</span> <strong data-no-translate>{adresseEnvoi}</strong></>
+            : <span>Boîte d'envoi et bons d'anniversaire</span>}
+        </span>
+        <button type="button" style={st.secondaire} onClick={() => ouvrirCompte('spa_emails')}>Régler les e-mails</button>
+      </div>
 
       {/* ── Audience ── */}
       <div style={s.audience}>
@@ -121,17 +133,6 @@ export default function MailingSpa({ etablissement, clients, aujourdhui, consult
       </div>
 
       {status === 'absent' && <div style={st.encartAttention}>Cette partie n'est pas encore activée.</div>}
-      {status !== 'absent' && onglet === 'anniversaires' && (
-        <Anniversaires
-          etablissement={etablissement}
-          parametres={parametres}
-          enregistrer={enregistrer}
-          clients={actifs}
-          aujourdhui={aujourdhui}
-          envoiPossible={configure === true}
-          adresseEnvoi={adresseEnvoi}
-        />
-      )}
       {status !== 'absent' && onglet === 'actualites' && (
         <Actualites
           etablissement={etablissement}
@@ -147,7 +148,7 @@ export default function MailingSpa({ etablissement, clients, aujourdhui, consult
 }
 
 // ── Anniversaires ─────────────────────────────────────────────────────────
-function Anniversaires({ etablissement, parametres, enregistrer, clients, aujourdhui, envoiPossible, adresseEnvoi }) {
+export function Anniversaires({ etablissement, parametres, enregistrer, clients, aujourdhui, envoiPossible, adresseEnvoi }) {
   const [form, setForm] = useState(parametres);
   const [enCours, setEnCours] = useState(false);
   const [essai, setEssai] = useState(false);
@@ -463,6 +464,10 @@ function Historique({ etablissementId, clients }) {
 }
 
 const s = {
+  raccourci: {
+    display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 16px', marginBottom: 16,
+    borderRadius: 'var(--spa-r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--spa-line)', background: 'var(--spa-surface)',
+  },
   audience: {
     display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
     padding: '16px 18px', borderRadius: 'var(--spa-r)', background: 'var(--spa-surface)',

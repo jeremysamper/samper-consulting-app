@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays, Cake, Clock, Gift, Globe, Leaf, Mail, Plus, UserRound, Users,
+  CalendarDays, Cake, Clock, Gift, Globe, Leaf, Mail, Plus, SlidersHorizontal, UserRound, Users,
 } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
@@ -52,6 +52,9 @@ import { ouvrirCompte } from '../../services/navigationService.js';
 
 const ROLES_CATALOGUE = ['consultant', 'patron', 'hote'];
 const ACTIF = (r) => !['annulee', 'absent'].includes(r.statut);
+// Onglets qui ne sont pas des écrans du module : ils ouvrent la page des
+// réglages sur la section du même réglage.
+const RACCOURCIS_REGLAGES = { en_ligne: 'spa_en_ligne', reglages_emails: 'spa_emails' };
 
 // Heure de Zurich, relue chaque minute (prochain soin, ligne « maintenant »).
 function useMaintenant() {
@@ -279,7 +282,9 @@ Le client sera prévenu par e-mail.`)) return;
     { id: 'clients', label: 'Clients', icone: Users },
     { id: 'bons', label: 'Bons cadeaux', icone: Gift },
     { id: 'soins', label: 'Carte des soins', icone: Leaf },
-    ...(direction ? [{ id: 'emails', label: 'E-mails', icone: Mail }, { id: 'en_ligne', label: 'En ligne', icone: Globe }] : []),
+    // « En ligne » et « Réglages e-mails » sont deux raccourcis vers la page
+    // des réglages (sections 'spa_en_ligne' et 'spa_emails').
+    ...(direction ? [{ id: 'emails', label: 'E-mails', icone: Mail }, { id: 'en_ligne', label: 'En ligne', icone: Globe }, { id: 'reglages_emails', label: 'Réglages e-mails', icone: SlidersHorizontal }] : []),
   ];
 
   const prochain = journee.prochain;
@@ -356,7 +361,7 @@ Le client sera prévenu par e-mail.`)) return;
       <div style={{ margin: '18px 0 20px', display: 'flex' }}>
         {/* « En ligne » : les réglages de la réservation en ligne vivent dans la
             page des réglages (section 'spa_en_ligne'), l'onglet y mène. */}
-        <OngletsSpa onglets={onglets} actif={onglet} onChange={(id) => (id === 'en_ligne' ? ouvrirCompte('spa_en_ligne') : setOnglet(id))} />
+        <OngletsSpa onglets={onglets} actif={onglet} onChange={(id) => (RACCOURCIS_REGLAGES[id] ? ouvrirCompte(RACCOURCIS_REGLAGES[id]) : setOnglet(id))} />
       </div>
 
       {absent && (
@@ -416,7 +421,7 @@ Le client sera prévenu par e-mail.`)) return;
         />
       )}
       {!absent && onglet === 'emails' && direction && (
-        <MailingSpa etablissement={etablissement} clients={clients.rows} aujourdhui={aujourdhui} consultant={role === 'consultant'} />
+        <MailingSpa etablissement={etablissement} clients={clients.rows} />
       )}
 
       {/* ── Fenêtres ── */}

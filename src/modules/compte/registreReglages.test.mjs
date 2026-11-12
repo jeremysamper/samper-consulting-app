@@ -51,6 +51,7 @@ const AVANT = {
   notifications: ['consultant', 'patron', 'resp_cuisine', 'serveur', 'hote', 'receptionniste'],
   // Lot R3 : réglages sortis de leur écran de travail.
   carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
+  spa_emails: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {
@@ -130,6 +131,7 @@ test('un droit personnel qui diffère du rôle : la section suit la personne, co
 
 test('signaux de changement : l\'id de la section, ou les tables nommées', () => {
   assert.deepEqual(signauxDe('caisse'), ['caisse']);
+  assert.deepEqual(signauxDe('spa_emails'), ['spa_parametres', 'spa_boite']);
   assert.deepEqual(signauxDe('hebergement_tarifs'), ['table:tarifs', 'table:hotel_reglages']);
   assert.deepEqual(signauxDe('inconnue'), []);
 });

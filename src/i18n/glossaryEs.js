@@ -4377,4 +4377,11 @@ export const UI_GLOSSARY_ES = {
   'La première carte': 'La primera carta',
   "Aucune carte d'accueil choisie.": 'Ninguna carta de inicio elegida.',
   "Les cartes n'ont pas pu être lues. Réessayez dans un instant.": 'No se han podido leer las cartas. Inténtelo de nuevo en un momento.',
+  // ── Réglages R3 : Spa, e-mails ──
+  'Spa : e-mails': 'Spa: correos',
+  "Boîte d'envoi, bons d'anniversaire, adresse de réponse, signature": 'Buzón de envío, bonos de cumpleaños, dirección de respuesta, firma',
+  'Réglages e-mails': 'Ajustes de correo',
+  'Régler les e-mails': 'Configurar los correos',
+  'Les e-mails partent de': 'Los correos salen de',
+  "Boîte d'envoi et bons d'anniversaire": 'Buzón de envío y bonos de cumpleaños',
 };
