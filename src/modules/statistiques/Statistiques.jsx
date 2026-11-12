@@ -149,7 +149,11 @@ function CarteGraphique({
     />
   );
   const LIBELLE_TYPE = { courbe: 'Courbe', barres: 'Barres', empile: 'Barres empilées' };
-  const coupees = tranches.some((t) => !t.complet);
+  // Valeurs d'aujourd'hui : leurs catégories (plats, fiches) tiennent lieu de
+  // tranches, la période et le pas ne s'appliquent pas.
+  const etat = !!composition.etat;
+  const axe = etat ? composition.tranches : tranches;
+  const coupees = !etat && tranches.some((t) => !t.complet);
   return (
     <div style={st.carte} data-stat-carte={rang}>
       <div style={st.entete}>
@@ -166,7 +170,7 @@ function CarteGraphique({
           </select>
         ) : null}
         {(composition.choix || []).filter((c) => c.options.length).map((c) => (
-          <select key={c.mesure} className="no-print" style={st.select} value={c.valeur || ''} onChange={(e) => onChange({ choix: { ...(graphique.choix || {}), [c.mesure]: e.target.value } })} aria-label={c.libelle} data-stat-choix={c.mesure}>
+          <select key={c.mesure} className="no-print" style={st.select} value={c.valeur || ''} onChange={(e) => onChange({ choix: { ...(graphique.choix || {}), [c.cle]: e.target.value } })} aria-label={c.libelle} data-stat-choix={c.mesure}>
             {c.options.map((o) => <option key={o.cle} value={o.cle} {...(o.traduire ? {} : { 'data-no-translate': '' })}>{o.libelle}</option>)}
           </select>
         ))}
@@ -188,7 +192,7 @@ function CarteGraphique({
           {composition.enAttente.length ? <div style={st.etat} data-stat-attente="">Lecture en cours</div> : null}
           {composition.series.length ? (
             <>
-              <Graphique composition={composition} tranches={tranches} hauteur={etroit ? 220 : 280} libelleComparaison={libelleComparaison} />
+              <Graphique composition={composition} tranches={axe} hauteur={etroit ? 220 : 280} libelleComparaison={etat ? '' : libelleComparaison} />
               <div style={st.note} data-stat-phrases="">
                 {composition.phrases.map((p) => (
                   <div key={p.id}><strong style={{ fontWeight: 600 }}>{p.libelle}</strong> : <span>{p.phrase}</span></div>
@@ -198,8 +202,10 @@ function CarteGraphique({
                 {composition.nonTracees > 0 ? <div data-stat-non-tracees=""><span>Catégories non tracées :</span> <span data-no-translate>{composition.nonTracees}</span>. <span>Un graphique porte six séries au plus, et une moyenne ou un relevé ne se regroupe pas.</span></div> : null}
                 {composition.ventilation && libelleComparaison ? <div>Avec une ventilation, la comparaison se lit dans le tableau, sur la période entière.</div> : null}
                 {coupees ? <div>La première ou la dernière tranche est coupée par la période : elle compte moins de jours.</div> : null}
+                {etat ? <div data-stat-etat="">Valeurs d'aujourd'hui, aux prix et coûts actuels : la période et le pas ne s'appliquent pas.</div> : null}
+                {etat && libelleComparaison ? <div>La comparaison est sans objet pour une valeur d'aujourd'hui.</div> : null}
               </div>
-              <TableauValeurs tableau={tableau} libelleComparaison={libelleComparaison} />
+              <TableauValeurs tableau={tableau} libelleComparaison={etat ? '' : libelleComparaison} />
             </>
           ) : null}
         </div>
@@ -325,7 +331,7 @@ export default function Statistiques({ user, etablissement }) {
     const entiereAvant = bornesComp ? [trancheEntiere(bornesComp.debut, bornesComp.fin)] : null;
     const calculer = (id, donnees, donneesAvant) => {
       const f = familleDe(id);
-      const ctx = { aujourdhui };
+      const ctx = { aujourdhui, role };
       try {
         out.points[id] = f.calculer(donnees, tranches, ctx);
         out.totaux[id] = f.calculer(donnees, entiere, ctx)[0];
@@ -353,12 +359,12 @@ export default function Statistiques({ user, etablissement }) {
       if (out.etats[id] === 'ready') calculer(id, lu.data, luAvant?.data || null);
     });
     return out;
-  }, [famillesDemandees, lectureDe, etatCompta, syntheseDe, bornes, bornesComp, tranches, tranchesComp, aujourdhui]);
+  }, [famillesDemandees, lectureDe, etatCompta, syntheseDe, bornes, bornesComp, tranches, tranchesComp, aujourdhui, role]);
 
   const compositions = useMemo(() => (vue ? vue.graphiques.map((g) => {
     const cochees = g.mesures.map((id) => mesures.find((m) => m.id === id)).filter(Boolean);
     const c = composer({ graphique: g, mesures: cochees, tranches, tranchesComparaison: tranchesComp, sources, etats: sources.etats, familles: FAMILLES });
-    return { composition: c, tableau: tableauDe(c, tranches) };
+    return { composition: c, tableau: tableauDe(c, c.etat ? c.tranches : tranches) };
   }) : []), [vue, mesures, tranches, tranchesComp, sources]);
 
   const comparaisonChoisie = COMPARAISONS.find((c) => c.id === (vue?.comparaison || ''));

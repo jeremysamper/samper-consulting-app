@@ -23,9 +23,10 @@ import { familleInventaire } from './familles/inventaire.js';
 import { familleGroupes } from './familles/groupes.js';
 import { familleCatalogue, familleJournal, familleKds, familleMep, familleSop, familleSpa, familleVentesPos } from './familles/reste.js';
 import { familleActivites, familleDemandes, familleEtages, familleHebergement, familleTechnique } from './familles/hotel.js';
+import { familleChiffrage, familleMarges } from './familles/etats.js';
 
 export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire, familleGroupes, familleSop, familleMep, familleKds, familleJournal, familleSpa, familleVentesPos, familleCatalogue,
-  familleHebergement, familleEtages, familleDemandes, familleActivites, familleTechnique];
+  familleHebergement, familleEtages, familleDemandes, familleActivites, familleTechnique, familleMarges, familleChiffrage];
 
 const TOUS_LES_PAS = ['jour', 'semaine', 'mois'];
 

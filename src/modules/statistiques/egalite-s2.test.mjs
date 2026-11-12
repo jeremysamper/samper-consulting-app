@@ -12,7 +12,11 @@ import { jeuPertes } from '../pertes/jeuPertes.mjs';
 import { jeuHoraires } from '../planning/jeuHoraires.mjs';
 import { calcHeures, heuresFaites, retardsDe, soldeMois } from '../planning/soldesHeures.js';
 import { jeuReleves, ZONES } from '../haccp/jeuReleves.mjs';
-import { composer } from './composition.js';
+import { composer, tableauDe } from './composition.js';
+import { nettoyerVue, peutCocher } from './vueStatistiques.js';
+import { jeuMarges } from '../comptabilite/jeuMarges.mjs';
+import { buildProduitIndex } from '../../services/prixResolution.js';
+import { chiffrerCarte, chiffrerFiche } from '../../utils/chiffrage.js';
 import { jeuInventaires } from '../inventaire/jeuInventaires.mjs';
 import { valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { totauxFactures } from '../inventaire/facturesLogic.js';
@@ -392,6 +396,66 @@ test("prix d'un produit : dernier prix facturé (achats) et dernier relevé (cat
   assert.equal(cat.valeur(luc.total, 'p1'), derniers[derniers.length - 1].prixUnitaire);
 });
 
+// ── Valeurs d'aujourd'hui : Marges et Chiffrage (socle S-c) ──
+test("marges et chiffrage : chaque ligne et l'ensemble sont ceux des écrans d'origine, la période ne compte pas", () => {
+  const j = jeuMarges();
+  const index = buildProduitIndex(j.produits);
+  const recettesParId = new Map(j.recettes.map((r) => [r.id, r]));
+  const sur = (id, ctx) => lire(id, j, '2026-01-01', '2026-12-31', 'mois', ctx);
+  // Marges, carte de midi (patron) : chiffrerCarte des plats actifs de la carte.
+  const lu = sur('marges', { role: 'patron' });
+  const attendu = chiffrerCarte(j.plats.filter((p) => p.actif !== false && p.carteIds.includes('c-midi')), recettesParId, index);
+  const carte = (id) => mesure(id).lignes(lu.total, 'c-midi');
+  assert.deepEqual(carte('marges.carte_prix').map((l) => l.valeur), attendu.plats.map((l) => l.prix));
+  assert.deepEqual(carte('marges.carte_cout').map((l) => l.valeur), attendu.plats.map((l) => l.cout));
+  assert.deepEqual(carte('marges.carte_food_cost').map((l) => l.valeur), attendu.plats.map((l) => (l.foodCost == null ? null : l.foodCost / 100)));
+  assert.deepEqual(carte('marges.carte_marge').map((l) => l.valeur), attendu.plats.map((l) => l.marge));
+  assert.equal(mesure('marges.carte_marge').total(lu.total, 'c-midi'), attendu.marge);
+  assert.equal(mesure('marges.carte_food_cost').total(lu.total, 'c-midi'), attendu.foodCost / 100);
+  // La carte cachée n'existe que pour le consultant.
+  assert.deepEqual(mesure('marges.carte_prix').choix.options(lu.total).map((o) => o.cle), ['c-midi']);
+  assert.deepEqual(mesure('marges.carte_prix').choix.options(sur('marges', { role: 'consultant' }).total).map((o) => o.cle), ['c-midi', 'c-test']);
+  // Onglet Fiches : fiches non archivées avec un prix.
+  const fiches = mesure('marges.fiche_food_cost').lignes(lu.total);
+  assert.deepEqual(fiches.map((l) => l.cle), ['r-boeuf', 'r-risotto', 'r-saumon', 'r-tarte']);
+  fiches.forEach((l) => assert.equal(l.valeur, chiffrerFiche(recettesParId.get(l.cle), index).foodCost / 100, l.cle));
+  // Chiffrage : toutes les fiches non archivées, sans prix comprises (n/a, jamais 0).
+  const luc = sur('chiffrage', { role: 'consultant' });
+  const cout = mesure('chiffrage.cout_matiere').lignes(luc.total);
+  assert.equal(cout.length, 6);
+  cout.forEach((l) => assert.equal(l.valeur, chiffrerFiche(recettesParId.get(l.cle), index).coutMatiere, l.cle));
+  assert.equal(mesure('chiffrage.marge').lignes(luc.total).find((l) => l.cle === 'r-gratin').valeur, null);
+  assert.equal(mesure('chiffrage.food_cost').lignes(luc.total).find((l) => l.cle === 'r-gratin').valeur, null);
+  // Composition : les plats sont l'axe, les mesures des barres, aucune comparaison.
+  const mesures = ['marges.carte_prix', 'marges.carte_cout', 'marges.carte_food_cost'].map(mesure);
+  const sources = { points: { marges: lu.points }, totaux: { marges: lu.total }, pointsComparaison: { marges: lu.points }, totauxComparaison: { marges: lu.total } };
+  const c = composer({ graphique: { mesures: mesures.map((m) => m.id), choix: {} }, mesures, tranches: lu.tranches, tranchesComparaison: lu.tranches, sources, etats: { marges: 'ready' }, familles: FAMILLES });
+  assert.equal(c.etat, true);
+  assert.deepEqual(c.types, ['barres']);
+  assert.equal(c.comparaison, false);
+  assert.deepEqual(c.tranches.map((t) => t.cle), ['pl-boeuf', 'pl-risotto', 'pl-saumon', 'pl-nouveau']);
+  assert.equal(c.series.length, 3);
+  assert.deepEqual(c.unites, ['chf', 'pct']);
+  assert.equal(c.choix.length, 1, 'un seul sélecteur de carte pour les trois mesures');
+  const tab = tableauDe(c, c.tranches);
+  assert.equal(tab.etat, true);
+  assert.equal(tab.libelleTotal, 'Un plat de chaque');
+  assert.equal(tab.periode.valeurs[1], attendu.cout);
+  assert.equal(tab.lignes[3].valeurs[0], 25);
+  assert.equal(tab.lignes[3].valeurs[1], null, 'plat sans fiche : n/a');
+});
+
+test("socle S-c : une valeur d'aujourd'hui ne se coche pas avec un chiffre dans le temps ni d'autres catégories, le choix de carte se garde", () => {
+  const m = (id) => mesure(id);
+  assert.equal(peutCocher([m('pertes.valeur')], m('marges.carte_prix')).raison, 'etat');
+  assert.equal(peutCocher([m('marges.carte_prix')], m('pertes.valeur')).raison, 'etat');
+  assert.equal(peutCocher([m('marges.carte_prix')], m('marges.fiche_prix')).raison, 'etat');
+  assert.equal(peutCocher([m('marges.carte_prix')], m('marges.carte_marge')).ok, true);
+  const visibles = MESURES.filter((x) => x.famille === 'marges');
+  const v = nettoyerVue({ periode: { id: 'mois' }, pas: 'jour', comparaison: '', graphiques: [{ mesures: ['marges.carte_prix', 'marges.carte_marge'], choix: { marges_carte: 'c-test' } }] }, visibles, AUJ);
+  assert.deepEqual(v.graphiques[0].choix, { marges_carte: 'c-test' });
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
@@ -411,4 +475,6 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('activites'), 2);
   assert.equal(compte('etages'), 3);
   assert.equal(compte('catalogue'), 1);
+  assert.equal(compte('marges'), 8);
+  assert.equal(compte('chiffrage'), 5);
 });

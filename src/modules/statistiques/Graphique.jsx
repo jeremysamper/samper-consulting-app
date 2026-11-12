@@ -157,7 +157,15 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
               <path d={chemin(s, s.valeurs)} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: couleurSerie(s.rang), strokeWidth: 2.2, strokeLinejoin: 'round' }} />
             </g>
           ))}
-          {type === 'barres' && colonnes.map((c, i) => c.barres.slice(0, 1).map(({ s, v, avant }) => {
+          {/* Plusieurs mesures en barres : seules les valeurs d'aujourd'hui le permettent
+              (typesValides) ; une barre par mesure, côte à côte dans la colonne. */}
+          {type === 'barres' && genre === 'temps' && series.length > 1 && colonnes.map((c, i) => c.barres.map(({ s, v }, k) => {
+            const yy = y(s, v);
+            const z = zero(s);
+            const w = 7 / c.barres.length;
+            return yy != null ? <rect key={`${c.cle}-${s.id}`} x={i * 10 + 1.5 + k * w} width={w * 0.86} y={Math.min(yy, z)} height={Math.abs(z - yy)} rx={0.4} style={{ fill: couleurSerie(s.rang) }} /> : null;
+          }))}
+          {type === 'barres' && !(genre === 'temps' && series.length > 1) && colonnes.map((c, i) => c.barres.slice(0, 1).map(({ s, v, avant }) => {
             const yy = y(s, v);
             const z = zero(s);
             const ya = comparaison || genre !== 'temps' ? y(s, avant) : null;

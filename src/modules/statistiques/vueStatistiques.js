@@ -87,10 +87,13 @@ export function unitesDe(mesures) {
 }
 
 // Peut-on cocher cette mesure dans ce graphique ? → { ok, raison }
-//   raison : 'series' (six séries déjà) ou 'unites' (une troisième unité).
+//   raison : 'series' (six séries déjà), 'unites' (une troisième unité) ou
+//   'etat' (une valeur d'aujourd'hui avec des chiffres dans le temps, ou des
+//   valeurs d'aujourd'hui qui n'ont pas les mêmes catégories).
 export function peutCocher(mesuresCochees, mesure) {
   const liste = mesuresCochees || [];
   if (liste.some((m) => m.id === mesure.id)) return { ok: true, raison: null };
+  if (liste.length && liste.some((m) => (m.nature === 'etat') !== (mesure.nature === 'etat') || (m.nature === 'etat' && m.categories !== mesure.categories))) return { ok: false, raison: 'etat' };
   if (liste.length >= MAX_SERIES) return { ok: false, raison: 'series' };
   const unites = unitesDe(liste);
   if (!unites.includes(mesure.unite) && unites.length >= MAX_UNITES) return { ok: false, raison: 'unites' };
@@ -124,7 +127,7 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
     // Choix d'une mesure à choix (zone, produit) : une clé texte par mesure
     // cochée ; une clé qui n'existe plus retombe sur la première option.
     const choix = {};
-    gardees.filter((m) => m.choix && typeof g?.choix?.[m.id] === 'string').forEach((m) => { choix[m.id] = g.choix[m.id]; });
+    gardees.filter((m) => m.choix).forEach((m) => { const cle = m.choix.cle || m.id; if (typeof g?.choix?.[cle] === 'string') choix[cle] = g.choix[cle]; });
     return { mesures: gardees.map((m) => m.id), ventilation, type, choix };
   });
   if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison };
@@ -137,7 +140,9 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
 // temps. La personne peut passer de l'un à l'autre quand deux sont valides.
 // Une ventilation d'un taux ou d'un relevé (cumulable faux) ne s'empile pas :
 // une courbe par catégorie, ou ses barres sur la période.
-export function typesValides({ nbTranches, nbSeries, ventilation, cumulable = true }) {
+export function typesValides({ nbTranches, nbSeries, ventilation, cumulable = true, etat = false }) {
+  // Valeurs d'aujourd'hui : des barres par catégorie, groupées par mesure.
+  if (etat) return ['barres'];
   if (ventilation && !cumulable) return nbTranches > 1 ? ['courbe', 'barres'] : ['barres'];
   if (ventilation) return nbTranches > 1 ? ['empile', 'barres'] : ['barres'];
   if (nbTranches <= 1) return ['barres'];

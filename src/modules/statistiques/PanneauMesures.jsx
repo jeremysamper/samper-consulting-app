@@ -35,9 +35,10 @@ export default function PanneauMesures({ familles, mesures, cochees, onChange, o
     <div data-stat-cases="">
       {refus ? (
         <div style={st.refus} role="status">
+          {refus === 'etat' ? <span>Une valeur d'aujourd'hui ne se trace qu'avec des valeurs d'aujourd'hui des mêmes plats ou fiches.</span> : null}
           {refus === 'series'
             ? <span><span>Un graphique porte</span> <span data-no-translate>{MAX_SERIES}</span> <span>séries au plus.</span></span>
-            : <span><span>Un graphique porte</span> <span data-no-translate>{MAX_UNITES}</span> <span>unités au plus, une par axe.</span></span>}
+            : refus === 'etat' ? null : <span><span>Un graphique porte</span> <span data-no-translate>{MAX_UNITES}</span> <span>unités au plus, une par axe.</span></span>}
           {peutAjouter ? <Btn variant="ghost" onClick={() => { setRefus(null); onAjouterGraphique(); }} style={{ minHeight: 44, alignSelf: 'flex-start' }}>Ajouter un graphique à côté</Btn> : null}
         </div>
       ) : null}

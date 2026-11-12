@@ -24,7 +24,7 @@ const st = {
   note: { fontSize: 12, color: 'var(--text2)', marginTop: 6 },
 };
 
-const NATURE = { flux: 'total', taux: 'recalculé sur la période', stock: 'dernier relevé' };
+const NATURE = { flux: 'total', taux: 'recalculé sur la période', stock: 'dernier relevé', etat: "valeur d'aujourd'hui" };
 
 function Ecart({ e, unite }) {
   if (!e || e.valeur == null) return <span style={st.avant}><span>écart :</span> <span>n/a</span></span>;
@@ -47,7 +47,7 @@ export default function TableauValeurs({ tableau, libelleComparaison }) {
         <table style={st.table}>
           <thead>
             <tr>
-              <th className="stat-th stat-collee" style={{ ...st.th, ...st.thPeriode }}>Période</th>
+              <th className="stat-th stat-collee" style={{ ...st.th, ...st.thPeriode }}>{tableau.libelleCategories || 'Période'}</th>
               {colonnes.map((c) => (
                 <th key={c.id} className="stat-th" style={st.th}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
@@ -71,7 +71,7 @@ export default function TableauValeurs({ tableau, libelleComparaison }) {
               </tr>
             ))}
             <tr data-stat-periode="">
-              <td className="stat-collee" style={{ ...st.td, ...st.tdPeriode, ...st.pied, fontFamily: 'var(--font)' }}>Période entière</td>
+              <td className="stat-collee" style={{ ...st.td, ...st.tdPeriode, ...st.pied, fontFamily: 'var(--font)' }}>{tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière'}</td>
               {colonnes.map((c, i) => (
                 <td key={c.id} style={{ ...st.td, ...st.pied }}>
                   <Valeur v={periode.valeurs[i]} unite={c.unite} />

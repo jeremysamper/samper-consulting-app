@@ -19,12 +19,15 @@ const AUTRES = '__autres__';
 // Mesure à choix (une zone, un produit) : les options se lisent sur le point
 // de la période entière ; le choix retenu par le graphique, sinon la première.
 //   → { mesure, libelle, options: [{ cle, libelle }], valeur } ou null
+// Des mesures d'un même objet (la carte des Marges) partagent leur choix par
+// `choix.cle` : un seul sélecteur, une seule clé dans la vue.
+export const cleChoix = (m) => (m.choix ? m.choix.cle || m.id : null);
 export function choixDe(m, total, graphique) {
   if (!m.choix) return null;
   const options = total ? m.choix.options(total) || [] : [];
-  const voulu = graphique?.choix?.[m.id];
+  const voulu = graphique?.choix?.[cleChoix(m)];
   const retenue = options.find((o) => o.cle === voulu) || options[0] || null;
-  return { mesure: m.id, libelle: m.choix.libelle, options, valeur: retenue ? retenue.cle : null, option: retenue };
+  return { mesure: m.id, cle: cleChoix(m), libelle: m.choix.libelle, options, valeur: retenue ? retenue.cle : null, option: retenue };
 }
 
 // Séries d'une mesure sans ventilation. Une mesure à choix trace l'option
@@ -123,6 +126,61 @@ function echelleAxe(series, mode) {
   return echelleDe(series.flatMap((s) => [...s.valeurs, ...(s.comparaison || [])]));
 }
 
+// Valeurs d'aujourd'hui (nature état) : les catégories de la première mesure
+// cochée (les plats d'une carte, des fiches) prennent la place des tranches,
+// chaque mesure est une série de barres ; aucune comparaison, la période ne
+// s'applique pas. Chaque mesure état déclare `categories` (le genre de ses
+// catégories), `lignes(point, choix)` → [{ cle, libelle, valeur }] et, s'il
+// existe, `total(point, choix)` (la ligne d'ensemble de l'écran d'origine).
+function composerEtat({ graphique, cochees, sources, etats, familles }) {
+  const idsFamilles = [...new Set(cochees.map((m) => m.famille))];
+  const enAttente = idsFamilles.filter((f) => etats[f] === 'loading' || (etats[f] !== 'error' && !sources.totaux?.[f]));
+  const nonLues = idsFamilles.filter((f) => etats[f] === 'error');
+  const lues = cochees.filter((m) => sources.totaux?.[m.famille] && etats[m.famille] !== 'error');
+  const premiere = lues[0] || null;
+  const lignesDe = (m) => { const point = sources.totaux[m.famille]; const ch = choixDe(m, point, graphique); return { point, ch, lignes: m.lignes(point, ch?.valeur) || [] }; };
+  const base = premiere ? lignesDe(premiere) : null;
+  const tranches = base ? base.lignes.map((l) => ({ cle: l.cle, pas: 'categorie', libelle: String(l.libelle || ''), debut: '', fin: '', complet: true })) : [];
+  let series = lues.map((m) => {
+    const { point, ch, lignes } = lignesDe(m);
+    const parCle = new Map(lignes.map((l) => [l.cle, l.valeur]));
+    return {
+      id: m.id, mesure: m.id, libelle: m.libelle, unite: m.unite, nature: 'etat',
+      valeurs: tranches.map((t) => (estNombre(parCle.get(t.cle)) ? parCle.get(t.cle) : null)), comparaison: null,
+      total: m.total ? m.total(point, ch?.valeur) ?? null : null, totalComparaison: null, ecartTotal: null, arrondi: null,
+    };
+  });
+  const unites = unitesDe(series);
+  series = series.map((x, i) => ({ ...x, rang: i, axe: unites.indexOf(x.unite) === 1 ? 'd' : 'g' }));
+  const vus = new Set();
+  const choix = lues.filter((m) => m.choix).map((m) => choixDe(m, sources.totaux[m.famille], graphique))
+    .filter((c) => (vus.has(c.cle) ? false : vus.add(c.cle)));
+  return {
+    type: 'barres',
+    types: ['barres'],
+    series,
+    unites,
+    echelles: {
+      g: echelleAxe(series.filter((x) => x.axe === 'g'), 'valeurs'),
+      d: unites.length > 1 ? echelleAxe(series.filter((x) => x.axe === 'd'), 'valeurs') : null,
+    },
+    ventilation: null,
+    nonTracees: 0,
+    ventilationsDisponibles: null,
+    comparaison: false,
+    enAttente,
+    nonLues,
+    journees: [],
+    phrases: cochees.map((m) => ({ id: m.id, libelle: m.libelle, phrase: m.phrase })),
+    choix,
+    vide: !cochees.length,
+    etat: true,
+    tranches,
+    libelleCategories: premiere?.libelleCategories || '',
+    libelleTotal: premiere?.libelleTotal || '',
+  };
+}
+
 //   graphique : { mesures: [ids], ventilation, type }
 //   mesures   : les mesures cochées et visibles, dans l'ordre des cases
 //   tranches, tranchesComparaison
@@ -134,6 +192,7 @@ function echelleAxe(series, mode) {
 //     phrases, choix, ventilation, vide }
 export function composer({ graphique, mesures, tranches, tranchesComparaison = null, sources, etats = {}, familles = [] }) {
   const cochees = mesures || [];
+  if (cochees.length && cochees[0].nature === 'etat') return composerEtat({ graphique, cochees, sources, etats, familles });
   const familleDe = (id) => familles.find((f) => f.id === id);
   const idsFamilles = [...new Set(cochees.map((m) => m.famille))];
   const enAttente = idsFamilles.filter((f) => etats[f] === 'loading' || (etats[f] !== 'error' && !sources.points[f]));
@@ -208,5 +267,8 @@ export function tableauDe(composition, tranches) {
     },
     arrondis: series.filter((s) => estNombre(s.arrondi) && s.arrondi !== 0).map((s) => ({ id: s.id, libelle: s.libelle, unite: s.unite, ecart: s.arrondi })),
     avecComparaison: series.some((s) => s.comparaison) || series.some((s) => s.totalComparaison != null),
+    etat: !!composition.etat,
+    libelleCategories: composition.libelleCategories || '',
+    libelleTotal: composition.libelleTotal || '',
   };
 }

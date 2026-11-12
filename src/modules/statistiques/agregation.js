@@ -16,7 +16,10 @@
 //   taux  : se recalcule sur la tranche par la fonction d'origine (numérateur
 //           et dénominateur sommés), ne se moyenne jamais ;
 //   stock : relevé à une date, ne s'additionne pas ; la période vaut son
-//           dernier relevé.
+//           dernier relevé ;
+//   etat  : valeur d'aujourd'hui, sans série (marges et coûts des plats) : la
+//           période et le pas ne s'appliquent pas ; ses catégories (plats,
+//           fiches) prennent la place des tranches.
 // Une valeur absente vaut null (« n/a »), jamais 0.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -28,7 +31,7 @@ export const PAS = [
   { id: 'semaine', label: 'Semaine' },
   { id: 'mois', label: 'Mois' },
 ];
-export const NATURES = ['flux', 'taux', 'stock'];
+export const NATURES = ['flux', 'taux', 'stock', 'etat'];
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const pad = (n) => String(n).padStart(2, '0');
@@ -87,6 +90,9 @@ const dateCh = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4
 // « S46 2026 », « 11.2026 ». `court` pour l'axe : « 11.11 », « S46 », « 11.26 ».
 export function libelleTranche(t, { court = false } = {}) {
   if (!t) return '';
+  // Une catégorie d'une valeur d'aujourd'hui (un plat, une fiche) : son nom,
+  // abrégé sur l'axe.
+  if (t.pas === 'categorie') return court && t.libelle.length > 12 ? `${t.libelle.slice(0, 11)}…` : t.libelle;
   if (t.pas === 'semaine') {
     const { annee, semaine } = semaineIso(t.cle);
     return court ? `S${pad(semaine)}` : `S${pad(semaine)} ${annee}`;
@@ -99,6 +105,7 @@ export function libelleTranche(t, { court = false } = {}) {
 // Bornes exactes d'une tranche, pour le détail : « 09.11.2026 → 15.11.2026 ».
 export function bornesTranche(t) {
   if (!t) return '';
+  if (t.pas === 'categorie') return t.libelle;
   return t.debut === t.fin ? dateCh(t.debut) : `${dateCh(t.debut)} → ${dateCh(t.fin)}`;
 }
 

@@ -13,7 +13,7 @@ import { libelleUnite, valeurTableur } from './echelles.js';
 const T = (titre, largeur = 18) => ({ titre, largeur });
 const N = (titre, largeur = 16) => ({ titre, largeur, montant: true });
 const rang = (cellules, fort = false) => ({ cellules, fort });
-const LIBELLE_NATURE = { flux: 'total', taux: 'recalculé sur la période', stock: 'dernier relevé' };
+const LIBELLE_NATURE = { flux: 'total', taux: 'recalculé sur la période', stock: 'dernier relevé', etat: "valeur d'aujourd'hui" };
 
 const titreColonne = (c) => `${c.libelle}${libelleUnite(c.unite) ? ` (${libelleUnite(c.unite)})` : ''}`;
 
@@ -36,7 +36,7 @@ export function feuilleDe(tableau, { nom, libelleComparaison = '' }) {
     return rang(cellules, fort);
   };
   const rangs = tableau.lignes.map((l) => ligneDe(libelleTranche(l.tranche), bornesTranche(l.tranche), l.valeurs, l.avant, false));
-  rangs.push(ligneDe('Période entière', tableau.colonnes.map((c) => LIBELLE_NATURE[c.nature]).filter((v, i, a) => a.indexOf(v) === i).join(', '), tableau.periode.valeurs, tableau.periode.avant, true));
+  rangs.push(ligneDe(tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière', tableau.colonnes.map((c) => LIBELLE_NATURE[c.nature]).filter((v, i, a) => a.indexOf(v) === i).join(', '), tableau.periode.valeurs, tableau.periode.avant, true));
   if (tableau.arrondis.length) {
     rangs.push(rang([]));
     tableau.arrondis.forEach((a) => rangs.push(rang([`Arrondi, ${a.libelle}`, `la somme des lignes diffère du total de ${a.ecart.toFixed(2)}`])));
