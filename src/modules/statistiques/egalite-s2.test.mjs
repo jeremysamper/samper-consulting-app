@@ -11,6 +11,8 @@ import { sommeFlux, trancheEntiere, tranchesDe } from './agregation.js';
 import { jeuPertes } from '../pertes/jeuPertes.mjs';
 import { jeuHoraires } from '../planning/jeuHoraires.mjs';
 import { calcHeures, heuresFaites, retardsDe, soldeMois } from '../planning/soldesHeures.js';
+import { jeuReleves, ZONES } from '../haccp/jeuReleves.mjs';
+import { composer } from './composition.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -92,8 +94,39 @@ test('planning : chaque flux fait le total, égal à la grille, au relevé et au
   assert.equal(mesure('planning.heures_prevues').valeur(vide), null);
 });
 
+// ── HACCP ──
+test('haccp : relevés et anomalies font le total du registre, le taux est le sien, la température suit la zone choisie', () => {
+  const releves = jeuReleves();
+  const donnees = { releves, zones: ZONES };
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('haccp', lire('haccp', donnees, '2026-10-01', '2026-10-31', pas)));
+  const oct = releves.filter((r) => r.date.startsWith('2026-10'));
+  const lu = lire('haccp', donnees, '2026-10-01', '2026-10-31', 'semaine');
+  const anomalies = oct.filter((r) => !r.conforme).length;
+  assert.equal(mesure('haccp.releves').valeur(lu.total), oct.length);
+  assert.equal(mesure('haccp.anomalies').valeur(lu.total), anomalies);
+  assert.equal(Math.round(mesure('haccp.conformite').valeur(lu.total) * 100), Math.round((oct.length - anomalies) / oct.length * 100));
+  // Température : la zone choisie, sinon la première par nom ; la période
+  // vaut le dernier relevé, jamais une somme.
+  const temp = mesure('haccp.temperature');
+  const sources = { points: { haccp: lu.points }, totaux: { haccp: lu.total } };
+  const c1 = composer({ graphique: { mesures: [temp.id], choix: {} }, mesures: [temp], tranches: lu.tranches, sources, etats: { haccp: 'ready' }, familles: FAMILLES });
+  assert.equal(c1.series[0].libelle, 'Chambre froide');
+  assert.equal(c1.series[0].donnee, true);
+  assert.deepEqual(c1.choix[0].options.map((o) => o.cle), ['z1', 'z2']);
+  const dernier = oct.filter((r) => r.zoneId === 'z2').sort((a, b) => (a.date + a.heure).localeCompare(b.date + b.heure)).pop();
+  const c2 = composer({ graphique: { mesures: [temp.id], choix: { [temp.id]: 'z2' } }, mesures: [temp], tranches: lu.tranches, sources, etats: { haccp: 'ready' }, familles: FAMILLES });
+  assert.equal(c2.series[0].libelle, 'Congélateur');
+  assert.equal(c2.series[0].total, dernier.valeur);
+  const c3 = composer({ graphique: { mesures: [temp.id], choix: { [temp.id]: 'zone-disparue' } }, mesures: [temp], tranches: lu.tranches, sources, etats: { haccp: 'ready' }, familles: FAMILLES });
+  assert.equal(c3.choix[0].valeur, 'z1');
+  const [vide] = lire('haccp', donnees, '2025-01-01', '2025-01-01', 'jour').points;
+  assert.equal(mesure('haccp.releves').valeur(vide), null);
+  assert.equal(mesure('haccp.conformite').valeur(vide), null);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
   assert.equal(compte('planning'), 6);
+  assert.equal(compte('haccp'), 4);
 });

@@ -4420,4 +4420,14 @@ export const UI_GLOSSARY_ES = {
   "Somme des minutes de retard au-delà de la tolérance de cinq minutes.": "Suma de los minutos de retraso más allá de la tolerancia de cinco minutos.",
   "Heures pointées moins heures dues selon le contrat, absences créditées déduites ; n/a sans contrat sur la période. Réservé à la direction.": "Horas fichadas menos horas debidas según el contrato, ausencias acreditadas descontadas; n/a sin contrato en el periodo. Reservado a la dirección.",
   "Jours couverts par une absence saisie au planning, par personne et par jour, tous motifs.": "Días cubiertos por una ausencia registrada en la planificación, por persona y por día, todos los motivos.",
+  // ── Statistiques (S2) : HACCP ──
+  "Relevés de température": "Registros de temperatura",
+  "Relevés hors plage": "Registros fuera de rango",
+  "Taux de conformité": "Tasa de conformidad",
+  "Température d'une zone": "Temperatura de una zona",
+  "la date du relevé": "la fecha del registro",
+  "Nombre de relevés de température enregistrés, toutes zones.": "Número de registros de temperatura guardados, todas las zonas.",
+  "Relevés marqués non conformes à la saisie : la valeur sortait de la plage de la zone.": "Registros marcados como no conformes al introducirlos: el valor salía del rango de la zona.",
+  "Relevés conformes divisés par tous les relevés, comme les chiffres du registre ; recalculé sur chaque pas.": "Registros conformes divididos por todos los registros, como las cifras del registro; recalculado en cada paso.",
+  "Dernière température relevée dans la zone choisie, sur chaque pas ; un relevé ne s'additionne pas.": "Última temperatura registrada en la zona elegida, en cada paso; un registro no se suma.",
 };

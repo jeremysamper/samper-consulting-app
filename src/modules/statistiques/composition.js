@@ -16,18 +16,32 @@ import { MAX_SERIES, typeRetenu, typesValides, unitesDe } from './vueStatistique
 const estNombre = (v) => typeof v === 'number' && Number.isFinite(v);
 const AUTRES = '__autres__';
 
-// Séries d'une mesure sans ventilation.
-function serieDeMesure(m, sources) {
+// Mesure à choix (une zone, un produit) : les options se lisent sur le point
+// de la période entière ; le choix retenu par le graphique, sinon la première.
+//   → { mesure, libelle, options: [{ cle, libelle }], valeur } ou null
+export function choixDe(m, total, graphique) {
+  if (!m.choix) return null;
+  const options = total ? m.choix.options(total) || [] : [];
+  const voulu = graphique?.choix?.[m.id];
+  const retenue = options.find((o) => o.cle === voulu) || options[0] || null;
+  return { mesure: m.id, libelle: m.choix.libelle, options, valeur: retenue ? retenue.cle : null, option: retenue };
+}
+
+// Séries d'une mesure sans ventilation. Une mesure à choix trace l'option
+// retenue, sous son nom (une donnée, jamais traduite).
+function serieDeMesure(m, sources, graphique) {
   const points = sources.points[m.famille];
   const total = sources.totaux[m.famille];
   const avant = sources.pointsComparaison?.[m.famille];
   const totalAvant = sources.totauxComparaison?.[m.famille];
-  const valeurs = points.map((p) => m.valeur(p));
-  const comparaison = avant ? avant.map((p) => m.valeur(p)) : null;
-  const surPeriode = valeurPeriode(m.nature, { surPeriode: total ? m.valeur(total) : null, valeurs });
-  const surPeriodeAvant = avant ? valeurPeriode(m.nature, { surPeriode: totalAvant ? m.valeur(totalAvant) : null, valeurs: comparaison }) : null;
+  const choix = choixDe(m, total, graphique);
+  const lire = (p) => (choix ? (choix.valeur == null ? null : m.valeur(p, choix.valeur)) : m.valeur(p));
+  const valeurs = points.map(lire);
+  const comparaison = avant ? avant.map(lire) : null;
+  const surPeriode = valeurPeriode(m.nature, { surPeriode: total ? lire(total) : null, valeurs });
+  const surPeriodeAvant = avant ? valeurPeriode(m.nature, { surPeriode: totalAvant ? lire(totalAvant) : null, valeurs: comparaison }) : null;
   return {
-    id: m.id, mesure: m.id, libelle: m.libelle, unite: m.unite, nature: m.nature,
+    id: m.id, mesure: m.id, libelle: choix?.option ? choix.option.libelle : m.libelle, donnee: !!choix?.option, unite: m.unite, nature: m.nature,
     valeurs, comparaison, total: surPeriode, totalComparaison: surPeriodeAvant,
     ecartTotal: avant ? ecartDe(surPeriode, surPeriodeAvant) : null,
     arrondi: m.nature === 'flux' ? ecartArrondi(valeurs, surPeriode) : null,
@@ -100,7 +114,7 @@ function echelleAxe(series, mode) {
 //   etats     : { famille: 'loading' | 'ready' | 'error' }
 //   familles  : les familles du catalogue (libellé, journée)
 // → { type, types, series, unites, echelles, enAttente, nonLues, journees,
-//     phrases, ventilation, vide }
+//     phrases, choix, ventilation, vide }
 export function composer({ graphique, mesures, tranches, tranchesComparaison = null, sources, etats = {}, familles = [] }) {
   const cochees = mesures || [];
   const familleDe = (id) => familles.find((f) => f.id === id);
@@ -116,7 +130,7 @@ export function composer({ graphique, mesures, tranches, tranchesComparaison = n
 
   let series = [];
   if (ventilation && lues.length) series = seriesVentilees(seule, ventilation, sources).map((s) => ({ ...s, ventile: true }));
-  else series = lues.map((m) => serieDeMesure(m, src));
+  else series = lues.map((m) => serieDeMesure(m, src, graphique));
 
   const unites = unitesDe(series);
   series = series.map((s, i) => ({ ...s, rang: i, axe: unites.indexOf(s.unite) === 1 ? 'd' : 'g' }));
@@ -141,6 +155,7 @@ export function composer({ graphique, mesures, tranches, tranchesComparaison = n
     nonLues,
     journees,
     phrases: cochees.map((m) => ({ id: m.id, libelle: m.libelle, phrase: m.phrase })),
+    choix: ventilation ? [] : lues.filter((m) => m.choix).map((m) => choixDe(m, sources.totaux[m.famille], graphique)),
     vide: !cochees.length,
   };
 }

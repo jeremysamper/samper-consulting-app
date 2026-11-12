@@ -63,7 +63,7 @@ export function bornesDeComparaison(bornes, mode) {
   return bornesComparaison(bornes, mode);
 }
 
-const graphiqueVide = () => ({ mesures: [], ventilation: '', type: '' });
+const graphiqueVide = () => ({ mesures: [], ventilation: '', type: '', choix: {} });
 
 // Première ouverture (D13) : la première mesure visible, sur 30 jours.
 export function vueParDefaut(mesuresVisibles = []) {
@@ -118,7 +118,11 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
     const seule = gardees.length === 1 ? gardees[0] : null;
     const ventilation = seule && (seule.ventilations || []).some((v) => v.id === g.ventilation) ? g.ventilation : '';
     const type = ['courbe', 'barres', 'empile'].includes(g?.type) ? g.type : '';
-    return { mesures: gardees.map((m) => m.id), ventilation, type };
+    // Choix d'une mesure à choix (zone, produit) : une clé texte par mesure
+    // cochée ; une clé qui n'existe plus retombe sur la première option.
+    const choix = {};
+    gardees.filter((m) => m.choix && typeof g?.choix?.[m.id] === 'string').forEach((m) => { choix[m.id] = g.choix[m.id]; });
+    return { mesures: gardees.map((m) => m.id), ventilation, type, choix };
   });
   if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison };
   return { periode, pas, comparaison, graphiques };
@@ -149,7 +153,7 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
   if (!ids.length && demande.famille) ids = visibles.filter((m) => m.famille === demande.famille).slice(0, 1).map((m) => m.id);
   if (!ids.length) return null;
   const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
-  return nettoyerVue({ periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', graphiques: [{ mesures: ids, ventilation: demande.ventilation || '', type: '' }] }, visibles, aujourdhui);
+  return nettoyerVue({ periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', graphiques: [{ mesures: ids, ventilation: demande.ventilation || '', type: '', choix: demande.choix || {} }] }, visibles, aujourdhui);
 }
 
 export const ajouterGraphique = (vue) => (vue.graphiques.length >= MAX_GRAPHIQUES ? vue : { ...vue, graphiques: [...vue.graphiques, graphiqueVide()] });

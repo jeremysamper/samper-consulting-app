@@ -4439,6 +4439,16 @@ export const UI_GLOSSARY = {
   "Somme des minutes de retard au-delà de la tolérance de cinq minutes.": "Total minutes late beyond the five-minute tolerance.",
   "Heures pointées moins heures dues selon le contrat, absences créditées déduites ; n/a sans contrat sur la période. Réservé à la direction.": "Clocked hours less hours due under the contract, credited absences deducted; n/a without a contract over the period. Management only.",
   "Jours couverts par une absence saisie au planning, par personne et par jour, tous motifs.": "Days covered by an absence entered in the planning, per person and per day, all reasons.",
+  // ── Statistiques (S2) : HACCP ──
+  "Relevés de température": "Temperature readings",
+  "Relevés hors plage": "Readings out of range",
+  "Taux de conformité": "Compliance rate",
+  "Température d'une zone": "Temperature of a zone",
+  "la date du relevé": "the date of the reading",
+  "Nombre de relevés de température enregistrés, toutes zones.": "Number of temperature readings recorded, all zones.",
+  "Relevés marqués non conformes à la saisie : la valeur sortait de la plage de la zone.": "Readings marked non-compliant when entered: the value was outside the zone range.",
+  "Relevés conformes divisés par tous les relevés, comme les chiffres du registre ; recalculé sur chaque pas.": "Compliant readings divided by all readings, like the log figures; recalculated on each step.",
+  "Dernière température relevée dans la zone choisie, sur chaque pas ; un relevé ne s'additionne pas.": "Last temperature read in the chosen zone, on each step; a reading is not added up.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

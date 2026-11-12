@@ -105,6 +105,18 @@ export const LECTURES = {
       return { shifts, absences, contrats, noms };
     },
   },
+  // HACCP : l'écran HACCP, tous les relevés de l'établissement (sans fenêtre,
+  // comme l'écran) et ses zones (nom de la zone choisie).
+  haccp: {
+    sansFenetre: true,
+    visible: (ctx) => ecranOuvert('haccp', ctx),
+    async lire(etabId) {
+      const db = dbService.getBridge()?.db;
+      if (!db) throw echec(null, 'Lecture indisponible.');
+      const [releves, zones] = await Promise.all([db.listHaccpReleves(etabId, { strict: true }), db.listHaccpZones(etabId, { strict: true })]);
+      return { releves, zones };
+    },
+  },
 };
 
 export const famillesVisibles = (contexte) => Object.keys(LECTURES).filter((id) => LECTURES[id].visible(contexte));

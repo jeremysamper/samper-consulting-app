@@ -163,6 +163,11 @@ function CarteGraphique({
             {ventilations.map((v) => <option key={v.id} value={v.id}>{v.libelle}</option>)}
           </select>
         ) : null}
+        {(composition.choix || []).filter((c) => c.options.length).map((c) => (
+          <select key={c.mesure} style={st.select} value={c.valeur || ''} onChange={(e) => onChange({ choix: { ...(graphique.choix || {}), [c.mesure]: e.target.value } })} aria-label={c.libelle} data-stat-choix={c.mesure}>
+            {c.options.map((o) => <option key={o.cle} value={o.cle} data-no-translate>{o.libelle}</option>)}
+          </select>
+        ))}
         {composition.types.length > 1 ? (
           <SegmentedTabs tabs={composition.types.map((t) => ({ id: t, label: LIBELLE_TYPE[t] }))} active={composition.type} onChange={(type) => onChange({ type })} />
         ) : null}

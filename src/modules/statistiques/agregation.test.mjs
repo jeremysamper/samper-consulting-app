@@ -184,7 +184,7 @@ test('lisibilité : deux unités et six séries au plus par graphique', () => {
 });
 
 test('vue par défaut : la première mesure visible, sur 30 jours, au pas jour', () => {
-  assert.deepEqual(vueParDefaut(visibles), { periode: { id: '30j' }, pas: 'jour', comparaison: '', graphiques: [{ mesures: ['a'], ventilation: '', type: '' }] });
+  assert.deepEqual(vueParDefaut(visibles), { periode: { id: '30j' }, pas: 'jour', comparaison: '', graphiques: [{ mesures: ['a'], ventilation: '', type: '', choix: {} }] });
   assert.deepEqual(vueParDefaut([]).graphiques[0].mesures, []);
 });
 
@@ -204,7 +204,7 @@ test('vue relue : une mesure que la personne ne voit plus disparaît, les règle
   assert.equal(v.pas, 'mois');
   // Rien de visible : vue par défaut, la période choisie reste.
   const rien = nettoyerVue({ periode: { id: 'mois' }, pas: 'jour', graphiques: [{ mesures: ['zzz'] }] }, visibles, '2026-11-11');
-  assert.deepEqual(rien.graphiques, [{ mesures: ['a'], ventilation: '', type: '' }]);
+  assert.deepEqual(rien.graphiques, [{ mesures: ['a'], ventilation: '', type: '', choix: {} }]);
   assert.equal(rien.periode.id, 'mois');
   assert.deepEqual(nettoyerVue(null, visibles, '2026-11-11'), vueParDefaut(visibles));
   // Pas jour refusé sur plus de 400 jours.
@@ -222,7 +222,7 @@ test('type déduit de la vue : courbe, barres, barres empilées', () => {
 
 test('lien d\'entrée : mesures nommées ou première de la famille, null si rien n\'est visible', () => {
   const v = vueDepuisLien({ mesures: ['c'], periode: 'mois' }, visibles, '2026-11-11');
-  assert.deepEqual(v.graphiques, [{ mesures: ['c'], ventilation: '', type: '' }]);
+  assert.deepEqual(v.graphiques, [{ mesures: ['c'], ventilation: '', type: '', choix: {} }]);
   assert.equal(v.periode.id, 'mois');
   assert.deepEqual(vueDepuisLien({ famille: 'reservations' }, visibles, '2026-11-11').graphiques[0].mesures, ['d']);
   assert.equal(vueDepuisLien({ famille: 'comptabilite' }, visibles, '2026-11-11'), null);
