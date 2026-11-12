@@ -176,12 +176,6 @@ export const tousLesNavItems = [
   // patron par défaut, réglable par personne (Rôles & accès) ; garde
   // permissions.comptabilite === true dans LegacyModuleHost.
   { id: 'comptabilite', label: 'Comptabilité', mobileLabel: 'Compta', icon: '¤', group: 'Direction', permKey: 'comptabilite' },
-  // Statistiques (12.11.2026) : tous les chiffres que la personne voit ailleurs
-  // dans l'app, sur un graphique. Consultant, patron, responsable de cuisine
-  // et hôte par défaut, réglable par personne (Rôles & accès) ; garde
-  // permissions.statistiques === true dans LegacyModuleHost. Dans le module,
-  // une famille de chiffres ne s'ouvre qu'à qui voit son écran d'origine.
-  { id: 'statistiques', label: 'Statistiques', mobileLabel: 'Stats', icon: '◔', group: 'Direction', permKey: 'statistiques' },
   { id: 'cartes', label: 'Cartes & Recettes', mobileLabel: 'Recettes', icon: '◈', group: 'Cuisine', permKey: 'recettes' },
   { id: 'inventaire', label: 'Inventaire', icon: '▦', group: 'Cuisine', permKey: 'inventaire' },
   // Factures & achats : entrée à part, rattachée aux droits de l'Inventaire
@@ -221,7 +215,19 @@ export const tousLesNavItems = [
   { id: 'repas', label: 'Repas hôtel', icon: '◌', group: 'Hôtel', permKey: 'repas' },
   // Lot H8 : ordres de travail, préventif, équipements, chambres hors service.
   { id: 'technique', label: 'Technique', icon: '⚙', group: 'Hôtel', permKey: 'technique' },
-  { id: 'faq', label: 'FAQ & Assistant', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' }
+  { id: 'faq', label: 'FAQ & Assistant', mobileLabel: 'FAQ', icon: '✦', group: 'Aide', permKey: 'faq' },
+  // Statistiques (12.11.2026) : tous les chiffres que la personne voit ailleurs
+  // dans l'app, sur un graphique. Consultant, patron, responsable de cuisine
+  // et hôte par défaut, réglable par personne (Rôles & accès) ; garde
+  // permissions.statistiques === true dans LegacyModuleHost. Dans le module,
+  // une famille de chiffres ne s'ouvre qu'à qui voit son écran d'origine.
+  // En dernière position du menu (choix de Jérémy, 12.11.2026) : la barre
+  // latérale est pleine à 1024 et 1440 px, une entrée placée plus haut en
+  // poussait une autre sous le pli. Sa rubrique lui est propre et vient en
+  // dernier : avec un ordre de menu enregistré (app_settings.nav_order),
+  // un module qui n'y figure pas va à la fin de sa rubrique, donc ici à la
+  // fin du menu. Le consultant peut ensuite la déplacer dans Paramètres.
+  { id: 'statistiques', label: 'Statistiques', mobileLabel: 'Stats', icon: '◔', group: 'Statistiques', permKey: 'statistiques' }
 ];
 
 export const navItems = tousLesNavItems.filter((item) => !modulesEnPause.includes(item.id));
