@@ -155,6 +155,6 @@ export default function FenetreExportFiduciaire({
 const st = {
   dates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 10 },
   champ: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', textDecoration: 'underline', minHeight: 44 },
-  progression: { fontSize: 13, color: 'var(--text2)', marginRight: 'auto' },
+  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', textDecoration: 'underline', minHeight: 44 },
+  progression: { fontSize: 'var(--t2)', color: 'var(--text2)', marginRight: 'auto' },
 };

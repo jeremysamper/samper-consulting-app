@@ -77,5 +77,5 @@ const st = {
   ligne: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 },
   select: { flex: '1 1 120px', width: 'auto', minWidth: 0 },
   autre: { flex: '0 0 92px', width: 92 },
-  detail: { flex: '1 1 100%', fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 },
+  detail: { flex: '1 1 100%', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
 };

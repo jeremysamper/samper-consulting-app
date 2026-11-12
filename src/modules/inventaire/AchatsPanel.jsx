@@ -230,14 +230,14 @@ export default function AchatsPanel({
                       {r.nbLignesAchat ? `${qte(r.achatsQte)} ${r.unite}` : '-'}
                     </td>
                     <td style={st.tdNum}>{qte(r.finQte)} {r.unite}</td>
-                    <td style={{ ...st.tdNum, fontWeight: 700 }}>{r.consoQte == null ? '?' : `${qte(r.consoQte)} ${r.unite}`}</td>
-                    <td style={{ ...st.tdNum, fontWeight: 700 }}>{chf(r.consoVal)}</td>
+                    <td style={{ ...st.tdNum, fontWeight: 'var(--g3)' }}>{r.consoQte == null ? '?' : `${qte(r.consoQte)} ${r.unite}`}</td>
+                    <td style={{ ...st.tdNum, fontWeight: 'var(--g3)' }}>{chf(r.consoVal)}</td>
                     <td style={st.tdNum}>
                       {r.prixFacture == null ? '-' : (
                         <>
                           {chf(r.prixFacture)}/{r.unite}
                           {r.ecartPrixPct != null && Math.abs(r.ecartPrixPct) >= SEUIL_ECART_PRIX_PCT && (
-                            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: r.ecartPrixPct > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}>
+                            <span style={{ display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: r.ecartPrixPct > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}>
                               {r.ecartPrixPct > 0 ? '+' : ''}{r.ecartPrixPct.toFixed(0)} % vs inventaire
                             </span>
                           )}
@@ -275,7 +275,7 @@ export default function AchatsPanel({
               <div style={st.docLigne}>
                 <button type="button" style={st.docToggle} onClick={() => setDocOuvert(ouvert ? null : d.id)}>
                   <span style={{ width: 14, display: 'inline-block' }}>{ouvert ? '▾' : '▸'}</span>
-                  <span style={{ fontWeight: 700 }} data-no-translate>{d.fournisseurNom || 'Fournisseur non lu'}</span>
+                  <span style={{ fontWeight: 'var(--g3)' }} data-no-translate>{d.fournisseurNom || 'Fournisseur non lu'}</span>
                   <span style={{ color: 'var(--text2)' }}>
                     {d.numero ? `, n° ${d.numero}` : ''}, {(d.lignes || []).length} ligne{(d.lignes || []).length > 1 ? 's' : ''}, CHF {chf(d.totalHT != null ? d.totalHT : somme)}
                   </span>
@@ -351,12 +351,12 @@ export default function AchatsPanel({
                     {/* Une facture réglée est une pièce comptable : la base refuse sa
                         suppression à qui n'a pas le droit de régler les factures. */}
                     {canModifierDocs && (d.regleLe && !canRegler ? (
-                      <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Suppression réservée à la direction.</span>
+                      <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', alignSelf: 'center' }}>Suppression réservée à la direction.</span>
                     ) : (
                       <button type="button" style={{ ...st.btnMini, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }} onClick={() => supprimerDoc(d)}>Supprimer</button>
                     ))}
-                    {d.nomFichier && <span data-no-translate style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>{d.nomFichier}</span>}
-                    {!avecPieces.has(d.id) && <span style={{ fontSize: 11, color: 'var(--text2)', alignSelf: 'center' }}>Pas de photo conservée pour ce document.</span>}
+                    {d.nomFichier && <span data-no-translate style={{ fontSize: 'var(--t1)', color: 'var(--text2)', alignSelf: 'center' }}>{d.nomFichier}</span>}
+                    {!avecPieces.has(d.id) && <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', alignSelf: 'center' }}>Pas de photo conservée pour ce document.</span>}
                   </div>
                 </div>
               )}
@@ -389,38 +389,38 @@ function Kpi({ label, valeur, note, fort }) {
 
 const st = {
   root: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 },
-  carte: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sousTitre: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  info: { fontSize: 13, color: 'var(--text2)', padding: '12px 14px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 10, lineHeight: 1.45 },
-  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 0 10px 12px',   color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  periode: { fontSize: 13, color: 'var(--text)', lineHeight: 1.5 },
+  carte: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  sousTitre: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
+  info: { fontSize: 'var(--t2)', color: 'var(--text2)', padding: '12px 14px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 'var(--r)', lineHeight: 1.45 },
+  alerte: { fontSize: 'var(--t1)', lineHeight: 1.5, padding: '10px 0 10px 12px',   color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  periode: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.5 },
   kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))', gap: 10 },
-  kpi: { background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '10px 12px', minWidth: 0 },
-  kpiFort: { borderColor: 'var(--accent)' },
-  kpiLabel: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  kpiVal: { fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 4 },
-  kpiNote: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
-  avertissements: { margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.55 },
-  btn: { padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
-  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 40 },
-  tableWrap: { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10, maxWidth: '100%' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 640 },
-  th: { textAlign: 'left', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)' },
-  thNum: { textAlign: 'right', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
-  td: { padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontWeight: 500 },
+  kpi: { background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', padding: '10px 12px', minWidth: 0 },
+  kpiFort: { borderColor: 'var(--btn-bord)' },
+  kpiLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  kpiVal: { fontSize: 'var(--t4)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 4 },
+  kpiNote: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
+  avertissements: { margin: 0, paddingLeft: 18, fontSize: 'var(--t1)', color: 'var(--warning-text)', lineHeight: 1.55 },
+  btn: { padding: '9px 14px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  btnMini: { padding: '6px 10px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
+  lien: { background: 'none', border: 'none', padding: 0, color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', minHeight: 40 },
+  tableWrap: { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)', maxWidth: '100%' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 'var(--t1)', minWidth: 640 },
+  th: { textAlign: 'left', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', borderBottom: '1px solid var(--border)' },
+  thNum: { textAlign: 'right', padding: '8px 10px', background: 'var(--bg)', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
+  td: { padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontWeight: 'var(--g2)' },
   tdNum: { padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)', textAlign: 'right', whiteSpace: 'nowrap' },
-  puce: { marginLeft: 6, fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)', textTransform: 'uppercase' },
+  puce: { marginLeft: 6, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '1px 6px', borderRadius: 'var(--r)', background: 'var(--warning-bg)', color: 'var(--warning-text)' },
   doc: { borderTop: '1px solid var(--border)', padding: '8px 0' },
   docLigne: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  docToggle: { flex: '1 1 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer', fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 44 },
+  docToggle: { flex: '1 1 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer', fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 44 },
   docChamps: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  statut: { fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 10, background: 'var(--bg)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', maxWidth: 260 },
+  statut: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', padding: '3px 8px', borderRadius: 'var(--r)', background: 'var(--bg)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', maxWidth: 260 },
   statutOk: { background: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-bd)' },
-  docAlerte: { fontSize: 11, color: 'var(--warning-text)', marginTop: 4 },
-  docDetail: { marginTop: 6, padding: '8px 10px', background: 'var(--bg)', borderRadius: 8 },
-  docDetailLigne: { display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
-  btnVoir: { padding: '6px 12px', borderRadius: 7, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
+  docAlerte: { fontSize: 'var(--t1)', color: 'var(--warning-text)', marginTop: 4 },
+  docDetail: { marginTop: 6, padding: '8px 10px', background: 'var(--bg)', borderRadius: 'var(--r)' },
+  docDetailLigne: { display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 'var(--t1)', padding: '5px 0', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
+  btnVoir: { padding: '6px 12px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
 };

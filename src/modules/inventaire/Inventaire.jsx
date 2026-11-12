@@ -895,8 +895,8 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
   const renderSansInventaire = () => (
     <EcranTache titre={nomPerimetre} onRetour={retourAccueil}>
       <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Aucun inventaire pour cet établissement</div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
+        <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop: 10, fontFamily: 'var(--font)' }}>Aucun inventaire pour cet établissement</div>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 6, marginBottom: 16 }}>
           Créez un inventaire par périmètre : cuisine, boissons, matériel… chacun avec son propre rythme de comptage.
         </div>
         {loadError && <div style={invs.loadError}>Données indisponibles pour le moment. Ne créez pas d'inventaire avant d'avoir réessayé.</div>}
@@ -1859,7 +1859,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
           />
           {/* Consommation de la période et documents : la lecture de PDF et le
               rapprochement restent dans un chunk à part, chargé ici seulement. */}
-          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
             <AchatsPanel
               user={user}
               etabId={etabId}
@@ -1910,7 +1910,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
         />
       ) : (
         <EcranTache titre="Vérifier la lecture" onRetour={retourAccueil}>
-          <div style={{ fontSize: 13, color: 'var(--text2)', padding: '12px 14px' }}>Rien à vérifier.</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', padding: '12px 14px' }}>Rien à vérifier.</div>
         </EcranTache>
       ))}
 
@@ -1938,7 +1938,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
       {reglementOuvert && canRegler && (
         <div style={ecranGarde('reglement')}>
           <EcranTache titre="Je règle les factures" etat={nomPerimetre} onRetour={retourAccueil}>
-            <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+            <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
               <FacturesPanel
                 user={user}
                 etabId={etabId}
@@ -1955,7 +1955,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
 
       {ecran === 'echeances' && canRegler && (
         <EcranTache titre="Échéances" onRetour={retourAccueil}>
-          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
             <Echeancier docs={achats.tousLesDocs} aujourdhui={zurichToday()} onRegler={() => setEcran('reglement')} />
           </React.Suspense>
         </EcranTache>
@@ -1963,7 +1963,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
 
       {ecran === 'analyses' && (
         <EcranTache titre="Analyses des dépenses" onRetour={retourAccueil}>
-          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
             <AnalysesAchats
               docs={achats.tousLesDocs}
               perimetres={perimetres}
@@ -2011,15 +2011,15 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
 
 const invs = {
   root: {display:'flex',flexDirection:'column',gap:16},
-  loadError: { color:'var(--warning-text)',borderLeft: '2px solid var(--warning-bd)', padding: '10px 0 10px 12px',fontSize:12,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
-  fieldHint: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.45},
-  saisiesAttente: {fontSize:12,lineHeight:1.5,padding:'10px 14px',borderRadius:8,background:'var(--info-bg, var(--warning-bg))',color:'var(--info-text, var(--warning-text))',border:'1px solid var(--info-bd, var(--warning-bd))'},
-  invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'},
+  loadError: { color:'var(--warning-text)',borderLeft: '2px solid var(--warning-bd)', padding: '10px 0 10px 12px',fontSize: 'var(--t1)',display:'flex',alignItems:'center',flexWrap:'wrap',gap:6},
+  fieldHint: {fontSize: 'var(--t1)',color:'var(--text2)',marginTop:6,lineHeight:1.45},
+  saisiesAttente: {fontSize: 'var(--t1)',lineHeight:1.5,padding:'10px 14px',borderRadius: 'var(--r)',background:'var(--info-bg, var(--warning-bg))',color:'var(--info-text, var(--warning-text))',border:'1px solid var(--info-bd, var(--warning-bd))'},
+  invSelect: {padding:'8px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'},
   // Gabarit des boutons de Btn (38 px sur ordinateur, 44 au toucher par la règle globale) : principal et secondaire.
-  addBtn: {minHeight:38,padding:'8px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'1px solid var(--accent)',borderRadius:'var(--r-sm)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn: {minHeight:38,padding:'8px 14px',background:'var(--accent)',color:'var(--on-accent)',border:'1px solid var(--accent)',borderRadius:'var(--r-sm)',fontSize: 'var(--t2)',fontWeight: 'var(--g3)',cursor:'pointer',fontFamily:'var(--font)'},
 
-  exportBtn: {minHeight:38,padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:'var(--r-sm)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6},
-  fieldLabel: {display:'block',fontSize:12,fontWeight:500,color:'var(--text2)',marginBottom:6,textTransform:'uppercase',letterSpacing:0.4}, fieldInput: {width:'100%',padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',boxSizing:'border-box'},
+  exportBtn: {minHeight:38,padding:'8px 14px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius:'var(--r-sm)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6},
+  fieldLabel: {display:'block',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text2)',marginBottom:6}, fieldInput: {width:'100%',padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background: 'var(--surface)',fontFamily:'var(--font)',boxSizing:'border-box'},
 };
 
 export default Inventaire;

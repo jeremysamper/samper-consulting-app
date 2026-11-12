@@ -213,10 +213,10 @@ export default function AccueilInventaire({
 const st = {
   page: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 },
   enTete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
-  surTitre: { fontSize: 12, color: 'var(--text2)' },
-  perimetre: { fontFamily: 'var(--font-serif)', fontSize: 22, lineHeight: 1.15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  bandeau: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 8, background: 'var(--warning-bg)', color: 'var(--warning-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)' },
+  surTitre: { fontSize: 'var(--t1)', color: 'var(--text2)' },
+  perimetre: { fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 'var(--t4)', lineHeight: 1.15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  bandeau: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--t1)', lineHeight: 1.5, padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--warning-bg)', color: 'var(--warning-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)' },
   choix: { display: 'flex', flexDirection: 'column', gap: 6 },
   section: { display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 },
-  sectionTitre: { fontSize: 12, fontWeight: 500, color: 'var(--text2)', marginTop: 2 },
+  sectionTitre: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginTop: 2 },
 };
