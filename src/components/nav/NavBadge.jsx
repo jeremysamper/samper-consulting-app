@@ -25,7 +25,7 @@ export default function NavBadge({ itemId, badges, style }) {
 
 const s = {
   badge: {
-    fontSize: 11, fontWeight: 700,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     padding: '2px 7px', borderRadius: 99, minWidth: 14, textAlign: 'center',
     lineHeight: 1.4, flexShrink: 0,
   },

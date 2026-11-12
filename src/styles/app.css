@@ -109,8 +109,15 @@
   --g2: 500;
   --g3: 600;
   --g-chiffre: 400;
+  /* Ligne de liste (ligneStyle de src/components/ui) : 48 px là où les gestes
+     de l'écran tiennent aux trois postes, 44 px sinon. */
   --ligne: 44px;
+  --ligne-aeree: 48px;
   --controle: 40px;
+  /* Marge de page : lue par la coque seule (AppLayout.jsx, ls.content et
+     mls.content), jamais par un module. Sa valeur selon la largeur est posée
+     juste après ce bloc. */
+  --marge: 24px;
 
   /* ─── Rôles d'Office ──────────────────────────────────────────────────
      btn-*      bouton secondaire : fond, texte, contour
@@ -236,6 +243,22 @@
 
   color-scheme: light;
 }
+
+/* Marge de page : 32 px dès 768 px de large, 24 px en dessous.
+   Deux replis, mesurés au banc le 12.11.2026 : aucun écran ne perd un geste
+   ni une cible de 44 px pour une marge.
+   - Coque tactile sous 768 px (téléphone) : la marge d'avant, 14 px. À 24 px,
+     une bande de sept jours passait sous 44 px par bouton et le comptage
+     d'inventaire coûtait un défilement de plus.
+   - Pages nommées par AppLayout (data-marge="serree", aujourd'hui le Spa) :
+     14 px en coque tactile à toute largeur. */
+@media (min-width: 768px) {
+  :root { --marge: 32px; }
+}
+@media (max-width: 767.98px) {
+  .mobile-module-content { --marge: 14px; }
+}
+.mobile-module-content[data-marge="serree"] { --marge: 14px; }
 
 /* ─── Dark mode : valeur initiale via prefers-color-scheme ──────────────────
    Appliqué par le navigateur AVANT que le JS de useTheme charge.
@@ -666,7 +689,7 @@ html[data-theme="dark"] {
     width: 100% !important;
     max-width: 100% !important;
     max-height: 85vh !important;
-    border-radius: 20px 20px 0 0 !important;
+    border-radius: var(--r) var(--r) 0 0 !important;
     overflow-y: auto !important;
     padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
     animation: slideUp 0.22s ease;
@@ -741,17 +764,21 @@ html[data-theme="dark"] {
 .carte-tab-bar--scroll > * { flex-shrink: 0; }
 
 /* ─── SegmentedTabs - onglets de module compacts, 1 ligne scrollable ───────
-   Style « segmented control » : piste discrète (surface2) + pilules ;
-   l'onglet actif est surélevé (surface + ombre légère). Sur mobile la piste
-   défile horizontalement au lieu d'empiler les onglets sur plusieurs lignes.
-   Tokens CSS uniquement - s'adapte automatiquement au dark mode. */
+   Direction Office : ni piste ni pilule. La barre est posée sur la page,
+   l'onglet actif est souligné d'un trait à l'encre --onglet, qui porte aussi
+   son texte. Le contour transparent garde la hauteur d'avant. Sur mobile la
+   barre défile horizontalement au lieu d'empiler les onglets sur plusieurs
+   lignes. Tokens CSS uniquement - s'adapte automatiquement au dark mode.
+   La barre de modes de la caisse (.caisse-modes, plus bas) garde un aplat
+   d'accent pour son mode actif : elle est exclue par écrit de la règle de
+   l'onglet actif. */
 .segmented-tabs {
   display: flex;
   align-items: center;
   gap: 3px;
-  padding: 3px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  padding: 3px 3px 3px 0;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--r);
   overflow-x: auto;
   max-width: 100%;
@@ -795,10 +822,11 @@ html[data-theme="dark"] {
 
 .segmented-tab:hover:not(.is-active) { color: var(--text); background: rgba(125, 145, 155, 0.10); }
 
-.segmented-tab.is-active {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: var(--sh-sm);
+.segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
+  background: transparent;
+  color: var(--onglet);
+  box-shadow: inset 0 -2px 0 var(--onglet);
+  border-radius: 0;
 }
 
 .segmented-tab-icon {
@@ -1517,6 +1545,12 @@ html[data-theme="dark"] button:not(:disabled):active {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
+/* Le contour du bouton secondaire est une ombre posée en !important (règle
+   des boutons secondaires, plus bas) : sans cette ligne elle passait devant
+   l'anneau, et le focus clavier d'un secondaire ne se voyait plus. */
+.ui-btn--ghost:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--btn-bord), 0 0 0 3px var(--focus-ring) !important;
+}
 
 .ui-btn--primary:active:not(:disabled) {
   transform: translateY(1px);
@@ -1531,18 +1565,14 @@ html[data-theme="dark"] button:not(:disabled):active {
     filter: brightness(1.08);
   }
 
-  .ui-btn--ghost:hover:not(:disabled) {
-    background: var(--surface2);
-    border-color: var(--border2);
-  }
-
-  /* Survol : le filet passe à l'accent, la carte ne décolle pas. */
+  /* Survol d'un panneau cliquable : son filet se renforce, il ne décolle
+     pas. !important : le filet est posé en style inline par Card. */
   .ui-card--clickable:hover {
-    border-color: var(--accent-bd);
+    border-color: var(--btn-bord) !important;
   }
 
   .ui-card--clickable:active {
-    background: var(--selection);
+    background: var(--selection) !important;
   }
 }
 
@@ -1633,7 +1663,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r);
   box-shadow: var(--sh-lg);
   animation: cmdkIn 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1746,7 +1776,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   border: none;
   padding: 4px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
 }
 .shortcuts-close:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .shortcuts-list { margin: 0; padding: 6px 16px; overflow-y: auto; }
@@ -1822,13 +1852,18 @@ html[data-theme="dark"] button:not(:disabled):active {
 .sc-title-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ─── Organiser le menu (NavOrganizer, consultant) ──────────────────────────
-   Posé sur le dégradé de navigation : tokens nav-* uniquement. On y entre par
-   le menu du compte (pied de barre) ou la palette Ctrl/⌘+K. */
+   Posé dans le menu latéral, clair depuis la direction Office : les encres
+   et les filets sont les jetons nav-*, le survol se pose sur --nav-active,
+   le champ de renommage est un champ (--champ-bord sur --surface), « Terminé »
+   est l'action principale (--accent), les deux autres boutons sont des
+   secondaires (--btn-*). Plus de voile blanc ni de halo : ils ne se voyaient
+   que sur l'ancien menu sombre. On y entre par la page des réglages (« Ordre
+   du menu ») ou la palette Ctrl/⌘+K, à l'ordinateur seulement. */
 .nav-organizer button:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
 
 .nav-organizer { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
 .nav-organizer-intro {
-  font-size: 12px;
+  font-size: var(--t1);
   line-height: 1.45;
   color: var(--nav-text);
   padding: 6px 6px 8px;
@@ -1840,44 +1875,44 @@ html[data-theme="dark"] button:not(:disabled):active {
   justify-content: space-between;
   gap: 6px;
   padding: 8px 4px 4px 8px;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--t1);
+  font-weight: var(--g3);
   letter-spacing: 0;
   color: var(--nav-text-active);
 }
 .nav-organizer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Renommage d'une rubrique : champ posé sur l'encre de la barre. */
+/* Renommage d'une rubrique : un champ, comme les autres. */
 .nav-organizer-input {
   flex: 1;
   min-width: 0;
   height: 30px;
   padding: 0 8px;
-  border: 1px solid var(--nav-accent);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--champ-bord);
+  border-radius: var(--r-sm);
+  background: var(--surface);
   color: var(--nav-text-active);
   font-family: var(--font);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--g2);
   letter-spacing: 0;
   text-transform: none;
   outline: none;
 }
-.nav-organizer-input[aria-invalid="true"] { border-color: #f59e0b; }
-.nav-organizer-error { font-size: 12px; color: #fcd34d; padding: 2px 8px 6px; }
+.nav-organizer-input[aria-invalid="true"] { border-color: var(--warning-strong); }
+.nav-organizer-error { font-size: var(--t1); color: var(--warning-text); padding: 2px 8px 6px; }
 .nav-organizer-add {
   margin: 6px 2px 2px;
   padding: 9px 10px;
-  border: 1px dashed var(--nav-border);
-  border-radius: 8px;
+  border: 1px dashed var(--btn-bord);
+  border-radius: var(--r);
   background: transparent;
   color: var(--nav-text-active);
   font-family: var(--font);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--t1);
+  font-weight: var(--g2);
   cursor: pointer;
 }
-.nav-organizer-add:hover:not(:disabled) { border-style: solid; background: rgba(255, 255, 255, 0.05); }
+.nav-organizer-add:hover:not(:disabled) { border-style: solid; background: var(--nav-active); }
 .nav-organizer-add:focus-visible,
 .nav-organizer-input:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
 .nav-organizer-row {
@@ -1886,13 +1921,13 @@ html[data-theme="dark"] button:not(:disabled):active {
   gap: 4px;
   min-height: 38px;
   padding: 0 2px 0 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--r);
+  background: var(--nav);
   border: 1px solid var(--nav-border);
   margin-bottom: 4px;
   color: var(--nav-text-active);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--g2);
   transition: opacity 0.12s ease;
 }
 .nav-organizer-row.is-dragging { opacity: 0.4; }
@@ -1908,7 +1943,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   color: var(--nav-text);
   cursor: grab;
   touch-action: none;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
 }
 .nav-organizer-grip:active { cursor: grabbing; }
 .nav-organizer-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1922,19 +1957,18 @@ html[data-theme="dark"] button:not(:disabled):active {
   padding: 0;
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--nav-text);
   cursor: pointer;
 }
-.nav-organizer-arrows button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); color: var(--nav-text-active); }
+.nav-organizer-arrows button:hover:not(:disabled) { background: var(--nav-active); color: var(--nav-text-active); }
 .nav-organizer-arrows button:disabled { opacity: 0.25; cursor: default; }
 .nav-organizer-empty {
-  font-size: 12px;
+  font-size: var(--t1);
   color: var(--nav-text);
-  opacity: 0.75;
   padding: 10px;
-  border: 1px dashed var(--nav-border);
-  border-radius: 8px;
+  border: 1px dashed var(--btn-bord);
+  border-radius: var(--r);
   margin-bottom: 4px;
   text-align: center;
 }
@@ -1943,7 +1977,6 @@ html[data-theme="dark"] button:not(:disabled):active {
   margin: -2px 4px 2px;
   border-radius: 2px;
   background: var(--nav-accent);
-  box-shadow: 0 0 8px var(--nav-accent);
 }
 .nav-organizer-actions {
   position: sticky;
@@ -1958,33 +1991,29 @@ html[data-theme="dark"] button:not(:disabled):active {
   flex: 1 1 100%;
   padding: 9px 12px;
   border: none;
-  border-radius: 8px;
-  background: var(--nav-accent);
-  color: var(--nav);
+  border-radius: var(--r);
+  background: var(--accent);
+  color: var(--on-accent);
   font-family: var(--font);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: var(--g3);
   cursor: pointer;
 }
 .nav-organizer-ghost {
   flex: 1 1 0;
   padding: 7px 8px;
-  border: 1px solid var(--nav-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--nav-text);
+  border: 1px solid var(--btn-bord);
+  border-radius: var(--r);
+  background: var(--btn-fond);
+  color: var(--btn-texte);
   font-family: var(--font);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--t1);
+  font-weight: var(--g2);
   cursor: pointer;
   white-space: nowrap;
 }
 .nav-organizer-save:disabled,
 .nav-organizer-ghost:disabled { opacity: 0.6; cursor: default; }
-/* Tiroir mobile : cibles tactiles pleines (poignée et flèches à 44 px). */
-.nav-organizer.is-mobile .nav-organizer-row { min-height: 48px; font-size: 14px; }
-.nav-organizer.is-mobile .nav-organizer-grip { width: 44px; height: 44px; }
-.nav-organizer.is-mobile .nav-organizer-arrows button { width: 40px; height: 40px; }
 @media (prefers-reduced-motion: reduce) {
   .nav-organizer-row { transition: none; }
 }
@@ -2096,8 +2125,10 @@ html[data-theme="dark"] button:not(:disabled):active {
 
 /* ─── Page d'accueil tactile (AccueilTactile.jsx) ───────────────────────────
    Colonnes de la grille des modules selon la largeur : 2 sur téléphone, 3 sur
-   iPad en portrait, 4 dès 1024 px (paysage). Le reste de la tuile est en style
-   inline (hauteur minimale 72 px, fond, rayon). Survol sous (hover: hover)
+   iPad en portrait, 4 dès 1024 px (paysage). La tuile dit elle-même le reste
+   en style inline (hauteur minimale 72 px, fond --btn-fond, contour
+   --btn-bord, rayon --r) dans ses trois fichiers : AccueilTactile.jsx,
+   AccueilModule.jsx, ImportDocumentsAchats.jsx. Survol sous (hover: hover)
    seulement : pas d'état collé après un tap ; !important car le fond est
    inline. */
 .accueil-grille { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2106,13 +2137,6 @@ html[data-theme="dark"] button:not(:disabled):active {
 }
 @media (min-width: 1024px) {
   .accueil-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-/* Tuile : fond, contour et rayon du bouton secondaire d'Office. !important
-   car le fond et le rayon sont en style inline. */
-.accueil-tuile {
-  background: var(--btn-fond) !important;
-  border-radius: var(--r-xl) !important;
-  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
 }
 @media (hover: hover) {
   .accueil-tuile:hover,
@@ -2157,9 +2181,17 @@ button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var
   color: var(--text3) !important;
   box-shadow: inset 0 0 0 1px var(--rule-soft) !important;
 }
-/* Un bouton à fond doux sans bord (grille de la caisse, tuiles de module)
-   prend le même contour : --surface2 vaut la surface, sans lui il n'aurait
-   plus ni fond ni limite. */
+/* Un secondaire écrit à la source (contour --btn-bord en style inline : les
+   styles partagés de Fenetres.jsx) s'éteint de la même façon. Un état ne peut
+   pas s'écrire en inline, il vit ici. Btn a sa propre règle, juste au-dessus. */
+button[style*="border-color: var(--btn-bord)"]:not(.ui-btn):disabled {
+  color: var(--text3) !important;
+  border-color: var(--rule-soft) !important;
+}
+/* Un bouton à fond doux sans bord (grille de la caisse, tuiles posées dans un
+   module) prend le même contour : --surface2 vaut la surface, sans lui il
+   n'aurait plus ni fond ni limite. Les tuiles d'accueil (.accueil-tuile)
+   écrivent ce contour elles-mêmes. */
 button[style*="background: var(--surface2)"][style*="border-style: none"] {
   box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
 }
@@ -2167,23 +2199,6 @@ button[style*="background: var(--surface2)"][style*="border-style: none"] {
 /* Cases d'ajout en pointillés : le « + » suffit. */
 div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   border-color: transparent !important;
-}
-
-/* Barres d'onglets : soulignement de l'onglet actif au lieu d'une pilule,
-   trait et texte en --onglet (direction Office). La barre de modes de la
-   caisse est exclue par écrit : son mode actif garde l'aplat d'accent posé
-   plus bas (.caisse-modes), quelle que soit la spécificité de cette règle. */
-.segmented-tabs {
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  padding-left: 0 !important;
-}
-.segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
-  background: transparent !important;
-  box-shadow: inset 0 -2px 0 var(--onglet) !important;
-  border-radius: 0 !important;
-  color: var(--onglet) !important;
 }
 
 /* ─── Petits titres en casse normale ────────────────────────────────────────
@@ -2271,7 +2286,9 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
   background: var(--surface) !important;
 }
 
-/* Plancher de texte : toute taille en ligne sous --t1 remonte à --t1.
+/* Plancher de texte : toute taille en ligne sous --t1 remonte à --t1 (8, 9,
+   10 et 11 px : les seules que src/ écrit encore ; les demi-pixels de la
+   feuille de l'essai n'y ont plus aucun site).
    Un élément invisible (visibility: hidden) et ses enfants directs sont
    laissés de côté : la capture PDF mesure la ligne de base de chaque police
    par une sonde cachée, posée hors de .pdf-render-root, dont la taille est en
@@ -2279,11 +2296,8 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
    d'un pixel les petits textes de l'export. */
 [style*="font-size: 8px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
 [style*="font-size: 9px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
-[style*="font-size: 9.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
 [style*="font-size: 10px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
-[style*="font-size: 10.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
-[style*="font-size: 11px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
-[style*="font-size: 11.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *) {
+[style*="font-size: 11px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *) {
   font-size: var(--t1) !important;
 }
 /* Le plancher ne passe pas devant la garde anti-zoom d'iOS : au doigt et sous
@@ -2296,11 +2310,11 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
 }
 
 /* Graisses : plafond à --g3. Les chiffres mis en avant passent ensuite en
-   --g-chiffre, les titres en --g3. */
+   --g-chiffre, les titres en --g3. (« bold » en toutes lettres n'a plus de
+   site dans src/ : son sélecteur est retiré.) */
 [style*="font-weight: 700"]:not(.pdf-render-root *),
 [style*="font-weight: 800"]:not(.pdf-render-root *),
 [style*="font-weight: 900"]:not(.pdf-render-root *),
-[style*="font-weight: bold"]:not(.pdf-render-root *),
 b:not(.pdf-render-root *),
 strong:not(.pdf-render-root *),
 th:not(.pdf-render-root *) {

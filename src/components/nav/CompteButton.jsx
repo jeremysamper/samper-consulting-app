@@ -27,13 +27,13 @@ export default function CompteButton({ onOpen, actif = false, variant = 'desktop
 const s = {
   bouton: {
     flexShrink: 0, minHeight: 44, padding: '6px 10px',
-    background: 'none', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--nav-border)', borderRadius: 8,
-    color: 'var(--nav-text-active)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+    background: 'none', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--nav-border)', borderRadius: 'var(--r)',
+    color: 'var(--nav-text-active)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 'var(--g2)',
     cursor: 'pointer', whiteSpace: 'nowrap',
   },
   boutonAccueil: {
     minHeight: 48, padding: '6px 14px', borderRadius: 'var(--r-lg)',
-    background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)', fontSize: 14,
+    background: 'var(--btn-fond)', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontSize: 14,
   },
   actif: { background: 'var(--nav-active)' },
   actifAccueil: { background: 'var(--selection)' },

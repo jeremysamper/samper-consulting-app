@@ -254,8 +254,8 @@ const st = {
   // Tuile de l'accueil du module (AccueilInventaire.jsx) : même hauteur, même fond.
   tuile: {
     position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 72, width: '100%',
-    padding: '22px 14px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--accent)',
-    border: 'none', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500, lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
+    padding: '22px 14px', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--lien)',
+    border: 'none', boxShadow: 'inset 0 0 0 1px var(--btn-bord)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g2)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
   },
   libelle: { display: 'block' },
   etat: { display: 'block', marginTop: 4, fontSize: 12, fontWeight: 400, color: 'var(--text2)', lineHeight: 1.35 },

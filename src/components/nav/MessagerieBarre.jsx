@@ -196,7 +196,7 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
                 <div style={{ ...st.bulleMeta, textAlign: mine ? 'right' : 'left' }}>
                   {formatTime(m.createdAt)}
                   {mine && (
-                    <span style={{ color: m.readAt ? 'var(--success-text)' : 'var(--text3)', fontWeight: 700 }}>
+                    <span style={{ color: m.readAt ? 'var(--success-text)' : 'var(--text3)', fontWeight: 'var(--g3)' }}>
                       {m.readAt ? ', lu' : ', envoyé'}
                     </span>
                   )}
@@ -286,8 +286,8 @@ const st = {
     paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)',
   },
   tete: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px 8px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0, minHeight: 52, boxSizing: 'border-box' },
-  titre: { flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' },
-  lien: { background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '8px 6px', minHeight: 44, flexShrink: 0 },
+  titre: { flex: 1, minWidth: 0, fontSize: 15, fontWeight: 'var(--g3)', color: 'var(--text)' },
+  lien: { background: 'none', border: 'none', color: 'var(--lien)', fontSize: 13, fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '8px 6px', minHeight: 44, flexShrink: 0 },
   fermer: { minHeight: 44, flexShrink: 0 },
   // flex 1 + minHeight 0 : seule la liste (ou le fil) défile, l'en-tête et le
   // champ restent en place.
@@ -295,27 +295,27 @@ const st = {
   vide: { padding: 14, textAlign: 'center', color: 'var(--text2)', fontSize: 12, fontStyle: 'italic' },
   // flexShrink 0 : la règle tactile globale (min-height 44px) superposerait
   // sinon les lignes dans une colonne flex qui défile.
-  contact: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px', background: 'transparent', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56, flexShrink: 0 },
-  avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', color: 'var(--text2)', fontWeight: 700, fontSize: 12, flexShrink: 0 },
+  contact: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px', background: 'transparent', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 56, flexShrink: 0 },
+  avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--selection)', color: 'var(--text2)', fontWeight: 'var(--g3)', fontSize: 12, flexShrink: 0 },
   contactCorps: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 },
   contactHaut: { display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 },
-  contactNom: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  contactDate: { fontSize: 11, color: 'var(--text3)', flexShrink: 0 },
+  contactNom: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 'var(--g3)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  contactDate: { fontSize: 'var(--t1)', color: 'var(--text3)', flexShrink: 0 },
   contactBas: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
   apercu: { flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  nonLus: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  nonLus: { minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
   filTete: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px 6px 6px', borderBottom: '1px solid var(--border)', flexShrink: 0 },
   retour: { minHeight: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6 },
-  filNom: { display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  filRole: { display: 'block', fontSize: 11, color: 'var(--text2)' },
+  filNom: { display: 'block', fontSize: 14, fontWeight: 'var(--g3)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  filRole: { display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)' },
   fil: { gap: 8, padding: 12, background: 'var(--bg)' },
-  jour: { alignSelf: 'center', fontSize: 11, fontWeight: 500, color: 'var(--text3)', padding: '4px 0', margin: '4px 0', flexShrink: 0 },
+  jour: { alignSelf: 'center', fontSize: 'var(--t1)', fontWeight: 500, color: 'var(--text3)', padding: '4px 0', margin: '4px 0', flexShrink: 0 },
   bulleMoi: { alignSelf: 'flex-end', background: 'var(--accent-light)', border: '1px solid var(--accent-bd)', borderRadius: '14px 14px 4px 14px', padding: '8px 12px', maxWidth: '82%', minWidth: 0, flexShrink: 0 },
   bulleAutre: { alignSelf: 'flex-start', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px', padding: '8px 12px', maxWidth: '82%', minWidth: 0, flexShrink: 0 },
   bulleTexte: { fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'break-word' },
-  bulleMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 4 },
+  bulleMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 },
   composer: { display: 'flex', alignItems: 'flex-end', gap: 8, padding: 10, borderTop: '1px solid var(--border)', flexShrink: 0 },
-  champ: { flex: 1, minWidth: 0, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'none', lineHeight: 1.5 },
+  champ: { flex: 1, minWidth: 0, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-sm)', fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'none', lineHeight: 1.5 },
   envoyer: { flexShrink: 0 },
 };

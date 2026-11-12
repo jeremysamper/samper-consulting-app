@@ -150,11 +150,11 @@ const s = {
     display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
     minWidth: 0, maxWidth: '100%', padding: '3px 8px', fontFamily: 'var(--font)', color: 'var(--text)',
   },
-  button: { background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer' },
+  button: { background: 'none', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer' },
   alignStart: { alignItems: 'flex-start', textAlign: 'left' },
   alignCenter: { alignItems: 'center', textAlign: 'center' },
   title: {
-    display: 'block', maxWidth: '100%', fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)',
+    display: 'block', maxWidth: '100%', fontSize: 16, fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
     color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25,
   },
   titleMobile: { textAlign: 'center' },
@@ -176,16 +176,15 @@ const s = {
   // Sous le header, pleine largeur avec une marge, centrée au-delà de 420 px.
   menuMobile: { top: '100%', left: 10, right: 10, margin: '4px auto 0', minWidth: 0, maxWidth: 420 },
   menuHeader: {
-    padding: '8px 10px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
-    textTransform: 'uppercase', color: 'var(--text3)',
+    padding: '8px 10px 6px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)',
   },
   // flexShrink 0 : colonne flex défilante + min-height tactile = lignes écrasées sinon.
   item: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 40, flexShrink: 0,
-    padding: '0 10px', background: 'transparent', border: 'none', borderRadius: 6,
-    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500,
+    padding: '0 10px', background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 'var(--g2)',
     textAlign: 'left', cursor: 'pointer',
   },
-  itemActive: { background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700 },
+  itemActive: { background: 'var(--selection)', color: 'var(--text)', fontWeight: 'var(--g3)' },
   itemName: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
 };
