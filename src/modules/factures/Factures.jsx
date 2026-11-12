@@ -4,6 +4,12 @@ import { alertLegacy, confirmLegacy, getBrowserWindow, notifyLegacy } from '../.
 import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { signalerReglage, useReglageModifie } from '../../services/reglagesSignal.js';
+import {
+  DEFAULT_EMAIL_SUBJECT, DEFAULT_FACTURE_TEXTS, SIGNAL_NOTIFICATION, choisirClientTextes, factureTextsKey,
+  lireReglagesEmail, mergeFactureTexts,
+} from './reglagesFactures.js';
 import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
 import {
   construireQrFacture, formaterIban, formaterReference, matriceQr,
@@ -13,32 +19,12 @@ import {
 // ═══════════════════════════════════════════════════════════════
 // MODULE FACTURES - Génération + envoi auto vers Documents
 // ═══════════════════════════════════════════════════════════════
-
-// ─── Templates email par défaut pour la notification client ───
-// Variables disponibles : {{numero}}, {{date}}, {{echeance}}, {{montant}},
-// {{etablissement}}, {{prestation}}, {{reference}}
-const EMAIL_VARS = ['numero', 'date', 'echeance', 'montant', 'etablissement', 'prestation', 'reference'];
-
-const DEFAULT_EMAIL_SUBJECT = 'Facture n° {{numero}}, Samper Consulting';
-
-const DEFAULT_EMAIL_TEMPLATE = `Bonjour,
-
-Vous trouverez en pièce jointe la facture n° {{numero}} du {{date}}, relative à la prestation suivante : {{prestation}}.
-
-Montant : {{montant}}
-Échéance de paiement : {{echeance}}
-
-Le règlement peut être effectué par virement sur le compte indiqué au bas de la facture. Le document reste également disponible dans votre espace Samper Consulting, rubrique Documents.
-
-Je reste à disposition pour toute question.
-
-Avec mes meilleures salutations,
-
-Jérémy Samper
-Consultant culinaire
-Samper Consulting
-+41 76 626 54 00
-jeremysamper.pro@gmail.com`;
+//
+// Depuis le 12.11.2026, les réglages vivent dans la page des réglages
+// (SectionsFactures.jsx) : les textes du document, client par client, et
+// l'e-mail d'envoi (objet, copie, message type). Les boutons de cet écran
+// ouvrent leur section ; le retour ramène à la facture restée ouverte. Les
+// constantes et les lectures partagées sont dans reglagesFactures.js.
 
 const renderEmailTemplate = (tpl, vars) => {
   let out = tpl || '';
@@ -53,86 +39,6 @@ const renderEmailTemplate = (tpl, vars) => {
 // Un champ multiligne (la prestation est un textarea) ne doit pas casser la
 // mise en forme du mail : on l'aplatit en une seule ligne.
 const flattenValue = (v) => String(v ?? '').replace(/\s*\n\s*/g, ' ').trim();
-
-// ─── Textes du document facture, par établissement client ───
-// Tout ce qui était figé dans le PDF (émetteur, coordonnées bancaires, mention
-// TVA, signature) est éditable et enregistré sur l'établissement sélectionné :
-// un client facturé depuis une autre entité ou avec un autre compte garde ses
-// propres textes. Stockage en user_settings sous une clé scopée par etabId,
-// donc pas de migration ni de colonne à ajouter.
-const DEFAULT_FACTURE_TEXTS = {
-  titre: 'Facture de prestation',
-  emetteur: `Jérémy Samper, consultant culinaire
-Téléphone : +41 76 626 54 00
-E-mail : jeremysamper.pro@gmail.com
-Adresse : Route de Collombé 24A, 1976 Erde, Suisse`,
-  // Vide = bloc client dérivé de la fiche établissement (nom + adresse). Dès
-  // qu'un texte est enregistré il prime : c'est là que vivent la personne de
-  // contact, une raison sociale différente ou une adresse de facturation.
-  client: '',
-  prestationDefaut: 'Mission de consulting culinaire',
-  adresseEmission: 'Route de Collombé 24A, 1976 Erde, Suisse',
-  paiementTitre: 'Coordonnées de paiement',
-  paiement: `Titulaire : SAMPER Jérémy
-Banque : Banque Cantonale du Valais (BCVS)
-IBAN : CH33 0076 5001 0561 6551 0
-SWIFT / BIC : BCVSCH2LXXX`,
-  mentionTva: 'Numéro TVA : Non assujetti (activité indépendante en création)',
-  ville: 'Erde',
-  signature: 'Jérémy Samper, consultant culinaire',
-  // ─── QR-facture suisse ───
-  // L'adresse du créancier est saisie en champs séparés et non reprise du bloc
-  // émetteur : depuis novembre 2025 la norme n'accepte plus que les adresses
-  // structurées, et deviner rue / n° / NPA dans un texte libre qu'on maîtrise
-  // serait une fragilité gratuite. Le débiteur, lui, n'a pas ce luxe : il est
-  // analysé depuis le bloc client (cf. parserAdresse).
-  qrActive: true,
-  qrIban: 'CH33 0076 5001 0561 6551 0',
-  qrCreancierNom: 'SAMPER Jérémy',
-  qrCreancierRue: 'Route de Collombé',
-  qrCreancierNumero: '24A',
-  qrCreancierNpa: '1976',
-  qrCreancierLocalite: 'Erde',
-  qrCreancierPays: 'CH',
-};
-
-const FACTURE_TEXT_FIELDS = [
-  { key: 'titre', label: 'Titre du document', rows: 0, hint: 'Le numéro de facture est ajouté automatiquement à la suite.' },
-  { key: 'emetteur', label: 'Bloc émetteur', rows: 5 },
-  { key: 'client', label: 'Bloc client', rows: 4, hint: "Laisser vide pour reprendre le nom et l'adresse de la fiche établissement. Reste modifiable facture par facture dans le formulaire." },
-  { key: 'prestationDefaut', label: 'Prestation par défaut', rows: 2, hint: 'Pré-remplit le détail de la prestation quand ce client est sélectionné.' },
-  { key: 'adresseEmission', label: "Adresse d'émission", rows: 0, hint: 'Laisser vide pour masquer la ligne du tableau.' },
-  { key: 'paiementTitre', label: 'Titre du bloc paiement', rows: 0 },
-  { key: 'paiement', label: 'Coordonnées de paiement', rows: 5, hint: 'Une ligne par entrée, au format « Libellé : valeur ».' },
-  { key: 'mentionTva', label: 'Mention TVA', rows: 2, hint: 'Laisser vide pour masquer la ligne.' },
-  { key: 'ville', label: "Ville d'émission", rows: 0, hint: 'Utilisée pour la ligne « Fait à… ».' },
-  { key: 'signature', label: 'Signature', rows: 2 },
-
-  { groupe: 'QR-facture', key: 'qrActive', label: 'Ajouter la QR-facture au bas du PDF', type: 'bool', hint: 'Récépissé et section paiement conformes à la norme suisse, générés depuis les champs ci-dessous.' },
-  { groupe: 'QR-facture', key: 'qrIban', label: 'IBAN de paiement', rows: 0, hint: 'Compte suisse ou liechtensteinois. Un QR-IBAN (institution 30000-31999) n\'est pas géré : il exigerait une référence QR.' },
-  { groupe: 'QR-facture', key: 'qrCreancierNom', label: 'Créancier : nom', rows: 0 },
-  { groupe: 'QR-facture', key: 'qrCreancierRue', label: 'Créancier : rue', rows: 0, hint: 'Sans le numéro, qui a son propre champ.' },
-  { groupe: 'QR-facture', key: 'qrCreancierNumero', label: 'Créancier : n°', rows: 0 },
-  { groupe: 'QR-facture', key: 'qrCreancierNpa', label: 'Créancier : NPA', rows: 0 },
-  { groupe: 'QR-facture', key: 'qrCreancierLocalite', label: 'Créancier : localité', rows: 0 },
-  { groupe: 'QR-facture', key: 'qrCreancierPays', label: 'Créancier : pays', rows: 0, hint: 'Code à deux lettres : CH, FR, DE…' },
-];
-
-const factureTextsKey = (etabId) => `facture_textes:${etabId}`;
-
-// Fusion avec les valeurs par défaut : une facture enregistrée avant l'ajout
-// d'un champ ne doit pas afficher un bloc vide.
-const mergeFactureTexts = (raw) => {
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_FACTURE_TEXTS };
-  const out = { ...DEFAULT_FACTURE_TEXTS };
-  Object.keys(DEFAULT_FACTURE_TEXTS).forEach(k => {
-    // Le type doit correspondre à celui du défaut : l'interrupteur de la
-    // QR-facture est un booléen, et un `false` enregistré se perdrait sous un
-    // test qui n'accepte que les chaînes.
-    if (typeof raw[k] === typeof DEFAULT_FACTURE_TEXTS[k]) out[k] = raw[k];
-  });
-  return out;
-};
 
 const isCustomFactureTexts = (texts) =>
   Object.keys(DEFAULT_FACTURE_TEXTS).some(k => (texts?.[k] ?? '') !== DEFAULT_FACTURE_TEXTS[k]);
@@ -265,12 +171,6 @@ const Factures = ({ user, etablissement }) => {
   // login) ; sinon repli sur la lecture async qui interroge la DB.
   const readFactureTextsSync = (id) => mergeFactureTexts(legacySB?.db?.getUserSettingSync?.(factureTextsKey(id)));
   const [factureTexts, setFactureTexts] = React.useState(() => readFactureTextsSync(etabId));
-  const [showTextsEditor, setShowTextsEditor] = React.useState(false);
-  const [textsDraft, setTextsDraft] = React.useState(DEFAULT_FACTURE_TEXTS);
-  // L'établissement visé est figé à l'ouverture de l'éditeur : changer de
-  // destinataire pendant l'édition ne doit pas écrire sur le mauvais client.
-  const [textsEtabId, setTextsEtabId] = React.useState(etabId);
-  const [textsBusy, setTextsBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!isConsultant || !selectedEtabId) return undefined;
@@ -297,37 +197,28 @@ const Factures = ({ user, etablissement }) => {
     return () => { mounted = false; };
   }, [selectedEtabId]);
 
+  // Les textes se règlent dans la page des réglages (section
+  // 'factures_textes'), ouverte sur le client de la facture en cours. Le geste
+  // retour ramène à cette facture, restée ouverte.
   const openTextsEditor = () => {
-    setTextsEtabId(selectedEtabId || etabId);
-    setTextsDraft({ ...factureTexts });
-    setShowTextsEditor(true);
+    choisirClientTextes(selectedEtabId || etabId);
+    ouvrirCompte('factures_textes', { parDessus: true });
   };
 
-  const saveFactureTexts = async () => {
-    const clean = mergeFactureTexts(textsDraft);
-    setTextsBusy(true);
-    try {
-      if (legacySB?.db?.setUserSetting) {
-        await legacySB.db.setUserSetting(factureTextsKey(textsEtabId), clean);
-      }
-      if (textsEtabId === selectedEtabId) {
-        // La prestation en cours suit le nouveau texte type seulement si elle
-        // n'a pas été retouchée pour cette facture-là.
-        const previousDefault = factureTexts.prestationDefaut;
-        setFactureTexts(clean);
-        setForm(prev => (prev.prestation === previousDefault
-          ? { ...prev, prestation: clean.prestationDefaut }
-          : prev));
-      }
-      setShowTextsEditor(false);
-      notifyLegacy('Textes de facture enregistrés pour cet établissement.', 'success');
-    } catch (err) {
-      console.error('[Factures] enregistrement des textes', err);
-      notifyLegacy('Enregistrement impossible : ' + err.message, 'error');
-    } finally {
-      setTextsBusy(false);
-    }
-  };
+  // À l'enregistrement dans la section et au retour, la facture relit les
+  // textes de son client. Même règle qu'avant : la prestation en cours suit le
+  // nouveau texte type seulement si elle n'a pas été retouchée pour cette
+  // facture-là. Rien ne bouge si rien n'a été enregistré.
+  useReglageModifie('factures_textes', () => {
+    if (!isConsultant || !selectedEtabId || !legacySB?.db?.isUserSettingsCacheReady?.()) return;
+    const clean = readFactureTextsSync(selectedEtabId);
+    if (JSON.stringify(clean) === JSON.stringify(factureTexts)) return;
+    const previousDefault = factureTexts.prestationDefaut;
+    setFactureTexts(clean);
+    setForm(prev => (prev.prestation === previousDefault
+      ? { ...prev, prestation: clean.prestationDefaut }
+      : prev));
+  });
 
   // Bloc destinataire dérivé de la fiche établissement, utilisé tant qu'aucun
   // bloc client n'est enregistré. Personne de contact, raison sociale ou
@@ -360,48 +251,19 @@ const Factures = ({ user, etablissement }) => {
   //    on la pousse en DB une seule fois puis on nettoie le localStorage.
   const [showEmailModal, setShowEmailModal] = React.useState(false);
   const [emailDraft, setEmailDraft] = React.useState(null); // { to, cc, subject, body, fileName, blob, etabNom }
-  const [showTemplateEditor, setShowTemplateEditor] = React.useState(false);
   // Le PDF ne peut pas être joint par URL : on trace si l'utilisateur l'a déjà
   // téléchargé pour afficher l'étape suivante plutôt qu'un simple avertissement.
   const [attachmentSaved, setAttachmentSaved] = React.useState(false);
 
-  // Lecture initiale synchrone depuis le cache (déjà hydraté par App au login)
-  const [emailEnabled, setEmailEnabled] = React.useState(() => {
-    if (legacySB?.db?.getUserSettingSync) {
-      const v = legacySB.db.getUserSettingSync('email_facture_enabled');
-      if (v != null) return !!v;
-    }
-    // Fallback localStorage legacy
-    try {
-      const raw = readText('sc_email_facture_enabled', null);
-      if (raw != null) return raw !== 'false';
-    } catch(e) {}
-    return true; // défaut
-  });
-
-  const [emailTemplate, setEmailTemplate] = React.useState(() => {
-    if (legacySB?.db?.getUserSettingSync) {
-      const v = legacySB.db.getUserSettingSync('email_facture_template');
-      if (v) return String(v);
-    }
-    try {
-      const raw = readText('sc_email_facture_template', null);
-      if (raw) return raw;
-    } catch(e) {}
-    return DEFAULT_EMAIL_TEMPLATE;
-  });
-
+  // Lecture initiale synchrone depuis le cache (déjà hydraté par App au login),
+  // avec le repli localStorage d'avant la migration : lireReglagesEmail, la
+  // même lecture que la section des réglages.
+  const [emailEnabled, setEmailEnabled] = React.useState(() => lireReglagesEmail(legacySB?.db).enabled);
+  const [emailTemplate, setEmailTemplate] = React.useState(() => lireReglagesEmail(legacySB?.db).template);
   // Objet du mail : template au même titre que le corps (mêmes variables).
-  const [emailSubjectTpl, setEmailSubjectTpl] = React.useState(() => {
-    const v = legacySB?.db?.getUserSettingSync?.('email_facture_subject');
-    return v ? String(v) : DEFAULT_EMAIL_SUBJECT;
-  });
-
+  const [emailSubjectTpl, setEmailSubjectTpl] = React.useState(() => lireReglagesEmail(legacySB?.db).subject);
   // Copie systématique (comptable, archive perso...) préremplie dans chaque brouillon.
-  const [emailCcDefault, setEmailCcDefault] = React.useState(() => {
-    const v = legacySB?.db?.getUserSettingSync?.('email_facture_cc');
-    return v ? String(v) : '';
-  });
+  const [emailCcDefault, setEmailCcDefault] = React.useState(() => lireReglagesEmail(legacySB?.db).cc);
 
   // Migration douce : si on a lu depuis localStorage (legacy), pousser en DB une seule fois
   React.useEffect(() => {
@@ -437,6 +299,9 @@ const Factures = ({ user, etablissement }) => {
     legacySB.db.setUserSetting('email_facture_enabled', !!emailEnabled).catch(err => {
       console.warn('[Factures] save email_facture_enabled failed', err);
     });
+    // La case reste dans ce formulaire : la section des réglages, si elle est
+    // restée montée derrière, relit la même valeur.
+    signalerReglage(SIGNAL_NOTIFICATION);
   }, [emailEnabled]);
   React.useEffect(() => {
     if (!isConsultant) return;
@@ -460,35 +325,29 @@ const Factures = ({ user, etablissement }) => {
     });
   }, [emailCcDefault]);
 
-  // Insertion d'une variable à l'endroit du curseur dans l'éditeur de message type
-  const templateBodyRef = React.useRef(null);
-  const insertTemplateVar = (name) => {
-    const token = `{{${name}}}`;
-    const el = templateBodyRef.current;
-    if (!el) { setEmailTemplate(prev => `${prev}${token}`); return; }
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? start;
-    setEmailTemplate(`${el.value.slice(0, start)}${token}${el.value.slice(end)}`);
-    // Le curseur est repositionné après le re-render, sinon React le renvoie en fin de champ.
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + token.length, start + token.length);
-    }, 0);
-  };
+  // L'objet, la copie et le message type se règlent dans la page des réglages
+  // (section 'factures_email'), avec l'activation ; la case de ce formulaire
+  // reste, c'est le même réglage. Au retour, la facture relit les quatre
+  // valeurs : le prochain brouillon part du message type à jour.
+  const openTemplateEditor = () => ouvrirCompte('factures_email', { parDessus: true });
+  useReglageModifie('factures_email', () => {
+    if (!isConsultant || !legacySB?.db?.isUserSettingsCacheReady?.()) return;
+    const reglages = lireReglagesEmail(legacySB.db);
+    setEmailEnabled(reglages.enabled);
+    setEmailTemplate(reglages.template);
+    setEmailSubjectTpl(reglages.subject);
+    setEmailCcDefault(reglages.cc);
+  });
 
-  // Fermeture des modales avec la touche Échap (UX standard)
+  // Fermeture de la modale avec la touche Échap (UX standard)
   React.useEffect(() => {
-    if (!showEmailModal && !showTemplateEditor && !showTextsEditor) return;
+    if (!showEmailModal) return;
     const onKey = (e) => {
-      if (e.key === 'Escape') {
-        if (showEmailModal) setShowEmailModal(false);
-        else if (showTemplateEditor) setShowTemplateEditor(false);
-        else if (showTextsEditor) setShowTextsEditor(false);
-      }
+      if (e.key === 'Escape') setShowEmailModal(false);
     };
     browserWindow?.addEventListener('keydown', onKey);
     return () => browserWindow?.removeEventListener('keydown', onKey);
-  }, [showEmailModal, showTemplateEditor, showTextsEditor]);
+  }, [showEmailModal]);
 
   // Charger les factures récentes (depuis le dossier Factures dans Documents)
   React.useEffect(() => {
@@ -755,10 +614,6 @@ const Factures = ({ user, etablissement }) => {
     || (selectedEtabId === etabId ? etablissement?.nom : '')
     || 'cet établissement';
   const textsCustomized = isCustomFactureTexts(factureTexts);
-  // Bloc client dérivé de la fiche de l'établissement en cours d'édition :
-  // affiché en placeholder pour montrer ce qui sera utilisé tant que le champ
-  // reste vide, sans figer le texte à la première ouverture de l'éditeur.
-  const autoClientBlock = buildDestinataireFromEtab(etabsAll.find(e => e.id === textsEtabId));
 
   if (!isConsultant) {
     return (
@@ -969,7 +824,7 @@ const Factures = ({ user, etablissement }) => {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 style={fac.smallBtn}
-                onClick={() => setShowTemplateEditor(true)}
+                onClick={openTemplateEditor}
               >
                 Modifier le message type
               </button>
@@ -1113,7 +968,7 @@ const Factures = ({ user, etablissement }) => {
                   <label style={fac.modalLabel}>Message</label>
                   <button
                     style={fac.linkBtn}
-                    onClick={() => setShowTemplateEditor(true)}
+                    onClick={openTemplateEditor}
                     title="Modifier le message type utilisé pour toutes les factures"
                   >
                     Modifier le message type
@@ -1212,182 +1067,6 @@ const Factures = ({ user, etablissement }) => {
                 }}
               >
                 Ouvrir le brouillon Gmail
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-          MODALE 2 : Éditeur du template email
-         ═══════════════════════════════════════════════════════════════ */}
-      {showTemplateEditor && (
-        // Overlay non-cliquable pour fermer (cohérent avec la modale email).
-        // Fermeture via : ✕, "Annuler", ou Échap.
-        <div className="modal-full-overlay" style={fac.overlay}>
-          <div className="modal-full" style={{ ...fac.modal, width: 620, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={fac.modalHeader}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Message type</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Utilisé pour chaque notification de facture
-                </div>
-              </div>
-              <button style={fac.closeBtn} onClick={() => setShowTemplateEditor(false)} title="Fermer (Échap)">✕</button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={fac.modalLabel}>Objet</label>
-                <input
-                  type="text"
-                  value={emailSubjectTpl}
-                  onChange={e => setEmailSubjectTpl(e.target.value)}
-                  style={fac.modalInput}
-                />
-              </div>
-
-              <div>
-                <label style={fac.modalLabel}>Copie (Cc) par défaut</label>
-                <input
-                  type="email"
-                  value={emailCcDefault}
-                  onChange={e => setEmailCcDefault(e.target.value)}
-                  placeholder="comptable@exemple.ch (facultatif)"
-                  style={fac.modalInput}
-                />
-              </div>
-
-              <div>
-                <label style={fac.modalLabel}>Message</label>
-                <textarea
-                  ref={templateBodyRef}
-                  value={emailTemplate}
-                  onChange={e => setEmailTemplate(e.target.value)}
-                  rows={14}
-                  style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55, minHeight: 280 }}
-                />
-              </div>
-
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>
-                  Variables remplacées à l'envoi (cliquez pour insérer dans le message) :
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {EMAIL_VARS.map(v => (
-                    <button key={v} type="button" style={fac.varChip} onClick={() => insertTemplateVar(v)}>
-                      {`{{${v}}}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div style={fac.modalFooter}>
-              <button
-                style={fac.modalDangerBtn}
-                onClick={() => {
-                  if (confirmLegacy('Restaurer l\'objet et le message par défaut ?')) {
-                    setEmailTemplate(DEFAULT_EMAIL_TEMPLATE);
-                    setEmailSubjectTpl(DEFAULT_EMAIL_SUBJECT);
-                  }
-                }}
-              >
-                ↺ Réinitialiser
-              </button>
-              <div style={{ flex: 1 }} />
-              <button style={fac.modalPrimaryBtn} onClick={() => setShowTemplateEditor(false)}>
-                Enregistrer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════
-          MODALE 3 : Textes du document facture (par établissement)
-         ═══════════════════════════════════════════════════════════════ */}
-      {showTextsEditor && (
-        // Enregistrement explicite (pas d'auto-save comme le message type) :
-        // les textes visent un établissement précis, une écriture involontaire
-        // sur le mauvais client serait invisible jusqu'à la facture suivante.
-        <div className="modal-full-overlay" style={fac.overlay}>
-          <div className="modal-full" style={{ ...fac.modal, width: 640, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={fac.modalHeader}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Textes de la facture</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Enregistrés pour <strong>{selectedEtabNom}</strong>
-                </div>
-              </div>
-              <button style={fac.closeBtn} onClick={() => setShowTextsEditor(false)} title="Fermer (Échap)">✕</button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {FACTURE_TEXT_FIELDS.map((f, i) => (
-                <div key={f.key}>
-                  {/* Intertitre au premier champ d'un groupe : la liste passe de
-                      dix à dix-huit champs, elle a besoin d'un repère. */}
-                  {f.groupe && f.groupe !== FACTURE_TEXT_FIELDS[i - 1]?.groupe && (
-                    <div style={fac.modalGroupTitle}>{f.groupe}</div>
-                  )}
-                  {f.type === 'bool' ? (
-                    <label style={fac.modalCheckRow}>
-                      <input
-                        type="checkbox"
-                        checked={!!textsDraft[f.key]}
-                        onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.checked }))}
-                        style={{ accentColor: 'var(--accent)', width: 18, height: 18, flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.label}</span>
-                    </label>
-                  ) : (
-                    <>
-                      <label style={fac.modalLabel}>{f.label}</label>
-                      {f.rows > 0 ? (
-                        <textarea
-                          value={textsDraft[f.key] ?? ''}
-                          onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
-                          rows={f.rows}
-                          placeholder={f.key === 'client' ? autoClientBlock : undefined}
-                          style={{ ...fac.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55 }}
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          value={textsDraft[f.key] ?? ''}
-                          onChange={e => setTextsDraft(prev => ({ ...prev, [f.key]: e.target.value }))}
-                          style={fac.modalInput}
-                        />
-                      )}
-                    </>
-                  )}
-                  {f.hint && (
-                    <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>{f.hint}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div style={fac.modalFooter}>
-              <button
-                style={fac.modalDangerBtn}
-                onClick={() => {
-                  if (confirmLegacy('Restaurer les textes par défaut pour cet établissement ?')) {
-                    setTextsDraft({ ...DEFAULT_FACTURE_TEXTS });
-                  }
-                }}
-              >
-                ↺ Réinitialiser
-              </button>
-              <div style={{ flex: 1 }} />
-              <button style={fac.modalGhostBtn} onClick={() => setShowTextsEditor(false)}>Annuler</button>
-              <button
-                style={{ ...fac.modalPrimaryBtn, opacity: textsBusy ? 0.6 : 1 }}
-                onClick={saveFactureTexts}
-                disabled={textsBusy}
-              >
-                {textsBusy ? 'Enregistrement…' : 'Enregistrer'}
               </button>
             </div>
           </div>
@@ -1670,7 +1349,6 @@ const fac = {
   modalInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
   modalPrimaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
   modalGhostBtn: { padding: '8px 14px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
-  modalDangerBtn: { padding: '8px 14px', background: 'none', color: 'var(--danger-strong)', border: '1px solid var(--danger-bd)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', lineHeight: 1, flexShrink: 0 },
 
   // Destinataire + Cc côte à côte, empilés dès que la modale est étroite
@@ -1692,14 +1370,6 @@ const fac = {
     color: 'var(--danger-strong)', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
   },
 
-  modalGroupTitle: {
-    fontSize: 12, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)',
-    paddingTop: 6, marginBottom: 10, borderTop: '1px solid var(--border)',
-  },
-  modalCheckRow: {
-    display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer',
-  },
-
   attachBox: {
     padding: 12, borderRadius: 10,
     background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)',
@@ -1712,12 +1382,6 @@ const fac = {
     padding: '8px 13px', background: 'var(--surface)', color: 'var(--text)',
     border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer',
     fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
-  },
-
-  varChip: {
-    padding: '5px 9px', borderRadius: 14, background: 'var(--bg)',
-    border: '1px solid var(--border)', color: 'var(--text2)',
-    fontFamily: 'var(--font)', fontSize: 11, cursor: 'pointer',
   },
 };
 

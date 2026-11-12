@@ -4403,6 +4403,13 @@ export const UI_GLOSSARY = {
   'Régler les e-mails': 'Set up e-mails',
   'Les e-mails partent de': 'E-mails are sent from',
   "Boîte d'envoi et bons d'anniversaire": 'Outbox and birthday vouchers',
+  // ── Réglages R3 : factures client ──
+  'Factures : textes du document': 'Invoices: document texts',
+  'Émetteur, bloc client, paiement, QR-facture et signature, client par client': 'Issuer, client block, payment, QR-bill and signature, client by client',
+  "Factures : e-mail d'envoi": 'Invoices: sending e-mail',
+  'Notification du client, objet, copie et message type': 'Client notification, subject, copy and standard message',
+  'Émetteur, bloc client, coordonnées de paiement, mention TVA et signature : chaque client peut avoir ses propres textes.': 'Issuer, client block, payment details, VAT notice and signature: each client can have its own texts.',
+  'Message type enregistré.': 'Standard message saved.',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

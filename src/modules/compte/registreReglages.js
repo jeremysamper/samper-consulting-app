@@ -179,6 +179,20 @@ export const SECTIONS = [
     charger: () => import('../technique/SectionEquipements.jsx'),
     signaux: ['table:equipements'],
   },
+  // Facturation client : l'écran Factures est réservé au consultant, ses deux
+  // sections aussi (même garde que la page 'factures').
+  {
+    id: 'factures_textes', libelle: 'Factures : textes du document', detail: 'Émetteur, bloc client, paiement, QR-facture et signature, client par client',
+    groupe: 'modules', portee: 'personne', module: 'factures',
+    garde: ouvreLeModule('factures'),
+    charger: () => import('../factures/SectionsFactures.jsx').then((m) => ({ default: m.SectionFacturesTextes })),
+  },
+  {
+    id: 'factures_email', libelle: "Factures : e-mail d'envoi", detail: 'Notification du client, objet, copie et message type',
+    groupe: 'modules', portee: 'personne', module: 'factures',
+    garde: ouvreLeModule('factures'),
+    charger: () => import('../factures/SectionsFactures.jsx').then((m) => ({ default: m.SectionFacturesEmail })),
+  },
 
   // ── L'équipe et les accès ──
   {

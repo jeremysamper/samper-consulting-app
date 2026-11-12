@@ -52,6 +52,8 @@ const AVANT = {
   // Lot R3 : réglages sortis de leur écran de travail.
   carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
   spa_emails: DIRECTION,
+  factures_textes: ['consultant'],
+  factures_email: ['consultant'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

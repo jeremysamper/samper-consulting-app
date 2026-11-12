@@ -4384,4 +4384,11 @@ export const UI_GLOSSARY_ES = {
   'Régler les e-mails': 'Configurar los correos',
   'Les e-mails partent de': 'Los correos salen de',
   "Boîte d'envoi et bons d'anniversaire": 'Buzón de envío y bonos de cumpleaños',
+  // ── Réglages R3 : factures client ──
+  'Factures : textes du document': 'Facturas: textos del documento',
+  'Émetteur, bloc client, paiement, QR-facture et signature, client par client': 'Emisor, bloque del cliente, pago, factura QR y firma, cliente por cliente',
+  "Factures : e-mail d'envoi": 'Facturas: correo de envío',
+  'Notification du client, objet, copie et message type': 'Notificación al cliente, asunto, copia y mensaje tipo',
+  'Émetteur, bloc client, coordonnées de paiement, mention TVA et signature : chaque client peut avoir ses propres textes.': 'Emisor, bloque del cliente, datos de pago, mención del IVA y firma: cada cliente puede tener sus propios textos.',
+  'Message type enregistré.': 'Mensaje tipo guardado.',
 };

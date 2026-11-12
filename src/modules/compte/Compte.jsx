@@ -184,7 +184,15 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   );
 
   const corps = section ? (
-    <SectionMontee key={section.id} section={section} user={user} etablissement={etablissement} permissions={permissions} shellMode={shellMode} />
+    <SectionMontee
+      key={section.id}
+      section={section}
+      user={user}
+      etablissement={etablissement}
+      permissions={permissions}
+      shellMode={shellMode}
+      revenir={ouverte.direct ? retourModule : undefined}
+    />
   ) : null;
 
   if (etroit) {
@@ -235,8 +243,10 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
 // La section : l'écran d'origine, isolé (un écran qui plante ne fait pas
 // tomber la page). Une section dont l'écran est une fenêtre la pose elle-même
 // en ligne (EnSection, Fenetres.jsx) ; les fenêtres que les autres écrans
-// ouvrent restent de vraies fenêtres.
-function SectionMontee({ section, user, etablissement, permissions, shellMode }) {
+// ouvrent restent de vraies fenêtres. `revenir` n'est donné qu'à une section
+// ouverte par le raccourci d'un module : un bouton qui fermait la fenêtre
+// d'origine (« Enregistrer » des textes de facture) y ramène.
+function SectionMontee({ section, user, etablissement, permissions, shellMode, revenir }) {
   const Composant = composantDe(section);
   const signaler = React.useCallback(() => signalerSection(section.id), [section.id]);
   return (
@@ -249,6 +259,7 @@ function SectionMontee({ section, user, etablissement, permissions, shellMode })
             permissions={permissions}
             shellMode={shellMode}
             signaler={signaler}
+            revenir={revenir}
           />
         </React.Suspense>
       </SafeModule>
