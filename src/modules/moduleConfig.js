@@ -226,7 +226,8 @@ export const tousLesNavItems = [
   // poussait une autre sous le pli. Sa rubrique lui est propre et vient en
   // dernier : avec un ordre de menu enregistré (app_settings.nav_order),
   // un module qui n'y figure pas va à la fin de sa rubrique, donc ici à la
-  // fin du menu. Le consultant peut ensuite la déplacer dans Paramètres.
+  // fin du menu. Le consultant peut ensuite la déplacer par « Organiser le
+  // menu », qui enregistre sa place avec les autres.
   { id: 'statistiques', label: 'Statistiques', mobileLabel: 'Stats', icon: '◔', group: 'Statistiques', permKey: 'statistiques' }
 ];
 
