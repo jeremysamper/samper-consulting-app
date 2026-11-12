@@ -64,6 +64,21 @@ export function installLegacySupabase() {
     return [];
   }
 
+  // Toutes les pages d'une lecture : PostgREST rend 1000 lignes au plus par
+  // réponse, une lecture d'un seul tenant serait tronquée sans le dire.
+  // `requete(de, a)` construit la requête d'une page, avec un ordre stable
+  // (une colonne unique en dernier). Rend { data, error } comme une requête.
+  async function _toutesLesPages(requete) {
+    const PAGE = 1000;
+    const lignes = [];
+    for (let de = 0; ; de += PAGE) {
+      const { data, error } = await requete(de, de + PAGE - 1);
+      if (error) return { data: null, error };
+      lignes.push(...(data || []));
+      if (!data || data.length < PAGE) return { data: lignes, error: null };
+    }
+  }
+
   // Relation absente : la migration qui crée la table n'est pas encore
   // appliquée. Ce n'est PAS un échec de lecture : aucun réessai ne la fera
   // apparaître, et l'appelant doit voir un référentiel vide plutôt qu'un état
@@ -1260,14 +1275,18 @@ export function installLegacySupabase() {
 
     // ─── Exécutions ───
     async listSopExecutions(etabId, opts = {}) {
-      let q = client.from('sop_executions').select('*').eq('etablissement_id', etabId);
-      if (opts.sopId) q = q.eq('sop_id', opts.sopId);
-      if (opts.dateFrom) q = q.gte('date_execution', opts.dateFrom);
-      if (opts.dateTo) q = q.lte('date_execution', opts.dateTo);
-      if (opts.statut) q = q.eq('statut', opts.statut);
-      q = q.order('heure_debut', { ascending: false });
-      if (opts.limit) q = q.limit(opts.limit);
-      const { data, error } = await q;
+      const construire = () => {
+        let q = client.from('sop_executions').select('*').eq('etablissement_id', etabId);
+        if (opts.sopId) q = q.eq('sop_id', opts.sopId);
+        if (opts.dateFrom) q = q.gte('date_execution', opts.dateFrom);
+        if (opts.dateTo) q = q.lte('date_execution', opts.dateTo);
+        if (opts.statut) q = q.eq('statut', opts.statut);
+        return q.order('heure_debut', { ascending: false });
+      };
+      // Une limite demandée garde sa requête unique ; sans limite, toutes les pages.
+      const { data, error } = opts.limit
+        ? await construire().limit(opts.limit)
+        : await _toutesLesPages((de, a) => construire().order('id').range(de, a));
       if (error) return _readFailed('[listSopExecutions]', error, opts.strict);
       return (data || []).map(this.mapSopExecFromDB);
     },
@@ -1600,9 +1619,11 @@ export function installLegacySupabase() {
     // ─── INVENTAIRES ───
     // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
     async listInventaires(etabId, { strict = false } = {}) {
-      let q = client.from('inventaires').select('*').order('date', { ascending: false });
-      if (etabId) q = q.eq('etablissement_id', etabId);
-      const { data, error } = await q;
+      const { data, error } = await _toutesLesPages((de, a) => {
+        let q = client.from('inventaires').select('*');
+        if (etabId) q = q.eq('etablissement_id', etabId);
+        return q.order('date', { ascending: false }).order('id').range(de, a);
+      });
       if (error) return _readFailed('[listInventaires]', error, strict);
       return (data || []).map(this.mapInventaireFromDB);
     },
@@ -1660,9 +1681,11 @@ export function installLegacySupabase() {
 
     // ─── PERTES ───
     async listPertes(etabId, { strict = false } = {}) {
-      let q = client.from('pertes').select('*').order('date', { ascending: false });
-      if (etabId) q = q.eq('etablissement_id', etabId);
-      const { data, error } = await q;
+      const { data, error } = await _toutesLesPages((de, a) => {
+        let q = client.from('pertes').select('*');
+        if (etabId) q = q.eq('etablissement_id', etabId);
+        return q.order('date', { ascending: false }).order('id').range(de, a);
+      });
       if (error) return _readFailed('[listPertes]', error, strict);
       return (data || []).map(this.mapPerteFromDB);
     },

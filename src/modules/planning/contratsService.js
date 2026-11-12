@@ -66,7 +66,8 @@ const colonnesContrat = (c) => ({
 export async function lirePeriode(etablissementId, debut, fin) {
   const bridge = dbService.getBridge();
   const [sh, ab] = await Promise.all([
-    supabase.from('shifts').select('*').eq('etablissement_id', etablissementId).gte('date', debut).lte('date', fin).order('date').order('debut'),
+    toutesLesPages((de, a) => supabase.from('shifts').select('*').eq('etablissement_id', etablissementId)
+      .gte('date', debut).lte('date', fin).order('date').order('debut').order('id').range(de, a)),
     lireAbsences(etablissementId, debut, fin),
   ]);
   if (sh.error) throw sh.error;
@@ -74,13 +75,26 @@ export async function lirePeriode(etablissementId, debut, fin) {
 }
 
 export async function lireAbsences(etablissementId, debut, fin) {
-  const { data, error } = await supabase.from('absences').select('*')
-    .eq('etablissement_id', etablissementId).lte('date_debut', fin).gte('date_fin', debut).limit(1000);
+  const { data, error } = await toutesLesPages((de, a) => supabase.from('absences').select('*')
+    .eq('etablissement_id', etablissementId).lte('date_debut', fin).gte('date_fin', debut).order('date_debut').order('id').range(de, a));
   if (error) {
     if (RELATION_ABSENTE.has(error.code)) return [];
     throw error;
   }
   return (data || []).map(mapAbsenceFromDB);
+}
+
+// Toutes les pages d'une lecture : PostgREST rend 1000 lignes au plus par
+// réponse. `requete(de, a)` construit une page avec un ordre stable.
+async function toutesLesPages(requete) {
+  const PAGE = 1000;
+  const lignes = [];
+  for (let de = 0; ; de += PAGE) {
+    const { data, error } = await requete(de, de + PAGE - 1);
+    if (error) return { data: null, error };
+    lignes.push(...(data || []));
+    if (!data || data.length < PAGE) return { data: lignes, error: null };
+  }
 }
 
 // ─── Contrats d'un établissement (ceux que la RLS laisse voir) ─────────────
