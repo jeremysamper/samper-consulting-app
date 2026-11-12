@@ -2140,9 +2140,11 @@ export function installLegacySupabase() {
 
     // ─── HACCP - Relevés ───
     async listHaccpReleves(etabId, { strict = false } = {}) {
-      let q = client.from('haccp_releves').select('*').order('date', { ascending: false }).order('heure', { ascending: false });
-      if (etabId) q = q.eq('etablissement_id', etabId);
-      const { data, error } = await q;
+      const { data, error } = await _toutesLesPages((de, a) => {
+        let q = client.from('haccp_releves').select('*');
+        if (etabId) q = q.eq('etablissement_id', etabId);
+        return q.order('date', { ascending: false }).order('heure', { ascending: false }).order('id').range(de, a);
+      });
       if (error) return _readFailed('[listHaccpReleves]', error, strict);
       return (data || []).map(this.mapHaccpReleveFromDB);
     },
