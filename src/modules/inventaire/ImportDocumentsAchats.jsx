@@ -229,13 +229,13 @@ export default function ImportDocumentsAchats({
 
       {file.length > 0 && (
         <div style={st.file}>
-          {enAttente > 0 && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Lecture en cours : <span>{enAttente}</span> {enAttente > 1 ? 'documents' : 'document'}. Vous pouvez continuer à compter en attendant.</div>}
+          {enAttente > 0 && <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 6 }}>Lecture en cours : <span>{enAttente}</span> {enAttente > 1 ? 'documents' : 'document'}. Vous pouvez continuer à compter en attendant.</div>}
           {file.map(t => (
             <div key={t.key} style={st.travail}>
               <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
                 {t.statut === 'ok' ? '✓' : t.statut === 'erreur' ? '!' : t.statut === 'doublon' ? '≡' : t.statut === 'lecture' ? '…' : '○'}
               </span>
-              <span data-no-translate style={{ flex: '1 1 160px', minWidth: 0, wordBreak: 'break-word', fontWeight: 500 }}>{t.nom}</span>
+              <span data-no-translate style={{ flex: '1 1 160px', minWidth: 0, wordBreak: 'break-word', fontWeight: 'var(--g2)' }}>{t.nom}</span>
               <span style={{ flex: '2 1 200px', minWidth: 0, color: t.statut === 'erreur' ? 'var(--danger-text)' : 'var(--text2)' }}>
                 {t.statut === 'attente' ? 'en attente' : t.statut === 'lecture' ? 'lecture en cours…' : t.message}
               </span>
@@ -258,13 +258,13 @@ const st = {
     border: 'none', boxShadow: 'inset 0 0 0 1px var(--btn-bord)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g2)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
   },
   libelle: { display: 'block' },
-  etat: { display: 'block', marginTop: 4, fontSize: 12, fontWeight: 400, color: 'var(--text2)', lineHeight: 1.35 },
+  etat: { display: 'block', marginTop: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)', lineHeight: 1.35 },
   options: { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', minWidth: 0 },
-  caseLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', minHeight: 44, cursor: 'pointer' },
-  select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', minHeight: 44 },
-  lien: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  alerte: { fontSize: 12, lineHeight: 1.5, padding: '10px 0 10px 12px', color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)' },
-  btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
-  file: { display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', minWidth: 0 },
-  travail: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, padding: '4px 0', color: 'var(--text)' },
+  caseLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--t2)', color: 'var(--text)', minHeight: 44, cursor: 'pointer' },
+  select: { padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', minHeight: 44 },
+  lien: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  alerte: { fontSize: 'var(--t1)', lineHeight: 1.5, padding: '10px 0 10px 12px', color: 'var(--warning-text)', borderLeft: '2px solid var(--warning-bd)' },
+  btnMini: { padding: '6px 10px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
+  file: { display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '12px 16px', minWidth: 0 },
+  travail: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--t1)', padding: '4px 0', color: 'var(--text)' },
 };

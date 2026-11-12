@@ -41,6 +41,7 @@ export default function CasesZones({ zones, onChange, nom, disabled = false }) {
 const st = {
   groupe: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   // 36 px : cible tactile tenable au doigt sur iPad, quatre cases sur une ligne de carte.
-  case: { minHeight: 36, padding: '0 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 18, background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer', whiteSpace: 'nowrap' },
-  caseOn: { borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 700 },
+  case: { minHeight: 36, padding: '0 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer', whiteSpace: 'nowrap' },
+  // Case cochée : fond de sélection et trait d'encre, pas d'aplat d'accent.
+  caseOn: { borderColor: 'var(--onglet)', background: 'var(--selection)', fontWeight: 'var(--g3)' },
 };

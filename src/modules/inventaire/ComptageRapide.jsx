@@ -1,5 +1,6 @@
 import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { Panneau, ligneStyle } from '../../components/ui/index.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { estCompte, UNITES_INVENTAIRE } from './inventaireLignes.js';
 import { zoneOf, zonesOf, estMultiZone, quantiteZone, zonesDesLignes, zoneSuggeree, SANS_ZONE } from './zones.js';
@@ -8,13 +9,13 @@ import ModifierProduit from './ModifierProduit.jsx';
 
 // Vue « Comptage » : ce qu'on fait vraiment en chambre froide, et rien d'autre.
 //
-// Une carte par produit, un grand champ, l'unité à côté. La quantité du
+// Une ligne par produit, un grand champ, l'unité à côté. La quantité du
 // dernier inventaire est affichée en indication, un tap sur « = » la reprend.
 // Entrée passe au produit suivant : on compte une étagère de haut en bas sans
 // lâcher le clavier. Écarts, valeurs et KPI vivent dans la vue « Écarts ».
 //
 // Dès qu'un produit a une zone (Cave, Économat, Froid positif, Froid négatif),
-// les cartes se rangent par zone puis par catégorie, et des onglets permettent
+// chaque zone a son panneau, ses produits rangés par catégorie, et des onglets permettent
 // de compter une zone après l'autre, dans l'ordre du tour. Un produit rangé
 // dans deux zones a une carte dans chacune, avec sa propre quantité : la ligne
 // vaut la somme.
@@ -164,8 +165,8 @@ export default function ComptageRapide({
     const autres = multi ? zonesOf(l).filter(z => z !== zone) : [];
     const commit = (v) => commitStockReel(l.id, v, multi ? zone : '');
     return (
-      <div key={cle} style={{ ...st.carte, ...(compte ? st.carteComptee : {}), ...(recente ? st.carteRecente : {}) }}>
-        <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+      <div key={cle} style={st.ligne}>
+        <div style={{ flex: '1 1 124px', minWidth: 0 }}>
           <div style={st.nomLigne}>
             <div data-no-translate style={st.nom}>{l.produit}</div>
             {canEdit && onModifier && (
@@ -237,7 +238,7 @@ export default function ComptageRapide({
             </select>
           </div>
         ) : (
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', whiteSpace: 'nowrap' }}>
             {valeur != null ? `${valeur} ${l.unite}` : '-'}
           </div>
         )}
@@ -269,8 +270,8 @@ export default function ComptageRapide({
       )}
       <div style={st.progression}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 14, color: 'var(--text)' }}>
-            <strong style={{ fontSize: 18, fontFamily: 'var(--font-num)' }}>{nbComptes}</strong> / {total} produit{total > 1 ? 's' : ''} compté{total > 1 ? 's' : ''}
+          <span style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>
+            <strong style={{ fontSize: 'var(--t3)', fontFamily: 'var(--font-num)' }}>{nbComptes}</strong> / {total} produit{total > 1 ? 's' : ''} compté{total > 1 ? 's' : ''}
           </span>
           {canEdit && restants > 0 && nbComptes > 0 && lignes.some(l => !estCompte(l) && l.precedent != null) && (
             <button type="button" style={st.lienBtn} onClick={onReprendreRestants}>
@@ -302,7 +303,7 @@ export default function ComptageRapide({
             <datalist id="inventaire-ajout-rapide">
               {(catalogue || []).filter(p => p?.nom && p.actif !== false).slice(0, 2000).map(p => <option key={p.id} value={p.nom} />)}
             </datalist>
-            <button type="button" style={{ ...st.ajoutBtn, opacity: ajout.trim() ? 1 : 0.5 }} onClick={ajouter} disabled={!ajout.trim()}>
+            <button type="button" style={st.ajoutBtn} onClick={ajouter} disabled={!ajout.trim()}>
               Ajouter
             </button>
           </div>
@@ -317,15 +318,15 @@ export default function ComptageRapide({
       )}
 
       {recentes.length > 0 && (
-        <div style={st.groupeZone}>
+        <Panneau style={st.zone}>
           <div style={st.zoneTitre}>
             Ajoutés à l'instant
             <span style={st.catCompte}>{recentes.filter(carteComptee).length}/{recentes.length}</span>
           </div>
-          <div style={st.cartes}>
+          <div style={st.lignes}>
             {recentes.map(c => renderCarte(c, { recente: true }))}
           </div>
-        </div>
+        </Panneau>
       )}
 
       {avecZones && (
@@ -401,70 +402,83 @@ export default function ComptageRapide({
         </div>
       )}
 
-      {groupes.map(({ zone, categories }) => (
-        <div key={zone || '__sans__'} style={st.groupeZone}>
-          {avecZones && (
-            <div style={st.zoneTitre}>
-              {zone || SANS_ZONE}
-              <span style={st.catCompte}>
-                {categories.reduce((n, [, cs]) => n + cs.filter(carteComptee).length, 0)}/{categories.reduce((n, [, cs]) => n + cs.length, 0)}
-              </span>
-            </div>
-          )}
-          {categories.map(([cat, cs]) => (
-            <div key={cat}>
-              <div style={st.catTitre}>
-                {cat}
-                <span style={st.catCompte}>{cs.filter(carteComptee).length}/{cs.length}</span>
-              </div>
-              <div style={st.cartes}>
-                {cs.map(c => renderCarte(c))}
-              </div>
-            </div>
+      {groupes.length > 0 && (
+        <div style={st.zones}>
+          {groupes.map(({ zone, categories }) => (
+            <Panneau key={zone || '__sans__'} style={st.zone}>
+              {avecZones && (
+                <div style={st.zoneTitre}>
+                  {zone || SANS_ZONE}
+                  <span style={st.catCompte}>
+                    {categories.reduce((n, [, cs]) => n + cs.filter(carteComptee).length, 0)}/{categories.reduce((n, [, cs]) => n + cs.length, 0)}
+                  </span>
+                </div>
+              )}
+              {categories.map(([cat, cs]) => (
+                <div key={cat}>
+                  <div style={st.catTitre}>
+                    {cat}
+                    <span style={st.catCompte}>{cs.filter(carteComptee).length}/{cs.length}</span>
+                  </div>
+                  <div style={st.lignes}>
+                    {cs.map(c => renderCarte(c))}
+                  </div>
+                </div>
+              ))}
+            </Panneau>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
 const st = {
   root: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
-  progression: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 },
-  barre: { height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' },
+  // Posés sur la page, sans cadre : le compteur et sa jauge.
+  progression: { display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 0' },
+  barre: { height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' },
   barreRemplie: { height: '100%', background: 'var(--success-strong, var(--accent))', transition: 'width .2s ease' },
-  lienBtn: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 36 },
+  lienBtn: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 36 },
   outils: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 },
-  recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   ajoutBloc: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   ajoutRapide: { display: 'flex', gap: 8, minWidth: 0 },
-  ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  ajoutAide: { fontSize: 11, color: 'var(--text2)', padding: '0 4px' },
-  // Même hauteur que le champ d'ajout qu'il prolonge (44 px).
-  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  vide: { padding: '30px 16px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5, background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 12 },
-  groupeZone: { display: 'flex', flexDirection: 'column', gap: 4 },
-  zoneTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: '10px 2px 0', paddingBottom: 4, borderBottom: '2px solid var(--border)' },
-  // Gabarit du bouton secondaire de Btn (38 px, rayon --r-sm, graisse 500).
-  rangerBtn: { padding: '8px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 38, whiteSpace: 'nowrap' },
-  rangerBtnActif: { borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 },
-  astuceZones: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text2)', padding: '8px 12px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 8, lineHeight: 1.45 },
-  catTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '6px 2px 6px' },
-  catCompte: { fontWeight: 500, color: 'var(--text3, var(--text2))', letterSpacing: 0 },
-  cartes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 8 },
-  carte: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, minWidth: 0 },
-  carteComptee: { borderColor: 'var(--success-bd)' },
-  carteRecente: { borderColor: 'var(--accent)' },
-  // Les cases sur toute la largeur de la carte, sous le nom et le champ.
+  ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  ajoutAide: { fontSize: 'var(--t1)', color: 'var(--text2)', padding: '0 4px' },
+  // Même hauteur que le champ d'ajout qu'il prolonge (44 px). Bouton
+  // secondaire : l'action principale de l'écran est « Terminer le comptage ».
+  // Son état éteint (rien à ajouter) est dans app.css.
+  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  vide: { padding: '30px 0', textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)', lineHeight: 1.5 },
+  // Une zone = un panneau (Panneau de ui) : sa limite se voit, les zones se
+  // séparent par l'espace. Retrait latéral resserré au téléphone, pour que le
+  // nom, « = », la quantité et l'unité tiennent sur une ligne.
+  zones: { display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 },
+  zone: { display: 'flex', flexDirection: 'column', gap: 4, padding: '12px clamp(8px, 2vw, 16px)', minWidth: 0 },
+  zoneTitre: { display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  // Gabarit du bouton secondaire de Btn (38 px), écrit par les jetons --btn-*.
+  rangerBtn: { padding: '8px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 38, whiteSpace: 'nowrap' },
+  // Rangement en cours : fond de sélection et trait d'encre, pas d'accent.
+  rangerBtnActif: { borderColor: 'var(--onglet)', background: 'var(--selection)', fontWeight: 'var(--g3)' },
+  astuceZones: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '8px 0', lineHeight: 1.45 },
+  catTitre: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '8px 0 0' },
+  catCompte: { fontWeight: 'var(--g2)', color: 'var(--text3, var(--text2))' },
+  // Les produits d'une catégorie : des lignes de liste (ligneStyle de ui),
+  // sur autant de colonnes que la largeur en offre.
+  lignes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', columnGap: 24, rowGap: 0 },
+  ligne: { ...ligneStyle(), flexWrap: 'wrap', gap: 10, padding: '4px 0', boxSizing: 'border-box' },
+  // Les cases sur toute la largeur de la ligne, sous le nom et le champ.
   casesLigne: { flexBasis: '100%', minWidth: 0 },
   nomLigne: { display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 },
-  nom: { flex: '1 1 auto', minWidth: 0, fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
-  // Lien discret, cible tactile de 32 px sans agrandir la carte.
-  modifierBtn: { flexShrink: 0, background: 'none', border: 'none', padding: '0 4px', minHeight: 32, marginTop: -7, color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  indication: { fontSize: 11, color: 'var(--text2)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  nom: { flex: '1 1 auto', minWidth: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.3 },
+  // Lien discret, cible tactile de 32 px sans agrandir la ligne.
+  modifierBtn: { flexShrink: 0, background: 'none', border: 'none', padding: '0 4px', minHeight: 32, marginTop: -7, color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  indication: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' },
-  egal: { width: 40, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text2)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
-  champ: { width: 92, height: 44, padding: '0 10px', textAlign: 'right', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: 17, fontWeight: 700, fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  egal: { width: 40, height: 44, borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  // Le contour vert d'une quantité comptée reste : c'est l'état de la ligne.
+  champ: { width: 92, height: 44, padding: '0 10px', textAlign: 'right', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   champCompte: { borderColor: 'var(--success-bd)' },
-  unite: { height: 44, padding: '0 4px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer', maxWidth: 64 },
+  unite: { height: 44, padding: '0 4px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer', maxWidth: 64 },
 };

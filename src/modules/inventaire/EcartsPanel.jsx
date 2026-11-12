@@ -113,7 +113,7 @@ export default function EcartsPanel({
               }}>
                 <span style={{ whiteSpace: 'nowrap' }}>{deltaValeur > 0 ? '+' : ''}CHF {deltaValeur.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 {deltaPct != null && (
-                  <span style={{ fontSize: 11, fontWeight: 500, marginLeft: 6, opacity: 0.85 }}>
+                  <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', marginLeft: 6, opacity: 0.85 }}>
                     ({deltaPct > 0 ? '+' : ''}{deltaPct.toLocaleString('fr-CH', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %)
                   </span>
                 )}
@@ -157,7 +157,7 @@ export default function EcartsPanel({
           />
           {hasTypes && (
             <div style={{display:'flex', gap:6, alignItems:'center'}}>
-              <span style={{fontSize:11, color:'var(--text2)', fontWeight:500, textTransform:'uppercase', letterSpacing:0.4}}>Type :</span>
+              <span style={{fontSize: 'var(--t1)', color:'var(--text2)', fontWeight: 'var(--g2)'}}>Type :</span>
               <SegmentedTabs
                 size="sm"
                 active={typeFilter}
@@ -217,7 +217,7 @@ export default function EcartsPanel({
             const ecartColor = l.ecart < 0 ? 'var(--danger-strong)' : l.ecart > 0 ? 'var(--success-strong)' : 'var(--text2)';
             // Type de la ligne (format d'import Samper) en mots, en texte simple.
             const typeBadge = l.type ? (
-              <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 400, color: 'var(--text2)' }}>
+              <span style={{ marginLeft: 6, fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)' }}>
                 {TYPES_LIGNE[l.type] || l.type}
               </span>
             ) : null;
@@ -276,12 +276,12 @@ export default function EcartsPanel({
                     <>{estCompte(l) ? `${l.stockReel} ${l.unite}` : '-'}</>
                   )}
                 </span>
-                <span style={{...st.cell, textAlign:'right', color:ecartColor, fontWeight:500}}>{l.ecart == null ? '-' : <>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</>}</span>
+                <span style={{...st.cell, textAlign:'right', color:ecartColor, fontWeight: 'var(--g2)'}}>{l.ecart == null ? '-' : <>{l.ecart > 0 ? '+' : ''}{l.ecart} {l.unite}</>}</span>
                 {/* Number(...) || 0 : une ligne relue de la base n'est pas
                     recalculée au chargement, un champ absent ne doit pas faire
                     tomber tout le module. */}
                 <span style={{...st.cellBold, textAlign:'right'}}>{(Number(l.valeur) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</span>
-                <span style={{...st.cell, textAlign:'right', color:ecartColor, fontWeight:500}}>{l.ecart == null ? '-' : <>{l.ecartValeur > 0 ? '+' : ''}{(Number(l.ecartValeur) || 0).toFixed(2)}</>}</span>
+                <span style={{...st.cell, textAlign:'right', color:ecartColor, fontWeight: 'var(--g2)'}}>{l.ecart == null ? '-' : <>{l.ecartValeur > 0 ? '+' : ''}{(Number(l.ecartValeur) || 0).toFixed(2)}</>}</span>
                 {canManage && <span className="no-print">{canGererLignes && <button className="btn-suppr-discret" style={st.deleteBtn} onClick={() => onDeleteLine(l.id)}>Supprimer</button>}</span>}
               </div>
             );
@@ -293,21 +293,21 @@ export default function EcartsPanel({
 
 const st = {
   docTitle: {display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:4},
-  docTitlePerimetre: {fontSize:17,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
-  docTitleDate: {fontSize:12,color:'var(--text2)'},
-  saisieHint: {fontSize:11,color:'var(--text2)',lineHeight:1.5,padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
+  docTitlePerimetre: {fontSize: 'var(--t3)',fontWeight: 'var(--g3)',fontFamily:'var(--font)',color:'var(--text)'},
+  docTitleDate: {fontSize: 'var(--t1)',color:'var(--text2)'},
+  saisieHint: {fontSize: 'var(--t1)',color:'var(--text2)',lineHeight:1.5,padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius: 'var(--r)'},
   // Le champ prend la largeur de sa cellule ; l'unité reste collée à droite et
   // ne se comprime jamais (flexShrink 0), sinon « pcs » se coupe en « p… ».
   stockSaisie: {display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6,width:'100%',minWidth:0},
-  stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',border:'1px solid var(--border)',borderRadius:6,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:500,fontFamily:'var(--font)',boxSizing:'border-box'},
-  stockUnite: {fontSize:11,color:'var(--text2)',flexShrink:0},
-  zoneTag: {display:'inline-block',marginLeft:4,fontSize:11,color:'var(--text2)'},
-  rangement: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize:13,color:'var(--text2)',padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius:8},
-  invSelect: {padding:'8px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'},
+  stockInput: {width:'100%',maxWidth:110,minWidth:64,padding:'6px 8px',textAlign:'right',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',background: 'var(--surface)',color:'var(--text)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',fontFamily:'var(--font)',boxSizing:'border-box'},
+  stockUnite: {fontSize: 'var(--t1)',color:'var(--text2)',flexShrink:0},
+  zoneTag: {display:'inline-block',marginLeft:4,fontSize: 'var(--t1)',color:'var(--text2)'},
+  rangement: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize: 'var(--t2)',color:'var(--text2)',padding:'8px 12px',background:'var(--bg)',border:'1px dashed var(--border)',borderRadius: 'var(--r)'},
+  invSelect: {padding:'8px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',cursor:'pointer'},
   // Supprimer, sur chaque ligne : discret au repos, rouge au survol et au focus (classe btn-suppr-discret, app.css).
-  deleteBtn:{padding:'6px 10px',background:'transparent',border:'1px solid transparent',color:'var(--text3)',borderRadius:8,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}, kpiLabel: {fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6}, kpiVal: {fontSize:20,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
-  kpiNote: {fontSize:11,color:'var(--text2)',marginTop:6,lineHeight:1.4},
+  deleteBtn:{padding:'6px 10px',background:'transparent',border:'1px solid transparent',color:'var(--text3)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  kpiBar: {display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}, kpiCard: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius: 'var(--r)',padding:'14px 16px'}, kpiLabel: {fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text2)',marginBottom:6}, kpiVal: {fontSize: 'var(--t4)',fontWeight: 'var(--g-chiffre)',fontFamily:'var(--font-num)',color:'var(--text)'},
+  kpiNote: {fontSize: 'var(--t1)',color:'var(--text2)',marginTop:6,lineHeight:1.4},
   filters: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',minWidth:0},
-  tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize:12,fontWeight:700,color:'var(--text2)',borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize:13,fontWeight:500,color:'var(--text)'}, cell: {fontSize:13,color:'var(--text)'}, cellBold: {fontSize:13,fontWeight:500,color:'var(--text)'}, catTag: {fontSize:11,fontWeight:500,background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius:10},
+  tableWrap: {background:'var(--surface)',border:'1px solid var(--border)',borderRadius: 'var(--r)',overflow:'hidden'}, tableHead: {display:'grid',padding:'10px 18px',background:'var(--bg)',fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text2)',borderBottom:'1px solid var(--border)',gap:12}, tableRow: {display:'grid',padding:'11px 18px',borderBottom:'1px solid var(--border)',gap:12,alignItems:'center'}, prodName: {fontSize: 'var(--t2)',lineHeight:1.2,fontWeight: 'var(--g2)',color:'var(--text)'}, cell: {fontSize: 'var(--t2)',lineHeight:1.2,color:'var(--text)'}, cellBold: {fontSize: 'var(--t2)',lineHeight:1.2,fontWeight: 'var(--g2)',color:'var(--text)'}, catTag: {fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--bg)',border:'1px solid var(--border)',color:'var(--text2)',padding:'2px 8px',borderRadius: 'var(--r)'},
 };

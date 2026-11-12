@@ -150,7 +150,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
             Ranger dans
             <ChoixZone value={zone} onChange={setZone} lignes={lignesExistantes} style={st.zoneSelect} ariaLabel="Zone des produits ajoutés" videLabel="D'après le nom" />
           </label>
-          <span style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 160px', minWidth: 0 }}>
+          <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', flex: '1 1 160px', minWidth: 0 }}>
             {nbCoches === 0 ? 'Aucun produit coché.' : <><strong style={{ color: 'var(--text)' }}>{nbCoches}</strong> produit{nbCoches > 1 ? 's' : ''} à ajouter</>}
           </span>
           <button type="button" onClick={onClose} style={st.btnSecondaire} disabled={busy}>Annuler</button>
@@ -216,7 +216,7 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                 <div style={st.catHeader}>
                   <button type="button" style={st.catToggle} onClick={() => basculerOuverture(cat)}>
                     <span style={{ width: 14, display: 'inline-block' }}>{estOuverte(cat) ? '▾' : '▸'}</span>
-                    <span style={{ fontWeight: 700 }}>{cat}</span>
+                    <span style={{ fontWeight: 'var(--g3)' }}>{cat}</span>
                     <span style={st.catCompte}>
                       {nbCat > 0 ? `${nbCat} coché${nbCat > 1 ? 's' : ''}, ` : ''}
                       {dispo.length} à ajouter{produits.length > dispo.length ? `, ${produits.length - dispo.length} déjà présent${produits.length - dispo.length > 1 ? 's' : ''}` : ''}
@@ -241,8 +241,8 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
                         style={{ width: 20, height: 20, flexShrink: 0, cursor: present ? 'default' : 'pointer' }}
                       />
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span data-no-translate style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word' }}>{p.nom}</span>
-                        <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+                        <span data-no-translate style={{ display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', wordBreak: 'break-word' }}>{p.nom}</span>
+                        <span style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 }}>
                           {present ? 'déjà dans l\'inventaire' : (p.info || [p.uniteRef, p.fournisseurNom].filter(Boolean).join(', '))}
                         </span>
                       </span>
@@ -258,22 +258,22 @@ export default function AjoutProduitsModal({ catalogue, lignesExistantes, onAjou
 }
 
 const st = {
-  recherche: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  libre: { marginTop: 8, padding: '9px 14px', borderRadius: 8, border: '1px dashed var(--accent)', background: 'var(--surface)', color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44, width: '100%', textAlign: 'left' },
+  recherche: { width: '100%', padding: '11px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  libre: { marginTop: 8, padding: '9px 14px', borderRadius: 'var(--r)', border: '1px dashed var(--btn-bord)', background: 'var(--surface)', color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44, width: '100%', textAlign: 'left' },
   // Hauteur bornée : la liste défile seule, le pied de la fenêtre reste visible.
   liste: { overflowY: 'auto', maxHeight: '48vh', padding: '4px 0 12px', minHeight: 120 },
-  noteFiches: { fontSize: 12, color: 'var(--text2)', padding: '8px 10px', margin: '6px 0', background: 'var(--bg)', borderRadius: 8, lineHeight: 1.45 },
-  vide: { padding: '30px 10px', textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5 },
+  noteFiches: { fontSize: 'var(--t1)', color: 'var(--text2)', padding: '8px 10px', margin: '6px 0', background: 'var(--bg)', borderRadius: 'var(--r)', lineHeight: 1.45 },
+  vide: { padding: '30px 10px', textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)', lineHeight: 1.5 },
   categorie: { borderBottom: '1px solid var(--border)', padding: '4px 0' },
   catHeader: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
-  catToggle: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', background: 'none', border: 'none', padding: '10px 0', cursor: 'pointer', fontSize: 14, color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 44 },
-  catCompte: { fontSize: 11, color: 'var(--text2)', fontWeight: 400 },
-  toutCocher: { flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
-  produit: { display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', margin: '2px 0 2px 14px', borderRadius: 8, cursor: 'pointer', minHeight: 44 },
+  catToggle: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', background: 'none', border: 'none', padding: '10px 0', cursor: 'pointer', fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 44 },
+  catCompte: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g1)' },
+  toutCocher: { flexShrink: 0, padding: '6px 12px', borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
+  produit: { display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', margin: '2px 0 2px 14px', borderRadius: 'var(--r)', cursor: 'pointer', minHeight: 44 },
   produitPresent: { opacity: 0.5, cursor: 'default' },
   produitCoche: { background: 'var(--bg)' },
-  zone: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text2)', flexBasis: '100%' },
-  zoneSelect: { padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)' },
-  btnSecondaire: { padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  btnPrimaire: { padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  zone: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--t1)', color: 'var(--text2)', flexBasis: '100%' },
+  zoneSelect: { padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)' },
+  btnSecondaire: { padding: '10px 16px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  btnPrimaire: { padding: '10px 18px', borderRadius: 'var(--r)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
 };

@@ -109,8 +109,8 @@ export default function LignesARattacher({
           {aRattacher.map(e => (
             <div key={e.cle} style={st.aRattacher}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                <div data-no-translate style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-word' }}>{e.ligne.libelle}</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                <div data-no-translate style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', wordBreak: 'break-word' }}>{e.ligne.libelle}</div>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
                   <span data-no-translate>{e.fournisseur || 'Fournisseur non lu'}</span>
                   {', '}CHF {chf(e.montant)}{e.occurrences > 1 ? ` sur ${e.occurrences} documents` : ''}
                 </div>
@@ -156,13 +156,13 @@ export default function LignesARattacher({
 }
 
 const st = {
-  carte: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sousTitre: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  btn: { padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
+  carte: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  sousTitre: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
+  btn: { padding: '9px 14px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  btnMini: { padding: '6px 10px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
   aRattacher: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' },
   actionsLigne: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', flex: '2 1 300px', minWidth: 0 },
-  suggestion: { padding: '6px 10px', borderRadius: 7, border: '1px solid transparent', background: 'var(--accent-light)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
-  inputRattacher: { flex: '1 1 160px', minWidth: 0, padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--bg)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)', minHeight: 36, boxSizing: 'border-box' },
+  suggestion: { padding: '6px 10px', borderRadius: 'var(--r)', border: '1px solid transparent', background: 'var(--selection)', color: 'var(--text)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
+  inputRattacher: { flex: '1 1 160px', minWidth: 0, padding: '7px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', minHeight: 36, boxSizing: 'border-box' },
 };

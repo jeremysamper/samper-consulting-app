@@ -125,7 +125,7 @@ export default function ModifierProduit({ ligne, zone = '', lignes, canGerer, on
 const st = {
   champ: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, marginBottom: 12 },
   deux: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  libelle: { fontSize: 12, color: 'var(--text2)', fontWeight: 500 },
-  input: { width: '100%', minHeight: 44, padding: '0 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  alerte: { fontSize: 12, color: 'var(--danger-strong)' },
+  libelle: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g2)' },
+  input: { width: '100%', minHeight: 44, padding: '0 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  alerte: { fontSize: 'var(--t1)', color: 'var(--danger-strong)' },
 };

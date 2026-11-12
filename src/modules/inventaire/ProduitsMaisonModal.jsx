@@ -53,7 +53,7 @@ export default function ProduitsMaisonModal({ lignes, recettes, refs, canEdit, o
       largeur={760}
       pied={(
         <>
-          <span style={{ fontSize: 11, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0, lineHeight: 1.45 }}>
+          <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', flex: '1 1 200px', minWidth: 0, lineHeight: 1.45 }}>
             « Estimé » : un ingrédient de la fiche n'est pas lié au catalogue, son prix vient du produit de même nom
             dans l'inventaire (prix des factures) ou au catalogue de l'établissement, à défaut du prix figé sur la fiche.
           </span>
@@ -167,15 +167,15 @@ function LiaisonManuelle({ lignes, parNom, busy, onLier }) {
 const st = {
   // Hauteur bornée : le corps défile seul, le pied de la fenêtre reste visible.
   corps: { overflowY: 'auto', maxHeight: '56vh', padding: '6px 0 14px' },
-  blocTitre: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '14px 0 6px' },
-  vide: { fontSize: 12, color: 'var(--text2)', padding: '10px 12px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 8, lineHeight: 1.45 },
+  blocTitre: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: '14px 0 6px' },
+  vide: { fontSize: 'var(--t1)', color: 'var(--text2)', padding: '10px 12px', background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 'var(--r)', lineHeight: 1.45 },
   ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)' },
-  nom: { fontSize: 13, fontWeight: 500, color: 'var(--text)', wordBreak: 'break-word' },
-  info: { fontSize: 11, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
-  prix: { fontSize: 12, color: 'var(--text2)', textAlign: 'right', flexShrink: 0 },
-  estime: { fontSize: 11, fontWeight: 700, color: 'var(--warning-text)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  btn: { padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
-  btnMini: { padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
-  champ: { flex: '1 1 200px', minWidth: 0, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', boxSizing: 'border-box' },
-  btnPrimaire: { padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', wordBreak: 'break-word' },
+  info: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
+  prix: { fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'right', flexShrink: 0 },
+  estime: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-text)' },
+  btn: { padding: '8px 12px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
+  btnMini: { padding: '6px 10px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36 },
+  champ: { flex: '1 1 200px', minWidth: 0, padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  btnPrimaire: { padding: '10px 18px', borderRadius: 'var(--r)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
 };
