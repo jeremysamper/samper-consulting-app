@@ -5,67 +5,76 @@
 }
 
 :root {
-  /* IBM Plex Sans pour le texte, IBM Plex Serif pour les titres, pour toute
-     l'app, module Spa compris. Fichiers servis par l'app (public/fonts/ui,
-     déclarés dans src/styles/fonts.css), précachés par le service worker. */
+  /* Direction Office (choisie le 11.11.2026) : menu clair, panneaux légers sur
+     fond gris, titres sans serif, boutons secondaires à contour, rayon de
+     8 px, accent réservé à l'action principale. Les valeurs de ce bloc et des
+     deux blocs sombres viennent de la feuille de l'essai ; la règle durable
+     est dans .claude/rules/direction-office.md. */
+  /* IBM Plex Sans pour toute l'app, module Spa compris. Fichiers servis par
+     l'app (public/fonts/ui, déclarés dans src/styles/fonts.css), précachés par
+     le service worker. Les titres sont sans serif : --font-serif renvoie sur
+     --font, pour que ses lecteurs suivent sans être réécrits. */
   --font: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "IBM Plex Serif", Georgia, serif;
+  --font-serif: var(--font);
   /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
      quantités) : la même famille que le texte. Les chiffres de Plex sont
-     tabulaires par défaut ; le zéro barré est posé par la règle « Chiffres ». */
+     tabulaires par défaut ; la règle « Chiffres » garde la largeur égale. */
   --font-num: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  /* Fond légèrement creusé (96 vs surface 99.4) : c'est cet écart, et non une
-     ombre, qui détache les cartes en mode clair. Neutres froids, teintés vers
-     le pétrole de la marque : jamais de crème (le fond crème est la signature
-     la plus reconnaissable des interfaces générées), jamais de blanc pur. */
-  --bg: oklch(96% 0.005 230);
-  --bg2: oklch(93.5% 0.006 230);
-  --surface: oklch(99.4% 0.002 230);
-  --surface2: oklch(97.6% 0.004 230);
-  --border: oklch(87% 0.008 230);
-  --border2: oklch(83% 0.009 230);
+  /* Fond gris sous des surfaces presque blanches : c'est cet écart, et non une
+     ombre, qui détache les panneaux en mode clair. Neutres froids, teintés
+     vers le pétrole de la marque : jamais de crème, jamais de blanc pur.
+     --surface2 vaut la surface : un état (survol, ligne choisie) se pose sur
+     --selection, jamais sur --surface2. */
+  --bg: #f3f5f7;
+  --bg2: #eaeef1;
+  --surface: #fbfcfd;
+  --surface2: #fbfcfd;
+  --border: #b7c1c7;
+  --border2: #b7c1c7;
   /* Filet doux sous les éléments d'une liste aplatie (« Plus de carrés », en
-     fin de feuille) : la teinte de --border à 80 %, sans color-mix(), que
-     html2canvas ne sait pas lire. Une vue capturée en PDF le reprend en hex
-     (règle .pdf-render-root, même endroit). */
-  --rule-soft: oklch(87% 0.008 230 / 0.8);
+     fin de feuille) et autour des panneaux. Une vue capturée en PDF le
+     reprend sur le filet de marque (règle .pdf-render-root, même endroit). */
+  --rule-soft: #d5dbdf;
   --text: oklch(19% 0.012 235);
-  --text2: oklch(47% 0.012 235);
-  --text3: oklch(53% 0.010 235);
+  --text2: #47535a;
+  --text3: #57636a;
   --accent: #003042;
   --accent2: #2e6d84;
-  --accent-light: #e4eef3;
-  --accent-bd: #9fc0cd;
+  --accent-light: #dfe5e9;
+  --accent-bd: #b7c1c7;
   /* Texte posé sur un aplat accent (bouton principal) : blanc sur le pétrole
      du clair, encre foncée sur l'aqua du sombre (le blanc y manque de
      contraste). */
   --on-accent: #ffffff;
-  /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
-     La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
-     thèmes : c'est le geste signature de la refonte profondeur. L'aqua
-     (--nav-accent) est la seule lumière posée sur cette encre. La sidebar
-     est en aplat uni de --nav, sans dégradé (décision du 16.10.2026) ;
+  /* ─── Menu latéral clair ──────────────────────────────────────────────
+     Le menu a la couleur de la surface, l'entrée choisie se pose sur
+     --nav-active (la valeur de --selection), sans halo. Ces jetons sont
+     réservés à la coque (AppLayout.jsx, src/components/nav/, règles
+     .sc-nav-* et .nav-organizer*) : un module ne lit jamais --nav*, un texte
+     blanc posé dessus serait blanc sur blanc (npm run lint:on-color).
      --nav-grad reste défini, égal à --nav, pour ce qui le lirait encore. */
-  --nav: #032a3a;
+  --nav: #fbfcfd;
   --nav-grad: var(--nav);
-  --nav-text: rgba(214, 230, 236, 0.66);
-  --nav-text-active: #eaf4f7;
-  --nav-active: rgba(116, 174, 195, 0.09);
-  --nav-border: rgba(255, 255, 255, 0.07);
-  --nav-accent: #74aec3;
-  /* Sélection posée, pas lumineuse : un filet intérieur plutôt qu'un halo. */
-  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.12);
-  /* ─── Header « verre » (façon barres iOS récentes) ─────────────────────
-     Surface translucide : le contenu défile dessous, flouté (.app-glass-bar). */
-  --glass-bg: rgba(248, 250, 251, 0.72);
-  --glass-border: rgba(10, 30, 40, 0.08);
+  --nav-text: #47535a;
+  --nav-text-active: #10191d;
+  --nav-active: #dfe5e9;
+  --nav-border: #d5dbdf;
+  --nav-accent: #10191d;
+  /* Sélection posée, pas lumineuse : ni filet intérieur ni halo. */
+  --nav-glow: none;
+  /* ─── Barre du haut ────────────────────────────────────────────────────
+     Opaque, à la couleur du fond de page, sans flou (.app-glass-bar). Les
+     noms « glass » sont gardés pour leurs lecteurs. */
+  --glass-bg: #f3f5f7;
+  --glass-border: #d5dbdf;
   --glass-hover: rgba(10, 30, 40, 0.06);
-  /* Rayons resserrés : des coins très arrondis sur chaque bloc font gabarit.
-     Les pilules (999px) restent réservées aux étiquettes. */
+  /* Un seul rayon, 8 px, pour les contrôles comme pour les panneaux. Les
+     quatre noms restent déclarés pour leurs lecteurs ; ils ne changent pas
+     avec le thème. Les pilules (999px) restent réservées aux étiquettes. */
   --r: 8px;
-  --r-sm: 6px;
-  --r-lg: 10px;
-  --r-xl: 12px;
+  --r-sm: 8px;
+  --r-lg: 8px;
+  --r-xl: 8px;
   --r-full: 999px;
 
   /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
@@ -73,9 +82,9 @@
      tiroirs flottent (--sh, --sh-lg). Les cartes posées sur la page n'ont
      pas d'ombre (--sh-xs vide) : leur filet et l'écart de fond suffisent. */
   --sh-xs: none;
-  --sh-sm: 0 1px 2px rgba(9, 30, 40, 0.08);
-  --sh: 0 2px 6px rgba(9, 30, 40, 0.09), 0 12px 32px rgba(9, 30, 40, 0.11);
-  --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.14), 0 24px 64px rgba(9, 30, 40, 0.18);
+  --sh-sm: none;
+  --sh: 0 2px 8px rgba(9, 30, 40, 0.14);
+  --sh-lg: 0 12px 32px rgba(9, 30, 40, 0.2);
 
   /* ─── Mise en avant ───────────────────────────────────────────────────
      glow-accent = liseré accent des surfaces mises en avant (chips KPI,
@@ -84,7 +93,55 @@
      déclaré, vide, pour ses lecteurs. */
   --glow-accent: 0 0 0 1px var(--accent-bd);
   --glow-soft: none;
-  --focus-ring: rgba(0, 48, 66, 0.14);
+  /* Anneau de focus : un trait plein de 3 px, lu en box-shadow. */
+  --focus-ring: #12587a;
+
+  /* ─── Échelle d'Office (ne change pas avec le thème) ──────────────────
+     Six tailles de texte, trois graisses, la hauteur d'une ligne de liste et
+     celle d'un contrôle. Les chiffres mis en avant sont en graisse normale. */
+  --t1: 12px;
+  --t2: 14px;
+  --t3: 17px;
+  --t4: 20px;
+  --t5: 24px;
+  --t6: 29px;
+  --g1: 400;
+  --g2: 500;
+  --g3: 600;
+  --g-chiffre: 400;
+  --ligne: 44px;
+  --controle: 40px;
+
+  /* ─── Rôles d'Office ──────────────────────────────────────────────────
+     btn-*      bouton secondaire : fond, texte, contour
+     selection  survol, ligne ou entrée choisie, puce active
+     zone       fond d'un panneau
+     champ-bord contour d'un champ
+     onglet     trait et texte de l'onglet actif, liseré du jour
+     lien       texte qui portait l'accent (l'accent reste à l'action principale)
+     icone, coche, nav-marque : encres des pictos, des coches et de la marque
+     toast-*    fond et texte d'un toast, encres de ses trois statuts
+     logo-fond  pastille sous le logo d'un établissement : la couleur du menu
+                d'avant Office, pour qu'un logo importé garde son allure
+     Tout jeton de couleur de ce groupe a son miroir dans THEME_VAR_OVERRIDES
+     (src/design/brandTokens.js). */
+  --btn-fond: #fbfcfd;
+  --btn-texte: #10191d;
+  --btn-bord: #93a0a8;
+  --selection: #dfe5e9;
+  --zone: #fbfcfd;
+  --champ-bord: #7f8d95;
+  --onglet: #10191d;
+  --lien: #10191d;
+  --icone: #47535a;
+  --coche: #10191d;
+  --nav-marque: #10191d;
+  --toast-fond: #10191d;
+  --toast-texte: #f3f6f8;
+  --toast-succes: #7fd49b;
+  --toast-danger: #fb8f8f;
+  --toast-alerte: #f5a524;
+  --logo-fond: #032a3a;
 
   /* ─── Aplats de marque (noms historiques « grad- » conservés) ─────────
      grad-brand   : encre pétrole (splash, login, vignettes sans photo)
@@ -107,15 +164,15 @@
      ───────────────────────────────────────────────────────────────────── */
   --success-bg: #dcfce7;
   --success-bg-soft: #f0fdf4;
-  --success-text: #15803d;
+  --success-text: #116530;
   --success-bd: #86efac;
-  --success-strong: #16a34a;
+  --success-strong: #1f8a45;
 
   --danger-bg: #fee2e2;
   --danger-bg-soft: #fef2f2;
-  --danger-text: #991b1b;
+  --danger-text: #a11616;
   --danger-bd: #fca5a5;
-  --danger-strong: #dc2626;
+  --danger-strong: #d32f2f;
 
   /* Aplats pleins de statut (bouton, pastille) et leur texte, qui suit le
      thème : blanc en clair, encre en sombre où l'aplat s'éclaircit (WCAG 2 :
@@ -128,9 +185,9 @@
 
   --warning-bg: #fef3c7;
   --warning-bg-soft: #fffbeb;
-  --warning-text: #92400e;
+  --warning-text: #8a4a08;
   --warning-bd: #fcd34d;
-  --warning-strong: #f59e0b;
+  --warning-strong: #c98208;
 
   --info-bg: #dbeafe;
   --info-bg-soft: #eff6ff;
@@ -188,62 +245,79 @@
    ─────────────────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
-       pour la teinte de la marque (~225). C'est ce virage qui donne au dark
-       son atmosphère « Opal » : profondeur froide, lumière aqua. */
+    /* Sombre d'Office : neutres à la teinte de la marque, menu et zones un
+       ton sous la surface. Ce bloc et html[data-theme="dark"] restent
+       identiques, jeton pour jeton. */
     --bg: #071319;
-    --bg2: oklch(16.5% 0.02 225);
-    --surface: oklch(22.5% 0.024 225);
-    --surface2: oklch(26% 0.022 225);
-    --border: oklch(33% 0.022 225);
-    --border2: oklch(38% 0.02 225);
-    --rule-soft: oklch(33% 0.022 225 / 0.8);
+    --bg2: #0c1c24;
+    --surface: #11252e;
+    --surface2: #0c1c24;
+    --border: #38525e;
+    --border2: #38525e;
+    --rule-soft: #223a45;
     --text: oklch(94% 0.007 210);
-    --text2: oklch(78% 0.014 215);
-    --text3: oklch(62% 0.014 220);
+    --text2: #b5c5cc;
+    --text3: #95a9b1;
     --accent: #74aec3;
     --accent2: #90bfd0;
-    --accent-light: #1d3440;
-    --accent-bd: #335c6b;
+    --accent-light: #1b3540;
+    --accent-bd: #38525e;
     --on-accent: #06202b;
-    --nav: #04222f;
+    --nav: #0c1c24;
     --nav-grad: var(--nav);
-    --nav-text: rgba(200, 222, 230, 0.60);
-    --nav-text-active: #e6f2f6;
-    --nav-active: rgba(116, 174, 195, 0.08);
-    --nav-border: rgba(255, 255, 255, 0.06);
-    --nav-accent: #74aec3;
-    --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
-    --glass-bg: rgba(8, 18, 22, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.07);
+    --nav-text: #b5c5cc;
+    --nav-text-active: #e9f1f4;
+    --nav-active: #1b3540;
+    --nav-border: #223a45;
+    --nav-accent: #e9f1f4;
+    --nav-glow: none;
+    --glass-bg: #071319;
+    --glass-border: #223a45;
     --glass-hover: rgba(255, 255, 255, 0.08);
     --sh-xs: none;
-    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
-    --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
+    --sh-sm: none;
+    --sh: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
     --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
     --glow-soft: none;
-    --focus-ring: rgba(116, 174, 195, 0.30);
+    --focus-ring: #74aec3;
+    --btn-fond: #0c1c24;
+    --btn-texte: #e9f1f4;
+    --btn-bord: #4f6d79;
+    --selection: #1b3540;
+    --zone: #0c1c24;
+    --champ-bord: #66838f;
+    --onglet: #e9f1f4;
+    --lien: #e9f1f4;
+    --icone: #b5c5cc;
+    --coche: #e9f1f4;
+    --nav-marque: #e9f1f4;
+    --toast-fond: #e9f1f4;
+    --toast-texte: #0b181e;
+    --toast-succes: #116530;
+    --toast-danger: #a11616;
+    --toast-alerte: #8a4a08;
+    --logo-fond: #04222f;
     --ambient: none;
     --success-bg: oklch(28% 0.06 150);
     --success-bg-soft: oklch(22% 0.04 150);
-    --success-text: oklch(80% 0.115 152);
+    --success-text: #86d6a0;
     --success-bd: oklch(40% 0.10 150);
-    --success-strong: oklch(70% 0.13 152);
+    --success-strong: #4fb873;
     --danger-bg: oklch(28% 0.08 25);
     --danger-bg-soft: oklch(22% 0.05 25);
-    --danger-text: oklch(79% 0.125 25);
+    --danger-text: #fb8f8f;
     --danger-bd: oklch(40% 0.12 25);
-    --danger-strong: oklch(68% 0.15 25);
+    --danger-strong: #e06c6c;
     --danger-fill: oklch(68% 0.15 25);
     --on-danger: #06202b;
     --success-fill: oklch(70% 0.13 152);
     --on-success: #06202b;
     --warning-bg: oklch(28% 0.06 75);
     --warning-bg-soft: oklch(22% 0.04 75);
-    --warning-text: oklch(83% 0.105 82);
+    --warning-text: #f5a524;
     --warning-bd: oklch(45% 0.12 75);
-    --warning-strong: oklch(76% 0.135 78);
+    --warning-strong: #d9a11f;
     --info-bg: oklch(28% 0.06 250);
     --info-bg-soft: oklch(22% 0.04 250);
     --info-text: oklch(81% 0.085 250);
@@ -284,38 +358,55 @@
 html[data-theme="dark"] {
   /* Contenu identique au bloc @media ci-dessus, voir le commentaire là-haut. */
   --bg: #071319;
-  --bg2: oklch(16.5% 0.02 225);
-  --surface: oklch(22.5% 0.024 225);
-  --surface2: oklch(26% 0.022 225);
-  --border: oklch(33% 0.022 225);
-  --border2: oklch(38% 0.02 225);
-  --rule-soft: oklch(33% 0.022 225 / 0.8);
+  --bg2: #0c1c24;
+  --surface: #11252e;
+  --surface2: #0c1c24;
+  --border: #38525e;
+  --border2: #38525e;
+  --rule-soft: #223a45;
   --text: oklch(94% 0.007 210);
-  --text2: oklch(78% 0.014 215);
-  --text3: oklch(62% 0.014 220);
+  --text2: #b5c5cc;
+  --text3: #95a9b1;
   --accent: #74aec3;
   --accent2: #90bfd0;
-  --accent-light: #1d3440;
-  --accent-bd: #335c6b;
+  --accent-light: #1b3540;
+  --accent-bd: #38525e;
   --on-accent: #06202b;
-  --nav: #04222f;
+  --nav: #0c1c24;
   --nav-grad: var(--nav);
-  --nav-text: rgba(200, 222, 230, 0.60);
-  --nav-text-active: #e6f2f6;
-  --nav-active: rgba(116, 174, 195, 0.08);
-  --nav-border: rgba(255, 255, 255, 0.06);
-  --nav-accent: #74aec3;
-  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
-  --glass-bg: rgba(8, 18, 22, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.07);
+  --nav-text: #b5c5cc;
+  --nav-text-active: #e9f1f4;
+  --nav-active: #1b3540;
+  --nav-border: #223a45;
+  --nav-accent: #e9f1f4;
+  --nav-glow: none;
+  --glass-bg: #071319;
+  --glass-border: #223a45;
   --glass-hover: rgba(255, 255, 255, 0.08);
   --sh-xs: none;
-  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
-  --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
+  --sh-sm: none;
+  --sh: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
   --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
   --glow-soft: none;
-  --focus-ring: rgba(116, 174, 195, 0.30);
+  --focus-ring: #74aec3;
+  --btn-fond: #0c1c24;
+  --btn-texte: #e9f1f4;
+  --btn-bord: #4f6d79;
+  --selection: #1b3540;
+  --zone: #0c1c24;
+  --champ-bord: #66838f;
+  --onglet: #e9f1f4;
+  --lien: #e9f1f4;
+  --icone: #b5c5cc;
+  --coche: #e9f1f4;
+  --nav-marque: #e9f1f4;
+  --toast-fond: #e9f1f4;
+  --toast-texte: #0b181e;
+  --toast-succes: #116530;
+  --toast-danger: #a11616;
+  --toast-alerte: #8a4a08;
+  --logo-fond: #04222f;
   --ambient: none;
 
   /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
@@ -324,15 +415,15 @@ html[data-theme="dark"] {
      ──────────────────────────────────────────────────────────────────── */
   --success-bg: oklch(28% 0.06 150);
   --success-bg-soft: oklch(22% 0.04 150);
-  --success-text: oklch(80% 0.115 152);
+  --success-text: #86d6a0;
   --success-bd: oklch(40% 0.10 150);
-  --success-strong: oklch(70% 0.13 152);
+  --success-strong: #4fb873;
 
   --danger-bg: oklch(28% 0.08 25);
   --danger-bg-soft: oklch(22% 0.05 25);
-  --danger-text: oklch(79% 0.125 25);
+  --danger-text: #fb8f8f;
   --danger-bd: oklch(40% 0.12 25);
-  --danger-strong: oklch(68% 0.15 25);
+  --danger-strong: #e06c6c;
   --danger-fill: oklch(68% 0.15 25);
   --on-danger: #06202b;
   --success-fill: oklch(70% 0.13 152);
@@ -340,9 +431,9 @@ html[data-theme="dark"] {
 
   --warning-bg: oklch(28% 0.06 75);
   --warning-bg-soft: oklch(22% 0.04 75);
-  --warning-text: oklch(83% 0.105 82);
+  --warning-text: #f5a524;
   --warning-bd: oklch(45% 0.12 75);
-  --warning-strong: oklch(76% 0.135 78);
+  --warning-strong: #d9a11f;
 
   --info-bg: oklch(28% 0.06 250);
   --info-bg-soft: oklch(22% 0.04 250);
