@@ -2239,3 +2239,114 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
+
+/* ─── Direction Office ───────────────────────────────────────────────────────
+   Les familles de la direction qui n'avaient pas de règle d'origine. Les
+   autres sont posées à leur place, plus haut : boutons secondaires, onglets,
+   toasts, barre du haut, survol du menu, chiffres, tuiles ; le panneau du
+   tableau de bord est dans tableau.css.
+   Ce sont des béquilles : elles rattrapent par sélecteur d'attribut un style
+   posé en ligne dans un module, d'où leurs !important. Chacune tombe quand
+   plus aucun élément ne l'atteint, le module repris à la source disant
+   lui-même sa taille, sa graisse, son rayon et sa couleur.
+   Trois règles de construction :
+   - une règle sur une couleur ne vise que la valeur neutre nommée (--border,
+     --border2), jamais tout élément qui porte la propriété : un bord de
+     statut garde sa couleur ;
+   - aucune ne s'applique dans une vue capturée en PDF
+     (:not(.pdf-render-root *)) : l'export sort comme avant ;
+   - à spécificité égale la dernière gagne : graisses, puis chiffres, puis
+     titres. */
+
+/* Champs : contour lisible, fond de surface, rayon de la direction. Le
+   contour n'est repris que s'il est neutre : le vert d'une quantité comptée
+   et le rouge d'une erreur restent. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--border2)"], [style*="border-color: var(--border2)"]):not(.pdf-render-root *) {
+  border-color: var(--champ-bord) !important;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea)[style*="border"]:not(.pdf-render-root *) {
+  border-radius: var(--r-sm) !important;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):is([style*="background: var(--bg)"], [style*="background: var(--bg2)"], [style*="background: var(--surface2)"]):not(.pdf-render-root *) {
+  background: var(--surface) !important;
+}
+
+/* Plancher de texte : toute taille en ligne sous --t1 remonte à --t1. */
+[style*="font-size: 8px"]:not(.pdf-render-root *),
+[style*="font-size: 9px"]:not(.pdf-render-root *),
+[style*="font-size: 9.5px"]:not(.pdf-render-root *),
+[style*="font-size: 10px"]:not(.pdf-render-root *),
+[style*="font-size: 10.5px"]:not(.pdf-render-root *),
+[style*="font-size: 11px"]:not(.pdf-render-root *),
+[style*="font-size: 11.5px"]:not(.pdf-render-root *) {
+  font-size: var(--t1) !important;
+}
+/* Le plancher ne passe pas devant la garde anti-zoom d'iOS : au doigt et sous
+   768 px, un champ de saisie garde ses 16 px, quelle que soit sa taille en
+   ligne (mêmes types que les deux règles tactiles plus haut). */
+@media (max-width: 768px), (pointer: coarse) {
+  :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="time"], input[type="month"], input[type="tel"], textarea, select)[style*="font-size"]:not(.pdf-render-root *) {
+    font-size: 16px !important;
+  }
+}
+
+/* Graisses : plafond à --g3. Les chiffres mis en avant passent ensuite en
+   --g-chiffre, les titres en --g3. */
+[style*="font-weight: 700"]:not(.pdf-render-root *),
+[style*="font-weight: 800"]:not(.pdf-render-root *),
+[style*="font-weight: 900"]:not(.pdf-render-root *),
+[style*="font-weight: bold"]:not(.pdf-render-root *),
+b:not(.pdf-render-root *),
+strong:not(.pdf-render-root *),
+th:not(.pdf-render-root *) {
+  font-weight: var(--g3) !important;
+}
+[style*="var(--font-num)"]:not(.pdf-render-root *) {
+  font-weight: var(--g-chiffre) !important;
+}
+[style*="var(--font-serif)"]:not(.pdf-render-root *) {
+  font-weight: var(--g3) !important;
+}
+
+/* Rayons en ligne : 6, 7 et 8 px vers --r-sm ; 10 et 12 px vers --r-xl.
+   Bornée aux contrôles, pastilles, images, fenêtres et éléments data-cadre :
+   les conteneurs aplatis par « Plus de carrés » gardent leur filet droit. */
+:is(button, a, input, select, textarea, span, img, label, [role="button"], [data-cadre], [role="dialog"], [role="menu"], [role="listbox"]):is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"]):not(.pdf-render-root *) {
+  border-radius: var(--r-sm) !important;
+}
+:is(button, a, input, select, textarea, span, img, label, [role="button"], [data-cadre], [role="dialog"], [role="menu"], [role="listbox"]):is([style*="border-radius: 10px"], [style*="border-radius: 12px"]):not(.pdf-render-root *) {
+  border-radius: var(--r-xl) !important;
+}
+
+/* Blocs : un élément marqué data-cadre prend le rayon de la direction, et
+   son filet neutre s'adoucit. Un filet d'état (accent, statut, service,
+   teinte en dur) garde sa couleur, même posé sur un seul côté. */
+:is(div, section, article, li)[data-cadre]:not(.pdf-render-root *) {
+  border-radius: var(--r-xl) !important;
+}
+:is(div, section, article, li)[data-cadre]:is([style*="solid var(--border)"], [style*="solid var(--border2)"], [style*="border-color: var(--border)"], [style*="border-color: var(--border2)"]):not([style*="solid var(--accent)"], [style*="solid var(--danger"], [style*="solid var(--success"], [style*="solid var(--warning"], [style*="solid var(--info"], [style*="solid var(--svc"], [style*="solid var(--ai"], [style*="solid var(--caisse"], [style*="solid rgb"], [style*="solid #"]):not(.pdf-render-root *) {
+  border-color: var(--rule-soft) !important;
+}
+
+/* Accent en texte : color: var(--accent) en ligne renvoyé sur --lien. Seule
+   la propriété color est visée (en tête de style ou après un point-virgule).
+   L'accent reste l'aplat de l'action principale. */
+[style^="color: var(--accent)"]:not(.pdf-render-root *),
+[style*="; color: var(--accent)"]:not(.pdf-render-root *) {
+  color: var(--lien) !important;
+}
+
+/* Contrôles : hauteur minimale --controle ; au doigt et sous 768 px, le plus
+   grand de --controle et de 44 px. La barre de modes de la caisse garde ses
+   48 px (.caisse-modes) : elle est exclue par écrit. */
+.ui-btn,
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):not(.pdf-render-root *) {
+  min-height: var(--controle);
+}
+@media (max-width: 767.98px), (max-width: 1399.98px) and (any-pointer: coarse), (pointer: coarse) {
+  .ui-btn,
+  .segmented-tab:not(.caisse-modes .segmented-tab),
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):not(.pdf-render-root *) {
+    min-height: max(var(--controle), 44px);
+  }
+}
