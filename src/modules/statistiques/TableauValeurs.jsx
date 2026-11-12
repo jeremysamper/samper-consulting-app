@@ -12,10 +12,13 @@ import { Marqueur, NomSerie, Valeur } from './Graphique.jsx';
 const st = {
   cadre: { overflowX: 'auto', maxWidth: '100%', minWidth: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8 },
   table: { borderCollapse: 'collapse', fontSize: 13, minWidth: '100%' },
-  th: { textAlign: 'right', padding: '8px 10px', fontWeight: 600, color: 'var(--text2)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', verticalAlign: 'bottom', whiteSpace: 'nowrap' },
-  thPeriode: { textAlign: 'left', position: 'sticky', left: 0, background: 'var(--surface)' },
+  th: { textAlign: 'right', padding: '8px 10px', fontWeight: 600, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', verticalAlign: 'bottom', whiteSpace: 'nowrap' },
+  // Couleur des en-têtes et fond de la colonne collée : dans statistiques.css,
+  // sous .statistiques, pour que l'export PDF (clone hors de la section)
+  // garde l'en-tête de l'impression, blanc sur plein.
+  thPeriode: { textAlign: 'left', position: 'sticky', left: 0 },
   td: { textAlign: 'right', padding: '7px 10px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', whiteSpace: 'nowrap', color: 'var(--text)' },
-  tdPeriode: { textAlign: 'left', position: 'sticky', left: 0, background: 'var(--surface)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
+  tdPeriode: { textAlign: 'left', position: 'sticky', left: 0, fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
   avant: { display: 'block', fontSize: 12, color: 'var(--text3)' },
   pied: { fontWeight: 600, background: 'var(--bg)' },
   note: { fontSize: 12, color: 'var(--text2)', marginTop: 6 },
@@ -44,9 +47,9 @@ export default function TableauValeurs({ tableau, libelleComparaison }) {
         <table style={st.table}>
           <thead>
             <tr>
-              <th style={{ ...st.th, ...st.thPeriode }}>Période</th>
+              <th className="stat-th stat-collee" style={{ ...st.th, ...st.thPeriode }}>Période</th>
               {colonnes.map((c) => (
-                <th key={c.id} style={st.th}>
+                <th key={c.id} className="stat-th" style={st.th}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
                     <Marqueur rang={c.rang} />
                     <NomSerie s={c} />
@@ -58,7 +61,7 @@ export default function TableauValeurs({ tableau, libelleComparaison }) {
           <tbody>
             {lignes.map((l) => (
               <tr key={l.tranche.cle} data-stat-ligne="">
-                <td style={{ ...st.td, ...st.tdPeriode }} data-no-translate title={bornesTranche(l.tranche)}>{libelleTranche(l.tranche)}</td>
+                <td className="stat-collee" style={{ ...st.td, ...st.tdPeriode }} data-no-translate title={bornesTranche(l.tranche)}>{libelleTranche(l.tranche)}</td>
                 {colonnes.map((c, i) => (
                   <td key={c.id} style={st.td}>
                     <Valeur v={l.valeurs[i]} unite={c.unite} />
@@ -68,7 +71,7 @@ export default function TableauValeurs({ tableau, libelleComparaison }) {
               </tr>
             ))}
             <tr data-stat-periode="">
-              <td style={{ ...st.td, ...st.tdPeriode, ...st.pied, fontFamily: 'var(--font)' }}>Période entière</td>
+              <td className="stat-collee" style={{ ...st.td, ...st.tdPeriode, ...st.pied, fontFamily: 'var(--font)' }}>Période entière</td>
               {colonnes.map((c, i) => (
                 <td key={c.id} style={{ ...st.td, ...st.pied }}>
                   <Valeur v={periode.valeurs[i]} unite={c.unite} />

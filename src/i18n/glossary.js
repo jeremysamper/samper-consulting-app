@@ -4470,6 +4470,19 @@ export const UI_GLOSSARY = {
   "Groupes non annulés, au jour de l'événement, comme la liste du mois du calendrier.": "Groups not cancelled, on the day of the event, like the month list of the calendar.",
   "Somme des pax annoncés des groupes non annulés.": "Sum of the announced guests of the groups not cancelled.",
   "Groupes annulés, comptés au jour de l'événement prévu.": "Cancelled groups, counted on the day of the planned event.",
+  // ── Statistiques (S2) : vues enregistrées et export PDF ──
+  "Vues enregistrées": "Saved views",
+  "Exporter en PDF": "Export to PDF",
+  "Rangez la vue affichée sous un nom pour la retrouver.": "Save the view shown under a name to find it again.",
+  "Nom de la vue affichée": "Name of the view shown",
+  "Par exemple : ventes du mois": "For example: sales of the month",
+  "Aucune vue enregistrée.": "No saved view.",
+  "Vue enregistrée.": "View saved.",
+  "Vue mise à jour : ce nom existait déjà.": "View updated: this name already existed.",
+  "Vingt vues au plus : supprimez-en une avant d'en enregistrer une autre.": "Twenty views at most: delete one before saving another.",
+  "Donnez un nom à la vue.": "Give the view a name.",
+  "Ce nom est déjà pris par une autre vue.": "This name is already used by another view.",
+  "La liste des vues n'a pas pu être enregistrée. Réessayez.": "The list of views could not be saved. Try again.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

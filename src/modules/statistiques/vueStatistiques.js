@@ -17,6 +17,9 @@ import { bornesComparaison } from '../previsions/rapport/periodesRapport.js';
 import { pasPossibles } from './agregation.js';
 
 export const CLE_VUE = 'statistiques_vue';
+export const CLE_VUES = 'statistiques_vues';
+export const MAX_VUES = 20;
+export const MAX_NOM_VUE = 60;
 export const MAX_GRAPHIQUES = 4;
 export const MAX_SERIES = 6;
 export const MAX_UNITES = 2;
@@ -159,3 +162,48 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
 export const ajouterGraphique = (vue) => (vue.graphiques.length >= MAX_GRAPHIQUES ? vue : { ...vue, graphiques: [...vue.graphiques, graphiqueVide()] });
 export const retirerGraphique = (vue, i) => (vue.graphiques.length <= 1 ? vue : { ...vue, graphiques: vue.graphiques.filter((_, k) => k !== i) });
 export const majGraphique = (vue, i, maj) => ({ ...vue, graphiques: vue.graphiques.map((g, k) => (k === i ? { ...g, ...maj } : g)) });
+
+// ── Vues enregistrées et nommées (Q4) ──
+// Une liste de { id, nom, vue } dans user_settings (clé statistiques_vues),
+// vingt au plus. La vue est enregistrée telle quelle ; à l'ouverture, elle
+// passe par nettoyerVue : une mesure que la personne ne voit plus disparaît
+// (D11). Fonctions pures : l'appelant fournit l'identifiant d'une vue neuve.
+
+const nomPropre = (nom) => String(nom || '').replace(/\s+/g, ' ').trim().slice(0, MAX_NOM_VUE);
+
+// Liste lue dans le réglage, débarrassée de ce qui n'a pas la bonne forme.
+export function vuesNommeesLues(brute) {
+  if (!Array.isArray(brute)) return [];
+  return brute
+    .filter((v) => v && typeof v === 'object' && typeof v.id === 'string' && nomPropre(v.nom) && v.vue && typeof v.vue === 'object')
+    .slice(0, MAX_VUES)
+    .map((v) => ({ id: v.id, nom: nomPropre(v.nom), vue: v.vue }));
+}
+
+// Enregistre la vue sous un nom. Un nom déjà pris (sans tenir compte des
+// majuscules) remplace la vue de ce nom, à sa place ; sinon la vue s'ajoute en
+// tête. → { liste, resultat: 'ajoutee' | 'remplacee' | 'pleine' | 'sans_nom' }
+export function enregistrerVueNommee(liste, { id, nom, vue }) {
+  const propre = nomPropre(nom);
+  const actuelles = vuesNommeesLues(liste);
+  if (!propre) return { liste: actuelles, resultat: 'sans_nom' };
+  const cle = propre.toLocaleLowerCase('fr');
+  const rang = actuelles.findIndex((v) => v.nom.toLocaleLowerCase('fr') === cle);
+  if (rang >= 0) return { liste: actuelles.map((v, i) => (i === rang ? { ...v, nom: propre, vue } : v)), resultat: 'remplacee' };
+  if (actuelles.length >= MAX_VUES) return { liste: actuelles, resultat: 'pleine' };
+  return { liste: [{ id, nom: propre, vue }, ...actuelles], resultat: 'ajoutee' };
+}
+
+// Renomme une vue ; un nom vide ou déjà pris par une autre vue est refusé.
+// → { liste, resultat: 'renommee' | 'sans_nom' | 'pris' | 'absente' }
+export function renommerVueNommee(liste, id, nom) {
+  const propre = nomPropre(nom);
+  const actuelles = vuesNommeesLues(liste);
+  if (!actuelles.some((v) => v.id === id)) return { liste: actuelles, resultat: 'absente' };
+  if (!propre) return { liste: actuelles, resultat: 'sans_nom' };
+  const cle = propre.toLocaleLowerCase('fr');
+  if (actuelles.some((v) => v.id !== id && v.nom.toLocaleLowerCase('fr') === cle)) return { liste: actuelles, resultat: 'pris' };
+  return { liste: actuelles.map((v) => (v.id === id ? { ...v, nom: propre } : v)), resultat: 'renommee' };
+}
+
+export const retirerVueNommee = (liste, id) => vuesNommeesLues(liste).filter((v) => v.id !== id);

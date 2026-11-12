@@ -231,7 +231,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
           ))}
         </div>
       )}
-      <div style={st.detail} aria-live="polite" data-stat-detail="">
+      <div className="no-print" style={st.detail} aria-live="polite" data-stat-detail="">
         {choisie ? (
           <>
             {genre === 'temps' ? <div style={st.detailTitre} data-no-translate>{bornesTranche(choisie.tranche)}</div> : null}

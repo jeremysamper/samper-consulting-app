@@ -5,3 +5,14 @@
 .statistiques-filtres .segmented-tab {
   min-height: 44px;
 }
+
+/* Tableau des valeurs : couleur des en-têtes et fond de la colonne collée,
+   portés ici sous .statistiques plutôt qu'en ligne : l'export PDF clone le
+   tableau hors de la section et garde l'en-tête de l'impression (texte blanc
+   sur plein) et l'alternance des lignes. */
+.statistiques .stat-th {
+  color: var(--text2);
+}
+.statistiques .stat-collee {
+  background: var(--surface);
+}

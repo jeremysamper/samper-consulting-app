@@ -16,14 +16,15 @@ import { LECTURES, famillesVisibles } from './lecturesFamilles.js';
 import { useLectureStatistiques } from './useLectureStatistiques.js';
 import { PAS, bornesTranche, pasPossibles, trancheEntiere, tranchesDe } from './agregation.js';
 import {
-  CLE_VUE, COMPARAISONS, MAX_GRAPHIQUES, PERIODES, ajouterGraphique, bornesDe, bornesDeComparaison, majGraphique, nettoyerVue,
-  retirerGraphique, vueDepuisLien,
+  CLE_VUE, CLE_VUES, COMPARAISONS, MAX_GRAPHIQUES, PERIODES, ajouterGraphique, bornesDe, bornesDeComparaison, majGraphique, nettoyerVue,
+  retirerGraphique, vueDepuisLien, vuesNommeesLues,
 } from './vueStatistiques.js';
 import { composer, tableauDe } from './composition.js';
 import Graphique from './Graphique.jsx';
 import TableauValeurs from './TableauValeurs.jsx';
 import PanneauMesures from './PanneauMesures.jsx';
 import { telechargerTableaux } from './exportStatistiques.js';
+import VuesNommees from './VuesNommees.jsx';
 
 // ═════════════════════════════════════════════════════════════════════
 // Statistiques : tous les chiffres que la personne voit ailleurs dans l'app,
@@ -158,13 +159,13 @@ function CarteGraphique({
           </Btn>
         ) : null}
         {ventilations.length ? (
-          <select style={st.select} value={graphique.ventilation} onChange={(e) => onChange({ ventilation: e.target.value, type: '' })} aria-label="Ventilation" data-stat-ventilation="">
+          <select className="no-print" style={st.select} value={graphique.ventilation} onChange={(e) => onChange({ ventilation: e.target.value, type: '' })} aria-label="Ventilation" data-stat-ventilation="">
             <option value="">Sans ventilation</option>
             {ventilations.map((v) => <option key={v.id} value={v.id}>{v.libelle}</option>)}
           </select>
         ) : null}
         {(composition.choix || []).filter((c) => c.options.length).map((c) => (
-          <select key={c.mesure} style={st.select} value={c.valeur || ''} onChange={(e) => onChange({ choix: { ...(graphique.choix || {}), [c.mesure]: e.target.value } })} aria-label={c.libelle} data-stat-choix={c.mesure}>
+          <select key={c.mesure} className="no-print" style={st.select} value={c.valeur || ''} onChange={(e) => onChange({ choix: { ...(graphique.choix || {}), [c.mesure]: e.target.value } })} aria-label={c.libelle} data-stat-choix={c.mesure}>
             {c.options.map((o) => <option key={o.cle} value={o.cle} data-no-translate>{o.libelle}</option>)}
           </select>
         ))}
@@ -174,7 +175,7 @@ function CarteGraphique({
         {nb > 1 ? <Btn variant="ghost" onClick={onRetirer} style={st.bouton}>Retirer</Btn> : null}
       </div>
       <div style={{ display: 'flex', gap: 20, minWidth: 0, alignItems: 'flex-start' }}>
-        {enLigne ? <div style={{ flex: '0 0 270px', minWidth: 0, maxHeight: 620, overflowY: 'auto' }}>{panneau}</div> : null}
+        {enLigne ? <div className="no-print" style={{ flex: '0 0 270px', minWidth: 0, maxHeight: 620, overflowY: 'auto' }}>{panneau}</div> : null}
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {composition.vide ? <div style={st.etat}>Cochez une mesure pour tracer le graphique.</div> : null}
           {composition.nonLues.map((id) => (
@@ -229,7 +230,10 @@ export default function Statistiques({ user, etablissement }) {
 
   const [vue, setVue] = useState(null);
   const [filtresOuverts, setFiltresOuverts] = useState(false);
-  const reglages = useUserSettings([CLE_VUE]);
+  const [vuesOuvertes, setVuesOuvertes] = useState(false);
+  const [pdfEnCours, setPdfEnCours] = useState(false);
+  const reglages = useUserSettings([CLE_VUE, CLE_VUES]);
+  const vuesNommees = useMemo(() => vuesNommeesLues(reglages.settings[CLE_VUES]), [reglages.settings]);
 
   const bornes = useMemo(() => bornesDe(vue?.periode || { id: '30j' }, aujourdhui), [vue?.periode, aujourdhui]);
   const bornesComp = useMemo(() => bornesDeComparaison(bornes, vue?.comparaison || ''), [bornes, vue?.comparaison]);
@@ -384,6 +388,27 @@ export default function Statistiques({ user, etablissement }) {
     }
   };
 
+  // Export PDF du graphique et de son tableau, par le service partagé
+  // (pdfUtils.exportElementToPdf) : il clone la zone, retire boutons et
+  // .no-print, remplace les listes par leur valeur et redéfinit les jetons en
+  // hexadécimal (html2canvas ne lit pas oklch). Chargé au premier export.
+  const exporterPdf = async () => {
+    if (!compositions.some((c) => c.tableau.colonnes.length)) { notify('Rien à exporter : cochez une mesure.', 'info'); return; }
+    setPdfEnCours(true);
+    try {
+      const { pdfUtils } = await import('../../services/pdf.js');
+      await pdfUtils.exportElementToPdf('stat-export', `statistiques_${bornes.debut}_${bornes.fin}.pdf`, {
+        title: `Statistiques, ${bornesTranche(bornes)}`,
+        etablissement,
+        orientation: 'landscape',
+      });
+    } catch (e) {
+      console.error('[statistiques] export PDF', e);
+    } finally {
+      setPdfEnCours(false);
+    }
+  };
+
   const colonnes = vue && vue.graphiques.length > 1 && largeur >= 900 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)';
   const peutAjouter = !!vue && vue.graphiques.length < MAX_GRAPHIQUES;
   const filtres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} onVue={setVue} /> : null;
@@ -402,10 +427,12 @@ export default function Statistiques({ user, etablissement }) {
             ) : <div style={{ flex: '1 1 auto', minWidth: 0 }}>{filtres}</div>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {peutAjouter ? <Btn variant="ghost" onClick={() => setVue(ajouterGraphique(vue))} style={st.bouton}>Ajouter un graphique</Btn> : null}
+              <Btn variant="ghost" onClick={() => setVuesOuvertes(true)} style={st.bouton}>Vues enregistrées</Btn>
               <Btn variant="ghost" onClick={exporter} style={st.bouton}>Exporter en Excel</Btn>
+              <Btn variant="ghost" onClick={exporterPdf} disabled={pdfEnCours} style={st.bouton}>{pdfEnCours ? 'Export en cours' : 'Exporter en PDF'}</Btn>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: colonnes, gap: 16, minWidth: 0 }}>
+          <div id="stat-export" style={{ display: 'grid', gridTemplateColumns: colonnes, gap: 16, minWidth: 0 }}>
             {vue.graphiques.map((g, i) => (
               <CarteGraphique
                 key={i}
@@ -428,6 +455,15 @@ export default function Statistiques({ user, etablissement }) {
               />
             ))}
           </div>
+          {vuesOuvertes ? (
+            <VuesNommees
+              vues={vuesNommees}
+              vue={vue}
+              ecrire={(liste) => reglages.setSetting(CLE_VUES, liste)}
+              ouvrir={(v) => setVue(nettoyerVue(v, mesures, aujourdhui))}
+              onClose={() => setVuesOuvertes(false)}
+            />
+          ) : null}
           {filtresOuverts && etroit ? (
             <Fenetre id="stat-filtres" titre="Période et filtres" onClose={() => setFiltresOuverts(false)} largeur={460}>
               {filtres}

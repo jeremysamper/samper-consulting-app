@@ -4451,4 +4451,17 @@ export const UI_GLOSSARY_ES = {
   "Groupes non annulés, au jour de l'événement, comme la liste du mois du calendrier.": "Grupos no cancelados, el día del evento, como la lista del mes del calendario.",
   "Somme des pax annoncés des groupes non annulés.": "Suma de los comensales anunciados de los grupos no cancelados.",
   "Groupes annulés, comptés au jour de l'événement prévu.": "Grupos cancelados, contados el día del evento previsto.",
+  // ── Statistiques (S2) : vues enregistrées et export PDF ──
+  "Vues enregistrées": "Vistas guardadas",
+  "Exporter en PDF": "Exportar en PDF",
+  "Rangez la vue affichée sous un nom pour la retrouver.": "Guarde la vista mostrada con un nombre para encontrarla de nuevo.",
+  "Nom de la vue affichée": "Nombre de la vista mostrada",
+  "Par exemple : ventes du mois": "Por ejemplo: ventas del mes",
+  "Aucune vue enregistrée.": "Ninguna vista guardada.",
+  "Vue enregistrée.": "Vista guardada.",
+  "Vue mise à jour : ce nom existait déjà.": "Vista actualizada: este nombre ya existía.",
+  "Vingt vues au plus : supprimez-en une avant d'en enregistrer une autre.": "Veinte vistas como máximo: elimine una antes de guardar otra.",
+  "Donnez un nom à la vue.": "Dé un nombre a la vista.",
+  "Ce nom est déjà pris par une autre vue.": "Este nombre ya lo usa otra vista.",
+  "La liste des vues n'a pas pu être enregistrée. Réessayez.": "No se pudo guardar la lista de vistas. Inténtelo de nuevo.",
 };
