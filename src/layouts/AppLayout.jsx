@@ -86,7 +86,6 @@ export default function AppLayout({
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [msgOpen, setMsgOpen] = React.useState(false);
-  const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
   const [identityOverride, setIdentityOverride] = React.useState(null);
@@ -103,7 +102,6 @@ export default function AppLayout({
   // Logo applicatif = logo de l'établissement courant (stocké dans etablissements.logo_url DB).
   // Migration douce : si rien en DB et qu'il y a une valeur localStorage, on la pousse en DB.
   const appLogo = etablissement?.logo_url || null;
-  const fileInputRef = React.useRef(null);
 
   // ─── Migration douce localStorage → DB pour le logo (one-shot par établissement) ───
   // Si le user a déjà un logo dans localStorage mais que l'établissement n'en a pas en DB,
@@ -377,19 +375,18 @@ export default function AppLayout({
     onToggleSidebar: tactile ? null : toggleSidebar,
   });
 
-  // Échap referme ce que la coque a ouvert (alertes, messagerie, menu du logo).
+  // Échap referme ce que la coque a ouvert (alertes, messagerie).
   // Les modales des modules gèrent leur propre Échap.
   React.useEffect(() => {
-    if (!notifOpen && !msgOpen && !logoMenuOpen) return undefined;
+    if (!notifOpen && !msgOpen) return undefined;
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       setNotifOpen(false);
       setMsgOpen(false);
-      setLogoMenuOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [notifOpen, msgOpen, logoMenuOpen]);
+  }, [notifOpen, msgOpen]);
 
   // Une navigation (clic, raccourci, retour) referme les panneaux flottants.
   React.useEffect(() => {
@@ -402,7 +399,6 @@ export default function AppLayout({
   const fermerPanneaux = () => {
     if (notifOpen) setNotifOpen(false);
     if (msgOpen) setMsgOpen(false);
-    if (logoMenuOpen) setLogoMenuOpen(false);
   };
 
   // Défilement de <main>, seul conteneur qui défile dans les trois coques. Un
@@ -510,7 +506,6 @@ export default function AppLayout({
       }
       // 2. Petit delay puis le realtime de etablissements va rafraîchir l'UI naturellement.
       // Pas besoin de setState manuel : le subscribe sur 'etablissements' va déclencher la mise à jour.
-      setLogoMenuOpen(false);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -528,7 +523,6 @@ export default function AppLayout({
       }
     }
     removeStorageKeys(['sc_app_logo']) // nettoyage legacy
-    setLogoMenuOpen(false);
   };
 
   // Ce que la page des réglages reçoit de la coque (sections Mon compte,
@@ -548,7 +542,7 @@ export default function AppLayout({
       : null,
   };
 
-  // LogoMark et LogoMenu : fonctions de rendu (pas des composants React)
+  // LogoMark : fonction de rendu (pas un composant React)
   // afin d'éviter le problème des composants définis à l'intérieur d'autres composants.
   // Consultant : le logo est un vrai <button> (atteignable au clavier) ; .mini
   // le soustrait à la règle tactile globale qui l'étirerait à 44 px de haut.
@@ -559,8 +553,6 @@ export default function AppLayout({
         {...(canEditLogo ? {
           type: 'button',
           className: 'mini',
-          'aria-haspopup': 'menu',
-          'aria-expanded': logoMenuOpen,
           'aria-label': 'Changer le logo',
         } : {})}
         style={{
@@ -581,7 +573,7 @@ export default function AppLayout({
         }}
         onMouseEnter={() => canEditLogo && setLogoHover(true)}
         onMouseLeave={() => setLogoHover(false)}
-        onClick={canEditLogo ? (e) => { e.stopPropagation(); setLogoMenuOpen(!logoMenuOpen); } : undefined}
+        onClick={canEditLogo ? (e) => { e.stopPropagation(); ouvrirSection('logo'); } : undefined}
         title={canEditLogo ? 'Cliquer pour changer le logo' : undefined}
       >
         {appLogo
@@ -600,30 +592,8 @@ export default function AppLayout({
     );
   };
 
-  const renderLogoMenu = () => (
-    logoMenuOpen && canEditLogo && (
-      <div style={ls.logoMenu} onClick={e => e.stopPropagation()}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleLogoUpload}
-        />
-        <button style={ls.logoMenuBtn} onClick={() => fileInputRef.current?.click()}>
-          Changer le logo
-        </button>
-        {appLogo && (
-          <button style={{ ...ls.logoMenuBtn, color: 'var(--danger-strong)' }} onClick={handleLogoRemove}>
-            Retirer le logo
-          </button>
-        )}
-        <div style={{ fontSize: 11, color: 'var(--text2)', padding: '8px 12px 4px', borderTop: '1px solid var(--border)' }}>
-          Max 500 Ko. PNG, JPG ou SVG.
-        </div>
-      </div>
-    )
-  );
+  // Le logo se change dans la page des réglages (section 'logo', mêmes gestes
+  // et mêmes limites) : le clic sur le logo de la barre y mène.
 
   // ─── Panel d'alertes - rendu partagé desktop + mobile ────────────
   // panelStyle / headerStyle / itemStyle viennent de ls ou mls selon le contexte.
@@ -804,7 +774,6 @@ export default function AppLayout({
         <div style={ls.sidebarTop}>
           <div style={{ position: 'relative' }}>
             {renderLogoMark(36, 13)}
-            {renderLogoMenu()}
           </div>
         </div>
 
@@ -943,8 +912,6 @@ const ls = {
   sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
   // Haut de barre : le logo seul, aligné sur le texte des modules.
   sidebarTop: { display: 'flex', alignItems: 'center', padding: '18px 16px 12px', flexShrink: 0 },
-  logoMenu: { position: 'absolute', top: '100%', left: 0, marginTop: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--sh-lg)', width: 200, zIndex: 300, overflow: 'hidden' },
-  logoMenuBtn: { width: '100%', display: 'block', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
   nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
