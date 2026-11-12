@@ -4647,6 +4647,12 @@ export const UI_GLOSSARY = {
   "Prix d'un produit du catalogue": "Price of a catalogue product",
   "Produit du catalogue": "Catalogue product",
   "Dernier prix unitaire relevé pour le produit choisi dans le pas, comme son historique de prix au catalogue ; un prix ne s'additionne pas.": "Last unit price recorded for the chosen product in the step, like its price history in the catalogue; a price is not added up.",
+  // ── Statistiques (S2) : motifs et catégories des pertes ──
+  "Surproduction": "Overproduction",
+  "Erreur de préparation": "Preparation error",
+  "Retour client": "Customer return",
+  "Casse": "Breakage",
+  "Préparations": "Preparations",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -4628,4 +4628,10 @@ export const UI_GLOSSARY_ES = {
   "Prix d'un produit du catalogue": "Precio de un producto del catálogo",
   "Produit du catalogue": "Producto del catálogo",
   "Dernier prix unitaire relevé pour le produit choisi dans le pas, comme son historique de prix au catalogue ; un prix ne s'additionne pas.": "Último precio unitario registrado del producto elegido en el paso, como su historial de precios en el catálogo; un precio no se suma.",
+  // ── Statistiques (S2) : motifs et catégories des pertes ──
+  "Surproduction": "Sobreproducción",
+  "Erreur de préparation": "Error de preparación",
+  "Retour client": "Devolución del cliente",
+  "Casse": "Rotura",
+  "Préparations": "Preparaciones",
 };
