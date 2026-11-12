@@ -71,3 +71,14 @@ export function buildContacts({ conversations, profiles, profileById, userId, se
   const q = normalizeSearch(search.trim());
   return rows.filter((r) => normalizeSearch(`${fullName(r.profile)} ${r.profile?.email || ''}`).includes(q));
 }
+
+// Annuaire (vue Contacts) : les comptes actifs que la base laisse voir, sauf
+// soi, par ordre alphabétique ; même recherche que les conversations.
+export function buildAnnuaire({ profiles, userId, search = '' }) {
+  const rows = profiles
+    .filter((p) => p && p.id !== userId && p.actif !== false)
+    .sort((a, b) => fullName(a).localeCompare(fullName(b), 'fr'));
+  if (!search.trim()) return rows;
+  const q = normalizeSearch(search.trim());
+  return rows.filter((p) => normalizeSearch(`${fullName(p)} ${p.email || ''}`).includes(q));
+}
