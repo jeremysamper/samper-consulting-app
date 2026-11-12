@@ -82,10 +82,11 @@ test('horaire passé non pointé : heures prévues comptées et signalées ; auj
   assert.deepEqual(heuresHoraire(shifts[0], '2026-10-15'), { heures: 8, prevues: true, apresMinuit: false });
 });
 
-test('horaire après minuit : non compté, signalé', () => {
+test('horaire après minuit : compté jusqu\'au lendemain, comme la grille', () => {
   const r = coutPersonnel({ salaires: [horaire()], shifts: [shift('u2', '2026-10-02', { pointageDebut: '18:00', pointageFin: '01:00', pause: 0 })], reglages: { chargesSocialesPct: 0 }, ...OCTOBRE, aujourdhui: APRES });
-  assert.equal(r.apresMinuit, 1);
-  assert.equal(r.total, 0);
+  assert.equal(r.apresMinuit, 0);
+  proche(r.heures, 7);
+  assert.equal(r.total, Math.round(7 * 26.5 * 100) / 100);
 });
 
 test('salaire changé en cours de mois : chaque horaire prend le salaire de son jour', () => {
