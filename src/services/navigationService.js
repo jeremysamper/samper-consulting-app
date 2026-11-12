@@ -61,3 +61,18 @@ export function ouvrirGroupe(id, date) {
   }
   navigateToPage('groupes');
 }
+
+// Statistiques sur une vue préréglée : une famille (sa première mesure) ou des
+// mesures nommées, sur une période ('jour', '7j', '30j', 'mois', 'trimestre',
+// 'annee', ou { id: 'libre', debut, fin }). Clé ponctuelle lue au montage,
+// événement pour un module déjà monté, puis la page. Ce que la personne ne
+// voit pas dans le module n'est pas ouvert par le lien.
+export function ouvrirStatistiques({ famille = null, mesures = [], periode = null } = {}) {
+  if (famille || (mesures && mesures.length)) {
+    const demande = { famille, mesures: mesures || [], periode };
+    writeJson(UI_STORAGE_KEYS.statistiquesOuvrir, demande);
+    const browserWindow = getBrowserWindow();
+    browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:statistiques-ouvrir', { detail: demande }));
+  }
+  navigateToPage('statistiques');
+}

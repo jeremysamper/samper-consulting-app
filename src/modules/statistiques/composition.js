@@ -1,0 +1,171 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Assemblage d'un graphique des Statistiques, sans React ni DOM (testé par
+// node --test, egalite.test.mjs) : des points rendus par les fonctions
+// d'origine aux séries tracées et au tableau des valeurs exactes.
+//
+// Rien n'est calculé ici au-delà de l'arithmétique d'affichage : chaque valeur
+// est lue par `valeur` de sa mesure sur un point d'origine. Le total d'une
+// série est la valeur de la fonction d'origine sur la période entière (D4) ;
+// la somme des points ne sert qu'à dire l'écart d'arrondi quand il existe.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { ecartArrondi, ecartDe, valeurPeriode } from './agregation.js';
+import { echelleDe } from './echelles.js';
+import { MAX_SERIES, typeRetenu, typesValides, unitesDe } from './vueStatistiques.js';
+
+const estNombre = (v) => typeof v === 'number' && Number.isFinite(v);
+const AUTRES = '__autres__';
+
+// Séries d'une mesure sans ventilation.
+function serieDeMesure(m, sources) {
+  const points = sources.points[m.famille];
+  const total = sources.totaux[m.famille];
+  const avant = sources.pointsComparaison?.[m.famille];
+  const totalAvant = sources.totauxComparaison?.[m.famille];
+  const valeurs = points.map((p) => m.valeur(p));
+  const comparaison = avant ? avant.map((p) => m.valeur(p)) : null;
+  const surPeriode = valeurPeriode(m.nature, { surPeriode: total ? m.valeur(total) : null, valeurs });
+  const surPeriodeAvant = avant ? valeurPeriode(m.nature, { surPeriode: totalAvant ? m.valeur(totalAvant) : null, valeurs: comparaison }) : null;
+  return {
+    id: m.id, mesure: m.id, libelle: m.libelle, unite: m.unite, nature: m.nature,
+    valeurs, comparaison, total: surPeriode, totalComparaison: surPeriodeAvant,
+    ecartTotal: avant ? ecartDe(surPeriode, surPeriodeAvant) : null,
+    arrondi: m.nature === 'flux' ? ecartArrondi(valeurs, surPeriode) : null,
+  };
+}
+
+// Séries d'une mesure ventilée : une série par catégorie, les plus grosses
+// d'abord (total de la période), au plus six ; le reste est regroupé.
+function seriesVentilees(m, ventilation, sources) {
+  const points = sources.points[m.famille];
+  const total = sources.totaux[m.famille];
+  const avant = sources.totauxComparaison?.[m.famille];
+  const cats = new Map();
+  const noter = (part, rang, cible) => {
+    if (!cats.has(part.cle)) cats.set(part.cle, { cle: part.cle, libelle: part.libelle, brut: !!part.brut, donnee: !!part.donnee, valeurs: points.map(() => null), total: null, totalComparaison: null });
+    const c = cats.get(part.cle);
+    if (cible === 'point') c.valeurs[rang] = part.valeur;
+    else c[cible] = part.valeur;
+  };
+  points.forEach((p, i) => ventilation.parts(p).forEach((part) => noter(part, i, 'point')));
+  if (total) ventilation.parts(total).forEach((part) => noter(part, 0, 'total'));
+  if (avant) ventilation.parts(avant).forEach((part) => noter(part, 0, 'totalComparaison'));
+  const tri = [...cats.values()].sort((a, b) => Math.abs(b.total || 0) - Math.abs(a.total || 0) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+  let gardees = tri;
+  if (tri.length > MAX_SERIES) {
+    gardees = tri.slice(0, MAX_SERIES - 1);
+    const reste = tri.slice(MAX_SERIES - 1);
+    const somme = (liste) => (liste.some(estNombre) ? liste.filter(estNombre).reduce((s, v) => s + Math.round(v * 100), 0) / 100 : null);
+    gardees.push({
+      cle: AUTRES, libelle: 'Autres', brut: false, donnee: false, nbRegroupes: reste.length,
+      valeurs: points.map((_, i) => somme(reste.map((c) => c.valeurs[i]))),
+      total: somme(reste.map((c) => c.total)),
+      totalComparaison: avant ? somme(reste.map((c) => c.totalComparaison)) : null,
+    });
+  }
+  return gardees.map((c) => ({
+    id: `${m.id}|${c.cle}`, mesure: m.id, libelle: c.libelle, brut: c.brut, donnee: c.donnee, nbRegroupes: c.nbRegroupes || 0,
+    unite: m.unite, nature: m.nature, valeurs: c.valeurs, comparaison: null,
+    total: c.total, totalComparaison: avant ? c.totalComparaison : null,
+    ecartTotal: avant ? ecartDe(c.total, c.totalComparaison) : null,
+    arrondi: null,
+  }));
+}
+
+// Échelle d'un axe : les valeurs des séries, ou les piles pour un empilé
+// (somme des valeurs positives et somme des négatives de chaque tranche).
+//   mode : 'empile' (piles), 'totaux' (barres d'une ventilation sur la
+//   période), 'valeurs' (courbes et barres dans le temps, comparaison comprise).
+function echelleAxe(series, mode) {
+  if (mode === 'empile') {
+    const n = Math.max(0, ...series.map((s) => s.valeurs.length));
+    const piles = [];
+    for (let i = 0; i < n; i += 1) {
+      let haut = 0;
+      let bas = 0;
+      series.forEach((s) => { const v = s.valeurs[i]; if (estNombre(v)) { if (v >= 0) haut += v; else bas += v; } });
+      piles.push(haut, bas);
+    }
+    return echelleDe(piles);
+  }
+  if (mode === 'totaux') return echelleDe(series.map((s) => s.total));
+  return echelleDe(series.flatMap((s) => [...s.valeurs, ...(s.comparaison || [])]));
+}
+
+//   graphique : { mesures: [ids], ventilation, type }
+//   mesures   : les mesures cochées et visibles, dans l'ordre des cases
+//   tranches, tranchesComparaison
+//   sources   : { points, totaux, pointsComparaison, totauxComparaison },
+//               par famille ; une famille absente de `points` n'est pas lue
+//   etats     : { famille: 'loading' | 'ready' | 'error' }
+//   familles  : les familles du catalogue (libellé, journée)
+// → { type, types, series, unites, echelles, enAttente, nonLues, journees,
+//     phrases, ventilation, vide }
+export function composer({ graphique, mesures, tranches, tranchesComparaison = null, sources, etats = {}, familles = [] }) {
+  const cochees = mesures || [];
+  const familleDe = (id) => familles.find((f) => f.id === id);
+  const idsFamilles = [...new Set(cochees.map((m) => m.famille))];
+  const enAttente = idsFamilles.filter((f) => etats[f] === 'loading' || (etats[f] !== 'error' && !sources.points[f]));
+  const nonLues = idsFamilles.filter((f) => etats[f] === 'error');
+  const lues = cochees.filter((m) => sources.points[m.famille] && etats[m.famille] !== 'error');
+
+  const seule = cochees.length === 1 ? cochees[0] : null;
+  const ventilation = seule ? (seule.ventilations || []).find((v) => v.id === graphique.ventilation) || null : null;
+  const avecComparaison = !!tranchesComparaison && !ventilation;
+  const src = avecComparaison ? sources : { ...sources, pointsComparaison: null };
+
+  let series = [];
+  if (ventilation && lues.length) series = seriesVentilees(seule, ventilation, sources).map((s) => ({ ...s, ventile: true }));
+  else series = lues.map((m) => serieDeMesure(m, src));
+
+  const unites = unitesDe(series);
+  series = series.map((s, i) => ({ ...s, rang: i, axe: unites.indexOf(s.unite) === 1 ? 'd' : 'g' }));
+  const contexte = { nbTranches: tranches.length, nbSeries: series.length, ventilation: !!ventilation };
+  const types = typesValides(contexte);
+  const type = typeRetenu(graphique, contexte);
+  const mode = type === 'empile' ? 'empile' : (type === 'barres' && ventilation ? 'totaux' : 'valeurs');
+  const echelles = {
+    g: echelleAxe(series.filter((s) => s.axe === 'g'), mode),
+    d: unites.length > 1 ? echelleAxe(series.filter((s) => s.axe === 'd'), mode) : null,
+  };
+  const journees = [...new Set(lues.map((m) => familleDe(m.famille)?.journee).filter(Boolean))];
+  return {
+    type,
+    types,
+    series,
+    unites,
+    echelles,
+    ventilation,
+    comparaison: avecComparaison,
+    enAttente,
+    nonLues,
+    journees,
+    phrases: cochees.map((m) => ({ id: m.id, libelle: m.libelle, phrase: m.phrase })),
+    vide: !cochees.length,
+  };
+}
+
+// Le tableau des valeurs exactes de ce qui est tracé (D8) : une ligne par
+// tranche, puis la période entière. Avec une comparaison : la valeur d'avant
+// et l'écart, en valeur et en pourcentage, sur la ligne de la période.
+//   → { colonnes: [{ id, libelle, unite, nature, ... }], lignes: [{ tranche,
+//       valeurs, avant }], periode: { valeurs, avant, ecarts }, arrondis }
+export function tableauDe(composition, tranches) {
+  const { series } = composition;
+  const lignes = tranches.map((t, i) => ({
+    tranche: t,
+    valeurs: series.map((s) => s.valeurs[i] ?? null),
+    avant: series.map((s) => (s.comparaison ? s.comparaison[i] ?? null : null)),
+  }));
+  return {
+    colonnes: series.map((s) => ({ id: s.id, libelle: s.libelle, unite: s.unite, nature: s.nature, brut: s.brut, donnee: s.donnee, rang: s.rang })),
+    lignes,
+    periode: {
+      valeurs: series.map((s) => s.total),
+      avant: series.map((s) => s.totalComparaison),
+      ecarts: series.map((s) => s.ecartTotal),
+    },
+    arrondis: series.filter((s) => estNombre(s.arrondi) && s.arrondi !== 0).map((s) => ({ id: s.id, libelle: s.libelle, unite: s.unite, ecart: s.arrondi })),
+    avecComparaison: series.some((s) => s.comparaison) || series.some((s) => s.totalComparaison != null),
+  };
+}

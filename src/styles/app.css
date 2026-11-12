@@ -155,6 +155,14 @@
      pour les maisons qui en font. Vert, distinct du midi et du soir y compris
      pour un daltonien. */
   --svc-brunch: #047857;
+  /* Séries du module Statistiques : six teintes à 3:1 au moins sur --surface et
+     --bg. Une série a aussi son marqueur et son numéro, jamais la couleur seule. */
+  --serie-1: #003042;
+  --serie-2: #c2410c;
+  --serie-3: #1e40af;
+  --serie-4: #047857;
+  --serie-5: #7e22ce;
+  --serie-6: #92400e;
 
   /* Palette des boutons produits de la Caisse (fonds doux, texte --text).
      Cles stockees en base (caisse_boutons.couleur), jamais un hex.
@@ -251,6 +259,12 @@
     --svc-soir-bg: oklch(22% 0.04 250);
     --svc-soir-bd: oklch(45% 0.10 250);
     --svc-brunch: oklch(66% 0.14 165);
+  --serie-1: #74aec3;
+  --serie-2: oklch(80% 0.12 55);
+  --serie-3: oklch(81% 0.085 250);
+  --serie-4: oklch(66% 0.14 165);
+  --serie-5: oklch(76% 0.13 305);
+  --serie-6: oklch(83% 0.105 82);
 
     /* Palette caisse en sombre : memes teintes, fonds assombris
        (--text sombre passe 10,4:1 au moins sur chacun). */
@@ -346,6 +360,12 @@ html[data-theme="dark"] {
     --svc-soir-bg: oklch(22% 0.04 250);
     --svc-soir-bd: oklch(45% 0.10 250);
     --svc-brunch: oklch(66% 0.14 165);
+  --serie-1: #74aec3;
+  --serie-2: oklch(80% 0.12 55);
+  --serie-3: oklch(81% 0.085 250);
+  --serie-4: oklch(66% 0.14 165);
+  --serie-5: oklch(76% 0.13 305);
+  --serie-6: oklch(83% 0.105 82);
 
     /* Palette caisse en sombre : memes teintes, fonds assombris
        (--text sombre passe 10,4:1 au moins sur chacun). */

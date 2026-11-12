@@ -15,6 +15,9 @@ export const UI_STORAGE_KEYS = {
   // Groupe dont ouvrir la fiche dans Groupes ({ id, date }, clé ponctuelle
   // posée par une réservation de groupe, lue puis effacée à l'arrivée).
   groupesOuvrir: 'sc_groupes_ouvrir',
+  // Vue à ouvrir dans Statistiques ({ famille, mesures, periode }, clé
+  // ponctuelle posée par ouvrirStatistiques, lue puis effacée à l'arrivée).
+  statistiquesOuvrir: 'sc_statistiques_ouvrir',
   theme: 'sc_theme',
   lang: 'sc_lang',
   // Rappel d'activation du code à usage unique (consultants sans facteur

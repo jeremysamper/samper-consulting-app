@@ -1,0 +1,7 @@
+/* Statistiques : les onglets de pas et de type sont des cibles de 44 px à
+   toutes les largeurs (D16), dans la page comme dans la feuille des filtres
+   (rendue hors de la section, d'où la seconde classe). Aucune couleur ici. */
+.statistiques .segmented-tab,
+.statistiques-filtres .segmented-tab {
+  min-height: 44px;
+}

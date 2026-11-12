@@ -119,6 +119,12 @@ export const THEME_VAR_OVERRIDES = `
     --accent-light: ${BRAND.color.tint};
     --accent-bd: ${BRAND.color.rule};
     --on-accent: ${BRAND.color.white};
+    --serie-1: ${BRAND.color.primary};
+    --serie-2: #c2410c;
+    --serie-3: #1e40af;
+    --serie-4: #047857;
+    --serie-5: #7e22ce;
+    --serie-6: #92400e;
     --nav: ${BRAND.color.primary};
     --nav-text: ${BRAND.color.white};
     --nav-active: ${BRAND.color.tint};
