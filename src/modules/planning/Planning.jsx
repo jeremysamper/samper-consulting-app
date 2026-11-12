@@ -1415,7 +1415,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         />
       ) : activeTab === 'planning' ? (
         isMobile ? renderMobilePlanning() : (
-          <div id="planning-print"><Panneau style={pls.panneau}>
+          <Panneau style={pls.panneau}>
             <div style={pls.enteteGrille}>
               <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)' }}>Planning {horizon} semaine{horizon > 1 ? 's' : ''}</div>
               {/* Qui gère le planning lit comment déplacer un horaire ; les autres, la date de départ. */}
@@ -1490,11 +1490,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 ))}
               </div>
             </div>
-          </Panneau></div>
+          </Panneau>
         )
       ) : activeTab === 'pointage' ? (
         isMobile ? renderMobilePointage() : (
-          <div id="pointage-print"><Panneau style={pls.panneau}>
+          <Panneau style={pls.panneau}>
             <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', marginBottom: 10 }}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={pls.ptTable}>
               <div style={pls.ptHead}><span>Employé</span><span>Prévu</span><span>Arrivée</span><span>Départ</span><span>Durée</span><span>Statut</span><span /></div>
@@ -1529,7 +1529,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </React.Fragment>
               ))}
             </div>
-          </Panneau></div>
+          </Panneau>
         )
       ) : null}
 

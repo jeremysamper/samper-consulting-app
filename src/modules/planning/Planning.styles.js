@@ -44,7 +44,7 @@ const pls = {
   ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
   pointBtn: { padding: '10px 16px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 },
   datePicker: { padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', fontFamily: 'var(--font)', fontSize: 'var(--t2)' },
-  smallBtn: { padding: '7px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer' },
+  smallBtn: { padding: '7px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer' },
   smallBtnActive: { background: 'var(--selection)', color: 'var(--text)', borderColor: 'var(--onglet)' },
   // Grille de la semaine et pointages du jour : un Panneau (O11), retrait d'avant.
   panneau: { padding: 16 },
