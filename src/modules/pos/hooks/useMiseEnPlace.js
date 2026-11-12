@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { toutesLesPages } from '../lib/lirePages.js';
 import { dbService } from '../../../services/dbService.js';
 import { addDays, todayInTz, dowFromDateStr, formatDateLabel } from '../lib/date-utils.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
@@ -99,12 +100,15 @@ export function useMiseEnPlace(etablissement) {
       }
 
       // 4. Ventes 14 derniers jours (mappés uniquement)
-      const { data: salesRows, error: salesErr } = await db
+      const { data: salesRows, error: salesErr } = await toutesLesPages((de, a) => db
         .from('pos_sales')
         .select('pos_item_id, date, qty')
         .in('pos_item_id', mappedItemIds)
         .gte('date', since14)
-        .lte('date', today);
+        .lte('date', today)
+        .order('date')
+        .order('id')
+        .range(de, a));
       if (salesErr) throw salesErr;
 
       // 5. Recettes (noms)

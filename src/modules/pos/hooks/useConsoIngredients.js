@@ -27,6 +27,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { toutesLesPages } from '../lib/lirePages.js';
 import { dbService } from '../../../services/dbService.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
 
@@ -122,12 +123,15 @@ export function useConsoIngredients(etablissement, dateRange) {
       }
 
       // 4. Ventes sur la période (mappés uniquement)
-      const { data: salesRows, error: salesErr } = await db
+      const { data: salesRows, error: salesErr } = await toutesLesPages((de, a) => db
         .from('pos_sales')
         .select('pos_item_id, qty')
         .in('pos_item_id', mappedItemIds)
         .gte('date', dateRange.from)
-        .lte('date', dateRange.to);
+        .lte('date', dateRange.to)
+        .order('date')
+        .order('id')
+        .range(de, a));
       if (salesErr) throw salesErr;
 
       // Agréger les ventes par pos_item

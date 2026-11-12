@@ -27,6 +27,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { dbService } from '../../../services/dbService.js';
 import { addDays, todayInTz, formatRangeLabel } from '../lib/date-utils.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
+import { toutesLesPages } from '../lib/lirePages.js';
 
 export function useTopFlop(etablissement, periodDays = 7) {
   const [items, setItems]             = useState([]);
@@ -80,12 +81,15 @@ export function useTopFlop(etablissement, periodDays = 7) {
       for (const i of allItems) itemById[i.id] = i;
 
       // 3. Ventes sur 2 périodes (une seule requête large)
-      const { data: salesRows, error: salesErr } = await db
+      const { data: salesRows, error: salesErr } = await toutesLesPages((de, a) => db
         .from('pos_sales')
         .select('pos_item_id, date, qty')
         .in('pos_item_id', allItemIds)
         .gte('date', cutB)
-        .lt('date', today);
+        .lt('date', today)
+        .order('date')
+        .order('id')
+        .range(de, a));
       if (salesErr) throw salesErr;
 
       // Agrégation côté client
