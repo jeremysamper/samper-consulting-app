@@ -264,10 +264,24 @@ export function useSpaTable(table, etabId, { map, filtres = [], cle = '', order 
 
     const reload = async () => {
       if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-      let q = supabase.from(table).select('*').eq('etablissement_id', etabId);
-      for (const [col, op, val] of filtresRef.current) q = q[op](col, val);
-      for (const [col, asc] of orderRef.current) q = q.order(col, { ascending: asc !== false });
-      const { data, error } = await q.limit(limit);
+      // Par pages de 1000 jusqu'à `limit` : le serveur ne rend jamais plus de
+      // 1000 lignes par réponse, une limite plus haute était tronquée en silence.
+      const construire = () => {
+        let q = supabase.from(table).select('*').eq('etablissement_id', etabId);
+        for (const [col, op, val] of filtresRef.current) q = q[op](col, val);
+        for (const [col, asc] of orderRef.current) q = q.order(col, { ascending: asc !== false });
+        return q.order('id');
+      };
+      const lignes = [];
+      let error = null;
+      for (let de = 0; de < limit; de += 1000) {
+        const taille = Math.min(1000, limit - de);
+        const page = await construire().range(de, de + taille - 1);
+        if (page.error) { error = page.error; break; }
+        lignes.push(...(page.data || []));
+        if (!page.data || page.data.length < taille) break;
+      }
+      const data = error ? null : lignes;
       if (!mounted) return;
       if (error) {
         if (RELATION_ABSENTE.has(error.code)) { setRows([]); setStatus('absent'); return; }
