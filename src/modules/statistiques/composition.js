@@ -270,5 +270,8 @@ export function tableauDe(composition, tranches) {
     etat: !!composition.etat,
     libelleCategories: composition.libelleCategories || '',
     libelleTotal: composition.libelleTotal || '',
+    // Valeurs d'aujourd'hui sans ligne d'ensemble à l'écran d'origine (les
+    // fiches) : le tableau n'en invente pas une.
+    sansTotal: !!composition.etat && !composition.libelleTotal,
   };
 }

@@ -22,25 +22,27 @@ const titreColonne = (c) => `${c.libelle}${libelleUnite(c.unite) ? ` (${libelleU
 // par tranche, la période entière en dernière ligne, l'écart d'arrondi dessous.
 export function feuilleDe(tableau, { nom, libelleComparaison = '' }) {
   const avecAvant = tableau.lignes.some((l) => l.avant.some((v) => v != null)) || tableau.periode.avant.some((v) => v != null);
-  const colonnes = [T('Période', 14), T('Du, au', 26)];
+  // Valeurs d'aujourd'hui : une ligne par plat ou par fiche, sans dates.
+  const colonnes = tableau.etat ? [T(tableau.libelleCategories || 'Ligne', 34)] : [T('Période', 14), T('Du, au', 26)];
   tableau.colonnes.forEach((c) => {
     colonnes.push(N(titreColonne(c), 22));
     if (avecAvant) colonnes.push(N(`${c.libelle}, ${libelleComparaison || 'avant'}`, 22));
   });
   const ligneDe = (libelle, detail, valeurs, avant, fort) => {
-    const cellules = [libelle, detail];
+    const cellules = tableau.etat ? [libelle] : [libelle, detail];
     tableau.colonnes.forEach((c, i) => {
       cellules.push(valeurTableur(valeurs[i], c.unite));
       if (avecAvant) cellules.push(valeurTableur(avant[i], c.unite));
     });
     return rang(cellules, fort);
   };
-  const rangs = tableau.lignes.map((l) => ligneDe(libelleTranche(l.tranche), bornesTranche(l.tranche), l.valeurs, l.avant, false));
-  rangs.push(ligneDe(tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière', tableau.colonnes.map((c) => LIBELLE_NATURE[c.nature]).filter((v, i, a) => a.indexOf(v) === i).join(', '), tableau.periode.valeurs, tableau.periode.avant, true));
+  const rangs = tableau.lignes.map((l) => ligneDe(libelleTranche(l.tranche), tableau.etat ? '' : bornesTranche(l.tranche), l.valeurs, l.avant, false));
+  if (!tableau.sansTotal) rangs.push(ligneDe(tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière', tableau.colonnes.map((c) => LIBELLE_NATURE[c.nature]).filter((v, i, a) => a.indexOf(v) === i).join(', '), tableau.periode.valeurs, tableau.periode.avant, true));
   if (tableau.arrondis.length) {
     rangs.push(rang([]));
     tableau.arrondis.forEach((a) => rangs.push(rang([`Arrondi, ${a.libelle}`, `la somme des lignes diffère du total de ${a.ecart.toFixed(2)}`])));
   }
+  if (tableau.etat) rangs.push(rang([]), rang(["Valeurs d'aujourd'hui, aux prix et coûts actuels : la période ne s'applique pas."]));
   return { nom, colonnes, rangs };
 }
 

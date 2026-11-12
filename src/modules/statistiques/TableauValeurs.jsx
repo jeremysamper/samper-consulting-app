@@ -70,21 +70,23 @@ export default function TableauValeurs({ tableau, libelleComparaison }) {
                 ))}
               </tr>
             ))}
-            <tr data-stat-periode="">
-              <td className="stat-collee" style={{ ...st.td, ...st.tdPeriode, ...st.pied, fontFamily: 'var(--font)' }}>{tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière'}</td>
-              {colonnes.map((c, i) => (
-                <td key={c.id} style={{ ...st.td, ...st.pied }}>
-                  <Valeur v={periode.valeurs[i]} unite={c.unite} />
-                  <span style={st.avant}>{NATURE[c.nature]}</span>
-                  {avecComparaison ? (
-                    <>
-                      <span style={st.avant}><span>{libelleComparaison}</span> : <Valeur v={periode.avant[i]} unite={c.unite} /></span>
-                      <Ecart e={periode.ecarts[i]} unite={c.unite} />
-                    </>
-                  ) : null}
-                </td>
-              ))}
-            </tr>
+            {tableau.sansTotal ? null : (
+              <tr data-stat-periode="">
+                <td className="stat-collee" style={{ ...st.td, ...st.tdPeriode, ...st.pied, fontFamily: 'var(--font)' }}>{tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière'}</td>
+                {colonnes.map((c, i) => (
+                  <td key={c.id} style={{ ...st.td, ...st.pied }}>
+                    <Valeur v={periode.valeurs[i]} unite={c.unite} />
+                    <span style={st.avant}>{NATURE[c.nature]}</span>
+                    {avecComparaison ? (
+                      <>
+                        <span style={st.avant}><span>{libelleComparaison}</span> : <Valeur v={periode.avant[i]} unite={c.unite} /></span>
+                        <Ecart e={periode.ecarts[i]} unite={c.unite} />
+                      </>
+                    ) : null}
+                  </td>
+                ))}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

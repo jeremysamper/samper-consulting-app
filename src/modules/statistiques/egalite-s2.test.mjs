@@ -443,6 +443,11 @@ test("marges et chiffrage : chaque ligne et l'ensemble sont ceux des écrans d'o
   assert.equal(tab.periode.valeurs[1], attendu.cout);
   assert.equal(tab.lignes[3].valeurs[0], 25);
   assert.equal(tab.lignes[3].valeurs[1], null, 'plat sans fiche : n/a');
+  assert.equal(tab.sansTotal, false);
+  // L'onglet Fiches n'a pas de ligne d'ensemble : le tableau n'en montre pas.
+  const fichesM = ['marges.fiche_prix', 'marges.fiche_marge'].map(mesure);
+  const cf = composer({ graphique: { mesures: fichesM.map((m) => m.id), choix: {} }, mesures: fichesM, tranches: lu.tranches, tranchesComparaison: lu.tranches, sources, etats: { marges: 'ready' }, familles: FAMILLES });
+  assert.equal(tableauDe(cf, cf.tranches).sansTotal, true);
 });
 
 test("socle S-c : une valeur d'aujourd'hui ne se coche pas avec un chiffre dans le temps ni d'autres catégories, le choix de carte se garde", () => {
