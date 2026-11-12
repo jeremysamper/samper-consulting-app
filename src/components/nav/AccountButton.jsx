@@ -37,7 +37,7 @@ export default function AccountButton({ user, onOpen, variant = 'desktop', style
 const s = {
   trigger: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-    padding: '6px 10px', background: 'none', border: 'none', borderRadius: 8,
+    padding: '6px 10px', background: 'none', border: 'none', borderRadius: 'var(--r)',
     color: 'var(--nav-text-active)', fontFamily: 'var(--font)', cursor: 'pointer', textAlign: 'left',
   },
   triggerMobile: { minHeight: 52, padding: '6px 12px' },
@@ -48,11 +48,11 @@ const s = {
     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'var(--nav-active)', border: '1px solid var(--nav-border)',
-    color: 'var(--nav-text-active)', fontSize: 11, fontWeight: 700, letterSpacing: 0.3,
+    color: 'var(--nav-text-active)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', letterSpacing: 0.3,
   },
   avatarMobile: { width: 32, height: 32, fontSize: 12 },
-  avatarAccueil: { width: 32, height: 32, fontSize: 12, background: 'var(--surface2)', border: 'none', color: 'var(--text2)' },
-  name: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  avatarAccueil: { width: 32, height: 32, fontSize: 12, background: 'var(--selection)', border: 'none', color: 'var(--text2)' },
+  name: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 'var(--g2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   nameMobile: { fontSize: 14 },
   chevron: { flexShrink: 0, color: 'var(--nav-text)' },
   chevronAccueil: { color: 'var(--text3)' },

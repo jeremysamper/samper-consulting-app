@@ -130,31 +130,43 @@ export function Options({ nom, valeur, onChange, options }) {
   );
 }
 
+// Styles partagés des fenêtres et de leurs formulaires, écrits par les jetons
+// de la direction Office (.claude/rules/direction-office.md) : rayon --r pour
+// la fenêtre comme pour ses contrôles, titre sans serif en --g3, champ à
+// contour --champ-bord sur fond --surface, bouton secondaire par les jetons
+// --btn-*, un seul aplat d'accent pour l'action principale. Un contour s'écrit
+// en borderWidth, borderStyle et borderColor : un appelant peut en changer la
+// seule couleur (npm run lint:borders).
 export const st = {
   voile: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
   enSection: { display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minWidth: 0, boxSizing: 'border-box' },
-  fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
+  // Une fenêtre flotte : c'est elle, avec les menus, qui porte une ombre.
+  fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
   fermer: { position: 'absolute', top: 6, right: 8, width: 40, height: 40, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: 24, cursor: 'pointer', lineHeight: 1 },
-  titre: { fontSize: 17, fontWeight: 700, paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
+  titre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font)' },
   sousTitre: { fontSize: 13, color: 'var(--text2)', marginTop: -6 },
   corps: { display: 'flex', flexDirection: 'column', gap: 14 },
   pied: { display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', paddingTop: 4 },
   section: { display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 },
-  sectionTitre: { fontSize: 12, fontWeight: 500, color: 'var(--text2)', marginTop: 2 },
-  choix: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, width: '100%', textAlign: 'left', padding: '12px 14px', minHeight: 52, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0, boxSizing: 'border-box' },
-  choixActif: { borderColor: 'var(--accent)' },
-  choixTitre: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
-  choixDetail: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, whiteSpace: 'normal' },
+  sectionTitre: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginTop: 2 },
+  // Un choix est une ligne de liste : pas de cadre, un filet en bas. Le
+  // contour transparent garde la place du filet sur les quatre côtés.
+  choix: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, width: '100%', textAlign: 'left', padding: '12px 0', minHeight: 52, background: 'transparent', borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', borderBottomColor: 'var(--border)', borderRadius: 0, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0, boxSizing: 'border-box' },
+  choixActif: { background: 'var(--selection)' },
+  choixTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  choixDetail: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4, whiteSpace: 'normal' },
   options: { display: 'flex', flexDirection: 'column', gap: 2 },
   option: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 2px', cursor: 'pointer', minHeight: 44, boxSizing: 'border-box' },
   optionActive: {},
   radio: { width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: 'var(--accent)' },
-  optionTitre: { fontSize: 14, fontWeight: 500, color: 'var(--text)' },
-  optionDetail: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
-  label: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
-  champ: { width: '100%', padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, boxSizing: 'border-box', minHeight: 44 },
-  primaire: { padding: '11px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
-  secondaire: { padding: '11px 16px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text)', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  optionTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  optionDetail: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
+  label: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  champ: { width: '100%', padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', boxSizing: 'border-box', minHeight: 44 },
+  primaire: { padding: '11px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  // L'état éteint du bouton secondaire (texte et contour effacés) vit dans
+  // app.css, accroché au contour --btn-bord écrit ici.
+  secondaire: { padding: '11px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-sm)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   apercu: { fontSize: 13, color: 'var(--text)', lineHeight: 1.5 },
-  remarque: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
+  remarque: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
 };

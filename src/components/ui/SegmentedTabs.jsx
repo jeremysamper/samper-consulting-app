@@ -6,10 +6,12 @@ import React from 'react';
 // pilules en flex-wrap qui empilaient les onglets sur plusieurs lignes en
 // mobile (et mangeaient toute la hauteur).
 //
-// Style « segmented control » : une piste (var(--surface2)) contenant des
-// pilules ; l'onglet actif est surélevé (fond var(--surface) + ombre légère).
-// Aucune couleur en dur - tokens CSS uniquement. Le comportement scroll +
-// masquage de la scrollbar est en CSS (.segmented-tabs dans app.css).
+// Direction Office : pas de piste ni de pilule, l'onglet actif est souligné
+// d'un trait à l'encre --onglet, qui porte aussi son texte. Seule la barre de
+// modes de la caisse (.caisse-modes) garde un aplat d'accent pour son mode
+// actif. Aucune couleur en dur - tokens CSS uniquement. Le style, le
+// défilement et le masquage de la scrollbar sont en CSS (.segmented-tabs dans
+// app.css).
 //
 // Props :
 //   tabs     : [{ id, label|l, icon? }]  - icon = noeud React optionnel

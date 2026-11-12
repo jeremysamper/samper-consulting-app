@@ -119,12 +119,12 @@ const s = {
   },
   actions: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
   activer: {
-    padding: '0 14px', minHeight: 32, borderRadius: 8, border: '1px solid var(--info-text)',
-    background: 'transparent', color: 'var(--info-text)', fontSize: 12, fontWeight: 700,
+    padding: '0 14px', minHeight: 32, borderRadius: 'var(--r)', border: '1px solid var(--info-text)',
+    background: 'transparent', color: 'var(--info-text)', fontSize: 12, fontWeight: 'var(--g3)',
     cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
   plusTard: {
-    padding: '0 12px', minHeight: 32, borderRadius: 8, border: '1px solid transparent',
+    padding: '0 12px', minHeight: 32, borderRadius: 'var(--r)', border: '1px solid transparent',
     background: 'transparent', color: 'var(--info-text)', fontSize: 12, fontWeight: 500,
     cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },

@@ -34,6 +34,14 @@ import { readJson, removeStorageKeys } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
 import { messageErreur } from '../utils/messageErreur.js';
 
+// Marge de page : le jeton --marge (app.css), 32 px dès 768 px de large. Les
+// pages de cette liste gardent en coque tactile la marge serrée d'avant, à
+// toute largeur. Mesure du banc, 12.11.2026, à 32 px à la tablette : le
+// dernier contrôle du Spa coûtait un défilement de plus, et la grille des
+// produits de la caisse passait de quatre colonnes à trois. Un écran ne perd
+// jamais un geste pour une marge.
+const PAGES_MARGE_SERREE = new Set(['spa', 'caisse']);
+
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // et la page d'accueil de la coque tactile.
 const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Réglages', accueil: 'Accueil' };
@@ -556,7 +564,7 @@ export default function AppLayout({
           'aria-label': 'Changer le logo',
         } : {})}
         style={{
-          width: size, height: size, borderRadius: 8, padding: 0,
+          width: size, height: size, borderRadius: 'var(--r)', padding: 0,
           // Le logo d'un établissement se pose sur une pastille à la couleur
           // du menu d'avant Office (--logo-fond) : un logo importé clair, sur
           // fond transparent, garde l'allure qu'il avait sur le menu sombre.
@@ -617,7 +625,7 @@ export default function AppLayout({
           <span>Alertes{alerts.length > 0 ? ` (${alerts.length})` : ''}</span>
           {alerts.length > 0 && (
             <button
-              style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 6px' }}
+              style={{ background: 'none', border: 'none', fontSize: 'var(--t1)', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 6px' }}
               onClick={dismissAllAlerts}
             >Tout effacer</button>
           )}
@@ -647,9 +655,9 @@ export default function AppLayout({
             }}
           >
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{alert.title}</div>
+              <div style={{ fontWeight: 'var(--g3)', fontSize: 13, color: 'var(--text)' }}>{alert.title}</div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 }}>{alert.message}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{formatRelativeTime(alert.created_at)}</div>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 4 }}>{formatRelativeTime(alert.created_at)}</div>
             </div>
             <button
               style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--text2)', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
@@ -734,7 +742,7 @@ export default function AppLayout({
             </div>
           </header>
 
-          <main ref={mainRef} style={mls.content} className="mobile-module-content" onClick={fermerPanneaux}>
+          <main ref={mainRef} style={mls.content} className="mobile-module-content" data-marge={PAGES_MARGE_SERREE.has(pageAffichee) ? 'serree' : undefined} onClick={fermerPanneaux}>
             {children}
           </main>
         </div>
@@ -916,8 +924,8 @@ const ls = {
   nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 8, border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500, position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
-  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 500, boxShadow: 'var(--nav-glow)' },
+  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--r)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
+  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 'var(--g2)', boxShadow: 'var(--nav-glow)' },
   navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 16, background: 'var(--nav-accent)', borderRadius: 2, opacity: 0.85 },
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
@@ -935,26 +943,28 @@ const ls = {
   // droit jamais : ses boutons écrasés devenaient intouchables.
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto', marginRight: 12 },
   topbarRight: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
-  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text2)', cursor: 'pointer', padding: 0 },
+  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', padding: 0 },
   // Les quatre boutons du header : même carré de 44 px, sans bordure (survol :
   // .app-bar-btn dans app.css), comme le sélecteur de langue compact.
-  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
   // Compteur d'alertes : une seule forme, ordinateur et téléphone (pilule qui
   // s'élargit au-delà de 9).
-  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 11, fontWeight: 700, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
+  notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   // Hauteur bornée : une longue liste d'alertes sortait du bas de la zone
   // (overflow hidden) sans pouvoir défiler.
   notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
-  notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   // minHeight 0 : sans lui <main> prend la hauteur de son contenu et ne défile pas.
-  // Le haut démarre sous le header (padding = header + 24 px). Un élément
-  // position: sticky des modules s'arrête sous le padding de son conteneur de
-  // défilement : leurs top: 0 retombent donc 24 px sous le header, comme avant.
+  // La marge de page est le jeton --marge (app.css), lu ici et par la coque
+  // tactile seulement, jamais par un module. Le haut démarre sous le header
+  // (padding = header + marge). Un élément position: sticky des modules
+  // s'arrête sous le padding de son conteneur de défilement : leurs top: 0
+  // retombent donc une marge sous le header.
   // scroll-padding : « faire défiler jusqu'à » ne cache pas la cible sous lui.
   content: {
     flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%',
-    padding: '24px', paddingTop: 'calc(var(--app-header-h) + 24px)',
+    padding: 'var(--marge)', paddingTop: 'calc(var(--app-header-h) + var(--marge))',
     scrollPaddingTop: 'var(--app-header-h)',
   },
 
@@ -984,17 +994,20 @@ const mls = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
     padding: '0 8px',
   },
-  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
-  notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 11, fontWeight: 700, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
+  notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
-  notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 },
+  notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
 
   // minHeight 0 : sans lui, la taille minimale automatique d'un élément flex
   // vaut la hauteur de son contenu, <main> déborde la coque et ne défile pas.
-  // Le haut démarre sous le header « verre » (voir ls.content).
+  // Le haut démarre sous le header « verre » (voir ls.content). Marge de page :
+  // le jeton --marge, que la feuille ramène à 14 px au téléphone et sur les
+  // pages de PAGES_MARGE_SERREE (.mobile-module-content, app.css) ; le haut
+  // et le bas gardent alors leurs 16 et 24 px d'avant.
   content: {
-    flex: 1, minHeight: 0, padding: '16px 14px 24px', paddingTop: 'calc(var(--app-header-h) + 16px)',
+    flex: 1, minHeight: 0, padding: 'var(--marge)', paddingBottom: 'max(24px, var(--marge))', paddingTop: 'calc(var(--app-header-h) + max(16px, var(--marge)))',
     overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%',
     scrollPaddingTop: 'var(--app-header-h)',
   },
