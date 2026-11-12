@@ -2271,14 +2271,19 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
   background: var(--surface) !important;
 }
 
-/* Plancher de texte : toute taille en ligne sous --t1 remonte à --t1. */
-[style*="font-size: 8px"]:not(.pdf-render-root *),
-[style*="font-size: 9px"]:not(.pdf-render-root *),
-[style*="font-size: 9.5px"]:not(.pdf-render-root *),
-[style*="font-size: 10px"]:not(.pdf-render-root *),
-[style*="font-size: 10.5px"]:not(.pdf-render-root *),
-[style*="font-size: 11px"]:not(.pdf-render-root *),
-[style*="font-size: 11.5px"]:not(.pdf-render-root *) {
+/* Plancher de texte : toute taille en ligne sous --t1 remonte à --t1.
+   Un élément invisible (visibility: hidden) et ses enfants directs sont
+   laissés de côté : la capture PDF mesure la ligne de base de chaque police
+   par une sonde cachée, posée hors de .pdf-render-root, dont la taille est en
+   ligne. Rattrapée par cette règle, elle mesurait 12 px pour 11 et décalait
+   d'un pixel les petits textes de l'export. */
+[style*="font-size: 8px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 9px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 9.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 10px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 10.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 11px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 11.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *) {
   font-size: var(--t1) !important;
 }
 /* Le plancher ne passe pas devant la garde anti-zoom d'iOS : au doigt et sous
