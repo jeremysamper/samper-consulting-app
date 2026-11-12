@@ -4342,6 +4342,8 @@ export const UI_GLOSSARY = {
   "Langue d'affichage": 'Display language',
   "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English and Español translate the screen, not the data.',
   'Tous les réglages': 'All settings',
+  // ── Réglages : section Caisse ──
+  'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categories, products, modes, payment, terminal, VAT and closing',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

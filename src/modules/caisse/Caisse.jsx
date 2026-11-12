@@ -6,13 +6,14 @@ import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcra
 import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { usePlanSalle } from '../../hooks/usePlanSalle.js';
 import { zurichAjouterJours, zurichDateHeure, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import * as tpe from '../../services/caisseTpeService.js';
 import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
-import ReglagesCaisse from './ReglagesCaisse.jsx';
 import QuiEstLa from './QuiEstLa.jsx';
 import BandeauTest from './BandeauTest.jsx';
 import Historique from './Historique.jsx';
@@ -119,7 +120,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // repart des défauts, jamais des réglages de la maison d'avant.
   const [categories, setCategories] = React.useState([]);
   const [config, setConfig] = React.useState({});
-  const [reglagesOuverts, setReglagesOuverts] = React.useState(false);
   const reglages = React.useMemo(() => fusionnerReglages(config), [config]);
   // Mode test (v6) : la clé du poste gardée sur l'appareil, ou null. Un
   // responsable seul l'active ; la proposition de vider suit la sortie.
@@ -133,24 +133,24 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // qui n'en a jamais relié garde une liste vide : l'encaissement ne lit et
   // n'affiche alors rien de plus que la v7.
   const [terminaux, setTerminaux] = React.useState([]);
-  const [lectureTerminaux, setLectureTerminaux] = React.useState('lecture');
   const rechargerTerminaux = React.useCallback(async () => {
     if (!etabId) return;
     const { data, error } = await tpe.listTerminaux(etabId);
-    if (error) { setLectureTerminaux('echec'); return; }
+    // Lecture en échec : la liste connue reste (la section des réglages a sa
+    // propre lecture et dit l'échec).
+    if (error) return;
     setTerminaux(data);
-    setLectureTerminaux('lue');
   }, [etabId]);
   React.useEffect(() => { rechargerTerminaux(); }, [rechargerTerminaux, legacyVersion]);
   React.useEffect(() => {
-    setCategories([]); setConfig({}); setReglagesOuverts(false);
+    setCategories([]); setConfig({});
     setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]);
     setTickets([]); setCleTest(lireModeTest(etabId)); setProposerVider(false);
-    setTerminaux([]); setLectureTerminaux('lecture');
+    setTerminaux([]);
   }, [etabId]);
   // Cartes en vente et articles vendables : fermé par défaut (une carte
   // archivée ou cachée ne vend jamais), sans réglage tout vend comme avant.
-  const { cartesActives, cartesEnVente, articles } = React.useMemo(
+  const { cartesEnVente, articles } = React.useMemo(
     () => cartesEtArticlesEnVente({ plats, cartes: cartesLues, cartesIds: reglages.cartes_ids }),
     [plats, cartesLues, reglages.cartes_ids],
   );
@@ -278,6 +278,10 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (!rt?.subscribeReload || !etabId) return undefined;
     return rt.subscribeReload(['caisse_categories', 'caisse_reglages', 'caisse_boutons'], rechargerGrille);
   }, [etabId, rechargerGrille]);
+  // Les réglages de la caisse vivent dans la page des réglages (section
+  // 'caisse') : ce qui y change s'applique ici sans recharger l'app, même sans
+  // temps réel (terminaux, tickets de test vidés).
+  useReglageModifie('caisse', () => { rechargerGrille(); rechargerTerminaux(); rechargerTickets(); });
 
   // Realtime : une arrivée cochée à l'accueil, une réservation prise au
   // téléphone, une table posée sur le plan de salle.
@@ -479,27 +483,11 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     return tables.find((x) => x.id === t.table_id)?.nom || null;
   }
 
-  // Réglages de la caisse : la feuille s'ouvre depuis l'accueil et depuis le
-  // ticket, pour les trois rôles que la base laisse écrire.
-  const feuilleReglages = reglagesOuverts && peutHabiller ? (
-    <ReglagesCaisse
-      etablissementId={etabId}
-      articles={articles}
-      boutons={boutons}
-      categories={categories}
-      cartes={cartesActives}
-      config={config}
-      onChange={rechargerGrille}
-      onClose={() => setReglagesOuverts(false)}
-      poste={poste}
-      peutLireJournalTests={['consultant', 'patron'].includes(user?.role)}
-      onTestsVides={rechargerTickets}
-      role={user?.role}
-      terminaux={terminaux}
-      lectureTerminaux={lectureTerminaux}
-      onTerminauxChange={rechargerTerminaux}
-    />
-  ) : null;
+  // Réglages de la caisse : une section de la page des réglages, pour les trois
+  // rôles que la base laisse écrire (gardesCaisse.js). L'accueil et le ticket y
+  // mènent d'un toucher ; depuis le ticket la page se pose par-dessus, le ticket
+  // reste ouvert et le geste retour y ramène.
+  const ouvrirReglages = (parDessus = false) => ouvrirCompte('caisse', { parDessus });
 
   // Bandeau du mode test : en tête de chaque écran de la caisse, sans exception.
   const bandeauTest = modeTest ? <BandeauTest onQuitter={quitterModeTest} enCours={testEnCours} /> : null;
@@ -602,7 +590,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         {(peutHabiller || (peutActiverTest && !modeTest)) && (
           <div style={st.reglagesAccueil}>
             {peutHabiller && (
-              <Btn variant="ghost" onClick={() => setReglagesOuverts(true)} style={st.btn44}>
+              <Btn variant="ghost" onClick={() => ouvrirReglages()} style={st.btn44}>
                 <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span>Réglages de la caisse</span>
               </Btn>
@@ -615,7 +603,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             )}
           </div>
         )}
-        {feuilleReglages}
       </>
     );
   }
@@ -806,7 +793,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           onReservationsChange={rechargerReservations}
           peutHabiller={peutHabiller}
           onBoutonsChange={rechargerBoutons}
-          onOuvrirReglages={() => setReglagesOuverts(true)}
+          onOuvrirReglages={() => ouvrirReglages(true)}
           ticketsMemeTable={autresMemeTable}
           onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
           onFusionne={rechargerTickets}
@@ -817,7 +804,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           terminaux={terminaux}
           role={user?.role}
         />
-        {feuilleReglages}
       </EcranTache>
       </>
     );

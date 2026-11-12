@@ -1,7 +1,6 @@
 import React from 'react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
@@ -21,8 +20,10 @@ const TAUX_CATEGORIE = [8.1, 2.6, 0];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réglages de la caisse (consultant, patron, resp_cuisine : la base refuse les
-// autres rôles, l'écran ne leur montre pas le bouton). Feuille refermable par
-// le geste retour et Échap.
+// autres rôles, l'écran ne leur montre pas le bouton). Depuis le 12.11.2026,
+// c'est une section de la page des réglages (SectionReglagesCaisse.jsx la
+// monte et lui lit ses données) : plus de feuille ni de voile, le même contenu
+// posé dans la page. Dans la Caisse, « Réglages de la caisse » y mène.
 //
 //   Catégories : créer, renommer, ordonner au glisser, couleur, picto, masquer.
 //   Produits   : en choisir plusieurs puis leur catégorie (le tri rapide des
@@ -61,7 +62,7 @@ const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 // Terminal de paiement (v9) : la section vit dans son fichier, avec ce qui
 // touche la clé du prestataire.
 export default function ReglagesCaisse({
-  etablissementId, articles, boutons, categories, cartes = [], config, onChange, onClose,
+  etablissementId, articles, boutons, categories, cartes = [], config, onChange,
   poste = null, peutLireJournalTests = false, onTestsVides,
   role = null, terminaux = [], lectureTerminaux = 'lue', onTerminauxChange,
 }) {
@@ -71,18 +72,6 @@ export default function ReglagesCaisse({
   React.useEffect(() => { setBrouillon(config || {}); }, [config]);
   const reglages = React.useMemo(() => fusionnerReglages(brouillon), [brouillon]);
   const occupe = React.useRef(false);
-
-  useBackLayer(true, onClose, 'caisse-reglages');
-  React.useEffect(() => {
-    const echap = (e) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
-      e.preventDefault();
-      onClose();
-    };
-    document.addEventListener('keydown', echap, true);
-    return () => document.removeEventListener('keydown', echap, true);
-  }, [onClose]);
 
   const rangement = React.useMemo(
     () => rangerArticles({ articles, boutons, categoriesMaison: categories }),
@@ -133,12 +122,7 @@ export default function ReglagesCaisse({
   }
 
   return (
-    <div className="modal-sheet-overlay" data-fenetre="" style={st.overlay} onClick={onClose}>
-      <div className="modal-sheet" role="region" aria-label="Réglages de la caisse" style={st.feuille} onClick={(e) => e.stopPropagation()}>
-        <div style={st.enTete}>
-          <div style={st.titre}>Réglages de la caisse</div>
-          <Btn variant="ghost" onClick={onClose} style={st.btn44}>Fermer</Btn>
-        </div>
+      <div role="region" aria-label="Réglages de la caisse" data-reglages-caisse="" style={st.section}>
         <SegmentedTabs className="caisse-onglets" tabs={SECTIONS} active={section} onChange={setSection} retourLigne />
 
         <div style={st.corps}>
@@ -247,7 +231,6 @@ export default function ReglagesCaisse({
           )}
         </div>
       </div>
-    </div>
   );
 }
 
@@ -883,25 +866,13 @@ function SectionTva({ rangement, reglages, regler, ecrire, idReel }) {
 }
 
 const st = {
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 1200, padding: 16,
-  },
   rangTva: {
     display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 56, padding: '6px 0',
     borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
   },
-  feuille: {
-    background: 'var(--surface)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    borderRadius: 'var(--r-lg)', padding: '20px 22px', width: 760, maxWidth: '100%',
-    height: '90vh', maxHeight: '90vh', overflowY: 'auto',
-    boxShadow: 'var(--sh-lg)', boxSizing: 'border-box',
-    display: 'flex', flexDirection: 'column', gap: 10,
-  },
-  enTete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  titre: { fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2, minWidth: 0 },
+  // La colonne de l'ancienne feuille (même écart entre les onglets et le
+  // corps), sans son cadre : la page des réglages porte le titre.
+  section: { display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 760, minWidth: 0 },
   corps: { minWidth: 0, paddingBottom: 8 },
   bloc: { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
   sousTitre: { fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginTop: 6 },

@@ -1,4 +1,5 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
+import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -49,6 +50,14 @@ export const SECTIONS = [
     id: 'alertes', libelle: 'Alertes', detail: 'Les règles qui préviennent la direction et l\'équipe',
     groupe: 'maison', portee: 'maison', garde: administre,
     charger: () => import('./sections/SectionAlertes.jsx'),
+  },
+
+  // ── Les modules ──
+  {
+    id: 'caisse', libelle: 'Caisse', detail: 'Catégories, produits, modes, paiement, terminal, TVA et clôture',
+    groupe: 'modules', portee: 'maison', module: 'caisse',
+    garde: (ctx) => ouvreLeModule('caisse')(ctx) && peutHabillerCaisse(ctx.user?.role),
+    charger: () => import('../caisse/SectionReglagesCaisse.jsx'),
   },
 
   // ── L'équipe et les accès ──

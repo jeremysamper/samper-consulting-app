@@ -41,14 +41,13 @@ function composantDe(section) {
   return composants.get(section.id);
 }
 
-// Section demandée par un raccourci (clé ponctuelle, lue puis effacée).
+// Section demandée par un raccourci (clé ponctuelle). Lecture seule : React
+// peut rejouer un premier rendu avant de l'afficher (une section paresseuse
+// qui charge), la clé n'est donc effacée qu'une fois la page montée.
 function sectionDemandee(ids) {
   try {
     const pre = readText(UI_STORAGE_KEYS.compteTab, '');
-    if (pre) {
-      removeStorageKeys([UI_STORAGE_KEYS.compteTab]);
-      if (ids.includes(pre)) return pre;
-    }
+    if (pre && ids.includes(pre)) return pre;
   } catch (e) { /* stockage indisponible */ }
   return null;
 }
@@ -104,6 +103,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     return { id: etroit ? null : sectionParDefaut(ids), direct: false };
   });
   const actif = ids.includes(ouverte.id) ? ouverte.id : null;
+  React.useEffect(() => { removeStorageKeys([UI_STORAGE_KEYS.compteTab]); }, []);
 
   // Deux volets : jamais de volet vide. Une section perdue (droit retiré,
   // établissement sans le module) laisse la place à la section par défaut.
@@ -211,7 +211,18 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     <div ref={racineRef} style={st.racine} data-reglages="large">
       {liste}
       <div style={st.volet}>
-        {section && <h2 style={st.titre} className="no-print">{section.libelle}</h2>}
+        {section && (
+          <div style={st.enTete} className="no-print">
+            {/* Venue d'un module par son raccourci : le bouton y ramène, comme le geste retour. */}
+            {ouverte.direct && (
+              <Btn variant="ghost" onClick={retourModule} style={st.retour}>
+                <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Retour</span>
+              </Btn>
+            )}
+            <h2 style={st.titre}>{section.libelle}</h2>
+          </div>
+        )}
         {corps}
       </div>
     </div>

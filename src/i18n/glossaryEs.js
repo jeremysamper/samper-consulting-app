@@ -4323,4 +4323,6 @@ export const UI_GLOSSARY_ES = {
   "Langue d'affichage": 'Idioma de la pantalla',
   "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données.": 'Original conserva el texto tal como se escribió. English y Español traducen la pantalla, no los datos.',
   'Tous les réglages': 'Todos los ajustes',
+  // ── Réglages : section Caisse ──
+  'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categorías, productos, modos, pago, terminal, IVA y cierre',
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { dbService } from '../../services/dbService.js';
 import { getReglages, listSuitesLignes } from '../../services/caisseService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { notify } from '../../components/toast/index.js';
 import { navigateToPage } from '../../services/navigationService.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
@@ -185,6 +186,12 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     getReglages(etabId).then(({ data }) => { if (vivant && data) setReglages(fusionnerReglages(data)); });
     return () => { vivant = false; };
   }, [etabId]);
+  // Les noms des modes changés dans la page des réglages (section 'caisse')
+  // s'appliquent au passe gardé monté, sans recharger l'app.
+  useReglageModifie('caisse', () => {
+    if (!etabId) return;
+    getReglages(etabId).then(({ data }) => { if (data) setReglages(fusionnerReglages(data)); });
+  });
 
   // ── Source des bons : la maison est-elle reliée à Lightspeed ? ──
   // Un booléen lu en base (aucun jeton). En cas d'échec de lecture, on ne
