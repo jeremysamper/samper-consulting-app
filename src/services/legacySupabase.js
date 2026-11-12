@@ -2704,18 +2704,30 @@ export function installLegacySupabase() {
     // Renvoie null quand la table n'existe pas encore (migration non appliquée) :
     // l'écran l'annonce au lieu d'afficher « aucun document ». Toute autre erreur
     // remonte, une lecture vide ne doit pas passer pour une période sans achat.
+    // Lu par pages de 1000 : PostgREST plafonne une réponse sans le dire, et
+    // une liste tronquée passerait pour la liste entière (analyses des
+    // dépenses, comptabilité). L'ordre finit par l'id : sans départage, deux
+    // pages pourraient rendre deux fois la même pièce.
     async listAchatsDocuments(etabId) {
-      const { data, error } = await client
-        .from('achats_documents')
-        .select('*')
-        .eq('etablissement_id', etabId)
-        .order('date_document', { ascending: false, nullsFirst: true });
-      if (error) {
-        if (_relationAbsente(error)) return null;
-        console.error('[listAchatsDocuments]', error);
-        throw error;
+      const PAGE = 1000;
+      const lignes = [];
+      for (let de = 0; ; de += PAGE) {
+        const { data, error } = await client
+          .from('achats_documents')
+          .select('*')
+          .eq('etablissement_id', etabId)
+          .order('date_document', { ascending: false, nullsFirst: true })
+          .order('id')
+          .range(de, de + PAGE - 1);
+        if (error) {
+          if (_relationAbsente(error)) return null;
+          console.error('[listAchatsDocuments]', error);
+          throw error;
+        }
+        lignes.push(...(data || []));
+        if (!data || data.length < PAGE) break;
       }
-      return (data || []).map(r => this.mapAchatsDocumentFromDB(r));
+      return lignes.map(r => this.mapAchatsDocumentFromDB(r));
     },
     // Les colonnes de l'onglet Factures (migration 20261007) ne passent pas par
     // cet upsert, qui réécrit le document entier depuis l'état d'un écran :
