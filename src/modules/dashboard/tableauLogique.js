@@ -8,6 +8,7 @@
 import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
 import { absenceDe, absencesDuJour, couvre } from '../../utils/absences.js';
 import { libelleGroupe } from '../groupes/typesGroupe.js';
+import { dureeMinutes } from '../planning/dureeHoraire.js';
 
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -419,12 +420,8 @@ export function chiffresGestion({ pertes, shifts, couverts, aujourdhui }) {
   const valeurPertes = duMois.reduce((t, p) => t + (p.quantite || 0) * (p.valeurUnit || 0), 0);
   const aValider = (pertes || []).filter((p) => !p.valide).length;
   const semaine = (shifts || []).filter((s) => s.date >= aujourdhui && s.date <= decaler(aujourdhui, 6));
-  const minutes = semaine.reduce((t, s) => {
-    const d = enMinutes(s.debut); let f = enMinutes(s.fin);
-    if (d == null || f == null) return t;
-    if (f < d) f += 1440;
-    return t + Math.max(0, f - d - (Number(s.pause) || 0));
-  }, 0);
+  // Même durée que la grille du Planning (dureeHoraire.js).
+  const minutes = semaine.reduce((t, s) => t + (dureeMinutes(s.debut, s.fin, s.pause) ?? 0), 0);
   const couvertsSemaine = (couverts || []).reduce((t, c) =>
     t + (Number(c.couverts_midi) || 0) + (Number(c.couverts_soir) || 0) + (Number(c.couverts_brunch) || 0), 0);
   return { valeurPertes, aValider, heures: Math.round(minutes / 6) / 10, couvertsSemaine };

@@ -121,9 +121,9 @@ test('contrat fini avant la période : sans contrat', () => {
   assert.equal(r.avecContrat, false);
 });
 
-test('calcHeures : même résultat que le relevé CCNT, départ après minuit négatif compris', () => {
+test('calcHeures : même résultat que le relevé CCNT, départ après minuit au lendemain', () => {
   assert.equal(calcHeures('10:00', '15:00', 30), 4.5);
-  assert.equal(calcHeures('18:00', '00:30', 0), -17.5);
+  assert.equal(calcHeures('18:00', '00:30', 0), 6.5);
   assert.equal(calcHeures('', '15:00', 0), null);
 });
 

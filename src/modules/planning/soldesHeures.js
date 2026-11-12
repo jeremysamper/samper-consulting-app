@@ -20,19 +20,16 @@
 // aucun calcul en millisecondes, un passage d'heure ne décale rien.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { dureeHeures } from './dureeHoraire.js';
+
 export const MOTIFS_CREDITES = new Set(['conge', 'vacances', 'formation', 'ferie']);
 export const SEUIL_RETARD_MIN = 5;
 
-// Durée travaillée du relevé CCNT, en heures : fin moins début moins la pause,
-// sans borne ni arrondi (l'affichage passe par formatDuree). null si une heure
-// manque. Planning.jsx l'importe pour le relevé : une seule mesure.
-export const calcHeures = (debut, fin, pause) => {
-  if (!debut || !fin) return null;
-  const [dh, dm] = debut.split(':').map(Number);
-  const [fh, fm] = fin.split(':').map(Number);
-  const total = (fh * 60 + fm) - (dh * 60 + dm) - (pause || 0);
-  return total / 60;
-};
+// Durée travaillée du relevé CCNT, en heures, sans arrondi (l'affichage passe
+// par formatDuree) : la règle de dureeHoraire.js, une fin après minuit tombe le
+// lendemain. null si une heure manque. Planning.jsx l'importe pour la grille et
+// le relevé : une seule mesure.
+export const calcHeures = dureeHeures;
 
 const enMinutes = (t) => {
   const [h, m] = String(t || '').split(':').map(Number);
