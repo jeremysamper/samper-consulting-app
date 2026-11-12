@@ -26,10 +26,10 @@ function plafond(max) {
   return n * p;
 }
 
-const legendeStyle = { display: 'flex', flexWrap: 'wrap', gap: '6px 14px', fontSize: 12, color: 'var(--text2)', marginBottom: 8 };
+const legendeStyle = { display: 'flex', flexWrap: 'wrap', gap: '6px 14px', fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 8 };
 const pastille = (couleur) => ({ width: 8, height: 8, borderRadius: '50%', background: couleur, flexShrink: 0 });
-const detailStyle = { fontSize: 12, color: 'var(--text2)', minHeight: 18, marginTop: 6, fontVariantNumeric: 'tabular-nums' };
-const axeXStyle = { display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, color: 'var(--text3)', marginTop: 4 };
+const detailStyle = { fontSize: 'var(--t1)', color: 'var(--text2)', minHeight: 18, marginTop: 6, fontVariantNumeric: 'tabular-nums' };
+const axeXStyle = { display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 4 };
 
 export function Legende({ series }) {
   if (!series || series.length < 2) return null;
@@ -76,7 +76,7 @@ function Echelle({ max, unite }) {
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 0, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)', pointerEvents: 'none' }}>
       {/* Au-dessus du tracé : posé dedans, la barre la plus haute le cachait. */}
-      <span style={{ position: 'absolute', right: 0, bottom: 2, fontSize: 11, lineHeight: '12px', color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ position: 'absolute', right: 0, bottom: 2, fontSize: 'var(--t1)', lineHeight: '12px', color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
         {nf.format(max)} {unite}
       </span>
     </div>
@@ -153,7 +153,7 @@ export function BarresMoyenne({ points, moyenne, libelleMoyenne, couleur = 'var(
         </div>
         {moyenne > 0 && (
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${(moyenne / max) * 100}%`, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--text2)', pointerEvents: 'none' }}>
-            <span style={{ position: 'absolute', left: 0, bottom: 2, fontSize: 11, color: 'var(--text2)', background: 'var(--bg)', paddingRight: 4 }}>
+            <span style={{ position: 'absolute', left: 0, bottom: 2, fontSize: 'var(--t1)', color: 'var(--text2)', background: 'var(--bg)', paddingRight: 4 }}>
               {libelleMoyenne} {format(moyenne)}
             </span>
           </div>
@@ -173,7 +173,7 @@ export function BarresHorizontales({ lignes, couleur = 'var(--accent)', largeurL
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
       {lignes.map((l) => (
-        <div key={l.cle} style={{ display: 'grid', gridTemplateColumns: `minmax(0, ${largeurLibelle}) minmax(0, 1fr) auto`, alignItems: 'center', gap: 10, fontSize: 13 }}>
+        <div key={l.cle} style={{ display: 'grid', gridTemplateColumns: `minmax(0, ${largeurLibelle}) minmax(0, 1fr) auto`, alignItems: 'center', gap: 10, fontSize: 'var(--t2)' }}>
           <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={typeof l.label === 'string' ? l.label : undefined}>{l.label}</span>
           <span style={{ height: 10, minWidth: 0, display: 'block' }} aria-hidden="true">
             <span style={{ display: 'block', height: '100%', width: `${((l.valeur || 0) / max) * 100}%`, minWidth: l.valeur > 0 ? 2 : 0, background: l.couleur || couleur, borderRadius: '0 4px 4px 0' }} />
@@ -204,7 +204,7 @@ export function CarteChaleur({ creneaux, valeurs, max }) {
     : 'var(--bg2)');
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '3rem repeat(7, minmax(0, 1fr))', gap: 2, fontSize: 11, color: 'var(--text3)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '3rem repeat(7, minmax(0, 1fr))', gap: 2, fontSize: 'var(--t1)', color: 'var(--text3)' }}>
         <span />
         {JOURS_COURTS.map((j) => <span key={j} style={{ textAlign: 'center' }}>{j}</span>)}
         {creneaux.map((c) => (

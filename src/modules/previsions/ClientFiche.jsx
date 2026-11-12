@@ -48,17 +48,17 @@ const FORM_VIDE = {
 function Champ({ label, children, aide }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
+      <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' }}>{label}</span>
       {children}
-      {aide && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{aide}</span>}
+      {aide && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{aide}</span>}
     </label>
   );
 }
 
 const champ = {
   width: '100%', boxSizing: 'border-box', padding: '10px 12px', minHeight: 44,
-  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8,
-  background: 'var(--bg)', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
+  background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)',
 };
 
 export default function ClientFiche({ etablissementId, clientId = null, canEdit = false, peutEffacer = false, onClose, onSaved }) {
@@ -206,12 +206,12 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
           padding: '14px 18px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
         }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
               {nouveau ? 'Nouveau client' : <span data-no-translate>{nomClient(client || form)}</span>}
-              {client?.archive && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text3)' }}>archivée</span>}
+              {client?.archive && <span style={{ marginLeft: 8, fontSize: 'var(--t1)', color: 'var(--text3)' }}>archivée</span>}
             </div>
             {!nouveau && historique && (
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
                 {pluriel(venues.length, 'venue')}
                 {derniere ? `, dernière le ${dateCh(derniere)}` : ''}
                 {prochaine ? `, prochaine le ${dateCh(prochaine)}` : ''}
@@ -220,22 +220,22 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
             )}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
-            background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text2)',
+            background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)',
             minWidth: 44, minHeight: 44, lineHeight: 1,
           }}>×</button>
         </div>
 
         {/* Corps */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {chargement && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>Chargement…</div>}
-          {erreur && <div style={{ padding: 12, color: 'var(--danger-text)', fontSize: 13 }}>{erreur}</div>}
+          {chargement && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)', fontSize: 'var(--t2)' }}>Chargement…</div>}
+          {erreur && <div style={{ padding: 12, color: 'var(--danger-text)', fontSize: 'var(--t2)' }}>{erreur}</div>}
 
           {!chargement && !erreur && (
             <>
               {/* Accord pour les actualités */}
               {!nouveau && client && (
                 <div style={{
-                  padding: '10px 12px', borderRadius: 10,
+                  padding: '10px 12px', borderRadius: 'var(--r)',
                   borderWidth: 1, borderStyle: 'solid',
                   borderColor: client.consentementMarketing ? 'var(--success-bd)' : 'var(--border)',
                   background: client.consentementMarketing ? 'var(--success-bg-soft)' : 'var(--bg)',
@@ -248,11 +248,11 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                       onChange={basculerConsentement}
                       style={{ width: 20, height: 20, accentColor: 'var(--accent)', flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
+                    <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontWeight: 'var(--g2)' }}>
                       Accepte de recevoir les actualités et les bons cadeaux par e-mail
                     </span>
                   </label>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 30 }}>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 30 }}>
                     {client.consentementMarketing && client.consentementAt
                       ? `Accord donné ${client.consentementSource === 'en_ligne' ? 'en ligne' : 'à l\'équipe'} le ${dateHeureCh(client.consentementAt)}`
                       : client.desinscritAt
@@ -283,7 +283,7 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
               {/* Derniers tickets de caisse (v5) */}
               {!nouveau && tickets && tickets.length > 0 && (
                 <div data-fiche-tickets="">
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 }}>
                     <span>Derniers tickets</span> <span>({tickets.length})</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -293,35 +293,35 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                       const deplie = ticketOuvert === t.id;
                       return (
                         <div key={t.id} style={{
-                          padding: '8px 10px', borderRadius: 8,
+                          padding: '8px 10px', borderRadius: 'var(--r)',
                           borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
                         }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 10px' }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{quand.date}</span>
-                            <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>{quand.heure}</span>
-                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                            <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{quand.date}</span>
+                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>{quand.heure}</span>
+                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                               {t.salle_tables?.nom
                                 ? <><span>Table</span> <span data-no-translate>{t.salle_tables.nom}</span></>
                                 : <span>Table non notée</span>}
                             </span>
                             {t.couverts ? (
-                              <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                              <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                                 <span style={{ fontFamily: 'var(--font-num)' }}>{t.couverts}</span> <span>couverts</span>
                               </span>
                             ) : null}
-                            {t.statut === 'ouvert' && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-text)' }}>en cours</span>}
+                            {t.statut === 'ouvert' && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--success-text)' }}>en cours</span>}
                             <span style={{ flex: 1 }} />
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
-                              <span>{chf(totalTicket(t))}</span> <span style={{ fontWeight: 400, color: 'var(--text2)' }}>CHF</span>
+                            <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
+                              <span>{chf(totalTicket(t))}</span> <span style={{ fontWeight: 'var(--g1)', color: 'var(--text2)' }}>CHF</span>
                             </span>
                             <button
                               type="button"
                               aria-expanded={deplie}
                               onClick={() => setTicketOuvert(deplie ? null : t.id)}
                               style={{
-                                minHeight: 44, padding: '6px 10px', borderRadius: 8,
-                                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                                background: 'var(--surface)', color: 'var(--text2)', fontSize: 12, fontFamily: 'var(--font)', cursor: 'pointer',
+                                minHeight: 44, padding: '6px 10px', borderRadius: 'var(--r)',
+                                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                                background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', cursor: 'pointer',
                               }}
                             >
                               <span style={{ fontFamily: 'var(--font-num)' }}>{lignes.length}</span> <span>articles</span>
@@ -330,13 +330,13 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                           {deplie && (
                             <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                               {lignes.map((l, i) => (
-                                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text2)' }}>
+                                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                                   <span style={{ fontFamily: 'var(--font-num)', minWidth: 22, textAlign: 'right' }}>{Number(l.quantite)}</span>
                                   <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }} data-no-translate>{l.libelle}</span>
                                   <span style={{ fontFamily: 'var(--font-num)' }}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
                                 </div>
                               ))}
-                              {!lignes.length && <div style={{ fontSize: 12, color: 'var(--text3)' }}>Aucun article.</div>}
+                              {!lignes.length && <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>Aucun article.</div>}
                             </div>
                           )}
                         </div>
@@ -348,9 +348,9 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                       type="button"
                       onClick={() => setTousTickets(true)}
                       style={{
-                        marginTop: 8, minHeight: 44, padding: '8px 12px', borderRadius: 8,
-                        borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                        background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+                        marginTop: 8, minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
+                        borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                        background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
                       }}
                     >
                       Voir tout
@@ -362,11 +362,11 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
               {/* Historique */}
               {!nouveau && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 }}>
                     Historique ({pluriel((historique || []).length, 'réservation')})
                   </div>
                   {(historique || []).length === 0 && (
-                    <div style={{ fontSize: 13, color: 'var(--text3)' }}>Aucune réservation rattachée.</div>
+                    <div style={{ fontSize: 'var(--t2)', color: 'var(--text3)' }}>Aucune réservation rattachée.</div>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {(historique || []).map((r) => {
@@ -375,31 +375,31 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
                       const tags = (r.reservation_tags || []).map((t) => t.valeur).filter(Boolean);
                       return (
                         <div key={r.id} style={{
-                          padding: '8px 10px', borderRadius: 8,
+                          padding: '8px 10px', borderRadius: 'var(--r)',
                           borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
                           borderLeftWidth: 3, borderLeftColor: svc?.bordure || 'var(--border)',
                           opacity: r.statut === 'annule' ? 0.55 : 1,
                         }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 10px' }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
+                            <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
                               {dateCh(r.date_service)}
                             </span>
-                            <span style={{ fontSize: 12, color: svc?.couleur || 'var(--text2)', fontWeight: 500 }}>
+                            <span style={{ fontSize: 'var(--t1)', color: svc?.couleur || 'var(--text2)', fontWeight: 'var(--g2)' }}>
                               {svc?.label || r.service} {(r.heure_arrivee || '').slice(0, 5)}
                             </span>
-                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{pluriel(r.nb_couverts || 0, 'couvert')}</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: r.tables.length ? 'var(--success-text)' : 'var(--text3)' }}>
+                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{pluriel(r.nb_couverts || 0, 'couvert')}</span>
+                            <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: r.tables.length ? 'var(--success-text)' : 'var(--text3)' }}>
                               {r.tables.length ? `Table ${r.tables.join(' + ')}` : 'Table non notée'}
                             </span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: r.statut === 'annule' ? 'var(--text3)' : meta.texte }}>
+                            <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: r.statut === 'annule' ? 'var(--text3)' : meta.texte }}>
                               {r.statut === 'annule' ? 'Annulée'
                                 : r.statut === 'confirme' && r.date_service < aujourdhui ? 'Confirmée'
                                   : meta.label}
                             </span>
-                            {r.origine === 'en_ligne' && <span style={{ fontSize: 11, color: 'var(--text3)' }}>en ligne</span>}
+                            {r.origine === 'en_ligne' && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>en ligne</span>}
                           </div>
                           {(tags.length > 0 || r.notes_libres) && (
-                            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 3 }}>
+                            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 }}>
                               {tags.join(', ')}{tags.length && r.notes_libres ? '. ' : ''}
                               {r.notes_libres ? <span data-no-translate>{r.notes_libres}</span> : ''}
                             </div>
@@ -421,9 +421,9 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
         }}>
           {canEdit && !nouveau && client && (
             <button type="button" onClick={basculerArchive} disabled={enCours} style={{
-              minHeight: 44, padding: '8px 12px', borderRadius: 8,
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-              background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+              minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+              background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
             }}>
               {client.archive ? 'Sortir des archives' : 'Archiver'}
             </button>
@@ -432,16 +432,16 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
           {peutEffacer && !nouveau && client && (
             <>
               <button type="button" onClick={exporterDonnees} disabled={enCours} style={{
-                minHeight: 44, padding: '8px 12px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+                minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
               }}>
                 Exporter
               </button>
               <button type="button" onClick={effacerDonnees} disabled={enCours} style={{
-                minHeight: 44, padding: '8px 12px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                background: 'var(--surface)', color: 'var(--danger-text)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer',
+                minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                background: 'var(--btn-fond)', color: 'var(--danger-text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
               }}>
                 Effacer les données
               </button>
@@ -449,16 +449,16 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
           )}
           <div style={{ flex: 1 }} />
           <button type="button" onClick={onClose} style={{
-            minHeight: 44, padding: '8px 16px', borderRadius: 8,
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-            background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer',
+            minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r)',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+            background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
           }}>
             {enCours ? 'Fermer' : canEdit ? 'Annuler' : 'Fermer'}
           </button>
           {canEdit && !chargement && !erreur && (
             <button type="button" onClick={enregistrer} disabled={enCours} style={{
-              minHeight: 44, padding: '8px 16px', borderRadius: 8, border: 'none',
-              background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700,
+              minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r)', border: 'none',
+              background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)',
               fontFamily: 'var(--font)', cursor: enCours ? 'wait' : 'pointer', opacity: enCours ? 0.7 : 1,
             }}>
               {enCours ? 'Enregistrement…' : 'Enregistrer'}

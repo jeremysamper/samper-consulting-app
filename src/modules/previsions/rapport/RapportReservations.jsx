@@ -56,28 +56,28 @@ const DEF = {
 
 const s = {
   filtres: { display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginTop: 16 },
-  champ: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text2)', flex: '1 1 160px', minWidth: 0, maxWidth: 260 },
+  champ: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)', flex: '1 1 160px', minWidth: 0, maxWidth: 260 },
   select: {
-    height: 40, padding: '0 10px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, width: '100%', minWidth: 0,
+    height: 40, padding: '0 10px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', width: '100%', minWidth: 0,
   },
-  resume: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12, fontSize: 13, color: 'var(--text2)' },
+  resume: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12, fontSize: 'var(--t2)', color: 'var(--text2)' },
   boutons: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   btn: {
-    padding: '9px 16px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)', cursor: 'pointer',
+    padding: '9px 16px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
   },
-  attente: { marginTop: 28, fontSize: 14, color: 'var(--text2)' },
-  vide: { marginTop: 24, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
+  attente: { marginTop: 28, fontSize: 'var(--t2)', color: 'var(--text2)' },
+  vide: { marginTop: 24, fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)' },
   kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))', gap: '22px 18px', marginTop: 22 },
-  titreSection: { margin: '0 0 4px', fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 22, lineHeight: 1.2, color: 'var(--text)' },
-  sousTitreSection: { margin: '0 0 12px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 },
-  titreBloc: { margin: '0 0 10px', fontSize: 13, fontWeight: 500, color: 'var(--text2)', fontFamily: 'var(--font)' },
+  titreSection: { margin: '0 0 4px', fontFamily: 'var(--font)', fontWeight: 'var(--g1)', fontSize: 'var(--t4)', lineHeight: 1.2, color: 'var(--text)' },
+  sousTitreSection: { margin: '0 0 12px', fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 },
+  titreBloc: { margin: '0 0 10px', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)', fontFamily: 'var(--font)' },
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '26px 36px' },
-  note: { margin: '8px 0 0', fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 },
-  alerte: { marginTop: 16, fontSize: 13, color: 'var(--warning-text)', lineHeight: 1.5 },
-  th: { fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '5px 6px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
-  td: { padding: '6px', fontSize: 13, color: 'var(--text)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
+  note: { margin: '8px 0 0', fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5 },
+  alerte: { marginTop: 16, fontSize: 'var(--t2)', color: 'var(--warning-text)', lineHeight: 1.5 },
+  th: { fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '5px 6px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
+  td: { padding: '6px', fontSize: 'var(--t2)', color: 'var(--text)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' },
 };
 
 function Section({ titre, sousTitre, children }) {
@@ -101,7 +101,7 @@ function Bloc({ titre, children }) {
 
 function Ligne({ label, children }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '6px 0', fontSize: 13, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '6px 0', fontSize: 'var(--t2)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' }}>
       <span style={{ color: 'var(--text2)', minWidth: 0 }}>{label}</span>
       <span style={{ color: 'var(--text)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{children}</span>
     </div>
@@ -110,7 +110,7 @@ function Ligne({ label, children }) {
 
 // colonnes : [{ cle, label, texte?, sansTraduction? }] ; lignes : [{ cle, [col]: contenu }]
 function MiniTableau({ colonnes, lignes, vide = 'Rien à afficher sur la période' }) {
-  if (!lignes.length) return <div style={{ fontSize: 12, color: 'var(--text2)' }}>{vide}</div>;
+  if (!lignes.length) return <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{vide}</div>;
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
       <thead>
@@ -147,11 +147,11 @@ function Kpi({ label, valeur, variation, unite, sens, aide, definition, alerte, 
   const Fleche = variation > 0 ? ArrowUpRight : ArrowDownRight;
   return (
     <div title={definition} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.3 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'var(--font-num)', lineHeight: 1.1, color: alerte ? 'var(--warning-text)' : 'var(--text)' }}>
+      <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.3 }}>{label}</div>
+      <div style={{ fontSize: 'var(--t5)', fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', lineHeight: 1.1, color: alerte ? 'var(--warning-text)' : 'var(--text)' }}>
         {valeur}
       </div>
-      <div style={{ fontSize: 12, color: couleur, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+      <div style={{ fontSize: 'var(--t1)', color: couleur, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
         {absent(variation) ? (
           <span>n/a</span>
         ) : (
@@ -162,7 +162,7 @@ function Kpi({ label, valeur, variation, unite, sens, aide, definition, alerte, 
         )}
         <span style={{ color: 'var(--text3)' }}>{libelleComparaison}</span>
       </div>
-      {aide ? <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.4 }}>{aide}</div> : null}
+      {aide ? <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.4 }}>{aide}</div> : null}
     </div>
   );
 }
@@ -512,7 +512,7 @@ function BlocClientele({ stats }) {
             <div key={t.id} style={{ marginBottom: 12 }}>
               <Ligne label={t.label}>{entier(t.tables)} {pl(t.tables, 'table', 'tables')}, {entier(t.couverts)} couverts</Ligne>
               {t.valeurs.map((v) => (
-                <div key={v.valeur} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: 'var(--text3)', padding: '4px 0 0 12px' }}>
+                <div key={v.valeur} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--t1)', color: 'var(--text3)', padding: '4px 0 0 12px' }}>
                   <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{v.valeur}</span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{entier(v.tables)} {pl(v.tables, 'table', 'tables')}, {entier(v.couverts)} couverts</span>
                 </div>
@@ -537,7 +537,7 @@ function Definitions({ avecBrunch }) {
         {ouvert ? 'Masquer les définitions' : 'Comment lire ce rapport'}
       </button>
       {ouvert && (
-        <ul style={{ margin: '14px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <ul style={{ margin: '14px 0 0', paddingLeft: 18, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <li>{DEF.couverts}</li>
           <li>{DEF.tables} Les tables physiques ne sont connues que pour les réservations placées sur le plan de salle.</li>
           <li>{DEF.jourOuverture}</li>

@@ -29,12 +29,12 @@ import { metaStatut } from './statutsReservation.js';
 const COUVERTS_RAPIDES = [1, 2, 3, 4, 5, 6, 7, 8];
 
 const styleBouton = (principal = false) => ({
-  width: '100%', minHeight: 48, padding: '10px 14px', borderRadius: 10,
+  width: '100%', minHeight: 48, padding: '10px 14px', borderRadius: 'var(--r)',
   borderWidth: 1, borderStyle: 'solid',
   borderColor: principal ? 'var(--accent)' : 'var(--border)',
   background: principal ? 'var(--accent)' : 'var(--surface)',
   color: principal ? 'var(--on-accent)' : 'var(--text)',
-  fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)',
+  fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
   cursor: 'pointer', textAlign: 'left',
   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
 });
@@ -44,12 +44,12 @@ const stylePetit = (ton) => {
     ? { bd: 'var(--success-bd)', bg: 'var(--success-bg-soft)', tx: 'var(--success-text)' }
     : ton === 'danger'
       ? { bd: 'var(--danger-bd)', bg: 'transparent', tx: 'var(--danger-text)' }
-      : { bd: 'var(--border)', bg: 'var(--surface)', tx: 'var(--text2)' };
+      : { bd: 'var(--btn-bord)', bg: 'var(--btn-fond)', tx: 'var(--btn-texte)' };
   return {
-    flexShrink: 0, minHeight: 40, padding: '6px 12px', borderRadius: 20,
+    flexShrink: 0, minHeight: 40, padding: '6px 12px', borderRadius: 'var(--r)',
     borderWidth: 1, borderStyle: 'solid', borderColor: c.bd,
     background: c.bg, color: c.tx,
-    fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
     cursor: 'pointer', whiteSpace: 'nowrap',
   };
 };
@@ -57,7 +57,7 @@ const stylePetit = (ton) => {
 function SousTitre({ children }) {
   return (
     <div style={{
-      fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+      fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
       color: 'var(--text3)', margin: '4px 0 8px',
     }}>
       {children}
@@ -97,11 +97,11 @@ export default function TableServiceSheet({
         onClick={() => { onAssigner(r); onClose(); }}
         style={{
           ...styleBouton(false), minHeight: 52,
-          borderColor: r.nb_couverts > places && places > 0 ? 'var(--warning-bd)' : 'var(--border)',
+          borderColor: r.nb_couverts > places && places > 0 ? 'var(--warning-bd)' : 'var(--btn-bord)',
         }}
       >
         <span>{r.nom}, {r.nb_couverts} pax</span>
-        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>
+        <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>
           {(r.heure_arrivee || '').slice(0, 5)}
           {r.statut === 'arrive' ? ', arrivé' : ''}
           {ailleurs.length ? `, déplacer depuis la table ${ailleurs.join(' + ')}` : ''}
@@ -125,7 +125,7 @@ export default function TableServiceSheet({
         aria-label={titre}
         className="modal-sheet"
         style={{
-          background: 'var(--surface)', borderRadius: 14,
+          background: 'var(--surface)', borderRadius: 'var(--r)',
           width: 420, maxWidth: '100%', maxHeight: '85vh',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
@@ -138,10 +138,10 @@ export default function TableServiceSheet({
           borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
         }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
               {titre}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
               {composition ? `${composition}, ` : ''}
               {places} place{places > 1 ? 's' : ''}
               {occupants.length ? `, ${assis} couvert${assis > 1 ? 's' : ''} ici` : ', libre'}
@@ -150,7 +150,7 @@ export default function TableServiceSheet({
           <button
             type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer"
             style={{
-              background: 'none', border: 'none', fontSize: 22, minWidth: 44, minHeight: 44,
+              background: 'none', border: 'none', fontSize: 'var(--t4)', minWidth: 44, minHeight: 44,
               cursor: 'pointer', color: 'var(--text2)', lineHeight: 1,
             }}
           >
@@ -174,11 +174,11 @@ export default function TableServiceSheet({
                       aria-checked={actif}
                       onClick={() => { if (!actif) onChoisirNumero(n.id); }}
                       style={{
-                        minWidth: 56, minHeight: 48, padding: '6px 14px', borderRadius: 10,
+                        minWidth: 56, minHeight: 48, padding: '6px 14px', borderRadius: 'var(--r)',
                         borderWidth: actif ? 2 : 1, borderStyle: 'solid',
-                        borderColor: actif ? 'var(--accent)' : 'var(--border)',
+                        borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
                         background: actif ? 'var(--ai-bg-soft)' : 'var(--surface)',
-                        color: 'var(--text)', fontSize: 16, fontWeight: 700,
+                        color: 'var(--btn-texte)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)',
                         fontFamily: 'var(--font-num)', cursor: actif ? 'default' : 'pointer',
                       }}
                     >
@@ -196,7 +196,7 @@ export default function TableServiceSheet({
               {groupe && (
                 <button type="button" style={styleBouton(true)} onClick={() => { onSeparer(); onClose(); }}>
                   <span>Séparer cette table</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.85 }}>
+                  <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', opacity: 0.85 }}>
                     Elle retourne seule à sa place habituelle.
                   </span>
                 </button>
@@ -204,13 +204,13 @@ export default function TableServiceSheet({
               {!groupe && deplacee && (
                 <button type="button" style={styleBouton(true)} onClick={() => { onRemettre(); onClose(); }}>
                   <span>Remettre à sa place</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.85 }}>
+                  <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', opacity: 0.85 }}>
                     Comme sur le plan de base.
                   </span>
                 </button>
               )}
               {!groupe && !deplacee && (
-                <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 }}>
                   Glisse la table pour la déplacer, ou lâche-la sur une autre table pour les rapprocher en une seule tablée.
                 </div>
               )}
@@ -219,7 +219,7 @@ export default function TableServiceSheet({
           {ajuster && onTourner && (
             <button type="button" style={styleBouton(false)} onClick={() => { onTourner(); onClose(); }}>
               <span>⟳ Tourner la table</span>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>
+              <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>
                 {verticale
                   ? 'La remettre à l’horizontale, pour ce service seulement.'
                   : 'La mettre à la verticale, pour ce service seulement.'}
@@ -235,7 +235,7 @@ export default function TableServiceSheet({
                 {occupants.map((r) => (
                   <div key={r.id} style={{
                     display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-                    padding: '8px 10px', borderRadius: 10,
+                    padding: '8px 10px', borderRadius: 'var(--r)',
                     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
                   }}>
                     <button
@@ -246,10 +246,10 @@ export default function TableServiceSheet({
                         border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font)',
                       }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
                         {r.nom}, {r.nb_couverts} pax
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+                      <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                         {(r.heure_arrivee || '').slice(0, 5)}, {metaStatut(r.statut || 'confirme').label}
                       </div>
                     </button>
@@ -280,15 +280,15 @@ export default function TableServiceSheet({
               <SousTitre>{occupants.length ? 'Ajouter à cette table' : 'Donner cette table'}</SousTitre>
               <button type="button" style={styleBouton(true)} onClick={() => setEtape('passage')}>
                 <span>Client de passage</span>
-                <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.85 }}>Sans réservation, installé maintenant.</span>
+                <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', opacity: 0.85 }}>Sans réservation, installé maintenant.</span>
               </button>
               <button type="button" style={styleBouton(false)} onClick={() => { onReserver(); onClose(); }}>
                 <span>Réserver la table</span>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>Nouvelle réservation posée sur cette table.</span>
+                <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>Nouvelle réservation posée sur cette table.</span>
               </button>
               <button type="button" style={styleBouton(false)} onClick={() => setEtape('assigner')}>
                 <span>Assigner la table</span>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>Choisir une réservation du service.</span>
+                <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>Choisir une réservation du service.</span>
               </button>
             </>
           )}
@@ -297,7 +297,7 @@ export default function TableServiceSheet({
           {!ajuster && etape === 'menu' && onTourner && (
             <button type="button" style={styleBouton(false)} onClick={() => { onTourner(); onClose(); }}>
               <span>⟳ Tourner la table</span>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>
+              <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>
                 {verticale
                   ? 'La remettre à l’horizontale, pour ce service seulement.'
                   : 'La mettre à la verticale, pour ce service seulement.'}
@@ -306,7 +306,7 @@ export default function TableServiceSheet({
           )}
 
           {!ajuster && etape === 'menu' && !canEdit && occupants.length === 0 && (
-            <div style={{ fontSize: 13, color: 'var(--text2)' }}>Table libre.</div>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Table libre.</div>
           )}
 
           {/* ── Client de passage : le nombre de couverts, rien d'autre ── */}
@@ -321,11 +321,11 @@ export default function TableServiceSheet({
                     onClick={() => setCouverts(n)}
                     aria-pressed={couverts === n}
                     style={{
-                      minHeight: 52, borderRadius: 10,
+                      minHeight: 52, borderRadius: 'var(--r)',
                       borderWidth: couverts === n ? 2 : 1, borderStyle: 'solid',
-                      borderColor: couverts === n ? 'var(--accent)' : 'var(--border)',
+                      borderColor: couverts === n ? 'var(--onglet)' : 'var(--btn-bord)',
                       background: couverts === n ? 'var(--ai-bg-soft)' : 'var(--surface)',
-                      color: 'var(--text)', fontSize: 18, fontWeight: 700,
+                      color: 'var(--btn-texte)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)',
                       fontFamily: 'var(--font-num)', cursor: 'pointer',
                     }}
                   >
@@ -334,21 +334,21 @@ export default function TableServiceSheet({
                 ))}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                <label htmlFor="passage-couverts" style={{ fontSize: 13, color: 'var(--text2)' }}>Autre nombre</label>
+                <label htmlFor="passage-couverts" style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Autre nombre</label>
                 <input
                   id="passage-couverts"
                   type="number" inputMode="numeric" min={1} max={99}
                   value={couverts}
                   onChange={(e) => setCouverts(Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1)))}
                   style={{
-                    width: 90, minHeight: 44, padding: '6px 10px', borderRadius: 8,
+                    width: 90, minHeight: 44, padding: '6px 10px', borderRadius: 'var(--r)',
                     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                    background: 'var(--bg)', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)',
+                    background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)',
                   }}
                 />
               </div>
               {couverts > places && places > 0 && (
-                <div style={{ fontSize: 12, color: 'var(--warning-text)' }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)' }}>
                   {couverts} couverts pour {places} places : rapproche une autre table si besoin.
                 </div>
               )}
@@ -377,9 +377,9 @@ export default function TableServiceSheet({
                 placeholder="Nom ou téléphone"
                 aria-label="Chercher une réservation"
                 style={{
-                  width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '8px 12px', borderRadius: 8,
+                  width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
                   borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                  background: 'var(--bg)', color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)',
+                  background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)',
                 }}
               />
               {sansTable.length > 0 && <SousTitre>Sans table</SousTitre>}
@@ -387,7 +387,7 @@ export default function TableServiceSheet({
               {placees.length > 0 && <SousTitre>Déjà placées</SousTitre>}
               {placees.map(ligneCandidate)}
               {candidates.length === 0 && (
-                <div style={{ fontSize: 13, color: 'var(--text2)', padding: '8px 0' }}>
+                <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', padding: '8px 0' }}>
                   {recherche ? 'Aucune réservation ne correspond.' : 'Aucune autre réservation sur ce service.'}
                 </div>
               )}

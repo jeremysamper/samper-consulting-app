@@ -119,7 +119,7 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
       return <div style={s.info}>La réservation en ligne n'est pas encore activée sur la base de données.</div>;
     }
     if (status === 'error') return <div style={s.erreur}>Les réglages n'ont pas pu être lus. Réessayez dans un instant.</div>;
-    if (!form) return <div style={{ color: 'var(--text2)', fontSize: 13 }}>Chargement…</div>;
+    if (!form) return <div style={{ color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>;
 
     const slugValide = SLUG_OK.test(form.slug || '');
     const joursOuverts = Object.values(form.horaires || {}).filter((j) => Object.values(j || {}).some((x) => x?.de && x?.a && x.de <= x.a)).length;
@@ -214,12 +214,12 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
         {/* ── État ── */}
         <div style={{ ...s.carte, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: publie ? 'var(--success-text)' : 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: publie ? 'var(--success-text)' : 'var(--text)', fontFamily: 'var(--font)' }}>
               {publie ? 'La réservation en ligne est ouverte' : 'La réservation en ligne est fermée'}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 }}>
               {publie
-                ? <>Les réservations arrivent dans ce module{form.mode === 'demande' ? ', en « À confirmer »' : ', déjà confirmées'}. Votre page : <a href={apercu} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }} data-no-translate>{lienPage.replace('https://', '')}</a></>
+                ? <>Les réservations arrivent dans ce module{form.mode === 'demande' ? ', en « À confirmer »' : ', déjà confirmées'}. Votre page : <a href={apercu} target="_blank" rel="noreferrer" style={{ color: 'var(--lien)' }} data-no-translate>{lienPage.replace('https://', '')}</a></>
                 : 'Réglez vos horaires et vos couverts ci-dessous, puis ouvrez la réservation.'}
             </div>
           </div>
@@ -260,8 +260,8 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                 <label key={id} style={s.option}>
                   <input type="radio" name="mode-en-ligne" checked={form.mode === id} onChange={() => set('mode', id)} style={{ margin: '3px 0 0' }} />
                   <span>
-                    <span style={{ fontWeight: 500, fontSize: 13, color: 'var(--text)' }}>{titre}</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>{texte}</span>
+                    <span style={{ fontWeight: 'var(--g2)', fontSize: 'var(--t2)', color: 'var(--text)' }}>{titre}</span>
+                    <span style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 }}>{texte}</span>
                   </span>
                 </label>
               ))}
@@ -276,13 +276,13 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                   const services = form.horaires[String(jour)] || {};
                   return (
                     <div key={jour} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ width: 84, flexShrink: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', paddingTop: 10 }}>{nom}</div>
+                      <div style={{ width: 84, flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', paddingTop: 10 }}>{nom}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 220px', minWidth: 0 }}>
                         {SERVICES.map(([sid, libelle, defaut]) => {
                           const plage = services[sid];
                           return (
                             <div key={sid} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: 40 }}>
-                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 90, minHeight: 40, cursor: 'pointer', fontSize: 13, color: plage ? 'var(--text)' : 'var(--text3)' }}>
+                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 90, minHeight: 40, cursor: 'pointer', fontSize: 'var(--t2)', color: plage ? 'var(--text)' : 'var(--text3)' }}>
                                 <input
                                   type="checkbox"
                                   checked={Boolean(plage)}
@@ -295,7 +295,7 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                                 <>
                                   <input type="time" step="60" aria-label={`${nom}, ${libelle}, première arrivée`} value={plage.de} style={s.heure}
                                     onChange={(e) => majService(jour, sid, { ...plage, de: e.target.value })} />
-                                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>à</span>
+                                  <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>à</span>
                                   <input type="time" step="60" aria-label={`${nom}, ${libelle}, dernière arrivée`} value={plage.a} style={s.heure}
                                     onChange={(e) => majService(jour, sid, { ...plage, a: e.target.value })} />
                                 </>
@@ -349,10 +349,10 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                     const valeurs = (form.capaciteJours || {})[String(jour)] || {};
                     return (
                       <div key={jour} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minHeight: 44 }}>
-                        <div style={{ width: 84, flexShrink: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{nom}</div>
+                        <div style={{ width: 84, flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>{nom}</div>
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: '1 1 160px', minWidth: 0 }}>
                           {services.map(([sid, libelle]) => (
-                            <label key={sid} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
+                            <label key={sid} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                               {libelle}
                               <input
                                 type="number" min="0" max="2000" inputMode="numeric"
@@ -387,11 +387,11 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                     const valeurs = (form.rythme || {})[sid] || {};
                     return (
                       <div key={sid}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{libelle}</div>
+                        <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginBottom: 6 }}>{libelle}</div>
                         <div style={s.grilleRythme}>
                           {demiHeures.map((h) => (
                             <label key={h} style={s.caseRythme}>
-                              <span style={{ fontSize: 12, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' }}>{h}</span>
+                              <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' }}>{h}</span>
                               <input
                                 type="number" min="0" max="2000" inputMode="numeric"
                                 aria-label={`${libelle}, couverts entre ${h} et ${finDemiHeure(h)}`}
@@ -487,7 +487,7 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
 
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 240px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 }}>
                 Collez ce lien sur le bouton « Réserver » de votre site, sur Google ou Instagram. Rien à installer.
               </div>
               <div style={s.lienDirect} data-no-translate>{lienPage.replace('https://', '')}</div>
@@ -497,28 +497,28 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
               </div>
             </div>
             <button type="button" onClick={telechargerQr} disabled={!qr} style={s.qr} aria-label="Télécharger le QR code de réservation">
-              {qr ? <img src={qr} alt="" width={84} height={84} style={{ display: 'block', borderRadius: 6 }} /> : <span style={{ fontSize: 12 }}>QR code</span>}
-              <span style={{ fontSize: 12, fontWeight: 500 }}>Télécharger</span>
+              {qr ? <img src={qr} alt="" width={84} height={84} style={{ display: 'block', borderRadius: 'var(--r)' }} /> : <span style={{ fontSize: 'var(--t1)' }}>QR code</span>}
+              <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)' }}>Télécharger</span>
             </button>
           </div>
 
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Quelqu'un gère votre site ?</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 8px', lineHeight: 1.5 }}>Envoyez-lui cet e-mail tout prêt, avec le lien et le code à coller.</div>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Quelqu'un gère votre site ?</div>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', margin: '2px 0 8px', lineHeight: 1.5 }}>Envoyez-lui cet e-mail tout prêt, avec le lien et le code à coller.</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <a href={lienGmail(mailWebmaster)} target="_blank" rel="noreferrer" style={{ ...s.secondaire, textDecoration: 'none', boxSizing: 'border-box' }}>Préparer l'e-mail dans Gmail</a>
-              <a href={lienMailto(mailWebmaster)} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 500 }}>Autre messagerie</a>
+              <a href={lienMailto(mailWebmaster)} style={{ fontSize: 'var(--t2)', color: 'var(--lien)', fontWeight: 'var(--g2)' }}>Autre messagerie</a>
             </div>
           </div>
 
           <details style={{ marginTop: 14 }}>
-            <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13, minHeight: 40, display: 'flex', alignItems: 'center', color: 'var(--text)' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 'var(--g3)', fontSize: 'var(--t2)', minHeight: 40, display: 'flex', alignItems: 'center', color: 'var(--text)' }}>
               Le code, pour l'installer soi-même
             </summary>
             <div style={{ paddingTop: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-                <label htmlFor="resa-couleur" style={{ fontSize: 12, color: 'var(--text2)' }}>Couleur du bouton</label>
-                <input id="resa-couleur" type="color" value={couleur} onChange={(e) => setCouleur(e.target.value)} style={{ width: 44, height: 32, padding: 0, border: '1px solid var(--border)', borderRadius: 8, background: 'none', cursor: 'pointer' }} />
+                <label htmlFor="resa-couleur" style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>Couleur du bouton</label>
+                <input id="resa-couleur" type="color" value={couleur} onChange={(e) => setCouleur(e.target.value)} style={{ width: 44, height: 32, padding: 0, border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'none', cursor: 'pointer' }} />
               </div>
               <BlocCode titre="Bouton « Réserver une table »" texte="Ouvre la réservation par-dessus le site, sans le quitter." code={codeBouton(form.slug, couleur)} onCopier={copier} />
               <BlocCode titre="Réservation dans une page" texte="La réservation affichée directement dans une page du site." code={codeIntegre(form.slug, couleur)} onCopier={copier} />
@@ -535,9 +535,9 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
 function Champ({ label, aide, children }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>{label}</span>
+      <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>{label}</span>
       {children}
-      {aide && <span style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.4 }}>{aide}</span>}
+      {aide && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.4 }}>{aide}</span>}
     </label>
   );
 }
@@ -545,8 +545,8 @@ function Champ({ label, aide, children }) {
 function BlocCode({ titre, texte, code, onCopier }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{titre}</div>
-      <div style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 6px' }}>{texte}</div>
+      <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)' }}>{titre}</div>
+      <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', margin: '2px 0 6px' }}>{texte}</div>
       <div style={{ position: 'relative' }}>
         <pre style={s.code} data-no-translate>{code}</pre>
         <button type="button" onClick={() => onCopier(code, 'Code copié.')} style={s.copier}>Copier</button>
@@ -563,71 +563,71 @@ const s = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
   },
   carte: {
-    padding: '14px 16px', borderRadius: 12, background: 'var(--bg)', minWidth: 0,
+    padding: '14px 16px', borderRadius: 'var(--r)', background: 'var(--bg)', minWidth: 0,
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
-  titre: { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)', marginBottom: 10 },
-  aide: { fontSize: 12, color: 'var(--text3)', marginTop: 6, lineHeight: 1.5 },
+  titre: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 10 },
+  aide: { fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 6, lineHeight: 1.5 },
   grille: { display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))' },
   champ: {
-    width: '100%', boxSizing: 'border-box', minHeight: 42, padding: '8px 12px', borderRadius: 8,
+    width: '100%', boxSizing: 'border-box', minHeight: 42, padding: '8px 12px', borderRadius: 'var(--r)',
     border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 14,
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)',
   },
   heure: {
-    minHeight: 38, padding: '4px 8px', borderRadius: 8, border: '1px solid var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13,
+    minHeight: 38, padding: '4px 8px', borderRadius: 'var(--r)', border: '1px solid var(--border)',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
   },
   prefixe: {
     flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
     padding: '0 10px', minHeight: 42, display: 'inline-flex', alignItems: 'center', boxSizing: 'border-box',
-    fontSize: 12, color: 'var(--text2)', background: 'var(--surface)',
+    fontSize: 'var(--t1)', color: 'var(--text2)', background: 'var(--surface)',
     border: '1px solid var(--border)', borderRight: 'none', borderRadius: '8px 0 0 8px',
   },
   grilleRythme: { display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' },
   caseRythme: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0 },
   option: { display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', cursor: 'pointer' },
   principal: {
-    padding: '9px 16px', minHeight: 42, borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+    padding: '9px 16px', minHeight: 42, borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   secondaire: {
-    padding: '9px 16px', minHeight: 42, borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer',
-    background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+    padding: '9px 16px', minHeight: 42, borderRadius: 'var(--r)', border: '1px solid var(--border)', cursor: 'pointer',
+    background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   // Encadrés de statut : filet gauche au ton (Encadre), texte en --text ; une
   // erreur seule garde sa couleur sur le texte, faute de titre.
-  info: { ...encadreStyle('info'), fontSize: 12, lineHeight: 1.5 },
-  attention: { ...encadreStyle('alerte'), fontSize: 12, lineHeight: 1.5 },
-  erreur: { ...encadreStyle('erreur'), color: 'var(--danger-text)', fontSize: 13 },
+  info: { ...encadreStyle('info'), fontSize: 'var(--t1)', lineHeight: 1.5 },
+  attention: { ...encadreStyle('alerte'), fontSize: 'var(--t1)', lineHeight: 1.5 },
+  erreur: { ...encadreStyle('erreur'), color: 'var(--danger-text)', fontSize: 'var(--t2)' },
   puce: {
-    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 10px', borderRadius: 20,
-    fontSize: 12, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
+    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 10px', borderRadius: 'var(--r-full)',
+    fontSize: 'var(--t1)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
   },
   puceX: {
-    width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text2)',
+    width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer', fontSize: 'var(--t3)', color: 'var(--text2)',
   },
   lienDirect: {
-    padding: '9px 12px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)',
-    fontSize: 13, fontWeight: 500, color: 'var(--text)', overflowWrap: 'anywhere',
+    padding: '9px 12px', borderRadius: 'var(--r)', background: 'var(--surface)', border: '1px solid var(--border)',
+    fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflowWrap: 'anywhere',
   },
   // Fond blanc dans les deux thèmes : un QR code se lit sur fond clair.
   qr: {
     display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0,
-    width: 112, minHeight: 124, padding: 10, borderRadius: 10, cursor: 'pointer',
+    width: 112, minHeight: 124, padding: 10, borderRadius: 'var(--r)', cursor: 'pointer',
     background: '#ffffff', color: '#003042', border: '1px solid var(--border)', fontFamily: 'var(--font)',
   },
   code: {
-    margin: 0, padding: '10px 12px', paddingRight: 80, borderRadius: 8, overflowX: 'auto',
+    margin: 0, padding: '10px 12px', paddingRight: 80, borderRadius: 'var(--r)', overflowX: 'auto',
     background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
-    fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace', fontSize: 11, lineHeight: 1.6,
+    fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace', fontSize: 'var(--t1)', lineHeight: 1.6,
     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
   },
   copier: {
-    position: 'absolute', top: 6, right: 6, minHeight: 32, padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
-    background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)',
-    fontSize: 11, fontWeight: 500, fontFamily: 'var(--font)',
+    position: 'absolute', top: 6, right: 6, minHeight: 32, padding: '4px 10px', borderRadius: 'var(--r)', cursor: 'pointer',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    fontSize: 'var(--t1)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
   },
 };
