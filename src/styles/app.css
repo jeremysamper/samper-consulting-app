@@ -1280,8 +1280,8 @@ h1 {
   overflow: auto;
   margin-top: 18px;
   border-radius: var(--r-sm);
-  background: var(--nav);
-  color: #fff;
+  background: var(--toast-fond);
+  color: var(--toast-texte);
   padding: 16px;
 }
 
@@ -1542,7 +1542,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   }
 
   .ui-card--clickable:active {
-    background: var(--surface2);
+    background: var(--selection);
   }
 }
 
@@ -1814,7 +1814,7 @@ html[data-theme="dark"] button:not(:disabled):active {
     color: var(--nav-text-active) !important;
   }
   .sc-pop-item:not([aria-checked="true"]):hover,
-  .sc-title-switch:hover { background: var(--surface2) !important; }
+  .sc-title-switch:hover { background: var(--selection) !important; }
 }
 .sc-nav-item:focus-visible,
 .sc-nav-account:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
@@ -2091,7 +2091,7 @@ html[data-theme="dark"] button:not(:disabled):active {
    s'éclaire seulement au survol. */
 .recette-plat-ligne:hover,
 .recette-plat-ligne:focus-visible {
-  background: var(--surface2) !important;
+  background: var(--selection) !important;
 }
 
 /* ─── Page d'accueil tactile (AccueilTactile.jsx) ───────────────────────────

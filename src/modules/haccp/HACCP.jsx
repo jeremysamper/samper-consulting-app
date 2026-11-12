@@ -1051,10 +1051,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       {activeTab==='config' && isConsultant && pret && (
         <div style={{display:'flex',flexDirection:'column',gap:20}}>
           {/* Banner */}
-          <div style={{background:'var(--nav)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+          <div style={{background:'var(--zone)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:220}}>
-              <div style={{color:'var(--nav-text-active)',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP, réservée au consultant</div>
-              <div style={{color:'var(--nav-text)',fontSize:12,marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement.</div>
+              <div style={{color:'var(--text)',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP, réservée au consultant</div>
+              <div style={{color:'var(--text2)',fontSize:12,marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement.</div>
             </div>
           </div>
 
@@ -1155,7 +1155,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 <div style={hcfg.sectionTitle}>Contrôles d'hygiène</div>
                 <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''}, {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
               </div>
-              <button style={{...hs.addBtn,background:'var(--nav)'}} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
+              <button style={hs.addBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {ctrlTpls.map(c=>(

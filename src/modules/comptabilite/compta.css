@@ -106,7 +106,7 @@
 .compta-carte { transition: background-color 150ms ease; }
 @media (hover: hover) {
   .compta-carte[data-cliquable]:hover { background: var(--accent-light) !important; }
-  .compta-jour:hover { background: var(--surface2); }
+  .compta-jour:hover { background: var(--selection); }
 }
 .compta button:focus-visible,
 .compta input:focus-visible,

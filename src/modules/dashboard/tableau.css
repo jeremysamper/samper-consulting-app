@@ -223,7 +223,7 @@
 /* Survol sur les vrais pointeurs seulement (sur tactile il colle après le
    tap). Plus spécifique que le fond transparent de .tdb button.tdb-lien. */
 @media (hover: hover) and (pointer: fine) {
-  .tdb button.tdb-lien:not(:disabled):hover { background: var(--surface2); }
+  .tdb button.tdb-lien:not(:disabled):hover { background: var(--selection); }
   .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--surface); }
 }
 .tdb-lien:focus-visible,

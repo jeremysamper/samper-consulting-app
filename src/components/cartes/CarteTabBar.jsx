@@ -370,7 +370,6 @@ const s = {
   barScroll: { flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%' },
   tab: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   tabBtnReset: { outline: 'none' },
-  tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
   tabLabel: { whiteSpace: 'nowrap' },
   // Les onglets se suivent dans une rangée à part, sans rétrécir : la bande
   // parente défile si la rangée déborde.
