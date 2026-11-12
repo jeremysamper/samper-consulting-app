@@ -5,67 +5,76 @@
 }
 
 :root {
-  /* IBM Plex Sans pour le texte, IBM Plex Serif pour les titres, pour toute
-     l'app, module Spa compris. Fichiers servis par l'app (public/fonts/ui,
-     déclarés dans src/styles/fonts.css), précachés par le service worker. */
+  /* Direction Office (choisie le 11.11.2026) : menu clair, panneaux légers sur
+     fond gris, titres sans serif, boutons secondaires à contour, rayon de
+     8 px, accent réservé à l'action principale. Les valeurs de ce bloc et des
+     deux blocs sombres viennent de la feuille de l'essai ; la règle durable
+     est dans .claude/rules/direction-office.md. */
+  /* IBM Plex Sans pour toute l'app, module Spa compris. Fichiers servis par
+     l'app (public/fonts/ui, déclarés dans src/styles/fonts.css), précachés par
+     le service worker. Les titres sont sans serif : --font-serif renvoie sur
+     --font, pour que ses lecteurs suivent sans être réécrits. */
   --font: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "IBM Plex Serif", Georgia, serif;
+  --font-serif: var(--font);
   /* Valeurs chiffrées mises en avant (KPI, montants, températures, heures,
      quantités) : la même famille que le texte. Les chiffres de Plex sont
-     tabulaires par défaut ; le zéro barré est posé par la règle « Chiffres ». */
+     tabulaires par défaut ; la règle « Chiffres » garde la largeur égale. */
   --font-num: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  /* Fond légèrement creusé (96 vs surface 99.4) : c'est cet écart, et non une
-     ombre, qui détache les cartes en mode clair. Neutres froids, teintés vers
-     le pétrole de la marque : jamais de crème (le fond crème est la signature
-     la plus reconnaissable des interfaces générées), jamais de blanc pur. */
-  --bg: oklch(96% 0.005 230);
-  --bg2: oklch(93.5% 0.006 230);
-  --surface: oklch(99.4% 0.002 230);
-  --surface2: oklch(97.6% 0.004 230);
-  --border: oklch(87% 0.008 230);
-  --border2: oklch(83% 0.009 230);
+  /* Fond gris sous des surfaces presque blanches : c'est cet écart, et non une
+     ombre, qui détache les panneaux en mode clair. Neutres froids, teintés
+     vers le pétrole de la marque : jamais de crème, jamais de blanc pur.
+     --surface2 vaut la surface : un état (survol, ligne choisie) se pose sur
+     --selection, jamais sur --surface2. */
+  --bg: #f3f5f7;
+  --bg2: #eaeef1;
+  --surface: #fbfcfd;
+  --surface2: #fbfcfd;
+  --border: #b7c1c7;
+  --border2: #b7c1c7;
   /* Filet doux sous les éléments d'une liste aplatie (« Plus de carrés », en
-     fin de feuille) : la teinte de --border à 80 %, sans color-mix(), que
-     html2canvas ne sait pas lire. Une vue capturée en PDF le reprend en hex
-     (règle .pdf-render-root, même endroit). */
-  --rule-soft: oklch(87% 0.008 230 / 0.8);
+     fin de feuille) et autour des panneaux. Une vue capturée en PDF le
+     reprend sur le filet de marque (règle .pdf-render-root, même endroit). */
+  --rule-soft: #d5dbdf;
   --text: oklch(19% 0.012 235);
-  --text2: oklch(47% 0.012 235);
-  --text3: oklch(53% 0.010 235);
+  --text2: #47535a;
+  --text3: #57636a;
   --accent: #003042;
   --accent2: #2e6d84;
-  --accent-light: #e4eef3;
-  --accent-bd: #9fc0cd;
+  --accent-light: #dfe5e9;
+  --accent-bd: #b7c1c7;
   /* Texte posé sur un aplat accent (bouton principal) : blanc sur le pétrole
      du clair, encre foncée sur l'aqua du sombre (le blanc y manque de
      contraste). */
   --on-accent: #ffffff;
-  /* ─── Chrome de navigation « encre pétrole » ──────────────────────────
-     La sidebar et le tiroir mobile sont en pétrole profond dans les DEUX
-     thèmes : c'est le geste signature de la refonte profondeur. L'aqua
-     (--nav-accent) est la seule lumière posée sur cette encre. La sidebar
-     est en aplat uni de --nav, sans dégradé (décision du 16.10.2026) ;
+  /* ─── Menu latéral clair ──────────────────────────────────────────────
+     Le menu a la couleur de la surface, l'entrée choisie se pose sur
+     --nav-active (la valeur de --selection), sans halo. Ces jetons sont
+     réservés à la coque (AppLayout.jsx, src/components/nav/, règles
+     .sc-nav-* et .nav-organizer*) : un module ne lit jamais --nav*, un texte
+     blanc posé dessus serait blanc sur blanc (npm run lint:on-color).
      --nav-grad reste défini, égal à --nav, pour ce qui le lirait encore. */
-  --nav: #032a3a;
+  --nav: #fbfcfd;
   --nav-grad: var(--nav);
-  --nav-text: rgba(214, 230, 236, 0.66);
-  --nav-text-active: #eaf4f7;
-  --nav-active: rgba(116, 174, 195, 0.09);
-  --nav-border: rgba(255, 255, 255, 0.07);
-  --nav-accent: #74aec3;
-  /* Sélection posée, pas lumineuse : un filet intérieur plutôt qu'un halo. */
-  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.12);
-  /* ─── Header « verre » (façon barres iOS récentes) ─────────────────────
-     Surface translucide : le contenu défile dessous, flouté (.app-glass-bar). */
-  --glass-bg: rgba(248, 250, 251, 0.72);
-  --glass-border: rgba(10, 30, 40, 0.08);
+  --nav-text: #47535a;
+  --nav-text-active: #10191d;
+  --nav-active: #dfe5e9;
+  --nav-border: #d5dbdf;
+  --nav-accent: #10191d;
+  /* Sélection posée, pas lumineuse : ni filet intérieur ni halo. */
+  --nav-glow: none;
+  /* ─── Barre du haut ────────────────────────────────────────────────────
+     Opaque, à la couleur du fond de page, sans flou (.app-glass-bar). Les
+     noms « glass » sont gardés pour leurs lecteurs. */
+  --glass-bg: #f3f5f7;
+  --glass-border: #d5dbdf;
   --glass-hover: rgba(10, 30, 40, 0.06);
-  /* Rayons resserrés : des coins très arrondis sur chaque bloc font gabarit.
-     Les pilules (999px) restent réservées aux étiquettes. */
+  /* Un seul rayon, 8 px, pour les contrôles comme pour les panneaux. Les
+     quatre noms restent déclarés pour leurs lecteurs ; ils ne changent pas
+     avec le thème. Les pilules (999px) restent réservées aux étiquettes. */
   --r: 8px;
-  --r-sm: 6px;
-  --r-lg: 10px;
-  --r-xl: 12px;
+  --r-sm: 8px;
+  --r-lg: 8px;
+  --r-xl: 8px;
   --r-full: 999px;
 
   /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
@@ -73,9 +82,9 @@
      tiroirs flottent (--sh, --sh-lg). Les cartes posées sur la page n'ont
      pas d'ombre (--sh-xs vide) : leur filet et l'écart de fond suffisent. */
   --sh-xs: none;
-  --sh-sm: 0 1px 2px rgba(9, 30, 40, 0.08);
-  --sh: 0 2px 6px rgba(9, 30, 40, 0.09), 0 12px 32px rgba(9, 30, 40, 0.11);
-  --sh-lg: 0 8px 24px rgba(9, 30, 40, 0.14), 0 24px 64px rgba(9, 30, 40, 0.18);
+  --sh-sm: none;
+  --sh: 0 2px 8px rgba(9, 30, 40, 0.14);
+  --sh-lg: 0 12px 32px rgba(9, 30, 40, 0.2);
 
   /* ─── Mise en avant ───────────────────────────────────────────────────
      glow-accent = liseré accent des surfaces mises en avant (chips KPI,
@@ -84,7 +93,55 @@
      déclaré, vide, pour ses lecteurs. */
   --glow-accent: 0 0 0 1px var(--accent-bd);
   --glow-soft: none;
-  --focus-ring: rgba(0, 48, 66, 0.14);
+  /* Anneau de focus : un trait plein de 3 px, lu en box-shadow. */
+  --focus-ring: #12587a;
+
+  /* ─── Échelle d'Office (ne change pas avec le thème) ──────────────────
+     Six tailles de texte, trois graisses, la hauteur d'une ligne de liste et
+     celle d'un contrôle. Les chiffres mis en avant sont en graisse normale. */
+  --t1: 12px;
+  --t2: 14px;
+  --t3: 17px;
+  --t4: 20px;
+  --t5: 24px;
+  --t6: 29px;
+  --g1: 400;
+  --g2: 500;
+  --g3: 600;
+  --g-chiffre: 400;
+  --ligne: 44px;
+  --controle: 40px;
+
+  /* ─── Rôles d'Office ──────────────────────────────────────────────────
+     btn-*      bouton secondaire : fond, texte, contour
+     selection  survol, ligne ou entrée choisie, puce active
+     zone       fond d'un panneau
+     champ-bord contour d'un champ
+     onglet     trait et texte de l'onglet actif, liseré du jour
+     lien       texte qui portait l'accent (l'accent reste à l'action principale)
+     icone, coche, nav-marque : encres des pictos, des coches et de la marque
+     toast-*    fond et texte d'un toast, encres de ses trois statuts
+     logo-fond  pastille sous le logo d'un établissement : la couleur du menu
+                d'avant Office, pour qu'un logo importé garde son allure
+     Tout jeton de couleur de ce groupe a son miroir dans THEME_VAR_OVERRIDES
+     (src/design/brandTokens.js). */
+  --btn-fond: #fbfcfd;
+  --btn-texte: #10191d;
+  --btn-bord: #93a0a8;
+  --selection: #dfe5e9;
+  --zone: #fbfcfd;
+  --champ-bord: #7f8d95;
+  --onglet: #10191d;
+  --lien: #10191d;
+  --icone: #47535a;
+  --coche: #10191d;
+  --nav-marque: #10191d;
+  --toast-fond: #10191d;
+  --toast-texte: #f3f6f8;
+  --toast-succes: #7fd49b;
+  --toast-danger: #fb8f8f;
+  --toast-alerte: #f5a524;
+  --logo-fond: #032a3a;
 
   /* ─── Aplats de marque (noms historiques « grad- » conservés) ─────────
      grad-brand   : encre pétrole (splash, login, vignettes sans photo)
@@ -107,15 +164,15 @@
      ───────────────────────────────────────────────────────────────────── */
   --success-bg: #dcfce7;
   --success-bg-soft: #f0fdf4;
-  --success-text: #15803d;
+  --success-text: #116530;
   --success-bd: #86efac;
-  --success-strong: #16a34a;
+  --success-strong: #1f8a45;
 
   --danger-bg: #fee2e2;
   --danger-bg-soft: #fef2f2;
-  --danger-text: #991b1b;
+  --danger-text: #a11616;
   --danger-bd: #fca5a5;
-  --danger-strong: #dc2626;
+  --danger-strong: #d32f2f;
 
   /* Aplats pleins de statut (bouton, pastille) et leur texte, qui suit le
      thème : blanc en clair, encre en sombre où l'aplat s'éclaircit (WCAG 2 :
@@ -128,9 +185,9 @@
 
   --warning-bg: #fef3c7;
   --warning-bg-soft: #fffbeb;
-  --warning-text: #92400e;
+  --warning-text: #8a4a08;
   --warning-bd: #fcd34d;
-  --warning-strong: #f59e0b;
+  --warning-strong: #c98208;
 
   --info-bg: #dbeafe;
   --info-bg-soft: #eff6ff;
@@ -188,62 +245,79 @@
    ─────────────────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* Abysse pétrole : les neutres sombres quittent le brun chaud (teinte 55)
-       pour la teinte de la marque (~225). C'est ce virage qui donne au dark
-       son atmosphère « Opal » : profondeur froide, lumière aqua. */
+    /* Sombre d'Office : neutres à la teinte de la marque, menu et zones un
+       ton sous la surface. Ce bloc et html[data-theme="dark"] restent
+       identiques, jeton pour jeton. */
     --bg: #071319;
-    --bg2: oklch(16.5% 0.02 225);
-    --surface: oklch(22.5% 0.024 225);
-    --surface2: oklch(26% 0.022 225);
-    --border: oklch(33% 0.022 225);
-    --border2: oklch(38% 0.02 225);
-    --rule-soft: oklch(33% 0.022 225 / 0.8);
+    --bg2: #0c1c24;
+    --surface: #11252e;
+    --surface2: #0c1c24;
+    --border: #38525e;
+    --border2: #38525e;
+    --rule-soft: #223a45;
     --text: oklch(94% 0.007 210);
-    --text2: oklch(78% 0.014 215);
-    --text3: oklch(62% 0.014 220);
+    --text2: #b5c5cc;
+    --text3: #95a9b1;
     --accent: #74aec3;
     --accent2: #90bfd0;
-    --accent-light: #1d3440;
-    --accent-bd: #335c6b;
+    --accent-light: #1b3540;
+    --accent-bd: #38525e;
     --on-accent: #06202b;
-    --nav: #04222f;
+    --nav: #0c1c24;
     --nav-grad: var(--nav);
-    --nav-text: rgba(200, 222, 230, 0.60);
-    --nav-text-active: #e6f2f6;
-    --nav-active: rgba(116, 174, 195, 0.08);
-    --nav-border: rgba(255, 255, 255, 0.06);
-    --nav-accent: #74aec3;
-    --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
-    --glass-bg: rgba(8, 18, 22, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.07);
+    --nav-text: #b5c5cc;
+    --nav-text-active: #e9f1f4;
+    --nav-active: #1b3540;
+    --nav-border: #223a45;
+    --nav-accent: #e9f1f4;
+    --nav-glow: none;
+    --glass-bg: #071319;
+    --glass-border: #223a45;
     --glass-hover: rgba(255, 255, 255, 0.08);
     --sh-xs: none;
-    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
-    --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
+    --sh-sm: none;
+    --sh: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
     --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
     --glow-soft: none;
-    --focus-ring: rgba(116, 174, 195, 0.30);
+    --focus-ring: #74aec3;
+    --btn-fond: #0c1c24;
+    --btn-texte: #e9f1f4;
+    --btn-bord: #4f6d79;
+    --selection: #1b3540;
+    --zone: #0c1c24;
+    --champ-bord: #66838f;
+    --onglet: #e9f1f4;
+    --lien: #e9f1f4;
+    --icone: #b5c5cc;
+    --coche: #e9f1f4;
+    --nav-marque: #e9f1f4;
+    --toast-fond: #e9f1f4;
+    --toast-texte: #0b181e;
+    --toast-succes: #116530;
+    --toast-danger: #a11616;
+    --toast-alerte: #8a4a08;
+    --logo-fond: #04222f;
     --ambient: none;
     --success-bg: oklch(28% 0.06 150);
     --success-bg-soft: oklch(22% 0.04 150);
-    --success-text: oklch(80% 0.115 152);
+    --success-text: #86d6a0;
     --success-bd: oklch(40% 0.10 150);
-    --success-strong: oklch(70% 0.13 152);
+    --success-strong: #4fb873;
     --danger-bg: oklch(28% 0.08 25);
     --danger-bg-soft: oklch(22% 0.05 25);
-    --danger-text: oklch(79% 0.125 25);
+    --danger-text: #fb8f8f;
     --danger-bd: oklch(40% 0.12 25);
-    --danger-strong: oklch(68% 0.15 25);
+    --danger-strong: #e06c6c;
     --danger-fill: oklch(68% 0.15 25);
     --on-danger: #06202b;
     --success-fill: oklch(70% 0.13 152);
     --on-success: #06202b;
     --warning-bg: oklch(28% 0.06 75);
     --warning-bg-soft: oklch(22% 0.04 75);
-    --warning-text: oklch(83% 0.105 82);
+    --warning-text: #f5a524;
     --warning-bd: oklch(45% 0.12 75);
-    --warning-strong: oklch(76% 0.135 78);
+    --warning-strong: #d9a11f;
     --info-bg: oklch(28% 0.06 250);
     --info-bg-soft: oklch(22% 0.04 250);
     --info-text: oklch(81% 0.085 250);
@@ -284,38 +358,55 @@
 html[data-theme="dark"] {
   /* Contenu identique au bloc @media ci-dessus, voir le commentaire là-haut. */
   --bg: #071319;
-  --bg2: oklch(16.5% 0.02 225);
-  --surface: oklch(22.5% 0.024 225);
-  --surface2: oklch(26% 0.022 225);
-  --border: oklch(33% 0.022 225);
-  --border2: oklch(38% 0.02 225);
-  --rule-soft: oklch(33% 0.022 225 / 0.8);
+  --bg2: #0c1c24;
+  --surface: #11252e;
+  --surface2: #0c1c24;
+  --border: #38525e;
+  --border2: #38525e;
+  --rule-soft: #223a45;
   --text: oklch(94% 0.007 210);
-  --text2: oklch(78% 0.014 215);
-  --text3: oklch(62% 0.014 220);
+  --text2: #b5c5cc;
+  --text3: #95a9b1;
   --accent: #74aec3;
   --accent2: #90bfd0;
-  --accent-light: #1d3440;
-  --accent-bd: #335c6b;
+  --accent-light: #1b3540;
+  --accent-bd: #38525e;
   --on-accent: #06202b;
-  --nav: #04222f;
+  --nav: #0c1c24;
   --nav-grad: var(--nav);
-  --nav-text: rgba(200, 222, 230, 0.60);
-  --nav-text-active: #e6f2f6;
-  --nav-active: rgba(116, 174, 195, 0.08);
-  --nav-border: rgba(255, 255, 255, 0.06);
-  --nav-accent: #74aec3;
-  --nav-glow: inset 0 0 0 1px rgba(116, 174, 195, 0.11);
-  --glass-bg: rgba(8, 18, 22, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.07);
+  --nav-text: #b5c5cc;
+  --nav-text-active: #e9f1f4;
+  --nav-active: #1b3540;
+  --nav-border: #223a45;
+  --nav-accent: #e9f1f4;
+  --nav-glow: none;
+  --glass-bg: #071319;
+  --glass-border: #223a45;
   --glass-hover: rgba(255, 255, 255, 0.08);
   --sh-xs: none;
-  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --sh: 0 2px 6px rgba(0, 0, 0, 0.40), 0 12px 32px rgba(0, 0, 0, 0.45);
-  --sh-lg: 0 10px 28px rgba(0, 0, 0, 0.50), 0 28px 72px rgba(0, 0, 0, 0.60);
+  --sh-sm: none;
+  --sh: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --sh-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
   --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
   --glow-soft: none;
-  --focus-ring: rgba(116, 174, 195, 0.30);
+  --focus-ring: #74aec3;
+  --btn-fond: #0c1c24;
+  --btn-texte: #e9f1f4;
+  --btn-bord: #4f6d79;
+  --selection: #1b3540;
+  --zone: #0c1c24;
+  --champ-bord: #66838f;
+  --onglet: #e9f1f4;
+  --lien: #e9f1f4;
+  --icone: #b5c5cc;
+  --coche: #e9f1f4;
+  --nav-marque: #e9f1f4;
+  --toast-fond: #e9f1f4;
+  --toast-texte: #0b181e;
+  --toast-succes: #116530;
+  --toast-danger: #a11616;
+  --toast-alerte: #8a4a08;
+  --logo-fond: #04222f;
   --ambient: none;
 
   /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
@@ -324,15 +415,15 @@ html[data-theme="dark"] {
      ──────────────────────────────────────────────────────────────────── */
   --success-bg: oklch(28% 0.06 150);
   --success-bg-soft: oklch(22% 0.04 150);
-  --success-text: oklch(80% 0.115 152);
+  --success-text: #86d6a0;
   --success-bd: oklch(40% 0.10 150);
-  --success-strong: oklch(70% 0.13 152);
+  --success-strong: #4fb873;
 
   --danger-bg: oklch(28% 0.08 25);
   --danger-bg-soft: oklch(22% 0.05 25);
-  --danger-text: oklch(79% 0.125 25);
+  --danger-text: #fb8f8f;
   --danger-bd: oklch(40% 0.12 25);
-  --danger-strong: oklch(68% 0.15 25);
+  --danger-strong: #e06c6c;
   --danger-fill: oklch(68% 0.15 25);
   --on-danger: #06202b;
   --success-fill: oklch(70% 0.13 152);
@@ -340,9 +431,9 @@ html[data-theme="dark"] {
 
   --warning-bg: oklch(28% 0.06 75);
   --warning-bg-soft: oklch(22% 0.04 75);
-  --warning-text: oklch(83% 0.105 82);
+  --warning-text: #f5a524;
   --warning-bd: oklch(45% 0.12 75);
-  --warning-strong: oklch(76% 0.135 78);
+  --warning-strong: #d9a11f;
 
   --info-bg: oklch(28% 0.06 250);
   --info-bg-soft: oklch(22% 0.04 250);
@@ -943,14 +1034,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Chiffres : zéro barré (0 et O distincts) et chiffres de largeur égale sur
-   tout ce qui est chiffré, soit les valeurs en --font-num (KPI, montants,
-   températures, heures) et les cellules de tableau. Plex a des chiffres
-   tabulaires par défaut ; tabular-nums reste posé pour une police de repli. */
+/* Chiffres : largeur égale sur tout ce qui est chiffré, soit les valeurs en
+   --font-num (KPI, montants, températures, heures) et les cellules de
+   tableau. Zéro simple : le zéro barré est retiré avec la direction Office.
+   Plex a des chiffres tabulaires par défaut ; tabular-nums reste posé pour
+   une police de repli. La graisse des chiffres est réglée dans la section
+   « Direction Office », en fin de feuille. */
 [style*="var(--font-num)"],
 td,
 th {
-  font-variant-numeric: tabular-nums slashed-zero;
+  font-variant-numeric: tabular-nums;
 }
 
 #root {
@@ -1187,8 +1280,8 @@ h1 {
   overflow: auto;
   margin-top: 18px;
   border-radius: var(--r-sm);
-  background: var(--nav);
-  color: #fff;
+  background: var(--toast-fond);
+  color: var(--toast-texte);
   padding: 16px;
 }
 
@@ -1293,6 +1386,9 @@ h1 {
   width: min(420px, calc(100vw - 36px));
 }
 
+/* Les quatre types ont le même fond neutre et le même texte : le statut est
+   porté par le picto (.toast-icon), l'information reste sans couleur. Aucun
+   blanc littéral, aucun fond de menu : les jetons --toast-* suivent le thème. */
 .toast {
   display: flex;
   align-items: flex-start;
@@ -1302,31 +1398,16 @@ h1 {
   border: 1px solid transparent;
   border-radius: var(--r);
   padding: 12px 14px;
-  color: #fff;
+  background: var(--toast-fond);
+  color: var(--toast-texte);
   text-align: left;
   cursor: pointer;
   box-shadow: var(--sh-lg);
 }
 
-.toast-success {
-  background: var(--success-strong);
-  border-color: var(--success-text);
-}
-
-.toast-error {
-  background: var(--danger-strong);
-  border-color: var(--danger-text);
-}
-
-.toast-warning {
-  background: var(--warning-strong);
-  border-color: var(--warning-text);
-}
-
-.toast-info {
-  background: var(--nav); /* fond sidebar - cohérent avec le thème dark */
-  border-color: var(--border);
-}
+.toast-success .toast-icon { color: var(--toast-succes); }
+.toast-error .toast-icon { color: var(--toast-danger); }
+.toast-warning .toast-icon { color: var(--toast-alerte); }
 
 .toast-icon,
 .toast-dismiss {
@@ -1461,7 +1542,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   }
 
   .ui-card--clickable:active {
-    background: var(--surface2);
+    background: var(--selection);
   }
 }
 
@@ -1508,27 +1589,14 @@ html[data-theme="dark"] button:not(:disabled):active {
   white-space: nowrap;
 }
 
-/* ─── Header « verre » (AppLayout) ──────────────────────────────────────────
-   Façon barres iOS récentes : le header est posé en absolu sur la zone qui
-   défile (--app-header-h), le contenu passe dessous, flouté et resaturé à
-   travers un fond translucide. Filet bas en ombre intérieure : il ne compte
-   pas dans la hauteur. Sans backdrop-filter, ou si l'appareil demande moins de
-   transparence, le fond redevient opaque. */
+/* ─── Barre du haut (AppLayout) ─────────────────────────────────────────────
+   Posée en absolu sur la zone qui défile (--app-header-h) : le contenu passe
+   dessous. Opaque, à la couleur du fond de page, sans flou (direction
+   Office). Filet bas en ombre intérieure : il ne compte pas dans la hauteur.
+   La classe garde son nom d'avant, lu par AppLayout. */
 .app-glass-bar {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
   box-shadow: inset 0 -1px 0 var(--glass-border);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .app-glass-bar { background: var(--surface); }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .app-glass-bar {
-    background: var(--surface);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
 }
 
 /* Boutons du header (langue, recherche, thème, alertes, repli, accueil) :
@@ -1738,13 +1806,15 @@ html[data-theme="dark"] button:not(:disabled):active {
    consultant).
    (hover: hover) : pas d'état survolé qui reste collé après un tap sur iPad. */
 @media (hover: hover) {
+  /* Menu clair : le survol se pose sur --nav-active, un voile blanc ne s'y
+     verrait pas. */
   .sc-nav-item:not([aria-current="page"]):hover,
   .sc-nav-account:hover {
-    background: rgba(255, 255, 255, 0.06) !important;
+    background: var(--nav-active) !important;
     color: var(--nav-text-active) !important;
   }
   .sc-pop-item:not([aria-checked="true"]):hover,
-  .sc-title-switch:hover { background: var(--surface2) !important; }
+  .sc-title-switch:hover { background: var(--selection) !important; }
 }
 .sc-nav-item:focus-visible,
 .sc-nav-account:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
@@ -2021,7 +2091,7 @@ html[data-theme="dark"] button:not(:disabled):active {
    s'éclaire seulement au survol. */
 .recette-plat-ligne:hover,
 .recette-plat-ligne:focus-visible {
-  background: var(--surface2) !important;
+  background: var(--selection) !important;
 }
 
 /* ─── Page d'accueil tactile (AccueilTactile.jsx) ───────────────────────────
@@ -2036,6 +2106,13 @@ html[data-theme="dark"] button:not(:disabled):active {
 }
 @media (min-width: 1024px) {
   .accueil-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* Tuile : fond, contour et rayon du bouton secondaire d'Office. !important
+   car le fond et le rayon sont en style inline. */
+.accueil-tuile {
+  background: var(--btn-fond) !important;
+  border-radius: var(--r-xl) !important;
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
 }
 @media (hover: hover) {
   .accueil-tuile:hover,
@@ -2060,18 +2137,31 @@ button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var
   padding-right: 0 !important;
 }
 
-/* Boutons secondaires : plus de contour, un fond doux et le texte en couleur
-   d'accent, pour qu'ils restent lisibles comme des boutons. Les boutons
-   d'action pleins (accent, danger, succès), les états actifs et les lignes
-   de liste pleine largeur ne sont pas concernés. */
+/* Boutons secondaires (direction Office) : fond, contour et texte par les
+   jetons --btn-*. Le contour est une ombre intérieure, la bordure d'origine
+   devient transparente : la hauteur ne bouge pas. Les boutons d'action pleins
+   (accent, danger, succès), les états actifs et les lignes de liste pleine
+   largeur ne sont pas concernés. */
 button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]):not([style*="width: 100%"]),
 .ui-btn--ghost {
-  background: var(--surface2) !important;
+  background: var(--btn-fond) !important;
   border-color: transparent !important;
   border-radius: var(--r-sm) !important;
-  box-shadow: none !important;
-  color: var(--accent) !important;
-  font-weight: 500 !important;
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
+  color: var(--btn-texte) !important;
+  font-weight: var(--g2) !important;
+}
+/* Éteint : texte et contour s'effacent, le bouton garde sa place. */
+button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]):not([style*="width: 100%"]):disabled,
+.ui-btn--ghost:disabled {
+  color: var(--text3) !important;
+  box-shadow: inset 0 0 0 1px var(--rule-soft) !important;
+}
+/* Un bouton à fond doux sans bord (grille de la caisse, tuiles de module)
+   prend le même contour : --surface2 vaut la surface, sans lui il n'aurait
+   plus ni fond ni limite. */
+button[style*="background: var(--surface2)"][style*="border-style: none"] {
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
 }
 
 /* Cases d'ajout en pointillés : le « + » suffit. */
@@ -2079,18 +2169,21 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   border-color: transparent !important;
 }
 
-/* Barres d'onglets : soulignement de l'onglet actif au lieu d'une pilule. */
+/* Barres d'onglets : soulignement de l'onglet actif au lieu d'une pilule,
+   trait et texte en --onglet (direction Office). La barre de modes de la
+   caisse est exclue par écrit : son mode actif garde l'aplat d'accent posé
+   plus bas (.caisse-modes), quelle que soit la spécificité de cette règle. */
 .segmented-tabs {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
   padding-left: 0 !important;
 }
-.segmented-tab.is-active {
+.segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
   background: transparent !important;
-  box-shadow: inset 0 -2px 0 var(--accent) !important;
+  box-shadow: inset 0 -2px 0 var(--onglet) !important;
   border-radius: 0 !important;
-  color: var(--accent) !important;
+  color: var(--onglet) !important;
 }
 
 /* ─── Petits titres en casse normale ────────────────────────────────────────
@@ -2120,6 +2213,11 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   background: var(--surface2);
   border-radius: var(--r-lg);
 }
+/* Un mode inactif a le contour du bouton secondaire (--surface2 vaut la
+   surface, il n'aurait plus de limite). */
+.caisse-modes .segmented-tab:not(.is-active) {
+  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
+}
 .caisse-modes .segmented-tab.is-active {
   background: var(--accent) !important;
   color: var(--on-accent) !important;
@@ -2140,4 +2238,120 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
   border-color: transparent !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
+}
+
+/* ─── Direction Office ───────────────────────────────────────────────────────
+   Les familles de la direction qui n'avaient pas de règle d'origine. Les
+   autres sont posées à leur place, plus haut : boutons secondaires, onglets,
+   toasts, barre du haut, survol du menu, chiffres, tuiles ; le panneau du
+   tableau de bord est dans tableau.css.
+   Ce sont des béquilles : elles rattrapent par sélecteur d'attribut un style
+   posé en ligne dans un module, d'où leurs !important. Chacune tombe quand
+   plus aucun élément ne l'atteint, le module repris à la source disant
+   lui-même sa taille, sa graisse, son rayon et sa couleur.
+   Trois règles de construction :
+   - une règle sur une couleur ne vise que la valeur neutre nommée (--border,
+     --border2), jamais tout élément qui porte la propriété : un bord de
+     statut garde sa couleur ;
+   - aucune ne s'applique dans une vue capturée en PDF
+     (:not(.pdf-render-root *)) : l'export sort comme avant ;
+   - à spécificité égale la dernière gagne : graisses, puis chiffres, puis
+     titres. */
+
+/* Champs : contour lisible, fond de surface, rayon de la direction. Le
+   contour n'est repris que s'il est neutre : le vert d'une quantité comptée
+   et le rouge d'une erreur restent. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--border2)"], [style*="border-color: var(--border2)"]):not(.pdf-render-root *) {
+  border-color: var(--champ-bord) !important;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea)[style*="border"]:not(.pdf-render-root *) {
+  border-radius: var(--r-sm) !important;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):is([style*="background: var(--bg)"], [style*="background: var(--bg2)"], [style*="background: var(--surface2)"]):not(.pdf-render-root *) {
+  background: var(--surface) !important;
+}
+
+/* Plancher de texte : toute taille en ligne sous --t1 remonte à --t1.
+   Un élément invisible (visibility: hidden) et ses enfants directs sont
+   laissés de côté : la capture PDF mesure la ligne de base de chaque police
+   par une sonde cachée, posée hors de .pdf-render-root, dont la taille est en
+   ligne. Rattrapée par cette règle, elle mesurait 12 px pour 11 et décalait
+   d'un pixel les petits textes de l'export. */
+[style*="font-size: 8px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 9px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 9.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 10px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 10.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 11px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *),
+[style*="font-size: 11.5px"]:not(.pdf-render-root *):not([style*="visibility: hidden"], [style*="visibility: hidden"] > *) {
+  font-size: var(--t1) !important;
+}
+/* Le plancher ne passe pas devant la garde anti-zoom d'iOS : au doigt et sous
+   768 px, un champ de saisie garde ses 16 px, quelle que soit sa taille en
+   ligne (mêmes types que les deux règles tactiles plus haut). */
+@media (max-width: 768px), (pointer: coarse) {
+  :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="time"], input[type="month"], input[type="tel"], textarea, select)[style*="font-size"]:not(.pdf-render-root *) {
+    font-size: 16px !important;
+  }
+}
+
+/* Graisses : plafond à --g3. Les chiffres mis en avant passent ensuite en
+   --g-chiffre, les titres en --g3. */
+[style*="font-weight: 700"]:not(.pdf-render-root *),
+[style*="font-weight: 800"]:not(.pdf-render-root *),
+[style*="font-weight: 900"]:not(.pdf-render-root *),
+[style*="font-weight: bold"]:not(.pdf-render-root *),
+b:not(.pdf-render-root *),
+strong:not(.pdf-render-root *),
+th:not(.pdf-render-root *) {
+  font-weight: var(--g3) !important;
+}
+[style*="var(--font-num)"]:not(.pdf-render-root *) {
+  font-weight: var(--g-chiffre) !important;
+}
+[style*="var(--font-serif)"]:not(.pdf-render-root *) {
+  font-weight: var(--g3) !important;
+}
+
+/* Rayons en ligne : 6, 7 et 8 px vers --r-sm ; 10 et 12 px vers --r-xl.
+   Bornée aux contrôles, pastilles, images, fenêtres et éléments data-cadre :
+   les conteneurs aplatis par « Plus de carrés » gardent leur filet droit. */
+:is(button, a, input, select, textarea, span, img, label, [role="button"], [data-cadre], [role="dialog"], [role="menu"], [role="listbox"]):is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"]):not(.pdf-render-root *) {
+  border-radius: var(--r-sm) !important;
+}
+:is(button, a, input, select, textarea, span, img, label, [role="button"], [data-cadre], [role="dialog"], [role="menu"], [role="listbox"]):is([style*="border-radius: 10px"], [style*="border-radius: 12px"]):not(.pdf-render-root *) {
+  border-radius: var(--r-xl) !important;
+}
+
+/* Blocs : un élément marqué data-cadre prend le rayon de la direction, et
+   son filet neutre s'adoucit. Un filet d'état (accent, statut, service,
+   teinte en dur) garde sa couleur, même posé sur un seul côté. */
+:is(div, section, article, li)[data-cadre]:not(.pdf-render-root *) {
+  border-radius: var(--r-xl) !important;
+}
+:is(div, section, article, li)[data-cadre]:is([style*="solid var(--border)"], [style*="solid var(--border2)"], [style*="border-color: var(--border)"], [style*="border-color: var(--border2)"]):not([style*="solid var(--accent)"], [style*="solid var(--danger"], [style*="solid var(--success"], [style*="solid var(--warning"], [style*="solid var(--info"], [style*="solid var(--svc"], [style*="solid var(--ai"], [style*="solid var(--caisse"], [style*="solid rgb"], [style*="solid #"]):not(.pdf-render-root *) {
+  border-color: var(--rule-soft) !important;
+}
+
+/* Accent en texte : color: var(--accent) en ligne renvoyé sur --lien. Seule
+   la propriété color est visée (en tête de style ou après un point-virgule).
+   L'accent reste l'aplat de l'action principale. */
+[style^="color: var(--accent)"]:not(.pdf-render-root *),
+[style*="; color: var(--accent)"]:not(.pdf-render-root *) {
+  color: var(--lien) !important;
+}
+
+/* Contrôles : hauteur minimale --controle ; au doigt et sous 768 px, le plus
+   grand de --controle et de 44 px. La barre de modes de la caisse garde ses
+   48 px (.caisse-modes) : elle est exclue par écrit. */
+.ui-btn,
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):not(.pdf-render-root *) {
+  min-height: var(--controle);
+}
+@media (max-width: 767.98px), (max-width: 1399.98px) and (any-pointer: coarse), (pointer: coarse) {
+  .ui-btn,
+  .segmented-tab:not(.caisse-modes .segmented-tab),
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):not(.pdf-render-root *) {
+    min-height: max(var(--controle), 44px);
+  }
 }

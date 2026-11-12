@@ -136,8 +136,8 @@ export default function TopFlop({ etablissement, onNavigateToMapping }) {
                 fontFamily: 'var(--font)',
                 cursor:     'pointer',
                 border: '1px solid transparent',
-                background: filter === f.value ? 'var(--nav)' : 'var(--surface)',
-                color:      filter === f.value ? '#fff' : 'var(--text2)',
+                background: filter === f.value ? 'var(--selection)' : 'var(--surface)',
+                color:      filter === f.value ? 'var(--text)' : 'var(--text2)',
                 transition: 'all 0.15s',
               }}
             >

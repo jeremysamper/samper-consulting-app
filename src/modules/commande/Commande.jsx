@@ -571,7 +571,6 @@ const s = {
   ligneEtat: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
   cats: { display: 'flex', gap: 4, flexWrap: 'wrap' },
   catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' },
-  catActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   ghostBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
   aiBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: '1px solid var(--ai-bd)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },

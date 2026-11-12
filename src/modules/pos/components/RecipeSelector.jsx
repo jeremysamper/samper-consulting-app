@@ -118,7 +118,7 @@ export function RecipeSelector({ recettes, posItemName, currentRecipeId, onSelec
                     width:          '100%',
                     textAlign:      'left',
                     padding:        '12px 20px',
-                    background:     isCurrent ? 'var(--nav-active, var(--info-bg-soft))' : 'transparent',
+                    background:     isCurrent ? 'var(--selection)' : 'transparent',
                     border:         'none',
                     borderBottom:   '1px solid var(--border)',
                     cursor:         'pointer',

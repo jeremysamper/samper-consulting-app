@@ -10,8 +10,13 @@
 //   fond var(--danger-fill)   -> texte var(--on-danger)
 //   fond var(--success-fill)  -> texte var(--on-success)
 //
+// Le fond du menu (--nav) est clair en mode clair depuis la direction Office :
+// du blanc dessus est blanc sur blanc. Les jetons --nav* sont réservés à la
+// coque, qui écrit son texte en --nav-text ou --nav-text-active ; un toast ou
+// un bandeau sombre prend --toast-fond et --toast-texte.
+//
 // Ce contrôle refuse un objet de style (inline, *.styles.js, fabrique) ou une
-// règle CSS qui pose à la fois un de ces fonds clairs en sombre et un texte
+// règle CSS qui pose à la fois un de ces fonds et un texte
 // blanc littéral (#fff, #ffffff, white, rgb(255, 255, 255)). Une valeur
 // conditionnelle compte : `background: actif ? 'var(--accent)' : …` avec
 // `color: actif ? '#fff' : …` pose bien du blanc sur l'accent.
@@ -46,7 +51,7 @@ const EN_ATTENTE = [
   'modules/factures/Factures.jsx',
 ];
 
-const FONDS = /var\(--(accent|danger-strong|danger-text|success-strong|success-text)\)/;
+const FONDS = /var\(--(accent|danger-strong|danger-text|success-strong|success-text|nav)\)/;
 const BLANC = /['"`]\s*(#fff|#ffffff|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*['"`]/i;
 const BLANC_CSS = /(^|[\s:])(#fff|#ffffff|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))(\s|!|;|$)/i;
 
@@ -168,7 +173,7 @@ for (const f of fichiers) {
 
 const bloquants = sites.filter((x) => !enAttente(x.f));
 const attente = sites.filter((x) => enAttente(x.f));
-for (const x of bloquants) console.log(`${norm(x.f)}:${x.ligne}  texte blanc sur un aplat clair en sombre : var(--on-accent), var(--on-danger) ou var(--on-success)`);
+for (const x of bloquants) console.log(`${norm(x.f)}:${x.ligne}  texte blanc sur un aplat clair en sombre ou sur le fond du menu : var(--on-accent), var(--on-danger), var(--on-success), ou --toast-fond avec --toast-texte`);
 if (attente.length) {
   console.log(`\nen attente (fichiers modifiés dans un autre worktree, non bloquants) : ${attente.length}`);
   for (const x of attente) console.log(`  ${norm(x.f)}:${x.ligne}`);

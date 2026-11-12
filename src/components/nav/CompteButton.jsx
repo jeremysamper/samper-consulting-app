@@ -36,5 +36,5 @@ const s = {
     background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)', fontSize: 14,
   },
   actif: { background: 'var(--nav-active)' },
-  actifAccueil: { background: 'var(--surface2)' },
+  actifAccueil: { background: 'var(--selection)' },
 };

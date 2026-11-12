@@ -290,7 +290,7 @@ const st = {
     fontFamily: 'var(--font)', fontSize: 14, fontWeight: 400, lineHeight: 1.25, textAlign: 'left', cursor: 'pointer',
   },
   entreeEtroite: { minHeight: 56, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 'var(--r-lg)', fontSize: 15 },
-  entreeActive: { background: 'var(--surface2)', color: 'var(--accent)', fontWeight: 500 },
+  entreeActive: { background: 'var(--selection)', color: 'var(--accent)', fontWeight: 500 },
   entreeTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
   entreeLibelle: { display: 'block' },
   entreeDetail: { display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--text2)', lineHeight: 1.35 },

@@ -38,7 +38,6 @@ const pls = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
   tabs: { display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' },
   tab: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  tabActive: { background: 'var(--nav)', color: '#fff', borderColor: 'var(--nav)' },
   actionsBar: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
   addBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' },
   exportBtn: { padding: '8px 14px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },

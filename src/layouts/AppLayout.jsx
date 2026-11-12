@@ -546,7 +546,7 @@ export default function AppLayout({
   // afin d'éviter le problème des composants définis à l'intérieur d'autres composants.
   // Consultant : le logo est un vrai <button> (atteignable au clavier) ; .mini
   // le soustrait à la règle tactile globale qui l'étirerait à 44 px de haut.
-  const renderLogoMark = (size = 34, fontSize = 12) => {
+  const renderLogoMark = (size = 34) => {
     const LogoTag = canEditLogo ? 'button' : 'div';
     return (
       <LogoTag
@@ -557,13 +557,14 @@ export default function AppLayout({
         } : {})}
         style={{
           width: size, height: size, borderRadius: 8, padding: 0,
-          // Sans logo d'établissement, on affiche la marque Ritmo (fond pétrole
-          // intégré au SVG) : le conteneur reste transparent, sinon le --accent
-          // clair du mode sombre déborderait en liseré.
-          background: 'transparent',
+          // Le logo d'un établissement se pose sur une pastille à la couleur
+          // du menu d'avant Office (--logo-fond) : un logo importé clair, sur
+          // fond transparent, garde l'allure qu'il avait sur le menu sombre.
+          // Sans logo, on affiche la marque Ritmo (fond pétrole intégré au
+          // SVG) et le conteneur reste transparent.
+          background: appLogo ? 'var(--logo-fond)' : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 700, fontSize, color: '#fff',
-          fontFamily: 'var(--font-serif)', letterSpacing: 1, flexShrink: 0,
+          flexShrink: 0,
           overflow: 'hidden', position: 'relative',
           cursor: canEditLogo ? 'pointer' : 'default',
           // --nav-accent et non --accent : le pointillé pétrole disparaissait

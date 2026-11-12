@@ -164,6 +164,26 @@ export const THEME_VAR_OVERRIDES = `
     --info-text: ${BRAND.color.primary};
     --info-bd: ${BRAND.color.rule};
     --info-strong: ${BRAND.color.accent};
+    /* Rôles d'Office (app.css) : chacun reprend la valeur de marque du jeton
+       qu'il remplace à l'écran, pour qu'une vue capturée sorte comme avant
+       (bouton secondaire sans contour, texte d'accent en pétrole). */
+    --btn-fond: ${BRAND.color.zebra};
+    --btn-texte: ${BRAND.color.primary};
+    --btn-bord: transparent;
+    --selection: ${BRAND.color.tint};
+    --zone: ${BRAND.color.white};
+    --champ-bord: ${BRAND.color.rule};
+    --onglet: ${BRAND.color.primary};
+    --lien: ${BRAND.color.primary};
+    --icone: ${BRAND.color.stone};
+    --coche: ${BRAND.color.primary};
+    --nav-marque: ${BRAND.color.white};
+    --toast-fond: ${BRAND.color.primary};
+    --toast-texte: ${BRAND.color.white};
+    --toast-succes: ${BRAND.color.white};
+    --toast-danger: ${BRAND.color.white};
+    --toast-alerte: ${BRAND.color.white};
+    --logo-fond: ${BRAND.color.primary};
   }
 `;
 
