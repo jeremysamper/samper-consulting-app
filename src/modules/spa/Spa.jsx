@@ -17,7 +17,6 @@ import MailingSpa from './MailingSpa.jsx';
 import RendezVousDetail from './RendezVousDetail.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import SeanceForm from './SeanceForm.jsx';
-import ReglagesEnLigne from './ReglagesEnLigne.jsx';
 import SoinsSpa from './SoinsSpa.jsx';
 import {
   appelerMailer, clientVersDB, mapBon, mapClient, mapReservation, mapSeance, mapSoin,
@@ -28,6 +27,8 @@ import {
   prochainAnniversaire, st,
 } from './spaUi.jsx';
 import './spa.css';
+import { estDirectionSpa } from './gardesSpa.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SPA - réservations, fiches clients et suivi des séances, bons cadeaux,
@@ -49,7 +50,6 @@ import './spa.css';
 //   • e-mails (anniversaires, actualités, historique) : consultant et patron.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ROLES_DIRECTION = ['consultant', 'patron'];
 const ROLES_CATALOGUE = ['consultant', 'patron', 'hote'];
 const ACTIF = (r) => !['annulee', 'absent'].includes(r.statut);
 
@@ -67,7 +67,7 @@ export default function Spa({ user, etablissement }) {
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const peutGerer = canManageModule(role, 'spa');
-  const direction = ROLES_DIRECTION.includes(role);
+  const direction = estDirectionSpa(role);
   const peutCatalogue = ROLES_CATALOGUE.includes(role);
   const aujourdhui = zurichToday();
   const maintenant = useMaintenant();
@@ -354,7 +354,9 @@ Le client sera prévenu par e-mail.`)) return;
       </header>
 
       <div style={{ margin: '18px 0 20px', display: 'flex' }}>
-        <OngletsSpa onglets={onglets} actif={onglet} onChange={setOnglet} />
+        {/* « En ligne » : les réglages de la réservation en ligne vivent dans la
+            page des réglages (section 'spa_en_ligne'), l'onglet y mène. */}
+        <OngletsSpa onglets={onglets} actif={onglet} onChange={(id) => (id === 'en_ligne' ? ouvrirCompte('spa_en_ligne') : setOnglet(id))} />
       </div>
 
       {absent && (
@@ -411,14 +413,6 @@ Le client sera prévenu par e-mail.`)) return;
           onInserer={soins.inserer}
           onModifier={soins.modifier}
           onSupprimer={soins.supprimer}
-        />
-      )}
-      {!absent && onglet === 'en_ligne' && direction && (
-        <ReglagesEnLigne
-          etablissement={etablissement}
-          soins={soins.rows}
-          praticiens={praticiens}
-          onModifierSoin={soins.modifier}
         />
       )}
       {!absent && onglet === 'emails' && direction && (

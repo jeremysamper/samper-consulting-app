@@ -4350,6 +4350,9 @@ export const UI_GLOSSARY = {
   'Méthode de TVA, charges sociales, coût horaire moyen': 'VAT method, social charges, average hourly cost',
   // ── Réglages : section HACCP ──
   'Frigos et appareils, heures de relevé, contrôles': 'Fridges and appliances, check times, controls',
+  // ── Réglages : section Spa ──
+  'Spa : réservation en ligne': 'Spa: online booking',
+  'Ouverture, horaires, délais, praticiens, lien à partager': 'Opening, hours, lead times, practitioners, link to share',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

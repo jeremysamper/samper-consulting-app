@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
@@ -350,6 +351,9 @@ export function useSpaParametres(etabId) {
   }, [etabId]);
 
   useEffect(() => { setStatus('loading'); charger(); }, [charger]);
+  // Réglés dans la page des réglages (section 'spa_en_ligne'), table hors
+  // temps réel : un écran resté monté relit au signal de changement.
+  useReglageModifie('spa_en_ligne', charger);
 
   // partie : 'emails' (onglet E-mails) ou 'en_ligne' (onglet En ligne).
   const enregistrer = useCallback(async (p, partie = 'emails') => {

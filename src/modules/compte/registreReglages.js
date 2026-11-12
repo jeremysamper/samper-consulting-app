@@ -3,6 +3,7 @@ import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
+import { estDirectionSpa } from '../spa/gardesSpa.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -79,6 +80,12 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'haccp',
     garde: (ctx) => ouvreLeModule('haccp')(ctx) && peutConfigurerHaccp(ctx.user?.role),
     charger: () => import('../haccp/SectionReglagesHaccp.jsx'),
+  },
+  {
+    id: 'spa_en_ligne', libelle: 'Spa : réservation en ligne', detail: 'Ouverture, horaires, délais, praticiens, lien à partager',
+    groupe: 'modules', portee: 'maison', module: 'spa',
+    garde: (ctx) => ouvreLeModule('spa')(ctx) && estDirectionSpa(ctx.user?.role),
+    charger: () => import('../spa/SectionSpaEnLigne.jsx'),
   },
 
   // ── L'équipe et les accès ──

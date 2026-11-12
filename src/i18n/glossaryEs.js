@@ -4331,4 +4331,7 @@ export const UI_GLOSSARY_ES = {
   'Méthode de TVA, charges sociales, coût horaire moyen': 'Método de IVA, cargas sociales, coste horario medio',
   // ── Réglages : section HACCP ──
   'Frigos et appareils, heures de relevé, contrôles': 'Neveras y aparatos, horas de registro, controles',
+  // ── Réglages : section Spa ──
+  'Spa : réservation en ligne': 'Spa: reserva en línea',
+  'Ouverture, horaires, délais, praticiens, lien à partager': 'Apertura, horarios, plazos, terapeutas, enlace para compartir',
 };
