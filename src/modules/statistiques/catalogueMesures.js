@@ -19,8 +19,9 @@ import { familleComptabilite } from './familles/comptabilite.js';
 import { famillePertes } from './familles/pertes.js';
 import { famillePlanning } from './familles/planning.js';
 import { familleHaccp } from './familles/haccp.js';
+import { familleInventaire } from './familles/inventaire.js';
 
-export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp];
+export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire];
 
 const TOUS_LES_PAS = ['jour', 'semaine', 'mois'];
 
@@ -37,15 +38,17 @@ export const mesureDe = (id) => MESURES.find((m) => m.id === id) || null;
 // Mesures que la personne peut cocher (D11).
 //   familles     : ids des familles dont elle voit aujourd'hui l'écran d'origine
 //   niveauCaisse : 'direction', 'cuisine' ou null (niveau rendu par la base)
-//   direction    : vrai pour la direction (salaires de la Comptabilité)
+//   direction    : vrai pour la direction (salaires, soldes d'heures)
+//   droits       : autres droits d'écran, par clé de `reserve` (factures_achat :
+//                  « Régler les factures »)
 // Une mesure ou une ventilation réservée disparaît ; elle ne s'affiche jamais
 // grisée, pour ne rien dire d'un chiffre que la personne ne voit pas ailleurs.
-export function mesuresVisibles({ familles = [], niveauCaisse = null, direction = false } = {}) {
+export function mesuresVisibles({ familles = [], niveauCaisse = null, direction = false, droits = {} } = {}) {
   const ouvertes = new Set(familles);
   const niveauOk = (x) => x.niveau !== 'direction' || niveauCaisse === 'direction';
   return MESURES
     .filter((m) => ouvertes.has(m.famille))
     .filter((m) => (m.famille !== 'caisse' || niveauCaisse) && niveauOk(m))
-    .filter((m) => m.reserve !== 'direction' || direction)
+    .filter((m) => !m.reserve || (m.reserve === 'direction' ? direction : droits[m.reserve] === true))
     .map((m) => ({ ...m, ventilations: (m.ventilations || []).filter(niveauOk) }));
 }

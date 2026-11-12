@@ -279,7 +279,9 @@ test('accès : une famille fermée n\'apporte aucune mesure, les salaires resten
   assert.ok(!sansDirection.includes('comptabilite.personnel'));
   assert.ok(!sansDirection.includes('comptabilite.personnel_pct'));
   assert.ok(mesuresVisibles({ familles: ['comptabilite'], direction: true }).some((m) => m.id === 'comptabilite.personnel'));
-  assert.equal(mesuresVisibles({ familles: ['reservations', 'achats'] }).length, mesuresDe('reservations').length + mesuresDe('achats').length);
+  assert.equal(mesuresVisibles({ familles: ['reservations', 'achats'], droits: { factures_achat: true } }).length, mesuresDe('reservations').length + mesuresDe('achats').length);
+  // Règlements des achats : seulement pour qui règle les factures.
+  assert.ok(!mesuresVisibles({ familles: ['achats'] }).some((m) => m.reserve === 'factures_achat'));
 });
 
 test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', () => {
@@ -292,5 +294,5 @@ test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', 
     assert.ok(m.pas.length > 0, m.id);
   });
   // Les quatre familles de S1 ; celles de S2 sont comptées dans egalite-s2.test.mjs.
-  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille)).length, 36);
+  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !['achats.reglees', 'achats.delai'].includes(m.id)).length, 36);
 });

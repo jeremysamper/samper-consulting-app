@@ -4430,4 +4430,17 @@ export const UI_GLOSSARY_ES = {
   "Relevés marqués non conformes à la saisie : la valeur sortait de la plage de la zone.": "Registros marcados como no conformes al introducirlos: el valor salía del rango de la zona.",
   "Relevés conformes divisés par tous les relevés, comme les chiffres du registre ; recalculé sur chaque pas.": "Registros conformes divididos por todos los registros, como las cifras del registro; recalculado en cada paso.",
   "Dernière température relevée dans la zone choisie, sur chaque pas ; un relevé ne s'additionne pas.": "Última temperatura registrada en la zona elegida, en cada paso; un registro no se suma.",
+  // ── Statistiques (S2) : Inventaire et règlements ──
+  "Manques d'inventaire": "Faltantes de inventario",
+  "Surplus d'inventaire": "Excedentes de inventario",
+  "Inventaires validés": "Inventarios validados",
+  "la date de l'inventaire": "la fecha del inventario",
+  "Somme du dernier inventaire validé de chaque périmètre, connu à la fin du pas : produits comptés fois prix unitaire.": "Suma del último inventario validado de cada perímetro, conocido al final del paso: productos contados por precio unitario.",
+  "Valeur des écarts négatifs (stock compté sous le stock attendu) des inventaires validés du pas.": "Valor de las diferencias negativas (stock contado por debajo del esperado) de los inventarios validados del paso.",
+  "Valeur des écarts positifs (stock compté au-dessus du stock attendu) des inventaires validés du pas.": "Valor de las diferencias positivas (stock contado por encima del esperado) de los inventarios validados del paso.",
+  "Nombre d'inventaires validés datés dans le pas, tous périmètres.": "Número de inventarios validados fechados en el paso, todos los perímetros.",
+  "Factures réglées": "Facturas pagadas",
+  "Délai de paiement": "Plazo de pago",
+  "Montant TTC des factures réglées, au jour du règlement ; une facture sans TTC n'entre pas dans la somme. Réservé à qui règle les factures.": "Importe IVA incluido de las facturas pagadas, el día del pago; una factura sin total IVA incluido no entra en la suma. Reservado a quien paga las facturas.",
+  "Jours entre la date de la facture et son règlement, en moyenne sur les factures réglées dans le pas ; recalculé sur chaque pas.": "Días entre la fecha de la factura y su pago, de media sobre las facturas pagadas en el paso; recalculado en cada paso.",
 };

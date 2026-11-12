@@ -13,6 +13,9 @@ import { jeuHoraires } from '../planning/jeuHoraires.mjs';
 import { calcHeures, heuresFaites, retardsDe, soldeMois } from '../planning/soldesHeures.js';
 import { jeuReleves, ZONES } from '../haccp/jeuReleves.mjs';
 import { composer } from './composition.js';
+import { jeuInventaires } from '../inventaire/jeuInventaires.mjs';
+import { valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
+import { totauxFactures } from '../inventaire/facturesLogic.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -124,9 +127,44 @@ test('haccp : relevés et anomalies font le total du registre, le taux est le si
   assert.equal(mesure('haccp.conformite').valeur(vide), null);
 });
 
+// ── Inventaire ──
+test("inventaire : stock de la Comptabilité, manques et surplus de l'écran des écarts, en cours exclu", () => {
+  const inventaires = jeuInventaires();
+  const valides = inventaires.filter((i) => i.statut === 'validé');
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('inventaire', lire('inventaire', { inventaires }, '2026-01-01', '2026-11-30', pas), {
+    'inventaire.manques': 1, 'inventaire.surplus': 1,
+  }));
+  const lu = lire('inventaire', { inventaires }, '2026-01-01', '2026-11-30', 'mois');
+  const sommeLignes = (f) => valides.reduce((t, i) => t + i.lignes.reduce((u, l) => u + f(Number(l.ecartValeur) || 0), 0), 0);
+  assert.equal(mesure('inventaire.manques').valeur(lu.total).toFixed(2), sommeLignes((v) => Math.min(0, v)).toFixed(2));
+  assert.equal(mesure('inventaire.surplus').valeur(lu.total).toFixed(2), sommeLignes((v) => Math.max(0, v)).toFixed(2));
+  assert.equal(mesure('inventaire.comptages').valeur(lu.total), valides.length);
+  // Stock : la période vaut son dernier relevé, celui de la Comptabilité à la fin.
+  const c = composer({ graphique: { mesures: ['inventaire.stock'] }, mesures: [mesure('inventaire.stock')], tranches: lu.tranches, sources: { points: { inventaire: lu.points }, totaux: { inventaire: lu.total } }, etats: { inventaire: 'ready' }, familles: FAMILLES });
+  assert.equal(c.series[0].total, valeurStockConsolidee(valides.filter((i) => i.date <= '2026-11-30')));
+});
+
+// ── Achats : règlements ──
+test("achats : factures réglées et délai de paiement, règle de l'écran des factures", () => {
+  const docs = [];
+  for (let i = 0; i < 1100; i += 1) {
+    const d = new Date(Date.UTC(2026, 0, 1 + (i % 280))).toISOString().slice(0, 10);
+    const r = i % 4 === 0 ? null : new Date(Date.UTC(2026, 0, 6 + (i % 280) + (i % 30))).toISOString().slice(0, 10);
+    docs.push({ id: `a${i}`, typeDocument: 'facture', dateDocument: d, regleLe: r, totalTTC: i % 19 === 0 ? null : 80 + (i % 13) * 7.15, totalHT: 70, exclu: false, lignes: [] });
+  }
+  const donnees = { docs, catalogue: [] };
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('achats', lire('achats', donnees, '2026-01-01', '2026-12-31', pas)));
+  const lu = lire('achats', donnees, '2026-01-01', '2026-12-31', 'mois');
+  const reglees = docs.filter((x) => x.regleLe && x.regleLe <= '2026-12-31');
+  assert.equal(mesure('achats.reglees').valeur(lu.total).toFixed(2), totauxFactures(reglees, '2026-12-31').reglees.montant.toFixed(2));
+  const jours = reglees.reduce((t, x) => t + Math.round((Date.parse(x.regleLe) - Date.parse(x.dateDocument)) / 86400000), 0);
+  assert.equal(mesure('achats.delai').valeur(lu.total), jours / reglees.length);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
   assert.equal(compte('planning'), 6);
   assert.equal(compte('haccp'), 4);
+  assert.equal(compte('inventaire'), 4);
 });

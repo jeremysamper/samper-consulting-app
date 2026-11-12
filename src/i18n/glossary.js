@@ -4449,6 +4449,19 @@ export const UI_GLOSSARY = {
   "Relevés marqués non conformes à la saisie : la valeur sortait de la plage de la zone.": "Readings marked non-compliant when entered: the value was outside the zone range.",
   "Relevés conformes divisés par tous les relevés, comme les chiffres du registre ; recalculé sur chaque pas.": "Compliant readings divided by all readings, like the log figures; recalculated on each step.",
   "Dernière température relevée dans la zone choisie, sur chaque pas ; un relevé ne s'additionne pas.": "Last temperature read in the chosen zone, on each step; a reading is not added up.",
+  // ── Statistiques (S2) : Inventaire et règlements ──
+  "Manques d'inventaire": "Inventory shortfalls",
+  "Surplus d'inventaire": "Inventory surpluses",
+  "Inventaires validés": "Validated inventories",
+  "la date de l'inventaire": "the date of the inventory",
+  "Somme du dernier inventaire validé de chaque périmètre, connu à la fin du pas : produits comptés fois prix unitaire.": "Sum of the last validated inventory of each scope, known at the end of the step: products counted times unit price.",
+  "Valeur des écarts négatifs (stock compté sous le stock attendu) des inventaires validés du pas.": "Value of the negative variances (stock counted below the expected stock) of the validated inventories of the step.",
+  "Valeur des écarts positifs (stock compté au-dessus du stock attendu) des inventaires validés du pas.": "Value of the positive variances (stock counted above the expected stock) of the validated inventories of the step.",
+  "Nombre d'inventaires validés datés dans le pas, tous périmètres.": "Number of validated inventories dated within the step, all scopes.",
+  "Factures réglées": "Invoices paid",
+  "Délai de paiement": "Payment delay",
+  "Montant TTC des factures réglées, au jour du règlement ; une facture sans TTC n'entre pas dans la somme. Réservé à qui règle les factures.": "Amount including VAT of the invoices paid, on the day of payment; an invoice without a total including VAT is left out of the sum. Only for those who pay invoices.",
+  "Jours entre la date de la facture et son règlement, en moyenne sur les factures réglées dans le pas ; recalculé sur chaque pas.": "Days between the invoice date and its payment, on average over the invoices paid in the step; recalculated on each step.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

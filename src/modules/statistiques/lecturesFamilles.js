@@ -117,6 +117,17 @@ export const LECTURES = {
       return { releves, zones };
     },
   },
+  // Inventaire : l'écran Inventaire, tous les inventaires de l'établissement
+  // (sans fenêtre : le stock d'un pas dépend des inventaires d'avant).
+  inventaire: {
+    sansFenetre: true,
+    visible: (ctx) => ecranOuvert('inventaire', ctx),
+    async lire(etabId) {
+      const db = dbService.getBridge()?.db;
+      if (!db) throw echec(null, 'Lecture indisponible.');
+      return { inventaires: await db.listInventaires(etabId, { strict: true }) };
+    },
+  },
 };
 
 export const famillesVisibles = (contexte) => Object.keys(LECTURES).filter((id) => LECTURES[id].visible(contexte));

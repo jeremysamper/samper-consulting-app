@@ -6,6 +6,7 @@
 // Une tranche sans facture chiffrée vaut « n/a », jamais 0.
 
 import { depensesParTranche, parFournisseur, parRayon, trierDocuments } from '../../factures-achats/analysesAchats.js';
+import { reglementsParTranche } from '../../inventaire/facturesLogic.js';
 
 const NON_REPARTI = 'Factures sans ligne lue';
 
@@ -15,7 +16,8 @@ export const familleAchats = {
   journee: 'la date de la facture',
   calculer(donnees, tranches) {
     const { factures } = trierDocuments(donnees.docs);
-    return depensesParTranche(factures, tranches).map((p) => ({ ...p, catalogue: donnees.catalogue || [] }));
+    const reglements = reglementsParTranche(donnees.docs, tranches);
+    return depensesParTranche(factures, tranches).map((p, i) => ({ ...p, catalogue: donnees.catalogue || [], reglements: reglements[i] }));
   },
   mesures: [
     {
@@ -36,6 +38,16 @@ export const familleAchats = {
       id: 'achats.factures', libelle: 'Factures chiffrées', unite: 'nombre', nature: 'flux',
       valeur: (p) => (p.total ? p.n : null),
       phrase: 'Nombre de factures d\'achat qui portent un montant ; les bons de livraison et de commande ne comptent pas.',
+    },
+    {
+      id: 'achats.reglees', libelle: 'Factures réglées', unite: 'chf', nature: 'flux', reserve: 'factures_achat',
+      valeur: (p) => (p.reglements?.n ? p.reglements.montant : null),
+      phrase: 'Montant TTC des factures réglées, au jour du règlement ; une facture sans TTC n\'entre pas dans la somme. Réservé à qui règle les factures.',
+    },
+    {
+      id: 'achats.delai', libelle: 'Délai de paiement', unite: 'jour', nature: 'taux', reserve: 'factures_achat',
+      valeur: (p) => (p.reglements?.nbDelais ? p.reglements.joursTotal / p.reglements.nbDelais : null),
+      phrase: 'Jours entre la date de la facture et son règlement, en moyenne sur les factures réglées dans le pas ; recalculé sur chaque pas.',
     },
   ],
 };

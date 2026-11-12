@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './statistiques.css';
-import { getPermissionsForRole } from '../../data/demoData.js';
+import { canManageModule, getPermissionsForRole } from '../../data/demoData.js';
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { useUserSettings } from '../../hooks/useUserSettings.js';
 import { UI_STORAGE_KEYS, readJson, removeStorageKeys } from '../../utils/storage.js';
@@ -215,6 +215,9 @@ export default function Statistiques({ user, etablissement }) {
   const role = user?.role;
   const aujourdhui = zurichToday();
   const direction = estDirection(role);
+  // « Régler les factures » : règlements et délai de paiement des achats, comme
+  // l'écran des factures de l'Inventaire.
+  const regleFactures = canManageModule(role, 'factures_achat');
   const racine = useRef(null);
   const largeur = useLargeur(racine);
   const etroit = largeur > 0 && largeur < 720;
@@ -253,8 +256,8 @@ export default function Statistiques({ user, etablissement }) {
   const { sondes, lectureDe, reessayer } = useLectureStatistiques({ etabId, aujourdhui, visibles: idsFamilles, demandes });
   const niveauCaisse = sondes.caisse?.status === 'ready' ? sondes.caisse.niveau : null;
   const mesures = useMemo(
-    () => mesuresVisibles({ familles: signatureFamilles ? signatureFamilles.split(',') : [], niveauCaisse, direction }),
-    [signatureFamilles, niveauCaisse, direction],
+    () => mesuresVisibles({ familles: signatureFamilles ? signatureFamilles.split(',') : [], niveauCaisse, direction, droits: { factures_achat: regleFactures } }),
+    [signatureFamilles, niveauCaisse, direction, regleFactures],
   );
   const sondesPretes = idsFamilles.filter((f) => LECTURES[f].sonder).every((f) => ['ready', 'error'].includes(sondes[f]?.status));
 

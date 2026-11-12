@@ -115,6 +115,29 @@ export function totauxFactures(factures, aujourdhui) {
   return t;
 }
 
+// Règlements par tranche [{ debut, fin }], pour le module Statistiques : les
+// factures réglées dans la tranche (date de règlement), avec la règle de
+// totauxFactures (montant TTC, une facture sans TTC comptée à part), et leur
+// délai de paiement, de la date de la facture au règlement (joursEntre).
+//   → [{ debut, fin, n, montant, sansTTC, joursTotal, nbDelais }]
+export function reglementsParTranche(documents, tranches) {
+  const reglees = (documents || []).filter(d => estFacture(d) && ISO.test(String(d.regleLe || '')));
+  return (tranches || []).map(t => {
+    const dedans = reglees.filter(f => f.regleLe >= t.debut && f.regleLe <= t.fin);
+    const tot = totauxFactures(dedans, t.fin);
+    const avecDate = dedans.filter(f => ISO.test(String(f.dateDocument || '')));
+    return {
+      debut: t.debut,
+      fin: t.fin,
+      n: tot.reglees.n,
+      montant: tot.reglees.montant,
+      sansTTC: tot.sansTTC,
+      joursTotal: avecDate.reduce((s, f) => s + joursEntre(f.dateDocument, f.regleLe), 0),
+      nbDelais: avecDate.length,
+    };
+  });
+}
+
 // ── Dates en toutes lettres ──
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const partie = (iso) => ({ j: Number(iso.slice(8, 10)), m: Number(iso.slice(5, 7)) - 1, a: iso.slice(0, 4) });
