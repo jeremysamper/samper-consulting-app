@@ -4,6 +4,7 @@ import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
 import { estDirectionSpa } from '../spa/gardesSpa.js';
+import { estDirectionHotel } from '../hebergement/gardesHotel.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -21,6 +22,9 @@ import { estDirectionSpa } from '../spa/gardesSpa.js';
 //              celle de l'écran, IMPORTÉE du module et jamais recopiée. Une
 //              section n'ouvre rien à personne et ne retire rien à personne.
 //   charger  : import() de la section, qui monte l'écran d'origine tel quel.
+//   signaux  : (facultatif) les signaux de changement émis pour cette section,
+//              à la place de son id : 'table:<nom>' fait relire cette table à
+//              tout module de la branche Hôtel resté monté (useTableHotel).
 //
 // Ajouter un réglage : exporter sa garde d'un fichier léger du module (pas
 // d'import d'écran : ce registre est dans le bundle de départ), écrire sa
@@ -87,6 +91,13 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('spa')(ctx) && estDirectionSpa(ctx.user?.role),
     charger: () => import('../spa/SectionSpaEnLigne.jsx'),
   },
+  {
+    id: 'hebergement_tarifs', libelle: 'Hébergement : tarifs et taxes', detail: 'Tarifs par nuit, taxe de séjour, TVA, numéro HESTA',
+    groupe: 'modules', portee: 'maison', module: 'hebergement',
+    garde: (ctx) => ouvreLeModule('hebergement')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../hebergement/SectionTarifsHotel.jsx'),
+    signaux: ['table:tarifs', 'table:hotel_reglages'],
+  },
 
   // ── L'équipe et les accès ──
   {
@@ -102,6 +113,13 @@ export const SECTIONS = [
     charger: () => import('./sections/SectionApparence.jsx'),
   },
 ];
+
+// Signaux de changement d'une section (services/reglagesSignal.js).
+export function signauxDe(id) {
+  const section = SECTIONS.find((s) => s.id === id);
+  if (!section) return [];
+  return section.signaux || [section.id];
+}
 
 export function sectionsVisibles(ctx) {
   return SECTIONS.filter((section) => {

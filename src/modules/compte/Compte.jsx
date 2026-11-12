@@ -9,7 +9,7 @@ import { signalerReglage } from '../../services/reglagesSignal.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { ongletCompteDepuisOutils } from '../moduleConfig.js';
-import { sectionsParGroupe, sectionsVisibles } from './registreReglages.js';
+import { sectionsParGroupe, sectionsVisibles, signauxDe } from './registreReglages.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE DES RÉGLAGES (page hors menu 'compte') : tout ce qui se règle dans
@@ -33,6 +33,9 @@ import { sectionsParGroupe, sectionsVisibles } from './registreReglages.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LARGEUR_DEUX_VOLETS = 900;
+
+// Le changement d'une section, signalé à ses lecteurs (son module d'origine).
+const signalerSection = (id) => signauxDe(id).forEach(signalerReglage);
 
 // Un composant paresseux par section, créé une fois.
 const composants = new Map();
@@ -133,7 +136,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   // d'origine relit, la nouvelle valeur s'y applique sans recharger l'app.
   React.useEffect(() => {
     if (!isActive || !actif) return undefined;
-    return () => signalerReglage(actif);
+    return () => signalerSection(actif);
   }, [actif, isActive]);
 
   // Écran étroit : une section choisie dans la liste est un niveau de plus, le
@@ -235,7 +238,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
 // ouvrent restent de vraies fenêtres.
 function SectionMontee({ section, user, etablissement, permissions, shellMode }) {
   const Composant = composantDe(section);
-  const signaler = React.useCallback(() => signalerReglage(section.id), [section.id]);
+  const signaler = React.useCallback(() => signalerSection(section.id), [section.id]);
   return (
     <div style={st.section} data-section={section.id}>
       <SafeModule name={section.libelle}>

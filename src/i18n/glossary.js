@@ -4353,6 +4353,11 @@ export const UI_GLOSSARY = {
   // ── Réglages : section Spa ──
   'Spa : réservation en ligne': 'Spa: online booking',
   'Ouverture, horaires, délais, praticiens, lien à partager': 'Opening, hours, lead times, practitioners, link to share',
+  // ── Réglages : sections Hébergement ──
+  'Hébergement : tarifs et taxes': 'Accommodation: rates and taxes',
+  'Tarifs par nuit, taxe de séjour, TVA, numéro HESTA': 'Nightly rates, tourist tax, VAT, HESTA number',
+  'Hébergement : chambres': 'Accommodation: rooms',
+  'Numéros, catégories, capacité, chambres en service': 'Numbers, categories, capacity, rooms in service',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -4334,4 +4334,9 @@ export const UI_GLOSSARY_ES = {
   // ── Réglages : section Spa ──
   'Spa : réservation en ligne': 'Spa: reserva en línea',
   'Ouverture, horaires, délais, praticiens, lien à partager': 'Apertura, horarios, plazos, terapeutas, enlace para compartir',
+  // ── Réglages : sections Hébergement ──
+  'Hébergement : tarifs et taxes': 'Alojamiento: tarifas e impuestos',
+  'Tarifs par nuit, taxe de séjour, TVA, numéro HESTA': 'Tarifas por noche, tasa turística, IVA, número HESTA',
+  'Hébergement : chambres': 'Alojamiento: habitaciones',
+  'Numéros, catégories, capacité, chambres en service': 'Números, categorías, capacidad, habitaciones en servicio',
 };

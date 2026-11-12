@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { getDemoData } from '../../data/demoData.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { zurichAjouterJours, zurichDateHeure, zurichMinuitIso } from '../../utils/zurichTime.js';
@@ -274,6 +275,9 @@ export function useTableHotel(table, etabId, { map, filtres = [], cle = '', orde
   }, [table, etabId, cle, limit, actif]);
 
   const reload = useCallback(() => reloadRef.current?.(), []);
+  // Table réglée dans la page des réglages : un module resté monté la relit au
+  // signal de changement, même sans temps réel (registreReglages, signaux).
+  useReglageModifie(`table:${table}`, reload);
 
   const actions = useMemo(() => {
     const remplacer = (row) => {

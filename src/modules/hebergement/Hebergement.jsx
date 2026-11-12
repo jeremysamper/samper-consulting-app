@@ -19,7 +19,8 @@ import ChambresGestion from './ChambresGestion.jsx';
 import HotesGestion, { HoteForm } from './HotesGestion.jsx';
 import SejourNote from './SejourNote.jsx';
 import SejourOccupants from './SejourOccupants.jsx';
-import TarifsGestion from './TarifsGestion.jsx';
+import { estDirectionHotel } from './gardesHotel.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
 import RegistreMois from './RegistreMois.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ export default function Hebergement({ user, etablissement }) {
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const peutGerer = canManageModule(role, 'hebergement');
-  const direction = role === 'consultant' || role === 'patron';
+  const direction = estDirectionHotel(role);
   const aujourdhui = useAujourdhui();
 
   const chambres = useChambres(etabId);
@@ -174,7 +175,7 @@ export default function Hebergement({ user, etablissement }) {
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
     { id: 'chambres', libelle: 'Chambres', Icone: DoorOpen, visible: direction, etat: etat(chambres.rows.filter((c) => c.actif).length, 'chambre active', 'chambres actives'), onClick: () => setEcran('chambres') },
-    { id: 'tarifs', libelle: 'Tarifs et taxes', Icone: Tag, visible: direction, etat: etat(tarifs.rows.filter((t) => t.actif).length, 'tarif actif', 'tarifs actifs'), onClick: () => setEcran('tarifs') },
+    { id: 'tarifs', libelle: 'Tarifs et taxes', Icone: Tag, visible: direction, etat: etat(tarifs.rows.filter((t) => t.actif).length, 'tarif actif', 'tarifs actifs'), onClick: () => ouvrirCompte('hebergement_tarifs') },
     { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
   ];
   const lierHote = async (s, hoteId) => {
@@ -249,9 +250,8 @@ export default function Hebergement({ user, etablissement }) {
         />
       )}
 
-      {etabId && ecran === 'tarifs' && direction && (
-        <TarifsGestion tarifs={tarifs} reglages={reglages} chambres={chambres.rows} etabId={etabId} />
-      )}
+      {/* Tarifs et taxes : dans la page des réglages (section
+          'hebergement_tarifs'), la tuile y mène. */}
       {etabId && ecran === 'registre' && direction && (
         <RegistreMois sejours={sejours.rows} chambres={chambres.rows} occupants={occupants.rows} lignes={lignes.rows} reglages={reglage} />
       )}
