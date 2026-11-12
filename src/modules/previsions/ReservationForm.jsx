@@ -587,8 +587,8 @@ export default function ReservationForm({
                       fontSize: 'var(--t2)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)',
                       borderWidth: 1, borderStyle: 'solid',
                       borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
-                      background:  actif ? 'var(--selection)' : 'var(--bg)',
-                      color:       'var(--text)',
+                      background:  actif ? 'var(--selection)' : 'var(--btn-fond)',
+                      color:       actif ? 'var(--text)' : 'var(--btn-texte)',
                     }}>
                     {r.label}
                   </button>
@@ -822,8 +822,8 @@ export default function ReservationForm({
                         minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r)',
                         borderWidth: 2, borderStyle: 'solid',
                         borderColor: form.groupe ? 'var(--onglet)' : 'var(--btn-bord)',
-                        background: form.groupe ? 'var(--selection)' : 'var(--surface)',
-                        color: form.groupe ? 'var(--text)' : 'var(--text2)',
+                        background: form.groupe ? 'var(--selection)' : 'var(--btn-fond)',
+                        color: form.groupe ? 'var(--text)' : 'var(--btn-texte)',
                         fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
                       }}>
                       Groupe

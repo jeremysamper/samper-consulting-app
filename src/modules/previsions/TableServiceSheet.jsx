@@ -177,7 +177,7 @@ export default function TableServiceSheet({
                         minWidth: 56, minHeight: 48, padding: '6px 14px', borderRadius: 'var(--r)',
                         borderWidth: actif ? 2 : 1, borderStyle: 'solid',
                         borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
-                        background: actif ? 'var(--ai-bg-soft)' : 'var(--surface)',
+                        background: actif ? 'var(--ai-bg-soft)' : 'var(--btn-fond)',
                         color: 'var(--btn-texte)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)',
                         fontFamily: 'var(--font-num)', cursor: actif ? 'default' : 'pointer',
                       }}
@@ -324,7 +324,7 @@ export default function TableServiceSheet({
                       minHeight: 52, borderRadius: 'var(--r)',
                       borderWidth: couverts === n ? 2 : 1, borderStyle: 'solid',
                       borderColor: couverts === n ? 'var(--onglet)' : 'var(--btn-bord)',
-                      background: couverts === n ? 'var(--ai-bg-soft)' : 'var(--surface)',
+                      background: couverts === n ? 'var(--ai-bg-soft)' : 'var(--btn-fond)',
                       color: 'var(--btn-texte)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)',
                       fontFamily: 'var(--font-num)', cursor: 'pointer',
                     }}

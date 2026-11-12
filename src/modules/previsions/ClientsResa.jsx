@@ -129,8 +129,8 @@ export default function ClientsResa({ etablissementId, canEdit, peutEffacer = fa
             <button key={f.id} type="button" aria-pressed={actif} onClick={() => setFiltre(f.id)} style={{
               flexShrink: 0, minHeight: 36, padding: '6px 12px', borderRadius: 'var(--r)',
               borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
-              background: actif ? 'var(--selection)' : 'var(--surface)',
-              color: actif ? 'var(--lien)' : 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
+              background: actif ? 'var(--selection)' : 'var(--btn-fond)',
+              color: actif ? 'var(--text)' : 'var(--btn-texte)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
               fontFamily: 'var(--font)', cursor: 'pointer', whiteSpace: 'nowrap',
             }}>
               {f.label} <span style={{ opacity: 0.7, fontWeight: 'var(--g2)' }}>{compte[f.id]}</span>

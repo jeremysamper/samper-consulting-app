@@ -234,8 +234,8 @@ export default function PlanTableForm({
                 marginTop: 8, padding: '9px 14px', borderRadius: 'var(--r)', minHeight: 44,
                 borderWidth: 1, borderStyle: 'solid',
                 borderColor: pivotee ? 'var(--onglet)' : 'var(--btn-bord)',
-                background: pivotee ? 'var(--selection)' : 'var(--bg)',
-                color: pivotee ? 'var(--text)' : 'var(--text2)',
+                background: pivotee ? 'var(--selection)' : 'var(--btn-fond)',
+                color: pivotee ? 'var(--text)' : 'var(--btn-texte)',
                 fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
               }}>
                 ⟳ {pivotee ? 'Dans le sens de la hauteur' : 'Dans le sens de la largeur'}
