@@ -24,6 +24,7 @@ import { lireReferentiel, lireReservations } from '../previsions/rapport/useRapp
 import { estDirection, peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { lireContrats, lirePeriode } from '../planning/contratsService.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
+import { lireGroupes } from '../../hooks/useGroupes.js';
 
 // Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
 // active pour l'établissement, puis droit d'ouvrir la page.
@@ -126,6 +127,13 @@ export const LECTURES = {
       const db = dbService.getBridge()?.db;
       if (!db) throw echec(null, 'Lecture indisponible.');
       return { inventaires: await db.listInventaires(etabId, { strict: true }) };
+    },
+  },
+  // Groupes : le calendrier des groupes, les groupes de la fenêtre.
+  groupes: {
+    visible: (ctx) => ecranOuvert('groupes', ctx),
+    async lire(etabId, debut, fin) {
+      return { groupes: await lireGroupes(etabId, debut, fin) };
     },
   },
 };

@@ -16,6 +16,7 @@ import { composer } from './composition.js';
 import { jeuInventaires } from '../inventaire/jeuInventaires.mjs';
 import { valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { totauxFactures } from '../inventaire/facturesLogic.js';
+import { jeuGroupes } from '../groupes/jeuGroupes.mjs';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -161,10 +162,23 @@ test("achats : factures réglées et délai de paiement, règle de l'écran des 
   assert.equal(mesure('achats.delai').valeur(lu.total), jours / reglees.length);
 });
 
+// ── Groupes ──
+test('groupes : groupes, convives et annulés font la liste du mois du calendrier', () => {
+  const groupes = jeuGroupes();
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('groupes', lire('groupes', { groupes }, '2026-01-01', '2026-12-31', pas)));
+  const lu = lire('groupes', { groupes }, '2026-10-01', '2026-10-31', 'semaine');
+  const duMois = groupes.filter((g) => g.dateEvenement.startsWith('2026-10-'));
+  const actifs = duMois.filter((g) => !g.annule);
+  assert.equal(mesure('groupes.groupes').valeur(lu.total), actifs.length);
+  assert.equal(mesure('groupes.convives').valeur(lu.total), actifs.reduce((s, g) => s + g.nbPax, 0));
+  assert.equal(mesure('groupes.annules').valeur(lu.total), duMois.length - actifs.length);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
   assert.equal(compte('planning'), 6);
   assert.equal(compte('haccp'), 4);
   assert.equal(compte('inventaire'), 4);
+  assert.equal(compte('groupes'), 3);
 });

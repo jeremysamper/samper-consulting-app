@@ -20,8 +20,9 @@ import { famillePertes } from './familles/pertes.js';
 import { famillePlanning } from './familles/planning.js';
 import { familleHaccp } from './familles/haccp.js';
 import { familleInventaire } from './familles/inventaire.js';
+import { familleGroupes } from './familles/groupes.js';
 
-export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire];
+export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire, familleGroupes];
 
 const TOUS_LES_PAS = ['jour', 'semaine', 'mois'];
 

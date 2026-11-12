@@ -4462,6 +4462,14 @@ export const UI_GLOSSARY = {
   "Délai de paiement": "Payment delay",
   "Montant TTC des factures réglées, au jour du règlement ; une facture sans TTC n'entre pas dans la somme. Réservé à qui règle les factures.": "Amount including VAT of the invoices paid, on the day of payment; an invoice without a total including VAT is left out of the sum. Only for those who pay invoices.",
   "Jours entre la date de la facture et son règlement, en moyenne sur les factures réglées dans le pas ; recalculé sur chaque pas.": "Days between the invoice date and its payment, on average over the invoices paid in the step; recalculated on each step.",
+  // ── Statistiques (S2) : Groupes ──
+  "Groupes reçus": "Groups hosted",
+  "Convives des groupes": "Group guests",
+  "Groupes annulés": "Cancelled groups",
+  "la date de l'événement": "the date of the event",
+  "Groupes non annulés, au jour de l'événement, comme la liste du mois du calendrier.": "Groups not cancelled, on the day of the event, like the month list of the calendar.",
+  "Somme des pax annoncés des groupes non annulés.": "Sum of the announced guests of the groups not cancelled.",
+  "Groupes annulés, comptés au jour de l'événement prévu.": "Cancelled groups, counted on the day of the planned event.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

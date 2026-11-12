@@ -4443,4 +4443,12 @@ export const UI_GLOSSARY_ES = {
   "Délai de paiement": "Plazo de pago",
   "Montant TTC des factures réglées, au jour du règlement ; une facture sans TTC n'entre pas dans la somme. Réservé à qui règle les factures.": "Importe IVA incluido de las facturas pagadas, el día del pago; una factura sin total IVA incluido no entra en la suma. Reservado a quien paga las facturas.",
   "Jours entre la date de la facture et son règlement, en moyenne sur les factures réglées dans le pas ; recalculé sur chaque pas.": "Días entre la fecha de la factura y su pago, de media sobre las facturas pagadas en el paso; recalculado en cada paso.",
+  // ── Statistiques (S2) : Groupes ──
+  "Groupes reçus": "Grupos recibidos",
+  "Convives des groupes": "Comensales de los grupos",
+  "Groupes annulés": "Grupos cancelados",
+  "la date de l'événement": "la fecha del evento",
+  "Groupes non annulés, au jour de l'événement, comme la liste du mois du calendrier.": "Grupos no cancelados, el día del evento, como la lista del mes del calendario.",
+  "Somme des pax annoncés des groupes non annulés.": "Suma de los comensales anunciados de los grupos no cancelados.",
+  "Groupes annulés, comptés au jour de l'événement prévu.": "Grupos cancelados, contados el día del evento previsto.",
 };
