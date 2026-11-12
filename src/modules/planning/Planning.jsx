@@ -9,7 +9,7 @@ import { dbService } from '../../services/dbService.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
@@ -1088,7 +1088,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <div style={pls.mobileDayNavRow}>
             <button style={pls.mobileNavArrow} onClick={() => shiftMobileDay(-1)} aria-label="Jour précédent">‹</button>
             <div style={pls.mobileDayNavCenter}>
-              <span style={{ ...pls.mobileDayName, color: isToday ? 'var(--accent)' : 'var(--text)' }}>{dayLabelCap}</span>
+              <span style={{ ...pls.mobileDayName, color: isToday ? 'var(--onglet)' : 'var(--text)' }}>{dayLabelCap}</span>
               {isToday && <span style={pls.mobileTodayChip}>Aujourd'hui</span>}
             </div>
             <button style={pls.mobileNavArrow} onClick={() => shiftMobileDay(1)} aria-label="Jour suivant">›</button>
@@ -1108,7 +1108,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           {absencesDuJour(absencesVisibles, mobileDate).map(a => {
             const m = metaMotif(a.motif);
             return (
-              <div key={a.id} style={{ ...pls.mobileCoverage, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 10, background: m.fond, color: m.texte }}>
+              <div key={a.id} style={{ ...pls.mobileCoverage, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 'var(--r)', background: m.fond, color: m.texte }}>
                 <strong data-no-translate>{userDisplay(a.userId).name}</strong>
                 <span>{m.etat} {resteAbsence(a, mobileDate)}</span>
               </div>
@@ -1117,7 +1117,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
           {dayShifts.length === 0 ? (
             <div style={pls.mobileEmptyDay}>
-              <span style={{ color: 'var(--text2)', fontSize: 13 }}>Repos, aucun horaire planifié.</span>
+              <span style={{ color: 'var(--text2)', fontSize: 'var(--t2)' }}>Repos, aucun horaire planifié.</span>
               {canWrite && <button style={pls.mobileAddRow} onClick={() => openAddPrefill('', mobileDate)}>Ajouter un horaire</button>}
             </div>
           ) : (
@@ -1151,7 +1151,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       <div style={pls.mobileName} data-no-translate>{emp.name}</div>
                       <PhoneLink tel={phones[shift.userId]} style={pls.mobilePhone} />
                       <div style={pls.mobileMeta}>
-                        <span style={{ ...pls.mobileChip, color: roleColor, borderColor: roleColor }}>{typeLabel}{shift.poste ? `, ${shift.poste}` : ''}</span>
+                        <span style={{ ...pls.mobileChip, color: 'var(--text2)', borderColor: roleColor }}>{typeLabel}{shift.poste ? `, ${shift.poste}` : ''}</span>
                         {shift.pause > 0 && <span style={pls.mobilePause}>Pause {shift.pause} min</span>}
                       </div>
                     </div>
@@ -1175,7 +1175,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     return (
       <div style={pls.mobilePlanList} id="pointage-print">
         <div style={pls.mobileTitle}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-        {allShifts.length === 0 && <div style={{ padding: 20, fontSize: 13, color: 'var(--text2)', textAlign: 'center' }}>Aucun horaire ce jour.</div>}
+        {allShifts.length === 0 && <div style={{ padding: 20, fontSize: 'var(--t2)', color: 'var(--text2)', textAlign: 'center' }}>Aucun horaire ce jour.</div>}
         {sectionsPointage.map(sec => (
           <React.Fragment key={sec.id || 'tous'}>
           {sec.nom && <div style={pls.groupeTitreMobile}>{sec.nom} <span style={pls.groupeCompte}>{new Set(sec.items.map(s => s.userId)).size}</span></div>}
@@ -1189,23 +1189,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }} data-no-translate>{emp.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
+                  <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }} data-no-translate>{emp.name}</div>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
                 </div>
-                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 11, color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
+                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 'var(--t1)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
                   {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 11 }}>
-                <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 500 }}>{shift.pointageDebut || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 500 }}>{shift.pointageFin || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 500 }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 'var(--t1)' }}>
+                <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageDebut || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageFin || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 'var(--g2)' }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
               </div>
               {canPointShift(shift) && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }} className="no-print">
-                  {!shift.pointageDebut && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
-                  {shift.pointageDebut && !shift.pointageFin && <button style={{ ...pls.pointBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => pointerDepart(shift)}>Départ</button>}
-                  {shift.pointageDebut && shift.pointageFin && canWrite && <button style={{ ...pls.ghostBtn, fontSize: 12, padding: '8px 10px' }} onClick={() => resetPointage(shift)}>Réinit.</button>}
+                  {!shift.pointageDebut && <button style={{ ...pls.pointBtn, fontSize: 'var(--t1)', padding: '8px 10px' }} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
+                  {shift.pointageDebut && !shift.pointageFin && <button style={{ ...pls.pointBtn, fontSize: 'var(--t1)', padding: '8px 10px' }} onClick={() => pointerDepart(shift)}>Départ</button>}
+                  {shift.pointageDebut && shift.pointageFin && canWrite && <button style={{ ...pls.ghostBtn, fontSize: 'var(--t1)', padding: '8px 10px' }} onClick={() => resetPointage(shift)}>Réinit.</button>}
                 </div>
               )}
             </div>
@@ -1376,8 +1376,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {remplissage && activeTab === 'planning' && !isMobile && (
         <div className="no-print" style={pls.remplissage} role="status">
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-            <div style={{ fontWeight: 700 }}>Remplissage avec « {remplissage.nom} »</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)' }}>{libelleModele(remplissage)}. Touchez les cases à remplir ; un créneau déjà pris est laissé tel quel.</div>
+            <div style={{ fontWeight: 'var(--g3)' }}>Remplissage avec « {remplissage.nom} »</div>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{libelleModele(remplissage)}. Touchez les cases à remplir ; un créneau déjà pris est laissé tel quel.</div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {modeles.map(m => (
@@ -1415,9 +1415,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
         />
       ) : activeTab === 'planning' ? (
         isMobile ? renderMobilePlanning() : (
-          <div style={pls.card} id="planning-print">
+          <div id="planning-print"><Panneau style={pls.panneau}>
             <div style={pls.enteteGrille}>
-              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>Planning {horizon} semaine{horizon > 1 ? 's' : ''}</div>
+              <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)' }}>Planning {horizon} semaine{horizon > 1 ? 's' : ''}</div>
               {/* Qui gère le planning lit comment déplacer un horaire ; les autres, la date de départ. */}
               <div style={canWrite ? pls.aideGrille : pls.dateGrille} className={canWrite ? 'no-print' : undefined}>
                 {canWrite
@@ -1434,7 +1434,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={{ overflowX: 'auto' }} ref={glisser.zoneRef}>
               <div style={{ ...pls.grid, gridTemplateColumns: `200px repeat(${DAYS.length}, minmax(90px,1fr))`, minWidth: 200 + DAYS.length * 90 }}>
                 <div style={pls.empColHeader} />
-                {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 11, fontWeight: 700 }}>{d.label}</div></div>)}
+                {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>{d.label}</div></div>)}
                 {enSections(employees.filter(e => passeFiltre(e.id)), e => e.id).map(sec => (
                   <React.Fragment key={sec.id || 'tous'}>
                   {sec.nom && <div style={pls.groupeTitreGrille}>{sec.nom} <span style={pls.groupeCompte}>{sec.items.length}</span></div>}
@@ -1448,8 +1448,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   const weekRatio = heuresContractSem > 0 ? totalHours / heuresContractSem : 0;
                   const weekColor = weekRatio === 0 ? 'var(--text2)'
                                   : weekRatio < 0.8 ? 'var(--text2)'
-                                  : weekRatio <= 1.0 ? 'var(--accent)'
-                                  : 'var(--warning-strong)';
+                                  : weekRatio <= 1.0 ? 'var(--lien)'
+                                  : 'var(--warning-text)';
                   return (
                     <React.Fragment key={emp.id}>
                       <div style={pls.empCol}>
@@ -1458,16 +1458,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           <div style={pls.empName} data-no-translate>{emp.prenom} {emp.nom}</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginTop: 2 }}>
                             <span
-                              style={{ fontSize: 11, fontWeight: 700, color: weekColor }}
+                              style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: weekColor }}
                               title={`Semaine : ${totalHours.toFixed(1)}h / contractuel ${heuresContractSem}h`}
                             >
-                              {dureeLisible(totalHours)} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text2)' }}>sem</span>
+                              {dureeLisible(totalHours)} <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)' }}>sem</span>
                             </span>
                             <span
-                              style={{ fontSize: 11, color: 'var(--text2)' }}
+                              style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}
                               title={`Total ${currentMonthLabel}`}
                             >
-                              {dureeLisible(monthHours)} <span style={{ fontSize: 11 }}>ce mois</span>
+                              {dureeLisible(monthHours)} <span style={{ fontSize: 'var(--t1)' }}>ce mois</span>
                             </span>
                           </div>
                           <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
@@ -1490,15 +1490,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 ))}
               </div>
             </div>
-          </div>
+          </Panneau></div>
         )
       ) : activeTab === 'pointage' ? (
         isMobile ? renderMobilePointage() : (
-          <div style={pls.card} id="pointage-print">
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)', marginBottom: 10 }}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+          <div id="pointage-print"><Panneau style={pls.panneau}>
+            <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', marginBottom: 10 }}>Pointages du {new Date(pointageDate + 'T12:00:00').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={pls.ptTable}>
               <div style={pls.ptHead}><span>Employé</span><span>Prévu</span><span>Arrivée</span><span>Départ</span><span>Durée</span><span>Statut</span><span /></div>
-              {allShifts.length === 0 && <div style={{ padding: 20, color: 'var(--text2)', fontSize: 13 }}>Aucun horaire pour cette date.</div>}
+              {allShifts.length === 0 && <div style={{ padding: 20, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Aucun horaire pour cette date.</div>}
               {sectionsPointage.map(sec => (
                 <React.Fragment key={sec.id || 'tous'}>
                 {sec.nom && <div style={pls.groupeTitrePointage}>{sec.nom} <span style={pls.groupeCompte}>{new Set(sec.items.map(s => s.userId)).size}</span></div>}
@@ -1512,11 +1512,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
-                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }} data-no-translate>{emp.avatar}</div><div><div style={pls.ptName} data-no-translate>{emp.name}</div><div style={{ fontSize: 11, color: 'var(--text2)' }}>{shift.poste}</div></div></div>
-                    <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 11, color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
+                    <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }} data-no-translate>{emp.avatar}</div><div><div style={pls.ptName} data-no-translate>{emp.name}</div><div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{shift.poste}</div></div></div>
+                    <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
                     <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
-                    <span style={pls.ptCell}>{heuresReel ? <>{dureeLisible(heuresReel)} {ecartMin !== 0 && <span style={{ color: ecartMin > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 11 }}>({ecartMin > 0 ? '+' : '-'}{dureeLisible(Math.abs(ecartMin) / 60)})</span>}</> : '-'}</span>
+                    <span style={pls.ptCell}>{heuresReel ? <>{dureeLisible(heuresReel)} {ecartMin !== 0 && <span style={{ color: ecartMin > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 'var(--t1)' }}>({ecartMin > 0 ? '+' : '-'}{dureeLisible(Math.abs(ecartMin) / 60)})</span>}</> : '-'}</span>
                     <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                     {/* Pointage en un geste depuis la liste (iPad du restaurant, compte partagé) */}
                     <span style={pls.ptAction} className="no-print" onClick={e => e.stopPropagation()}>
@@ -1529,7 +1529,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </React.Fragment>
               ))}
             </div>
-          </div>
+          </Panneau></div>
         )
       ) : null}
 
@@ -1570,7 +1570,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </>
               ) : (
                 <div style={{ ...encadreStyle('alerte'), marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 11, ...encadreTitreStyle('alerte') }}>
+                  <div style={{ fontSize: 'var(--t1)', ...encadreTitreStyle('alerte') }}>
                     Correction manuelle du pointage
                   </div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1585,7 +1585,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         onChange={e => setPointageEditForm(prev => ({ ...prev, fin: e.target.value }))} />
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
                     Pour la direction : utilisez ce mode quand un équipier a oublié de pointer. Laissez vide pour effacer une heure. Le pointage normal reste prioritaire.
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1625,13 +1625,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                           setEditForm({ ...editForm, typeShift: id, ...(seg && !editForm.id ? { debut: seg.debut, fin: seg.fin, pause: seg.pause } : null) });
                         }}
                         style={{
-                          flex: '1 1 90px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13,
-                          background: actif ? 'var(--surface2)' : 'var(--surface)',
+                          flex: '1 1 90px', padding: '10px 8px', minHeight: 44, borderRadius: 'var(--r)', fontSize: 'var(--t2)',
+                          background: actif ? 'var(--selection)' : 'var(--surface)',
                           boxShadow: filetType(t),
                           borderWidth: 1, borderStyle: 'solid',
-                          borderColor: actif ? 'var(--accent)' : 'var(--border)',
+                          borderColor: actif ? 'var(--onglet)' : 'var(--border)',
                           color: actif ? 'var(--text)' : 'var(--text2)',
-                          fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
+                          fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
                         }}>
                         {t.label}
                       </button>
@@ -1651,7 +1651,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 </select></div>
               </div>
               <div><label style={pls.fieldLabel}>Poste / Tâche</label><input type="text" style={pls.fieldInput} value={editForm.poste} placeholder="Ex : Cuisine, Salle…" onChange={e => setEditForm({ ...editForm, poste: e.target.value })} /></div>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>Durée : <strong>{dureeLisible(calcHeures(editForm.debut, editForm.fin, editForm.pause))}</strong></div>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>Durée : <strong>{dureeLisible(calcHeures(editForm.debut, editForm.fin, editForm.pause))}</strong></div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', marginTop: 4 }}>
                 {/* Suppression contextuelle de l'horaire en cours d'édition (pas un raccourci grille) */}
                 {editForm.id && canWrite && (
@@ -1671,7 +1671,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {showCCNTModal && (
         <Fenetre id="planning-ccnt" titre="Générer un relevé CCNT" onClose={() => setShowCCNTModal(false)} largeur={560}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ ...encadreStyle('alerte'), fontSize: 11, lineHeight: 1.5 }}>
+              <div style={{ ...encadreStyle('alerte'), fontSize: 'var(--t1)', lineHeight: 1.5 }}>
                 Document conforme aux <strong>articles 15 &amp; 21 CCNT</strong> hôtellerie-restauration suisse. À signer <strong>chaque mois</strong> par le collaborateur et l'employeur, à conserver <strong>5 ans</strong>.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
@@ -1976,13 +1976,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
       {showBulkDeleteConfirm && (
         <Fenetre id="planning-supprimer-selection" titre="Supprimer les horaires sélectionnés ?" onClose={() => setShowBulkDeleteConfirm(false)} largeur={420}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 }}>
                 Cette action est <strong>définitive</strong>. {selectedIds.size} horaire{selectedIds.size > 1 ? 's' : ''} {selectedIds.size > 1 ? 'seront supprimés' : 'sera supprimé'} en une seule opération.
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button style={pls.exportBtn} onClick={() => setShowBulkDeleteConfirm(false)}>{bulkDeleting ? 'Fermer' : 'Annuler'}</button>
                 <button
-                  style={{ ...pls.addBtn, background: 'var(--danger-strong)', borderColor: 'var(--danger-strong)', opacity: bulkDeleting ? 0.5 : 1 }}
+                  style={{ ...pls.addBtn, background: 'var(--danger-fill)', borderColor: 'var(--danger-fill)', color: 'var(--on-danger)', opacity: bulkDeleting ? 0.5 : 1 }}
                   onClick={doBulkDelete}
                   disabled={bulkDeleting}
                 >{bulkDeleting ? 'Suppression…' : `Supprimer (${selectedIds.size})`}</button>
@@ -2023,7 +2023,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <label style={pls.fieldLabel}>Employés ({batchUserIds.size} sélectionné{batchUserIds.size > 1 ? 's' : ''})</label>
-                    <button type="button" style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 8px' }}
+                    <button type="button" style={{ ...pls.exportBtn, fontSize: 'var(--t1)', padding: '4px 8px' }}
                       onClick={() => setBatchUserIds(allEmpSelected ? new Set() : new Set(employees.map(e => e.id)))}>
                       {allEmpSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
                     </button>
@@ -2037,7 +2037,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         const tousCoches = ids.every(id => batchUserIds.has(id));
                         return (
                           <button key={g.id} type="button"
-                            style={{ ...pls.exportBtn, fontSize: 11, padding: '4px 10px', ...(tousCoches ? { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)' } : {}) }}
+                            style={{ ...pls.exportBtn, fontSize: 'var(--t1)', padding: '4px 10px', ...(tousCoches ? { background: 'var(--selection)', borderColor: 'var(--onglet)', color: 'var(--lien)' } : {}) }}
                             onClick={() => setBatchUserIds(prev => {
                               const next = new Set(prev);
                               ids.forEach(id => (tousCoches ? next.delete(id) : next.add(id)));
@@ -2054,12 +2054,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       const role = demoData.roles[emp.role];
                       const checked = batchUserIds.has(emp.id);
                       return (
-                        <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', border: '1px solid transparent', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: checked ? 'var(--accent-light)' : 'var(--surface)' }}>
+                        <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', border: '1px solid transparent', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', background: checked ? 'var(--selection)' : 'var(--surface)' }}>
                           <input type="checkbox" checked={checked} onChange={() => toggleBatchUser(emp.id)} />
-                          <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 11 }}>{emp.avatar}</div>
+                          <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)', width: 22, height: 22, fontSize: 'var(--t1)' }}>{emp.avatar}</div>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             <span data-no-translate>{emp.prenom} {emp.nom}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
+                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginLeft: 4 }}>{role?.label}</span>
                           </span>
                         </label>
                       );
@@ -2074,22 +2074,22 @@ const Planning = ({ user, etablissement, initialTab }) => {
                       qu'une colonne trop etroite provoque le passage a la ligne */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                      <label style={{ ...pls.fieldLabel, fontSize: 11 }}>Du</label>
+                      <label style={{ ...pls.fieldLabel, fontSize: 'var(--t1)' }}>Du</label>
                       <input type="date" style={pls.fieldInput} value={batchStart} onChange={e => setBatchStart(e.target.value)} />
                     </div>
                     <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                      <label style={{ ...pls.fieldLabel, fontSize: 11 }}>Au</label>
+                      <label style={{ ...pls.fieldLabel, fontSize: 'var(--t1)' }}>Au</label>
                       <input type="date" style={pls.fieldInput} value={batchEnd} onChange={e => setBatchEnd(e.target.value)} />
                     </div>
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Jours concernés :</div>
+                    <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 4 }}>Jours concernés :</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {WEEKDAY_LABELS.map((lbl, idx) => {
                         const checked = batchWeekdays.has(idx);
                         return (
                           <button key={lbl} type="button" onClick={() => toggleBatchWeekday(idx)}
-                            style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, border: '1px solid transparent', background: checked ? 'var(--accent-light)' : 'var(--surface)', color: checked ? 'var(--accent)' : 'var(--text2)', borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                            style={{ padding: '5px 10px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', border: '1px solid transparent', background: checked ? 'var(--selection)' : 'var(--surface)', color: checked ? 'var(--text)' : 'var(--text2)', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)' }}>
                             {lbl}
                           </button>
                         );
@@ -2113,55 +2113,55 @@ const Planning = ({ user, etablissement, initialTab }) => {
                             if (m.segments.length > 1) { setBatchModele(m); return; }
                             setBatchModele(null); setBatchTypeShift(seg.typeShift); setBatchDebut(seg.debut); setBatchFin(seg.fin); setBatchPause(seg.pause || 0);
                           }}
-                          style={{ flex: '1 1 110px', padding: '10px 8px', minHeight: 44, borderRadius: 8, fontSize: 13, background: active ? 'var(--accent-light)' : 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: active ? 'var(--accent)' : 'var(--border)', color: active ? 'var(--accent)' : 'var(--text2)', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                          style={{ flex: '1 1 110px', padding: '10px 8px', minHeight: 44, borderRadius: 'var(--r)', fontSize: 'var(--t2)', background: active ? 'var(--selection)' : 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: active ? 'var(--onglet)' : 'var(--border)', color: active ? 'var(--text)' : 'var(--text2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' }}>
                           {m.nom}
                         </button>
                       );
                     })}
                   </div>
                   {batchModele ? (
-                    <div style={{ fontSize: 13, color: 'var(--text)' }}>
+                    <div style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>
                       {libelleModele(batchModele)} : deux horaires par jour.{' '}
-                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, fontFamily: 'var(--font)' }} onClick={() => setBatchModele(null)}>Saisir d'autres heures</button>
+                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--lien)', cursor: 'pointer', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', padding: 0, fontFamily: 'var(--font)' }} onClick={() => setBatchModele(null)}>Saisir d'autres heures</button>
                     </div>
                   ) : (
                     <>
                       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                         {Object.entries(TYPES_HORAIRE).map(([id, t]) => (
                           <button key={id} type="button" aria-pressed={batchTypeShift === id} onClick={() => setBatchTypeShift(id)}
-                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--accent)' : 'transparent', background: batchTypeShift === id ? 'var(--surface2)' : 'transparent', boxShadow: filetType(t), color: batchTypeShift === id ? 'var(--text)' : 'var(--text2)' }}>
+                            style={{ padding: '6px 10px', minHeight: 36, borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: batchTypeShift === id ? 'var(--onglet)' : 'transparent', background: batchTypeShift === id ? 'var(--selection)' : 'transparent', boxShadow: filetType(t), color: batchTypeShift === id ? 'var(--text)' : 'var(--text2)' }}>
                             {t.label}
                           </button>
                         ))}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                        <div><label style={{ ...pls.fieldLabel, fontSize: 11 }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
-                        <div><label style={{ ...pls.fieldLabel, fontSize: 11 }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
-                        <div><label style={{ ...pls.fieldLabel, fontSize: 11 }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 'var(--t1)' }}>Début</label><input type="time" style={pls.fieldInput} value={batchDebut} onChange={e => setBatchDebut(e.target.value)} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 'var(--t1)' }}>Fin</label><input type="time" style={pls.fieldInput} value={batchFin} onChange={e => setBatchFin(e.target.value)} /></div>
+                        <div><label style={{ ...pls.fieldLabel, fontSize: 'var(--t1)' }}>Pause (min)</label><input type="number" min="0" step="5" style={pls.fieldInput} value={batchPause} onChange={e => setBatchPause(Number(e.target.value))} /></div>
                       </div>
                     </>
                   )}
                   <div style={{ marginTop: 10 }}>
-                    <label style={{ ...pls.fieldLabel, fontSize: 11 }}>Poste / Tâche (optionnel)</label>
+                    <label style={{ ...pls.fieldLabel, fontSize: 'var(--t1)' }}>Poste / Tâche (optionnel)</label>
                     <input type="text" style={pls.fieldInput} value={batchPoste} placeholder="Ex : Cuisine, Salle…" onChange={e => setBatchPoste(e.target.value)} />
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau ? dureeLisible(heuresCreneau) : '-'}</strong></div>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 8 }}>Durée par horaire : <strong>{heuresCreneau ? dureeLisible(heuresCreneau) : '-'}</strong></div>
                 </div>
 
                 {/* ── Gestion des conflits ── */}
                 {conflictCount > 0 && (
                   <div style={{ ...encadreStyle('alerte') }}>
-                    <div style={{ fontSize: 12, ...encadreTitreStyle('alerte'), marginBottom: 8 }}>
+                    <div style={{ fontSize: 'var(--t1)', ...encadreTitreStyle('alerte'), marginBottom: 8 }}>
                       {conflictCount} conflit{conflictCount > 1 ? 's' : ''} détecté{conflictCount > 1 ? 's' : ''} (créneau qui en chevauche un autre)
                     </div>
-                    <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text)', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 14, fontSize: 'var(--t1)', color: 'var(--text)', flexWrap: 'wrap' }}>
                       {[
                         { v: 'skip', label: 'Ignorer', desc: 'Ne crée pas les créneaux qui se chevauchent' },
                         { v: 'replace', label: 'Écraser', desc: 'Remplace seulement le créneau chevauché' },
                       ].map(opt => (
                         <label key={opt.v} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                           <input type="radio" name="batchConflictMode" value={opt.v} checked={batchConflictMode === opt.v} onChange={() => setBatchConflictMode(opt.v)} />
-                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 11 }}>- {opt.desc}</span></span>
+                          <span><strong>{opt.label}</strong> <span style={{ color: 'var(--text2)', fontSize: 'var(--t1)' }}>- {opt.desc}</span></span>
                         </label>
                       ))}
                     </div>
@@ -2170,7 +2170,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
                 {/* ── Footer + aperçu ── */}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                  <span style={{ flex: 1, fontSize: 12, color: willCreate > 0 ? 'var(--text)' : 'var(--text2)' }}>
+                  <span style={{ flex: 1, fontSize: 'var(--t1)', color: willCreate > 0 ? 'var(--text)' : 'var(--text2)' }}>
                     {willCreate > 0
                       ? <>Aperçu : <strong>{willCreate}</strong> horaire{willCreate > 1 ? 's' : ''} {willCreate > 1 ? 'seront créés' : 'sera créé'}{conflictCount > 0 && batchConflictMode === 'skip' ? ` (${conflictCount} ignoré${conflictCount > 1 ? 's' : ''})` : ''}</>
                       : 'Configuration incomplète'}

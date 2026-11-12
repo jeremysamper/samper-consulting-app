@@ -14,7 +14,7 @@ import { jourCourt, lireCase } from './planningGlisser.js';
 // nœuds : chaque phrase reste une entrée du glossaire.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FILET = { ok: 'var(--accent)', avertir: 'var(--warning-text)', refus: 'var(--danger-strong)' };
+const FILET = { ok: 'var(--onglet)', avertir: 'var(--warning-text)', refus: 'var(--danger-strong)' };
 
 export default function FantomeHoraire({ glisse, refRacine, nomDe }) {
   if (!glisse) return null;
@@ -49,10 +49,10 @@ export default function FantomeHoraire({ glisse, refRacine, nomDe }) {
 const s = {
   fantome: {
     position: 'fixed', left: 0, top: 0, zIndex: 1100, pointerEvents: 'none', willChange: 'transform',
-    maxWidth: 280, padding: '8px 12px', borderRadius: 10, background: 'var(--surface)',
+    maxWidth: 280, padding: '8px 12px', borderRadius: 'var(--r)', background: 'var(--surface)',
     borderWidth: 2, borderStyle: 'solid', boxShadow: 'var(--sh)',
-    fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', lineHeight: 1.4,
+    fontFamily: 'var(--font)', fontSize: 'var(--t1)', color: 'var(--text)', lineHeight: 1.4,
   },
-  titre: { fontWeight: 700, whiteSpace: 'nowrap' },
+  titre: { fontWeight: 'var(--g3)', whiteSpace: 'nowrap' },
   ligne: { marginTop: 2 },
 };

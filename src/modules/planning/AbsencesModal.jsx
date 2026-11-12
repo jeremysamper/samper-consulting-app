@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { pls } from './Planning.styles.js';
+import { ligneStyle } from '../../components/ui/index.jsx';
 import { notifyLegacy, confirmLegacy } from '../../legacy/legacyApi.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
@@ -125,7 +126,7 @@ export default function AbsencesModal({ onClose, employees, absences, status, ca
               <div style={s.titreListe}>En cours et à venir</div>
               {status === 'loading' && !aVenir.length && <div style={s.vide}>Chargement…</div>}
               {status !== 'loading' && !aVenir.length && <div style={s.vide}>Aucune absence prévue.</div>}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {aVenir.map((a) => {
                   const m = metaMotif(a.motif);
                   const enCoursAbs = a.dateDebut <= aujourdhui;
@@ -156,29 +157,27 @@ export default function AbsencesModal({ onClose, employees, absences, status, ca
 const s = {
   formulaire: {
     display: 'flex', flexDirection: 'column', gap: 14, padding: 14,
-    borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--border)',
+    borderRadius: 'var(--r)', background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
   dates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 },
   choix: {
-    minHeight: 40, padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+    minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
     background: 'var(--surface)', color: 'var(--text2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
-  aide: { fontSize: 12, color: 'var(--text2)', marginTop: 6 },
-  titreListe: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 },
-  vide: { fontSize: 13, color: 'var(--text2)', padding: '6px 0' },
-  ligne: {
-    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', minHeight: 48,
-    borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)',
-  },
+  aide: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 6 },
+  titreListe: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 },
+  vide: { fontSize: 'var(--t2)', color: 'var(--text2)', padding: '6px 0' },
+  // Une absence par ligne de liste (ligneStyle, 48 px, filet doux).
+  ligne: { ...ligneStyle(), gap: 10, padding: '4px 0' },
   puce: {
-    flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+    flexShrink: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 9px', borderRadius: 'var(--r-full)',
     borderWidth: 1, borderStyle: 'solid',
   },
-  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  periode: { display: 'block', fontSize: 12, color: 'var(--text2)' },
+  nom: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  periode: { display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)' },
   retirer: {
     flexShrink: 0, width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: 'none', border: 'none', borderRadius: 10, color: 'var(--danger-text)', cursor: 'pointer',
+    background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--danger-text)', cursor: 'pointer',
   },
-  info: { fontSize: 13, padding: '10px 0 10px 12px',   color: 'var(--info-text)', borderLeft: '2px solid var(--info-bd)' },
+  info: { fontSize: 'var(--t2)', padding: '10px 0 10px 12px',   color: 'var(--info-text)', borderLeft: '2px solid var(--info-bd)' },
 };

@@ -209,19 +209,19 @@ export default function GroupesModal({ groupesEtab, personnes, comptes, canGerer
 
 const s = {
   section: { display: 'flex', flexDirection: 'column', gap: 6 },
-  titre: { fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 2 },
-  aide: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.45 },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', marginBottom: 2 },
+  aide: { fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.45 },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', minHeight: 56,
-    borderRadius: 10, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    borderRadius: 'var(--r)', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
-  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  role: { display: 'block', fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  compte: { fontSize: 12, color: 'var(--text2)', flexShrink: 0 },
+  nom: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  role: { display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  compte: { fontSize: 'var(--t1)', color: 'var(--text2)', flexShrink: 0 },
   danger: { color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)', minHeight: 44, flexShrink: 0 },
   case: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 12px', borderRadius: 8, fontSize: 13,
+    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 12px', borderRadius: 'var(--r)', fontSize: 'var(--t2)',
     cursor: 'pointer', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text)',
   },
-  caseOn: { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)', fontWeight: 500 },
+  caseOn: { background: 'var(--selection)', borderColor: 'var(--onglet)', color: 'var(--lien)', fontWeight: 'var(--g2)' },
 };

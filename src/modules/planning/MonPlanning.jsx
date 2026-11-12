@@ -67,7 +67,7 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
           const estAujourdhui = d === aujourdhui;
           return (
             <div key={d} style={s.jour}>
-              <div style={{ ...s.jourNom, ...(estAujourdhui ? { color: 'var(--accent)' } : null) }}>
+              <div style={{ ...s.jourNom, ...(estAujourdhui ? { color: 'var(--onglet)' } : null) }}>
                 {jourLong(d)}{estAujourdhui ? ', aujourd\'hui' : ''}
               </div>
               <div style={s.horaires}>
@@ -121,29 +121,29 @@ function LigneSolde({ solde }) {
 
 const s = {
   racine: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 },
-  solde: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 12px', padding: '0 0 12px', borderBottom: '1px solid var(--border)' },
-  soldeLabel: { fontSize: 13, fontWeight: 500, color: 'var(--text2)' },
-  soldeValeur: { fontSize: 18, fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
-  soldeSans: { fontSize: 14, color: 'var(--text2)' },
-  soldeRetards: { fontSize: 13, color: 'var(--text2)', marginLeft: 'auto' },
-  prochain: { padding: '4px 0 12px', borderBottom: '1px solid var(--border)' },
-  prochainLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
-  prochainQuand: { fontSize: 20, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginTop: 2 },
-  prochainHeures: { fontSize: 26, fontFamily: 'var(--font-num)', color: 'var(--accent)', marginTop: 2 },
+  solde: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 12px', padding: '0 0 12px', borderBottom: '1px solid var(--rule-soft)' },
+  soldeLabel: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  soldeValeur: { fontSize: 'var(--t3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
+  soldeSans: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  soldeRetards: { fontSize: 'var(--t2)', color: 'var(--text2)', marginLeft: 'auto' },
+  prochain: { padding: '4px 0 12px', borderBottom: '1px solid var(--rule-soft)' },
+  prochainLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  prochainQuand: { fontSize: 'var(--t4)', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--text)', marginTop: 2 },
+  prochainHeures: { fontSize: 'var(--t5)', fontFamily: 'var(--font-num)', color: 'var(--text)', marginTop: 2 },
   navigation: { display: 'flex', alignItems: 'center', gap: 8 },
-  fleche: { width: 44, height: 44, flexShrink: 0, background: 'var(--surface2)', border: 'none', borderRadius: 8, fontSize: 20, color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  fleche: { width: 44, height: 44, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t4)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   periode: { flex: 1, minWidth: 0, textAlign: 'center' },
-  periodeTitre: { fontSize: 15, fontWeight: 700, color: 'var(--text)' },
-  total: { fontSize: 13, color: 'var(--text2)', marginTop: 2 },
-  retour: { alignSelf: 'center', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 36, fontFamily: 'var(--font)' },
-  jour: { display: 'flex', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' },
-  jourNom: { flex: '1 1 180px', fontSize: 14, fontWeight: 500, color: 'var(--text)', minWidth: 0 },
+  periodeTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  total: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2 },
+  retour: { alignSelf: 'center', background: 'none', border: 'none', color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', minHeight: 36, fontFamily: 'var(--font)' },
+  jour: { display: 'flex', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--rule-soft)', flexWrap: 'wrap' },
+  jourNom: { flex: '1 1 180px', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', minWidth: 0 },
   horaires: { flex: '2 1 240px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   horaire: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
-  type: { fontSize: 13, fontWeight: 700, minWidth: 64 },
-  heures: { fontSize: 16, fontFamily: 'var(--font-num)', color: 'var(--text)' },
-  duree: { fontSize: 12, color: 'var(--text2)', marginLeft: 'auto' },
-  repos: { fontSize: 14, color: 'var(--text3)' },
-  absence: { fontSize: 13, fontWeight: 500, color: 'var(--warning-text)' },
-  exporter: { alignSelf: 'flex-start', padding: '11px 16px', minHeight: 44, background: 'var(--surface2)', border: 'none', borderRadius: 8, color: 'var(--accent)', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  type: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', minWidth: 64 },
+  heures: { fontSize: 'var(--t3)', fontFamily: 'var(--font-num)', color: 'var(--text)' },
+  duree: { fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 'auto' },
+  repos: { fontSize: 'var(--t2)', color: 'var(--text3)' },
+  absence: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--warning-text)' },
+  exporter: { alignSelf: 'flex-start', padding: '11px 16px', minHeight: 44, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
 };

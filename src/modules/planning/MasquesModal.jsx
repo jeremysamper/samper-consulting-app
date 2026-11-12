@@ -73,14 +73,14 @@ export default function MasquesModal({ employees, masques, masquer, afficher, ro
 }
 
 const s = {
-  aide: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.45 },
-  vide: { fontSize: 13, color: 'var(--text2)', padding: '6px 0' },
+  aide: { fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.45 },
+  vide: { fontSize: 'var(--t2)', color: 'var(--text2)', padding: '6px 0' },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', minHeight: 56,
-    borderRadius: 10, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    borderRadius: 'var(--r)', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   ligneMasquee: { background: 'var(--surface2)', borderStyle: 'dashed' },
-  boutonAfficher: { background: 'var(--accent-light)', borderColor: 'var(--accent-bd)', color: 'var(--accent)', fontWeight: 500 },
-  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  role: { display: 'block', fontSize: 12, color: 'var(--text2)' },
+  boutonAfficher: { background: 'var(--selection)', borderColor: 'var(--onglet)', color: 'var(--lien)', fontWeight: 'var(--g2)' },
+  nom: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  role: { display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)' },
 };
