@@ -4329,4 +4329,6 @@ export const UI_GLOSSARY_ES = {
   "Boîte d'envoi, SMS, horaires, capacité, lien à partager": 'Buzón de envío, SMS, horarios, capacidad, enlace para compartir',
   // ── Réglages : section Comptabilité ──
   'Méthode de TVA, charges sociales, coût horaire moyen': 'Método de IVA, cargas sociales, coste horario medio',
+  // ── Réglages : section HACCP ──
+  'Frigos et appareils, heures de relevé, contrôles': 'Neveras y aparatos, horas de registro, controles',
 };

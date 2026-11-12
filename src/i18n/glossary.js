@@ -4348,6 +4348,8 @@ export const UI_GLOSSARY = {
   "Boîte d'envoi, SMS, horaires, capacité, lien à partager": 'Outbox, SMS, hours, capacity, link to share',
   // ── Réglages : section Comptabilité ──
   'Méthode de TVA, charges sociales, coût horaire moyen': 'VAT method, social charges, average hourly cost',
+  // ── Réglages : section HACCP ──
+  'Frigos et appareils, heures de relevé, contrôles': 'Fridges and appliances, check times, controls',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

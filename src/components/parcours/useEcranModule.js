@@ -15,18 +15,29 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 //     repris: canRegler ? ['comptage', 'reglement'] : ['comptage'],
 //     surRetour: () => setAVerifier([]),
 //   });
+//
+// fixe : le module est monté sur un seul écran, hors de sa page (son écran de
+// réglage, dans la page des réglages). L'écran ne change pas, rien n'est
+// mémorisé sous la clé du module, ni calque d'historique ni Échap : c'est la
+// page hôte qui tient la navigation. retourAccueil referme seulement les
+// fenêtres de l'écran (surRetour).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const ECRAN_ACCUEIL = 'accueil';
 
-export function useEcranModule(module, { repris = [], surRetour } = {}) {
+const sansEffet = () => {};
+
+export function useEcranModule(module, { repris = [], surRetour, fixe = null } = {}) {
   const cle = `sc_${module}_ecran`;
-  const [ecran, setEcran] = React.useState(() => {
+  const [ecranLibre, setEcranLibre] = React.useState(() => {
+    if (fixe) return fixe;
     const memo = readLegacyStorage(cle, ECRAN_ACCUEIL);
     return repris.includes(memo) ? memo : ECRAN_ACCUEIL;
   });
+  const ecran = fixe || ecranLibre;
+  const setEcran = fixe ? sansEffet : setEcranLibre;
 
-  React.useEffect(() => { writeLegacyStorage(cle, ecran); }, [cle, ecran]);
+  React.useEffect(() => { if (!fixe) writeLegacyStorage(cle, ecran); }, [cle, ecran, fixe]);
 
   // `surRetour` peut changer à chaque rendu : lu par référence, il ne
   // relance pas l'effet Échap ci-dessous, qui dépend de retourAccueil.
@@ -35,15 +46,15 @@ export function useEcranModule(module, { repris = [], surRetour } = {}) {
   surRetourRef.current = surRetour;
   const retourAccueil = React.useCallback(() => {
     surRetourRef.current?.();
-    setEcran(ECRAN_ACCUEIL);
-  }, []);
+    if (!fixe) setEcranLibre(ECRAN_ACCUEIL);
+  }, [fixe]);
 
-  useBackLayer(ecran !== ECRAN_ACCUEIL, retourAccueil, `${module}-ecran`);
+  useBackLayer(!fixe && ecran !== ECRAN_ACCUEIL, retourAccueil, `${module}-ecran`);
 
   // Échap aussi, sauf quand une fenêtre est ouverte (elle se ferme seule,
   // Fenetres.jsx) ou qu'un champ a la main (Échap y annule la frappe).
   React.useEffect(() => {
-    if (ecran === ECRAN_ACCUEIL) return undefined;
+    if (fixe || ecran === ECRAN_ACCUEIL) return undefined;
     const echap = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       if (document.querySelector('[data-fenetre], [role="dialog"]')) return;
@@ -52,7 +63,7 @@ export function useEcranModule(module, { repris = [], surRetour } = {}) {
     };
     document.addEventListener('keydown', echap);
     return () => document.removeEventListener('keydown', echap);
-  }, [ecran, retourAccueil]);
+  }, [ecran, retourAccueil, fixe]);
 
   return { ecran, setEcran, retourAccueil };
 }

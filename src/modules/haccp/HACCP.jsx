@@ -32,6 +32,9 @@ import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
+import { peutConfigurerHaccp } from './gardesHaccp.js';
 import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 
 
@@ -60,7 +63,9 @@ const TABLES_HACCP = ['haccp_zones', 'haccp_ctrl_templates', 'haccp_releves', 'h
 // Délai pendant lequel un « C'est fait » se rattrape par « Annuler ».
 const ANNULATION_CONTROLE_MS = 2 * 60 * 1000;
 
-const HACCP = ({ user, etablissement }) => {
+// ecranReglage : 'config' quand le module est monté dans la page des réglages
+// (SectionReglagesHaccp.jsx), sur son seul écran de configuration.
+const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
@@ -172,7 +177,8 @@ const HACCP = ({ user, etablissement }) => {
   const [triggerCapture, setTriggerCapture] = React.useState(null);
   const registerCaptureTrigger = React.useCallback(fn => setTriggerCapture(() => fn), []);
 
-  const isConsultant = user.role === 'consultant';
+  const isConsultant = peutConfigurerHaccp(user.role);
+  const enReglage = ecranReglage === 'config';
   const canWrite = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'].includes(user.role);
   const canManage = canManageModule(user.role, 'haccp');
   const sel = useSelection();
@@ -192,7 +198,11 @@ const HACCP = ({ user, etablissement }) => {
   // Aucun écran n'est repris d'une ouverture à l'autre, le module s'ouvre
   // toujours sur l'accueil. Revenir à l'accueil referme les fenêtres de
   // l'écran quitté, sauf pendant un export ; le brouillon du relevé reste.
+  // Les réglages (écran 'config') vivent dans la page des réglages, section
+  // 'haccp' : le bouton de l'accueil y mène, et le module y est monté sur ce
+  // seul écran (fixe).
   const { ecran, setEcran, retourAccueil } = useEcranModule('haccp', {
+    fixe: enReglage ? 'config' : null,
     surRetour: () => {
       setShowReleve(false);
       setShowControl(false);
@@ -259,6 +269,9 @@ const HACCP = ({ user, etablissement }) => {
     const unsub = legacySB.realtime.subscribeReload(TABLES_HACCP, relire);
     return () => { if (unsub) unsub(); };
   }, [etabId]);
+  // Réglé dans la page des réglages : le module gardé monté relit, même sans
+  // temps réel.
+  useReglageModifie('haccp', relire);
 
   useResumeRefresh(relire);
 
@@ -884,7 +897,7 @@ const HACCP = ({ user, etablissement }) => {
             canWrite={canWrite}
             isConsultant={isConsultant}
             onReleve={ouvrirReleveGuide}
-            onReglages={() => setEcran('config')}
+            onReglages={() => ouvrirCompte('haccp')}
             onReessayer={relire}
           />
           {aide.visible && <AideHaccp onFermer={aide.fermer} />}
@@ -897,12 +910,19 @@ const HACCP = ({ user, etablissement }) => {
                     cinquième tuile seule sur sa rangée. data-tuile : même
                     crochet du banc qu'avant. */}
                 {isConsultant && (
-                  <button type="button" data-tuile="config" style={hs.exportBtn} onClick={() => setEcran('config')}>Réglages</button>
+                  <button type="button" data-tuile="config" style={hs.exportBtn} onClick={() => ouvrirCompte('haccp')}>Réglages</button>
                 )}
               </div>
             </div>
           )}
         </>
+      ) : enReglage ? (
+        // Dans la page des réglages : la ligne d'état et les actions de
+        // l'écran, sans « Retour » ni titre (la page les porte).
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', minWidth: 0 }} className="no-print">
+          <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, flex: '1 1 260px', minWidth: 0 }}>{etatsEcran.config}</div>
+          {actions && <div className="module-actions">{actions}</div>}
+        </div>
       ) : (
         <EcranTache titre={titresEcran[ecran] || ECRANS_HACCP[ecran]} etat={etatsEcran[ecran]} onRetour={retourAccueil} actions={actions} />
       )}

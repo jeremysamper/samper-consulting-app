@@ -2,6 +2,7 @@ import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../m
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
+import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -72,6 +73,12 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'comptabilite',
     garde: (ctx) => ouvreLeModule('comptabilite')(ctx) && peutReglerFactures(ctx.user?.role),
     charger: () => import('../comptabilite/SectionReglagesCompta.jsx'),
+  },
+  {
+    id: 'haccp', libelle: 'HACCP', detail: 'Frigos et appareils, heures de relevé, contrôles',
+    groupe: 'modules', portee: 'maison', module: 'haccp',
+    garde: (ctx) => ouvreLeModule('haccp')(ctx) && peutConfigurerHaccp(ctx.user?.role),
+    charger: () => import('../haccp/SectionReglagesHaccp.jsx'),
   },
 
   // ── L'équipe et les accès ──
