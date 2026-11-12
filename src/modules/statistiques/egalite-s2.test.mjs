@@ -267,6 +267,28 @@ test('réservations : demandes, délais, groupes, placement, clientèle, tags et
   assert.ok(!t.series.some((x) => x.libelle === 'Autres'));
 });
 
+// ── Journal, SOP, écran de cuisine, mise en place ──
+test('journal, sop, cuisine et mise en place : chaque flux fait son total, les taux se recalculent', () => {
+  const jours = (n) => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 0, 1 + (i % 300))).toISOString().slice(0, 10));
+  const lignes = jours(1500).map((d, i) => ({ id: `j${i}`, created_at: `${d}T10:00:00Z`, module: ['recettes', 'pertes', 'caisse'][i % 3], operation: ['INSERT', 'UPDATE'][i % 2] }));
+  const executions = jours(1200).map((d, i) => ({ dateExecution: d, statut: ['terminee', 'abandonnee', 'en_cours'][i % 3], totalEtapes: 6, etapesCochees: i % 7 }));
+  const orders = jours(1100).map((d, i) => ({ openedAt: `${d}T11:00:00Z`, completedAt: i % 9 ? `${d}T11:${String(10 + (i % 40)).padStart(2, '0')}:00Z` : null }));
+  const listes = jours(1100).map((d, i) => ({ dateService: d, items: [{ fait: true }, { fait: i % 2 === 0 }, { fait: false }] }));
+  const cas = [['journal', { lignes }], ['sop', { executions }], ['kds', { orders }], ['mep', { listes }]];
+  cas.forEach(([id, donnees]) => ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux(id, lire(id, donnees, '2026-01-01', '2026-12-31', pas))));
+  const t = (id, donnees) => lire(id, donnees, '2026-01-01', '2026-12-31', 'mois').total;
+  assert.equal(mesure('journal.entrees').valeur(t('journal', { lignes })), 1500);
+  assert.equal(mesure('sop.terminees').valeur(t('sop', { executions })), executions.filter((e) => e.statut === 'terminee').length);
+  const etapes = executions.reduce((x, e) => x + e.etapesCochees, 0) / executions.reduce((x, e) => x + e.totalEtapes, 0);
+  assert.equal(mesure('sop.etapes').valeur(t('sop', { executions })), etapes);
+  assert.equal(mesure('kds.terminees').valeur(t('kds', { orders })), orders.filter((o) => o.completedAt).length);
+  const finies = orders.filter((o) => o.completedAt);
+  const duree = finies.reduce((x, o) => x + (Date.parse(o.completedAt) - Date.parse(o.openedAt)) / 60000, 0) / finies.length;
+  assert.ok(Math.abs(mesure('kds.duree').valeur(t('kds', { orders })) - duree) < 1e-9);
+  const items = listes.flatMap((l) => l.items);
+  assert.equal(mesure('mep.taux').valeur(t('mep', { listes })), items.filter((i) => i.fait).length / items.length);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
@@ -274,4 +296,8 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('haccp'), 4);
   assert.equal(compte('inventaire'), 4);
   assert.equal(compte('groupes'), 3);
+  assert.equal(compte('journal'), 1);
+  assert.equal(compte('sop'), 4);
+  assert.equal(compte('kds'), 2);
+  assert.equal(compte('mep'), 3);
 });

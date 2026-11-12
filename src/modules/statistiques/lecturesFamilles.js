@@ -25,11 +25,28 @@ import { estDirection, peutReglerFactures } from '../comptabilite/gardesCompta.j
 import { lireContrats, lirePeriode } from '../planning/contratsService.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
 import { lireGroupes } from '../../hooks/useGroupes.js';
+import { supabase } from '../../services/supabase.js';
+import { zurichAjouterJours, zurichMinuitIso } from '../../utils/zurichTime.js';
 
 // Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
 // active pour l'établissement, puis droit d'ouvrir la page.
 export const ecranOuvert = (page, { role, permissions, etablissement }) => isPageActiveForEtab(etablissement, page)
   && peutOuvrirPage(page, { role }, permissions);
+
+// Toutes les pages d'une lecture (1000 lignes au plus par réponse) ; une
+// erreur remonte. `requete(de, a)` construit une page à l'ordre stable.
+async function toutesLesPages(requete) {
+  const PAGE = 1000;
+  const lignes = [];
+  for (let de = 0; ; de += PAGE) {
+    const { data, error } = await requete(de, de + PAGE - 1);
+    if (error) throw error;
+    lignes.push(...(data || []));
+    if (!data || data.length < PAGE) return lignes;
+  }
+}
+// Bornes d'un horodatage pour des jours de Zurich [debut, fin].
+const bornesHorodatage = (debut, fin) => [zurichMinuitIso(debut), zurichMinuitIso(zurichAjouterJours(fin, 1))];
 
 const echec = (e, defaut) => new Error(typeof e === 'string' && e ? e : (e?.message || defaut));
 
@@ -134,6 +151,46 @@ export const LECTURES = {
     visible: (ctx) => ecranOuvert('groupes', ctx),
     async lire(etabId, debut, fin) {
       return { groupes: await lireGroupes(etabId, debut, fin) };
+    },
+  },
+  // Journal d'activité : consultant et patron (peutOuvrirPage). Les entrées de
+  // la fenêtre, jours de Zurich, comme Journal.jsx.
+  journal: {
+    visible: (ctx) => ecranOuvert('journal', ctx),
+    async lire(etabId, debut, fin) {
+      const [de, a] = bornesHorodatage(debut, fin);
+      const lignes = await toutesLesPages((x, y) => supabase.from('journal_activite').select('id, created_at, module, operation')
+        .eq('etablissement_id', etabId).gte('created_at', de).lt('created_at', a).order('created_at').order('id').range(x, y));
+      return { lignes };
+    },
+  },
+  // SOP : l'écran des procédures, les exécutions de la fenêtre.
+  sop: {
+    visible: (ctx) => ecranOuvert('sop', ctx),
+    async lire(etabId, debut, fin) {
+      const db = dbService.getBridge()?.db;
+      if (!db) throw echec(null, 'Lecture indisponible.');
+      return { executions: await db.listSopExecutions(etabId, { dateFrom: debut, dateTo: fin, strict: true }) };
+    },
+  },
+  // Écran de cuisine : consultant, responsable de cuisine et cuisinier
+  // (peutOuvrirPage, et la RLS des commandes). Les commandes finies dans la fenêtre.
+  kds: {
+    visible: (ctx) => ecranOuvert('kds', ctx),
+    async lire(etabId, debut, fin) {
+      const [de, a] = bornesHorodatage(debut, fin);
+      const lignes = await toutesLesPages((x, y) => supabase.from('kds_orders').select('id, opened_at, completed_at, status')
+        .eq('etablissement_id', etabId).gte('completed_at', de).lt('completed_at', a).order('completed_at').order('id').range(x, y));
+      return { orders: lignes.map((r) => ({ id: r.id, openedAt: r.opened_at, completedAt: r.completed_at, status: r.status })) };
+    },
+  },
+  // Mise en place : les listes de la fenêtre et l'état de leurs préparations.
+  mep: {
+    visible: (ctx) => ecranOuvert('mep', ctx),
+    async lire(etabId, debut, fin) {
+      const lignes = await toutesLesPages((x, y) => supabase.from('mep_listes').select('id, date_service, mep_items(fait)')
+        .eq('etablissement_id', etabId).gte('date_service', debut).lte('date_service', fin).order('date_service').order('id').range(x, y));
+      return { listes: lignes.map((l) => ({ id: l.id, dateService: l.date_service, items: l.mep_items || [] })) };
     },
   },
 };
