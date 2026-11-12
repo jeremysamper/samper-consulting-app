@@ -70,11 +70,17 @@ export function zurichLundi(dateStr = zurichToday()) {
   return zurichAjouterJours(dateStr, -((jour + 6) % 7));
 }
 
+// Un formateur suffit pour tous les appels : en construire un à chaque date
+// coûtait douze fois plus (1,5 s pour 14 600 réservations du rapport).
+let formatZurich = null;
 function partiesZurich(instant) {
-  return Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
-    timeZone: ZURICH_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-  }).formatToParts(instant).map((p) => [p.type, p.value]));
+  if (!formatZurich) {
+    formatZurich = new Intl.DateTimeFormat('en-GB', {
+      timeZone: ZURICH_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    });
+  }
+  return Object.fromEntries(formatZurich.formatToParts(instant).map((p) => [p.type, p.value]));
 }
 
 // Instant (ISO UTC) de minuit à Zurich pour une date YYYY-MM-DD : borne de
